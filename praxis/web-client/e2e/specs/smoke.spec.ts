@@ -1,56 +1,70 @@
-import { test, expect } from '../fixtures/app.fixture';
+import { test, expect } from '../fixtures/worker-db.fixture';
+import { SmokePage } from '../page-objects/smoke.page';
 
 test.describe('Smoke Test', () => {
-  // Common setup (auth, navigation, shell wait, dialog dismissal) is now handled by app.fixture.ts
-
-  // Common setup (auth, navigation, shell wait, dialog dismissal) is now handled by app.fixture.ts
-
-
-  test('should load the dashboard', async ({ page }) => {
-    // page.goto('/') handled in beforeEach, which also handles redirects
+  test('should load the dashboard and display navigation', async ({ page, workerIndex }) => {
+    const smoke = new SmokePage(page, workerIndex);
+    await smoke.goto('/');
+    await smoke.handleSplashScreen();
+    await expect(smoke.navRail).toBeVisible({ timeout: 3000 });
     await expect(page).toHaveTitle(/Praxis/);
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('app-unified-shell, app-main-layout')).toBeVisible({ timeout: 30000 });
-    await expect(page.locator('.sidebar-rail, .nav-rail').first()).toBeVisible();
+
+    // Verify navigation sidebar is visible (icon-based rail nav)
+    await expect(page.locator('.sidebar-rail, nav, [role="navigation"]').first()).toBeVisible();
+    // Verify dashboard header content
+    await expect(page.getByText('Welcome back')).toBeVisible();
     await page.screenshot({ path: '/tmp/e2e-smoke/landing_dashboard.png' });
   });
 
-  test('should navigate to Assets and display tables', async ({ page }) => {
-    await page.goto('/assets');
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('app-assets')).toBeVisible({ timeout: 30000 });
+  test('should navigate to Assets and display tables with data', async ({
+    page,
+    workerIndex,
+  }) => {
+    const smoke = new SmokePage(page, workerIndex);
+    await smoke.goto('/assets');
+    await smoke.handleSplashScreen();
+    await expect(smoke.assetsComponent).toBeVisible({ timeout: 3000 });
 
     // Check for Tabs
-    await expect(page.locator('mat-tab-group')).toBeVisible();
-    await expect(page.locator('.mat-mdc-tab-labels')).toContainText('Machines');
-    await expect(page.locator('.mat-mdc-tab-labels')).toContainText('Resources');
-    await expect(page.locator('.mat-mdc-tab-labels')).toContainText('Registry');
+    await expect(smoke.machinesTab).toBeVisible();
+    await expect(smoke.resourcesTab).toBeVisible();
+    await expect(smoke.registryTab).toBeVisible();
 
-    // Check Machine List (navigate to tab first)
-    await page.getByRole('tab', { name: /Machines/i }).click();
-    await expect(page.locator('app-machine-list')).toBeVisible({ timeout: 30000 });
-    await expect(page.locator('app-machine-list table')).toBeVisible();
+    // Check Machine List for data
+    await smoke.machinesTab.click();
+    await smoke.verifyMachineTableHasData();
+    // Mat-Table uses mat-row elements, not tbody tr
+    const rowCount = await smoke.machineTable.locator('mat-row, tr.mat-mdc-row, .mat-mdc-row').count();
+    expect(rowCount).toBeGreaterThan(0);
     await page.screenshot({ path: '/tmp/e2e-smoke/assets_list.png' });
   });
 
-  test('should navigate to Protocols and display library', async ({ page }) => {
-    await page.goto('/protocols');
-    await expect(page.locator('app-protocol-library')).toBeVisible();
-    await expect(page.locator('app-protocol-library h1')).toContainText('Protocol Library');
-    await expect(page.locator('app-protocol-library table')).toBeVisible();
+  test('should navigate to Protocols and display library', async ({
+    page,
+    workerIndex,
+  }) => {
+    const smoke = new SmokePage(page, workerIndex);
+    await smoke.goto('/protocols');
+    await smoke.handleSplashScreen();
+    await expect(smoke.protocolLibrary).toBeVisible({ timeout: 3000 });
+    // Verify the Protocol Library heading is visible
+    await expect(page.getByText('Protocol Library')).toBeVisible();
+    // Check for search input as functional indicator
+    await expect(page.getByPlaceholder(/Search/i)).toBeVisible();
     await page.screenshot({ path: '/tmp/e2e-smoke/protocol_list.png' });
   });
 
-  test('should navigate to Run Protocol wizard', async ({ page }) => {
-    await page.goto('/run');
-    await expect(page.locator('app-run-protocol')).toBeVisible();
+  test('should navigate to Run Protocol wizard', async ({ page, workerIndex }) => {
+    const smoke = new SmokePage(page, workerIndex);
+    await smoke.goto('/run');
+    await smoke.handleSplashScreen();
+    await expect(smoke.runProtocolComponent).toBeVisible({ timeout: 3000 });
 
-    // Check Stepper
-    await expect(page.locator('mat-stepper')).toBeVisible();
-
-    // Use stricter locators to avoid ambiguity
-    await expect(page.locator('.mat-step-header').filter({ hasText: 'Select Protocol' })).toBeVisible();
-    await expect(page.locator('.mat-step-header').filter({ hasText: 'Configure Parameters' })).toBeVisible();
+    // Check page header
+    await expect(page.getByText('Execute Protocol')).toBeVisible();
+    // Check for stepper steps text
+    await expect(page.getByText('Select Protocol')).toBeVisible();
+    await expect(page.getByText('Configure Parameters')).toBeVisible();
     await page.screenshot({ path: '/tmp/e2e-smoke/run_protocol.png' });
   });
 });

@@ -7,6 +7,5 @@ export const environment = {
     url: '/auth', // Production Keycloak URL (behind proxy)
     realm: 'praxis',
     clientId: 'praxis'
-  },
-  sqliteOpfsEnabled: false // Opt-in to experimental OPFS storage
+  }
 };

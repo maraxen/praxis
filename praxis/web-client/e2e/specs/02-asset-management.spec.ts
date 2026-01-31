@@ -11,9 +11,9 @@ import { AssetsPage } from '../page-objects/assets.page';
 test.describe('Asset Management Flow', () => {
     let assetsPage: AssetsPage;
 
-    test.beforeEach(async ({ page }) => {
-        const welcomePage = new WelcomePage(page);
-        assetsPage = new AssetsPage(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        const welcomePage = new WelcomePage(page, testInfo);
+        assetsPage = new AssetsPage(page, testInfo);
 
         await welcomePage.goto();
         await welcomePage.handleSplashScreen();
@@ -48,15 +48,17 @@ test.describe('Asset Management Flow', () => {
         await expect(assetsPage.addMachineButton).toBeVisible({ timeout: 10000 });
         await assetsPage.addMachineButton.click();
 
-        // Verify dialog opens with correct title
-        await expect(page.getByRole('heading', { name: /Add New Machine/i })).toBeVisible({ timeout: 5000 });
+        // Verify dialog opens with wizard (Category step visible first due to preselected type)
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible({ timeout: 5000 });
 
-        // The dialog should show step indicators (Select Machine Category heading)
-        await expect(page.getByRole('heading', { name: /Select Machine Category/i })).toBeVisible();
+        // Verify category cards are shown (wizard opens at Category step)
+        const categoryCard = dialog.getByTestId(/category-card-/).first();
+        await expect(categoryCard).toBeVisible({ timeout: 10000 });
 
-        // Close dialog via Cancel button or mat-dialog-close
-        await page.getByRole('button', { name: /Cancel/i }).click();
-        await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 });
+        // Close dialog via Escape (wizard has no Cancel button)
+        await page.keyboard.press('Escape');
+        await expect(dialog).not.toBeVisible({ timeout: 5000 });
     });
 
     test('should open Add Resource dialog', async ({ page }) => {
@@ -68,15 +70,13 @@ test.describe('Asset Management Flow', () => {
         await expect(assetsPage.addResourceButton).toBeVisible({ timeout: 10000 });
         await assetsPage.addResourceButton.click();
 
-        // Verify dialog opens with correct title ("Add Resource")
-        await expect(page.getByRole('heading', { name: /Add Resource/i })).toBeVisible({ timeout: 5000 });
+        // Verify dialog opens
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible({ timeout: 5000 });
 
-        // The dialog should show search input
-        await expect(page.getByPlaceholder(/Search resources/i)).toBeVisible({ timeout: 5000 });
-
-        // Close dialog via close button (mat-dialog-close)
-        await page.locator('button[mat-dialog-close]').or(page.getByRole('button', { name: /close/i })).click();
-        await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 });
+        // Close dialog via Escape
+        await page.keyboard.press('Escape');
+        await expect(dialog).not.toBeVisible({ timeout: 5000 });
     });
 
     test('should navigate between tabs', async ({ page }) => {
@@ -101,16 +101,6 @@ test.describe('Asset Management Flow', () => {
         await expect(assetsPage.overviewTab).toBeVisible();
     });
 
-    test('should show search input on resource list', async ({ page }) => {
-        // Navigate to Assets > Resources
-        await assetsPage.goto();
-        await assetsPage.waitForOverlay();
-        await assetsPage.navigateToResources();
-
-        // Wait for content to load - Resources tab shows ResourceAccordion
-        await page.waitForTimeout(500);
-    });
-
     // CRUD Operations tests - Database is seeded with PLR definitions on startup
     test.describe('CRUD Operations', () => {
 
@@ -121,6 +111,19 @@ test.describe('Asset Management Flow', () => {
             await assetsPage.navigateToMachines();
             await assetsPage.createMachine(machineName);
             await assetsPage.verifyAssetVisible(machineName);
+
+            // NEW: Verify data integrity via SQLite query
+            const machineData = await page.evaluate(async (name) => {
+                const db = (window as any).sqliteService?.db;
+                if (!db) return null;
+                const result = db.exec(`SELECT id, class_name, frontend_id FROM instances WHERE instance_name = '${name}'`);
+                if (result.length === 0 || result[0].values.length === 0) return null;
+                const [id, className, frontendId] = result[0].values[0];
+                return { id, className, frontendId };
+            }, machineName);
+
+            expect(machineData).not.toBeNull();
+            expect(machineData!.className).toBe('LiquidHandler');
         });
 
         test('should add a new resource', async ({ page }) => {
@@ -150,10 +153,94 @@ test.describe('Asset Management Flow', () => {
             await assetsPage.navigateToMachines();
             await assetsPage.createMachine(machineName);
             await assetsPage.verifyAssetVisible(machineName);
+
+            // Get the ID before reload
+            const machineId = await page.evaluate(async (name) => {
+                const db = (window as any).sqliteService?.db;
+                const result = db.exec(`SELECT id FROM instances WHERE instance_name = '${name}'`);
+                return result[0]?.values[0]?.[0] ?? null;
+            }, machineName);
+
             await page.reload();
             await assetsPage.waitForOverlay();
+
+            // NEW: Verify same ID exists after reload (proves OPFS persistence)
+            const persistedId = await page.evaluate(async (name) => {
+                const db = (window as any).sqliteService?.db;
+                const result = db.exec(`SELECT id FROM instances WHERE instance_name = '${name}'`);
+                return result[0]?.values[0]?.[0] ?? null;
+            }, machineName);
+
+            expect(persistedId).toBe(machineId);
             await assetsPage.navigateToMachines();
             await assetsPage.verifyAssetVisible(machineName);
+        });
+    });
+
+    test.describe('Validation & Error Handling', () => {
+
+        test('should prevent machine creation with empty name', async ({ page }) => {
+            await assetsPage.goto();
+            await assetsPage.waitForOverlay();
+            await assetsPage.addMachineButton.click();
+
+            const dialog = page.getByRole('dialog');
+            const wizard = dialog.locator('app-asset-wizard');
+            await expect(wizard).toBeVisible({ timeout: 15000 });
+
+            // Navigate through steps to Config
+            // Step 1: Category
+            const categoryCard = wizard.getByTestId(/category-card-/).first();
+            await expect(categoryCard).toBeVisible({ timeout: 10000 });
+            await categoryCard.click();
+            await dialog.getByRole('button', { name: /Next/i }).click();
+
+            // Step 2: Frontend
+            const frontendCard = wizard.getByTestId(/frontend-card-/).first();
+            await expect(frontendCard).toBeVisible({ timeout: 10000 });
+            await frontendCard.click();
+            await dialog.getByRole('button', { name: /Next/i }).click();
+
+            // Step 3: Backend
+            const backendCard = wizard.getByTestId(/backend-card-/).first();
+            await expect(backendCard).toBeVisible({ timeout: 10000 });
+            await backendCard.click();
+            await dialog.getByRole('button', { name: /Next/i }).click();
+
+            // Step 4: Config - Clear the name input
+            const nameInput = wizard.getByTestId('input-instance-name');
+            await expect(nameInput).toBeVisible({ timeout: 10000 });
+            await nameInput.clear();
+
+            // Verify Next button is disabled when name is empty
+            const nextBtn = dialog.getByRole('button', { name: /Next/i });
+            await expect(nextBtn).toBeDisabled({ timeout: 5000 });
+
+            // Close dialog
+            await page.keyboard.press('Escape');
+        });
+
+        test('should cancel delete when dialog is dismissed', async ({ page }) => {
+            const machineName = `Cancel Delete ${Date.now()}`;
+            await assetsPage.goto();
+            await assetsPage.waitForOverlay();
+            await assetsPage.navigateToMachines();
+            await assetsPage.createMachine(machineName);
+            await assetsPage.verifyAssetVisible(machineName);
+
+            // Navigate back to Machines tab
+            await assetsPage.navigateToMachines();
+
+            // Set up dialog handler to REJECT deletion
+            page.once('dialog', dialog => dialog.dismiss());
+
+            // Click delete
+            const row = page.locator('tr').filter({ hasText: machineName });
+            const deleteBtn = row.getByRole('button', { name: /delete/i });
+            await deleteBtn.click();
+
+            // Verify machine still exists
+            await expect(row).toBeVisible({ timeout: 5000 });
         });
     });
 });

@@ -48,6 +48,7 @@ import { DirectControlComponent } from './components/direct-control/direct-contr
 import { DirectControlKernelService } from './services/direct-control-kernel.service';
 import { JupyterChannelService } from './services/jupyter-channel.service';
 import { PlaygroundJupyterliteService } from './services/playground-jupyterlite.service';
+import { PathUtils } from '@core/utils/path.utils';
 
 /**
  * Playground Component
@@ -890,12 +891,9 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     // Fallback: We are in the main Angular app (e.g., localhost:4200/app/playground)
     // We need to construct the root path to where assets are served.
     const baseHref = document.querySelector('base')?.getAttribute('href') || '/';
-    // Remove leading slash from baseHref if it exists to avoid double slash with origin
-    const cleanBase = baseHref.startsWith('/') ? baseHref : '/' + baseHref;
-    // Ensure trailing slash
-    const finalBase = cleanBase.endsWith('/') ? cleanBase : cleanBase + '/';
+    const cleanBase = PathUtils.normalizeBaseHref(baseHref);
 
-    return window.location.origin + finalBase;
+    return window.location.origin + cleanBase;
   }
 
   /**

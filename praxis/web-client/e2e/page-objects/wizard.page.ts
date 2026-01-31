@@ -366,5 +366,55 @@ export class WizardPage {
         }
         return false;
     }
+
+    async verifyMachineStepVisible(): Promise<void> {
+        const machineStep = this.page.locator(
+            '[data-tour-id="run-step-machine"]'
+        );
+        await expect(machineStep).toBeVisible();
+        await expect(
+            this.page.getByText(/Select Execution Machine/i)
+        ).toBeVisible();
+    }
+
+    async selectFirstSimulatedMachine(): Promise<void> {
+        const machineCard = this.page
+            .locator('app-machine-card')
+            .filter({ hasText: /Simulated/i })
+            .first();
+        await machineCard.click();
+        await expect(machineCard).toHaveClass(/border-primary|selected/);
+    }
+
+    async selectIncompatibleMachine(): Promise<void> {
+        // For negative testing
+        const incompatibleCard = this.page
+            .locator('app-machine-card')
+            .filter({ has: this.page.locator('[data-incompatible="true"]') })
+            .first();
+        await incompatibleCard.click();
+    }
+
+    async verifyContinueEnabled(): Promise<void> {
+        const machineStep = this.page.locator(
+            '[data-tour-id="run-step-machine"]'
+        );
+        const continueButton = machineStep.getByRole('button', {
+            name: /Continue/i,
+        });
+        await expect(continueButton).toBeEnabled();
+    }
+
+    async verifyMachineSelected(expectedAccessionId: string): Promise<void> {
+        const selectedId = await this.page.evaluate(() => {
+            const runStepComponent = document.querySelector(
+                'app-run-step-machine'
+            );
+            if (!runStepComponent) return null;
+            const component = (window as any).ng.getComponent(runStepComponent);
+            return component?.selectedMachine?.machine?.accession_id;
+        });
+        expect(selectedId).toBe(expectedAccessionId);
+    }
 }
 

@@ -3,6 +3,14 @@
     "appName": "JupyterLite",
     "appUrl": "/praxis/assets/jupyterlite/lab",
     "appVersion": "0.7.1",
+    "settingsOverrides": {
+      "@jupyterlab/apputils-extension:announcements": {
+        "checkForUpdates": false
+      },
+      "@jupyterlite/pyodide-kernel-extension:kernel": {
+        "autoStart": true
+      }
+    },
     "baseUrl": "/praxis/assets/jupyterlite/",
     "defaultKernelName": "python",
     "faviconUrl": "/praxis/assets/jupyterlite/lab/favicon.ico",
@@ -388,6 +396,8 @@
     },
     "fullLabextensionsUrl": "/praxis/assets/jupyterlite/extensions",
     "fullStaticUrl": "/praxis/assets/jupyterlite/build",
+    "settingsUrl": "/praxis/assets/jupyterlite/build/schemas",
+    "themesUrl": "/praxis/assets/jupyterlite/build/themes",
     "licensesUrl": "/praxis/assets/jupyterlite/lab/api/licenses",
     "litePluginSettings": {
       "@jupyterlite/pyodide-kernel-extension:kernel": {

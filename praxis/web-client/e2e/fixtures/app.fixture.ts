@@ -45,30 +45,27 @@ export const test = base.extend({
 /**
  * Helper to build a worker-isolated URL.
  * Use this in tests that need to navigate with proper DB isolation.
+ * @param resetdb - If true, wipes and reinitializes DB. Default false to reuse cached DB.
  */
-export function buildIsolatedUrl(basePath: string, testInfo: { workerIndex: number }): string {
+export function buildIsolatedUrl(basePath: string, testInfo: { workerIndex: number }, resetdb = false): string {
     const dbName = `praxis-worker-${testInfo.workerIndex}`;
     const params = new URLSearchParams();
     params.set('mode', 'browser');
     params.set('dbName', dbName);
-    params.set('resetdb', '1');
+    if (resetdb) {
+        params.set('resetdb', '1');
+    }
 
     const separator = basePath.includes('?') ? '&' : '?';
     return `${basePath}${separator}${params.toString()}`;
 }
 
 /**
- * Helper to wait for SQLite service to be ready
+ * Helper to wait for SQLite service to be ready.
+ * Uses data-testid attribute on app-root for clean detection.
  */
-export async function waitForDbReady(page: import('@playwright/test').Page, timeout = 60000): Promise<void> {
-    await page.waitForFunction(
-        () => {
-            const service = (window as any).sqliteService;
-            return service && service.isReady$?.getValue() === true;
-        },
-        null,
-        { timeout }
-    );
+export async function waitForDbReady(page: import('@playwright/test').Page, timeout = 5000): Promise<void> {
+    await page.locator('[data-sqlite-ready="true"]').waitFor({ state: 'attached', timeout });
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
@@ -76,8 +73,8 @@ test.beforeEach(async ({ page }, testInfo) => {
     const dbName = `praxis-worker-${testInfo.workerIndex}`;
     console.log(`[Fixture] Worker ${testInfo.workerIndex} initializing with DB: ${dbName}`);
 
-    // Navigate to root to start the app sequence
-    await page.goto(`/?mode=browser&dbName=${dbName}&resetdb=1`);
+    // Navigate to root to start the app sequence (no resetdb = reuse cached DB)
+    await page.goto(`/?mode=browser&dbName=${dbName}`);
 
     // Wait for app shell to load (check for .sidebar-rail)
     await expect(page.locator('.sidebar-rail')).toBeVisible({ timeout: 30000 });
@@ -115,7 +112,7 @@ test.beforeEach(async ({ page }, testInfo) => {
                     return false;
                 })) {
                     await btn.click({ force: true });
-                    await page.waitForTimeout(300);
+                    await page.waitForLoadState('domcontentloaded');
                     break;
                 }
             }

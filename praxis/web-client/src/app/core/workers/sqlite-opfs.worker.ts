@@ -10,12 +10,16 @@ import {
     SqliteImportRequest,
     SqliteErrorResponse,
     SqliteBatchExecRequest,
+    SqliteInitializedPayload,
+    StorageMode,
     CURRENT_SCHEMA_VERSION
 } from './sqlite-opfs.types';
 
 let sqlite3: Sqlite3Static | null = null;
 let db: Database | null = null;
 let poolUtil: any = null;
+let currentDbName: string = '/praxis.db';  // Tracks the currently opened database file
+let storageMode: StorageMode = 'opfs';     // Tracks whether using OPFS or in-memory fallback
 
 /**
  * VFS requires absolute paths (leading /)
@@ -68,6 +72,9 @@ addEventListener('message', async ({ data }: { data: SqliteWorkerRequest }) => {
  * Initialize SQLite and the OPFS SAHPool VFS
  */
 async function handleInit(id: string, payload: SqliteInitRequest) {
+    const startTime = performance.now();
+    const timings: Record<string, number> = {};
+
     if (db) {
         sendResponse(id, 'initialized', { success: true, message: 'Already initialized' });
         return;
@@ -86,48 +93,60 @@ async function handleInit(id: string, payload: SqliteInitRequest) {
         console.error('[SqliteOpfsWorker] Failed to load WASM module:', err);
         throw err;
     }
+    timings['wasmLoad'] = performance.now() - startTime;
 
     if (!sqlite3) {
         throw new Error('Failed to initialize SQLite WASM module');
     }
 
-    console.log('[SqliteOpfsWorker] SQLite module loaded, installing opfs-sahpool...');
+    // Attempt OPFS SAHPool VFS - fallback to in-memory on failure
+    let useMemoryFallback = false;
 
     if (typeof (sqlite3 as any).installOpfsSAHPoolVfs !== 'function') {
-        throw new Error('OPFS SAHPool is not available in this browser context. Please ensure you are using a supported browser (Chrome 108+, Firefox 111+, Safari 16.4+).');
-    }
-
-    // Install opfs-sahpool VFS (SyncAccessHandle Pool)
-    // This VFS is preferred for performance and doesn't require SharedArrayBuffer
-    // proxyUri must point to our copied asset to avoid Vite's dynamic import issues
-    try {
-        poolUtil = await (sqlite3 as any).installOpfsSAHPoolVfs({
-            name: 'opfs-sahpool', // Standard name used by the library
-            directory: 'praxis-data',
-            clearOnInit: false,
-            proxyUri: `${wasmPath}sqlite3-opfs-async-proxy.js`
-        });
-    } catch (err) {
-        console.error('[SqliteOpfsWorker] Failed to install opfs-sahpool VFS:', err);
-        throw err;
-    }
-
-    console.log('[SqliteOpfsWorker] opfs-sahpool VFS installed successfully');
-
-    // Open the database using the sahpool VFS
-    const dbName = payload.dbName || VFS_DB_NAME;
-
-    // Use the specialized DB class provided by the pool utility if available
-    if (poolUtil.OpfsSAHPoolDb) {
-        db = new poolUtil.OpfsSAHPoolDb(dbName);
+        console.warn('[SqliteOpfsWorker] OPFS SAHPool not available, falling back to in-memory DB');
+        useMemoryFallback = true;
     } else {
-        db = new sqlite3.oo1.DB({
-            filename: dbName,
-            vfs: 'opfs-sahpool'
-        });
+        // Install opfs-sahpool VFS (SyncAccessHandle Pool)
+        // This VFS is preferred for performance and doesn't require SharedArrayBuffer
+        // proxyUri must point to our copied asset to avoid Vite's dynamic import issues
+        try {
+            poolUtil = await (sqlite3 as any).installOpfsSAHPoolVfs({
+                name: 'opfs-sahpool', // Standard name used by the library
+                directory: 'praxis-data',
+                clearOnInit: false,
+                proxyUri: `${wasmPath}sqlite3-opfs-async-proxy.js`
+            });
+            console.log('[SqliteOpfsWorker] opfs-sahpool VFS installed successfully');
+        } catch (err) {
+            console.warn('[SqliteOpfsWorker] Failed to install opfs-sahpool VFS, falling back to in-memory:', err);
+            useMemoryFallback = true;
+        }
     }
 
-    console.log(`[SqliteOpfsWorker] Database "${dbName}" opened with opfs-sahpool VFS`);
+    timings['vfsInstall'] = performance.now() - startTime;
+
+    // Open the database
+    const dbName = payload.dbName || VFS_DB_NAME;
+    currentDbName = dbName;
+
+    if (useMemoryFallback) {
+        // In-memory database fallback (no persistence)
+        storageMode = 'memory';
+        db = new sqlite3.oo1.DB(':memory:', 'c');
+        console.warn('[SqliteOpfsWorker] Using in-memory database - data will NOT persist across sessions');
+    } else {
+        // Use OPFS SAHPool VFS
+        storageMode = 'opfs';
+        if (poolUtil?.OpfsSAHPoolDb) {
+            db = new poolUtil.OpfsSAHPoolDb(dbName);
+        } else {
+            db = new sqlite3.oo1.DB({
+                filename: dbName,
+                vfs: 'opfs-sahpool'
+            });
+        }
+        console.log(`[SqliteOpfsWorker] Database "${dbName}" opened with opfs-sahpool VFS`);
+    }
 
     // Check schema version for migration handling
     if (!db) {
@@ -149,7 +168,16 @@ async function handleInit(id: string, payload: SqliteInitRequest) {
         return;
     }
 
-    sendResponse(id, 'initialized', { success: true });
+    timings['total'] = performance.now() - startTime;
+    console.log(`[SqliteOpfsWorker] Initialization complete in ${timings['total'].toFixed(1)}ms (WASM: ${timings['wasmLoad']?.toFixed(1)}ms, VFS: ${(timings['vfsInstall'] - timings['wasmLoad']).toFixed(1)}ms, mode: ${storageMode})`);
+
+    const response: SqliteInitializedPayload = {
+        success: true,
+        storageMode,
+        initTimeMs: timings,
+        message: storageMode === 'memory' ? 'Using in-memory database (no persistence)' : undefined
+    };
+    sendResponse(id, 'initialized', response);
 }
 
 /**
@@ -239,7 +267,7 @@ async function handleImport(id: string, payload: SqliteImportRequest) {
     if (!sqlite3 || !poolUtil) throw new Error('SQLite not initialized');
 
     const { data } = payload;
-    const dbName = VFS_DB_NAME;
+    const dbName = currentDbName;  // Use currently opened database, not hardcoded path
 
     console.log(`[SqliteOpfsWorker] Importing database to ${dbName}, size: ${data.byteLength} bytes`);
     if (typeof poolUtil.getFileNames === 'function') {
@@ -334,8 +362,8 @@ async function handleClear(id: string) {
     } else if (poolUtil && typeof poolUtil.unlink === 'function') {
         // Try to delete the main database file
         try {
-            await poolUtil.unlink(VFS_DB_NAME);
-            console.log(`[SqliteOpfsWorker] Deleted ${VFS_DB_NAME}`);
+            await poolUtil.unlink(currentDbName);
+            console.log(`[SqliteOpfsWorker] Deleted ${currentDbName}`);
         } catch (err) {
             console.warn('[SqliteOpfsWorker] Could not delete praxis.db:', err);
         }

@@ -18,11 +18,7 @@ test.describe('E2E Deck Setup', () => {
             console.log('[Test] Silent catch (waitForURL home):', e);
         });
         // Wait for SQLite DB to be ready
-        await page.waitForFunction(
-            () => (window as any).sqliteService?.isReady$?.getValue() === true,
-            null,
-            { timeout: 30000 }
-        );
+        await page.locator('[data-sqlite-ready="true"]').waitFor({ state: 'attached', timeout: 30000 });
         // Ensure shell layout is visible
         await expect(page.locator('.sidebar-rail')).toBeVisible({ timeout: 10000 });
         // Handle Welcome Dialog if present (Browser Mode)
@@ -55,18 +51,16 @@ test.describe('E2E Deck Setup', () => {
         await continueBtn.click();
 
         // Step 2: Parameters -> Machine
-        // await expect(page.locator('app-parameter-config')).toBeVisible();
-        await page.waitForTimeout(500);
+        // Wait for step content to be stable before continuing
+        await expect(continueBtn).toBeEnabled();
         await continueBtn.click();
 
         // Step 3: Machine -> Assets
-        // await expect(page.locator('app-machine-selection')).toBeVisible();
-        await page.waitForTimeout(500);
+        await expect(continueBtn).toBeEnabled();
         await continueBtn.click();
 
         // Step 4: Assets -> Wells (or Deck)
-        // await expect(page.locator('app-guided-setup')).toBeVisible();
-        await page.waitForTimeout(500);
+        await expect(continueBtn).toBeEnabled();
         await continueBtn.click();
 
         // Handle optional Well Selection
@@ -82,9 +76,9 @@ test.describe('E2E Deck Setup', () => {
             }
         }
 
-        // Capture Empty Deck (Wizard start)
+        // Capture Empty Deck (Wizard start) - wait for 3D canvas to render
         await expect(page.locator('app-deck-setup-wizard')).toBeVisible();
-        await page.waitForTimeout(2000); // Wait for rendering
+        await expect(page.locator('app-deck-setup-wizard canvas, app-deck-setup-wizard svg')).toBeVisible({ timeout: 5000 });
         await page.screenshot({ path: path.join(SCREENSHOT_DIR, '01_empty_deck.png') });
 
         // Capture Deck Configuration Dialog (Wizard view)

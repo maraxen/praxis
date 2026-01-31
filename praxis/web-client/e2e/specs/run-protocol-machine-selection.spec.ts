@@ -1,68 +1,100 @@
 import { test, expect } from '../fixtures/worker-db.fixture';
+import { ProtocolPage } from '../page-objects/protocol.page';
+import { WizardPage } from '../page-objects/wizard.page';
+import { WelcomePage } from '../page-objects/welcome.page';
 
 test.describe('Run Protocol - Machine Selection', () => {
-    test.beforeEach(async ({ page }) => {
-        // Clear storage to ensure clean state and simulate first-time browser mode user
-        await page.goto('/');
-        await page.evaluate(() => {
-            localStorage.clear();
-            // Optional: force browser mode in storage as well
-            localStorage.setItem('praxis_mode', 'browser');
-            localStorage.setItem('praxis_mode_override', 'browser');
-        });
+    test('should navigate and select a simulated machine', async ({ page }) => {
+        const welcomePage = new WelcomePage(page);
+        const protocolPage = new ProtocolPage(page);
+        const wizardPage = new WizardPage(page);
+
+        await protocolPage.goto();
+        await welcomePage.handleSplashScreen();
+
+        await protocolPage.selectFirstProtocol();
+        await protocolPage.continueFromSelection();
+
+        await wizardPage.completeParameterStep();
+
+        // Machine selection assertions using wizard methods
+        await wizardPage.verifyMachineStepVisible();
+        await wizardPage.selectFirstSimulatedMachine();
+        await wizardPage.verifyContinueEnabled();
+        // Now, let's verify the selection was persisted
+        const machineCard = page.locator('app-machine-card').filter({ hasText: /Simulated/i }).first();
+        const accessionId = await machineCard.getAttribute('data-accession-id');
+        expect(accessionId).not.toBeNull();
+        await wizardPage.verifyMachineSelected(accessionId!);
     });
 
-    test('should navigate to run-protocol and select a simulated machine', async ({ page }) => {
-        // 1. Navigating to run-protocol page (/run-protocol)
-        // Use browser mode: ?mode=browser
-        await page.goto('/run-protocol?mode=browser', { waitUntil: 'networkidle' });
+    test('should prevent selection of incompatible machine', async ({ page }) => {
+        const welcomePage = new WelcomePage(page);
+        const protocolPage = new ProtocolPage(page);
+        const wizardPage = new WizardPage(page);
 
-        // Handle splash screens/onboarding
-        // The welcome dialog often appears for first-time users in browser mode
-        const welcomeHeading = page.getByRole('heading', { name: /Welcome to Praxis/i });
-        if (await welcomeHeading.isVisible({ timeout: 5000 }).catch((e) => {
-            console.log('[Test] Silent catch (welcomeHeading isVisible):', e);
-            return false;
-        })) {
-            await page.getByRole('button', { name: /Skip/i }).click();
-        }
+        await protocolPage.goto();
+        await welcomePage.handleSplashScreen();
 
-        // 2. Verifying machine selection step is visible
-        // First, we must select a protocol to advance through the stepper
-        const protocolCard = page.locator('app-protocol-card').first();
-        await expect(protocolCard).toBeVisible({ timeout: 15000 });
-        await protocolCard.click();
+        // This protocol is known to have machine requirements
+        await protocolPage.selectProtocolByName('Kinetic Assay');
+        await protocolPage.continueFromSelection();
 
-        // Move from Step 1 (Protocol) to Step 2 (Parameters)
-        const continueToParams = page.getByRole('button', { name: /Continue/i }).last();
-        await expect(continueToParams).toBeVisible();
-        await continueToParams.click();
+        await wizardPage.completeParameterStep();
+        await wizardPage.verifyMachineStepVisible();
 
-        // Move from Step 2 (Parameters) to Step 3 (Machine Selection)
-        const continueToMachine = page.getByRole('button', { name: /Continue/i }).last();
-        await expect(continueToMachine).toBeVisible();
-        await continueToMachine.click();
+        await wizardPage.selectIncompatibleMachine();
 
-        // Verify machine selection step is visible
-        const machineStep = page.locator('[data-tour-id="run-step-machine"]');
-        await expect(machineStep).toBeVisible();
-        await expect(page.getByText(/Select Execution Machine/i)).toBeVisible();
+        // Assert that selection did not change and continue is disabled
+        const continueButton = page.locator('[data-tour-id="run-step-machine"]').getByRole('button', { name: /Continue/i });
+        await expect(continueButton).toBeDisabled();
+    });
 
-        // 3. Checking that simulated machines show "Simulated" indicator
-        // In browser mode, machines are mocked as simulated
-        const simulatedIndicator = page.getByText('Simulated').first();
-        await expect(simulatedIndicator).toBeVisible();
+    test('should block simulated machines in physical mode', async ({ page }) => {
+        const welcomePage = new WelcomePage(page);
+        const protocolPage = new ProtocolPage(page);
+        const wizardPage = new WizardPage(page);
 
-        // 4. Selecting a machine for protocol execution
-        // Click a machine card that is simulated
-        const machineCard = page.locator('app-machine-card').filter({ hasText: /Simulated/i }).first();
-        await machineCard.click();
+        await protocolPage.goto('/app/run?mode=physical');
+        await welcomePage.handleSplashScreen();
 
-        // Verify selection visual feedback (class border-primary is added on selection)
-        await expect(machineCard).toHaveClass(/border-primary/);
+        await protocolPage.selectFirstProtocol();
+        await protocolPage.continueFromSelection();
 
-        // Verify the "Continue" button for the machine step is now enabled
-        const continueFromMachine = machineStep.getByRole('button', { name: /Continue/i });
-        await expect(continueFromMachine).toBeEnabled();
+        await wizardPage.completeParameterStep();
+        await wizardPage.verifyMachineStepVisible();
+
+        // Assert simulated machines are disabled
+        const simulatedCard = page
+            .locator('app-machine-card')
+            .filter({ hasText: /Simulated/i })
+            .first();
+        const isDisabled = await simulatedCard.evaluate(el => el.classList.contains('disabled'));
+        expect(isDisabled).toBe(true);
+
+        // Attempt to click and verify no selection change
+        await simulatedCard.click({ force: true }); // Force click to ensure no selection
+        await wizardPage.verifyMachineSelected(null);
+    });
+
+    test('should handle machine fetch failure gracefully', async ({ page }) => {
+        // Intercept and fail the machine list request
+        await page.route('**/api/machines**', route => route.abort());
+
+        const welcomePage = new WelcomePage(page);
+        const protocolPage = new ProtocolPage(page);
+        const wizardPage = new WizardPage(page);
+
+        await protocolPage.goto();
+        await welcomePage.handleSplashScreen();
+
+        await protocolPage.selectFirstProtocol();
+        await protocolPage.continueFromSelection();
+
+        await wizardPage.completeParameterStep();
+        await wizardPage.verifyMachineStepVisible();
+
+        // Verify error state
+        await expect(page.getByText(/Failed to load machines/i)).toBeVisible();
     });
 });

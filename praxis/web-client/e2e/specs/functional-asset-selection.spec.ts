@@ -9,26 +9,42 @@ test.describe('Functional Asset Selection', () => {
     let protocolPage: ProtocolPage;
     let wizardPage: WizardPage;
 
-    test.beforeEach(async ({ page }) => {
-        const welcomePage = new WelcomePage(page);
-        assetsPage = new AssetsPage(page);
-        protocolPage = new ProtocolPage(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        const welcomePage = new WelcomePage(page, testInfo);
+        assetsPage = new AssetsPage(page, testInfo);
+        protocolPage = new ProtocolPage(page, testInfo);
         wizardPage = new WizardPage(page);
 
         await welcomePage.goto();
         await welcomePage.handleSplashScreen();
     });
 
-    test.afterEach(async ({ page }) => {
-        // Dismiss any open dialogs/overlays to ensure clean state
-        await page.keyboard.press('Escape').catch((e) => console.log('[Test] Silent catch (Escape):', e));
+    test.afterEach(async ({ page }, testInfo) => {
+        await page.keyboard.press('Escape').catch(() => {});
+
+        const testId = testInfo.testId;
+        const sourcePlateName = `Source Plate ${testId}`;
+        const destPlateName = `Dest Plate ${testId}`;
+        const tipRackName = `Tip Rack ${testId}`;
+
+        const assetsPage = new AssetsPage(page, testInfo);
+        await assetsPage.goto();
+
+        await assetsPage.navigateToResources();
+        await assetsPage.deleteResource(sourcePlateName).catch(() => {});
+        await assetsPage.deleteResource(destPlateName).catch(() => {});
+        await assetsPage.deleteResource(tipRackName).catch(() => {});
+
+        await assetsPage.navigateToMachines();
+        await assetsPage.deleteMachine('MyHamilton').catch(() => {});
     });
 
     test.setTimeout(300000); // 5 minutes for full E2E flow
-    test('should identify assets, auto-fill them, and show in review', async ({ page }) => {
-        const sourcePlateName = `Source Plate ${Date.now()}`;
-        const destPlateName = `Dest Plate ${Date.now()}`;
-        const tipRackName = `Tip Rack ${Date.now()}`;
+    test('should identify assets, auto-fill them, and show in review', async ({ page }, testInfo) => {
+        const testId = testInfo.testId;
+        const sourcePlateName = `Source Plate ${testId}`;
+        const destPlateName = `Dest Plate ${testId}`;
+        const tipRackName = `Tip Rack ${testId}`;
 
         // 1. Create assets via UI
         await assetsPage.goto();
@@ -50,6 +66,20 @@ test.describe('Functional Asset Selection', () => {
 
         // Verify assets were created by checking they're visible in the resources tab
         await assetsPage.verifyAssetVisible(tipRackName);
+
+        const dbAssets = await page.evaluate(async () => {
+            const db = (window as any).sqliteService;
+            const resources = await db.query('SELECT name, category FROM resources');
+            const machines = await db.query('SELECT name, driver_type FROM machines');
+            return { resources, machines };
+        });
+
+        expect(dbAssets.resources).toContainEqual(
+            expect.objectContaining({ name: sourcePlateName, category: 'Plate' })
+        );
+        expect(dbAssets.machines).toContainEqual(
+            expect.objectContaining({ name: 'MyHamilton', driver_type: 'Hamilton' })
+        );
 
         // 2. Select protocol
         await protocolPage.goto();
@@ -74,6 +104,16 @@ test.describe('Functional Asset Selection', () => {
         await expect(continueButton).toBeEnabled({ timeout: 15000 });
         await continueButton.click();
 
+        const assetState = await page.evaluate(() => {
+            const cmp = (window as any).ng?.getComponent?.(
+                document.querySelector('app-asset-selection-step')
+            );
+            return cmp?.selectedAssets;
+        });
+        expect(assetState).toHaveProperty('source_plate');
+        expect(assetState).toHaveProperty('dest_plate');
+        expect(assetState).toHaveProperty('tip_rack');
+
         // 5. Deck Setup
         await wizardPage.advanceDeckSetup();
 
@@ -94,6 +134,15 @@ test.describe('Functional Asset Selection', () => {
             throw new Error('Protocol name was unexpectedly empty at review step');
         }
         await expect(protocolNameEl).toContainText('Simple Transfer');
+
+        const reviewState = await page.evaluate(() => {
+            const cmp = (window as any).ng?.getComponent?.(
+                document.querySelector('app-protocol-summary')
+            );
+            return cmp?.protocolConfig;
+        });
+        expect(reviewState.protocolName).toBe('Simple Transfer');
+        expect(reviewState.assets).toHaveLength(3);
 
         console.log('Review step reached successfully - wizard flow complete');
 

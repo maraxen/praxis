@@ -1,9 +1,9 @@
-import { Injectable, inject } from '@angular/core';
-import { Observable, Subject, map } from 'rxjs';
+import { Injectable, inject, signal } from '@angular/core';
+import { Observable, Subject, map, filter } from 'rxjs';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { environment } from '@env/environment';
 import { ReplOutput, ReplRuntime, CompletionItem, SignatureInfo, ReplacementVariable } from './repl-runtime.interface';
-import { BehaviorSubject, filter } from 'rxjs';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { ReplService } from '../api-generated/services/ReplService';
 import { ApiWrapperService } from './api-wrapper.service';
 
@@ -61,10 +61,12 @@ export class PlaygroundRuntimeService implements ReplRuntime {
     private readonly apiWrapper = inject(ApiWrapperService);
     private socket$: WebSocketSubject<unknown> | null = null;
     private connectionSubject = new Subject<void>();
-    private variablesSubject = new BehaviorSubject<ReplacementVariable[]>([]);
 
-    variables$ = this.variablesSubject.asObservable();
+    /** Signal for runtime variables */
+    readonly variables = signal<ReplacementVariable[]>([]);
 
+    /** Observable for RxJS interop */
+    readonly variables$ = toObservable(this.variables);
 
     connect(): Observable<void> {
         if (this.socket$) {
@@ -88,7 +90,7 @@ export class PlaygroundRuntimeService implements ReplRuntime {
             const m = msg as ReplMessage;
             if (m.type === 'VARS_UPDATE') {
                 const update = m as ReplVarsUpdateMessage;
-                this.variablesSubject.next(update.payload.variables);
+                this.variables.set(update.payload.variables);
             }
         });
 

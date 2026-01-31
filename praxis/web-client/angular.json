@@ -62,8 +62,7 @@
               "src/styles.scss"
             ],
             "scripts": [
-              "node_modules/plotly.js-dist-min/plotly.min.js",
-              "node_modules/mermaid/dist/mermaid.min.js"
+              "node_modules/plotly.js-dist-min/plotly.min.js"
             ],
             "externalDependencies": [
               "crypto",

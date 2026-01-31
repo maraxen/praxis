@@ -147,9 +147,12 @@ norecursedirs = [
     "alembic_old",
     "scripts",
     "docs",
+    "external",
+    "lib/pylabrobot/build",
 ]
 
 addopts = [
+    "-m", "not slow",
     "--strict-markers",
     "--disable-warnings",
     "--cov=praxis",

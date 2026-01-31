@@ -12,8 +12,9 @@
  * - Integrates with DriverRegistry for automatic driver selection
  */
 
-import { Injectable, inject, OnDestroy } from '@angular/core';
-import { Subject, BehaviorSubject, Observable } from 'rxjs';
+import { Injectable, inject, OnDestroy, signal } from '@angular/core';
+import { Subject, Observable } from 'rxjs';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { ISerial, SerialOpenOptions } from '../../features/playground/drivers/serial-interface';
 import { findDriverForDevice } from '../../features/playground/drivers/driver-registry';
 import { PlaygroundComponent } from '../../features/playground/playground.component';
@@ -71,7 +72,7 @@ export interface SerialResponse {
 })
 export class SerialManagerService implements OnDestroy {
     // Registry of active connections: deviceId -> ISerial
-    private connections = new Map<string, ISerial>();
+    private connectionMap = new Map<string, ISerial>();
 
     // Track connection metadata
     private connectionStates = new Map<string, SerialConnectionState>();
@@ -80,9 +81,11 @@ export class SerialManagerService implements OnDestroy {
     private statusSubject = new Subject<SerialStatusEvent>();
     readonly status$: Observable<SerialStatusEvent> = this.statusSubject.asObservable();
 
-    // Active connections list (reactive)
-    private connectionsSubject = new BehaviorSubject<SerialConnectionState[]>([]);
-    readonly connections$: Observable<SerialConnectionState[]> = this.connectionsSubject.asObservable();
+    // Active connections list (reactive signal)
+    readonly connections = signal<SerialConnectionState[]>([]);
+
+    /** Observable for RxJS interop */
+    readonly connections$: Observable<SerialConnectionState[]> = toObservable(this.connections);
 
     // BroadcastChannel for communication with Pyodide worker
     private channel: BroadcastChannel | null = null;
@@ -94,7 +97,7 @@ export class SerialManagerService implements OnDestroy {
     ngOnDestroy(): void {
         this.channel?.close();
         // Close all connections
-        for (const deviceId of this.connections.keys()) {
+        for (const deviceId of this.connectionMap.keys()) {
             this.disconnect(deviceId).catch(console.error);
         }
     }
@@ -205,7 +208,7 @@ export class SerialManagerService implements OnDestroy {
         const deviceId = request.deviceId || `usb-${vendorId.toString(16)}-${productId.toString(16)}`;
 
         // Check if already connected
-        if (this.connections.has(deviceId)) {
+        if (this.connectionMap.has(deviceId)) {
             console.log(`[SerialManager] Device ${deviceId} already connected`);
             return;
         }
@@ -237,7 +240,7 @@ export class SerialManagerService implements OnDestroy {
             parity: options?.parity ?? 'none',
         });
 
-        this.connections.set(deviceId, serial);
+        this.connectionMap.set(deviceId, serial);
         this.updateConnectionState(deviceId, 'connected', vendorId, productId);
 
         console.log(`[SerialManager] Connected to ${deviceId} via ${driver.driverName}`);
@@ -282,7 +285,7 @@ export class SerialManagerService implements OnDestroy {
         this.statusSubject.next({ deviceId, status, errorMessage });
 
         // Update connections list
-        this.connectionsSubject.next(Array.from(this.connectionStates.values()));
+        this.connections.set(Array.from(this.connectionStates.values()));
     }
 
     // =========================================================================
@@ -315,7 +318,7 @@ export class SerialManagerService implements OnDestroy {
      * Disconnect from a device.
      */
     async disconnect(deviceId: string): Promise<void> {
-        const serial = this.connections.get(deviceId);
+        const serial = this.connectionMap.get(deviceId);
         if (!serial) {
             console.warn(`[SerialManager] Device ${deviceId} not connected`);
             return;
@@ -326,7 +329,7 @@ export class SerialManagerService implements OnDestroy {
         } catch (error) {
             console.error(`[SerialManager] Error closing ${deviceId}:`, error);
         } finally {
-            this.connections.delete(deviceId);
+            this.connectionMap.delete(deviceId);
             this.updateConnectionState(deviceId, 'disconnected');
         }
     }
@@ -335,7 +338,7 @@ export class SerialManagerService implements OnDestroy {
      * Check if a device is connected.
      */
     isConnected(deviceId: string): boolean {
-        const serial = this.connections.get(deviceId);
+        const serial = this.connectionMap.get(deviceId);
         return serial?.isOpen ?? false;
     }
 
@@ -343,7 +346,7 @@ export class SerialManagerService implements OnDestroy {
      * Write data to a connected device.
      */
     async write(deviceId: string, data: Uint8Array): Promise<void> {
-        const serial = this.connections.get(deviceId);
+        const serial = this.connectionMap.get(deviceId);
         if (!serial) {
             throw new Error(`Device ${deviceId} not connected`);
         }
@@ -358,7 +361,7 @@ export class SerialManagerService implements OnDestroy {
      * Read data from a connected device.
      */
     async read(deviceId: string, length: number): Promise<Uint8Array> {
-        const serial = this.connections.get(deviceId);
+        const serial = this.connectionMap.get(deviceId);
         if (!serial) {
             throw new Error(`Device ${deviceId} not connected`);
         }

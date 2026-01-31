@@ -40,6 +40,9 @@ export default async function globalSetup(config: FullConfig) {
         // Wait briefly for Angular to bootstrap
         await page.waitForSelector('app-root', { timeout: 15000 });
 
+        // NOTE: Pre-warming OPFS here is ineffective because each Playwright worker gets
+        // its own browser context with isolated OPFS. Tests must init their own DBs.
+
         console.log('[Global Setup] Success: Dev server is ready. Database init deferred to tests.');
 
     } catch (error) {

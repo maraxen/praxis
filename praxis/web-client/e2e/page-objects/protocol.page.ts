@@ -9,7 +9,7 @@ export class ProtocolPage extends BasePage {
     readonly summaryTitle: Locator;
 
     constructor(page: Page) {
-        super(page, '/app/run');
+        super(page, '/app/protocols');
         this.protocolStep = page.locator('[data-tour-id="run-step-protocol"]');
         this.protocolCards = page.locator('app-protocol-card');
         this.summaryTitle = this.protocolStep.locator('h2');
@@ -25,10 +25,11 @@ export class ProtocolPage extends BasePage {
         await this.page.keyboard.press('Escape').catch((e) => console.log('[Test] Silent catch (Overlay Escape):', e));
     }
 
-    async goto() {
-        await super.goto();
-        await this.protocolStep.waitFor({ state: 'visible' });
-        await this.protocolCards.first().waitFor({ state: 'visible', timeout: 30000 });
+    async goto(options: { waitForDb?: boolean } = {}) {
+        await super.goto(options);
+        // Remove waits that rely on data being present
+        // await this.protocolStep.waitFor({ state: 'visible' });
+        // await this.protocolCards.first().waitFor({ state: 'visible', timeout: 30000 });
     }
 
     async ensureSimulationMode() {

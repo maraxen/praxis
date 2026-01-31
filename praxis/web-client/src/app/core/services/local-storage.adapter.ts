@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
-import { Observable, of, BehaviorSubject } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 /**
  * Storage key prefixes for different entity types
@@ -28,11 +29,17 @@ const CURRENT_STATE_VERSION = 1;
  */
 @Injectable({ providedIn: 'root' })
 export class LocalStorageAdapter {
-    // Change signals to notify subscribers of updates
-    private protocolsChanged = new BehaviorSubject<void>(undefined);
-    private runsChanged = new BehaviorSubject<void>(undefined);
-    private resourcesChanged = new BehaviorSubject<void>(undefined);
-    private machinesChanged = new BehaviorSubject<void>(undefined);
+    // Change signals to notify subscribers of updates (increment to trigger)
+    private readonly protocolsVersion = signal(0);
+    private readonly runsVersion = signal(0);
+    private readonly resourcesVersion = signal(0);
+    private readonly machinesVersion = signal(0);
+
+    // Observable triggers for RxJS interop
+    private readonly protocolsChanged$ = toObservable(this.protocolsVersion);
+    private readonly runsChanged$ = toObservable(this.runsVersion);
+    private readonly resourcesChanged$ = toObservable(this.resourcesVersion);
+    private readonly machinesChanged$ = toObservable(this.machinesVersion);
 
     constructor() {
         this.initializeIfNeeded();
@@ -122,7 +129,7 @@ export class LocalStorageAdapter {
     // ─────────────────────────────────────────────────────────────────────────
 
     getProtocols(): Observable<any[]> {
-        return this.protocolsChanged.pipe(
+        return this.protocolsChanged$.pipe(
             map(() => this.getItems(STORAGE_KEYS.PROTOCOLS))
         );
     }
@@ -136,19 +143,19 @@ export class LocalStorageAdapter {
             ...protocol,
             accession_id: protocol.accession_id || crypto.randomUUID()
         });
-        this.protocolsChanged.next();
+        this.protocolsVersion.update(v => v + 1);
         return of(created);
     }
 
     updateProtocol(id: string, updates: any): Observable<any | null> {
         const updated = this.updateItem(STORAGE_KEYS.PROTOCOLS, id, updates);
-        if (updated) this.protocolsChanged.next();
+        if (updated) this.protocolsVersion.update(v => v + 1);
         return of(updated);
     }
 
     deleteProtocol(id: string): Observable<boolean> {
         const deleted = this.deleteItem(STORAGE_KEYS.PROTOCOLS, id);
-        if (deleted) this.protocolsChanged.next();
+        if (deleted) this.protocolsVersion.update(v => v + 1);
         return of(deleted);
     }
 
@@ -157,7 +164,7 @@ export class LocalStorageAdapter {
     // ─────────────────────────────────────────────────────────────────────────
 
     getProtocolRuns(): Observable<any[]> {
-        return this.runsChanged.pipe(
+        return this.runsChanged$.pipe(
             map(() => this.getItems(STORAGE_KEYS.PROTOCOL_RUNS))
         );
     }
@@ -173,13 +180,13 @@ export class LocalStorageAdapter {
             created_at: run.created_at || new Date().toISOString(),
             status: run.status || 'QUEUED'
         });
-        this.runsChanged.next();
+        this.runsVersion.update(v => v + 1);
         return of(created);
     }
 
     updateProtocolRun(id: string, updates: any): Observable<any | null> {
         const updated = this.updateItem(STORAGE_KEYS.PROTOCOL_RUNS, id, updates);
-        if (updated) this.runsChanged.next();
+        if (updated) this.runsVersion.update(v => v + 1);
         return of(updated);
     }
 
@@ -188,7 +195,7 @@ export class LocalStorageAdapter {
     // ─────────────────────────────────────────────────────────────────────────
 
     getResources(): Observable<any[]> {
-        return this.resourcesChanged.pipe(
+        return this.resourcesChanged$.pipe(
             map(() => this.getItems(STORAGE_KEYS.RESOURCES))
         );
     }
@@ -202,19 +209,19 @@ export class LocalStorageAdapter {
             ...resource,
             accession_id: resource.accession_id || crypto.randomUUID()
         });
-        this.resourcesChanged.next();
+        this.resourcesVersion.update(v => v + 1);
         return of(created);
     }
 
     updateResource(id: string, updates: any): Observable<any | null> {
         const updated = this.updateItem(STORAGE_KEYS.RESOURCES, id, updates);
-        if (updated) this.resourcesChanged.next();
+        if (updated) this.resourcesVersion.update(v => v + 1);
         return of(updated);
     }
 
     deleteResource(id: string): Observable<boolean> {
         const deleted = this.deleteItem(STORAGE_KEYS.RESOURCES, id);
-        if (deleted) this.resourcesChanged.next();
+        if (deleted) this.resourcesVersion.update(v => v + 1);
         return of(deleted);
     }
 
@@ -223,7 +230,7 @@ export class LocalStorageAdapter {
     // ─────────────────────────────────────────────────────────────────────────
 
     getMachines(): Observable<any[]> {
-        return this.machinesChanged.pipe(
+        return this.machinesChanged$.pipe(
             map(() => this.getItems(STORAGE_KEYS.MACHINES))
         );
     }
@@ -237,19 +244,19 @@ export class LocalStorageAdapter {
             ...machine,
             accession_id: machine.accession_id || crypto.randomUUID()
         });
-        this.machinesChanged.next();
+        this.machinesVersion.update(v => v + 1);
         return of(created);
     }
 
     updateMachine(id: string, updates: any): Observable<any | null> {
         const updated = this.updateItem(STORAGE_KEYS.MACHINES, id, updates);
-        if (updated) this.machinesChanged.next();
+        if (updated) this.machinesVersion.update(v => v + 1);
         return of(updated);
     }
 
     deleteMachine(id: string): Observable<boolean> {
         const deleted = this.deleteItem(STORAGE_KEYS.MACHINES, id);
-        if (deleted) this.machinesChanged.next();
+        if (deleted) this.machinesVersion.update(v => v + 1);
         return of(deleted);
     }
 
@@ -324,10 +331,10 @@ export class LocalStorageAdapter {
             }
 
             // Notify all subscribers
-            this.protocolsChanged.next();
-            this.runsChanged.next();
-            this.resourcesChanged.next();
-            this.machinesChanged.next();
+            this.protocolsVersion.update(v => v + 1);
+            this.runsVersion.update(v => v + 1);
+            this.resourcesVersion.update(v => v + 1);
+            this.machinesVersion.update(v => v + 1);
 
             console.log(`[LocalStorageAdapter] State imported (${merge ? 'merged' : 'replaced'})`);
             return true;
@@ -349,10 +356,10 @@ export class LocalStorageAdapter {
 
         this.initializeIfNeeded();
 
-        this.protocolsChanged.next();
-        this.runsChanged.next();
-        this.resourcesChanged.next();
-        this.machinesChanged.next();
+        this.protocolsVersion.update(v => v + 1);
+        this.runsVersion.update(v => v + 1);
+        this.resourcesVersion.update(v => v + 1);
+        this.machinesVersion.update(v => v + 1);
 
         console.log('[LocalStorageAdapter] All data cleared');
     }

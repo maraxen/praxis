@@ -1,4 +1,6 @@
-import { Page, expect } from '@playwright/test';
+import { Page, expect, TestInfo } from '@playwright/test';
+import { ProtocolPage } from '../page-objects/protocol.page';
+import { WizardPage } from '../page-objects/wizard.page';
 
 /**
  * Helper utilities for wizard step transitions and overlay handling.
@@ -96,4 +98,30 @@ export async function waitForDialogReady(
     await spinner.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {
         // No spinner found or already hidden
     });
+}
+
+export async function launchSimulatedExecution(
+    page: Page,
+    testInfo: TestInfo,
+    options?: { protocolName?: string }
+): Promise<void> {
+    const protocolPage = new ProtocolPage(page, testInfo);
+    const wizardPage = new WizardPage(page, testInfo);
+
+    await protocolPage.goto();
+    await protocolPage.ensureSimulationMode();
+    
+    if (options?.protocolName) {
+        await protocolPage.selectProtocolByName(options.protocolName);
+    } else {
+        await protocolPage.selectFirstProtocol();
+    }
+    await protocolPage.continueFromSelection();
+    
+    await wizardPage.completeParameterStep();
+    await wizardPage.selectFirstCompatibleMachine();
+    await wizardPage.waitForAssetsAutoConfigured();
+    await wizardPage.advanceDeckSetup();
+    await wizardPage.openReviewStep();
+    await wizardPage.startExecution();
 }

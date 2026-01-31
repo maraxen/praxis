@@ -24,7 +24,7 @@ export class ExecutionMonitorPage extends BasePage {
 
     async waitForLiveDashboard() {
         const detailView = this.page.getByTestId('run-detail-view');
-        await detailView.waitFor({ state: 'visible', timeout: 30000 });
+        await detailView.waitFor({ state: 'visible', timeout: 15000 });
     }
 
     async captureRunMeta(): Promise<RunMeta> {
@@ -72,7 +72,7 @@ export class ExecutionMonitorPage extends BasePage {
                 return current >= (val as number);
             },
             [handle, minValue] as const,
-            { timeout: 30000 }
+            { timeout: 15000 }
         ).catch(e => {
             console.log(`[Test] Silent catch (Progress check timeout):`, e);
         });
@@ -80,23 +80,25 @@ export class ExecutionMonitorPage extends BasePage {
 
     async waitForLogEntry(text: string) {
         // Increase timeout for log verification to account for simulation delay
-        await expect(this.logPanel).toContainText(text, { timeout: 30000 });
+        await expect(this.logPanel).toContainText(text, { timeout: 15000 });
     }
 
     async navigateToHistory() {
         await this.page.goto('/app/monitor', { waitUntil: 'domcontentloaded' });
-        await this.historyTable.waitFor({ state: 'visible', timeout: 20000 });
+        // Wait for either the history table OR the empty state indicator
+        const tableOrEmpty = this.page.locator('app-run-history-table table, .empty-runs-state, .no-runs-message').first();
+        await tableOrEmpty.waitFor({ state: 'visible', timeout: 15000 });
     }
 
     async waitForHistoryRow(runName: string): Promise<Locator> {
         const row = this.historyTable.locator('tbody tr').filter({ hasText: runName }).first();
-        await expect(row).toBeVisible({ timeout: 30000 });
+        await expect(row).toBeVisible({ timeout: 15000 });
         return row;
     }
 
     async reloadHistory() {
         await this.page.reload({ waitUntil: 'domcontentloaded' });
-        await this.historyTable.waitFor({ state: 'visible', timeout: 20000 });
+        await this.historyTable.waitFor({ state: 'visible', timeout: 10000 });
     }
 
     async openRunDetail(runName: string) {
@@ -111,7 +113,7 @@ export class ExecutionMonitorPage extends BasePage {
 
     async expectRunDetailVisible(runName: string) {
         const heading = this.page.locator('h1').first();
-        await expect(heading).toContainText(runName, { timeout: 20000 });
+        await expect(heading).toContainText(runName, { timeout: 10000 });
         await expect(this.page.locator('.timeline-container')).toBeVisible();
     }
 
@@ -120,5 +122,9 @@ export class ExecutionMonitorPage extends BasePage {
         await expect(paramGrid).toBeVisible();
         const paramItem = paramGrid.locator('.parameter-item').filter({ has: this.page.locator('.parameter-key', { hasText: key }) });
         await expect(paramItem.locator('.parameter-value')).toContainText(value);
+    }
+
+    getEmptyStateIndicator(): Locator {
+        return this.page.locator('.empty-runs-state, .no-runs-message, :text("No Runs Yet")').first();
     }
 }

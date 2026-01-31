@@ -39,7 +39,7 @@ import { PRAXIS_LOGO_SVG_DATA } from '@shared/constants/logo';
         <!-- Logo / Home -->
         <a class="nav-item logo-item" [routerLink]="modeService.isBrowserMode() ? '/app/home' : (store.auth().isAuthenticated ? '/app/home' : '/')" matTooltip="Home" matTooltipPosition="right">
           <div class="logo-container">
-            <div class="logo-image" [style]="logoCssVar()"></div>
+            <div class="logo-image" data-testid="praxis-logo" [style]="logoCssVar()"></div>
 
           </div>
         </a>

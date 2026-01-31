@@ -26,15 +26,16 @@ interface WorkerDbOptions {
 /**
  * Wait for SQLite service to be ready with the specified database
  */
-async function waitForSqliteReady(page: Page, timeout = 60000): Promise<void> {
+async function waitForSqliteReady(page: Page, timeout = 10000): Promise<void> {
     await page.waitForFunction(
         () => {
             const service = (window as any).sqliteService;
-            return (
-                service &&
-                typeof service.isReady$?.getValue === 'function' &&
-                service.isReady$.getValue() === true
-            );
+            // Signal check first (isReady is a function in Angular signals)
+            const isSignal = typeof service?.isReady === 'function';
+            const hasGetValue = typeof service?.isReady$?.getValue === 'function';
+            return isSignal
+                ? service.isReady() === true
+                : (hasGetValue && service.isReady$.getValue() === true);
         },
         null,
         { timeout }
@@ -42,9 +43,22 @@ async function waitForSqliteReady(page: Page, timeout = 60000): Promise<void> {
 }
 
 /**
+ * Test-scoped fixtures
+ */
+interface TestFixtures {
+    /** Worker index exposed to tests */
+    workerIndex: number;
+}
+
+/**
  * Extended test fixture with worker-scoped database isolation
  */
-export const test = baseTest.extend<{}, WorkerDbOptions>({
+export const test = baseTest.extend<TestFixtures, WorkerDbOptions>({
+    // Test-scoped workerIndex - accessible in every test
+    workerIndex: async ({ }, use, testInfo) => {
+        await use(testInfo.workerIndex);
+    },
+
     // Worker-scoped database name - unique per parallel worker
     dbName: [
         async ({ }, use, testInfo) => {
@@ -70,7 +84,7 @@ export function buildWorkerUrl(
     workerIndex: number,
     options: { resetdb?: boolean; mode?: string } = {}
 ): string {
-    const { resetdb = true, mode = 'browser' } = options;
+    const { resetdb = false, mode = 'browser' } = options;
     const dbName = `praxis-worker-${workerIndex}`;
 
     const params = new URLSearchParams();
@@ -92,11 +106,11 @@ export async function gotoWithWorkerDb(
     page: Page,
     path: string,
     testInfo: { workerIndex: number },
-    options: { resetdb?: boolean; waitForDb?: boolean; timeout?: number } = {}
+    options: { resetdb?: boolean; waitForDb?: boolean; timeout?: number; mode?: string } = {}
 ): Promise<void> {
-    const { resetdb = true, waitForDb = true, timeout = 60000 } = options;
+    const { resetdb = false, waitForDb = true, timeout = 10000, mode = 'browser' } = options;
 
-    const url = buildWorkerUrl(path, testInfo.workerIndex, { resetdb });
+    const url = buildWorkerUrl(path, testInfo.workerIndex, { resetdb, mode });
     console.log(`[WorkerDB] Navigating to: ${url}`);
 
     await page.goto(url, { waitUntil: 'domcontentloaded' });

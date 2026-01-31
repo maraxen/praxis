@@ -22,69 +22,154 @@ export class AssetsPage extends BasePage {
     }
 
     /**
-     * Waits for the asset wizard to appear and be ready for interaction.
+     * Waits for the dialog container and animation to complete before interaction.
+     * Material CDK dialogs use ~200ms enter animation.
      */
-    private async waitForWizard() {
+    async waitForDialogReady(): Promise<void> {
+        // Wait for overlay backdrop (indicates dialog is opening)
+        const backdrop = this.page.locator('.cdk-overlay-backdrop');
+        await backdrop.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {
+            // Backdrop may not always be present for inline wizards
+        });
+        // Wait for animation to complete (CDK uses ~200ms)
+        await this.page.waitForTimeout(250);
+        // Wait for dialog container to stabilize
+        const dialogContainer = this.page.locator('.cdk-overlay-pane:has(app-asset-wizard)');
+        await dialogContainer.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {
+            // May not be in a dialog overlay
+        });
+    }
+
+    /**
+     * Waits for the asset wizard to appear and be ready for interaction.
+     * The wizard may start at Type step or Category step (when preselectedType is passed).
+     */
+    async waitForWizard() {
+        // First ensure dialog animation is complete
+        await this.waitForDialogReady();
         const wizard = this.page.locator('app-asset-wizard');
         await expect(wizard).toBeVisible({ timeout: 15000 });
-        // Wait for any visible h3 in the wizard - use filter to find actually visible one
-        // Material stepper renders all steps but only shows the active one
-        await expect(wizard.locator('h3:visible').first()).toBeVisible({ timeout: 15000 });
+        // Wait for the stepper to be visible (mat-stepper is always visible, individual mat-step elements are not)
+        const stepper = wizard.locator('mat-stepper');
+        await expect(stepper).toBeVisible({ timeout: 10000 });
         return wizard;
+    }
+
+    /**
+     * Selects the asset type (MACHINE or RESOURCE) in Step 1 and advances to Step 2 (Category).
+     */
+    async selectAssetType(wizard: Locator, type: 'MACHINE' | 'RESOURCE'): Promise<void> {
+        const typeCard = wizard.getByTestId(`type-card-${type.toLowerCase()}`);
+        await expect(typeCard).toBeVisible({ timeout: 10000 });
+        await typeCard.click();
+        await expect(typeCard).toHaveClass(/selected/);
+        await this.clickNextButton(wizard);
+        // Wait for Category step to be visible
+        await expect(wizard.getByTestId('wizard-step-category')).toBeVisible({ timeout: 10000 });
+    }
+
+    /**
+     * Opens the Add Machine dialog and returns the dialog locator.
+     * Use this when you need direct control over wizard navigation in tests.
+     */
+    async openMachineDialog(): Promise<Locator> {
+        await this.addMachineButton.click();
+        const wizard = await this.waitForWizard();
+        return this.page.getByRole('dialog');
+    }
+
+    /**
+     * Navigates through Category step to reach the Frontend selection step.
+     * Note: When using Add Machine button, wizard opens at Category step (Type is preselected).
+     * @param dialog The dialog locator
+     * @param category The category to select (e.g., 'LiquidHandler', 'PlateReader')
+     */
+    async navigateToFrontendStep(dialog: Locator, category: string = 'LiquidHandler'): Promise<void> {
+        const wizard = dialog.locator('app-asset-wizard');
+
+        // Wizard opens at Category step (Type is preselected)
+        // Select category card
+        const categoryCard = wizard.getByTestId(`category-card-${category}`);
+        await expect(categoryCard).toBeVisible({ timeout: 15000 });
+        await categoryCard.click();
+
+        // Click Next to go to Frontend step
+        await this.clickNextButton(wizard);
+
+        // Wait for frontend cards to appear
+        await expect(dialog.getByTestId(/frontend-card-/).first()).toBeVisible({ timeout: 15000 });
+    }
+
+    /**
+     * Selects a frontend (machine type) by name pattern.
+     */
+    async selectFrontend(dialog: Locator, namePattern: string): Promise<void> {
+        const frontendCard = dialog.getByRole('button', { name: new RegExp(namePattern, 'i') }).or(
+            dialog.getByTestId(/frontend-card-/).filter({ hasText: new RegExp(namePattern, 'i') })
+        ).first();
+        await expect(frontendCard).toBeVisible({ timeout: 10000 });
+        await frontendCard.click();
+    }
+
+    /**
+     * Selects a backend (driver) by name pattern.
+     */
+    async selectBackend(dialog: Locator, namePattern: string): Promise<void> {
+        const backendCard = dialog.getByTestId(/backend-card-/).filter({ hasText: new RegExp(namePattern, 'i') }).first();
+        await expect(backendCard).toBeVisible({ timeout: 10000 });
+        await backendCard.click();
+    }
+
+    /**
+     * Clicks the Next button in the dialog.
+     */
+    async clickNext(dialog: Locator): Promise<void> {
+        const nextBtn = dialog.getByRole('button', { name: /Next/i });
+        await expect(nextBtn).toBeEnabled({ timeout: 5000 });
+        await nextBtn.click();
     }
 
     /**
      * Clicks the 'Next' button in the current wizard step, ensuring it's enabled first.
      */
-    private async clickNextButton(wizard: Locator): Promise<void> {
+    async clickNextButton(wizard: Locator): Promise<void> {
         // Find the next button within the currently visible step
         const currentStep = wizard.locator('.mat-step-content:visible, [role="tabpanel"]:visible').first();
         const nextButton = currentStep.getByTestId('wizard-next-button');
 
-        // Wait for button to be attached and stable
-        await nextButton.waitFor({ state: 'attached', timeout: 5000 });
         await expect(nextButton).toBeEnabled({ timeout: 10000 });
-        await nextButton.click({ force: true }); // Force click to bypass any animation overlays
-
-        // Brief wait for click to register and animation to start
-        await this.page.waitForTimeout(100);
-    }
-
-    /**
-     * Waits for a wizard step transition to complete by verifying:
-     * 1. Material animation settles
-     * 2. The target step heading becomes visible
-     */
-    private async waitForStepTransition(wizard: Locator, headingPattern: RegExp): Promise<void> {
-        // Wait for Material animation to settle
-        await this.page.waitForTimeout(150);
-
-        // Wait for heading to become visible in the active panel
-        const heading = wizard.locator('h3:visible').filter({ hasText: headingPattern });
-        await expect(heading).toBeVisible({ timeout: 15000 });
-    }
-
-    /**
-     * Waits for CDK overlay backdrops to dismiss before interacting with elements.
-     * Prevents "Target intercepted by cdk-overlay-container" errors.
-     */
-    private async waitForOverlaysToDismiss(): Promise<void> {
-        // Wait for any active overlay backdrops to disappear
-        // Use .catch() to gracefully handle case where no overlays exist
-        await this.page.locator('.cdk-overlay-backdrop').waitFor({ state: 'hidden', timeout: 2000 }).catch((e) => console.log('[Test] Silent catch (Overlays to dismiss):', e));
-        // Brief pause to ensure overlay container is stable
-        await this.page.waitForTimeout(50);
+        await nextButton.click();
     }
 
     /**
      * Selects a card in the wizard and waits for the next step to be ready.
      */
-    private async selectWizardCard(wizard: Locator, testId: string): Promise<void> {
+    async selectWizardCard(wizard: Locator, testId: string): Promise<void> {
         const card = wizard.getByTestId(testId);
         await expect(card).toBeVisible({ timeout: 15000 });
         await card.click();
         await expect(card).toHaveClass(/selected/);
     }
+
+    /**
+     * Waits for any overlays (dialogs, spinners) to dismiss before continuing.
+     */
+    async waitForOverlaysToDismiss(): Promise<void> {
+        // Wait for any loading spinners to disappear
+        const spinner = this.page.locator('mat-spinner, .loading-overlay, .cdk-overlay-backdrop');
+        await expect(spinner).not.toBeVisible({ timeout: 10000 }).catch(() => {
+            // Spinner might not exist - that's fine
+        });
+    }
+
+    /**
+     * Waits for wizard step transition by checking step header text.
+     */
+    async waitForStepTransition(wizard: Locator, stepPattern: RegExp): Promise<void> {
+        const stepHeader = wizard.locator('.mat-step-label-selected, .mat-step-content:visible h2, .mat-step-content:visible h3').first();
+        await expect(stepHeader).toContainText(stepPattern, { timeout: 10000 });
+    }
+
 
     async navigateToOverview() {
         await this.overviewTab.click();
@@ -117,54 +202,57 @@ export class AssetsPage extends BasePage {
     }
 
     async createMachine(name: string, categoryName: string = 'LiquidHandler', modelQuery: string = 'STAR') {
-        await this.waitForOverlaysToDismiss();
         await this.addMachineButton.click();
         const wizard = await this.waitForWizard();
+        const dialog = this.page.getByRole('dialog');
 
-        // Step 2: Select Category
-        await this.waitForStepTransition(wizard, /Select Category/i);
-        await this.selectWizardCard(wizard, `category-card-${categoryName}`);
-        await this.clickNextButton(wizard);
+        // Skip Type step - Add Machine button passes preselectedType: 'MACHINE' which auto-skips to Category
+        // Step 1 (visible): Select Category
+        // Wait for category cards to load AND be clickable (not just visible)
+        const anyCategoryCard = wizard.getByTestId(/category-card-/).first();
+        await expect(anyCategoryCard).toBeVisible({ timeout: 15000 });
+        // Ensure cards are clickable (not covered by animation overlays)
+        await anyCategoryCard.waitFor({ state: 'attached' });
 
-        // Step 3: Select Machine Type (Frontend)
-        await this.waitForStepTransition(wizard, /Select Machine Type/i);
-        const frontendCard = wizard.locator('[data-testid^="frontend-card-"]').first();
-        await expect(frontendCard).toBeVisible({ timeout: 10000 });
-        await frontendCard.click({ force: true, noWaitAfter: true, timeout: 10000 });
-        await expect(frontendCard).toHaveClass(/selected/, { timeout: 5000 });
-        await this.clickNextButton(wizard);
+        // Now select the specific category - wait for it to be stable
+        const categoryCard = wizard.getByTestId(`category-card-${categoryName}`);
+        await expect(categoryCard).toBeVisible({ timeout: 5000 });
+        // Use click with force: false to ensure element is truly interactable
+        await categoryCard.click({ timeout: 5000 });
+        await this.waitForOverlaysToDismiss();
+        await dialog.getByRole('button', { name: /Next/i }).click();
 
-        // Step 4: Select Driver (Backend)
-        await this.waitForStepTransition(wizard, /Select Driver/i);
-        const backendCard = wizard.locator('[data-testid^="backend-card-"]').first();
+        // Step 2: Select Machine Type (Frontend)
+        const frontendCard = wizard.getByTestId(/frontend-card-/).first();
+        await expect(frontendCard).toBeVisible({ timeout: 15000 });
+        await frontendCard.click();
+        await dialog.getByRole('button', { name: /Next/i }).click();
+
+        // Step 3: Select Driver (Backend)
+        const backendCard = wizard.getByTestId(/backend-card-/).first();
         await expect(backendCard).toBeVisible({ timeout: 15000 });
-        // Use noWaitAfter to prevent Playwright from waiting for navigations that may never complete
-        await backendCard.click({ force: true, noWaitAfter: true, timeout: 10000 });
-        await expect(backendCard).toHaveClass(/selected/, { timeout: 5000 });
-        await this.clickNextButton(wizard);
+        await backendCard.click();
+        await dialog.getByRole('button', { name: /Next/i }).click();
 
-        // Step 5: Config
-        await this.waitForStepTransition(wizard, /Complete Configuration/i);
-        const instanceNameInput = wizard.getByTestId('input-instance-name');
-        await expect(instanceNameInput).toBeVisible({ timeout: 5000 });
-        await instanceNameInput.fill(name);
-        await this.clickNextButton(wizard);
+        // Step 4: Config
+        const nameInput = wizard.getByTestId('input-instance-name');
+        await expect(nameInput).toBeVisible({ timeout: 10000 });
+        await nameInput.fill(name);
+        await dialog.getByRole('button', { name: /Next/i }).click();
 
-        // Step 6: Review and Create
-        await this.waitForStepTransition(wizard, /Final Review/i);
+        // Step 5: Review/Create
         const createBtn = wizard.getByTestId('wizard-create-btn');
-        await expect(createBtn).toBeVisible({ timeout: 5000 });
-        await expect(createBtn).toBeEnabled({ timeout: 5000 });
-        await createBtn.click({ force: true });
+        await expect(createBtn).toBeVisible({ timeout: 10000 });
+        await createBtn.click();
         await expect(wizard).not.toBeVisible({ timeout: 15000 });
     }
 
     async createResource(name: string, categoryName: string = 'Plate', modelQuery: string = '96') {
-        await this.waitForOverlaysToDismiss();
         await this.addResourceButton.click();
         const wizard = await this.waitForWizard();
 
-        // Step 1: Select Category
+        // Skip Type step - Add Resource button passes preselectedType: 'RESOURCE' which auto-skips to Category
+        // Step 1 (visible): Select Category
         await this.selectWizardCard(wizard, `category-card-${categoryName}`);
         await this.clickNextButton(wizard);
 
@@ -173,6 +261,7 @@ export class AssetsPage extends BasePage {
         await searchInput.fill(modelQuery);
         const resultsGrid = wizard.getByTestId('results-grid');
         const definitionCard = resultsGrid.locator('[data-testid^="definition-card-"]').first();
+        await expect(definitionCard).toBeVisible({ timeout: 15000 });
         await definitionCard.click();
         await this.clickNextButton(wizard);
 
@@ -259,8 +348,8 @@ export class AssetsPage extends BasePage {
         const chip = this.page.locator('app-filter-chip').filter({ hasText: new RegExp(category, 'i') });
         await chip.click();
         // Wait for chip to show selected state
-        await expect(chip).toHaveClass(/selected|active/, { timeout: 5000 }).catch((e) => {
-            console.log('[Test] Silent catch (Category chip class check):', e);
+        await expect(chip).toHaveClass(/selected|active/, { timeout: 5000 }).catch(() => {
+            // Some implementations may not use a class - just ensure click was processed
         });
     }
 
@@ -274,8 +363,8 @@ export class AssetsPage extends BasePage {
         if (await clearBtn.isVisible({ timeout: 1000 })) {
             await clearBtn.click();
             // Wait for clear button to disappear or filters to reset
-            await expect(clearBtn).not.toBeVisible({ timeout: 5000 }).catch((e) => {
-                console.log('[Test] Silent catch (Clear button not visible):', e);
+            await expect(clearBtn).not.toBeVisible({ timeout: 5000 }).catch(() => {
+                // Button may stay visible - that's OK
             });
         }
     }
@@ -313,13 +402,10 @@ export class AssetsPage extends BasePage {
 
         // Use search to find the asset
         const searchInput = this.page.getByPlaceholder(/search/i).first();
-        if (await searchInput.isVisible({ timeout: 2000 }).catch((e) => {
-            console.log('[Test] Silent catch (Search input isVisible):', e);
-            return false;
-        })) {
+        if (await searchInput.isVisible({ timeout: 2000 }).catch(() => false)) {
             await searchInput.fill(name);
-            // Wait for search debounce
-            await this.page.waitForTimeout(500);
+            // Wait for search input to be processed
+            await expect(searchInput).toHaveValue(name, { timeout: 2000 });
         }
 
         // Look for text anywhere on page (tooltip indicates asset exists)

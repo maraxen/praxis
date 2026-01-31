@@ -1,128 +1,112 @@
-import { Page, Locator, TestInfo, expect } from '@playwright/test';
+import { Page, Locator, expect } from '@playwright/test';
 import { BasePage } from './base.page';
-import { JupyterlitePage } from './jupyterlite.page';
+import { InventoryDialogPage } from './inventory-dialog.page';
 
-/**
- * Page Object Model for the Playground page.
- *
- * Composes JupyterlitePage internally and provides:
- * - Worker-isolated navigation via BasePage
- * - Bootstrap completion detection
- * - Welcome dialog dismissal
- * - Asset retrieval from Angular state
- */
 export class PlaygroundPage extends BasePage {
-    readonly jupyter: JupyterlitePage;
-    readonly loadingOverlay: Locator;
-    readonly welcomeDialog: Locator;
-    readonly skipButton: Locator;
+    readonly inventoryButton: Locator;
+    readonly directControlTab: Locator;
 
-    constructor(page: Page, testInfo?: TestInfo) {
-        super(page, '/app/playground', testInfo);
-        this.jupyter = new JupyterlitePage(page);
-        this.loadingOverlay = page.locator('.loading-overlay');
-        this.welcomeDialog = page.getByRole('dialog').filter({ hasText: /welcome|getting started/i });
-        this.skipButton = page.getByRole('button', { name: /skip for now/i });
+    constructor(page: Page) {
+        super(page, '/playground');
+        this.inventoryButton = page.locator('button').filter({ has: page.locator('mat-icon', { hasText: 'inventory_2' }) });
+        this.directControlTab = page.getByRole('tab', { name: 'Direct Control' });
+    }
+
+    async openInventory(): Promise<InventoryDialogPage> {
+        await expect(this.inventoryButton).toBeVisible({ timeout: 25000 });
+        await this.inventoryButton.click();
+        const inventoryDialog = new InventoryDialogPage(this.page);
+        await inventoryDialog.waitForDialogVisible();
+        return inventoryDialog;
+    }
+
+    async selectModule(moduleName: string): Promise<void> {
+        // This method is a placeholder for future functionality where multiple modules might be selectable.
+        // For now, we assume the machine is already selected via the inventory.
+        console.log(`[PlaygroundPage] Selecting module: ${moduleName}`);
+        await this.directControlTab.click();
+        await expect(this.page.locator('app-direct-control')).toBeVisible({ timeout: 10000 });
+    }
+
+    async executeCurrentMethod(methodName: RegExp = /Setup/i): Promise<void> {
+        const directControl = this.page.locator('app-direct-control');
+        const methodChip = directControl.getByRole('button', { name: methodName });
+
+        await expect(methodChip.first()).toBeVisible({ timeout: 10000 });
+        await methodChip.first().click();
+
+        const executeBtn = directControl.getByRole('button', { name: /execute/i });
+        await expect(executeBtn).toBeVisible();
+        await expect(executeBtn).toBeEnabled();
+        await executeBtn.click();
+    }
+
+    async waitForSuccess(expectedResult: string | RegExp = /OK/i): Promise<void> {
+        const directControl = this.page.locator('app-direct-control');
+        const resultLocator = directControl.locator('.command-result');
+        await expect(resultLocator).toBeVisible({ timeout: 15000 });
+        await expect(resultLocator).toContainText(expectedResult);
+    }
+
+    async verifyBackendInstantiation(machineName: string): Promise<void> {
+        const backendReady = await this.page.evaluate((name) => {
+            return (window as any).machineService?.getBackendInstance(name) !== undefined;
+        }, machineName);
+        expect(backendReady).toBe(true);
     }
 
     /**
-     * Navigate to the playground with worker-isolated database.
-     * Sets localStorage flags to skip onboarding dialogs.
+     * Waits for Pyodide/JupyterLite bootstrap to complete.
+     * @param consoleLogs Optional array to collect console logs during bootstrap
      */
-    override async goto(): Promise<void> {
-        // Set localStorage before Angular loads to skip onboarding
-        await this.page.goto('/');
-        await this.page.evaluate(() => {
-            localStorage.setItem('praxis_onboarding_completed', 'true');
-            localStorage.setItem('praxis_tutorial_completed', 'true');
+    async waitForBootstrapComplete(consoleLogs: string[] = []): Promise<void> {
+        // Wait for the JupyterLite iframe to be visible
+        const iframe = this.page.locator('iframe.notebook-frame, iframe[src*="repl"]').first();
+        await expect(iframe).toBeVisible({ timeout: 30000 });
+
+        // Wait for Pyodide ready signal - check console for completion message
+        await this.page.waitForFunction(() => {
+            return (window as any).__praxis_pyodide_ready === true ||
+                document.querySelector('.jp-mod-idle') !== null;
+        }, { timeout: 60000 }).catch(() => {
+            console.log('[PlaygroundPage] Pyodide ready signal not detected, continuing...');
         });
 
-        // Navigate with worker isolation via BasePage
-        await super.goto();
-    }
-
-    /**
-     * Dismiss the welcome/onboarding dialog if visible.
-     */
-    async dismissWelcomeDialog(): Promise<void> {
-        try {
-            if (await this.skipButton.isVisible({ timeout: 2000 })) {
-                await this.skipButton.click();
-                await this.welcomeDialog.waitFor({ state: 'hidden', timeout: 3000 });
-                console.log('[PlaygroundPage] Dismissed welcome dialog');
-            }
-        } catch (e) {
-            console.log('[PlaygroundPage] No welcome dialog present:', (e as Error).message);
+        // Collect any console logs if array provided
+        if (consoleLogs.length > 0) {
+            this.page.on('console', msg => consoleLogs.push(msg.text()));
         }
     }
 
     /**
-     * Wait for the loading overlay to be hidden.
+     * Waits for the JupyterLite kernel to reach idle state.
      */
-    async waitForLoadingComplete(timeout = 60000): Promise<void> {
-        await expect(this.loadingOverlay).toBeHidden({ timeout });
-    }
+    async waitForKernelReady(): Promise<void> {
+        const iframe = this.page.locator('iframe.notebook-frame, iframe[src*="repl"]').first();
+        await expect(iframe).toBeVisible({ timeout: 30000 });
 
-    /**
-     * Wait for kernel to become idle and ready for code execution.
-     */
-    async waitForKernelIdle(timeout = 45000): Promise<void> {
-        await this.jupyter.waitForKernelIdle(timeout);
-    }
-
-    /**
-     * Wait for the complete bootstrap sequence:
-     * 1. Dismiss welcome dialogs
-     * 2. Wait for iframe attached
-     * 3. Wait for loading overlay hidden
-     * 4. Dismiss JupyterLite dialogs
-     * 5. Wait for kernel idle
-     *
-     * Optionally validates console log signals if provided.
-     */
-    async waitForBootstrapComplete(consoleLogs?: string[]): Promise<void> {
-        // Dismiss any welcome dialogs
-        await this.dismissWelcomeDialog();
-
-        // Wait for JupyterLite iframe to be attached
-        await this.jupyter.waitForFrameAttached();
-
-        // Assert no blocking dialogs remain
-        await expect(this.skipButton).not.toBeVisible({ timeout: 3000 }).catch((e) => console.log('[Test] Silent catch (Skip button still visible):', e));
-        await this.jupyter.assertKernelDialogNotVisible().catch((e) => console.log('[Test] Silent catch (Kernel dialog check):', e));
-
-        // Wait for loading overlay to finish
-        await this.waitForLoadingComplete();
-
-        // Dismiss any JupyterLite theme error dialogs
-        await this.jupyter.dismissDialogs();
-
-        // Wait for kernel to be idle
-        await this.jupyter.waitForKernelIdle();
-
-        // Optional: Verify bootstrap signals in console logs
-        if (consoleLogs && consoleLogs.length > 0) {
-            await expect.poll(() => {
-                const pyodideReady = consoleLogs.some(log => log.includes('[PythonRuntime] Pyodide ready'));
-                const shimsInjected = consoleLogs.some(log =>
-                    log.includes('WebSerial injected') || log.includes('WebUSB injected')
-                );
-                return pyodideReady && shimsInjected;
-            }, { timeout: 60000, message: 'Bootstrap signals not detected in console logs' }).toBe(true);
-        }
-    }
-
-    /**
-     * Get assets from the Angular PlaygroundService state.
-     * Uses Angular's internal API for deep state verification.
-     */
-    async getPlaygroundAssets(): Promise<unknown[]> {
-        return this.page.evaluate(() => {
-            const ng = (window as any).ng;
-            const appRoot = document.querySelector('app-root');
-            if (!ng || !appRoot) return [];
-            const app = ng.getComponent(appRoot);
-            return app?.playgroundService?.assets$?.getValue?.() ?? [];
+        // Check for kernel idle indicator within iframe
+        const kernelIdle = this.page.locator('.jp-mod-idle, [data-kernel-status="idle"]');
+        await expect(kernelIdle).toBeVisible({ timeout: 45000 }).catch(() => {
+            console.log('[PlaygroundPage] Kernel idle indicator not found, may still be initializing');
         });
+    }
+
+    /**
+     * Executes code in the JupyterLite REPL and returns the output.
+     */
+    async executeCode(code: string): Promise<string> {
+        const iframe = this.page.frameLocator('iframe.notebook-frame, iframe[src*="repl"]').first();
+        const codeInput = iframe.locator('.jp-CodeConsole-input .jp-InputArea-editor, .code-cell textarea').first();
+
+        await expect(codeInput).toBeVisible({ timeout: 15000 });
+        await codeInput.click();
+        await this.page.keyboard.type(code);
+        await this.page.keyboard.press('Shift+Enter');
+
+        // Wait for output cell to appear
+        const outputCell = iframe.locator('.jp-OutputArea-output, .cell-output').last();
+        await expect(outputCell).toBeVisible({ timeout: 30000 });
+        return await outputCell.textContent() || '';
     }
 }

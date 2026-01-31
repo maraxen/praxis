@@ -1,100 +1,97 @@
-import { test, expect } from '../fixtures/app.fixture';
+import { test, expect } from '../fixtures/workcell.fixture';
+import { WorkcellPage } from '../page-objects/workcell.page';
+import { WelcomePage } from '../page-objects/welcome.page';
 
-test.describe('Workcell Dashboard', () => {
-    test.beforeEach(async ({ page }) => {
-        // Navigate to workcell dashboard with browser mode
-        await page.goto('/app/workcell?mode=browser');
+test.describe('Workcell Dashboard - Empty State', () => {
+    let workcellPage: WorkcellPage;
 
-        // Wait for SqliteService to be ready
-        await page.waitForFunction(
-            () => {
-                const sqliteService = (window as any).sqliteService;
-                return sqliteService && sqliteService.isReady$?.getValue() === true;
-            },
-            null,
-            { timeout: 30000 }
-        );
-
-        // Wait for loading spinner to disappear
-        await expect(page.locator('.animate-spin')).not.toBeVisible({ timeout: 15000 });
+    test.beforeEach(async ({ page }, testInfo) => {
+        workcellPage = new WorkcellPage(page);
+        await workcellPage.goto(testInfo);
+        const welcomePage = new WelcomePage(page);
+        await welcomePage.handleSplashScreen();
     });
 
-    test('should load the dashboard page', async ({ page }) => {
-        // Verify h1 contains dashboard title
-        await expect(page.locator('h1')).toContainText('Workcell Dashboard');
-        await page.screenshot({ path: '/tmp/e2e-workcell/dashboard-loaded.png' });
+    test('should load the dashboard page and display empty state', async () => {
+        await workcellPage.waitForLoad();
+        await expect(workcellPage.emptyStateMessage).toBeVisible();
+    });
+});
+
+test.describe('Workcell Dashboard - Populated State', () => {
+    let workcellPage: WorkcellPage;
+
+    test.beforeEach(async ({ page, testMachineData }, testInfo) => {
+        workcellPage = new WorkcellPage(page);
+
+        await page.addInitScript((machine) => {
+            const mockDb = {
+                run: async () => ({ changes: 1 }),
+                all: async (sql: string) => {
+                    if (sql.includes('FROM machines')) {
+                        return [{
+                            id: machine.id,
+                            name: machine.name,
+                            type: 'LiquidHandler',
+                            backend: 'ChatterBox',
+                            is_simulated: 1,
+                            disabled: 0
+                        }];
+                    }
+                    return [];
+                }
+            };
+
+            (window as any).sqliteService = {
+                getDatabase: async () => mockDb,
+                isReady$: { getValue: () => true }
+            };
+        }, testMachineData);
+        
+        await workcellPage.goto(testInfo);
+        const welcomePage = new WelcomePage(page);
+        await welcomePage.handleSplashScreen();
+        await page.reload();
+        await welcomePage.handleSplashScreen();
     });
 
-    test('should display explorer sidebar', async ({ page }) => {
-        // Check for workcell explorer component
-        await expect(page.locator('app-workcell-explorer')).toBeVisible({ timeout: 10000 });
-
-        // Verify search input exists
-        await expect(page.locator('app-workcell-explorer input[type="text"]')).toBeVisible();
+    test('should load the dashboard page and display machine cards', async () => {
+        await workcellPage.waitForLoad();
+        await expect(workcellPage.machineCards).toHaveCount(1);
     });
 
-    test('should display machine cards when machines exist', async ({ page }) => {
-        // Check if machines exist (app-machine-card) OR show empty state
-        const machineCards = page.locator('app-machine-card');
-        const emptyState = page.locator('text=No machines found');
-
-        // Wait for either state to appear
-        await expect(machineCards.first().or(emptyState)).toBeVisible({ timeout: 15000 });
-
-        const cardCount = await machineCards.count();
-        if (cardCount > 0) {
-            // If cards exist, verify they're visible
-            await expect(machineCards.first()).toBeVisible();
-            await page.screenshot({ path: '/tmp/e2e-workcell/machine-cards.png' });
-        } else {
-            // Empty state is acceptable - means no machines in database
-            await expect(emptyState).toBeVisible();
-            await page.screenshot({ path: '/tmp/e2e-workcell/no-machines.png' });
-        }
+    test('should display machine name and type', async ({ page, testMachineData }) => {
+        const card = workcellPage.machineCards.first();
+        await expect(card).toContainText(testMachineData.name);
+        await expect(card).toContainText('Liquid Handler');
+    });
+    
+    test('should switch between view modes', async ({ page }) => {
+        const gridBtn = page.getByRole('button', { name: /Grid/i });
+        const listBtn = page.getByRole('button', { name: /List/i });
+        
+        await listBtn.click();
+        await expect(page.locator('.list-view')).toBeVisible();
+        
+        await gridBtn.click();
+        await expect(page.locator('.grid-view')).toBeVisible();
     });
 
-    test('should navigate to machine focus view on card click', async ({ page }) => {
-        // Check if machine cards exist
-        const machineCards = page.locator('app-machine-card');
-        const cardCount = await machineCards.count();
-
-        if (cardCount === 0) {
-            // Skip if no machines - can't test focus view
-            test.skip(true, 'No machines available to test focus view');
-            return;
-        }
-
-        // Click first machine card
-        await machineCards.first().click();
-
-        // Verify focus view appears
-        await expect(page.locator('app-machine-focus-view')).toBeVisible({ timeout: 10000 });
-        await page.screenshot({ path: '/tmp/e2e-workcell/machine-focus.png' });
+    test('should filter machines by search query', async ({ testMachineData }) => {
+        await workcellPage.searchMachines('Liquid');
+        await expect(workcellPage.machineCards).toHaveCount(1);
+        
+        await workcellPage.searchMachines('nonexistent');
+        await expect(workcellPage.emptyStateMessage).toBeVisible();
     });
 
-    test('should show deck visualization in focus view when available', async ({ page }) => {
-        // Check if machine cards exist
-        const machineCards = page.locator('app-machine-card');
-        const cardCount = await machineCards.count();
+    test('should display explorer sidebar', async () => {
+        await expect(workcellPage.explorer).toBeVisible({ timeout: 10000 });
+        await expect(workcellPage.searchInput).toBeVisible();
+    });
 
-        if (cardCount === 0) {
-            test.skip(true, 'No machines available to test deck view');
-            return;
-        }
-
-        // Click first machine card
-        await machineCards.first().click();
-
-        // Wait for focus view
-        await expect(page.locator('app-machine-focus-view')).toBeVisible({ timeout: 10000 });
-
-        // Check for deck state component (optional - not all machines have it)
-        const deckState = page.locator('app-deck-state, app-deck-visualization, .deck-canvas, canvas');
-        const hasDeckState = await deckState.count() > 0;
-
-        await page.screenshot({ path: '/tmp/e2e-workcell/deck-state.png' });
-
-        // Log whether deck visualization was found (informational, not a failure)
-        console.log(`Deck visualization found: ${hasDeckState}`);
+    test('should navigate to machine focus view on card click', async () => {
+        await workcellPage.selectMachine(0);
+        await expect(workcellPage.focusView).toBeVisible();
     });
 });

@@ -25,7 +25,8 @@ import {
   MachineBackendDefinition
 } from '@features/assets/models/asset.models';
 import { debounceTime, distinctUntilChanged, map, startWith, switchMap } from 'rxjs/operators';
-import { Observable, BehaviorSubject, of, firstValueFrom, combineLatest } from 'rxjs';
+import { Observable, of, firstValueFrom, combineLatest } from 'rxjs';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-asset-wizard',
@@ -107,7 +108,9 @@ export class AssetWizard implements OnInit {
   selectedBackend: MachineBackendDefinition | null = null;
 
   // For resources: still use the old search-based approach
-  private searchSubject = new BehaviorSubject<string>('');
+  // For resources: signal-based search with observable for debounce
+  private readonly searchQuery = signal<string>('');
+  private readonly searchQuery$ = toObservable(this.searchQuery);
   searchResults$: Observable<any[]> = of([]);
   selectedDefinition: ResourceDefinition | null = null;
 
@@ -165,7 +168,7 @@ export class AssetWizard implements OnInit {
       }
 
       // Clear search when type changes
-      this.searchSubject.next('');
+      this.searchQuery.set('');
     });
 
     // Listen to category changes to load frontends (for machines)
@@ -200,7 +203,7 @@ export class AssetWizard implements OnInit {
     // Resource search logic (kept for resources)
     const assetType$ = this.typeStepFormGroup.get('assetType')!.valueChanges.pipe(startWith(this.typeStepFormGroup.get('assetType')?.value || ''));
     const category$ = this.categoryStepFormGroup.get('category')!.valueChanges.pipe(startWith(this.categoryStepFormGroup.get('category')?.value || ''));
-    const query$ = this.searchSubject.pipe(startWith(''), debounceTime(300), distinctUntilChanged());
+    const query$ = this.searchQuery$.pipe(startWith(''), debounceTime(300), distinctUntilChanged());
 
     this.searchResults$ = combineLatest([assetType$, category$, query$]).pipe(
       switchMap(([assetType, category, query]) => {
@@ -211,7 +214,7 @@ export class AssetWizard implements OnInit {
   }
 
   searchDefinitions(query: string) {
-    this.searchSubject.next(query);
+    this.searchQuery.set(query);
   }
 
   getCategoryIcon(cat: string): string {

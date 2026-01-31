@@ -5,7 +5,10 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   globalSetup: require.resolve('./e2e/global-setup'),
-  timeout: 120000,
+  timeout: 60000,  // 60s is sufficient with proper waits
+
+  // Skip @slow tests in CI (JupyterLite/Pyodide = 180s+ WASM bootstrap)
+  grepInvert: process.env.CI ? /@slow/ : undefined,
   testDir: './e2e/specs',
   outputDir: 'test-results/',
   /* Run tests in files in parallel */
@@ -32,8 +35,8 @@ export default defineConfig({
     /* Force Headless Mode */
     headless: true,
 
-    /* Capture screenshot on all tests for visual debugging */
-    screenshot: 'on',
+    /* Capture screenshot - on CI only on failure, locally always */
+    screenshot: process.env.CI ? 'only-on-failure' : 'on',
 
     /* Standardized viewport for consistent AI-parseable screenshots */
     viewport: { width: 1920, height: 1080 },
@@ -47,7 +50,19 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         headless: true
       },
-    }
+    },
+    {
+      name: 'smoke',
+      testMatch: /smoke\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        headless: true,
+        viewport: { width: 1280, height: 720 },  // Smaller = faster rendering
+        screenshot: 'off',  // Skip for speed runs
+      },
+      retries: 0,
+      timeout: 30000, // Increased from 15s - DB init can take 1-2s
+    },
   ],
 
   /* Run your local dev server before starting the tests */

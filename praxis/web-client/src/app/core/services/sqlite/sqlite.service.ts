@@ -1,6 +1,7 @@
-import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable, of } from 'rxjs';
+import { Injectable, inject, signal } from '@angular/core';
+import { Observable, of } from 'rxjs';
 import { map, shareReplay, switchMap } from 'rxjs/operators';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 // Type imports
 import type { ResourceDefinitionCatalog, MachineDefinitionCatalog } from '@core/db/schema';
@@ -41,16 +42,21 @@ export class SqliteService {
     private asyncRepositories: AsyncRepositories | null = null;
     private opfs = inject(SqliteOpfsService);
 
-    private statusSubject = new BehaviorSubject<SqliteStatus>({
+    // Modern Angular Signals
+    private readonly _status = signal<SqliteStatus>({
         initialized: false,
         source: 'none',
         tableCount: 0
     });
 
-    public readonly status$ = this.statusSubject.asObservable();
+    /** Signal-based status */
+    public readonly status = this._status.asReadonly();
 
-    /** Observable that emits true when the database is ready to use */
-    public readonly isReady$ = new BehaviorSubject<boolean>(false);
+    /** Signal that emits true when database is ready */
+    public readonly isReady = signal<boolean>(false);
+
+    /** Observable for RxJS interop - use `isReady` signal where possible */
+    public readonly isReady$ = toObservable(this.isReady);
 
     constructor() {
         if (typeof window !== 'undefined') {
@@ -66,25 +72,30 @@ export class SqliteService {
         // Initialize OPFS and sync status.
         // The isReady$ signal is now emitted *after* opfs.init() completes,
         // which includes schema creation and seeding.
+        console.log('[SqliteService] Starting OPFS init subscription...');
         this.opfs.init(dbName).subscribe({
             next: () => {
-                this.statusSubject.next({
+                this._status.set({
                     initialized: true,
                     source: 'opfs',
                     tableCount: 0 // Note: tableCount is not accurately tracked here yet.
                 });
                 console.log('[SqliteService] OPFS init complete, signaling DB is ready.');
-                this.isReady$.next(true);
+                this.isReady.set(true);
             },
             error: (err) => {
-                this.statusSubject.next({
+                console.error('[SqliteService] OPFS init error:', err);
+                this._status.set({
                     initialized: false,
                     source: 'none',
                     tableCount: 0,
                     error: err.message
                 });
                 // Ensure isReady remains false on error
-                this.isReady$.next(false);
+                this.isReady.set(false);
+            },
+            complete: () => {
+                console.log('[SqliteService] OPFS init subscription completed');
             }
         });
     }
@@ -355,11 +366,11 @@ export class SqliteService {
      */
     public resetToDefaults(): Observable<void> {
         console.log('[SqliteService] Resetting database to defaults...');
-        this.isReady$.next(false);
+        this.isReady.set(false);
         return this.opfs.resetToDefaults().pipe(
             map(() => {
                 console.log('[SqliteService] Reset complete, signaling DB is ready.');
-                this.isReady$.next(true);
+                this.isReady.set(true);
             })
         );
     }

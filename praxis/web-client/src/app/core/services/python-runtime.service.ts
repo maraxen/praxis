@@ -3,6 +3,7 @@ import { Observable, Subject, from, of } from 'rxjs';
 import { ReplOutput, ReplRuntime, CompletionItem, SignatureInfo } from './repl-runtime.interface';
 import { HardwareDiscoveryService } from './hardware-discovery.service';
 import { InteractionService } from './interaction.service';
+import { PyodidePoolService } from './pyodide-pool.service';
 
 interface WorkerResponse {
   type: string;
@@ -31,6 +32,7 @@ export class PythonRuntimeService implements ReplRuntime {
 
   private hardwareService = inject(HardwareDiscoveryService);
   private interactionService = inject(InteractionService);
+  private poolService = inject(PyodidePoolService);
 
   isReady = signal(false);
 
@@ -39,7 +41,9 @@ export class PythonRuntimeService implements ReplRuntime {
   lastError = signal<string | null>(null);
 
   constructor() {
-    this.initWorker();
+    // DEFERRED INIT: Don't load Pyodide until first use
+    // This saves ~2-3s on pages that don't need Python execution
+    // Worker will be initialized lazily in ensureReady()
   }
 
   restartWorker() {
@@ -53,44 +57,62 @@ export class PythonRuntimeService implements ReplRuntime {
     this.initWorker();
   }
 
-  private initWorker() {
-    if (typeof Worker !== 'undefined') {
-      this.status.set('loading');
+  private async initWorker() {
+    if (typeof Worker === 'undefined') {
+      console.warn('Web Workers are not supported in this environment.');
+      this.status.set('error');
+      this.lastError.set('Web Workers not supported');
+      return;
+    }
 
-      try {
-        this.worker = new Worker(new URL('../workers/python.worker', import.meta.url), {
-          type: 'module'
-        });
+    this.status.set('loading');
 
+    try {
+      // Try to claim a pre-warmed worker from the pool first
+      const warmWorker = await this.poolService.claimWarmWorker();
+
+      if (warmWorker) {
+        console.log('[PythonRuntime] Using pre-warmed worker from pool');
+        this.worker = warmWorker;
         this.worker.onmessage = ({ data }: { data: WorkerResponse }) => {
           this.handleMessage(data);
         };
-
-        // Listen for worker errors (loading/parsing errors)
         this.worker.onerror = (evt) => {
           console.error('[PythonRuntime] Worker error:', evt);
           this.status.set('error');
           this.lastError.set(evt.message);
         };
-
-        this.sendMessage('INIT').then(() => {
-          this.isReady.set(true);
-          this.status.set('ready');
-          console.log('[PythonRuntime] Pyodide ready');
-        }).catch(err => {
-          console.error('[PythonRuntime] Failed to initialize Pyodide:', err);
-          this.status.set('error');
-          this.lastError.set(String(err));
-        });
-      } catch (err: any) {
-        console.error('[PythonRuntime] Failed to create worker:', err);
-        this.status.set('error');
-        this.lastError.set(err.message || String(err));
+        // Worker already initialized, mark as ready
+        this.isReady.set(true);
+        this.status.set('ready');
+        return;
       }
-    } else {
-      console.warn('Web Workers are not supported in this environment.');
+
+      // No warm worker available, create fresh one
+      console.log('[PythonRuntime] No warm worker, creating fresh');
+      this.worker = new Worker(new URL('../workers/python.worker', import.meta.url), {
+        type: 'module'
+      });
+
+      this.worker.onmessage = ({ data }: { data: WorkerResponse }) => {
+        this.handleMessage(data);
+      };
+
+      // Listen for worker errors (loading/parsing errors)
+      this.worker.onerror = (evt) => {
+        console.error('[PythonRuntime] Worker error:', evt);
+        this.status.set('error');
+        this.lastError.set(evt.message);
+      };
+
+      await this.sendMessage('INIT');
+      this.isReady.set(true);
+      this.status.set('ready');
+      console.log('[PythonRuntime] Pyodide ready');
+    } catch (err: any) {
+      console.error('[PythonRuntime] Failed to initialize Pyodide:', err);
       this.status.set('error');
-      this.lastError.set('Web Workers not supported');
+      this.lastError.set(err.message || String(err));
     }
   }
 
@@ -235,12 +257,27 @@ export class PythonRuntimeService implements ReplRuntime {
   }
 
   private ensureReady(): Promise<void> {
+    // Lazy init: start worker on first use if not already started
+    if (!this.worker && this.status() === 'idle') {
+      this.initWorker();
+    }
+
     if (this.isReady()) return Promise.resolve();
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        clearInterval(interval);
+        reject(new Error('Pyodide initialization timeout (30s)'));
+      }, 30000);
+
       const interval = setInterval(() => {
         if (this.isReady()) {
           clearInterval(interval);
+          clearTimeout(timeout);
           resolve();
+        } else if (this.status() === 'error') {
+          clearInterval(interval);
+          clearTimeout(timeout);
+          reject(new Error(this.lastError() || 'Pyodide initialization failed'));
         }
       }, 100);
     });

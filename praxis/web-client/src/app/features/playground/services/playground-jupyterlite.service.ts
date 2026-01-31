@@ -2,6 +2,7 @@ import { Injectable, signal, inject, effect } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { AppStore } from '@core/store/app.store';
 import { InteractionService } from '@core/services/interaction.service';
+import { PathUtils } from '@core/utils/path.utils';
 
 @Injectable({
   providedIn: 'root'
@@ -360,9 +361,8 @@ for _p_file in ['__init__.py', 'interactive.py']:
     }
 
     const baseHref = document.querySelector('base')?.getAttribute('href') || '/';
-    const cleanBase = baseHref.startsWith('/') ? baseHref : '/' + baseHref;
-    const finalBase = cleanBase.endsWith('/') ? cleanBase : cleanBase + '/';
+    const cleanBase = PathUtils.normalizeBaseHref(baseHref);
 
-    return window.location.origin + finalBase;
+    return window.location.origin + cleanBase;
   }
 }

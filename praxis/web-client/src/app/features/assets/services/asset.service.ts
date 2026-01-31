@@ -9,6 +9,7 @@ import {
   MachineStatus, ResourceStatus, Workcell
 } from '../models/asset.models';
 import { ModeService } from '@core/services/mode.service';
+import { PathUtils } from '@core/utils/path.utils';
 import { SqliteService } from '@core/services/sqlite';
 import { ResourceDefinitionCatalog } from '@core/db/schema';
 import { inferCategory } from '../utils/category-inference';
@@ -530,7 +531,7 @@ export class AssetService {
     );
   }
 
-  syncDefinitions(): Observable<{ message:string }> {
+  syncDefinitions(): Observable<{ message: string }> {
     return this.apiWrapper.wrap(DiscoveryService.syncAllDefinitionsApiV1DiscoverySyncAllPost()).pipe(
       map(result => result as { message: string })
     );
@@ -543,7 +544,7 @@ export class AssetService {
    */
   resolve(assetPath: string): string {
     const baseHref = document.querySelector('base')?.getAttribute('href') || '/';
-    const cleanBase = baseHref.endsWith('/') ? baseHref : `${baseHref}/`;
+    const cleanBase = PathUtils.normalizeBaseHref(baseHref);
     // Prevent double slashes if assetPath already starts with one
     const cleanAssetPath = assetPath.startsWith('/') ? assetPath.substring(1) : assetPath;
     return `${cleanBase}assets/${cleanAssetPath}`;

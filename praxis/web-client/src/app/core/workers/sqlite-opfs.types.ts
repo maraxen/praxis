@@ -57,5 +57,17 @@ export interface SqliteSchemaMismatchPayload {
     expectedVersion: number;
 }
 
+/** Storage mode indicating where DB is persisted */
+export type StorageMode = 'opfs' | 'memory';
+
+/** Payload returned when worker successfully initializes */
+export interface SqliteInitializedPayload {
+    success: boolean;
+    storageMode: StorageMode;
+    initTimeMs: Record<string, number>;
+    message?: string;
+}
+
 // Schema version constant - bump this when schema changes
 export const CURRENT_SCHEMA_VERSION = 1;
+

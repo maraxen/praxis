@@ -44,7 +44,7 @@ export class SettingsPage extends BasePage {
         // Usually hidden input
         await this.importInput.setInputFiles(filePath);
         // Might need to confirm a dialog
-        const confirmBtn = this.page.getByRole('button', { name: /Confirm|Yes|Import/i });
+        const confirmBtn = this.page.getByRole('button', { name: 'Import and Refresh' });
         if (await confirmBtn.isVisible()) {
             await confirmBtn.click();
         }

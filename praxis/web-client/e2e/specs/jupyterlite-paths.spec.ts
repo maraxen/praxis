@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/worker-db.fixture';
+import { createPathDoublingMonitor } from '../helpers/path-verifier';
 
 /**
  * JupyterLite Path Resolution E2E Tests
@@ -11,7 +12,7 @@ import { test, expect } from '../fixtures/worker-db.fixture';
  * 2. GH Pages simulation: Uses localhost:8080/praxis with absolute paths
  */
 
-test.describe('JupyterLite Path Resolution', () => {
+test.describe('@slow JupyterLite Path Resolution', () => {
 
     test.describe('Development Mode', () => {
         test('REPL config uses relative paths', async ({ page }) => {
@@ -43,36 +44,16 @@ test.describe('JupyterLite Path Resolution', () => {
 
     test.describe('REPL Loading', () => {
         test('REPL page loads without 404 errors for resources', async ({ page }) => {
-            const failedRequests: string[] = [];
-            const doubledPathRequests: string[] = [];
-
-            // Monitor for failed requests and doubled paths
-            page.on('response', (response) => {
-                const url = response.url();
-
-                // Check for 404s on JupyterLite resources
-                if (url.includes('jupyterlite') && response.status() === 404) {
-                    failedRequests.push(url);
-                }
-
-                // Check for path doubling patterns
-                if (url.includes('/praxis/') && url.match(/\/praxis\/.*\/praxis\//)) {
-                    doubledPathRequests.push(url);
-                }
-                if (url.includes('/assets/jupyterlite/') && url.match(/\/assets\/jupyterlite\/.*\/assets\/jupyterlite\//)) {
-                    doubledPathRequests.push(url);
-                }
-            });
+            const { failedRequests, doubledPaths } = createPathDoublingMonitor(page);
 
             // Navigate to the REPL
             await page.goto('/playground');
 
-            // Wait for JupyterLite to initialize (look for the iframe or status indicators)
-            // Give it time to load resources
-            await page.waitForTimeout(5000);
+            // Wait for JupyterLite assets to finish loading
+            await page.waitForLoadState('networkidle');
 
             // Verify no doubled paths
-            expect(doubledPathRequests, `Doubled path requests detected: ${doubledPathRequests.join(', ')}`).toHaveLength(0);
+            expect(doubledPaths, `Doubled path requests detected: ${doubledPaths.join(', ')}`).toHaveLength(0);
 
             // Log any failed requests for debugging (some 404s may be acceptable)
             if (failedRequests.length > 0) {
@@ -84,13 +65,8 @@ test.describe('JupyterLite Path Resolution', () => {
             await page.goto('/playground');
 
             // Wait for the playground to load
-            await page.waitForSelector('app-playground', { timeout: 10000 });
-
-            // Check if the JupyterLite container/iframe exists
-            const jupyterFrame = page.locator('iframe[src*="jupyterlite"], .jupyter-container');
-
-            // The page should have some JupyterLite-related content
-            await expect(page.locator('app-playground')).toBeVisible();
+            const jupyterIframe = page.getByTestId('jupyterlite-iframe');
+            await expect(jupyterIframe).toBeVisible();
         });
     });
 });

@@ -325,6 +325,7 @@ async function initializePyodide(id?: string) {
 
   // Load WebSerial, WebUSB, and WebFTDI Shims (must be before bridge if bridge depends on them)
   // CRITICAL: WebFTDI is required for CLARIOstarBackend and similar FTDI-based devices
+  // OPTIMIZATION: Fetch all shims in parallel for faster init
   const shims = [
     { file: 'web_serial_shim.py', name: 'WebSerial' },
     { file: 'web_usb_shim.py', name: 'WebUSB' },
@@ -332,18 +333,34 @@ async function initializePyodide(id?: string) {
     { file: 'web_hid_shim.py', name: 'WebHID' }
   ];
 
-  for (const shim of shims) {
-    try {
-      const shimResponse = await fetch(`assets/shims/${shim.file}`);
-      if (shimResponse.ok) {
-        const shimCode = await shimResponse.text();
-        pyodide.FS.writeFile(shim.file, shimCode);
-        console.log(`${shim.name} Shim loaded successfully`);
-      } else {
-        console.error(`Failed to fetch ${shim.name} Shim:`, shimResponse.statusText);
+  // Parallel fetch all shims + web_bridge + praxis package
+  const [shimResults, bridgeCode, praxisInit, praxisInteractive] = await Promise.all([
+    // Fetch all shims in parallel
+    Promise.all(shims.map(async (shim) => {
+      try {
+        const response = await fetch(`assets/shims/${shim.file}`);
+        if (response.ok) {
+          return { shim, code: await response.text(), error: null };
+        }
+        return { shim, code: null, error: response.statusText };
+      } catch (err) {
+        return { shim, code: null, error: err };
       }
-    } catch (err) {
-      console.error(`Error loading ${shim.name} Shim:`, err);
+    })),
+    // Fetch web_bridge
+    fetch('assets/python/web_bridge.py').then(r => r.text()),
+    // Fetch praxis package files
+    fetch('assets/python/praxis/__init__.py').then(r => r.text()).catch(() => null),
+    fetch('assets/python/praxis/interactive.py').then(r => r.text()).catch(() => null)
+  ]);
+
+  // Write shims to Pyodide FS
+  for (const { shim, code, error } of shimResults) {
+    if (code) {
+      pyodide.FS.writeFile(shim.file, code);
+      console.log(`${shim.name} Shim loaded successfully`);
+    } else {
+      console.error(`Failed to load ${shim.name} Shim:`, error);
     }
   }
 
@@ -355,23 +372,14 @@ async function initializePyodide(id?: string) {
     console.warn('Could not list FS:', e);
   }
 
-  // Load WebBridge Python code (for RAW_IO and signature help)
-  const response = await fetch('assets/python/web_bridge.py');
-  const bridgeCode = await response.text();
+  // Write web_bridge
   pyodide.FS.writeFile('web_bridge.py', bridgeCode);
 
-  // Load praxis package
+  // Write praxis package
   try {
     pyodide.FS.mkdir('praxis');
-
-    const initResponse = await fetch('assets/python/praxis/__init__.py');
-    const initCode = await initResponse.text();
-    pyodide.FS.writeFile('praxis/__init__.py', initCode);
-
-    const interactiveResponse = await fetch('assets/python/praxis/interactive.py');
-    const interactiveCode = await interactiveResponse.text();
-    pyodide.FS.writeFile('praxis/interactive.py', interactiveCode);
-
+    if (praxisInit) pyodide.FS.writeFile('praxis/__init__.py', praxisInit);
+    if (praxisInteractive) pyodide.FS.writeFile('praxis/interactive.py', praxisInteractive);
     console.log('Praxis package loaded successfully');
   } catch (err) {
     console.error('Error loading praxis package:', err);

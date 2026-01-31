@@ -17,8 +17,19 @@ if ((environment as any).browserMode) {
 }
 
 bootstrapApplication(App, appConfig)
-  .then((appRef) => {
+  .then(async (appRef) => {
     GlobalInjector.set(appRef.injector);
+
+    // Pre-warm Pyodide worker in background for faster Playground access
+    // This runs non-blocking - user won't wait for it
+    try {
+      const { PyodidePoolService } = await import('./app/core/services/pyodide-pool.service');
+      const poolService = appRef.injector.get(PyodidePoolService);
+      poolService.preWarm();
+      console.log('[main.ts] Started Pyodide pre-warm in background');
+    } catch (err) {
+      console.warn('[main.ts] Failed to pre-warm Pyodide:', err);
+    }
   })
   .catch((err) => console.error(err));
 

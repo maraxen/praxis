@@ -11,6 +11,5 @@ export const environment = {
         url: '',
         realm: '',
         clientId: ''
-    },
-    sqliteOpfsEnabled: false // Opt-in to experimental OPFS storage
+    }
 };

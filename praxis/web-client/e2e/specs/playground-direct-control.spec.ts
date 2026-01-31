@@ -1,119 +1,76 @@
 import { test, expect } from '../fixtures/worker-db.fixture';
-import { AssetsPage } from '../page-objects/assets.page';
+import { PlaygroundPage } from '../page-objects/playground.page';
+import { WelcomePage } from '../page-objects/welcome.page';
 
-test.afterEach(async ({ page }) => {
-    // Dismiss any open dialogs/overlays to ensure clean state
-    await page.keyboard.press('Escape').catch((e) => console.log('[Test] Silent catch (Escape):', e));
-});
+test.describe('@slow Playground Direct Control', () => {
+    let playgroundPage: PlaygroundPage;
+    let welcomePage: WelcomePage;
 
-test('should allow adding a machine and using direct control', async ({ page }) => {
-    // Increase timeout for complex wizard flow that involves multiple steps and animations
-    test.setTimeout(180000);
-    // Mock API calls - these might be bypassed in Browser Mode but good to have
-    await page.route('**/api/v1/machines/definitions/facets', async route => {
-        await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({
-                machine_category: [{ value: 'LiquidHandler', count: 1 }],
-                manufacturer: [{ value: 'Hamilton', count: 1 }]
-            })
-        });
+    test.beforeEach(async ({ page }) => {
+        playgroundPage = new PlaygroundPage(page);
+        welcomePage = new WelcomePage(page);
+        await playgroundPage.goto('worker');
+        await welcomePage.handleSplashScreen();
     });
 
-    await page.route('**/api/v1/machines/definitions?*', async route => {
-        await route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify([
-                {
-                    accession_id: 'mach_test_001',
-                    name: 'Hamilton STAR',
-                    fqn: 'pylabrobot.liquid_handling.backends.hamilton.STAR',
-                    plr_category: 'Machine',
-                    machine_category: 'LiquidHandler',
-                    manufacturer: 'Hamilton',
-                    description: 'Hamilton STAR liquid handler',
-                    available_simulation_backends: ['Simulated']
-                }
-            ])
-        });
+    test('should allow adding a machine and using direct control', async ({ page }) => {
+        test.setTimeout(180000);
+        const machineName = 'Hamilton STAR';
+
+        // 1. Open inventory and add a new machine
+        const inventoryDialog = await playgroundPage.openInventory();
+        await inventoryDialog.addMachine(machineName, 'LiquidHandler', 'STAR');
+
+        // 2. Select the machine in the playground
+        await playgroundPage.selectModule(machineName);
+
+        // 3. Domain Verification: Check backend instantiation
+        await playgroundPage.verifyBackendInstantiation(machineName);
+
+        // 4. Execute a method
+        await playgroundPage.executeCurrentMethod(/Setup/i);
+
+        // 5. Verify the successful result
+        await playgroundPage.waitForSuccess(/OK: Setup complete/i);
     });
 
-    page.on('console', msg => console.log(`BROWSER LOG: ${msg.text()}`));
+    test('should display an error if backend initialization fails', async ({ page }) => {
+        test.setTimeout(180000);
+        const machineName = 'Faulty Hamilton STAR';
 
-    // 1. Go to /app/playground
-    await page.goto('/app/playground?mode=browser&resetdb=1');
+        // Mock the machine definition to have an invalid backend FQN
+        // This will cause the client-side instantiation to fail.
+        await page.route('**/api/v1/machines/definitions?*', async route => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([
+                    {
+                        accession_id: 'mach_test_002',
+                        name: 'Hamilton STAR',
+                        fqn: 'pylabrobot.liquid_handling.backends.hamilton.INVALID_BACKEND', // Deliberately wrong
+                        plr_category: 'Machine',
+                        machine_category: 'LiquidHandler',
+                        manufacturer: 'Hamilton',
+                        description: 'A faulty Hamilton STAR liquid handler',
+                        available_simulation_backends: ['Simulated']
+                    }
+                ])
+            });
+        });
 
-    // Wait for SQLite DB to be ready
-    await page.waitForFunction(() => (window as any).sqliteService?.isReady$?.getValue() === true, { timeout: 45000 });
+        // 1. Open inventory and add the machine with the faulty definition
+        const inventoryDialog = await playgroundPage.openInventory();
+        await inventoryDialog.addMachine(machineName, 'LiquidHandler', 'STAR');
 
-    // Handle Welcome Dialog
-    try {
-        const dismissBtn = page.getByRole('button', { name: /Get Started|Skip|Close/i }).first();
-        if (await dismissBtn.isVisible({ timeout: 5000 })) {
-            await dismissBtn.click();
-        }
-    } catch (e) { console.log('[Test] Caught:', (e as Error).message); }
+        // 2. Select the machine in the playground
+        await playgroundPage.selectModule(machineName);
 
-    await page.screenshot({ path: 'e2e/screenshots/direct-control-step1.png' });
+        // 3. Verify that an error is shown in a snackbar or the component
+        const errorSnackbar = page.locator('simple-snack-bar');
+        const componentError = page.locator('app-direct-control .mat-error, app-direct-control .error-message');
 
-    // 2. Open Inventory from Playground (using the header action button)
-    const inventoryBtn = page.locator('button').filter({ has: page.locator('mat-icon', { hasText: 'inventory_2' }) });
-    await expect(inventoryBtn).toBeVisible({ timeout: 25000 });
-    await inventoryBtn.click();
-
-    // 3. Add Machine using AssetsPage helper
-    const assetsPage = new AssetsPage(page);
-    const machineName = 'Hamilton STAR';
-    await assetsPage.createMachine(machineName, 'LiquidHandler', 'STAR');
-
-    // 4. Verify Machine is selected
-    const directControlTab = page.getByRole('tab', { name: 'Direct Control' });
-    await directControlTab.click();
-
-    // Verify Direct Control is active
-    const directControl = page.locator('app-direct-control');
-    await expect(directControl).toBeVisible({ timeout: 10000 });
-
-    // 5. Select a method and execute (if methods are available)
-    console.log('Checking for available methods...');
-    const methodChips = directControl.locator('.method-chip');
-    const noMethodsMessage = directControl.locator('text=No methods available');
-
-    // Wait for either method chips or no-methods message
-    await Promise.race([
-        methodChips.first().waitFor({ timeout: 10000 }).catch((e) => console.log('[Test] Silent catch (Method chips):', e)),
-        noMethodsMessage.waitFor({ timeout: 10000 }).catch((e) => console.log('[Test] Silent catch (No methods msg):', e))
-    ]);
-
-    const hasMethodChips = await methodChips.count() > 0;
-
-    if (hasMethodChips) {
-        console.log('Methods found, selecting and executing...');
-        // Select 'Setup' or the first method
-        const setupMethod = methodChips.filter({ hasText: /Setup/i }).first();
-        const targetedMethod = await setupMethod.isVisible() ? setupMethod : methodChips.first();
-        await targetedMethod.click();
-
-        console.log('Executing method...');
-        const executeBtn = directControl.locator('.execute-btn');
-        await expect(executeBtn).toBeVisible();
-        await expect(executeBtn).toBeEnabled();
-        await executeBtn.click();
-
-        // 6. Verify feedback
-        console.log('Verifying execution feedback...');
-        // In simulation mode, it should show a success circle and result
-        const successIcon = directControl.locator('.command-result mat-icon[color="primary"]');
-        await expect(successIcon).toBeVisible({ timeout: 10000 });
-
-        await page.screenshot({ path: 'e2e/screenshots/direct-control-executed.png' });
-    } else {
-        console.log('No methods available for this machine - this is expected for newly created machines without backend setup');
-        await expect(noMethodsMessage).toBeVisible();
-    }
-
-    // Capture final screenshot
-    await page.screenshot({ path: 'e2e/screenshots/direct-control-final.png' });
+        await expect(errorSnackbar.or(componentError).first()).toBeVisible({ timeout: 15000 });
+        await expect(errorSnackbar.or(componentError).first()).toContainText(/Failed to initialize backend|Could not find module/i);
+    });
 });

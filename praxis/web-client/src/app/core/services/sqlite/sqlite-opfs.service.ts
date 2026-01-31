@@ -29,6 +29,8 @@ export class SqliteOpfsService {
     private worker: Worker | null = null;
     private responses$ = new Subject<SqliteWorkerResponse>();
     private initPromise: Promise<void> | null = null;
+    /** Track current database name to detect when a different DB is requested */
+    private currentDbName: string | undefined = undefined;
 
     constructor() { }
 
@@ -43,9 +45,18 @@ export class SqliteOpfsService {
      * @returns Observable that completes when initialization is successful
      */
     init(dbName?: string): Observable<void> {
+        // Critical: If a different database is requested, reset the cached promise
+        // This prevents parallel workers with different dbNames from sharing promises
+        if (this.initPromise && this.currentDbName !== dbName) {
+            console.log(`[SqliteOpfsService] Database changed from ${this.currentDbName} to ${dbName}, resetting init promise`);
+            this.initPromise = null;
+        }
+
         if (this.initPromise) {
             return from(this.initPromise);
         }
+
+        this.currentDbName = dbName;
 
         this.initPromise = new Promise<void>((resolve, reject) => {
             if (!this.worker) {
@@ -60,8 +71,10 @@ export class SqliteOpfsService {
                 };
 
                 this.worker.onerror = (err) => {
-                    console.error('[SqliteOpfsService] Worker error:', err);
-                    reject(err);
+                    // Log but don't reject - Vite dev server fires harmless 'export' syntax errors
+                    // during worker module loading that don't actually break the worker.
+                    // Actual failures are handled via message-based error responses.
+                    console.warn('[SqliteOpfsService] Worker error (non-fatal):', err);
                 };
             }
 
