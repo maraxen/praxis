@@ -1,0 +1,671 @@
+diff --git a/.jupyterlite.doit.db b/.jupyterlite.doit.db
+index 6914761ee72d9a995ca3cde3ce73bf736498175a..54f587e9121aeb52e9975a17558c11659b39c6fe 100644
+GIT binary patch
+delta 3095
+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
+
+delta 1850
+zcmah}ZA?>F7{2G8dv9BMKTrY`3gufdKnvSyDJsIKPEmvoBN$pJ1=g02woou>w(Fo*
+zSY%VDZ?bGlma+K5#bi#?Kl@=86PN9WF}h^Sk}deL={CRcBatjKi#zwWF#oNm_ulut
+z_j#Z5yzhI?nZ7_zPt)(41rtS4dU9#M<CTszCdxXuL6H8UXvsxMF6m0L|L6}QxTFg_
+zEiJ1sz4T04PG)A_lJ=Ai5?@zAZXA~(Oi+cqjS~d1g8xKv3TFNraY_14=oG&dzTlI>
+zKT-#Oj9(Jsyp2C4o))f)0^cp17ZYMY+#wtms?LocHNw@ZIT|fOceQ;Jx+&m7Iyy1b
+z7Yc_a(E|g{rZwviBhI5^ll_xZG4wbSm(kHkY_c!?;?@S-g+R0wXGHra2ZB`=+>Bt}
+zpI>Coz`3-4Dl|HXej6Q(OSmKzmwL4Xbv5fabX|jcYw}Gdv5C?VP7Oyir0H+N;hM6{
+z`ywt%MQeg?!1<a|_HH5GLc=kO$%=m0zLTgF`LD5DT$fhd5E_VtW2rlOn2((ZYOOhj
+zwUU|At8>5(s|DSG>os{CdbA$9X)p&$IdspAoit1bb7*u84Atd&^n|)njlF8Bm8?NJ
+zNm*dGHLvhs4z5G0s0NiRG|(^=j`k0X=w4@L)+4YEwN-GWUFCY5t)f)^RALQdp|PRK
+zcyuV%Fgz8FlRh|f=uZM={eTK4;aa0EIlSuw20HAOka;j4o;$LjINy-;M@RG!%ML?v
+zV*xYPA1#INvyLG3eu7*R>?Gl!pm1}Z>cOMg0_}M=r(An3wWR#wxLJ#tfW_Js>*3pL
+z;F;YFKW2qNwSUQ%(y=UzzEh&v#f>ZI#o7Y!74m5W2k*94z~k0qP;6&3hO;>=^g0cx
+zsQ9YX38K4_0ON4GF;@dWZH+*<U7rS4Yr#t`W{A`oR*8Hh`6~^nlvHV#CX5>X@`18+
+z8tQaDM>Tmn0<{qVrr%7-SgbAASS}x^)FK|unptbQY$MP%E10~pAkI?=ou$Zs(|_am
+zctvtkX1mBx6gmJ$EpD=JQHf0U2YlMK)j+EJv#d5A)_Ce6P;>;&6!BJpU8Y#ZMR6|)
+zPcr`2onl-D8+NA#@6*QT_;$v}hIwj%T~1nk3=N(sE5!F2NmGm9YG)uVU9~rWZzK!L
+z?sAZWZUdoSSe=m}ULWKKdUT4-%rwv0lJow}h;USZuy2RaD;sRoW>st-Jn+0s5}86e
+zg*7qFvpqnzTXMJ8sG?VA;bh|>bV-IIH5S;}T`v$Xs)etl$c~obhzy?UI=DAj&-Rqy
+zHW`HKVla=^GsZ)d4=h2CZbrA3an1zPEe6mx#z?2>FgQbdGDx{zleKe$=-I+HTXCKY
+z3tf%$_6qp0Yda&Hq+W&lo<_Rc0)>6uB#=4-Uk7?rqa7UnT{^{XV7zlh>i$bAooGdU
+zK<AYS`94|Qj_{?YexqO<r*fGkq`zQ%D%|0IV!vW{>f`)HokRFc+`_esAha?|{DAQz
+z?zrw6`&_?H;B?dH#tpPS5t=DuVu!||YB-@f1DbQmW+qO8OMh`15{Y1<iFgr$yU05n
+z&Q~1P`g;3DyAv$E&KJwd$nL~jYWHxrGOQ-XjVk>w)DgQBAMEzHaGMeVyT2`Cs}jK3
+zt6jz|${5@TwP3H(2j>G`yj>Yo%f<C56ED=?xJ?OTvNY9WSuHQ_P@>=nbr5zx-0X5C
+z7knqs|E)7o=J!#Rr04q+Z{wZnN-%T#mC=-`EehPLc%dNJn@Q>|xaIUg=2b?(M5Hw-
+z18~>V#5F79>E3dCl@Q*#+8De|8G@UZZP=~!Y9;AZ-hlTko%%#j398jhRt@V{+Nv#m
+HT9*F>vGZB&
+
+diff --git a/praxis/web-client/e2e/specs/playground-tab-persistence.spec.ts b/praxis/web-client/e2e/specs/playground-tab-persistence.spec.ts
+new file mode 100644
+index 0000000..5d03f96
+--- /dev/null
++++ b/praxis/web-client/e2e/specs/playground-tab-persistence.spec.ts
+@@ -0,0 +1,35 @@
++import { test, expect } from '@playwright/test';
++
++test.describe('Playground Tab State Persistence', () => {
++    test.beforeEach(async ({ page }) => {
++        await page.goto('/app/playground?mode=browser');
++        await page.waitForSelector('mat-tab-group');
++    });
++
++    test('switching tabs preserves JupyterLite iframe', async ({ page }) => {
++        // Wait for notebook tab to be active and iframe loaded
++        const notebookIframe = page.locator('iframe.notebook-frame');
++        await expect(notebookIframe).toBeVisible();
++        
++        // Get iframe's src to verify it's the same element later
++        const originalSrc = await notebookIframe.getAttribute('src');
++        
++        // Switch to Direct Control tab
++        await page.getByRole('tab', { name: 'Direct Control' }).click();
++        
++        // Wait for direct control content
++        await expect(page.locator('.direct-control-dashboard')).toBeVisible();
++        
++        // Switch back to Notebook tab
++        await page.getByRole('tab', { name: 'Notebook' }).click();
++        
++        // Verify iframe still has same src (not recreated)
++        const newSrc = await notebookIframe.getAttribute('src');
++        expect(newSrc).toBe(originalSrc);
++    });
++
++    test('tab label shows "Notebook" not "REPL Notebook"', async ({ page }) => {
++        const tab = page.getByRole('tab', { name: 'Notebook' });
++        await expect(tab).toBeVisible();
++    });
++});
+diff --git a/praxis/web-client/src/app/features/playground/playground.component.ts b/praxis/web-client/src/app/features/playground/playground.component.ts
+index dc72fdc..56bef31 100644
+--- a/praxis/web-client/src/app/features/playground/playground.component.ts
++++ b/praxis/web-client/src/app/features/playground/playground.component.ts
+@@ -128,45 +128,42 @@ import { PathUtils } from '@core/utils/path.utils';
+           </div>
+ 
+           <mat-tab-group class="repl-tabs" [selectedIndex]="selectedTabIndex()" (selectedIndexChange)="selectedTabIndex.set($event)">
+-            <mat-tab label="REPL Notebook">
+-              <ng-template matTabContent>
+-                <!-- JupyterLite iframe -->
+-                <div class="repl-notebook-wrapper" data-tour-id="repl-notebook">
++            <mat-tab label="Notebook">
++              <!-- JupyterLite iframe -->
++              <div class="repl-notebook-wrapper" data-tour-id="repl-notebook" [hidden]="selectedTabIndex() !== 0">
+ 
+-                  @if (jupyterliteUrl) {
+-                    <iframe
+-                      #notebookFrame
+-                      [src]="jupyterliteUrl"
+-                      class="notebook-frame"
+-                      (load)="onIframeLoad()"
+-                      allow="cross-origin-isolated; usb; serial"
+-                      sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
+-                    ></iframe>
+-                  }
++                @if (jupyterliteUrl) {
++                  <iframe
++                    #notebookFrame
++                    [src]="jupyterliteUrl"
++                    class="notebook-frame"
++                    (load)="onIframeLoad()"
++                    allow="cross-origin-isolated; usb; serial"
++                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
++                  ></iframe>
++                }
+ 
+-                  @if (isLoading()) {
+-                    <div class="loading-overlay">
+-                      <div class="loading-content">
+-                        <mat-spinner diameter="48"></mat-spinner>
+-                        <p>Initializing Pyodide Environment...</p>
+-                        @if (loadingError()) {
+-                          <button mat-flat-button color="warn" (click)="reloadNotebook()">
+-                            <mat-icon>refresh</mat-icon>
+-                            Retry Loading
+-                          </button>
+-                        }
+-                      </div>
++                @if (isLoading()) {
++                  <div class="loading-overlay">
++                    <div class="loading-content">
++                      <mat-spinner diameter="48"></mat-spinner>
++                      <p>Initializing Pyodide Environment...</p>
++                      @if (loadingError()) {
++                        <button mat-flat-button color="warn" (click)="reloadNotebook()">
++                          <mat-icon>refresh</mat-icon>
++                          Retry Loading
++                        </button>
++                      }
+                     </div>
+-                  }
+-                </div>
+-              </ng-template>
++                  </div>
++                }
++              </div>
+             </mat-tab>
+             
+             <mat-tab label="Direct Control">
+-              <ng-template matTabContent>
+-                <div class="direct-control-dashboard">
+-                  <!-- Machine Selector Sidebar -->
+-                  <div class="machine-selector-panel">
++              <div class="direct-control-dashboard" [hidden]="selectedTabIndex() !== 1">
++                <!-- Machine Selector Sidebar -->
++                <div class="machine-selector-panel">
+                     <div class="panel-header">
+                       <h3>Available Machines</h3>
+                       <button mat-icon-button (click)="loadMachinesForDirectControl()" matTooltip="Refresh machines">
+@@ -221,7 +218,6 @@ import { PathUtils } from '@core/utils/path.utils';
+                     }
+                   </div>
+                 </div>
+-              </ng-template>
+             </mat-tab>
+           </mat-tab-group>
+         </mat-card>
+@@ -303,6 +299,36 @@ import { PathUtils } from '@core/utils/path.utils';
+           flex: 1;
+         }
+       }
++  .repl-tabs {
++  ::ng-deep .mat-mdc-tab-header {
++    background: transparent;
++    border-bottom: 1px solid var(--mat-sys-outline-variant);
++  }
++
++  ::ng-deep .mat-mdc-tab {
++    min-width: 80px;
++    opacity: 0.7;
++    transition: opacity 0.2s ease;
++    
++    &:hover {
++      opacity: 1;
++    }
++    
++    &.mdc-tab--active {
++      opacity: 1;
++    }
++  }
++
++  ::ng-deep .mat-mdc-tab-labels {
++    gap: 0;
++  }
++  
++  ::ng-deep .mdc-tab-indicator__content--underline {
++    border-color: var(--mat-sys-primary);
++    border-width: 2px;
++    border-radius: 2px 2px 0 0;
++  }
++}
+ 
+       .repl-notebook-wrapper {
+         height: 100%;
+diff --git a/praxis/web-client/src/assets/jupyterlite/jupyter-lite.gh-pages.json b/praxis/web-client/src/assets/jupyterlite/jupyter-lite.gh-pages.json
+deleted file mode 100644
+index c673e1f..0000000
+--- a/praxis/web-client/src/assets/jupyterlite/jupyter-lite.gh-pages.json
++++ /dev/null
+@@ -1,411 +0,0 @@
+-{
+-  "jupyter-config-data": {
+-    "appName": "JupyterLite",
+-    "appUrl": "/praxis/assets/jupyterlite/lab",
+-    "appVersion": "0.7.1",
+-    "settingsOverrides": {
+-      "@jupyterlab/apputils-extension:announcements": {
+-        "checkForUpdates": false
+-      },
+-      "@jupyterlite/pyodide-kernel-extension:kernel": {
+-        "autoStart": true
+-      }
+-    },
+-    "baseUrl": "/praxis/assets/jupyterlite/",
+-    "defaultKernelName": "python",
+-    "faviconUrl": "/praxis/assets/jupyterlite/lab/favicon.ico",
+-    "federated_extensions": [
+-      {
+-        "extension": "./extension",
+-        "load": "static/remoteEntry.a117bd216cefa0b341fe.js",
+-        "name": "@jupyterlite/pyodide-kernel-extension"
+-      }
+-    ],
+-    "fileTypes": {
+-      "avi": {
+-        "extensions": [
+-          ".avi"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "video/x-msvideo"
+-        ],
+-        "name": "avi"
+-      },
+-      "css": {
+-        "extensions": [
+-          ".css"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "text/css"
+-        ],
+-        "name": "css"
+-      },
+-      "csv": {
+-        "extensions": [
+-          ".csv"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "text/csv"
+-        ],
+-        "name": "csv"
+-      },
+-      "fasta": {
+-        "extensions": [
+-          ".fasta"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "text/plain"
+-        ],
+-        "name": "fasta"
+-      },
+-      "flac": {
+-        "extensions": [
+-          ".flac"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "audio/flac"
+-        ],
+-        "name": "flac"
+-      },
+-      "geojson": {
+-        "extensions": [
+-          ".geojson"
+-        ],
+-        "fileFormat": "json",
+-        "mimeTypes": [
+-          "application/geo+json"
+-        ],
+-        "name": "geojson"
+-      },
+-      "gzip": {
+-        "extensions": [
+-          ".tgz",
+-          ".gz",
+-          ".gzip"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "application/gzip"
+-        ],
+-        "name": "gzip"
+-      },
+-      "html": {
+-        "extensions": [
+-          ".html"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "text/html"
+-        ],
+-        "name": "html"
+-      },
+-      "ical": {
+-        "extensions": [
+-          ".ical",
+-          ".ics",
+-          ".ifb",
+-          ".icalendar"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "text/calendar"
+-        ],
+-        "name": "ical"
+-      },
+-      "ico": {
+-        "extensions": [
+-          ".ico"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "image/x-icon"
+-        ],
+-        "name": "ico"
+-      },
+-      "ipynb": {
+-        "extensions": [
+-          ".ipynb"
+-        ],
+-        "fileFormat": "json",
+-        "mimeTypes": [
+-          "application/x-ipynb+json"
+-        ],
+-        "name": "ipynb"
+-      },
+-      "jpeg": {
+-        "extensions": [
+-          ".jpeg",
+-          ".jpg"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "image/jpeg"
+-        ],
+-        "name": "jpeg"
+-      },
+-      "js": {
+-        "extensions": [
+-          ".js",
+-          ".mjs"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "application/javascript"
+-        ],
+-        "name": "js"
+-      },
+-      "jsmap": {
+-        "extensions": [
+-          ".map"
+-        ],
+-        "fileFormat": "json",
+-        "mimeTypes": [
+-          "application/json"
+-        ],
+-        "name": "jsmap"
+-      },
+-      "json": {
+-        "extensions": [
+-          ".json"
+-        ],
+-        "fileFormat": "json",
+-        "mimeTypes": [
+-          "application/json"
+-        ],
+-        "name": "json"
+-      },
+-      "jupyterlab_workspace": {
+-        "extensions": [
+-          ".jupyterlab-workspace"
+-        ],
+-        "fileFormat": "json",
+-        "mimeTypes": [
+-          "application/json"
+-        ],
+-        "name": "jupyterlab_workspace"
+-      },
+-      "manifest": {
+-        "extensions": [
+-          ".manifest"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "text/cache-manifest"
+-        ],
+-        "name": "manifest"
+-      },
+-      "md": {
+-        "extensions": [
+-          ".md",
+-          ".markdown"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "text/markdown"
+-        ],
+-        "name": "md"
+-      },
+-      "mkv": {
+-        "extensions": [
+-          ".mkv"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "video/x-matroska"
+-        ],
+-        "name": "mkv"
+-      },
+-      "mov": {
+-        "extensions": [
+-          ".mov"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "video/quicktime"
+-        ],
+-        "name": "mov"
+-      },
+-      "mp3": {
+-        "extensions": [
+-          ".mp3"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "audio/mpeg"
+-        ],
+-        "name": "mp3"
+-      },
+-      "mp4": {
+-        "extensions": [
+-          ".mp4"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "video/mp4"
+-        ],
+-        "name": "mp4"
+-      },
+-      "ogg": {
+-        "extensions": [
+-          ".ogg"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "audio/ogg"
+-        ],
+-        "name": "ogg"
+-      },
+-      "pdf": {
+-        "extensions": [
+-          ".pdf"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "application/pdf"
+-        ],
+-        "name": "pdf"
+-      },
+-      "plain": {
+-        "extensions": [
+-          ".txt"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "text/plain"
+-        ],
+-        "name": "plain"
+-      },
+-      "png": {
+-        "extensions": [
+-          ".png"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "image/png"
+-        ],
+-        "name": "png"
+-      },
+-      "py": {
+-        "extensions": [
+-          ".py"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "text/x-python",
+-          "application/x-python-code"
+-        ],
+-        "name": "py"
+-      },
+-      "svg": {
+-        "extensions": [
+-          ".svg"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "image/svg+xml"
+-        ],
+-        "name": "svg"
+-      },
+-      "toml": {
+-        "extensions": [
+-          ".toml"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "application/toml"
+-        ],
+-        "name": "toml"
+-      },
+-      "vue": {
+-        "extensions": [
+-          ".vue"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "text/plain"
+-        ],
+-        "name": "vue"
+-      },
+-      "wasm": {
+-        "extensions": [
+-          ".wasm"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "application/wasm"
+-        ],
+-        "name": "wasm"
+-      },
+-      "wav": {
+-        "extensions": [
+-          ".wav"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "audio/wav"
+-        ],
+-        "name": "wav"
+-      },
+-      "webm": {
+-        "extensions": [
+-          ".webm"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "video/webm"
+-        ],
+-        "name": "webm"
+-      },
+-      "wheel": {
+-        "extensions": [
+-          ".whl"
+-        ],
+-        "fileFormat": "base64",
+-        "mimeTypes": [
+-          "octet/stream",
+-          "application/x-wheel+zip"
+-        ],
+-        "name": "wheel"
+-      },
+-      "xml": {
+-        "extensions": [
+-          ".xml"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "application/xml"
+-        ],
+-        "name": "xml"
+-      },
+-      "yaml": {
+-        "extensions": [
+-          ".yaml",
+-          ".yml"
+-        ],
+-        "fileFormat": "text",
+-        "mimeTypes": [
+-          "application/x-yaml"
+-        ],
+-        "name": "yaml"
+-      }
+-    },
+-    "fullLabextensionsUrl": "/praxis/assets/jupyterlite/extensions",
+-    "fullStaticUrl": "/praxis/assets/jupyterlite/build",
+-    "settingsUrl": "/praxis/assets/jupyterlite/build/schemas",
+-    "themesUrl": "/praxis/assets/jupyterlite/build/themes",
+-    "licensesUrl": "/praxis/assets/jupyterlite/lab/api/licenses",
+-    "litePluginSettings": {
+-      "@jupyterlite/pyodide-kernel-extension:kernel": {
+-        "pipliteUrls": [
+-          "/praxis/assets/jupyterlite/extensions/@jupyterlite/pyodide-kernel-extension/static/pypi/all.json?sha256=783d01f64a330ecbbd82318ba2fde8842bc8eece502b821b8c0f57cacdde5cdc"
+-        ]
+-      }
+-    }
+-  },
+-  "jupyter-lite-schema-version": 0
+-}
+\ No newline at end of file
+diff --git a/praxis/web-client/src/assets/jupyterlite/repl/jupyter-lite.gh-pages.json b/praxis/web-client/src/assets/jupyterlite/repl/jupyter-lite.gh-pages.json
+deleted file mode 100644
+index f681c55..0000000
+--- a/praxis/web-client/src/assets/jupyterlite/repl/jupyter-lite.gh-pages.json
++++ /dev/null
+@@ -1,7 +0,0 @@
+-{
+-    "jupyter-lite-schema-version": 0,
+-    "jupyter-config-data": {
+-        "settingsUrl": "/praxis/assets/jupyterlite/build/schemas",
+-        "themesUrl": "/praxis/assets/jupyterlite/build/themes"
+-    }
+-}
+\ No newline at end of file
+

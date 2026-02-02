@@ -1,0 +1,133 @@
+diff --git a/praxis/web-client/src/app/core/utils/plr-validator.spec.ts b/praxis/web-client/src/app/core/utils/plr-validator.spec.ts
+new file mode 100644
+index 0000000..34ea8d4
+--- /dev/null
++++ b/praxis/web-client/src/app/core/utils/plr-validator.spec.ts
+@@ -0,0 +1,42 @@
++import { getValidPLRClassNames, validatePLRClassName } from './plr-validator';
++import { PLR_RESOURCE_DEFINITIONS } from '@assets/browser-data/plr-definitions';
++
++describe('PLR Validator', () => {
++  describe('getValidPLRClassNames', () => {
++    it('should return a set of all valid PLR class names', () => {
++      const validClassNames = getValidPLRClassNames();
++      expect(validClassNames.size).toBeGreaterThan(0);
++      expect(validClassNames.has('Cor_96_wellplate_360ul_Fb')).toBe(true);
++      expect(validClassNames.has('HT_P_300uL_NTR_96')).toBe(true);
++      expect(validClassNames.has('PLT_CAR_L5AC_A00')).toBe(true);
++    });
++  });
++
++  describe('validatePLRClassName', () => {
++    let validClasses: Set<string>;
++
++    beforeEach(() => {
++      validClasses = getValidPLRClassNames();
++    });
++
++    it('should return true for a valid FQN', () => {
++      const fqn = 'pylabrobot.resources.corning_costar.plates.Cor_96_wellplate_360ul_Fb';
++      expect(validatePLRClassName(fqn, validClasses)).toBe(true);
++    });
++
++    it('should return false for an invalid FQN', () => {
++      const fqn = 'pylabrobot.resources.non_existent.InvalidClass';
++      expect(validatePLRClassName(fqn, validClasses)).toBe(false);
++    });
++
++    it('should return false for an empty FQN', () => {
++      const fqn = '';
++      expect(validatePLRClassName(fqn, validClasses)).toBe(false);
++    });
++
++    it('should return false for an FQN without a class name', () => {
++      const fqn = 'pylabrobot.resources.corning_costar.plates.';
++      expect(validatePLRClassName(fqn, validClasses)).toBe(false);
++    });
++  });
++});
+diff --git a/praxis/web-client/src/app/core/utils/plr-validator.ts b/praxis/web-client/src/app/core/utils/plr-validator.ts
+new file mode 100644
+index 0000000..2b16528
+--- /dev/null
++++ b/praxis/web-client/src/app/core/utils/plr-validator.ts
+@@ -0,0 +1,15 @@
++import { PLR_RESOURCE_DEFINITIONS } from '@assets/browser-data/plr-definitions';
++
++export function getValidPLRClassNames(): Set<string> {
++  const classes = new Set<string>();
++  for (const def of PLR_RESOURCE_DEFINITIONS) {
++    const className = def.fqn.split('.').pop();
++    if (className) classes.add(className);
++  }
++  return classes;
++}
++
++export function validatePLRClassName(fqn: string, validClasses: Set<string>): boolean {
++  const className = fqn.split('.').pop();
++  return className ? validClasses.has(className) : false;
++}
+diff --git a/praxis/web-client/src/app/features/run-protocol/services/execution.service.ts b/praxis/web-client/src/app/features/run-protocol/services/execution.service.ts
+index 3c0dc7b..7ca7688 100644
+--- a/praxis/web-client/src/app/features/run-protocol/services/execution.service.ts
++++ b/praxis/web-client/src/app/features/run-protocol/services/execution.service.ts
+@@ -249,7 +249,13 @@ export class ExecutionService {
+       const blob = await firstValueFrom(this.fetchProtocolBlob(protocolId));
+ 
+       // NEW: Get serialized deck setup from WizardStateService
+-      const deckSetupScript = this.wizardState.serializeToPython();
++      const deckSetupResult = this.wizardState.serializeToPython();
++      const deckSetupScript = deckSetupResult.script;
++
++      if (deckSetupResult.warnings.length > 0) {
++        this.addLog(`[Deck Setup Warnings]`);
++        deckSetupResult.warnings.forEach(w => this.addLog(`- ${w}`));
++      }
+ 
+       this.addLog(`[Browser Mode] Executing protocol binary`);
+       this.updateRunState({ progress: 20, currentStep: 'Running protocol' });
+diff --git a/praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts b/praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts
+index f93c249..4c290e1 100644
+--- a/praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts
++++ b/praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts
+@@ -4,6 +4,7 @@ import { CarrierRequirement, SlotAssignment, DeckSetupResult } from '../models/c
+ import { CarrierInferenceService } from './carrier-inference.service';
+ import { DeckCatalogService } from './deck-catalog.service';
+ import { ConsumableAssignmentService } from './consumable-assignment.service';
++import { getValidPLRClassNames, validatePLRClassName } from '@core/utils/plr-validator';
+ 
+ export type WizardStep = 'carrier-placement' | 'resource-placement' | 'verification';
+ 
+@@ -394,9 +395,11 @@ export class WizardStateService {
+      * Serialize the current deck state into a Python script.
+      * This script rebuilds the deck layout in the worker.
+      */
+-    serializeToPython(): string {
++    serializeToPython(): { script: string; warnings: string[] } {
+         const assignments = this._slotAssignments();
+         const deckType = this._deckType();
++        const warnings: string[] = [];
++        const validClasses = getValidPLRClassNames();
+ 
+         // Start building the Python script
+         let code = 'import pylabrobot.resources as res\n';
+@@ -435,6 +438,10 @@ export class WizardStateService {
+             const varName = id.replace(/[^a-zA-Z0-9_]/g, '_');
+             carrierVarNames.set(id, varName);
+ 
++            if (!validatePLRClassName(carrier.fqn, validClasses)) {
++                warnings.push(`Unknown carrier class: ${carrier.fqn}`);
++            }
++
+             // Heuristic for class name from FQN
+             const className = carrier.fqn.split('.').pop()?.toUpperCase() || 'Carrier';
+ 
+@@ -475,6 +482,6 @@ export class WizardStateService {
+         });
+ 
+         code += '    return deck\n\ndeck = setup_deck()\n';
+-        return code;
++        return { script: code, warnings };
+     }
+ }
+

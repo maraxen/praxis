@@ -1,0 +1,353 @@
+diff --git a/praxis/web-client/package-lock.json b/praxis/web-client/package-lock.json
+index 98a2335..39a655a 100644
+--- a/praxis/web-client/package-lock.json
++++ b/praxis/web-client/package-lock.json
+@@ -61,7 +61,7 @@
+         "tailwindcss": "^3.4.17",
+         "typescript": "~5.9.2",
+         "typescript-eslint": "^8.52.0",
+-        "vitest": "^4.0.8"
++        "vitest": "^4.0.18"
+       }
+     },
+     "node_modules/@acemir/cssom": {
+diff --git a/praxis/web-client/package.json b/praxis/web-client/package.json
+index fc28c24..5458ecc 100644
+--- a/praxis/web-client/package.json
++++ b/praxis/web-client/package.json
+@@ -90,6 +90,6 @@
+     "tailwindcss": "^3.4.17",
+     "typescript": "~5.9.2",
+     "typescript-eslint": "^8.52.0",
+-    "vitest": "^4.0.8"
++    "vitest": "^4.0.18"
+   }
+-}
+\ No newline at end of file
++}
+diff --git a/praxis/web-client/src/app/app.ts b/praxis/web-client/src/app/app.ts
+index 7bca0a2..32ce737 100644
+--- a/praxis/web-client/src/app/app.ts
++++ b/praxis/web-client/src/app/app.ts
+@@ -1,11 +1,14 @@
+ import { Component, signal, inject } from '@angular/core';
+-import { RouterOutlet } from '@angular/router';
++import { Router, RouterOutlet } from '@angular/router';
++import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+ import { SqliteService } from './core/services/sqlite';
+ import { ApiConfigService } from './core/services/api-config.service';
++import { SessionRecoveryService } from './core/services/session-recovery.service';
++import { SessionRecoveryDialogComponent } from './core/components/session-recovery-dialog/session-recovery-dialog.component';
+ 
+ @Component({
+   selector: 'app-root',
+-  imports: [RouterOutlet],
++  imports: [RouterOutlet, MatDialogModule, SessionRecoveryDialogComponent],
+   templateUrl: './app.html',
+   styleUrl: './app.scss',
+   host: {
+@@ -15,12 +18,35 @@ import { ApiConfigService } from './core/services/api-config.service';
+ export class App {
+   protected readonly title = signal('web-client');
+   private apiConfig = inject(ApiConfigService);
++  private sessionRecovery = inject(SessionRecoveryService);
++  private dialog = inject(MatDialog);
++  private router = inject(Router);
+ 
+   constructor(protected sqlite: SqliteService) {
+     // Initialize API client configuration
+     this.apiConfig.initialize();
+ 
+-    // Expose for E2E testing (legacy - use data-sqlite-ready attribute instead)
++    // Expose for E-E testing (legacy - use data-sqlite-ready attribute instead)
+     (window as any).sqliteService = this.sqlite;
++
++    this.sessionRecovery.checkForOrphanedRuns().subscribe(orphanedRuns => {
++      if (orphanedRuns.length > 0) {
++        // For simplicity, we'll only handle the first orphaned run.
++        const orphanedRun = orphanedRuns[0];
++        const dialogRef = this.dialog.open(SessionRecoveryDialogComponent, {
++          data: { orphanedRun },
++          disableClose: true
++        });
++
++        dialogRef.afterClosed().subscribe(result => {
++          if (result === 'resume') {
++            this.sessionRecovery.resumeRun(orphanedRun.accession_id);
++            this.router.navigate(['/run', orphanedRun.accession_id]);
++          } else if (result === 'fail') {
++            this.sessionRecovery.markRunAsFailed(orphanedRun.accession_id).subscribe();
++          }
++        });
++      }
++    });
+   }
+ }
+diff --git a/praxis/web-client/src/app/core/components/session-recovery-dialog/session-recovery-dialog.component.html b/praxis/web-client/src/app/core/components/session-recovery-dialog/session-recovery-dialog.component.html
+new file mode 100644
+index 0000000..5397ace
+--- /dev/null
++++ b/praxis/web-client/src/app/core/components/session-recovery-dialog/session-recovery-dialog.component.html
+@@ -0,0 +1,10 @@
++<h1 mat-dialog-title>Session Recovery</h1>
++<div mat-dialog-content>
++  <p>An incomplete protocol run was found: <strong>{{ data.orphanedRun.name }}</strong></p>
++  <p>Would you like to resume, mark as failed, or dismiss?</p>
++</div>
++<div mat-dialog-actions>
++  <button mat-button (click)="onDismiss()">Dismiss</button>
++  <button mat-button (click)="onMarkAsFailed()">Mark as Failed</button>
++  <button mat-button color="primary" (click)="onResume()">Resume</button>
++</div>
+diff --git a/praxis/web-client/src/app/core/components/session-recovery-dialog/session-recovery-dialog.component.scss b/praxis/web-client/src/app/core/components/session-recovery-dialog/session-recovery-dialog.component.scss
+new file mode 100644
+index 0000000..e69de29
+diff --git a/praxis/web-client/src/app/core/components/session-recovery-dialog/session-recovery-dialog.component.ts b/praxis/web-client/src/app/core/components/session-recovery-dialog/session-recovery-dialog.component.ts
+new file mode 100644
+index 0000000..877d6d3
+--- /dev/null
++++ b/praxis/web-client/src/app/core/components/session-recovery-dialog/session-recovery-dialog.component.ts
+@@ -0,0 +1,27 @@
++import { Component, Inject } from '@angular/core';
++import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
++import { ProtocolRun } from '@core/db/schema';
++
++@Component({
++  selector: 'app-session-recovery-dialog',
++  templateUrl: './session-recovery-dialog.component.html',
++  styleUrls: ['./session-recovery-dialog.component.scss']
++})
++export class SessionRecoveryDialogComponent {
++  constructor(
++    public dialogRef: MatDialogRef<SessionRecoveryDialogComponent>,
++    @Inject(MAT_DIALOG_DATA) public data: { orphanedRun: ProtocolRun }
++  ) {}
++
++  onResume(): void {
++    this.dialogRef.close('resume');
++  }
++
++  onMarkAsFailed(): void {
++    this.dialogRef.close('fail');
++  }
++
++  onDismiss(): void {
++    this.dialogRef.close('dismiss');
++  }
++}
+diff --git a/praxis/web-client/src/app/core/services/session-recovery.service.spec.ts b/praxis/web-client/src/app/core/services/session-recovery.service.spec.ts
+new file mode 100644
+index 0000000..279ce03
+--- /dev/null
++++ b/praxis/web-client/src/app/core/services/session-recovery.service.spec.ts
+@@ -0,0 +1,56 @@
++import { TestBed } from '@angular/core/testing';
++import { SessionRecoveryService } from './session-recovery.service';
++import { SqliteService } from './sqlite';
++import { of } from 'rxjs';
++import { vi, Mock } from 'vitest';
++
++describe('SessionRecoveryService', () => {
++  let service: SessionRecoveryService;
++  let sqliteServiceMock: any;
++
++  beforeEach(() => {
++    const protocolRunsRepoMock = {
++      findBy: vi.fn()
++    };
++
++    sqliteServiceMock = {
++      protocolRuns: of(protocolRunsRepoMock)
++    };
++
++    TestBed.configureTestingModule({
++      providers: [
++        SessionRecoveryService,
++        { provide: SqliteService, useValue: sqliteServiceMock }
++      ]
++    });
++
++    service = TestBed.inject(SessionRecoveryService);
++  });
++
++  it('should be created', () => {
++    expect(service).toBeTruthy();
++  });
++
++  it('should detect orphaned runs', async () => {
++    const now = Date.now();
++    const freshRun = { name: 'Fresh Run', properties_json: { lastHeartbeat: now - 10000 } };
++    const staleRun = { name: 'Stale Run', properties_json: { lastHeartbeat: now - 40000 } };
++    const noHeartbeatRun = { name: 'No Heartbeat Run', properties_json: {} };
++
++    const mockRuns = [freshRun, staleRun, noHeartbeatRun];
++
++    sqliteServiceMock.protocolRuns.subscribe(repo => {
++        (repo.findBy as Mock).mockReturnValue(of(mockRuns));
++    });
++
++    const orphanedRuns = await new Promise<any[]>(resolve => {
++      service.checkForOrphanedRuns().subscribe(runs => {
++        resolve(runs);
++      });
++    });
++
++    expect(orphanedRuns.length).toBe(2);
++    expect(orphanedRuns[0].name).toBe('Stale Run');
++    expect(orphanedRuns[1].name).toBe('No Heartbeat Run');
++  });
++});
+diff --git a/praxis/web-client/src/app/core/services/session-recovery.service.ts b/praxis/web-client/src/app/core/services/session-recovery.service.ts
+new file mode 100644
+index 0000000..d8270e7
+--- /dev/null
++++ b/praxis/web-client/src/app/core/services/session-recovery.service.ts
+@@ -0,0 +1,63 @@
++import { Injectable, inject } from '@angular/core';
++import { SqliteService } from '@core/services/sqlite';
++import { ProtocolRun } from '@core/db/schema';
++import { ProtocolRunStatusValues } from '@core/db/enums';
++import { map, switchMap } from 'rxjs/operators';
++import { Observable, of } from 'rxjs';
++
++export type OrphanedRun = ProtocolRun;
++
++@Injectable({ providedIn: 'root' })
++export class SessionRecoveryService {
++  private sqliteService = inject(SqliteService);
++
++  constructor() {}
++
++  /**
++   * Marks a protocol run as failed.
++   */
++  markRunAsFailed(runId: string): Observable<void> {
++    return this.sqliteService.protocolRuns.pipe(
++      switchMap(repo => repo.update(runId, { status: ProtocolRunStatusValues.FAILED } as any)),
++      map(() => {})
++    );
++  }
++
++  /**
++   * Resumes a protocol run.
++   */
++  resumeRun(runId: string): void {
++    // For now, this will just navigate to the run page.
++    // A full resume would require re-initializing the execution context.
++    console.log(`Resuming run ${runId}`);
++  }
++
++  /**
++   * Checks for orphaned protocol runs.
++   * An orphaned run is one that is in a running, pausing, or resuming state
++   * and has not had a heartbeat in the last 30 seconds.
++   */
++  checkForOrphanedRuns(): Observable<OrphanedRun[]> {
++    const activeStatuses = [
++      ProtocolRunStatusValues.RUNNING,
++      ProtocolRunStatusValues.PAUSING,
++      ProtocolRunStatusValues.RESUMING,
++    ];
++
++    return this.sqliteService.protocolRuns.pipe(
++      switchMap(repo => repo.findBy({ status: activeStatuses } as any)),
++      map(activeRuns => {
++        const orphaned: OrphanedRun[] = [];
++        const staleThreshold = Date.now() - 30000; // 30 seconds
++
++        for (const run of activeRuns) {
++          const lastHeartbeat = (run.properties_json as any)?.lastHeartbeat ?? 0;
++          if (lastHeartbeat < staleThreshold) {
++            orphaned.push(run);
++          }
++        }
++        return orphaned;
++      })
++    );
++  }
++}
+diff --git a/praxis/web-client/src/app/features/run-protocol/services/execution.service.ts b/praxis/web-client/src/app/features/run-protocol/services/execution.service.ts
+index 3c0dc7b..3897022 100644
+--- a/praxis/web-client/src/app/features/run-protocol/services/execution.service.ts
++++ b/praxis/web-client/src/app/features/run-protocol/services/execution.service.ts
+@@ -33,6 +33,8 @@ export class ExecutionService {
+   private socket$: WebSocketSubject<any> | null = null;
+   private messagesSubject = new Subject<ExecutionMessage>();
+ 
++  private heartbeatInterval?: ReturnType<typeof setInterval>;
++
+   // Use signals for reactive state
+   private _currentRun = signal<ExecutionState | null>(null);
+   private _isConnected = signal<boolean>(false);
+@@ -141,6 +143,7 @@ export class ExecutionService {
+           logs: []
+         });
+         this.connectWebSocket(response.run_id);
++        this.startHeartbeat(response.run_id);
+       })
+     );
+   }
+@@ -196,6 +199,7 @@ export class ExecutionService {
+ 
+     // Execute asynchronously
+     this.executeBrowserProtocol(protocolId, runId, parameters);
++    this.startHeartbeat(runId);
+ 
+     return of({ run_id: runId });
+   }
+@@ -639,6 +643,46 @@ print(f"[Browser] Protocol finished with result: {result}")
+       this.socket$ = null;
+     }
+     this._isConnected.set(false);
++    this.stopHeartbeat();
++  }
++
++  /**
++   * Start sending heartbeats for the given run ID.
++   */
++  private startHeartbeat(runId: string): void {
++    if (this.heartbeatInterval) {
++      clearInterval(this.heartbeatInterval);
++    }
++
++    this.heartbeatInterval = setInterval(() => {
++      this.sqliteService.protocolRuns.pipe(
++        switchMap(repo => repo.findById(runId)),
++        switchMap(run => {
++          if (!run) {
++            return of(null);
++          }
++          const updatedProperties = {
++            ...run.properties_json,
++            lastHeartbeat: Date.now()
++          };
++          return this.sqliteService.protocolRuns.pipe(
++            switchMap(repo => repo.update(runId, { properties_json: updatedProperties } as any))
++          );
++        })
++      ).subscribe({
++        error: (err) => console.warn('[ExecutionService] Failed to send heartbeat:', err)
++      });
++    }, 5000);
++  }
++
++  /**
++   * Stop sending heartbeats.
++   */
++  private stopHeartbeat(): void {
++    if (this.heartbeatInterval) {
++      clearInterval(this.heartbeatInterval);
++      this.heartbeatInterval = undefined;
++    }
+   }
+ 
+   /**
+@@ -648,6 +692,7 @@ print(f"[Browser] Protocol finished with result: {result}")
+     this._currentRun.set(null);
+     this.lastSavedState = null;
+     this.disconnect();
++    this.stopHeartbeat();
+   }
+ 
+   /**
+

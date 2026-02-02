@@ -1,0 +1,54 @@
+diff --git a/praxis/web-client/src/app/core/services/hardware-discovery.service.ts b/praxis/web-client/src/app/core/services/hardware-discovery.service.ts
+index 053abba..f3cae4b 100644
+--- a/praxis/web-client/src/app/core/services/hardware-discovery.service.ts
++++ b/praxis/web-client/src/app/core/services/hardware-discovery.service.ts
+@@ -82,6 +82,11 @@ const HAMILTON_CONFIG_SCHEMA: Record<string, ConfigurationField> = {
+ };
+ 
+ // Known USB Vendor/Product IDs for lab equipment
++// To add a new device, find its VID/PID pair and add an entry below.
++// A good resource for finding VID/PID values is the USB ID Database: https://usb-ids.gowdy.us/
++// Note: Several backends are still missing VID/PID values (e.g., Tecan, Inheco, Agilent).
++// To find these values, connect the device and observe the "Unknown device detected"
++// message in the console, which will contain the VID/PID pair.
+ const KNOWN_DEVICES: Record<string, { manufacturer: string; model: string; plrBackend: string; configSchema?: Record<string, ConfigurationField> }> = {
+     // Hamilton devices
+     '0x08BB:0x0106': {
+@@ -130,6 +135,12 @@ const KNOWN_DEVICES: Record<string, { manufacturer: string; model: string; plrBa
+     '0x1A86:0x7523': { manufacturer: 'Generic', model: 'USB-Serial (CH340)', plrBackend: '' },
+     '0x0403:0x6001': { manufacturer: 'FTDI', model: 'USB-Serial (FT232)', plrBackend: '' },
+     '0x067B:0x2303': { manufacturer: 'Prolific', model: 'USB-Serial (PL2303)', plrBackend: '' },
++
++    // Tecan devices
++    '0x0C47:0x4000': { manufacturer: 'Tecan', model: 'EVO', plrBackend: 'pylabrobot.liquid_handling.backends.tecan.EVO' },
++
++    // Inheco devices
++    '0x03EB:0x2023': { manufacturer: 'Inheco', model: 'InhecoTEC', plrBackend: 'pylabrobot.heating_shaking.backends.inheco.InhecoTEC' },
+ };
+ 
+ import { HardwareService } from '../api-generated/services/HardwareService';
+@@ -269,6 +280,11 @@ export class HardwareDiscoveryService {
+         const info = port.getInfo();
+         const deviceKey = this.formatDeviceKey(info.usbVendorId, info.usbProductId);
+         const knownDevice = KNOWN_DEVICES[deviceKey];
++
++        if (!knownDevice) {
++            console.info(`Unknown device detected (Serial): ${deviceKey}. Consider adding to KNOWN_DEVICES table.`);
++        }
++
+         const backendDef = this.inferBackendDefinition(knownDevice?.plrBackend);
+         const plrDef = backendDef ? PLR_MACHINE_DEFINITIONS.find(m => m.fqn === backendDef.fqn) : undefined;
+ 
+@@ -300,6 +316,11 @@ export class HardwareDiscoveryService {
+     private createDeviceFromUSB(usbDevice: USBDevice, id: string): DiscoveredDevice {
+         const deviceKey = this.formatDeviceKey(usbDevice.vendorId, usbDevice.productId);
+         const knownDevice = KNOWN_DEVICES[deviceKey];
++
++        if (!knownDevice) {
++            console.info(`Unknown device detected (USB): ${deviceKey}. Consider adding to KNOWN_DEVICES table.`);
++        }
++
+         const backendDef = this.inferBackendDefinition(knownDevice?.plrBackend);
+         const plrDef = backendDef ? PLR_MACHINE_DEFINITIONS.find(m => m.fqn === backendDef.fqn) : undefined;
+ 
+

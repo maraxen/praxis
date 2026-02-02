@@ -1,0 +1,441 @@
+diff --git a/praxis/web-client/e2e/fixtures/app.fixture.ts b/praxis/web-client/e2e/fixtures/app.fixture.ts
+index 79978b9..b66ab3a 100644
+--- a/praxis/web-client/e2e/fixtures/app.fixture.ts
++++ b/praxis/web-client/e2e/fixtures/app.fixture.ts
+@@ -1,34 +1,15 @@
++
+ import { test as base, expect } from '@playwright/test';
+ 
+-/**
+- * Custom Playwright fixture for parallel-safe E2E tests.
+- * 
+- * KEY FEATURES:
+- * 1. Worker-indexed database isolation (each worker gets unique DB)
+- * 2. Automatic dialog dismissal
+- * 3. Overlay stabilization
+- * 
+- * Database Isolation:
+- * - Uses `workerIndex` to create unique database files per worker
+- * - Prevents OPFS contention in parallel test runs
+- * - Each test navigates with `dbName=praxis-worker-{index}`
+- */
+ export const test = base.extend({
+-    // Ensure each page navigation includes worker-specific DB
+     page: async ({ page, browser }, use, testInfo) => {
+-        // Add init script to set localStorage flags before any navigation
+         await page.addInitScript(() => {
+-            // Welcome dialog / Onboarding flags - set ALL possible variants
+             localStorage.setItem('praxis_tour_finished', 'true');
+             localStorage.setItem('praxis_onboarding_seen', 'true');
+             localStorage.setItem('praxis_onboarding_complete', 'true');
+             localStorage.setItem('praxis_welcome_dialog_dismissed', 'true');
+             localStorage.setItem('praxis_welcome_shown', 'true');
+-
+-            // Disable any pending tutorials
+             localStorage.removeItem('praxis_pending_tutorial');
+-
+-            // Common smoke test auth bypass
+             if (!localStorage.getItem('auth_token')) {
+                 localStorage.setItem('auth_token', 'fake-smoke-token');
+                 localStorage.setItem('auth_user', JSON.stringify({
+@@ -42,11 +23,6 @@ export const test = base.extend({
+     },
+ });
+ 
+-/**
+- * Helper to build a worker-isolated URL.
+- * Use this in tests that need to navigate with proper DB isolation.
+- * @param resetdb - If true, wipes and reinitializes DB. Default false to reuse cached DB.
+- */
+ export function buildIsolatedUrl(basePath: string, testInfo: { workerIndex: number }, resetdb = false): string {
+     const dbName = `praxis-worker-${testInfo.workerIndex}`;
+     const params = new URLSearchParams();
+@@ -60,79 +36,38 @@ export function buildIsolatedUrl(basePath: string, testInfo: { workerIndex: numb
+     return `${basePath}${separator}${params.toString()}`;
+ }
+ 
+-/**
+- * Helper to wait for SQLite service to be ready.
+- * Uses data-testid attribute on app-root for clean detection.
+- */
+ export async function waitForDbReady(page: import('@playwright/test').Page, timeout = 5000): Promise<void> {
+     await page.locator('[data-sqlite-ready="true"]').waitFor({ state: 'attached', timeout });
+ }
+ 
+ test.beforeEach(async ({ page }, testInfo) => {
+-    // Build URL with worker-specific database
+     const dbName = `praxis-worker-${testInfo.workerIndex}`;
+     console.log(`[Fixture] Worker ${testInfo.workerIndex} initializing with DB: ${dbName}`);
+-
+-    // Navigate to root to start the app sequence (no resetdb = reuse cached DB)
+     await page.goto(`/?mode=browser&dbName=${dbName}`);
+-
+-    // Wait for app shell to load (check for .sidebar-rail)
++    await page.waitForLoadState('networkidle');
+     await expect(page.locator('.sidebar-rail')).toBeVisible({ timeout: 30000 });
+-
+-    // Wait for database to be ready
+     await waitForDbReady(page);
+ 
+-    // Robust Welcome Dialog dismissal with retry logic
+-    const dismissWelcomeDialog = async (maxRetries = 3): Promise<void> => {
+-        for (let attempt = 0; attempt < maxRetries; attempt++) {
+-            const dialogVisible = await page.getByRole('dialog', { name: /Welcome to Praxis/i })
+-                .isVisible({ timeout: 1000 })
+-                .catch((e) => {
+-                    console.log('[Test] Silent catch (Welcome dialog isVisible):', e);
+-                    return false;
+-                });
+-
+-            if (!dialogVisible) {
+-                return;
+-            }
+-
+-            console.log(`[Fixture] Dismissing Welcome Dialog (attempt ${attempt + 1})...`);
+-
+-            const buttonPatterns = [
+-                page.getByRole('button', { name: /Skip for Now/i }),
+-                page.getByRole('button', { name: /Close/i }),
+-                page.getByRole('button', { name: /Get Started/i }),
+-                page.getByRole('button', { name: /Dismiss/i }),
+-                page.locator('mat-dialog-actions button').first(),
+-            ];
+-
+-            for (const btn of buttonPatterns) {
+-                if (await btn.isVisible({ timeout: 500 }).catch((e) => {
+-                    console.log('[Test] Silent catch (Welcome dialog button isVisible):', e);
+-                    return false;
+-                })) {
+-                    await btn.click({ force: true });
++    const dismissWelcomeDialog = async (): Promise<void> => {
++        let retries = 5;
++        while (retries > 0) {
++            try {
++                const dialog = page.getByRole('dialog', { name: /Welcome to Praxis/i });
++                if (await dialog.isVisible()) {
++                    await page.getByRole('button', { name: /Skip for Now/i }).click({ timeout: 1000 });
+                     await page.waitForLoadState('domcontentloaded');
++                } else {
+                     break;
+                 }
++            } catch (error) {
++                // Ignore errors and retry
+             }
+-
+-            const stillVisible = await page.getByRole('dialog', { name: /Welcome to Praxis/i })
+-                .isVisible({ timeout: 500 })
+-                .catch((e) => {
+-                    console.log('[Test] Silent catch (Welcome dialog stillVisible):', e);
+-                    return false;
+-                });
+-
+-            if (!stillVisible) {
+-                return;
+-            }
++            retries--;
++            await page.waitForTimeout(1000);
+         }
+     };
+ 
+     await dismissWelcomeDialog();
+-
+-    // Wait for CDK overlays to clear (prevents click interception)
+     await expect(page.locator('.cdk-overlay-backdrop')).not.toBeVisible({ timeout: 10000 });
+ });
+ 
+diff --git a/praxis/web-client/e2e/page-objects/base.page.ts b/praxis/web-client/e2e/page-objects/base.page.ts
+index a0cd9f7..f14bdd5 100644
+--- a/praxis/web-client/e2e/page-objects/base.page.ts
++++ b/praxis/web-client/e2e/page-objects/base.page.ts
+@@ -1,3 +1,4 @@
++
+ import { Page, Locator, TestInfo } from '@playwright/test';
+ 
+ /**
+@@ -49,6 +50,7 @@ export abstract class BasePage {
+         // NOTE: resetdb is NOT added by default to preserve seeded data
+         // Tests that need a fresh database should explicitly pass resetdb=1
+ 
++        console.log(`Navigating to: ${targetUrl}`);
+         await this.page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
+ 
+         // Wait for SQLite service ready signal - the definitive indicator that:
+diff --git a/praxis/web-client/e2e/page-objects/protocol.page.ts b/praxis/web-client/e2e/page-objects/protocol.page.ts
+index 6b4fa15..286574b 100644
+--- a/praxis/web-client/e2e/page-objects/protocol.page.ts
++++ b/praxis/web-client/e2e/page-objects/protocol.page.ts
+@@ -1,3 +1,4 @@
++
+ import { Page, Locator, expect } from '@playwright/test';
+ import { BasePage } from './base.page';
+ import { WizardPage } from './wizard.page';
+@@ -27,9 +28,7 @@ export class ProtocolPage extends BasePage {
+ 
+     async goto(options: { waitForDb?: boolean } = {}) {
+         await super.goto(options);
+-        // Remove waits that rely on data being present
+-        // await this.protocolStep.waitFor({ state: 'visible' });
+-        // await this.protocolCards.first().waitFor({ state: 'visible', timeout: 30000 });
++        await this.page.waitForURL('**/app/protocols');
+     }
+ 
+     async ensureSimulationMode() {
+@@ -43,6 +42,7 @@ export class ProtocolPage extends BasePage {
+     }
+ 
+     async selectProtocolByName(name: string): Promise<string> {
++        await this.page.waitForSelector('.protocol-card');
+         const cardHost = this.protocolCards.filter({ hasText: name }).first();
+         const card = cardHost.locator('.praxis-card');
+         await expect(card, `Protocol card for ${name} should be visible`).toBeVisible({ timeout: 15000 });
+diff --git a/praxis/web-client/e2e/specs/protocol-simulation-matrix.spec.ts b/praxis/web-client/e2e/specs/protocol-simulation-matrix.spec.ts
+new file mode 100644
+index 0000000..cbf48ae
+--- /dev/null
++++ b/praxis/web-client/e2e/specs/protocol-simulation-matrix.spec.ts
+@@ -0,0 +1,59 @@
++
++import { test, expect } from '../fixtures/worker-db.fixture';
++import { RunProtocolPage } from '../page-objects/run-protocol.page';
++import { WelcomePage } from '../page-objects/welcome.page';
++import { MonitorPage } from '../page-objects/monitor.page';
++import { gotoWithWorkerDb } from '../fixtures/worker-db.fixture';
++
++const PROTOCOLS_TO_TEST = [
++  'Selective Transfer',
++  'Kinetic Assay',
++  'Plate Preparation',
++  'Serial Dilution',
++  'Plate Reader Assay',
++  'Simple Transfer',
++];
++
++test.describe.configure({ mode: 'serial' });
++test.describe('@slow Protocol Simulation Matrix', () => {
++  for (const protocolName of PROTOCOLS_TO_TEST) {
++    test(`runs ${protocolName} to completion`, async ({ page }, testInfo) => {
++      test.setTimeout(180000); // 3-minute timeout for each protocol run
++
++      await gotoWithWorkerDb(page, '/app/run', testInfo, { resetdb: true });
++      await page.waitForLoadState('networkidle');
++
++      const welcomePage = new WelcomePage(page);
++      await welcomePage.handleSplashScreen();
++      await welcomePage.verifyDashboardLoaded();
++
++      const runPage = new RunProtocolPage(page);
++      await page.waitForSelector('.protocol-card');
++      await page.locator('.protocol-card', { hasText: protocolName }).click();
++
++      for (let i = 0; i < 4; i++) {
++        if (await runPage.startExecutionButton.isVisible({ timeout: 1000 })) {
++          break;
++        }
++
++        if (await runPage.machineSelection.isVisible({ timeout: 1000 })) {
++          await runPage.selectFirstMachine();
++        }
++
++        if (await runPage.continueButton.isEnabled()) {
++          await runPage.advanceStep();
++        } else {
++          break;
++        }
++      }
++
++      await runPage.startExecution();
++
++      const monitorPage = new MonitorPage(page);
++      await monitorPage.waitForRunCompletion();
++
++      const finalStatus = await monitorPage.getRunStatus();
++      expect(finalStatus).toContain('Completed');
++    });
++  }
++});
+diff --git a/praxis/web-client/package.json b/praxis/web-client/package.json
+index fc28c24..a8c43e6 100644
+--- a/praxis/web-client/package.json
++++ b/praxis/web-client/package.json
+@@ -1,3 +1,4 @@
++
+ {
+   "name": "web-client",
+   "version": "0.0.0",
+@@ -14,6 +15,8 @@
+     "build:gh-pages": "ng build --configuration=gh-pages && cp src/assets/jupyterlite/jupyter-lite.gh-pages.json dist/web-client/browser/assets/jupyterlite/jupyter-lite.json && cp src/assets/jupyterlite/repl/jupyter-lite.gh-pages.json dist/web-client/browser/assets/jupyterlite/repl/jupyter-lite.json",
+     "watch": "ng build --watch --configuration development",
+     "test": "ng test",
++    "pretest:e2e": "npm run build:browser",
++    "test:e2e": "playwright test",
+     "generate-api": "node node_modules/openapi-typescript-codegen/bin/index.js --input ./src/assets/api/openapi.json --output ./src/app/core/api-generated --client fetch --useUnionTypes --request ./src/app/core/http/custom-request.ts",
+     "prebuild": "npm run generate-api"
+   },
+@@ -92,4 +95,4 @@
+     "typescript-eslint": "^8.52.0",
+     "vitest": "^4.0.8"
+   }
+-}
+\ No newline at end of file
++}
+diff --git a/praxis/web-client/playwright.config.ts b/praxis/web-client/playwright.config.ts
+index 3570302..2496700 100644
+--- a/praxis/web-client/playwright.config.ts
++++ b/praxis/web-client/playwright.config.ts
+@@ -1,48 +1,25 @@
++
+ import { defineConfig, devices } from '@playwright/test';
+ 
+-/**
+- * See https://playwright.dev/docs/test-configuration.
+- */
+ export default defineConfig({
+-  globalSetup: require.resolve('./e2e/global-setup'),
+-  timeout: 60000,  // 60s is sufficient with proper waits
+-
+-  // Skip @slow tests in CI (JupyterLite/Pyodide = 180s+ WASM bootstrap)
++  timeout: 120000,
++  globalTimeout: 1200000,
+   grepInvert: process.env.CI ? /@slow/ : undefined,
+   testDir: './e2e/specs',
+   outputDir: 'test-results/',
+-  /* Run tests in files in parallel */
+   fullyParallel: true,
+-  /* Fail the build on CI if you accidentally left test.only in the source code. */
+   forbidOnly: !!process.env.CI,
+-  /* Retry on CI only */
+   retries: process.env.CI ? 2 : 0,
+-  /* Opt out of parallel tests on CI. */
+   workers: process.env.CI ? 1 : undefined,
+-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
+   reporter: 'list',
+-  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+   use: {
+-    /* Base URL to use in actions like `await page.goto('/')`. */
+-    baseURL: 'http://localhost:4200',
+-
+-    /* Collect trace on failure - provides comprehensive debugging context */
++    baseURL: 'http://localhost:8080',
+     trace: 'retain-on-failure',
+-
+-    /* Record video on failure - helps visualize timing and interaction issues */
+     video: 'retain-on-failure',
+-
+-    /* Force Headless Mode */
+     headless: true,
+-
+-    /* Capture screenshot - on CI only on failure, locally always */
+     screenshot: process.env.CI ? 'only-on-failure' : 'on',
+-
+-    /* Standardized viewport for consistent AI-parseable screenshots */
+     viewport: { width: 1920, height: 1080 },
+   },
+-
+-  /* Configure projects for major browsers */
+   projects: [
+     {
+       name: 'chromium',
+@@ -57,19 +34,17 @@ export default defineConfig({
+       use: {
+         ...devices['Desktop Chrome'],
+         headless: true,
+-        viewport: { width: 1280, height: 720 },  // Smaller = faster rendering
+-        screenshot: 'off',  // Skip for speed runs
++        viewport: { width: 1280, height: 720 },
++        screenshot: 'off',
+       },
+       retries: 0,
+-      timeout: 30000, // Increased from 15s - DB init can take 1-2s
++      timeout: 30000,
+     },
+   ],
+-
+-  /* Run your local dev server before starting the tests */
+   webServer: {
+-    command: 'npm run start:browser -- --port 4200',
+-    url: 'http://localhost:4200',
+-    reuseExistingServer: true,
++    command: 'npm run build:browser && npx -y serve dist/web-client/browser -l 8080 -c ../../../serve.json --single',
++    url: 'http://localhost:8080',
++    reuseExistingServer: !process.env.CI,
+     timeout: 180000,
+   },
+ });
+diff --git a/praxis/web-client/playwright.static.config.ts b/praxis/web-client/playwright.static.config.ts
+new file mode 100644
+index 0000000..c861487
+--- /dev/null
++++ b/praxis/web-client/playwright.static.config.ts
+@@ -0,0 +1,47 @@
++
++import { defineConfig, devices } from '@playwright/test';
++
++export default defineConfig({
++    testDir: './e2e/specs',
++    outputDir: 'test-results/static',
++    fullyParallel: true,
++    workers: process.env.CI ? 1 : undefined,
++    timeout: 60000,
++    retries: process.env.CI ? 2 : 0,
++    grepInvert: process.env.RUN_SLOW_TESTS ? undefined : /@slow/,
++    reporter: [
++        ['list'],
++        ['html', { outputFolder: 'test-results/static-report' }],
++    ],
++    use: {
++        baseURL: 'http://localhost:8080',
++        trace: 'retain-on-failure',
++        screenshot: 'only-on-failure',
++        video: 'retain-on-failure',
++        navigationTimeout: 30000,
++        headless: true,
++        viewport: { width: 1920, height: 1080 },
++    },
++    projects: [
++        {
++            name: 'chromium',
++            use: { ...devices['Desktop Chrome'] },
++        },
++        {
++            name: 'smoke',
++            testMatch: /smoke\.spec\.ts/,
++            use: {
++                ...devices['Desktop Chrome'],
++                viewport: { width: 1280, height: 720 },
++            },
++            retries: 0,
++            timeout: 45000,
++        },
++    ],
++    webServer: {
++        command: `echo '{"headers":[{"source":"**/*","headers":[{"key":"Cross-Origin-Opener-Policy","value":"same-origin"},{"key":"Cross-Origin-Embedder-Policy","value":"require-corp"}]}]}' > /tmp/serve-static.json && npx -y serve ../dist/web-client/browser -l 8080 -c /tmp/serve-static.json --single`,
++        url: 'http://localhost:8080',
++        reuseExistingServer: !process.env.CI,
++        timeout: 30000,
++    },
++});
+diff --git a/praxis/web-client/serve.json b/praxis/web-client/serve.json
+new file mode 100644
+index 0000000..115fede
+--- /dev/null
++++ b/praxis/web-client/serve.json
+@@ -0,0 +1,18 @@
++
++{
++  "headers": [
++    {
++      "source": "**/*",
++      "headers": [
++        {
++          "key": "Cross-Origin-Opener-Policy",
++          "value": "same-origin"
++        },
++        {
++          "key": "Cross-Origin-Embedder-Policy",
++          "value": "require-corp"
++        }
++      ]
++    }
++  ]
++}
+

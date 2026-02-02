@@ -1,0 +1,184 @@
+diff --git a/praxis/web-client/src/app/core/utils/plr-validator.spec.ts b/praxis/web-client/src/app/core/utils/plr-validator.spec.ts
+new file mode 100644
+index 0000000..d749080
+--- /dev/null
++++ b/praxis/web-client/src/app/core/utils/plr-validator.spec.ts
+@@ -0,0 +1,28 @@
++import { isValidPLRClassName } from './plr-validator';
++
++describe('PLR Validator', () => {
++  it('should return true for a valid PLR class FQN', () => {
++    const fqn = 'pylabrobot.resources.corning_costar.plates.Cor_96_wellplate_360ul_Fb';
++    expect(isValidPLRClassName(fqn)).toBe(true);
++  });
++
++  it('should return true for a valid PLR class FQN (uppercase)', () => {
++    const fqn = 'pylabrobot.resources.hamilton.carriers.PLT_CAR_L5AC_A00';
++    expect(isValidPLRClassName(fqn)).toBe(true);
++  });
++
++  it('should return false for an invalid PLR class FQN', () => {
++    const fqn = 'pylabrobot.resources.non_existent.InvalidClass';
++    expect(isValidPLRClassName(fqn)).toBe(false);
++  });
++
++  it('should return false for an FQN without a class name', () => {
++    const fqn = 'pylabrobot.resources';
++    expect(isValidPLRClassName(fqn)).toBe(false);
++  });
++
++  it('should be case-insensitive', () => {
++    const fqn = 'pylabrobot.resources.corning_costar.plates.cor_96_wellplate_360ul_fb';
++    expect(isValidPLRClassName(fqn)).toBe(true);
++  });
++});
+diff --git a/praxis/web-client/src/app/core/utils/plr-validator.ts b/praxis/web-client/src/app/core/utils/plr-validator.ts
+new file mode 100644
+index 0000000..39c652d
+--- /dev/null
++++ b/praxis/web-client/src/app/core/utils/plr-validator.ts
+@@ -0,0 +1,27 @@
++import { PLR_RESOURCE_DEFINITIONS } from '@assets/browser-data/plr-definitions';
++
++let validPLRClassNamesCache: Set<string> | null = null;
++
++function getValidPLRClassNames(): Set<string> {
++  if (validPLRClassNamesCache) {
++    return validPLRClassNamesCache;
++  }
++
++  const classes = new Set<string>();
++  for (const def of PLR_RESOURCE_DEFINITIONS) {
++    const className = def.fqn.split('.').pop();
++    if (className) {
++      classes.add(className.toUpperCase());
++    }
++  }
++  validPLRClassNamesCache = classes;
++  return classes;
++}
++
++export function isValidPLRClassName(fqn: string): boolean {
++  const className = fqn.split('.').pop()?.toUpperCase();
++  if (!className) {
++    return false;
++  }
++  return getValidPLRClassNames().has(className);
++}
+diff --git a/praxis/web-client/src/app/features/run-protocol/services/execution.service.ts b/praxis/web-client/src/app/features/run-protocol/services/execution.service.ts
+index 3c0dc7b..a47d16e 100644
+--- a/praxis/web-client/src/app/features/run-protocol/services/execution.service.ts
++++ b/praxis/web-client/src/app/features/run-protocol/services/execution.service.ts
+@@ -249,7 +249,12 @@ export class ExecutionService {
+       const blob = await firstValueFrom(this.fetchProtocolBlob(protocolId));
+ 
+       // NEW: Get serialized deck setup from WizardStateService
+-      const deckSetupScript = this.wizardState.serializeToPython();
++      const { script: deckSetupScript, warnings } = this.wizardState.serializeToPython();
++
++      if (warnings.length > 0) {
++        this.addLog(`[Deck Setup] Warnings:`);
++        warnings.forEach(w => this.addLog(`- ${w}`));
++      }
+ 
+       this.addLog(`[Browser Mode] Executing protocol binary`);
+       this.updateRunState({ progress: 20, currentStep: 'Running protocol' });
+diff --git a/praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts b/praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts
+index f93c249..540b6e4 100644
+--- a/praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts
++++ b/praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts
+@@ -4,6 +4,7 @@ import { CarrierRequirement, SlotAssignment, DeckSetupResult } from '../models/c
+ import { CarrierInferenceService } from './carrier-inference.service';
+ import { DeckCatalogService } from './deck-catalog.service';
+ import { ConsumableAssignmentService } from './consumable-assignment.service';
++import { isValidPLRClassName } from '../../../core/utils/plr-validator';
+ 
+ export type WizardStep = 'carrier-placement' | 'resource-placement' | 'verification';
+ 
+@@ -394,30 +395,31 @@ export class WizardStateService {
+      * Serialize the current deck state into a Python script.
+      * This script rebuilds the deck layout in the worker.
+      */
+-    serializeToPython(): string {
++    serializeToPython(): { script: string; warnings: string[] } {
++        const warnings: string[] = [];
+         const assignments = this._slotAssignments();
+         const deckType = this._deckType();
+ 
+         // Start building the Python script
+-        let code = 'import pylabrobot.resources as res\n';
++        let script = 'import pylabrobot.resources as res\n';
+ 
+         // Import deck class
+         if (deckType.includes('HamiltonSTAR')) {
+-            code += 'from pylabrobot.resources.hamilton import HamiltonSTARDeck\n';
+-            code += 'from pylabrobot.resources.hamilton import *\n';
++            script += 'from pylabrobot.resources.hamilton import HamiltonSTARDeck\n';
++            script += 'from pylabrobot.resources.hamilton import *\n';
+         } else if (deckType.includes('OTDeck')) {
+-            code += 'from pylabrobot.resources.opentrons import OTDeck\n';
++            script += 'from pylabrobot.resources.opentrons import OTDeck\n';
+         }
+ 
+-        code += '\ndef setup_deck():\n';
++        script += '\ndef setup_deck():\n';
+ 
+         // Instantiate Deck
+         if (deckType.includes('HamiltonSTAR')) {
+-            code += '    deck = HamiltonSTARDeck()\n';
++            script += '    deck = HamiltonSTARDeck()\n';
+         } else if (deckType.includes('OTDeck')) {
+-            code += '    deck = OTDeck()\n';
++            script += '    deck = OTDeck()\n';
+         } else {
+-            code += '    deck = res.Deck()\n';
++            script += '    deck = res.Deck()\n';
+         }
+ 
+         // Track placed carriers
+@@ -438,10 +440,14 @@ export class WizardStateService {
+             // Heuristic for class name from FQN
+             const className = carrier.fqn.split('.').pop()?.toUpperCase() || 'Carrier';
+ 
+-            code += `    ${varName} = ${className}(name="${carrier.name}")\n`;
++            if (!isValidPLRClassName(carrier.fqn)) {
++                warnings.push(`Unknown carrier class: ${carrier.fqn}`);
++            }
++
++            script += `    ${varName} = ${className}(name="${carrier.name}")\n`;
+ 
+             if (carrier.railPosition !== undefined) {
+-                code += `    deck.assign_child_resource(${varName}, rails=${carrier.railPosition})\n`;
++                script += `    deck.assign_child_resource(${varName}, rails=${carrier.railPosition})\n`;
+             }
+         });
+ 
+@@ -460,21 +466,21 @@ export class WizardStateService {
+                         className = 'TipRack';
+                     }
+ 
+-                    code += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
+-                    code += `    ${carrierVar}[${assign.slot.index}] = ${varName}\n`;
++                    script += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
++                    script += `    ${carrierVar}[${assign.slot.index}] = ${varName}\n`;
+                 } else if (deckType.includes('OTDeck')) {
+                     // OT-2 direct placement
+                     let className = 'Resource';
+                     if (assign.resource.type === 'Plate') className = 'Plate';
+                     else if (assign.resource.type === 'TipRack') className = 'TipRack';
+ 
+-                    code += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
+-                    code += `    deck.assign_child_at_slot(${varName}, ${assign.slot.index + 1})\n`;
++                    script += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
++                    script += `    deck.assign_child_at_slot(${varName}, ${assign.slot.index + 1})\n`;
+                 }
+             }
+         });
+ 
+-        code += '    return deck\n\ndeck = setup_deck()\n';
+-        return code;
++        script += '    return deck\n\ndeck = setup_deck()\n';
++        return { script, warnings };
+     }
+ }
+

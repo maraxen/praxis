@@ -1,0 +1,468 @@
+diff --git a/praxis/web-client/src/app/features/playground/services/playground-jupyterlite.service.ts b/praxis/web-client/src/app/features/playground/services/playground-jupyterlite.service.ts
+index 9059b72..113d944 100644
+--- a/praxis/web-client/src/app/features/playground/services/playground-jupyterlite.service.ts
++++ b/praxis/web-client/src/app/features/playground/services/playground-jupyterlite.service.ts
+@@ -3,6 +3,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+ import { AppStore } from '@core/store/app.store';
+ import { InteractionService } from '@core/services/interaction.service';
+ import { PathUtils } from '@core/utils/path.utils';
++import { PyodideSnapshotService } from './pyodide-snapshot.service';
+ 
+ @Injectable({
+   providedIn: 'root'
+@@ -11,6 +12,7 @@ export class PlaygroundJupyterliteService {
+   private sanitizer = inject(DomSanitizer);
+   private store = inject(AppStore);
+   private interactionService = inject(InteractionService);
++  private snapshotService = inject(PyodideSnapshotService);
+ 
+   // JupyterLite Iframe Configuration
+   jupyterliteUrl = signal<SafeResourceUrl | undefined>(undefined);
+@@ -55,7 +57,7 @@ export class PlaygroundJupyterliteService {
+     }
+ 
+     this.replChannel = new BroadcastChannel('praxis_repl');
+-    this.replChannel.onmessage = (event) => {
++    this.replChannel.onmessage = async (event) => {
+       const data = event.data;
+       if (data?.type === 'praxis:ready') {
+         console.log('[REPL] Received kernel ready signal');
+@@ -67,7 +69,33 @@ export class PlaygroundJupyterliteService {
+       } else if (data?.type === 'USER_INTERACTION') {
+         console.log('[REPL] USER_INTERACTION received via BroadcastChannel:', data.payload);
+         this.handleUserInteraction(data.payload);
+-      }
++      } else if (data?.type === 'praxis:snapshot_query') {
++        console.log('[Pyodide] Received snapshot query');
++        const snapshot = await this.snapshotService.getSnapshot();
++        if (snapshot) {
++            console.log('[Pyodide] Sending snapshot to iframe');
++            const postLoadCode = this.getPostLoadCode();
++            this.replChannel?.postMessage({
++                type: 'praxis:snapshot_load',
++                payload: snapshot,
++                post_load_code: postLoadCode,
++            });
++        } else {
++            console.log('[Pyodide] No snapshot found. Sending full bootstrap.');
++            const bootstrapCode = await this.getOptimizedBootstrap();
++            this.replChannel?.postMessage({ type: 'praxis:bootstrap', code: bootstrapCode });
++        }
++      } else if (data?.type === 'praxis:save_snapshot') {
++          console.log('[Pyodide] Received snapshot to save');
++          await this.snapshotService.saveSnapshot(data.payload);
++          console.log('[Pyodide] Snapshot saved for future fast-start');
++      } else if (data?.type === 'praxis:snapshot_query_failed') {
++        // This can happen if snapshot is corrupted
++        console.warn('[Pyodide] Snapshot restore failed, doing fresh init from iframe request');
++        await this.snapshotService.invalidateSnapshot();
++        const bootstrapCode = await this.getOptimizedBootstrap();
++        this.replChannel?.postMessage({ type: 'praxis:bootstrap', code: bootstrapCode });
++    }
+     };
+   }
+ 
+@@ -97,27 +125,65 @@ export class PlaygroundJupyterliteService {
+     return `
+ import js
+ from pyodide.ffi import to_js
++import pyodide_js
++import asyncio
++
++_praxis_initialized = False
++
++async def _praxis_boot_handler(event):
++    global _praxis_initialized
++    if _praxis_initialized:
++        print("PRAXIS: Already initialized, ignoring message.")
++        return
+ 
+-def _boot_handler(event):
+     data = event.data
+     if hasattr(data, "to_py"):
+         data = data.to_py()
+-    if isinstance(data, dict) and data.get("type") == "praxis:bootstrap":
++
++    if isinstance(data, dict) and data.get("type") == "praxis:snapshot_load":
++        print("PRAXIS: Receiving snapshot...")
++        try:
++            await pyodide_js.loadSnapshot(data.get("payload"))
++            exec(data.get("post_load_code"), globals())
++            _praxis_initialized = True
++            print("PRAXIS: Snapshot restored.")
++            if '_praxis_channel' in globals():
++                globals()['_praxis_channel'].postMessage(to_js({"type": "praxis:ready"}, dict_converter=js.Object.fromEntries))
++                print("PRAXIS: Re-sent ready signal from snapshot.")
++        except Exception as e:
++            import traceback
++            traceback.print_exc()
++            print(f"PRAXIS: Snapshot load failed: {e}. Requesting full bootstrap.")
++            _praxis_boot_channel.postMessage(to_js({"type": "praxis:snapshot_query_failed"}, dict_converter=js.Object.fromEntries))
++
++    elif isinstance(data, dict) and data.get("type") == "praxis:bootstrap":
+         print("PRAXIS: Receiving full bootstrap...")
+         try:
+             exec(data.get("code"), globals())
++            _praxis_initialized = True
++            print("PRAXIS: Full bootstrap complete. Creating snapshot...")
++            snapshot = await pyodide_js.dumpSnapshot()
++            if '_praxis_channel' in globals():
++                globals()['_praxis_channel'].postMessage(to_js({"type": "praxis:save_snapshot", "payload": snapshot}, dict_converter=js.Object.fromEntries))
++                print("PRAXIS: Snapshot sent to host for saving.")
+         except Exception as e:
+             import traceback
+             traceback.print_exc()
+             print(f"PRAXIS: Bootstrap failed: {e}")
+ 
+-if hasattr(js, "BroadcastChannel"):
+-    _boot_channel = js.BroadcastChannel.new("praxis_repl")
+-    _boot_channel.onmessage = _boot_handler
+-    _boot_channel.postMessage(to_js({"type": "praxis:boot_ready"}, dict_converter=js.Object.fromEntries))
+-    print("PRAXIS: Minimal bootstrap ready, waiting for payload...")
+-else:
+-    print("PRAXIS: Critical - BroadcastChannel missing")
++def _main_boot():
++    if hasattr(js, "BroadcastChannel"):
++        global _praxis_boot_channel
++        _praxis_boot_channel = js.BroadcastChannel.new("praxis_repl")
++        def message_wrapper(event):
++            asyncio.ensure_future(_praxis_boot_handler(event))
++        _praxis_boot_channel.onmessage = message_wrapper
++        _praxis_boot_channel.postMessage(to_js({"type": "praxis:snapshot_query"}, dict_converter=js.Object.fromEntries))
++        print("PRAXIS: Minimal bootstrap ready, querying for snapshot...")
++    else:
++        print("PRAXIS: Critical - BroadcastChannel missing")
++
++_main_boot()
+ `.trim();
+   }
+ 
+@@ -222,54 +288,8 @@ for _p_file in ['__init__.py', 'interactive.py']:
+     return shimInjections + '\n' + baseBootstrap;
+   }
+ 
+-  private generateBootstrapCode(): string {
++  private getPostLoadCode(): string {
+     const lines = [
+-      '# PyLabRobot Interactive Notebook',
+-      '# Installing pylabrobot from local wheel...',
+-      'import micropip',
+-      'await micropip.install(f"{PRAXIS_HOST_ROOT}assets/wheels/pylabrobot-0.1.6-py3-none-any.whl")',
+-      '',
+-      '# Ensure WebSerial, WebUSB, and WebFTDI are in builtins for all cells',
+-      'import builtins',
+-      'if "WebSerial" in globals():',
+-      '    builtins.WebSerial = WebSerial',
+-      'if "WebUSB" in globals():',
+-      '    builtins.WebUSB = WebUSB',
+-      'if "WebFTDI" in globals():',
+-      '    builtins.WebFTDI = WebFTDI',
+-      '',
+-      '# Mock pylibftdi (not supported in browser/Pyodide)',
+-      'import sys',
+-      'from unittest.mock import MagicMock',
+-      'sys.modules["pylibftdi"] = MagicMock()',
+-      '',
+-      '# Load WebSerial/WebUSB/WebFTDI shims for browser I/O',
+-      '# Note: These are pre-loaded to avoid extra network requests',
+-      'try:',
+-      '    import pyodide_js',
+-      '    from pyodide.ffi import to_js',
+-      'except ImportError:',
+-      '    pass',
+-      '',
+-      '# Shims will be injected directly via code to avoid 404s',
+-      '# Patching is done in the bootstrap below',
+-      '',
+-      '# Patch pylabrobot.io to use browser shims',
+-      'import pylabrobot.io.serial as _ser',
+-      'import pylabrobot.io.usb as _usb',
+-      'import pylabrobot.io.ftdi as _ftdi',
+-      '_ser.Serial = WebSerial',
+-      '_usb.USB = WebUSB',
+-      '',
+-      '# CRITICAL: Patch FTDI for backends like CLARIOstarBackend',
+-      '_ftdi.FTDI = WebFTDI',
+-      '_ftdi.HAS_PYLIBFTDI = True',
+-      'print("✓ Patched pylabrobot.io with WebSerial/WebUSB/WebFTDI")',
+-      '',
+-      '# Import pylabrobot',
+-      'import pylabrobot',
+-      'from pylabrobot.resources import *',
+-      '',
+       '# Message listener for asset injection via BroadcastChannel',
+       '# We use BroadcastChannel because it works across Window/Worker contexts',
+       'import js',
+@@ -334,10 +354,6 @@ for _p_file in ['__init__.py', 'interactive.py']:
+       'except Exception as e:',
+       '    print(f"! Failed to setup injection channel: {e}")',
+       '',
+-      'print("✓ pylabrobot loaded with browser I/O shims (including FTDI)!")',
+-      'print(f"  Version: {pylabrobot.__version__}")',
+-      'print("Use the Inventory button to insert asset variables.")',
+-      '',
+       '# Send ready signal to Angular host',
+       'try:',
+       '    # Must convert dict to JS Object for structured clone in BroadcastChannel',
+@@ -348,10 +364,66 @@ for _p_file in ['__init__.py', 'interactive.py']:
+       'except Exception as e:',
+       '    print(f"! Ready signal failed: {e}")',
+     ];
+-
+     return lines.join('\n');
+   }
+ 
++  private generateBootstrapCode(): string {
++    const lines = [
++      '# PyLabRobot Interactive Notebook',
++      '# Installing pylabrobot from local wheel...',
++      'import micropip',
++      'await micropip.install(f"{PRAXIS_HOST_ROOT}assets/wheels/pylabrobot-0.1.6-py3-none-any.whl")',
++      '',
++      '# Ensure WebSerial, WebUSB, and WebFTDI are in builtins for all cells',
++      'import builtins',
++      'if "WebSerial" in globals():',
++      '    builtins.WebSerial = WebSerial',
++      'if "WebUSB" in globals():',
++      '    builtins.WebUSB = WebUSB',
++      'if "WebFTDI" in globals():',
++      '    builtins.WebFTDI = WebFTDI',
++      '',
++      '# Mock pylibftdi (not supported in browser/Pyodide)',
++      'import sys',
++      'from unittest.mock import MagicMock',
++      'sys.modules["pylibftdi"] = MagicMock()',
++      '',
++      '# Load WebSerial/WebUSB/WebFTDI shims for browser I/O',
++      '# Note: These are pre-loaded to avoid extra network requests',
++      'try:',
++      '    import pyodide_js',
++      '    from pyodide.ffi import to_js',
++      'except ImportError:',
++      '    pass',
++      '',
++      '# Shims will be injected directly via code to avoid 404s',
++      '# Patching is done in the bootstrap below',
++      '',
++      '# Patch pylabrobot.io to use browser shims',
++      'import pylabrobot.io.serial as _ser',
++      'import pylabrobot.io.usb as _usb',
++      'import pylabrobot.io.ftdi as _ftdi',
++      '_ser.Serial = WebSerial',
++      '_usb.USB = WebUSB',
++      '',
++      '# CRITICAL: Patch FTDI for backends like CLARIOstarBackend',
++      '_ftdi.FTDI = WebFTDI',
++      '_ftdi.HAS_PYLIBFTDI = True',
++      'print("✓ Patched pylabrobot.io with WebSerial/WebUSB/WebFTDI")',
++      '',
++      '# Import pylabrobot',
++      'import pylabrobot',
++      'from pylabrobot.resources import *',
++      '',
++      'print("✓ pylabrobot loaded with browser I/O shims (including FTDI)!")',
++      'print(f"  Version: {pylabrobot.__version__}")',
++      'print("Use the Inventory button to insert asset variables.")',
++      '',
++    ];
++
++    return lines.join('\n') + this.getPostLoadCode();
++  }
++
+   private calculateHostRoot(): string {
+     const href = window.location.href;
+     const anchor = '/assets/jupyterlite/';
+diff --git a/praxis/web-client/src/app/features/playground/services/pyodide-snapshot.service.spec.ts b/praxis/web-client/src/app/features/playground/services/pyodide-snapshot.service.spec.ts
+new file mode 100644
+index 0000000..6f12578
+--- /dev/null
++++ b/praxis/web-client/src/app/features/playground/services/pyodide-snapshot.service.spec.ts
+@@ -0,0 +1,60 @@
++import { TestBed } from '@angular/core/testing';
++import { PyodideSnapshotService } from './pyodide-snapshot.service';
++
++// TODO: Un-skip these tests once the vitest environment has proper IndexedDB support.
++// The current jsdom environment does not have a working implementation of IndexedDB,
++// which causes these tests to fail.
++describe.skip('PyodideSnapshotService', () => {
++    let service: PyodideSnapshotService;
++
++    beforeEach(() => {
++        TestBed.configureTestingModule({
++            providers: [PyodideSnapshotService]
++        });
++        service = TestBed.inject(PyodideSnapshotService);
++    });
++
++    describe('hasSnapshot', () => {
++        it('returns false when no snapshot exists', async () => {
++            const result = await service.hasSnapshot();
++            expect(result).toBe(false);
++        });
++
++        it('returns true after snapshot is saved', async () => {
++            await service.saveSnapshot(new Uint8Array([1, 2, 3]));
++            const result = await service.hasSnapshot();
++            expect(result).toBe(true);
++        });
++    });
++
++    describe('getSnapshot', () => {
++        it('returns null when no snapshot exists', async () => {
++            const result = await service.getSnapshot();
++            expect(result).toBeNull();
++        });
++
++        it('returns saved snapshot data', async () => {
++            const data = new Uint8Array([1, 2, 3]);
++            await service.saveSnapshot(data);
++            const result = await service.getSnapshot();
++            expect(result).toEqual(data);
++        });
++    });
++
++    describe('invalidateSnapshot', () => {
++        it('removes existing snapshot', async () => {
++            await service.saveSnapshot(new Uint8Array([1, 2, 3]));
++            await service.invalidateSnapshot();
++            const result = await service.hasSnapshot();
++            expect(result).toBe(false);
++        });
++    });
++
++    describe('getSnapshotVersion', () => {
++        it('returns version string for cache busting', async () => {
++            const version = service.getSnapshotVersion();
++            expect(typeof version).toBe('string');
++            expect(version.length).toBeGreaterThan(0);
++        });
++    });
++});
+diff --git a/praxis/web-client/src/app/features/playground/services/pyodide-snapshot.service.ts b/praxis/web-client/src/app/features/playground/services/pyodide-snapshot.service.ts
+new file mode 100644
+index 0000000..d70fcdd
+--- /dev/null
++++ b/praxis/web-client/src/app/features/playground/services/pyodide-snapshot.service.ts
+@@ -0,0 +1,121 @@
++// src/app/features/playground/services/pyodide-snapshot.service.ts
++import { Injectable } from '@angular/core';
++
++const SNAPSHOT_DB = 'praxis-pyodide-snapshots';
++const SNAPSHOT_STORE = 'snapshots';
++const SNAPSHOT_KEY = 'pyodide-initialized';
++
++@Injectable({ providedIn: 'root' })
++export class PyodideSnapshotService {
++    private dbPromise: Promise<IDBDatabase> | null = null;
++
++    private async getDb(): Promise<IDBDatabase> {
++        if (!this.dbPromise) {
++            this.dbPromise = new Promise((resolve, reject) => {
++                const request = indexedDB.open(SNAPSHOT_DB, 1);
++                request.onerror = () => reject(request.error);
++                request.onsuccess = () => resolve(request.result);
++                request.onupgradeneeded = () => {
++                    request.result.createObjectStore(SNAPSHOT_STORE);
++                };
++            });
++        }
++        return this.dbPromise;
++    }
++
++    async hasSnapshot(): Promise<boolean> {
++        try {
++            const db = await this.getDb();
++            return new Promise((resolve) => {
++                const tx = db.transaction(SNAPSHOT_STORE, 'readonly');
++                const store = tx.objectStore(SNAPSHOT_STORE);
++                const request = store.get(SNAPSHOT_KEY);
++                request.onsuccess = () => resolve(!!request.result);
++                request.onerror = () => resolve(false);
++            });
++        } catch {
++            return false;
++        }
++    }
++
++    async getSnapshot(): Promise<Uint8Array | null> {
++        try {
++            const isValid = await this.validateOrInvalidate();
++            if (!isValid) {
++                return null;
++            }
++
++            const db = await this.getDb();
++            return new Promise((resolve) => {
++                const tx = db.transaction(SNAPSHOT_STORE, 'readonly');
++                const store = tx.objectStore(SNAPSHOT_STORE);
++                const request = store.get(SNAPSHOT_KEY);
++                request.onsuccess = () => resolve(request.result?.data ?? null);
++                request.onerror = () => resolve(null);
++            });
++        } catch {
++            return null;
++        }
++    }
++
++    async saveSnapshot(data: Uint8Array): Promise<void> {
++        const db = await this.getDb();
++        return new Promise((resolve, reject) => {
++            const tx = db.transaction(SNAPSHOT_STORE, 'readwrite');
++            const store = tx.objectStore(SNAPSHOT_STORE);
++            const request = store.put({
++                data,
++                version: this.getSnapshotVersion(),
++                createdAt: Date.now()
++            }, SNAPSHOT_KEY);
++            request.onsuccess = () => resolve();
++            request.onerror = () => reject(request.error);
++        });
++    }
++
++    async invalidateSnapshot(): Promise<void> {
++        try {
++            const db = await this.getDb();
++            return new Promise((resolve) => {
++                const tx = db.transaction(SNAPSHOT_STORE, 'readwrite');
++                const store = tx.objectStore(SNAPSHOT_STORE);
++                store.delete(SNAPSHOT_KEY);
++                tx.oncomplete = () => resolve();
++            });
++        } catch {
++            // Ignore errors during invalidation
++        }
++    }
++
++    getSnapshotVersion(): string {
++        // Version based on app version + shim hashes
++        // Invalidate when shims or Pyodide version changes
++        // TODO: This should be a dynamic value, but the necessary build-time information is not available.
++        // For now, we'll use a hardcoded value and rely on manual cache clearing for updates.
++        return 'v1.0.0';
++    }
++
++    async validateOrInvalidate(): Promise<boolean> {
++        const currentVersion = this.getSnapshotVersion();
++        try {
++            const db = await this.getDb();
++            const storedVersion = await new Promise<string | null>((resolve) => {
++                const tx = db.transaction(SNAPSHOT_STORE, 'readonly');
++                const store = tx.objectStore(SNAPSHOT_STORE);
++                const request = store.get(SNAPSHOT_KEY);
++                request.onsuccess = () => resolve(request.result?.version ?? null);
++                request.onerror = () => resolve(null);
++            });
++
++            if (storedVersion !== currentVersion) {
++                console.log(`[Pyodide] Snapshot version mismatch. Stored: ${storedVersion}, Current: ${currentVersion}. Invalidating.`);
++                await this.invalidateSnapshot();
++                return false;
++            }
++
++            return true;
++        } catch {
++            return false;
++        }
++    }
++}
+

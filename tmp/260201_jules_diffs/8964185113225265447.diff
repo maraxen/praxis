@@ -1,0 +1,70 @@
+diff --git a/praxis/web-client/e2e/specs/protocol-simulation-matrix.spec.ts b/praxis/web-client/e2e/specs/protocol-simulation-matrix.spec.ts
+new file mode 100644
+index 0000000..1c3b687
+--- /dev/null
++++ b/praxis/web-client/e2e/specs/protocol-simulation-matrix.spec.ts
+@@ -0,0 +1,63 @@
++import { test, expect } from '../fixtures/app.fixture';
++import { ProtocolPage } from '../page-objects/protocol.page';
++import { WizardPage } from '../page-objects/wizard.page';
++
++// Expanding the list based on protocols discovered in other files
++const PROTOCOLS_TO_TEST = [
++  { name: 'Simple Transfer' },
++  { name: 'Serial Dilution' },
++  { name: 'PCR Prep (96-well)' },
++  { name: 'Cell Culture Feed (24-well)' },
++  { name: 'Daily System Maintenance' },
++  // 'Hardware-Only Protocol' is expected to fail machine selection, so we skip it.
++];
++
++test.describe('@slow Protocol Simulation Matrix', () => {
++  // Use a shared beforeEach for setup
++  test.beforeEach(async ({ page }) => {
++    const protocolPage = new ProtocolPage(page);
++    
++    // Wait for the app to be ready and the database to be initialized
++    await expect(page).toHaveURL(/\/app\/home/, { timeout: 20000 });
++    await expect(page.locator('body[data-sqlite-ready="true"]'), 'SQLite WASM database should be ready')
++      .toBeAttached({ timeout: 60000 });
++    
++    await protocolPage.ensureSimulationMode();
++  });
++
++  for (const protocol of PROTOCOLS_TO_TEST) {
++    test(`runs ${protocol.name} to completion`, async ({ page }) => {
++      test.setTimeout(180000); // 3 minutes to allow for complex protocols
++
++      const protocolPage = new ProtocolPage(page);
++      const wizardPage = new WizardPage(page);
++      
++      await test.step(`Navigate and select protocol: ${protocol.name}`, async () => {
++        await protocolPage.goto();
++        // The page might default to a table view, so we need to be flexible
++        // Let's try to find the protocol in either view.
++        const protocolLocator = page.locator('.protocol-name, .protocol-card-title').filter({ hasText: protocol.name });
++        await expect(protocolLocator.first(), `Protocol "${protocol.name}" should be visible in the library`).toBeVisible({ timeout: 30000 });
++        
++        await protocolPage.selectProtocol(protocol.name);
++      });
++      
++      await test.step('Configure machine and assets', async () => {
++        await wizardPage.selectFirstCompatibleMachine();
++        await wizardPage.waitForAssetsAutoConfigured();
++        await wizardPage.advanceDeckSetup();
++        await wizardPage.openReviewStep();
++      });
++
++      await test.step('Start and monitor execution', async () => {
++        await wizardPage.startExecution();
++        await protocolPage.waitForCompletion();
++      });
++
++      await test.step('Verify completion status', async () => {
++        const finalStatus = await protocolPage.getExecutionStatus();
++        expect(finalStatus).toMatch(/(Completed|Succeeded|Finished)/i);
++      });
++    });
++  }
++});
+

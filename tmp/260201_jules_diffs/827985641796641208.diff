@@ -1,0 +1,154 @@
+diff --git a/praxis/web-client/e2e/specs/protocol-simulation-matrix.spec.ts b/praxis/web-client/e2e/specs/protocol-simulation-matrix.spec.ts
+new file mode 100644
+index 0000000..7bc2e30
+--- /dev/null
++++ b/praxis/web-client/e2e/specs/protocol-simulation-matrix.spec.ts
+@@ -0,0 +1,47 @@
++
++import { test, expect, gotoWithWorkerDb } from '../fixtures/worker-db.fixture';
++import { WelcomePage } from '../page-objects/welcome.page';
++
++const PROTOCOLS_TO_TEST = [
++  { name: 'Hello World Printer' },
++];
++
++test.describe('@slow Protocol Simulation Matrix', () => {
++  for (const protocol of PROTOCOLS_TO_TEST) {
++    test(`runs ${protocol.name} to completion`, async ({ page }, testInfo) => {
++      await gotoWithWorkerDb(page, '/', testInfo, { resetdb: true });
++      const welcomePage = new WelcomePage(page);
++      await welcomePage.handleSplashScreen();
++
++      // Seed the protocol directly into the database
++      await page.evaluate(async (protocolName) => {
++        const repos = await (window as any).sqliteService.getAsyncRepositories().toPromise();
++        await repos.protocolDefinitions.create({
++          accession_id: 'hello-world-printer-id',
++          name: protocolName,
++          fqn: 'praxis.protocols.hello_world.hello_world',
++        });
++      }, protocol.name);
++
++
++      await page.goto('/app/run');
++
++      // After seeding, the page needs to be reloaded for Angular to pick up the new data
++      await page.reload();
++
++      // Locate the protocol card by its name for robustness
++      await page.locator('[data-testid="protocol-card"]', { hasText: protocol.name }).click();
++
++      await page.getByTestId('machine-card-simulated').click();
++
++      await page.getByRole('button', { name: 'Continue' }).click();
++      await page.getByRole('button', { name: 'Continue' }).click();
++
++      await page.getByRole('button', { name: 'Start Run' }).click();
++
++      await expect(page.locator('[data-testid="run-status"]'))
++        .toContainText('Completed', { timeout: 120000 });
++    });
++  }
++});
++   
+\ No newline at end of file
+diff --git a/praxis/web-client/playwright.static.config.ts b/praxis/web-client/playwright.static.config.ts
+new file mode 100644
+index 0000000..ed3172d
+--- /dev/null
++++ b/praxis/web-client/playwright.static.config.ts
+@@ -0,0 +1,92 @@
++
++import { defineConfig, devices } from '@playwright/test';
++
++/**
++ * Playwright configuration for FAST E2E testing using pre-built static bundle.
++ * 
++ * This is significantly faster and more stable than the dev server approach:
++ *   - Pre-built bundle (no Vite cold start)
++ *   - Simple static server (predictable startup)
++ *   - Extended timeouts for SQLite WASM initialization
++ *   - Serial execution option for stability
++ * 
++ * Usage:
++ *   # Build and test (recommended workflow):
++ *   npm run build:browser && npx playwright test --config=playwright.static.config.ts
++ *   
++ *   # Quick re-test without rebuild:
++ *   npx playwright test --config=playwright.static.config.ts
++ *   
++ *   # Run specific test file:
++ *   npx playwright test smoke.spec.ts --config=playwright.static.config.ts
++ */
++
++export default defineConfig({
++    testDir: './e2e/specs',
++    outputDir: 'test-results/static',
++
++    // Parallel by default, but can be overridden for debugging
++    fullyParallel: true,
++    workers: process.env.CI ? 1 : undefined,
++
++    // Extended timeout for WASM initialization (SQLite, Pyodide)
++    timeout: 60000,
++
++    // Retry for transient failures
++    retries: process.env.CI ? 2 : 0,
++
++    // Skip @slow tests unless explicitly requested
++    grepInvert: process.env.RUN_SLOW_TESTS ? undefined : /@slow/,
++
++    reporter: [
++        ['list'],
++        ['html', { outputFolder: 'test-results/static-report' }],
++    ],
++
++    use: {
++        baseURL: 'http://localhost:8080',
++
++        // Capture artifacts for debugging
++        trace: 'retain-on-failure',
++        screenshot: 'only-on-failure',
++        video: 'retain-on-failure',
++
++        // Extended navigation timeout for initial load
++        navigationTimeout: 30000,
++
++        // Headless by default
++        headless: true,
++
++        // Standard viewport
++        viewport: { width: 1920, height: 1080 },
++    },
++
++    projects: [
++        {
++            name: 'chromium',
++            use: { ...devices['Desktop Chrome'] },
++        },
++        // Fast smoke project with smaller viewport
++        {
++            name: 'smoke',
++            testMatch: /smoke\.spec\.ts/,
++            use: {
++                ...devices['Desktop Chrome'],
++                viewport: { width: 1280, height: 720 },
++            },
++            retries: 0,
++            timeout: 45000,
++        },
++    ],
++
++    // Static server configuration
++    // Uses 'serve' with COOP/COEP headers for SharedArrayBuffer support
++    // Note: --single enables SPA mode (fallback to index.html)
++    webServer: {
++        command: `echo '{"headers":[{"source":"**/*","headers":[{"key":"Cross-Origin-Opener-Policy","value":"same-origin"},{"key":"Cross-Origin-Embedder-Policy","value":"require-corp"}]}]}' > /tmp/serve-static.json && npx -y serve dist/web-client/browser -l 8080 -c /tmp/serve-static.json --single`,
++        url: 'http://localhost:8080',
++        reuseExistingServer: !process.env.CI,
++        timeout: 30000,
++    },
++});
++   
+\ No newline at end of file
+

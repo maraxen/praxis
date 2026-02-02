@@ -1,0 +1,85 @@
+diff --git a/praxis/web-client/src/app/core/services/hardware-discovery.service.ts b/praxis/web-client/src/app/core/services/hardware-discovery.service.ts
+index 053abba..40515fb 100644
+--- a/praxis/web-client/src/app/core/services/hardware-discovery.service.ts
++++ b/praxis/web-client/src/app/core/services/hardware-discovery.service.ts
+@@ -82,6 +82,8 @@ const HAMILTON_CONFIG_SCHEMA: Record<string, ConfigurationField> = {
+ };
+ 
+ // Known USB Vendor/Product IDs for lab equipment
++// To add a new device, find its VID/PID (e.g., from https://usb-ids.gowdy.us/)
++// and map it to the correct PyLabRobot backend FQN.
+ const KNOWN_DEVICES: Record<string, { manufacturer: string; model: string; plrBackend: string; configSchema?: Record<string, ConfigurationField> }> = {
+     // Hamilton devices
+     '0x08BB:0x0106': {
+@@ -130,6 +132,34 @@ const KNOWN_DEVICES: Record<string, { manufacturer: string; model: string; plrBa
+     '0x1A86:0x7523': { manufacturer: 'Generic', model: 'USB-Serial (CH340)', plrBackend: '' },
+     '0x0403:0x6001': { manufacturer: 'FTDI', model: 'USB-Serial (FT232)', plrBackend: '' },
+     '0x067B:0x2303': { manufacturer: 'Prolific', model: 'USB-Serial (PL2303)', plrBackend: '' },
++
++    // Agilent Devices (No direct PLR backend, but can be identified)
++    '0x0957:0x0818': {
++        manufacturer: 'Agilent',
++        model: 'Generic Plate Reader',
++        plrBackend: '', // No specific PLR backend for this model
++    },
++
++    // Another common FTDI chip
++    '0x0403:0x6015': {
++        manufacturer: 'FTDI',
++        model: 'USB-Serial (FT230X)',
++        plrBackend: '',
++    },
++
++    // Common Silicon Labs CP210x USB-to-Serial adapter
++    '0x10C4:0xEA70': {
++        manufacturer: 'Silicon Labs',
++        model: 'USB-Serial (CP210x)',
++        plrBackend: '',
++    },
++
++    // Note: Specific VIDs/PIDs for many lab devices (e.g., Tecan, Inheco) are not
++    // publicly available as they often use generic USB-to-Serial adapters.
++    // User testing is the most reliable way to identify the correct VID/PID
++    // for a specific device. The following are common OEM identifiers.
++    '0x10C4:0xEA60': { manufacturer: 'Silicon Labs', model: 'CP2102 USB to UART Bridge', plrBackend: '' },
++    '0x0403:0x6010': { manufacturer: 'FTDI', model: 'FT2232H HS USB-Serial', plrBackend: '' },
+ };
+ 
+ import { HardwareService } from '../api-generated/services/HardwareService';
+@@ -268,7 +298,7 @@ export class HardwareDiscoveryService {
+     private createDeviceFromSerialPort(port: SerialPort, id: string): DiscoveredDevice {
+         const info = port.getInfo();
+         const deviceKey = this.formatDeviceKey(info.usbVendorId, info.usbProductId);
+-        const knownDevice = KNOWN_DEVICES[deviceKey];
++        const knownDevice = this.logAndGetKnownDevice(deviceKey);
+         const backendDef = this.inferBackendDefinition(knownDevice?.plrBackend);
+         const plrDef = backendDef ? PLR_MACHINE_DEFINITIONS.find(m => m.fqn === backendDef.fqn) : undefined;
+ 
+@@ -299,7 +329,7 @@ export class HardwareDiscoveryService {
+      */
+     private createDeviceFromUSB(usbDevice: USBDevice, id: string): DiscoveredDevice {
+         const deviceKey = this.formatDeviceKey(usbDevice.vendorId, usbDevice.productId);
+-        const knownDevice = KNOWN_DEVICES[deviceKey];
++        const knownDevice = this.logAndGetKnownDevice(deviceKey);
+         const backendDef = this.inferBackendDefinition(knownDevice?.plrBackend);
+         const plrDef = backendDef ? PLR_MACHINE_DEFINITIONS.find(m => m.fqn === backendDef.fqn) : undefined;
+ 
+@@ -334,6 +364,17 @@ export class HardwareDiscoveryService {
+         return `0x${vendorId.toString(16).toUpperCase().padStart(4, '0')}:0x${productId.toString(16).toUpperCase().padStart(4, '0')}`;
+     }
+ 
++    /**
++     * Log unknown devices and return the known device if it exists
++     */
++    private logAndGetKnownDevice(deviceKey: string) {
++        const knownDevice = KNOWN_DEVICES[deviceKey];
++        if (!knownDevice) {
++            console.info(`Unknown device ${deviceKey}. Consider adding to KNOWN_DEVICES table.`);
++        }
++        return knownDevice;
++    }
++
+     /**
+      * Infer PLR backend definition from FQN
+      */
+

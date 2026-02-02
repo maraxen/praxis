@@ -1,0 +1,188 @@
+diff --git a/praxis/web-client/src/app/core/utils/fetch-retry.spec.ts b/praxis/web-client/src/app/core/utils/fetch-retry.spec.ts
+new file mode 100644
+index 0000000..b16e780
+--- /dev/null
++++ b/praxis/web-client/src/app/core/utils/fetch-retry.spec.ts
+@@ -0,0 +1,75 @@
++import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
++import { fetchWithRetry } from './fetch-retry';
++
++describe('fetchWithRetry', () => {
++  beforeEach(() => {
++    vi.useFakeTimers();
++  });
++
++  afterEach(() => {
++    vi.restoreAllMocks();
++  });
++
++  it('should return a successful response on the first attempt', async () => {
++    const mockResponse = new Response('Success', { status: 200 });
++    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
++
++    const response = await fetchWithRetry('https://example.com');
++
++    expect(response.status).toBe(200);
++    expect(await response.text()).toBe('Success');
++    expect(fetchSpy).toHaveBeenCalledTimes(1);
++  });
++
++  it('should retry on failure and eventually succeed', async () => {
++    const mockErrorResponse = new Response('Error', { status: 500 });
++    const mockSuccessResponse = new Response('Success', { status: 200 });
++
++    const fetchSpy = vi.spyOn(global, 'fetch')
++      .mockResolvedValueOnce(mockErrorResponse)
++      .mockResolvedValueOnce(mockErrorResponse)
++      .mockResolvedValueOnce(mockSuccessResponse);
++
++    const promise = fetchWithRetry('https://example.com', undefined, { maxRetries: 4, backoffMs: 100 });
++
++    // Allow microtasks to run for the first fetch
++    await vi.advanceTimersByTimeAsync(0);
++
++    // First retry after 100ms
++    await vi.advanceTimersByTimeAsync(100);
++
++    // Second retry after 200ms
++    await vi.advanceTimersByTimeAsync(200);
++
++    const response = await promise;
++
++    expect(response.status).toBe(200);
++    expect(await response.text()).toBe('Success');
++    expect(fetchSpy).toHaveBeenCalledTimes(3);
++  });
++
++  it('should throw an error after all retries fail', async () => {
++    const mockErrorResponse = new Response('Error', { status: 500 });
++    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(mockErrorResponse);
++
++    const promise = fetchWithRetry('https://example.com', undefined, { maxRetries: 3, backoffMs: 100 });
++
++    const rejectionPromise = expect(promise).rejects.toThrow('HTTP 500');
++    await vi.runAllTimersAsync();
++    await rejectionPromise;
++
++    expect(fetchSpy).toHaveBeenCalledTimes(3);
++  });
++
++  it('should handle network errors and throw after all retries', async () => {
++    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Network error'));
++
++    const promise = fetchWithRetry('https://example.com', undefined, { maxRetries: 3, backoffMs: 100 });
++
++    const rejectionPromise = expect(promise).rejects.toThrow('Network error');
++    await vi.runAllTimersAsync();
++    await rejectionPromise;
++
++    expect(fetchSpy).toHaveBeenCalledTimes(3);
++  });
++});
+diff --git a/praxis/web-client/src/app/core/utils/fetch-retry.ts b/praxis/web-client/src/app/core/utils/fetch-retry.ts
+new file mode 100644
+index 0000000..5b5c0c0
+--- /dev/null
++++ b/praxis/web-client/src/app/core/utils/fetch-retry.ts
+@@ -0,0 +1,27 @@
++export async function fetchWithRetry(
++  url: string,
++  options?: RequestInit,
++  config?: { maxRetries?: number; backoffMs?: number }
++): Promise<Response> {
++  const maxRetries = config?.maxRetries ?? 3;
++  const backoffMs = config?.backoffMs ?? 1000;
++
++  let lastError: Error | null = null;
++
++  for (let attempt = 0; attempt < maxRetries; attempt++) {
++    try {
++      const response = await fetch(url, options);
++      if (!response.ok) throw new Error(`HTTP ${response.status}`);
++      return response;
++    } catch (error) {
++      lastError = error as Error;
++      console.warn(`Fetch attempt ${attempt + 1}/${maxRetries} failed for ${url}:`, error);
++
++      if (attempt < maxRetries - 1) {
++        await new Promise(r => setTimeout(r, backoffMs * (attempt + 1)));
++      }
++    }
++  }
++
++  throw lastError ?? new Error(`Failed to fetch ${url} after ${maxRetries} attempts`);
++}
+diff --git a/praxis/web-client/src/app/features/playground/services/playground-jupyterlite.service.ts b/praxis/web-client/src/app/features/playground/services/playground-jupyterlite.service.ts
+index 9059b72..f0ce89d 100644
+--- a/praxis/web-client/src/app/features/playground/services/playground-jupyterlite.service.ts
++++ b/praxis/web-client/src/app/features/playground/services/playground-jupyterlite.service.ts
+@@ -3,6 +3,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+ import { AppStore } from '@core/store/app.store';
+ import { InteractionService } from '@core/services/interaction.service';
+ import { PathUtils } from '@core/utils/path.utils';
++import { fetchWithRetry } from '@core/utils/fetch-retry';
+ 
+ @Injectable({
+   providedIn: 'root'
+@@ -174,28 +175,34 @@ else:
+   public async getOptimizedBootstrap(): Promise<string> {
+     const shims = ['web_serial_shim.py', 'web_usb_shim.py', 'web_ftdi_shim.py'];
+     const hostRoot = this.calculateHostRoot();
++    let shimInjections = '';
+ 
+-    let shimInjections = `# --- Host Root (injected from Angular) --- \n`;
+-    shimInjections += `PRAXIS_HOST_ROOT = "${hostRoot}"\n`;
+-    shimInjections += 'print(f"PylibPraxis: Using Host Root: {PRAXIS_HOST_ROOT}")\n\n';
+-    shimInjections += '# --- Browser Hardware Shims --- \n';
+-    shimInjections += 'import pyodide.http\n';
++    try {
++      shimInjections += `# --- Host Root (injected from Angular) --- \n`;
++      shimInjections += `PRAXIS_HOST_ROOT = "${hostRoot}"\n`;
++      shimInjections += 'print(f"PylibPraxis: Using Host Root: {PRAXIS_HOST_ROOT}")\n\n';
++      shimInjections += '# --- Browser Hardware Shims --- \n';
+ 
+-    for (const shim of shims) {
+-      shimInjections += `
+-print("PylibPraxis: Loading ${shim}...")
++      for (const shim of shims) {
++        const url = `${hostRoot}assets/shims/${shim}`;
++        const response = await fetchWithRetry(url, undefined, { maxRetries: 3, backoffMs: 500 });
++        const code = await response.text();
++        const escapedCode = code.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
++
++        shimInjections += `
++print("PylibPraxis: Injecting ${shim}...")
+ try:
+-    _shim_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/shims/${shim}')).string()
+-    exec(_shim_code, globals())
+-    print("PylibPraxis: Loaded ${shim}")
++    exec("${escapedCode}", globals())
++    print("PylibPraxis: Injected ${shim}")
+ except Exception as e:
+-    print(f"PylibPraxis: Failed to load ${shim}: {e}")
++    print(f"PylibPraxis: Failed to inject ${shim}: {e}")
+ `;
+-    }
++      }
+ 
+-    shimInjections += `
++      shimInjections += `
+ print("PylibPraxis: Loading web_bridge.py...")
+ try:
++    # Use pyfetch for the bridge as it's not as critical
+     _bridge_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/python/web_bridge.py')).string()
+     with open('web_bridge.py', 'w') as f:
+         f.write(_bridge_code)
+@@ -217,6 +224,11 @@ for _p_file in ['__init__.py', 'interactive.py']:
+     except Exception as e:
+         print(f"PylibPraxis: Failed to load praxis/{_p_file}: {e}")
+ `;
++    } catch (error) {
++      console.error('Failed to fetch shims after multiple retries:', error);
++      this.loadingError.set(true);
++      return ''; // Return empty bootstrap script on failure
++    }
+ 
+     const baseBootstrap = this.generateBootstrapCode();
+     return shimInjections + '\n' + baseBootstrap;
+
