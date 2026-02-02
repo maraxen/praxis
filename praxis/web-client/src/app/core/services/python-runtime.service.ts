@@ -4,6 +4,9 @@ import { ReplOutput, ReplRuntime, CompletionItem, SignatureInfo } from './repl-r
 import { HardwareDiscoveryService } from './hardware-discovery.service';
 import { InteractionService } from './interaction.service';
 import { PyodidePoolService } from './pyodide-pool.service';
+import { PyodideSnapshotService } from './pyodide-snapshot.service';
+
+const WORKER_SNAPSHOT_KEY = 'pyodide-worker';
 
 interface WorkerResponse {
   type: string;
@@ -33,6 +36,10 @@ export class PythonRuntimeService implements ReplRuntime {
   private hardwareService = inject(HardwareDiscoveryService);
   private interactionService = inject(InteractionService);
   private poolService = inject(PyodidePoolService);
+  private snapshotService = inject(PyodideSnapshotService);
+
+  // Track whether we did a fresh init (to know if we should save snapshot)
+  private didFreshInit = false;
 
   isReady = signal(false);
 
@@ -105,10 +112,27 @@ export class PythonRuntimeService implements ReplRuntime {
         this.lastError.set(evt.message);
       };
 
-      await this.sendMessage('INIT');
+      // Check for existing snapshot
+      const snapshot = await this.snapshotService.getSnapshot(WORKER_SNAPSHOT_KEY);
+
+      if (snapshot) {
+        console.log('[PythonRuntime] Restoring from snapshot...');
+        this.didFreshInit = false;
+        await this.sendMessage('INIT_WITH_SNAPSHOT', { snapshot: snapshot.buffer });
+      } else {
+        console.log('[PythonRuntime] Fresh initialization...');
+        this.didFreshInit = true;
+        await this.sendMessage('INIT');
+      }
+
       this.isReady.set(true);
       this.status.set('ready');
       console.log('[PythonRuntime] Pyodide ready');
+
+      // If we did a fresh init, request snapshot dump for next time
+      if (this.didFreshInit) {
+        this.requestSnapshotDump();
+      }
     } catch (err: any) {
       console.error('[PythonRuntime] Failed to initialize Pyodide:', err);
       this.status.set('error');
@@ -333,6 +357,12 @@ export class PythonRuntimeService implements ReplRuntime {
       return;
     }
 
+    // Handle SNAPSHOT_DATA messages from worker (save snapshot for next time)
+    if (type === 'SNAPSHOT_DATA' && payload) {
+      this.handleSnapshotData(payload as ArrayBuffer);
+      return;
+    }
+
     if (type === 'ERROR' && id) {
       const reject = this.errorMap.get(id);
       if (reject) {
@@ -431,6 +461,29 @@ export class PythonRuntimeService implements ReplRuntime {
     this.responseMap.delete(id);
     this.errorMap.delete(id);
     this.stdoutSubjects.delete(id);
+  }
+
+  /**
+   * Request a snapshot dump from the worker (called after fresh init)
+   */
+  private requestSnapshotDump(): void {
+    if (!this.worker) return;
+
+    console.log('[PythonRuntime] Requesting snapshot dump...');
+    this.worker.postMessage({ type: 'DUMP_SNAPSHOT', id: 'snapshot-dump' });
+  }
+
+  /**
+   * Handle snapshot data received from worker (save for next time)
+   */
+  private async handleSnapshotData(data: ArrayBuffer): Promise<void> {
+    try {
+      console.log('[PythonRuntime] Saving snapshot...', data.byteLength, 'bytes');
+      await this.snapshotService.saveSnapshot(new Uint8Array(data), WORKER_SNAPSHOT_KEY);
+      console.log('[PythonRuntime] Snapshot saved for fast restart');
+    } catch (err) {
+      console.error('[PythonRuntime] Failed to save snapshot:', err);
+    }
   }
 }
 

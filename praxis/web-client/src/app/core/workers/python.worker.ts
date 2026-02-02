@@ -18,7 +18,7 @@ let pyConsole: {
 };
 
 interface PythonMessage {
-  type: 'INIT' | 'PUSH' | 'EXEC' | 'INSTALL' | 'COMPLETE' | 'SIGNATURES' | 'PLR_COMMAND' | 'RAW_IO' | 'RAW_IO_RESPONSE' | 'WELL_STATE_UPDATE' | 'FUNCTION_CALL_LOG' | 'EXECUTE_BLOB' | 'USER_INTERACTION' | 'USER_INTERACTION_RESPONSE' | 'INTERRUPT';
+  type: 'INIT' | 'INIT_WITH_SNAPSHOT' | 'DUMP_SNAPSHOT' | 'PUSH' | 'EXEC' | 'INSTALL' | 'COMPLETE' | 'SIGNATURES' | 'PLR_COMMAND' | 'RAW_IO' | 'RAW_IO_RESPONSE' | 'WELL_STATE_UPDATE' | 'FUNCTION_CALL_LOG' | 'EXECUTE_BLOB' | 'USER_INTERACTION' | 'USER_INTERACTION_RESPONSE' | 'INTERRUPT';
   id?: string;
   payload?: unknown;
 }
@@ -118,6 +118,14 @@ addEventListener('message', async (event) => {
     switch (type) {
       case 'INIT':
         await initializePyodide(id);
+        break;
+
+      case 'INIT_WITH_SNAPSHOT':
+        await initializeFromSnapshot(id, payload as { snapshot: ArrayBuffer });
+        break;
+
+      case 'DUMP_SNAPSHOT':
+        await dumpSnapshot(id);
         break;
 
       case 'PUSH':
@@ -517,4 +525,88 @@ _tb if _tb and _tb.strip() != 'NoneType: None' else str(sys.exc_info()[1]) if sy
   }
 
   postMessage({ type: 'EXEC_COMPLETE', id, payload: null });
+}
+
+/**
+ * Initialize Pyodide from a snapshot. Much faster than fresh init.
+ * Falls back to fresh init if snapshot restore fails.
+ */
+async function initializeFromSnapshot(id?: string, payload?: { snapshot: ArrayBuffer }) {
+  if (!payload?.snapshot) {
+    console.warn('[Worker] No snapshot provided, falling back to fresh init');
+    await initializePyodide(id);
+    return;
+  }
+
+  try {
+    console.log('[Worker] Restoring from snapshot...');
+
+    // Load base Pyodide without packages (they're in the snapshot)
+    pyodide = await loadPyodide({
+      indexURL: 'assets/pyodide/',
+      lockFileURL: 'https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide-lock.json'
+    });
+
+    // Set the interrupt buffer
+    pyodide.setInterruptBuffer(interruptBuffer);
+
+    // Restore from snapshot
+    const snapshotData = new Uint8Array(payload.snapshot);
+    await (pyodide as any).loadSnapshot(snapshotData);
+
+    console.log('[Worker] Snapshot restored, setting up console...');
+
+    // Get the console from the restored snapshot
+    const consoleCode = `
+from pyodide.console import PyodideConsole
+import js
+import web_bridge
+
+# Try to get existing console from globals, or create new one
+try:
+    console = web_bridge._console
+except AttributeError:
+    # Create new console with our callbacks
+    def stdout_callback(s):
+        js.handlePythonOutput("STDOUT", s)
+    def stderr_callback(s):
+        js.handlePythonOutput("STDERR", s)
+    console = PyodideConsole(
+        stdout_callback=stdout_callback,
+        stderr_callback=stderr_callback
+    )
+    web_bridge.bootstrap_playground(console.globals)
+
+console
+`;
+    const consoleProxy = await pyodide.runPythonAsync(consoleCode);
+    pyConsole = consoleProxy;
+
+    console.log('[Worker] Snapshot restore complete');
+    postMessage({ type: 'INIT_COMPLETE', id, payload: { fromSnapshot: true } });
+
+  } catch (err) {
+    console.error('[Worker] Snapshot restore failed, falling back to fresh init:', err);
+    await initializePyodide(id);
+  }
+}
+
+/**
+ * Dump the current Pyodide state as a snapshot.
+ */
+async function dumpSnapshot(id?: string) {
+  if (!pyodide) {
+    postMessage({ type: 'ERROR', id, payload: 'Pyodide not initialized' });
+    return;
+  }
+
+  try {
+    console.log('[Worker] Dumping snapshot...');
+    const snapshot = await (pyodide as any).dumpSnapshot();
+    console.log('[Worker] Snapshot dumped, size:', snapshot.byteLength, 'bytes');
+    postMessage({ type: 'SNAPSHOT_DATA', id, payload: snapshot.buffer });
+  } catch (err) {
+    console.error('[Worker] Failed to dump snapshot:', err);
+    postMessage({ type: 'ERROR', id, payload: (err as Error).message });
+  }
 }

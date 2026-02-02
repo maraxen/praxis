@@ -2,7 +2,10 @@ import { Injectable, signal, inject, effect } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { AppStore } from '@core/store/app.store';
 import { InteractionService } from '@core/services/interaction.service';
+import { PyodideSnapshotService } from '@core/services/pyodide-snapshot.service';
 import { PathUtils } from '@core/utils/path.utils';
+
+const JUPYTERLITE_SNAPSHOT_KEY = 'pyodide-jupyterlite';
 
 @Injectable({
   providedIn: 'root'
@@ -11,6 +14,7 @@ export class PlaygroundJupyterliteService {
   private sanitizer = inject(DomSanitizer);
   private store = inject(AppStore);
   private interactionService = inject(InteractionService);
+  private snapshotService = inject(PyodideSnapshotService);
 
   // JupyterLite Iframe Configuration
   jupyterliteUrl = signal<SafeResourceUrl | undefined>(undefined);

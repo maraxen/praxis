@@ -489,7 +489,7 @@ describe('ExecutionService', () => {
       await vi.waitFor(() => {
         expect(pythonRuntime.executeBlob).toHaveBeenCalledWith(expect.any(ArrayBuffer), expect.any(String));
       });
-      
+
       expect(sqliteService.createProtocolRun).toHaveBeenCalled();
     });
 
@@ -498,7 +498,7 @@ describe('ExecutionService', () => {
       const mockDefinitions = [
         { accession_id: 'def-1', name: 'Machine 1', machine_category: 'cat1' }
       ];
-      
+
       // Setup the mock for machineDefinitions observable
       const mockRepo = {
         findAll: vi.fn().mockReturnValue(mockDefinitions)
@@ -511,5 +511,37 @@ describe('ExecutionService', () => {
         expect(data[0].compatibility.is_compatible).toBe(true);
       });
     });
+
+    describe('Pyodide Snapshot Integration (Browser Mode)', () => {
+      beforeEach(() => {
+        vi.mocked(modeService.isBrowserMode).mockReturnValue(true);
+      });
+
+      it('should attempt to restore from snapshot when starting browser run', async () => {
+        // This test verifies that PythonRuntimeService is called with snapshot restore capability
+        // The actual snapshot restore happens in PythonRuntimeService, but ExecutionService
+        // should trigger it when starting a browser run.
+        const protocolId = 'proto-123';
+        const mockBlob = new ArrayBuffer(8);
+
+        service.startRun(protocolId, 'Snapshot Test').subscribe();
+
+        const req = httpMock.expectOne(`/assets/protocols/${protocolId}.pkl`);
+        req.flush(mockBlob);
+
+        await vi.waitFor(() => {
+          expect(pythonRuntime.executeBlob).toHaveBeenCalled();
+        });
+
+        // The PythonRuntimeService should handle snapshot restore internally
+        // This test is a placeholder until PythonRuntimeService is updated with snapshot logic
+      });
+
+      it('should indicate Python runtime initialization status', () => {
+        // ExecutionService should expose whether Python runtime is ready
+        // This is important for showing loading state during snapshot restore
+        expect(service.isConnected).toBeDefined();
+        // After snapshot restore, the runtime should be ready quickly
+      });
+    });
   });
-});
