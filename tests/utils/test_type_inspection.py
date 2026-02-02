@@ -75,7 +75,75 @@ class TestIsPylabrobotResource:
         assert is_pylabrobot_resource(union_type)
 
 
+class TestIsPylabrobotAsset:
+    """Tests for machine types that should also be detected as assets.
+
+    These tests currently FAIL because is_pylabrobot_resource() only checks
+    for Plate, TipRack, Container, Resource strings. After the fix, machine
+    types should be detected as assets.
+    """
+
+    def test_returns_true_for_liquid_handler_string(self) -> None:
+        """Test that LiquidHandler string is identified as asset."""
+        assert is_pylabrobot_resource("LiquidHandler")
+
+    def test_returns_true_for_plate_reader_string(self) -> None:
+        """Test that PlateReader string is identified as asset."""
+        assert is_pylabrobot_resource("PlateReader")
+
+    def test_returns_true_for_shaker_string(self) -> None:
+        """Test that Shaker string is identified as asset."""
+        assert is_pylabrobot_resource("Shaker")
+
+    def test_returns_true_for_heater_shaker_string(self) -> None:
+        """Test that HeaterShaker string is identified as asset."""
+        assert is_pylabrobot_resource("HeaterShaker")
+
+    def test_returns_true_for_trough_string(self) -> None:
+        """Test that Trough string is identified as asset."""
+        assert is_pylabrobot_resource("Trough")
+
+    def test_returns_true_for_centrifuge_string(self) -> None:
+        """Test that Centrifuge string is identified as asset."""
+        assert is_pylabrobot_resource("Centrifuge")
+
+    def test_returns_true_for_thermocycler_string(self) -> None:
+        """Test that Thermocycler string is identified as asset."""
+        assert is_pylabrobot_resource("Thermocycler")
+
+    def test_returns_true_for_pump_string(self) -> None:
+        """Test that Pump string is identified as asset."""
+        assert is_pylabrobot_resource("Pump")
+
+    def test_returns_true_for_incubator_string(self) -> None:
+        """Test that Incubator string is identified as asset."""
+        assert is_pylabrobot_resource("Incubator")
+
+    def test_returns_true_for_optional_liquid_handler_string(self) -> None:
+        """Test that Optional[LiquidHandler] string is identified as asset."""
+        assert is_pylabrobot_resource("Optional[LiquidHandler]")
+
+    def test_returns_true_for_runtime_liquid_handler(self) -> None:
+        """Test that LiquidHandler class is identified as asset at runtime."""
+        from pylabrobot.liquid_handling import LiquidHandler
+
+        assert is_pylabrobot_resource(LiquidHandler)
+
+    def test_returns_true_for_runtime_plate_reader(self) -> None:
+        """Test that PlateReader class is identified as asset at runtime."""
+        from pylabrobot.plate_reading import PlateReader
+
+        assert is_pylabrobot_resource(PlateReader)
+
+    def test_returns_true_for_runtime_shaker(self) -> None:
+        """Test that Shaker class is identified as asset at runtime."""
+        from pylabrobot.shaking import Shaker
+
+        assert is_pylabrobot_resource(Shaker)
+
+
 class TestFqnFromHint:
+
 
     """Tests for fqn_from_hint function."""
 

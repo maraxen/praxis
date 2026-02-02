@@ -35,6 +35,24 @@ PLR_RESOURCE_TYPES: frozenset[str] = frozenset({
   "Resource",
   # Lids
   "Lid",
+  # Machine frontends
+  "LiquidHandler",
+  "PlateReader",
+  "HeaterShaker",
+  "Shaker",
+  "TemperatureController",
+  "Centrifuge",
+  "Thermocycler",
+  "Pump",
+  "PumpArray",
+  "Fan",
+  "Sealer",
+  "Peeler",
+  "PowderDispenser",
+  "Incubator",
+  "SCARA",
+  # Base machine class
+  "Machine",
 })
 
 # Regex pattern for extracting resource types from string type hints
@@ -44,14 +62,17 @@ _PLR_RESOURCE_PATTERN = re.compile(
 
 
 def is_pylabrobot_resource(type_or_str: Any) -> bool:
-  """Check if the given type or string is a Pylabrobot Resource."""
+  """Check if the given type or string is a Pylabrobot Resource or Machine.
+
+  This function returns True for:
+  - Resources: Plate, TipRack, Trough, Container, Carrier, Deck, etc.
+  - Machines: LiquidHandler, PlateReader, Shaker, Centrifuge, etc.
+
+  Both resources and machines are "assets" that need to be acquired at runtime.
+  """
   if isinstance(type_or_str, str):
-    return (
-      "Plate" in type_or_str
-      or "TipRack" in type_or_str
-      or "Container" in type_or_str
-      or "Resource" in type_or_str
-    )
+    # Check if any known PLR type name is in the string
+    return any(t in type_or_str for t in PLR_RESOURCE_TYPES)
 
   origin = get_origin(type_or_str)
   if origin is Union:
