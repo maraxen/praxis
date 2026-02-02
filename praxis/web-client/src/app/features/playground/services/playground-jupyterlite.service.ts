@@ -4,6 +4,7 @@ import { AppStore } from '@core/store/app.store';
 import { InteractionService } from '@core/services/interaction.service';
 import { PyodideSnapshotService } from '@core/services/pyodide-snapshot.service';
 import { PathUtils } from '@core/utils/path.utils';
+import { PyodideSnapshotService } from './pyodide-snapshot.service';
 
 const JUPYTERLITE_SNAPSHOT_KEY = 'pyodide-jupyterlite';
 
@@ -59,7 +60,7 @@ export class PlaygroundJupyterliteService {
     }
 
     this.replChannel = new BroadcastChannel('praxis_repl');
-    this.replChannel.onmessage = (event) => {
+    this.replChannel.onmessage = async (event) => {
       const data = event.data;
       if (data?.type === 'praxis:ready') {
         console.log('[REPL] Received kernel ready signal');
@@ -71,7 +72,33 @@ export class PlaygroundJupyterliteService {
       } else if (data?.type === 'USER_INTERACTION') {
         console.log('[REPL] USER_INTERACTION received via BroadcastChannel:', data.payload);
         this.handleUserInteraction(data.payload);
-      }
+      } else if (data?.type === 'praxis:snapshot_query') {
+        console.log('[Pyodide] Received snapshot query');
+        const snapshot = await this.snapshotService.getSnapshot();
+        if (snapshot) {
+            console.log('[Pyodide] Sending snapshot to iframe');
+            const postLoadCode = this.getPostLoadCode();
+            this.replChannel?.postMessage({
+                type: 'praxis:snapshot_load',
+                payload: snapshot,
+                post_load_code: postLoadCode,
+            });
+        } else {
+            console.log('[Pyodide] No snapshot found. Sending full bootstrap.');
+            const bootstrapCode = await this.getOptimizedBootstrap();
+            this.replChannel?.postMessage({ type: 'praxis:bootstrap', code: bootstrapCode });
+        }
+      } else if (data?.type === 'praxis:save_snapshot') {
+          console.log('[Pyodide] Received snapshot to save');
+          await this.snapshotService.saveSnapshot(data.payload);
+          console.log('[Pyodide] Snapshot saved for future fast-start');
+      } else if (data?.type === 'praxis:snapshot_query_failed') {
+        // This can happen if snapshot is corrupted
+        console.warn('[Pyodide] Snapshot restore failed, doing fresh init from iframe request');
+        await this.snapshotService.invalidateSnapshot();
+        const bootstrapCode = await this.getOptimizedBootstrap();
+        this.replChannel?.postMessage({ type: 'praxis:bootstrap', code: bootstrapCode });
+    }
     };
   }
 
@@ -101,27 +128,65 @@ export class PlaygroundJupyterliteService {
     return `
 import js
 from pyodide.ffi import to_js
+import pyodide_js
+import asyncio
 
-def _boot_handler(event):
+_praxis_initialized = False
+
+async def _praxis_boot_handler(event):
+    global _praxis_initialized
+    if _praxis_initialized:
+        print("PRAXIS: Already initialized, ignoring message.")
+        return
+
     data = event.data
     if hasattr(data, "to_py"):
         data = data.to_py()
-    if isinstance(data, dict) and data.get("type") == "praxis:bootstrap":
+
+    if isinstance(data, dict) and data.get("type") == "praxis:snapshot_load":
+        print("PRAXIS: Receiving snapshot...")
+        try:
+            await pyodide_js.loadSnapshot(data.get("payload"))
+            exec(data.get("post_load_code"), globals())
+            _praxis_initialized = True
+            print("PRAXIS: Snapshot restored.")
+            if '_praxis_channel' in globals():
+                globals()['_praxis_channel'].postMessage(to_js({"type": "praxis:ready"}, dict_converter=js.Object.fromEntries))
+                print("PRAXIS: Re-sent ready signal from snapshot.")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"PRAXIS: Snapshot load failed: {e}. Requesting full bootstrap.")
+            _praxis_boot_channel.postMessage(to_js({"type": "praxis:snapshot_query_failed"}, dict_converter=js.Object.fromEntries))
+
+    elif isinstance(data, dict) and data.get("type") == "praxis:bootstrap":
         print("PRAXIS: Receiving full bootstrap...")
         try:
             exec(data.get("code"), globals())
+            _praxis_initialized = True
+            print("PRAXIS: Full bootstrap complete. Creating snapshot...")
+            snapshot = await pyodide_js.dumpSnapshot()
+            if '_praxis_channel' in globals():
+                globals()['_praxis_channel'].postMessage(to_js({"type": "praxis:save_snapshot", "payload": snapshot}, dict_converter=js.Object.fromEntries))
+                print("PRAXIS: Snapshot sent to host for saving.")
         except Exception as e:
             import traceback
             traceback.print_exc()
             print(f"PRAXIS: Bootstrap failed: {e}")
 
-if hasattr(js, "BroadcastChannel"):
-    _boot_channel = js.BroadcastChannel.new("praxis_repl")
-    _boot_channel.onmessage = _boot_handler
-    _boot_channel.postMessage(to_js({"type": "praxis:boot_ready"}, dict_converter=js.Object.fromEntries))
-    print("PRAXIS: Minimal bootstrap ready, waiting for payload...")
-else:
-    print("PRAXIS: Critical - BroadcastChannel missing")
+def _main_boot():
+    if hasattr(js, "BroadcastChannel"):
+        global _praxis_boot_channel
+        _praxis_boot_channel = js.BroadcastChannel.new("praxis_repl")
+        def message_wrapper(event):
+            asyncio.ensure_future(_praxis_boot_handler(event))
+        _praxis_boot_channel.onmessage = message_wrapper
+        _praxis_boot_channel.postMessage(to_js({"type": "praxis:snapshot_query"}, dict_converter=js.Object.fromEntries))
+        print("PRAXIS: Minimal bootstrap ready, querying for snapshot...")
+    else:
+        print("PRAXIS: Critical - BroadcastChannel missing")
+
+_main_boot()
 `.trim();
   }
 
@@ -226,54 +291,8 @@ for _p_file in ['__init__.py', 'interactive.py']:
     return shimInjections + '\n' + baseBootstrap;
   }
 
-  private generateBootstrapCode(): string {
+  private getPostLoadCode(): string {
     const lines = [
-      '# PyLabRobot Interactive Notebook',
-      '# Installing pylabrobot from local wheel...',
-      'import micropip',
-      'await micropip.install(f"{PRAXIS_HOST_ROOT}assets/wheels/pylabrobot-0.1.6-py3-none-any.whl")',
-      '',
-      '# Ensure WebSerial, WebUSB, and WebFTDI are in builtins for all cells',
-      'import builtins',
-      'if "WebSerial" in globals():',
-      '    builtins.WebSerial = WebSerial',
-      'if "WebUSB" in globals():',
-      '    builtins.WebUSB = WebUSB',
-      'if "WebFTDI" in globals():',
-      '    builtins.WebFTDI = WebFTDI',
-      '',
-      '# Mock pylibftdi (not supported in browser/Pyodide)',
-      'import sys',
-      'from unittest.mock import MagicMock',
-      'sys.modules["pylibftdi"] = MagicMock()',
-      '',
-      '# Load WebSerial/WebUSB/WebFTDI shims for browser I/O',
-      '# Note: These are pre-loaded to avoid extra network requests',
-      'try:',
-      '    import pyodide_js',
-      '    from pyodide.ffi import to_js',
-      'except ImportError:',
-      '    pass',
-      '',
-      '# Shims will be injected directly via code to avoid 404s',
-      '# Patching is done in the bootstrap below',
-      '',
-      '# Patch pylabrobot.io to use browser shims',
-      'import pylabrobot.io.serial as _ser',
-      'import pylabrobot.io.usb as _usb',
-      'import pylabrobot.io.ftdi as _ftdi',
-      '_ser.Serial = WebSerial',
-      '_usb.USB = WebUSB',
-      '',
-      '# CRITICAL: Patch FTDI for backends like CLARIOstarBackend',
-      '_ftdi.FTDI = WebFTDI',
-      '_ftdi.HAS_PYLIBFTDI = True',
-      'print("✓ Patched pylabrobot.io with WebSerial/WebUSB/WebFTDI")',
-      '',
-      '# Import pylabrobot',
-      'import pylabrobot',
-      'from pylabrobot.resources import *',
-      '',
       '# Message listener for asset injection via BroadcastChannel',
       '# We use BroadcastChannel because it works across Window/Worker contexts',
       'import js',
@@ -338,10 +357,6 @@ for _p_file in ['__init__.py', 'interactive.py']:
       'except Exception as e:',
       '    print(f"! Failed to setup injection channel: {e}")',
       '',
-      'print("✓ pylabrobot loaded with browser I/O shims (including FTDI)!")',
-      'print(f"  Version: {pylabrobot.__version__}")',
-      'print("Use the Inventory button to insert asset variables.")',
-      '',
       '# Send ready signal to Angular host',
       'try:',
       '    # Must convert dict to JS Object for structured clone in BroadcastChannel',
@@ -352,8 +367,64 @@ for _p_file in ['__init__.py', 'interactive.py']:
       'except Exception as e:',
       '    print(f"! Ready signal failed: {e}")',
     ];
-
     return lines.join('\n');
+  }
+
+  private generateBootstrapCode(): string {
+    const lines = [
+      '# PyLabRobot Interactive Notebook',
+      '# Installing pylabrobot from local wheel...',
+      'import micropip',
+      'await micropip.install(f"{PRAXIS_HOST_ROOT}assets/wheels/pylabrobot-0.1.6-py3-none-any.whl")',
+      '',
+      '# Ensure WebSerial, WebUSB, and WebFTDI are in builtins for all cells',
+      'import builtins',
+      'if "WebSerial" in globals():',
+      '    builtins.WebSerial = WebSerial',
+      'if "WebUSB" in globals():',
+      '    builtins.WebUSB = WebUSB',
+      'if "WebFTDI" in globals():',
+      '    builtins.WebFTDI = WebFTDI',
+      '',
+      '# Mock pylibftdi (not supported in browser/Pyodide)',
+      'import sys',
+      'from unittest.mock import MagicMock',
+      'sys.modules["pylibftdi"] = MagicMock()',
+      '',
+      '# Load WebSerial/WebUSB/WebFTDI shims for browser I/O',
+      '# Note: These are pre-loaded to avoid extra network requests',
+      'try:',
+      '    import pyodide_js',
+      '    from pyodide.ffi import to_js',
+      'except ImportError:',
+      '    pass',
+      '',
+      '# Shims will be injected directly via code to avoid 404s',
+      '# Patching is done in the bootstrap below',
+      '',
+      '# Patch pylabrobot.io to use browser shims',
+      'import pylabrobot.io.serial as _ser',
+      'import pylabrobot.io.usb as _usb',
+      'import pylabrobot.io.ftdi as _ftdi',
+      '_ser.Serial = WebSerial',
+      '_usb.USB = WebUSB',
+      '',
+      '# CRITICAL: Patch FTDI for backends like CLARIOstarBackend',
+      '_ftdi.FTDI = WebFTDI',
+      '_ftdi.HAS_PYLIBFTDI = True',
+      'print("✓ Patched pylabrobot.io with WebSerial/WebUSB/WebFTDI")',
+      '',
+      '# Import pylabrobot',
+      'import pylabrobot',
+      'from pylabrobot.resources import *',
+      '',
+      'print("✓ pylabrobot loaded with browser I/O shims (including FTDI)!")',
+      'print(f"  Version: {pylabrobot.__version__}")',
+      'print("Use the Inventory button to insert asset variables.")',
+      '',
+    ];
+
+    return lines.join('\n') + this.getPostLoadCode();
   }
 
   private calculateHostRoot(): string {

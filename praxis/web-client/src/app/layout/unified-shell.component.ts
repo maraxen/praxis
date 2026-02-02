@@ -17,6 +17,8 @@ import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-di
 import { OnboardingService } from '@core/services/onboarding.service';
 import { TutorialService } from '@core/services/tutorial.service';
 import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcome-dialog.component';
+import { SessionRecoveryService } from '@core/services/session-recovery.service';
+import { SessionRecoveryComponent } from '@core/components/session-recovery/session-recovery.component';
 import { PRAXIS_LOGO_SVG_DATA } from '@shared/constants/logo';
 
 @Component({
@@ -444,6 +446,7 @@ export class UnifiedShellComponent implements OnInit {
   private dialog = inject(MatDialog);
   private onboarding = inject(OnboardingService);
   private tutorial = inject(TutorialService);
+  private sessionRecovery = inject(SessionRecoveryService);
 
   constructor() {
     this.registerCommands();
@@ -462,7 +465,28 @@ export class UnifiedShellComponent implements OnInit {
       localStorage.removeItem('praxis_pending_tutorial');
       // Small delay to ensure UI is largely rendered
       setTimeout(() => this.tutorial.start(), 1000);
+    } else {
+      // Check for orphaned runs only if no other dialog is showing
+      this.checkForOrphanedRuns();
     }
+  }
+
+  private checkForOrphanedRuns(): void {
+    this.sessionRecovery.checkForOrphanedRuns().subscribe(orphanedRuns => {
+      if (orphanedRuns.length > 0) {
+        const dialogRef = this.dialog.open(SessionRecoveryComponent, {
+          data: { runs: orphanedRuns },
+          width: '500px',
+          disableClose: false
+        });
+
+        dialogRef.afterClosed().subscribe(result => {
+          if (result === 'mark-as-failed') {
+            this.sessionRecovery.markAllAsFailed(orphanedRuns).subscribe();
+          }
+        });
+      }
+    });
   }
 
   private registerCommands() {

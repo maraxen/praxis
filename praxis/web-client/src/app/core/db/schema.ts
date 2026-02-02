@@ -380,6 +380,17 @@ export interface ProtocolAssetRequirement {
 }
 
 /**
+ * Metadata for a protocol run, stored in properties_json
+ */
+export interface RunMetadata {
+  notes?: string;
+  simulation_mode?: boolean;
+  lastHeartbeat?: number; // Unix timestamp (ms)
+  checkpointStep?: number;
+  checkpointState?: any;
+}
+
+/**
  * Interface for the 'protocol_runs' table
  */
 export interface ProtocolRun {
@@ -387,7 +398,7 @@ export interface ProtocolRun {
   created_at: string | null;
   updated_at: string | null;
   name: string | null;
-  properties_json: Record<string, unknown> | null;
+  properties_json: RunMetadata | null;
   start_time: string | null;
   end_time: string | null;
   data_directory_path: string | null;

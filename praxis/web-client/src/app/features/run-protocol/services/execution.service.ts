@@ -1,5 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { ModeService } from '@core/services/mode.service';
 import { PythonRuntimeService } from '@core/services/python-runtime.service';
@@ -26,6 +27,7 @@ export class ExecutionService {
   private sqliteService = inject(SqliteService);
   private http = inject(HttpClient);
   private wizardState = inject(WizardStateService);
+  private snackBar = inject(MatSnackBar);
 
   private readonly WS_URL = environment.wsUrl;
   private readonly API_URL = environment.apiUrl;
@@ -47,6 +49,38 @@ export class ExecutionService {
   messages$ = this.messagesSubject.asObservable();
 
   private apiWrapper = inject(ApiWrapperService);
+  private heartbeatInterval?: ReturnType<typeof setInterval>;
+
+  /**
+   * Start sending heartbeats to the database
+   */
+  private startHeartbeat(runId: string): void {
+    this.heartbeatInterval = setInterval(() => {
+      this.sqliteService.protocolRuns.pipe(
+        switchMap(repo => repo.findById(runId)),
+        switchMap(run => {
+          if (run) {
+            const metadata = (run.properties_json || {}) as any;
+            metadata.lastHeartbeat = Date.now();
+            return this.sqliteService.protocolRuns.pipe(
+              switchMap(repo => repo.update(runId, { properties_json: metadata } as any))
+            );
+          }
+          return of(null);
+        })
+      ).subscribe();
+    }, 5000); // Every 5 seconds
+  }
+
+  /**
+   * Stop sending heartbeats
+   */
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = undefined;
+    }
+  }
 
   /**
    * Fetch protocol blob from backend or static assets
@@ -197,6 +231,9 @@ export class ExecutionService {
     // Execute asynchronously
     this.executeBrowserProtocol(protocolId, runId, parameters);
 
+    // Start heartbeat
+    this.startHeartbeat(runId);
+
     return of({ run_id: runId });
   }
 
@@ -249,7 +286,15 @@ export class ExecutionService {
       const blob = await firstValueFrom(this.fetchProtocolBlob(protocolId));
 
       // NEW: Get serialized deck setup from WizardStateService
-      const deckSetupScript = this.wizardState.serializeToPython();
+      const { script: deckSetupScript, warnings } = this.wizardState.serializeToPython();
+
+      if (warnings.length > 0) {
+        this.snackBar.open(`Deck Serialization Warnings:\n- ${warnings.join('\n- ')}`, 'Close', {
+          duration: 10000, // 10 seconds
+          panelClass: ['warning-snackbar']
+        });
+        this.addLog(`[Deck Setup] Warnings: ${warnings.join(', ')}`);
+      }
 
       this.addLog(`[Browser Mode] Executing protocol binary`);
       this.updateRunState({ progress: 20, currentStep: 'Running protocol' });
@@ -314,7 +359,7 @@ export class ExecutionService {
       this.sqliteService.protocolRuns.pipe(
         switchMap(repo => repo.update(runId, { status: 'completed', end_time: new Date().toISOString() }))
       ).subscribe();
-
+      this.stopHeartbeat();
     } catch (error) {
       console.error('[Browser Execution Error]', error);
       const current = this._currentRun();
@@ -330,6 +375,7 @@ export class ExecutionService {
       this.sqliteService.protocolRuns.pipe(
         switchMap(repo => repo.update(runId, { status: 'failed', end_time: new Date().toISOString() }))
       ).subscribe();
+      this.stopHeartbeat();
     }
   }
 

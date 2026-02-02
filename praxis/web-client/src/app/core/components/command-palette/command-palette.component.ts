@@ -25,12 +25,13 @@ import { AssetSearchService } from '../../../features/assets/services/asset-sear
     MatDividerModule
 ],
   template: `
-    <div class="command-palette-container">
+    <div class="command-palette-container" data-testid="command-palette">
       <div class="search-header">
         <mat-icon>search</mat-icon>
         <input
           #searchInput
           [formControl]="searchControl"
+          data-testid="command-palette-input"
           placeholder="Type a command or search..."
           autoFocus
           (keydown)="handleKeyDown($event)"

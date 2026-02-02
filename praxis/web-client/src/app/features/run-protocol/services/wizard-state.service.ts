@@ -4,6 +4,7 @@ import { CarrierRequirement, SlotAssignment, DeckSetupResult } from '../models/c
 import { CarrierInferenceService } from './carrier-inference.service';
 import { DeckCatalogService } from './deck-catalog.service';
 import { ConsumableAssignmentService } from './consumable-assignment.service';
+import { getValidPLRClassNames, validatePLRClassName } from '@core/utils/plr-validator';
 
 export type WizardStep = 'carrier-placement' | 'resource-placement' | 'verification';
 
@@ -394,9 +395,11 @@ export class WizardStateService {
      * Serialize the current deck state into a Python script.
      * This script rebuilds the deck layout in the worker.
      */
-    serializeToPython(): string {
+    serializeToPython(): { script: string; warnings: string[] } {
         const assignments = this._slotAssignments();
         const deckType = this._deckType();
+        const warnings: string[] = [];
+        const validClasses = getValidPLRClassNames();
 
         // Start building the Python script
         let code = 'import pylabrobot.resources as res\n';
@@ -435,8 +438,12 @@ export class WizardStateService {
             const varName = id.replace(/[^a-zA-Z0-9_]/g, '_');
             carrierVarNames.set(id, varName);
 
+            if (!validatePLRClassName(carrier.fqn, validClasses)) {
+                warnings.push(`Unknown carrier class: ${carrier.fqn}`);
+            }
+
             // Heuristic for class name from FQN
-            const className = carrier.fqn.split('.').pop()?.toUpperCase() || 'Carrier';
+            const className = carrier.fqn.split('.').pop() || 'Carrier';
 
             code += `    ${varName} = ${className}(name="${carrier.name}")\n`;
 
@@ -475,6 +482,6 @@ export class WizardStateService {
         });
 
         code += '    return deck\n\ndeck = setup_deck()\n';
-        return code;
+        return { script: code, warnings };
     }
 }

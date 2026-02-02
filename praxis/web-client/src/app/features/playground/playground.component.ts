@@ -128,45 +128,42 @@ import { PathUtils } from '@core/utils/path.utils';
           </div>
 
           <mat-tab-group class="repl-tabs" [selectedIndex]="selectedTabIndex()" (selectedIndexChange)="selectedTabIndex.set($event)">
-            <mat-tab label="REPL Notebook">
-              <ng-template matTabContent>
-                <!-- JupyterLite iframe -->
-                <div class="repl-notebook-wrapper" data-tour-id="repl-notebook">
+            <mat-tab label="Notebook">
+              <!-- JupyterLite iframe -->
+              <div class="repl-notebook-wrapper" data-tour-id="repl-notebook" [hidden]="selectedTabIndex() !== 0">
 
-                  @if (jupyterliteUrl) {
-                    <iframe
-                      #notebookFrame
-                      [src]="jupyterliteUrl"
-                      class="notebook-frame"
-                      (load)="onIframeLoad()"
-                      allow="cross-origin-isolated; usb; serial"
-                      sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
-                    ></iframe>
-                  }
+                @if (jupyterliteUrl) {
+                  <iframe
+                    #notebookFrame
+                    [src]="jupyterliteUrl"
+                    class="notebook-frame"
+                    (load)="onIframeLoad()"
+                    allow="cross-origin-isolated; usb; serial"
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
+                  ></iframe>
+                }
 
-                  @if (isLoading()) {
-                    <div class="loading-overlay">
-                      <div class="loading-content">
-                        <mat-spinner diameter="48"></mat-spinner>
-                        <p>Initializing Pyodide Environment...</p>
-                        @if (loadingError()) {
-                          <button mat-flat-button color="warn" (click)="reloadNotebook()">
-                            <mat-icon>refresh</mat-icon>
-                            Retry Loading
-                          </button>
-                        }
-                      </div>
+                @if (isLoading()) {
+                  <div class="loading-overlay">
+                    <div class="loading-content">
+                      <mat-spinner diameter="48"></mat-spinner>
+                      <p>Initializing Pyodide Environment...</p>
+                      @if (loadingError()) {
+                        <button mat-flat-button color="warn" (click)="reloadNotebook()">
+                          <mat-icon>refresh</mat-icon>
+                          Retry Loading
+                        </button>
+                      }
                     </div>
-                  }
-                </div>
-              </ng-template>
+                  </div>
+                }
+              </div>
             </mat-tab>
             
             <mat-tab label="Direct Control">
-              <ng-template matTabContent>
-                <div class="direct-control-dashboard">
-                  <!-- Machine Selector Sidebar -->
-                  <div class="machine-selector-panel">
+              <div class="direct-control-dashboard" [hidden]="selectedTabIndex() !== 1">
+                <!-- Machine Selector Sidebar -->
+                <div class="machine-selector-panel">
                     <div class="panel-header">
                       <h3>Available Machines</h3>
                       <button mat-icon-button (click)="loadMachinesForDirectControl()" matTooltip="Refresh machines">
@@ -221,7 +218,6 @@ import { PathUtils } from '@core/utils/path.utils';
                     }
                   </div>
                 </div>
-              </ng-template>
             </mat-tab>
           </mat-tab-group>
         </mat-card>
@@ -303,6 +299,36 @@ import { PathUtils } from '@core/utils/path.utils';
           flex: 1;
         }
       }
+  .repl-tabs {
+  ::ng-deep .mat-mdc-tab-header {
+    background: transparent;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+  }
+
+  ::ng-deep .mat-mdc-tab {
+    min-width: 80px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+    
+    &:hover {
+      opacity: 1;
+    }
+    
+    &.mdc-tab--active {
+      opacity: 1;
+    }
+  }
+
+  ::ng-deep .mat-mdc-tab-labels {
+    gap: 0;
+  }
+  
+  ::ng-deep .mdc-tab-indicator__content--underline {
+    border-color: var(--mat-sys-primary);
+    border-width: 2px;
+    border-radius: 2px 2px 0 0;
+  }
+}
 
       .repl-notebook-wrapper {
         height: 100%;
