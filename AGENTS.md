@@ -70,6 +70,127 @@ ast-grep run --pattern 'class $NAME { $$$BODY }' --lang typescript --debug-query
 
 ---
 
+## Bun Development Guidelines
+
+---
+description: Use Bun instead of Node.js, npm, pnpm, or vite.
+globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
+alwaysApply: false
+---
+
+Default to using Bun instead of Node.js.
+
+- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
+- Use `bun test` instead of `jest` or `vitest`
+- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
+- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
+- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
+- Use `bunx <package> <command>` instead of `npx <package> <command>`
+- Bun automatically loads .env, so don't use dotenv.
+
+### APIs
+
+- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
+- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
+- `Bun.redis` for Redis. Don't use `ioredis`.
+- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
+- `WebSocket` is built-in. Don't use `ws`.
+- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
+- Bun.$`ls` instead of execa.
+
+### Testing
+
+Use `bun test` to run tests.
+
+```ts
+// index.test.ts
+import { test, expect } from "bun:test";
+
+test("hello world", () => {
+  expect(1).toBe(1);
+});
+```
+
+### Frontend
+
+Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+
+Server:
+
+```ts
+// index.ts
+import index from "./index.html"
+
+Bun.serve({
+  routes: {
+    "/": index,
+    "/api/users/:id": {
+      GET: (req) => {
+        return new Response(JSON.stringify({ id: req.params.id }));
+      },
+    },
+  },
+  // optional websocket support
+  websocket: {
+    open: (ws) => {
+      ws.send("Hello, world!");
+    },
+    message: (ws, message) => {
+      ws.send(message);
+    },
+    close: (ws) => {
+      // handle close
+    }
+  },
+  development: {
+    hmr: true,
+    console: true,
+  }
+})
+```
+
+HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+
+```html
+<!-- index.html -->
+<html>
+  <body>
+    <h1>Hello, world!</h1>
+    <script type="module" src="./frontend.tsx"></script>
+  </body>
+</html>
+```
+
+With the following `frontend.tsx`:
+
+```tsx
+// frontend.tsx
+import React from "react";
+import { createRoot } from "react-dom/client";
+
+// import .css files directly and it works
+import './index.css';
+
+const root = createRoot(document.body);
+
+export default function Frontend() {
+  return <h1>Hello, world!</h1>;
+}
+
+root.render(<Frontend />);
+```
+
+Then, run index.ts
+
+```sh
+bun --hot ./index.ts
+```
+
+For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+
+---
+
+
 ## Project: Praxis
 
 ### Tech Stack
@@ -109,86 +230,6 @@ praxis/web-client/
 │   └── helpers/         # Wizard helpers
 └── src/assets/browser-data/  # PLR definitions, seed data
 ```
-
----
-
-## Autonomous Mode Development Cycle
-
-> **Activation:** When the prompt specifies "autonomous mode", follow this cycle continuously until all issues are resolved.
-
-### Phase 1: RECON (Audit & Research)
-
-**Goal:** Understand the full landscape before making any changes.
-
-```bash
-# Run ALL specs to get comprehensive picture
-timeout 600 npx playwright test --reporter=line 2>&1 | tee /tmp/full-audit.log
-
-# Categorize results
-grep -E "passed|failed|skipped" /tmp/full-audit.log
-```
-
-**Document for each failing spec:**
-1. **Error type:** Missing method, timeout, selector, assertion
-2. **Source logic:** Does the underlying feature work correctly?
-3. **Test logic:** Is the test testing the right thing?
-4. **Classification:**
-   - `STALE` - Test references removed/renamed UI elements
-   - `OUTDATED` - Test logic doesn't match current behavior
-   - `REDUNDANT` - Test duplicates another test's coverage
-   - `BROKEN_SOURCE` - Actual feature bug
-   - `INFRASTRUCTURE` - Test helper/fixture issue
-
-### Phase 2: PLAN (Prioritized Fixes)
-
-**Triage Order:**
-1. **Infrastructure** (PageObjects, fixtures) - Unblocks many tests
-2. **Critical paths** (execution, persistence, deployment)
-3. **Core value** (asset management, protocols)
-4. **Nice-to-have** (visual, optimization tests)
-
-**For each fix, document:**
-- **Assumption:** "I assume X because Y"
-- **Decision:** "I chose A over B because..."
-- **Risk:** How might this break?
-
-### Phase 3: EXECUTE (Test-Driven Fixes)
-
-**Iron Rule:** Fix ONE spec at a time.
-
-```
-FOR each failing spec:
-  1. RUN spec in isolation → capture exact error
-  2. INVESTIGATE source vs test logic mismatch
-  3. IF source wrong → fix source, verify test
-     IF test wrong → fix test, verify source
-     IF redundant → mark for removal
-  4. RUN spec again → confirm green
-  5. RUN related specs → no regressions
-```
-
-**Delete, Don't Fix:**
-- Tests with no corresponding feature
-- Duplicate coverage
-- Tests for deprecated APIs
-
-### Phase 4: EVALUATE (Verification Gate)
-
-```bash
-# Full suite pass
-npx playwright test --reporter=line 2>&1 | tail -10
-
-# Build verification
-bun run build && bun run lint
-```
-
-**Exit Criteria:**
-- [ ] All P0/P1 tests passing
-- [ ] P2 tests at ≥80% pass rate
-- [ ] Build clean
-- [ ] No regressions in previously passing tests
-
----
 
 ## E2E Testing Guidelines
 
@@ -401,5 +442,6 @@ private async ensureReady(): Promise<void> {
 **Recent Fixes:**
 - health-check.spec.ts: Replaced dynamic RxJS import with inline toPromise()
 - health-check.spec.ts: Use localStorage for mode check
-- AGENTS.md: Added Autonomous Mode Development Cycle
+- AGENTS.md: Updated with Bun development guidelines
+- AGENTS.md: Removed Autonomous Mode Development Cycle
 
