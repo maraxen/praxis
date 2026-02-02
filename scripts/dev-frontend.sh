@@ -117,6 +117,6 @@ fi
 # Start Angular dev server
 log_info "Starting Angular development server..."
 cd "$FRONTEND_DIR"
-npm run start
+bun run start
 
 # Note: cleanup() will be called automatically when ng serve exits

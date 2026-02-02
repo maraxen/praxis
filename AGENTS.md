@@ -13,10 +13,10 @@
 time timeout 60 npx playwright test --reporter=line 2>&1 | tee /tmp/e2e-run.txt | tail -20
 
 # Fast commands - grep/filter output
-npm run build 2>&1 | grep -E "error|warning|built" | head -20
+bun run build 2>&1 | grep -E "error|warning|built" | head -20
 
 # Multi-step with tee for evidence
-npm run lint 2>&1 | tee /tmp/lint.log | tail -5
+bun run lint 2>&1 | tee /tmp/lint.log | tail -5
 ```
 
 **Filtering patterns:**
@@ -88,8 +88,8 @@ ast-grep run --pattern 'class $NAME { $$$BODY }' --lang typescript --debug-query
 
 | Action | Command |
 |--------|---------|
-| Dev Server | `cd praxis/web-client && npm start` |
-| Build | `npm run build` |
+| Dev Server | `cd praxis/web-client && bun start` |
+| Build | `bun run build` |
 | E2E Tests | `npx playwright test` |
 | E2E (smoke) | `npx playwright test smoke.spec.ts` |
 
@@ -179,7 +179,7 @@ FOR each failing spec:
 npx playwright test --reporter=line 2>&1 | tail -10
 
 # Build verification
-npm run build && npm run lint
+bun run build && bun run lint
 ```
 
 **Exit Criteria:**
@@ -376,8 +376,8 @@ private async ensureReady(): Promise<void> {
 1. **`npx playwright test smoke.spec.ts`** - Must pass
 2. **`npx playwright test 01-onboarding.spec.ts`** - Must pass
 3. **`npx playwright test protocol-library.spec.ts`** - Must pass
-4. **`npm run build`** - No errors
-5. **`npm run lint`** - Clean
+4. **`bun run build`** - No errors
+5. **`bun run lint`** - Clean
 6. **Browser DevTools** - No console errors
 
 ---
