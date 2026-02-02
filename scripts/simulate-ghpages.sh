@@ -29,7 +29,7 @@ echo ""
 if [[ "$NO_BUILD" == false ]]; then
     echo "🏗️  Building for GH Pages..."
     cd "$WEB_CLIENT_DIR"
-    npm run build:gh-pages
+    bun run build:gh-pages
     echo ""
 fi
 

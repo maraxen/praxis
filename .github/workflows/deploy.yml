@@ -36,18 +36,18 @@ jobs:
       - name: Generate assets
         run: uv run scripts/generate_browser_db.py
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
+          bun-version: latest
 
       - name: Install Node dependencies
         working-directory: ./praxis/web-client
-        run: npm ci
+        run: bun install
 
       - name: Build web client
         working-directory: ./praxis/web-client
-        run: npm run build:gh-pages
+        run: bun run build:gh-pages
 
       - name: SPA Fix (404.html + .nojekyll)
         run: |
