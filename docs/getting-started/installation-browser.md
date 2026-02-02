@@ -29,13 +29,13 @@ If you want to run the browser client from your own machine:
 
    ```bash
    cd praxis/web-client
-   npm install
+   bun install
    ```
 
 3. **Start Browser Mode**
 
    ```bash
-   npm run start:browser
+   bun run start:browser
    ```
 
 4. **Access Praxis**

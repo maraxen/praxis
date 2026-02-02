@@ -37,10 +37,10 @@ From the `praxis/web-client` directory:
 
 ```bash
 # Install dependencies (first time only)
-npm install
+bun install
 
 # Start development server
-npm start
+bun start
 ```
 
 The frontend will be available at `http://localhost:4200`
@@ -89,19 +89,19 @@ The app uses JWT-based authentication:
 
 ```bash
 # Development server (with proxy)
-npm start
+bun start
 
 # Build for production
-npm run build
+bun run build
 
 # Run unit tests
-npm test
+bun test
 
 # Run e2e tests
-npm run e2e
+bun run e2e
 
 # Lint code
-npm run lint
+bun run lint
 ```
 
 ## Project Structure
@@ -137,7 +137,7 @@ praxis/web-client/
 **Solution**:
 1. Verify backend is running: `curl http://localhost:8000/api/v1/protocols`
 2. Check proxy.conf.json is correct
-3. Restart Angular dev server: `npm start`
+3. Restart Angular dev server: `bun start`
 
 ### Authentication not working
 
@@ -186,13 +186,13 @@ praxis/web-client/
 
 ### Unit Tests (Vitest)
 ```bash
-npm test
+bun test
 ```
 
 ### E2E Tests (Playwright)
 ```bash
 # Run e2e tests
-npm run e2e
+bun run e2e
 
 # Run e2e tests in UI mode
 npx playwright test --ui
@@ -202,7 +202,7 @@ npx playwright test --ui
 
 ```bash
 # Build for production
-npm run build
+bun run build
 
 # Output will be in dist/web-client/browser/
 ```

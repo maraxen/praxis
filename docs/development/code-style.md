@@ -132,8 +132,8 @@ ESLint with Prettier rules handles formatting:
 
 ```bash
 cd praxis/web-client
-npm run lint
-npm run lint -- --fix  # Auto-fix
+bun run lint
+bun run lint -- --fix  # Auto-fix
 ```
 
 ### Type Safety

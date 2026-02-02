@@ -7,7 +7,7 @@ This script provides a step-by-step walkthrough of the Praxis platform in **Brow
 Ensure you have the application running in Browser Mode:
 
 ```bash
-npm run start:browser
+bun run start:browser
 ```
 
 Open your browser to [http://localhost:4200](http://localhost:4200).

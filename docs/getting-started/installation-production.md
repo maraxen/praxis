@@ -44,8 +44,8 @@ The easiest way to run the full stack is using Docker Compose:
 
    ```bash
    cd praxis/web-client
-   npm install
-   npm start
+   bun install
+   bun start
    ```
 
 6. **Access Praxis**

@@ -31,13 +31,13 @@ uv run uvicorn praxis.backend.main:app --host 0.0.0.0 --port 8000 --workers 4
 cd praxis/web-client
 
 # Development
-npm start
+bun start
 
 # Demo mode
-npm run start:browser
+bun run start:browser
 
 # Production build
-npm run build
+bun run build
 ```
 
 ### Run Celery Worker
@@ -79,13 +79,13 @@ uv run pytest tests/services/test_protocol_service.py::test_create
 cd praxis/web-client
 
 # All tests
-npm test
+bun test
 
 # Watch mode
-npm test -- --watch
+bun test -- --watch
 
 # Coverage
-npm test -- --code-coverage
+bun test -- --code-coverage
 ```
 
 ## Linting & Formatting
@@ -112,10 +112,10 @@ uv run ty check praxis/
 cd praxis/web-client
 
 # Lint
-npm run lint
+bun run lint
 
 # Fix
-npm run lint -- --fix
+bun run lint -- --fix
 ```
 
 ## Database
@@ -253,10 +253,10 @@ test:
 
 lint:
 	uv run ruff check .
-	cd praxis/web-client && npm run lint
+	cd praxis/web-client && bun run lint
 
 build:
-	cd praxis/web-client && npm run build
+	cd praxis/web-client && bun run build
 
 db-test:
 	docker run -d --name praxis_test_db \
@@ -276,7 +276,7 @@ Add to your shell profile (`.bashrc` or `.zshrc`):
 ```bash
 # Praxis aliases
 alias praxis-backend='cd ~/projects/praxis && PRAXIS_DB_DSN="postgresql+asyncpg://postgres:postgres@localhost:5432/praxis" uv run uvicorn praxis.backend.main:app --reload'
-alias praxis-frontend='cd ~/projects/praxis/praxis/web-client && npm start'
+alias praxis-frontend='cd ~/projects/praxis/praxis/web-client && bun start'
 alias praxis-test='cd ~/projects/praxis && uv run pytest'
 alias praxis-sync='curl -X POST http://localhost:8000/api/v1/discovery/sync-all'
 ```

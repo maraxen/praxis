@@ -32,13 +32,13 @@ Browser mode allows you to run Praxis entirely within your web browser. It uses 
    ```bash
    git clone https://github.com/maraxen/praxis.git
    cd praxis/praxis/web-client
-   npm install
+   bun install
    ```
 
 3. Start the dev server in browser configuration:
 
    ```bash
-   npm run start:browser
+   bun run start:browser
    ```
 
 4. Open <http://localhost:4200>. You are now running in **Browser Mode**.
@@ -68,7 +68,7 @@ uv sync
 
 ```bash
 cd praxis/web-client
-npm install
+bun install
 ```
 
 ### 4. Configure Environment
@@ -106,7 +106,7 @@ KEYCLOAK_CLIENT_ID=praxis-web
     uv run uvicorn praxis.backend.main:app --reload --port 8000
 
     # In another terminal, start frontend
-    cd praxis/web-client && npm start
+    cd praxis/web-client && bun start
     ```
 
 === "Make Commands"
@@ -120,7 +120,7 @@ KEYCLOAK_CLIENT_ID=praxis-web
     uv run uvicorn praxis.backend.main:app --reload --port 8000
 
     # Start frontend
-    cd praxis/web-client && npm start
+    cd praxis/web-client && bun start
     ```
 
 ## Verify Installation
@@ -135,7 +135,7 @@ For quick demonstrations without setting up the backend:
 
 ```bash
 cd praxis/web-client
-npm run start:browser
+bun run start:browser
 ```
 
 This runs the frontend with mock data - perfect for demos or UI development.
@@ -161,7 +161,7 @@ For production deployments, see the [Configuration](../reference/configuration.m
 : Verify Redis is running: `redis-cli ping` should return `PONG`.
 
 **Frontend build errors**
-: Clear node_modules and reinstall: `rm -rf node_modules && npm install`
+: Clear node_modules and reinstall: `rm -rf node_modules && bun install`
 
 **Import errors for PyLabRobot**
 : Ensure you're running commands with `uv run` to use the correct virtualenv.

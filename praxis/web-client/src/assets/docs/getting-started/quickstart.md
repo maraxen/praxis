@@ -17,7 +17,7 @@ Praxis can be run in two main ways. For a 5-minute start, we recommend **Browser
 
    ```bash
    cd praxis/praxis/web-client
-   npm install && npm run start:browser
+   bun install && bun run start:browser
    ```
 
 3. Open <http://localhost:4200>. You're ready to go!
@@ -37,7 +37,7 @@ PRAXIS_DB_DSN="postgresql+asyncpg://postgres:postgres@localhost:5432/praxis_test
   uv run uvicorn praxis.backend.main:app --reload
 
 # Terminal 2: Frontend
-cd praxis/web-client && npm start
+cd praxis/web-client && bun start
 ```
 
 ### 2. Sync Protocol Definitions

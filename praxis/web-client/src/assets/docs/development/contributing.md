@@ -23,7 +23,7 @@ uv sync
 
 # Install frontend dependencies
 cd praxis/web-client
-npm install
+bun install
 ```
 
 ### Start Services
@@ -45,7 +45,7 @@ uv run uvicorn praxis.backend.main:app --reload --port 8000
 
 # Terminal 2: Frontend
 cd praxis/web-client
-npm start
+bun start
 ```
 
 ## Code Standards
@@ -80,13 +80,13 @@ We use:
 cd praxis/web-client
 
 # Lint
-npm run lint
+bun run lint
 
 # Test
-npm test
+bun test
 
 # Build
-npm run build
+bun run build
 ```
 
 ## Git Workflow
@@ -147,13 +147,13 @@ uv run pytest -m unit
 cd praxis/web-client
 
 # All tests
-npm test
+bun test
 
 # Watch mode
-npm test -- --watch
+bun test -- --watch
 
 # Single run with coverage
-npm test -- --code-coverage
+bun test -- --code-coverage
 ```
 
 ### Test Categories

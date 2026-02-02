@@ -87,7 +87,7 @@ The system consists of:
 
     ```bash
     cd praxis/web-client
-    npm run start:browser
+    bun run start:browser
     ```
 
     Zero setup. Runs entirely in the browser with mock data or direct hardware control via WebSerial/WebUSB. Perfect for demos or local research.
@@ -98,7 +98,7 @@ The system consists of:
     ```bash
     # Set to SQLite in praxis.ini
     uv run uvicorn main:app --reload
-    cd praxis/web-client && npm start
+    cd praxis/web-client && bun start
     ```
 
     Fast local development with a Python backend but no heavy infrastructure (Postgres/Redis).

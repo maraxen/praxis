@@ -13,7 +13,7 @@ Praxis supports a frontend-only browser mode that runs entirely in the browser w
 
 ```bash
 cd praxis/web-client
-npm run start:browser
+bun run start:browser
 ```
 
 This starts the Angular dev server with the demo configuration.
@@ -104,7 +104,7 @@ To deploy a demo to GitHub Pages:
 cd praxis/web-client
 
 # Build with demo configuration
-npm run build:demo
+bun run build:demo
 
 # Output is in dist/web-client
 # Deploy to gh-pages branch or configure GitHub Actions
@@ -126,9 +126,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm ci
+      - run: bun install
         working-directory: praxis/web-client
-      - run: npm run build:demo
+      - run: bun run build:demo
         working-directory: praxis/web-client
       - uses: peaceiris/actions-gh-pages@v3
         with:
@@ -153,5 +153,5 @@ praxis/web-client/src/app/core/services/
 After modifying, rebuild the demo:
 
 ```bash
-npm run build:demo
+bun run build:demo
 ```

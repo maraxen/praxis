@@ -21,7 +21,7 @@ This mode runs entirely in your browser using Pyodide (WASM). No Python/Docker b
 
    ```bash
    cd praxis/web-client
-   npm install && npm run start:browser
+   bun install && bun run start:browser
    ```
 
 3. Open <http://localhost:4200>. You're ready to go!
@@ -39,7 +39,7 @@ This runs the full architecture with FastAPI, PostgreSQL, and Redis. Verificatio
    uv run uvicorn praxis.backend.main:app --reload --port 8000
 
    # Terminal 2: Frontend
-   cd praxis/web-client && npm start
+   cd praxis/web-client && bun start
    ```
 
 ### 2. Sync Protocol Definitions

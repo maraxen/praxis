@@ -186,23 +186,23 @@ async def test_create_protocol(client: AsyncClient):
 
 ```bash
 cd praxis/web-client
-npm install
+bun install
 ```
 
 ### Running Tests
 
 ```bash
 # All tests
-npm test
+bun test
 
 # Watch mode
-npm test -- --watch
+bun test -- --watch
 
 # Single run with coverage
-npm test -- --code-coverage
+bun test -- --code-coverage
 
 # Specific file
-npm test -- --include=**/machine-list.component.spec.ts
+bun test -- --include=**/machine-list.component.spec.ts
 ```
 
 ### Component Testing
@@ -374,7 +374,7 @@ Target: 80% coverage minimum
 ### Frontend Coverage
 
 ```bash
-npm test -- --code-coverage
+bun test -- --code-coverage
 
 # View report
 open coverage/praxis/index.html
@@ -412,8 +412,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-      - run: npm ci
+      - run: bun install
         working-directory: praxis/web-client
-      - run: npm test -- --no-watch --code-coverage
+      - run: bun test -- --no-watch --code-coverage
         working-directory: praxis/web-client
 ```

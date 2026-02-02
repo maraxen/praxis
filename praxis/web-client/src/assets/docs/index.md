@@ -93,14 +93,14 @@ The system consists of:
     PRAXIS_DB_DSN="postgresql+asyncpg://..." uv run uvicorn main:app --reload
 
     # Start frontend
-    cd praxis/web-client && npm start
+    cd praxis/web-client && bun start
     ```
 
 === "Browser Mode"
 
     ```bash
     cd praxis/web-client
-    npm run start:browser
+    bun run start:browser
     ```
 
     Demo mode runs entirely in the browser with mock data - no backend required.

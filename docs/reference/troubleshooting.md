@@ -18,7 +18,7 @@ uv sync
 
 ### Node.js version mismatch
 
-**Symptom:** npm install fails or Angular CLI errors.
+**Symptom:** bun install fails or Angular CLI errors.
 
 **Solution:**
 
@@ -29,7 +29,7 @@ nvm use 20
 
 # Clear and reinstall
 rm -rf node_modules package-lock.json
-npm install
+bun install
 ```
 
 ### PyLabRobot import errors
@@ -162,7 +162,7 @@ cat praxis/web-client/src/environments/environment.ts
 
 ### Build errors
 
-**Symptom:** `npm run build` fails.
+**Symptom:** `bun run build` fails.
 
 **Solution:**
 
@@ -172,10 +172,10 @@ rm -rf node_modules/.cache
 rm -rf dist
 
 # Reinstall dependencies
-npm ci
+bun install
 
 # Rebuild
-npm run build
+bun run build
 ```
 
 ## Hardware Discovery Issues

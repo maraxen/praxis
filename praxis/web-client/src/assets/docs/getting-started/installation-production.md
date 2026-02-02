@@ -35,7 +35,7 @@ uv sync
 
 ```bash
 cd praxis/web-client
-npm install
+bun install
 ```
 
 ### 4. Configure Environment
@@ -73,7 +73,7 @@ KEYCLOAK_CLIENT_ID=praxis-web
     uv run uvicorn praxis.backend.main:app --reload --port 8000
 
     # In another terminal, start frontend
-    cd praxis/web-client && npm start
+    cd praxis/web-client && bun start
     ```
 
 === "Make Commands"
@@ -87,7 +87,7 @@ KEYCLOAK_CLIENT_ID=praxis-web
     uv run uvicorn praxis.backend.main:app --reload --port 8000
 
     # Start frontend
-    cd praxis/web-client && npm start
+    cd praxis/web-client && bun start
     ```
 
 ## Verify Installation

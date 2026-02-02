@@ -14,13 +14,13 @@ Browser mode allows you to run Praxis entirely within your web browser. It uses 
    ```bash
    git clone https://github.com/maraxen/praxis.git
    cd praxis/praxis/web-client
-   npm install
+   bun install
    ```
 
 3. Start the dev server in browser configuration:
 
    ```bash
-   npm run start:browser
+   bun run start:browser
    ```
 
 4. Open <http://localhost:4200>. You are now running in **Browser Mode**.
@@ -31,7 +31,7 @@ For quick demonstrations without setting up the backend:
 
 ```bash
 cd praxis/web-client
-npm run start:browser
+bun run start:browser
 ```
 
 This runs the frontend with mock data - perfect for demos or UI development.

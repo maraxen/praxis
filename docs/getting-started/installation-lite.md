@@ -21,7 +21,7 @@ Lite Mode provides a lightweight local development environment using the FastAPI
    ```bash
    uv sync
    cd praxis/web-client
-   npm install
+   bun install
    ```
 
 3. **Configure Lite Mode**
@@ -43,7 +43,7 @@ Lite Mode provides a lightweight local development environment using the FastAPI
 
    ```bash
    cd praxis/web-client
-   npm start
+   bun start
    ```
 
 ## Key Features
