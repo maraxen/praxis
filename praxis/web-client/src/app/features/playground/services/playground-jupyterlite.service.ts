@@ -4,7 +4,6 @@ import { AppStore } from '@core/store/app.store';
 import { InteractionService } from '@core/services/interaction.service';
 import { PyodideSnapshotService } from '@core/services/pyodide-snapshot.service';
 import { PathUtils } from '@core/utils/path.utils';
-import { PyodideSnapshotService } from './pyodide-snapshot.service';
 
 const JUPYTERLITE_SNAPSHOT_KEY = 'pyodide-jupyterlite';
 

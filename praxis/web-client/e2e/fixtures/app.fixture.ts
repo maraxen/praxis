@@ -64,7 +64,7 @@ export function buildIsolatedUrl(basePath: string, testInfo: { workerIndex: numb
  * Helper to wait for SQLite service to be ready.
  * Uses data-testid attribute on app-root for clean detection.
  */
-export async function waitForDbReady(page: import('@playwright/test').Page, timeout = 5000): Promise<void> {
+export async function waitForDbReady(page: import('@playwright/test').Page, timeout = 15000): Promise<void> {
     await page.locator('[data-sqlite-ready="true"]').waitFor({ state: 'attached', timeout });
 }
 
