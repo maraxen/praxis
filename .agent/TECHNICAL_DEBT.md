@@ -179,6 +179,17 @@ This document tracks known issues, temporary patches, and required follow-up wor
   - Files: `praxis/web-client/src/app/features/run-protocol/services/execution.service.ts`, `praxis/web-client/src/app/features/run-protocol/components/live-dashboard.component.ts`
   - Notes: Required for complete browser-mode protocol execution control.
 
+- [ ] **Browser Protocol Execution Architecture Review**: Current approach uses cloudpickle to serialize decorated protocol functions; Pyodide needs stub modules for `praxis.backend.*` to satisfy import references. <!-- id: 1103 -->
+  - Reason: Created minimal stubs in `praxis/web-client/src/assets/python/praxis/backend/` but this increases bundle size and maintenance burden.
+  - Priority: Medium
+  - Files: `praxis/web-client/src/app/core/workers/python.worker.ts`, `praxis/web-client/src/assets/python/praxis/backend/`
+  - Research Alternatives:
+    1. Serialize raw functions before decoration
+    2. Generate browser-compatible code at build time
+    3. Use `cloudpickle.register_pickle_by_value()` selectively
+    4. Create browser-specific `@browser_protocol` decorator
+
+
 ## Hardware Integration
 
 - [ ] **Backend Machine Registration Placeholder**: The `register_machine` endpoint in the backend API is a placeholder - discovered hardware cannot be formally added to the system database via the UI. <!-- id: 1201 -->

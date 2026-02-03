@@ -1,4 +1,5 @@
 import { booleanAttribute, Component, computed, EventEmitter, Inject, inject, Input, OnInit, Optional, Output, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,7 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PLRCategory } from '@core/db/plr-category';
-import { Resource } from '@features/assets/models/asset.models';
+import { Resource, ResourceDefinition } from '@features/assets/models/asset.models';
 import { AssetService } from '@features/assets/services/asset.service';
 import { AssetRequirement, ProtocolDefinition } from '@features/protocols/models/protocol.models';
 import { PraxisAutocompleteComponent } from '@shared/components/praxis-autocomplete/praxis-autocomplete.component';
@@ -55,10 +56,14 @@ export interface GuidedSetupResult {
           <mat-icon class="animate-spin">sync</mat-icon>
           <span>Loading inventory...</span>
         </div>
-      } @else if (inventory().length === 0) {
+      } @else if (inventory().length === 0 && requiredAssets.length > 0) {
         <div class="empty-state">
           <mat-icon>inventory_2</mat-icon>
-          <span>No resources in inventory. Add resources from the Assets page first.</span>
+          <span>No resources in inventory.</span>
+          <button mat-stroked-button color="primary" (click)="generateEphemeralResources()" [disabled]="isGenerating()">
+            <mat-icon>auto_awesome</mat-icon>
+            {{ isGenerating() ? 'Generating...' : 'Generate Ephemeral Resources' }}
+          </button>
         </div>
       } @else {
         <div class="list-actions">
@@ -453,6 +458,7 @@ export class GuidedSetupComponent implements OnInit {
 
   // Inline Inputs
   @Input() protocol: ProtocolDefinition | null = null;
+  @Input({ transform: booleanAttribute }) simulationMode = false;
   @Input({ transform: booleanAttribute }) isInline = false;
   @Input() initialSelections: Record<string, Resource> = {};
   @Input() excludeAssetIds: string[] = [];
@@ -463,6 +469,7 @@ export class GuidedSetupComponent implements OnInit {
   autofilledIds = signal<Set<string>>(new Set());
   isLoading = signal(true);
   currentIndex = signal(0);
+  isGenerating = signal(false);
 
   constructor(@Inject(MAT_DIALOG_DATA) @Optional() public data: GuidedSetupData | null) { }
 
@@ -515,9 +522,17 @@ export class GuidedSetupComponent implements OnInit {
     }
 
     this.assetService.getResources().subscribe({
-      next: (resources) => {
+      next: async (resources) => {
         this.inventory.set(resources);
-        this.autoSelect();
+
+        // Automation: If in simulation mode and inventory is empty, generate resources automatically
+        if (this.simulationMode && resources.length === 0 && this.requiredAssets.length > 0) {
+          console.log('[GuidedSetup] Simulation mode detected with empty inventory. Generating ephemeral resources...');
+          await this.generateEphemeralResources();
+        } else {
+          this.autoSelect();
+        }
+
         this.isLoading.set(false);
       },
       error: (err) => {
@@ -566,8 +581,9 @@ export class GuidedSetupComponent implements OnInit {
       this.currentIndex.set(this.requiredAssets.length);
     }
 
-    // Emit if valid so the stepper can proceed
-    if (this.isInline && this.isValid()) {
+    // Always emit in inline mode so parent can track selection state
+    // The parent's canProceedFromAssetSelection() handles validation
+    if (this.isInline) {
       this.selectionChange.emit(map as Record<string, Resource>);
     }
   }
@@ -910,6 +926,80 @@ export class GuidedSetupComponent implements OnInit {
         newSet.add(req.accession_id);
         return newSet;
       });
+    }
+  }
+
+  /**
+   * Generate ephemeral resources from resource definitions for simulation mode.
+   * When inventory is empty, this creates temporary resources matching each requirement.
+   */
+  async generateEphemeralResources() {
+    if (this.isGenerating()) return;
+
+    this.isGenerating.set(true);
+    const createdResources: Resource[] = [];
+    const excludedIds = new Set(this.excludeAssetIds);
+
+    try {
+      console.log(`[GuidedSetup] Starting ephemeral resource generation for ${this.requiredAssets.length} assets. Excluded:`, Array.from(excludedIds));
+
+      for (const req of this.requiredAssets) {
+        if (excludedIds.has(req.accession_id)) {
+          console.log(`[GuidedSetup] Skipping excluded asset: ${req.accession_id}`);
+          continue;
+        }
+
+        console.log(`[GuidedSetup] Generating resource for: ${req.accession_id}`, req);
+
+        // Try to find a matching resource definition
+        // First try by req.fqn, then by type_hint_str
+        // getResourceDefinition is async and returns Promise<ResourceDefinition | null>
+        let def = await this.assetService.getResourceDefinition(req.fqn);
+
+        if (!def && req.type_hint_str) {
+          console.log(`[GuidedSetup] No definition found for FQN "${req.fqn}". Trying type_hint_str "${req.type_hint_str}"...`);
+          // Note: type_hint_str might be something like 'Plate' or 'TipRack'
+          const allDefs = await firstValueFrom(this.assetService.getResourceDefinitions()) as ResourceDefinition[];
+          def = allDefs.find(d =>
+            (d.fqn && d.fqn.toLowerCase().includes(req.type_hint_str!.toLowerCase())) ||
+            (d.name && d.name.toLowerCase().includes(req.type_hint_str!.toLowerCase()))
+          ) || null;
+        }
+
+        if (def) {
+          // Create an ephemeral resource from the definition
+          const resourceCreate = {
+            name: `${req.accession_id.slice(-6)} - ${def.name || 'Ephemeral'}`,
+            fqn: def.fqn,
+            resource_definition_accession_id: def.accession_id,
+            asset_type: 'resource',
+            is_ephemeral: true,
+            properties_json: {}
+          };
+
+          const created = await firstValueFrom(this.assetService.createResource(resourceCreate as any)) as Resource;
+          createdResources.push(created);
+          console.log(`[GuidedSetup] Created ephemeral resource: ${created.name} (Accession ID: ${created.accession_id}) using definition: ${def.fqn}`);
+        } else {
+          console.warn(`[GuidedSetup] No definition found for ${req.fqn} (type_hint_str: ${req.type_hint_str}), skipping`);
+        }
+      }
+
+      console.log(`[GuidedSetup] Generated ${createdResources.length} ephemeral resources.`);
+
+      if (createdResources.length > 0) {
+        // Refresh full inventory to ensure we have all resources
+        const allResources = await firstValueFrom(this.assetService.getResources()) as Resource[];
+        this.inventory.set(allResources);
+        console.log(`[GuidedSetup] Updated inventory with ${allResources.length} total resources.`);
+
+        // Trigger auto-select with the new inventory
+        this.autoSelect();
+      }
+    } catch (err) {
+      console.error('[GuidedSetup] Failed to generate ephemeral resources:', err);
+    } finally {
+      this.isGenerating.set(false);
     }
   }
 

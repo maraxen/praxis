@@ -726,7 +726,14 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
 
 
 def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
-  """Ensure every frontend type has at least one backend definition (Simulated)."""
+  """Ensure every frontend type has at least one simulator backend definition.
+  
+  Chatterbox backends are PLR's official simulation backends with realistic behavior.
+  Simulated backends are synthetic fallbacks created here as safety nets.
+  
+  We only create a Simulated fallback if NO Chatterbox/simulator backend exists
+  for the frontend type. This avoids cluttering the UI with redundant options.
+  """
   now = datetime.now().isoformat()
 
   # All known frontend types
@@ -749,16 +756,22 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
   ]
 
   for short_name, frontend_fqn in frontend_types:
-    # Check if any backend exists for this frontend
+    # Check if any SIMULATOR backend exists for this frontend
+    # (Chatterbox or other simulators - not hardware backends)
     cursor = conn.execute(
-      "SELECT count(*) FROM machine_definitions WHERE frontend_fqn = ?", (frontend_fqn,)
+      """SELECT count(*) FROM machine_backend_definitions 
+         WHERE frontend_definition_accession_id = ? 
+         AND backend_type = 'simulator'""",
+      (generate_uuid_from_fqn(f"machine:{frontend_fqn}"),)
     )
-    count = cursor.fetchone()[0]
+    simulator_count = cursor.fetchone()[0]
 
-    if count == 0:
-      # Create a synthetic "Simulated" backend
+    if simulator_count == 0:
+      # No Chatterbox or simulator exists - create a synthetic fallback
       fqn = f"pylabrobot.backends.simulated.{short_name}Backend"
       accession_id = generate_uuid_from_fqn(f"backend:{fqn}")
+      
+      print(f"  [backends] Creating Simulated fallback for {short_name} (no Chatterbox found)")
 
       conn.execute(
         """
@@ -773,7 +786,7 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
           accession_id,
           fqn,
           f"Simulated {short_name}",
-          f"Generic simulated backend for {short_name}",
+          f"Generic simulated backend for {short_name} (fallback - no Chatterbox available)",
           "PyLabRobot",
           f"Simulated {short_name}",
           0,
@@ -785,9 +798,11 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
           now,
         ),
       )
+    else:
+      print(f"  [backends] {short_name}: {simulator_count} Chatterbox/simulator backend(s) found, skipping Simulated fallback")
 
-      # NOTE: We intentionally do NOT seed machine instances.
-      # Users should instantiate machines from definitions via the UI.
+  # NOTE: We intentionally do NOT seed machine instances.
+  # Users should instantiate machines from definitions via the UI.
 
 
 def insert_metadata(conn: sqlite3.Connection) -> None:

@@ -11,24 +11,20 @@ test.describe('First-Time User Experience', () => {
     });
 
     test.skip('should complete tutorial flow when clicking Start Tutorial', async ({ page }, testInfo) => {
-        // SKIPPED: Tutorial feature not yet implemented in UI
+        // SKIPPED: The tutorial feature is not in a testable state.
         const welcomePage = new WelcomePage(page, testInfo);
-        await welcomePage.goto();
+        await welcomePage.goto('/?showTutorial=true');
 
-        await welcomePage.startTutorial();
-        await welcomePage.verifyTutorialStep(1, /Welcome/);
-        await welcomePage.advanceTutorial();
-        await welcomePage.verifyTutorialStep(2, /Sidebar/);
-        await welcomePage.advanceTutorial();
-        await welcomePage.verifyTutorialStep(3, /Run a Protocol/);
-        await welcomePage.advanceTutorial();
-        await welcomePage.verifyTutorialStep(4, /Assets/);
-        await welcomePage.advanceTutorial();
-        await welcomePage.verifyTutorialStep(5, /Playground/);
-
-        await welcomePage.completeTutorial();
-        await welcomePage.verifyOnboardingCompleted();
-        await welcomePage.verifyDashboardLoaded();
+        // Step through tutorial using Shepherd.js classes
+        await expect(page.locator('.shepherd-text')).toBeVisible();
+        await page.locator('.shepherd-button-next').click();
+      
+        await expect(page.locator('.shepherd-text')).toBeVisible();
+        await page.locator('.shepherd-button-next').click();
+        
+        // Complete
+        await page.locator('.shepherd-button-secondary').click(); // Finish button
+        await expect(page.locator('.shepherd-text')).not.toBeVisible();
     });
 
     test.skip('should bypass splash for returning user', async ({ page }, testInfo) => {

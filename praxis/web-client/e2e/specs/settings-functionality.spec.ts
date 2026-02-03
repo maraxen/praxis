@@ -54,4 +54,19 @@ test.describe('Settings Page Functionality', () => {
             fs.unlinkSync(downloadPath);
         }
     });
+
+    test('cycles through all themes', async ({ page }) => {
+      const themes = ['light', 'dark', 'system'];
+      for (const theme of themes) {
+        await page.locator(`mat-button-toggle[value="${theme}"]`).click();
+        
+        // The AppStore adds a `dark-theme` class to the body for the dark theme.
+        // For 'light' and 'system', it relies on the absence of this class.
+        if (theme === 'dark') {
+          await expect(page.locator('body')).toHaveClass(/dark-theme/);
+        } else {
+          await expect(page.locator('body')).not.toHaveClass(/dark-theme/);
+        }
+      }
+    });
 });

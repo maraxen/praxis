@@ -734,23 +734,62 @@ export class MachineArgumentSelectorComponent implements OnInit, OnChanges {
     }
   }
 
-  selectBackend(req: MachineRequirement, backend: MachineBackendDefinition) {
+  async selectBackend(req: MachineRequirement, backend: MachineBackendDefinition) {
     const reqs = this.machineRequirements();
     const idx = reqs.findIndex(r => r.requirement.accession_id === req.requirement.accession_id);
-    if (idx >= 0) {
-      reqs[idx] = {
-        ...reqs[idx],
+    if (idx < 0) return;
+
+    // Mark as loading while we create the machine
+    reqs[idx] = { ...reqs[idx], isLoading: true };
+    this.machineRequirements.set([...reqs]);
+
+    try {
+      // Create an ephemeral machine on-the-fly for this backend
+      const backendName = this.getBackendDisplayName(backend);
+      const category = req.frontend?.machine_category || 'Machine';
+      const machineName = `${category} (${backendName})`;
+
+      const newMachine = await firstValueFrom(
+        this.assetService.createMachine({
+          name: machineName,
+          machine_category: category,
+          is_simulation_override: backend.backend_type === 'simulator',
+          simulation_backend_name: backend.fqn,
+          frontend_definition_accession_id: req.frontend?.accession_id,
+          backend_definition_accession_id: backend.accession_id,
+          connection_info: {
+            backend: backend.fqn,
+            plr_backend: backend.fqn,
+            ephemeral: true  // Mark as ephemeral for cleanup
+          }
+        })
+      );
+
+      console.debug('[MachineArgSelector] Created ephemeral machine:', newMachine.name, newMachine.accession_id);
+
+      // Update the requirement with the newly created machine
+      const updatedReqs = this.machineRequirements();
+      updatedReqs[idx] = {
+        ...updatedReqs[idx],
+        isLoading: false,
+        existingMachines: [...updatedReqs[idx].existingMachines, newMachine],
         selection: {
           argumentId: req.requirement.accession_id || '',
           argumentName: this.getArgumentDisplayName(req.requirement),
           frontendId: req.frontend?.accession_id || '',
-          selectedMachine: undefined,
+          selectedMachine: newMachine,
           selectedBackend: backend,
           isValid: true
         }
       };
-      this.machineRequirements.set([...reqs]);
+      this.machineRequirements.set([...updatedReqs]);
       this.emitSelections();
+    } catch (error) {
+      console.error('[MachineArgSelector] Failed to create ephemeral machine:', error);
+      // Revert loading state
+      const updatedReqs = this.machineRequirements();
+      updatedReqs[idx] = { ...updatedReqs[idx], isLoading: false, showError: true };
+      this.machineRequirements.set([...updatedReqs]);
     }
   }
 

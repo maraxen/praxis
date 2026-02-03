@@ -342,7 +342,7 @@ async function initializePyodide(id?: string) {
   ];
 
   // Parallel fetch all shims + web_bridge + praxis package
-  const [shimResults, bridgeCode, praxisInit, praxisInteractive] = await Promise.all([
+  const [shimResults, bridgeCode, praxisInit, praxisInteractive, backendStubs, protocolStubs] = await Promise.all([
     // Fetch all shims in parallel
     Promise.all(shims.map(async (shim) => {
       try {
@@ -359,8 +359,25 @@ async function initializePyodide(id?: string) {
     fetch('assets/python/web_bridge.py').then(r => r.text()),
     // Fetch praxis package files
     fetch('assets/python/praxis/__init__.py').then(r => r.text()).catch(() => null),
-    fetch('assets/python/praxis/interactive.py').then(r => r.text()).catch(() => null)
+    fetch('assets/python/praxis/interactive.py').then(r => r.text()).catch(() => null),
+    // Fetch praxis.backend stubs for cloudpickle deserialization
+    Promise.all([
+      fetch('assets/python/praxis/backend/__init__.py').then(r => r.text()).catch(() => null),
+      fetch('assets/python/praxis/backend/core/__init__.py').then(r => r.text()).catch(() => null),
+      fetch('assets/python/praxis/backend/core/decorators/__init__.py').then(r => r.text()).catch(() => null),
+      fetch('assets/python/praxis/backend/core/decorators/models.py').then(r => r.text()).catch(() => null),
+      fetch('assets/python/praxis/backend/models/__init__.py').then(r => r.text()).catch(() => null),
+      fetch('assets/python/praxis/backend/models/domain/__init__.py').then(r => r.text()).catch(() => null),
+      fetch('assets/python/praxis/backend/models/domain/protocol.py').then(r => r.text()).catch(() => null),
+    ]),
+    // Fetch praxis.protocol stubs for cloudpickle deserialization
+    Promise.all([
+      fetch('assets/python/praxis/protocol/__init__.py').then(r => r.text()).catch(() => null),
+      fetch('assets/python/praxis/protocol/protocols/__init__.py').then(r => r.text()).catch(() => null),
+      fetch('assets/python/praxis/protocol/protocols/selective_transfer.py').then(r => r.text()).catch(() => null),
+    ])
   ]);
+
 
   // Write shims to Pyodide FS
   for (const { shim, code, error } of shimResults) {
@@ -391,6 +408,52 @@ async function initializePyodide(id?: string) {
     console.log('Praxis package loaded successfully');
   } catch (err) {
     console.error('Error loading praxis package:', err);
+  }
+
+  // Write praxis.backend stubs for cloudpickle protocol deserialization
+  const [
+    backendInit, coreInit, decoratorsInit, decoratorsModels,
+    modelsInit, domainInit, domainProtocol
+  ] = backendStubs;
+
+  try {
+    // Create directory structure
+    pyodide.FS.mkdir('praxis/backend');
+    pyodide.FS.mkdir('praxis/backend/core');
+    pyodide.FS.mkdir('praxis/backend/core/decorators');
+    pyodide.FS.mkdir('praxis/backend/models');
+    pyodide.FS.mkdir('praxis/backend/models/domain');
+
+    // Write stub files
+    if (backendInit) pyodide.FS.writeFile('praxis/backend/__init__.py', backendInit);
+    if (coreInit) pyodide.FS.writeFile('praxis/backend/core/__init__.py', coreInit);
+    if (decoratorsInit) pyodide.FS.writeFile('praxis/backend/core/decorators/__init__.py', decoratorsInit);
+    if (decoratorsModels) pyodide.FS.writeFile('praxis/backend/core/decorators/models.py', decoratorsModels);
+    if (modelsInit) pyodide.FS.writeFile('praxis/backend/models/__init__.py', modelsInit);
+    if (domainInit) pyodide.FS.writeFile('praxis/backend/models/domain/__init__.py', domainInit);
+    if (domainProtocol) pyodide.FS.writeFile('praxis/backend/models/domain/protocol.py', domainProtocol);
+
+    console.log('Praxis backend stubs loaded for cloudpickle');
+  } catch (err) {
+    console.error('Error loading praxis backend stubs:', err);
+  }
+
+  // Write praxis.protocol stubs for cloudpickle protocol deserialization
+  const [protocolInit, protocolsInit, selectiveTransfer] = protocolStubs;
+
+  try {
+    // Create directory structure
+    pyodide.FS.mkdir('praxis/protocol');
+    pyodide.FS.mkdir('praxis/protocol/protocols');
+
+    // Write stub files
+    if (protocolInit) pyodide.FS.writeFile('praxis/protocol/__init__.py', protocolInit);
+    if (protocolsInit) pyodide.FS.writeFile('praxis/protocol/protocols/__init__.py', protocolsInit);
+    if (selectiveTransfer) pyodide.FS.writeFile('praxis/protocol/protocols/selective_transfer.py', selectiveTransfer);
+
+    console.log('Praxis protocol stubs loaded for cloudpickle');
+  } catch (err) {
+    console.error('Error loading praxis protocol stubs:', err);
   }
 
   // Create PyodideConsole with stream callbacks

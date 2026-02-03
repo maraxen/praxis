@@ -128,8 +128,13 @@ export class SqliteOpfsService {
                     console.log('[SqliteOpfsService] No protocols found. Loading fresh database from praxis.db...');
                     return this.initializeFreshDatabase();
                 }
-                console.log(`[SqliteOpfsService] Database has ${count} protocols. Ready.`);
-                return of(void 0);
+                console.log(`[SqliteOpfsService] Database has ${count} protocols. Checking for assets...`);
+                // Even if protocols exist, we might be missing inventory assets
+                return this.seedDefaultAssets().pipe(
+                    map(() => {
+                        console.log('[SqliteOpfsService] Asset check/seeding complete. Ready.');
+                    })
+                );
             })
         );
     }
@@ -336,6 +341,13 @@ export class SqliteOpfsService {
 
     /**
      * Seed default assets if none exist.
+     * 
+     * NOTE: This seeding is for BROWSER MODE ONLY. The prebuilt praxis.db
+     * should contain resources, but this acts as a fallback when the database
+     * is reset or the prebuilt file is unavailable.
+     * 
+     * TODO: Add a configuration toggle to disable auto-seeding for production
+     * environments where inventory should be managed explicitly.
      */
     private seedDefaultAssets(): Observable<void> {
         return this.exec("SELECT COUNT(*) as count FROM resources").pipe(

@@ -356,6 +356,7 @@ interface FilterCategory {
                     <app-guided-setup 
                       [protocol]="selectedProtocol()" 
                       [isInline]="true"
+                      [simulationMode]="store.simulationMode()"
                       [excludeAssetIds]="excludedMachineAssetIds()"
                       [initialSelections]="configuredAssets() || {}"
                       (selectionChange)="onAssetSelectionChange($event)">
@@ -829,10 +830,15 @@ export class RunProtocolComponent implements OnInit {
     const protocol = this.selectedProtocol();
     if (!protocol || !protocol.assets) return true;
 
-    // Check if configuredAssets contains all required assets
-    // This logic mimics GuidedSetupComponent's isValid but at container level
+    // Get list of machine asset IDs that are handled in the machine selection step
+    const excludedIds = new Set(this.excludedMachineAssetIds());
+
+    // Check if configuredAssets contains all required non-machine assets
+    // Machine assets are handled separately by MachineArgumentSelector
     const currentAssets = this.configuredAssets() || {};
-    return protocol.assets.every(req => req.optional || !!currentAssets[req.accession_id]);
+    return protocol.assets
+      .filter(req => !excludedIds.has(req.accession_id || ''))
+      .every(req => req.optional || !!currentAssets[req.accession_id]);
   }
 
   // Computed Deck Data

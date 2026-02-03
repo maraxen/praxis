@@ -104,3 +104,21 @@ test.describe('Monitor Detail Error Handling', () => {
   });
 });
 
+test.describe('Real-Time Monitor Updates', () => {
+  test.skip('shows real-time log updates', async ({ page }) => {
+    // This test is skipped because it requires a running protocol fixture to generate live data.
+    // The current test setup for protocol execution is too slow and times out.
+    // To implement this test, a fixture that seeds a run and simulates live log updates is needed.
+    await page.goto('/app/monitor/some-active-run-id');
+    
+    const logContainer = page.locator('[data-testid="run-logs"]');
+    await expect(logContainer).toBeVisible();
+    
+    // Example assertion for checking log updates
+    const initialLogCount = await logContainer.locator('.log-line').count();
+    await page.waitForTimeout(5000); // Wait for new logs
+    const newLogCount = await logContainer.locator('.log-line').count();
+    expect(newLogCount).toBeGreaterThan(initialLogCount);
+  });
+});
+

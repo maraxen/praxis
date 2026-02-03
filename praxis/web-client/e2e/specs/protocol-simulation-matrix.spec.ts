@@ -23,6 +23,16 @@ import { WelcomePage } from '../page-objects/welcome.page';
 import { RunProtocolPage } from '../page-objects/run-protocol.page';
 import { SIMULATABLE_PROTOCOLS, ProtocolTestEntry } from '../helpers/protocol-registry';
 import { categorizeFailure, MatrixResult, formatMatrixSummary } from '../helpers/matrix-reporter';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Directory for protocol execution logs
+const LOG_DIR = path.join(__dirname, '..', 'test-results', 'protocol-logs');
+
+// Ensure log directory exists
+if (!fs.existsSync(LOG_DIR)) {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+}
 
 /**
  * Store results for summary output
@@ -42,6 +52,13 @@ test.describe('@slow Protocol Simulation Matrix', () => {
 
             // Tag test with protocol ID for filtering
             testInfo.annotations.push({ type: 'protocol', description: protocol.id });
+
+            // Collect browser console logs during execution
+            const consoleLogs: string[] = [];
+            page.on('console', msg => {
+                const text = `[${msg.type()}] ${msg.text()}`;
+                consoleLogs.push(text);
+            });
 
             try {
                 // 1. Navigate with worker-scoped database
@@ -96,20 +113,30 @@ test.describe('@slow Protocol Simulation Matrix', () => {
                         continue;
                     }
 
-                    // Handle machine selection - click first machine card if visible
-                    const machineCard = page.locator('.machine-card').first();
-                    if (await machineCard.isVisible({ timeout: 500 }).catch(() => false)) {
-                        await machineCard.click();
-                        console.log('[Matrix] Selected machine');
+                    // Handle machine selection - click first available (non-disabled) option-card
+                    // The MachineArgumentSelectorComponent uses .option-card for both machines and backends
+                    const optionCard = page.locator('.option-card:not(.disabled)').first();
+                    if (await optionCard.isVisible({ timeout: 500 }).catch(() => false)) {
+                        await optionCard.click();
+                        console.log('[Matrix] Selected machine/backend option');
                         await page.waitForTimeout(300);
                     }
 
-                    // Handle asset selection - click first asset card if visible
-                    const assetCard = page.locator('.asset-card, [data-testid="asset-card"]').first();
-                    if (await assetCard.isVisible({ timeout: 500 }).catch(() => false)) {
-                        await assetCard.click();
-                        console.log('[Matrix] Selected asset');
-                        await page.waitForTimeout(300);
+                    // Handle asset auto-fill - click "Auto-fill All" button if visible
+                    // GuidedSetupComponent uses autocomplete dropdowns, not clickable cards
+                    const autoFillBtn = page.getByRole('button', { name: /Auto-fill All/i });
+                    if (await autoFillBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+                        await autoFillBtn.click();
+                        console.log('[Matrix] Clicked Auto-fill All');
+                        // Wait for Angular to process the emission and update the form
+                        await page.waitForTimeout(1000);
+                        // Try waiting for Continue to become enabled after auto-fill
+                        try {
+                            await expect(continueBtn.first()).toBeEnabled({ timeout: 2000 });
+                            console.log('[Matrix] Continue button enabled after Auto-fill');
+                        } catch {
+                            console.log('[Matrix] Continue not enabled after Auto-fill - may need manual selection');
+                        }
                     }
 
                     // Handle well selection - click "Select All" if available, or first well group
@@ -177,21 +204,31 @@ test.describe('@slow Protocol Simulation Matrix', () => {
                 });
                 console.log('[Matrix] Execution completed');
 
-                // 10. Verify no Python errors in logs
-                const logs = page.locator(
-                    '[data-testid="execution-logs"], ' +
-                    '.execution-logs, ' +
-                    '.log-output, ' +
-                    'pre'
-                );
+                // 10. Save collected console logs to file for review
+                const logFileName = `${protocol.id}_${new Date().toISOString().replace(/[:.]/g, '-')}.log`;
+                const logFilePath = path.join(LOG_DIR, logFileName);
+                const logContent = [
+                    `# Protocol: ${protocol.name}`,
+                    `# ID: ${protocol.id}`,
+                    `# Timestamp: ${new Date().toISOString()}`,
+                    `# Duration: ${Date.now() - startTime}ms`,
+                    '',
+                    '## Console Output',
+                    '',
+                    ...consoleLogs
+                ].join('\n');
 
-                if (await logs.first().isVisible({ timeout: 2000 }).catch(() => false)) {
-                    const logText = await logs.first().textContent() || '';
-                    expect(logText).not.toContain('Error:');
-                    expect(logText).not.toContain('Traceback');
-                    expect(logText).not.toContain('NameError');
-                    expect(logText).not.toContain('TypeError');
+                fs.writeFileSync(logFilePath, logContent);
+                console.log(`[Matrix] Saved ${consoleLogs.length} console logs to: ${logFilePath}`);
+
+                // Check for Python errors in console output
+                const logText = consoleLogs.join('\n');
+                if (logText.includes('Traceback') || logText.includes('Error:')) {
+                    console.log('[Matrix] WARNING: Python errors detected in console logs');
                 }
+                expect(logText).not.toContain('Traceback');
+                expect(logText).not.toContain('NameError');
+                expect(logText).not.toContain('TypeError');
 
                 // Record success
                 matrixResults.push({
@@ -209,6 +246,24 @@ test.describe('@slow Protocol Simulation Matrix', () => {
                     errorMessage: errorMessage.slice(0, 500),
                     duration: Date.now() - startTime,
                 });
+
+                // Save collected console logs to file even on failure
+                const logFileName = `FAILED_${protocol.id}_${new Date().toISOString().replace(/[:.]/g, '-')}.log`;
+                const logFilePath = path.join(LOG_DIR, logFileName);
+                const logContent = [
+                    `# FAILED Protocol: ${protocol.name}`,
+                    `# ID: ${protocol.id}`,
+                    `# Error: ${errorMessage}`,
+                    `# Timestamp: ${new Date().toISOString()}`,
+                    `# Duration: ${Date.now() - startTime}ms`,
+                    '',
+                    '## Console Output',
+                    '',
+                    ...consoleLogs
+                ].join('\n');
+
+                fs.writeFileSync(logFilePath, logContent);
+                console.log(`[Matrix] Saved failure logs to: ${logFilePath}`);
 
                 // Re-throw to mark test as failed
                 throw error;

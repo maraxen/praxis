@@ -166,3 +166,4 @@ session-*.md
 # Ignore compiled binaries
 .agent/scripts/jules-diff-tool/jules-diff-tool.worktrees/
 .worktrees/
+.jupyterlite.doit.db

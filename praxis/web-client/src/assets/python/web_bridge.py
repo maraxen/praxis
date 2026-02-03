@@ -15,7 +15,13 @@ import json
 import os
 import sys
 import uuid
+import json
 from typing import Any
+
+try:
+  import js
+except ImportError:
+  js = None
 
 # Check if we're running in browser/Pyodide mode
 IS_BROWSER_MODE = "pyodide" in sys.modules
@@ -857,8 +863,11 @@ class StdoutRedirector(io.TextIOBase):
 
   def write(self, s):
     if s:
-      # We transmit everything, even newlines alone, to keep accurate formatting
-      postMessage(json.dumps({"type": self.stream_type, "payload": s}))
+      if js and hasattr(js, "handlePythonOutput"):
+        js.handlePythonOutput(self.stream_type, s)
+      else:
+        # Fallback for environments without the handler (e.g. raw Pyodide without our worker)
+        js.postMessage(json.dumps({"type": self.stream_type, "payload": s}))
     return len(s)
 
 
@@ -872,15 +881,9 @@ def bootstrap_playground(namespace=None):
                  If None, temporarily injects into __main__ (legacy behavior).
 
   """
-  # sys.stdout = StdoutRedirector("STDOUT")
-  # sys.stderr = StdoutRedirector("STDERR")
-  try:
-    import sys
-
-    print(f"DEBUG: sys.stdout is {sys.stdout}", file=sys.stderr)
-  except Exception as e:
-    pass
-
+  sys.stdout = StdoutRedirector("STDOUT")
+  sys.stderr = StdoutRedirector("STDERR")
+  
   target = namespace if namespace is not None else {}
 
   try:

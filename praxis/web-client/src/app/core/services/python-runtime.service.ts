@@ -323,11 +323,13 @@ export class PythonRuntimeService implements ReplRuntime {
     const { type, id, payload } = data;
 
     if (type === 'STDOUT' && id) {
+      console.log('[Python STDOUT]', payload);
       this.stdoutSubjects.get(id)?.next({ type: 'stdout', content: payload });
       return;
     }
 
     if (type === 'STDERR' && id) {
+      console.warn('[Python STDERR]', payload);
       this.stdoutSubjects.get(id)?.next({ type: 'stderr', content: payload });
       return;
     }
@@ -340,6 +342,7 @@ export class PythonRuntimeService implements ReplRuntime {
 
     // Handle FUNCTION_CALL_LOG messages from Python - forward as function_call_log
     if (type === 'FUNCTION_CALL_LOG' && id && payload) {
+      console.log('[Python FN]', payload.fn_name || payload.function_name, payload.args || '');
       this.stdoutSubjects.get(id)?.next({ type: 'function_call_log', content: JSON.stringify(payload) });
       return;
     }
