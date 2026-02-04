@@ -543,7 +543,7 @@ export class HardwareDiscoveryDialogComponent {
     readonly registeredDevices = signal<Map<string, string>>(new Map());
 
     readonly filteredDevices = computed(() => {
-        return this.hardwareService.discoveredDevices().filter(d =>
+        return this.hardwareService.discoveredDevices().filter((d: DiscoveredDevice) =>
             d.connectionType !== 'simulator' &&
             !(d.plrBackend && d.plrBackend.toLowerCase().includes('simulator')) &&
             !d.plrMachineDefinition?.is_simulated_frontend
