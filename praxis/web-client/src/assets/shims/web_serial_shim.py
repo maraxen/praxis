@@ -632,9 +632,6 @@ class WebSerial:
 
   async def read(self, num_bytes: int = 1) -> bytes:
     """Read data from the serial port."""
-
-  async def read(self, num_bytes: int = 1) -> bytes:
-    """Read data from the serial port."""
     # Bypass check for FTDI
     if not getattr(self, "_is_ftdi", False) and self._reader is None:
       raise RuntimeError("Port not open. Call setup() first.")
