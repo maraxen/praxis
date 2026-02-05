@@ -72,6 +72,9 @@ cat > "$SIM_DIR/serve.json" << 'EOF'
   ],
   "rewrites": [
     { "source": "praxis/app/**", "destination": "/praxis/index.html" },
+    { "source": "praxis/assets/**", "destination": "/praxis/index.html" },
+    { "source": "praxis/protocols/**", "destination": "/praxis/index.html" },
+    { "source": "praxis/run/**", "destination": "/praxis/index.html" },
     { "source": "praxis/playground", "destination": "/praxis/index.html" },
     { "source": "praxis/settings/**", "destination": "/praxis/index.html" }
   ]

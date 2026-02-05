@@ -4,7 +4,7 @@ import { SmokePage } from '../page-objects/smoke.page';
 test.describe('Smoke Test', () => {
   test('should load the dashboard and display navigation', async ({ page, workerIndex }) => {
     const smoke = new SmokePage(page, workerIndex);
-    await smoke.goto('/');
+    await smoke.goto('app/home');
     await smoke.handleSplashScreen();
     await expect(smoke.navRail).toBeVisible({ timeout: 3000 });
     await expect(page).toHaveTitle(/Praxis/);
@@ -21,7 +21,7 @@ test.describe('Smoke Test', () => {
     workerIndex,
   }) => {
     const smoke = new SmokePage(page, workerIndex);
-    await smoke.goto('/assets');
+    await smoke.goto('app/assets');
     await smoke.handleSplashScreen();
     await expect(smoke.assetsComponent).toBeVisible({ timeout: 3000 });
 
@@ -44,7 +44,7 @@ test.describe('Smoke Test', () => {
     workerIndex,
   }) => {
     const smoke = new SmokePage(page, workerIndex);
-    await smoke.goto('/protocols');
+    await smoke.goto('app/protocols');
     await smoke.handleSplashScreen();
     await expect(smoke.protocolLibrary).toBeVisible({ timeout: 3000 });
     // Verify the Protocol Library heading is visible
@@ -56,7 +56,7 @@ test.describe('Smoke Test', () => {
 
   test('should navigate to Run Protocol wizard', async ({ page, workerIndex }) => {
     const smoke = new SmokePage(page, workerIndex);
-    await smoke.goto('/run');
+    await smoke.goto('app/run');
     await smoke.handleSplashScreen();
     await expect(smoke.runProtocolComponent).toBeVisible({ timeout: 3000 });
 

@@ -24,6 +24,7 @@ export default defineConfig({
     testMatch: [
         /ghpages-.*\.spec\.ts/,
         /jupyterlite-.*\.spec\.ts/,
+        /smoke\.spec\.ts/,
     ],
 
     // Serialize tests for stability with complex resource loading
@@ -64,6 +65,16 @@ export default defineConfig({
             use: {
                 ...devices['Desktop Chrome'],
                 // Ensure we test with the same headers GH Pages would have
+                contextOptions: {
+                    ignoreHTTPSErrors: true,
+                },
+            },
+        },
+        {
+            name: 'ghpages-smoke',
+            testMatch: /smoke\.spec\.ts/,
+            use: {
+                ...devices['Desktop Chrome'],
                 contextOptions: {
                     ignoreHTTPSErrors: true,
                 },

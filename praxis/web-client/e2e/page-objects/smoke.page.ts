@@ -26,7 +26,7 @@ export class SmokePage extends BasePage {
     // This is more robust than waitForFunction polling window objects
     await this.page.locator('[data-sqlite-ready="true"]').waitFor({
       state: 'attached',
-      timeout: 15000
+      timeout: 30000
     });
   }
 
