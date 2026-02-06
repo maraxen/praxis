@@ -23,7 +23,9 @@ export class JupyterChannelService implements OnDestroy {
   );
 
   constructor() {
-    this.channel = new BroadcastChannel('praxis_repl');
+    const channelName = 'praxis_repl';
+
+    this.channel = new BroadcastChannel(channelName);
     this.channel.onmessage = (event) => {
       this.messageSubject.next(event.data as JupyterMessage);
     };

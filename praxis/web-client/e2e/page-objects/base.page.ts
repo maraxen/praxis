@@ -49,6 +49,13 @@ export abstract class BasePage {
         // NOTE: resetdb is NOT added by default to preserve seeded data
         // Tests that need a fresh database should explicitly pass resetdb=1
 
+        // PRE-CONDITION: Mark onboarding as completed to avoid blocking splash screens
+        // We do this by navigating once to any page (even just about:blank) to set the local storage
+        // or by using addInitScript. addInitScript is cleaner.
+        await this.page.addInitScript(() => {
+            window.localStorage.setItem('praxis_onboarding_completed', 'true');
+        });
+
         await this.page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
 
         // Wait for SQLite service ready signal - the definitive indicator that:

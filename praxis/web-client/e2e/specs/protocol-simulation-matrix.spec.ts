@@ -74,19 +74,16 @@ test.describe('@slow Protocol Simulation Matrix', () => {
                 const runPage = new RunProtocolPage(page);
                 await runPage.waitForProtocolsLoaded();
 
-                // 4. Select first available protocol by clicking on its heading
-                // Protocol cards have h3 headings with name like "Simple Transfer", "Serial Dilution", etc.
-                const protocolHeadings = page.getByRole('heading', { level: 3 }).filter({
-                    hasNotText: /All Protocols|Category|Type/i
-                });
+                // 4. Select protocol by name from the registry
+                // Protocol cards have h3 headings with the protocol name
+                const protocolHeading = page.getByRole('heading', { level: 3, name: protocol.name, exact: true });
 
-                // Wait for protocol headings to be visible
-                await expect(protocolHeadings.first()).toBeVisible({ timeout: 15000 });
-                const protocolName = await protocolHeadings.first().textContent();
-                console.log(`[Matrix] Selecting protocol: ${protocolName}`);
+                // Wait for the specific protocol heading to be visible
+                await expect(protocolHeading).toBeVisible({ timeout: 15000 });
+                console.log(`[Matrix] Selecting protocol: ${protocol.name}`);
 
-                // Click on the protocol card (parent element of the heading)
-                await protocolHeadings.first().click();
+                // Click on the protocol card
+                await protocolHeading.click();
                 await page.waitForTimeout(500);
 
                 // 5. Advance through wizard by handling each step type
@@ -205,7 +202,7 @@ test.describe('@slow Protocol Simulation Matrix', () => {
 
                     // If neither Continue nor Next is available, we might be stuck
                     if (step > 2) { // Only log if we've had a few steps
-                         console.log(`[Matrix] No advancement buttons visible/enabled on step ${step}`);
+                        console.log(`[Matrix] No advancement buttons visible/enabled on step ${step}`);
                     }
                 }
 

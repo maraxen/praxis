@@ -132,10 +132,10 @@ import { PathUtils } from '@core/utils/path.utils';
               <!-- JupyterLite iframe -->
               <div class="repl-notebook-wrapper" data-tour-id="repl-notebook" [hidden]="selectedTabIndex() !== 0">
 
-                @if (jupyterliteUrl) {
+                @if (jupyterliteService.jupyterliteUrl()) {
                   <iframe
                     #notebookFrame
-                    [src]="jupyterliteUrl"
+                    [src]="jupyterliteService.jupyterliteUrl()"
                     class="notebook-frame"
                     data-testid="jupyterlite-iframe"
                     (load)="onIframeLoad()"
@@ -144,12 +144,12 @@ import { PathUtils } from '@core/utils/path.utils';
                   ></iframe>
                 }
 
-                @if (isLoading()) {
+                @if (jupyterliteService.isLoading()) {
                   <div class="loading-overlay">
                     <div class="loading-content">
                       <mat-spinner diameter="48"></mat-spinner>
                       <p>Initializing Pyodide Environment...</p>
-                      @if (loadingError()) {
+                      @if (jupyterliteService.loadingError()) {
                         <button mat-flat-button color="warn" (click)="reloadNotebook()">
                           <mat-icon>refresh</mat-icon>
                           Retry Loading
@@ -571,7 +571,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   private dialog = inject(MatDialog);
   private interactionService = inject(InteractionService);
   private jupyterChannel = inject(JupyterChannelService);
-  private jupyterliteService = inject(PlaygroundJupyterliteService);
+  public jupyterliteService = inject(PlaygroundJupyterliteService);
 
   // Serial Manager for main-thread I/O (Phase B)
   private serialManager = inject(SerialManagerService);
@@ -603,6 +603,20 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   };
 
   constructor() {
+    // Expose helpers for E2E tests
+    (window as any).setPlaygroundCode = (code: string) => {
+        (window as any).__praxis_pending_code = code;
+    };
+    (window as any).runPlaygroundCode = () => {
+        const code = (window as any).__praxis_pending_code;
+        if (code) {
+            this.jupyterChannel.sendMessage({
+                type: 'praxis:execute',
+                code: code
+            });
+        }
+    };
+
     effect(() => {
       const theme = this.store.theme();
       // Only update if view is initialized to avoid early DOM mounting issues
@@ -625,7 +639,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnInit() {
-    this.initKernel();
+    this.jupyterliteService.initialize();
 
     // Wait for the database to be ready before loading assets.
     // This prevents race conditions on initial load or after a db reset.
@@ -645,37 +659,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
   ngAfterViewInit() {
     this.viewInitialized = true;
-    // Trigger initial load now that view is ready
-    this.updateJupyterliteTheme(this.store.theme());
     this.cdr.detectChanges();
-  }
-
-  /**
-   * Initializes the JupyterLite kernel communication channel.
-   * Waits for the kernel to signal readiness, then sends the bootstrap code.
-   */
-  private initKernel() {
-    // Subscribe to all messages for handling different event types
-    this.subscription.add(
-      this.jupyterChannel.messages$.subscribe(msg => {
-        if (msg.type === 'praxis:ready') {
-          console.log('[REPL] Received kernel ready signal');
-          this.isLoading.set(false);
-          if (this.loadingTimeout) {
-            clearTimeout(this.loadingTimeout);
-            this.loadingTimeout = undefined;
-          }
-          this.cdr.detectChanges();
-        } else if (msg.type === 'praxis:boot_ready') {
-          // AUDIT-07: Minimal bootstrap loaded, sending full payload
-          console.log('[REPL] Minimal bootstrap ready. Injecting full payload...');
-          this.sendBootstrapCode();
-        } else if (msg.type === 'USER_INTERACTION') {
-          console.log('[REPL] USER_INTERACTION received via BroadcastChannel:', msg['payload']);
-          this.handleUserInteraction(msg['payload']);
-        }
-      })
-    );
   }
 
   /**
@@ -864,12 +848,12 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     // Pyodide/JupyterLite can take 20+ seconds to fully boot on slower connections
     this.loadingTimeout = setTimeout(() => {
       if (this.isLoading()) {
-        console.warn('[REPL] Loading timeout (30s) reached - Pyodide kernel may still be booting');
+        console.warn('[REPL] Loading timeout (300s) reached - Pyodide kernel may still be booting');
         console.warn('[REPL] Tip: Check browser console in the iframe for bootstrap errors');
         this.isLoading.set(false);
         this.cdr.detectChanges();
       }
-    }, 60000); // 60 second fallback (was 30s, but Pyodide needs more time)
+    }, 300000); // 5 minute fallback
 
     this.cdr.detectChanges();
   }
@@ -987,21 +971,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
    * Reload the notebook (restart kernel)
    */
   reloadNotebook() {
-    // Unsubscribe from existing listeners to avoid duplicates
-    this.subscription.unsubscribe();
-    this.subscription = new Subscription(); // Re-create for new subscriptions
-
-    // Re-initialize kernel logic
-    this.initKernel();
-
-    // Force iframe reload by momentarily clearing URL or just rebuilding
-    this.jupyterliteUrl = undefined; // Force DOM cleanup
-    this.cdr.detectChanges();
-
-    setTimeout(() => {
-      this.buildJupyterliteUrl();
-      this.cdr.detectChanges();
-    }, 100);
+    this.jupyterliteService.reloadNotebook();
   }
 
   /**
@@ -1075,6 +1045,16 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   isMachineInUse(machine: Machine): boolean {
     // Check if machine has an active protocol run
     return machine.status === MachineStatus.RUNNING;
+  }
+
+  /**
+   * Helper for E2E tests to trigger code execution
+   */
+  public executeCodeForTest(code: string) {
+    this.jupyterChannel.sendMessage({
+        type: 'praxis:execute',
+        code: code
+    });
   }
 
   /**

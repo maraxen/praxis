@@ -8,9 +8,9 @@ export class JupyterlitePage {
 
   constructor(page: Page) {
     this.page = page;
-    this.frame = page.frameLocator('iframe.notebook-frame');
-    this.codeInput = this.frame.locator('.jp-CodeConsole-input .jp-InputArea-editor');
-    this.kernelIdleIndicator = this.frame.locator('.jp-mod-idle').first();
+    this.frame = page.frameLocator('iframe.notebook-frame, iframe[src*="repl"]').first();
+    this.codeInput = this.frame.locator('.jp-CodeConsole-input .cm-content, .jp-CodeConsole-input .jp-InputArea-editor, .jp-Repl-input .cm-content').first();
+    this.kernelIdleIndicator = this.frame.locator('.jp-mod-idle, .jp-Notebook-ExecutionIndicator[data-status="idle"]').first();
   }
 
   async waitForFrameAttached(timeout = 20000): Promise<void> {
@@ -38,9 +38,21 @@ export class JupyterlitePage {
 
   async executeCode(code: string): Promise<void> {
     await this.dismissDialogs();
-    await expect(this.codeInput).toBeVisible();
-    await this.codeInput.click();
-    await this.page.keyboard.type(code);
+    await expect(this.codeInput).toBeVisible({ timeout: 30000 });
+    
+    // Ensure the editor is focused
+    await this.codeInput.click({ force: true });
+    await this.page.waitForTimeout(500);
+    
+    // Clear existing code if any (Select All + Backspace)
+    await this.page.keyboard.down('Control');
+    await this.page.keyboard.press('a');
+    await this.page.keyboard.up('Control');
+    await this.page.keyboard.press('Backspace');
+
+    // Type new code
+    await this.page.keyboard.type(code, { delay: 5 });
+    await this.page.waitForTimeout(200);
     await this.page.keyboard.press('Shift+Enter');
   }
 

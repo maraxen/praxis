@@ -24,6 +24,8 @@ export class PlaygroundJupyterliteService {
   private currentTheme = '';
   private loadingTimeout: ReturnType<typeof setTimeout> | undefined;
   private replChannel: BroadcastChannel | null = null;
+  private processedInteractionIds = new Set<string>();
+  private messageListener: ((event: MessageEvent) => void) | null = null;
 
   constructor() {
     effect(() => {
@@ -49,6 +51,10 @@ export class PlaygroundJupyterliteService {
       this.replChannel.close();
       this.replChannel = null;
     }
+    if (this.messageListener) {
+        window.removeEventListener('message', this.messageListener);
+        this.messageListener = null;
+    }
     if (this.loadingTimeout) {
       clearTimeout(this.loadingTimeout);
     }
@@ -58,27 +64,46 @@ export class PlaygroundJupyterliteService {
     if (this.replChannel) {
       this.replChannel.close();
     }
+    if (this.messageListener) {
+        window.removeEventListener('message', this.messageListener);
+    }
 
-    this.replChannel = new BroadcastChannel('praxis_repl');
-    this.replChannel.onmessage = async (event) => {
-      const data = event.data;
-      if (data?.type === 'praxis:ready') {
+    const channelName = 'praxis_repl';
+    console.log('[REPL] Setting up BroadcastChannel:', channelName);
+
+    this.replChannel = new BroadcastChannel(channelName);
+    
+    const messageHandler = async (data: any) => {
+      if (!data) return;
+      
+      const type = data.type;
+      console.log('[REPL] Processing message type:', type);
+      
+      if (type === 'praxis:ready' || type === 'r') {
         console.log('[REPL] Received kernel ready signal');
         this.isLoading.set(false);
+        (window as any).__praxis_pyodide_ready = true;
         if (this.loadingTimeout) {
           clearTimeout(this.loadingTimeout);
           this.loadingTimeout = undefined;
         }
-      } else if (data?.type === 'USER_INTERACTION') {
-        console.log('[REPL] USER_INTERACTION received via BroadcastChannel:', data.payload);
+        
+        // If it was just the minimal ready ('r'), we need to send the bootstrap
+        if (type === 'r') {
+            console.log('[REPL] Minimal ready, sending full bootstrap');
+            const bootstrapCode = await this.getOptimizedBootstrap();
+            this.sendMessageToKernel({ type: 'praxis:bootstrap', code: bootstrapCode });
+        }
+      } else if (type === 'USER_INTERACTION') {
+        console.log('[REPL] USER_INTERACTION received:', data.payload);
         this.handleUserInteraction(data.payload);
-      } else if (data?.type === 'praxis:snapshot_query') {
+      } else if (type === 'praxis:snapshot_query' || type === 'q') {
         console.log('[Pyodide] Received snapshot query');
         const snapshot = await this.snapshotService.getSnapshot();
         if (snapshot) {
             console.log('[Pyodide] Sending snapshot to iframe');
             const postLoadCode = this.getPostLoadCode();
-            this.replChannel?.postMessage({
+            this.sendMessageToKernel({
                 type: 'praxis:snapshot_load',
                 payload: snapshot,
                 post_load_code: postLoadCode,
@@ -86,37 +111,76 @@ export class PlaygroundJupyterliteService {
         } else {
             console.log('[Pyodide] No snapshot found. Sending full bootstrap.');
             const bootstrapCode = await this.getOptimizedBootstrap();
-            this.replChannel?.postMessage({ type: 'praxis:bootstrap', code: bootstrapCode });
+            this.sendMessageToKernel({ type: 'praxis:bootstrap', code: bootstrapCode });
         }
-      } else if (data?.type === 'praxis:save_snapshot') {
+      } else if (type === 'praxis:save_snapshot') {
           console.log('[Pyodide] Received snapshot to save');
           await this.snapshotService.saveSnapshot(data.payload);
           console.log('[Pyodide] Snapshot saved for future fast-start');
-      } else if (data?.type === 'praxis:snapshot_query_failed') {
-        // This can happen if snapshot is corrupted
-        console.warn('[Pyodide] Snapshot restore failed, doing fresh init from iframe request');
+      } else if (type === 'praxis:snapshot_query_failed') {
+        console.warn('[Pyodide] Snapshot restore failed, doing fresh init');
         await this.snapshotService.invalidateSnapshot();
         const bootstrapCode = await this.getOptimizedBootstrap();
-        this.replChannel?.postMessage({ type: 'praxis:bootstrap', code: bootstrapCode });
-    }
+        this.sendMessageToKernel({ type: 'praxis:bootstrap', code: bootstrapCode });
+      }
     };
+
+    this.replChannel.onmessage = (event) => {
+      console.log('[REPL] Received message on BroadcastChannel:', event.data?.type);
+      messageHandler(event.data);
+    };
+
+    // Also listen for window messages as a fallback
+    this.messageListener = (event: MessageEvent) => {
+      const type = event.data?.type;
+      if (type === 'USER_INTERACTION' || (type && type.startsWith('praxis:')) || type === 'r' || type === 'q') {
+        console.log('[REPL] Received message on window:', type);
+        messageHandler(event.data);
+      }
+    };
+    window.addEventListener('message', this.messageListener);
+  }
+
+  private sendMessageToKernel(message: any): void {
+      if (this.replChannel) {
+          this.replChannel.postMessage(message);
+      }
+      // Fallback: also try postMessage to all iframes
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+          try {
+              iframe.contentWindow?.postMessage(message, '*');
+          } catch (e) {
+              // Ignore cross-origin errors
+          }
+      });
   }
 
   private async handleUserInteraction(payload: any): Promise<void> {
-    console.log('[REPL] Opening interaction dialog:', payload.interaction_type);
+    if (!payload.id || this.processedInteractionIds.has(payload.id)) {
+        console.log('[REPL] Skipping duplicate interaction request:', payload.id);
+        return;
+    }
+    this.processedInteractionIds.add(payload.id);
+
+    console.log('[REPL] Opening interaction dialog:', payload.interaction_type, 'ID:', payload.id);
     const result = await this.interactionService.handleInteraction({
       interaction_type: payload.interaction_type,
       payload: payload.payload
     });
 
-    console.log('[REPL] Interaction result obtained:', result);
+    console.log('[REPL] Interaction result obtained:', result, 'ID:', payload.id);
 
-    if (this.replChannel) {
-      this.replChannel.postMessage({
+    this.sendMessageToKernel({
         type: 'praxis:interaction_response',
         id: payload.id,
         value: result
-      });
+    });
+    
+    // Keep set size manageable
+    if (this.processedInteractionIds.size > 100) {
+        const first = this.processedInteractionIds.values().next().value;
+        if (first) this.processedInteractionIds.delete(first);
     }
   }
 
@@ -125,68 +189,23 @@ export class PlaygroundJupyterliteService {
   }
 
   public getMinimalBootstrap(): string {
+    const channelName = 'praxis_repl';
+
+    // Ultra minimal bootstrap to avoid URL length limits and ensure reliability
     return `
-import js
-from pyodide.ffi import to_js
-import pyodide_js
-import asyncio
-
-_praxis_initialized = False
-
-async def _praxis_boot_handler(event):
-    global _praxis_initialized
-    if _praxis_initialized:
-        print("PRAXIS: Already initialized, ignoring message.")
-        return
-
-    data = event.data
-    if hasattr(data, "to_py"):
-        data = data.to_py()
-
-    if isinstance(data, dict) and data.get("type") == "praxis:snapshot_load":
-        print("PRAXIS: Receiving snapshot...")
-        try:
-            await pyodide_js.loadSnapshot(data.get("payload"))
-            exec(data.get("post_load_code"), globals())
-            _praxis_initialized = True
-            print("PRAXIS: Snapshot restored.")
-            if '_praxis_channel' in globals():
-                globals()['_praxis_channel'].postMessage(to_js({"type": "praxis:ready"}, dict_converter=js.Object.fromEntries))
-                print("PRAXIS: Re-sent ready signal from snapshot.")
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            print(f"PRAXIS: Snapshot load failed: {e}. Requesting full bootstrap.")
-            _praxis_boot_channel.postMessage(to_js({"type": "praxis:snapshot_query_failed"}, dict_converter=js.Object.fromEntries))
-
-    elif isinstance(data, dict) and data.get("type") == "praxis:bootstrap":
-        print("PRAXIS: Receiving full bootstrap...")
-        try:
-            exec(data.get("code"), globals())
-            _praxis_initialized = True
-            print("PRAXIS: Full bootstrap complete. Creating snapshot...")
-            snapshot = await pyodide_js.dumpSnapshot()
-            if '_praxis_channel' in globals():
-                globals()['_praxis_channel'].postMessage(to_js({"type": "praxis:save_snapshot", "payload": snapshot}, dict_converter=js.Object.fromEntries))
-                print("PRAXIS: Snapshot sent to host for saving.")
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            print(f"PRAXIS: Bootstrap failed: {e}")
-
-def _main_boot():
-    if hasattr(js, "BroadcastChannel"):
-        global _praxis_boot_channel
-        _praxis_boot_channel = js.BroadcastChannel.new("praxis_repl")
-        def message_wrapper(event):
-            asyncio.ensure_future(_praxis_boot_handler(event))
-        _praxis_boot_channel.onmessage = message_wrapper
-        _praxis_boot_channel.postMessage(to_js({"type": "praxis:snapshot_query"}, dict_converter=js.Object.fromEntries))
-        print("PRAXIS: Minimal bootstrap ready, querying for snapshot...")
-    else:
-        print("PRAXIS: Critical - BroadcastChannel missing")
-
-_main_boot()
+import js, asyncio
+js.console.log('PRAXIS: Minimal boot starting, URL:', js.window.location.href)
+async def _h(e):
+  d = e.data.to_py() if hasattr(e.data, 'to_py') else e.data
+  if d.get('type') == 'praxis:bootstrap':
+    js.console.log('PRAXIS: Executing bootstrap...')
+    exec("async def _f():\\n" + "\\n".join("  "+l for l in d.get('code').split("\\n")), globals())
+    await globals()['_f']()
+c = js.BroadcastChannel.new('${channelName}') if hasattr(js.BroadcastChannel, 'new') else js.BroadcastChannel('${channelName}')
+c.onmessage = lambda e: asyncio.ensure_future(_h(e))
+c.postMessage(js.Object.fromEntries([('type', 'r')]))
+if hasattr(js, 'window'): js.window.parent.postMessage(js.Object.fromEntries([('type', 'r')]), '*')
+js.console.log('PRAXIS: Minimal boot ready')
 `.trim();
   }
 
@@ -202,17 +221,16 @@ _main_boot()
     const isDark = this.getIsDarkMode();
     this.currentTheme = isDark ? 'dark' : 'light';
 
-    // AUDIT-07: Use minimal bootstrap to avoid URL length limits
-    // The full bootstrap will be injected via BroadcastChannel
     const bootstrapCode = this.getMinimalBootstrap();
 
-    console.log('[REPL] Building JupyterLite URL. Calculated isDark:', isDark, 'Effective Theme Class:', this.currentTheme);
+    console.log('[REPL] Building JupyterLite URL. Theme:', this.currentTheme);
 
-    const baseUrl = './assets/jupyterlite/repl/index.html';
+    const baseUrl = this.calculateHostRoot() + 'assets/jupyterlite/repl/index.html';
     const params = new URLSearchParams({
       kernel: 'python',
       toolbar: '1',
       theme: isDark ? 'JupyterLab Dark' : 'JupyterLab Light',
+      execute: '1',
     });
 
     if (bootstrapCode) {
@@ -224,10 +242,10 @@ _main_boot()
 
     this.loadingTimeout = setTimeout(() => {
       if (this.isLoading()) {
-        console.warn('[REPL] Loading timeout (30s) reached');
+        console.warn('[REPL] Loading timeout (300s) reached');
         this.isLoading.set(false);
       }
-    }, 30000);
+    }, 300000);
   }
 
   private async updateJupyterliteTheme(_: string): Promise<void> {
@@ -244,183 +262,144 @@ _main_boot()
     const shims = ['web_serial_shim.py', 'web_usb_shim.py', 'web_ftdi_shim.py'];
     const hostRoot = this.calculateHostRoot();
 
-    let shimInjections = `# --- Host Root (injected from Angular) --- \n`;
+    let shimInjections = `# --- Host Root --- \n`;
     shimInjections += `PRAXIS_HOST_ROOT = "${hostRoot}"\n`;
-    shimInjections += 'print(f"PylibPraxis: Using Host Root: {PRAXIS_HOST_ROOT}")\n\n';
-    shimInjections += '# --- Browser Hardware Shims --- \n';
+    shimInjections += 'import sys\nimport os\n';
+    shimInjections += 'if "." not in sys.path: sys.path.append(".")\n';
     shimInjections += 'import pyodide.http\n';
 
     for (const shim of shims) {
       shimInjections += `
-print("PylibPraxis: Loading ${shim}...")
 try:
     _shim_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/shims/${shim}')).string()
     exec(_shim_code, globals())
-    print("PylibPraxis: Loaded ${shim}")
 except Exception as e:
-    print(f"PylibPraxis: Failed to load ${shim}: {e}")
+    print(f"Failed to load ${shim}: {e}")
 `;
     }
 
     shimInjections += `
-print("PylibPraxis: Loading web_bridge.py...")
 try:
     _bridge_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/python/web_bridge.py')).string()
     with open('web_bridge.py', 'w') as f:
         f.write(_bridge_code)
-    print("PylibPraxis: Loaded web_bridge.py")
 except Exception as e:
-    print(f"PylibPraxis: Failed to load web_bridge.py: {e}")
+    print(f"Failed to load web_bridge.py: {e}")
 
-import os
 if not os.path.exists('praxis'):
     os.makedirs('praxis')
     
-for _p_file in ['__init__.py', 'interactive.py']:
-    try:
-        print(f"PylibPraxis: Loading praxis/{_p_file}...")
-        _p_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/python/praxis/{_p_file}')).string()
-        with open(f'praxis/{_p_file}', 'w') as f:
-            f.write(_p_code)
-        print(f"PylibPraxis: Loaded praxis/{_p_file}")
-    except Exception as e:
-        print(f"PylibPraxis: Failed to load praxis/{_p_file}: {e}")
 `;
+
+    for (const file of ['__init__.py', 'interactive.py']) {
+      shimInjections += `
+try:
+    _p_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/python/praxis/${file}')).string()
+    with open(f'praxis/${file}', 'w') as f:
+        f.write(_p_code)
+except Exception as e:
+    print(f"Failed to load praxis/${file}: {e}")
+`;
+    }
 
     const baseBootstrap = this.generateBootstrapCode();
     return shimInjections + '\n' + baseBootstrap;
   }
 
   private getPostLoadCode(): string {
+    const channelName = 'praxis_repl';
+
     const lines = [
-      '# Message listener for asset injection via BroadcastChannel',
-      '# We use BroadcastChannel because it works across Window/Worker contexts',
-      'import js',
-      'import json',
+      'import js, json',
+      'from pyodide.ffi import to_js',
+      '',
+      'def _send_to_angular(msg_dict):',
+      '    try:',
+      '        js_msg = to_js(msg_dict, dict_converter=js.Object.fromEntries)',
+      '        if hasattr(globals(), "_praxis_channel") and globals()["_praxis_channel"]:',
+      '            globals()["_praxis_channel"].postMessage(js_msg)',
+      '        if hasattr(js, "window"): js.window.parent.postMessage(js_msg, "*")',
+      '    except Exception as e: js.console.error(f"Failed to send to angular: {e}")',
       '',
       'def _praxis_message_handler(event):',
       '    try:',
-      '        data = event.data',
-      '        # Convert JsProxy to dict if needed',
-      '        if hasattr(data, "to_py"):',
-      '            data = data.to_py()',
-      '        ',
+      '        data = event.data.to_py() if hasattr(event.data, "to_py") else event.data',
       '        if isinstance(data, dict) and data.get("type") == "praxis:execute":',
       '            code = data.get("code", "")',
-      '            print(f"Executing: {code}")',
-      '            # Handle async code (contains await)',
-      '            if "await " in code:',
-      '                import asyncio',
-      '                # Wrap in async function and schedule',
-      '                async def _run_async():',
-      '                    exec(f"async def __praxis_async__(): return {code}", globals())',
-      '                    result = await __praxis_async__()',
-      '                    if result is not None:',
-      '                        print(result)',
-      '                asyncio.ensure_future(_run_async())',
-      '            else:',
-      '                exec(code, globals())',
-      '        elif isinstance(data, dict) and data.get("type") == "praxis:interaction_response":',
       '            try:',
-      '                import web_bridge',
-      '                web_bridge.handle_interaction_response(data.get("id"), data.get("value"))',
-      '            except ImportError:',
-      '                print("! web_bridge not found for interaction response")',
-      '    except Exception as e:',
-      '        import traceback',
-      '        print(f"Error executing injected code: {e}")',
-      '        print(traceback.format_exc())',
+      '                if "await " in code:',
+      '                    import asyncio',
+      '                    async def _run_async():',
+      '                        try:',
+      '                            indented = "\\n".join("    " + l for l in code.split("\\n"))',
+      '                            wrapper = f"async def __praxis_async_exec__():\\n{indented}"',
+      '                            exec(wrapper, globals())',
+      '                            result = await globals()["__praxis_async_exec__"]()',
+      '                            if result is not None: print(result)',
+      '                        except Exception as e: import traceback; traceback.print_exc()',
+      '                        except BaseException as e: import traceback; traceback.print_exc()',
+      '                    asyncio.ensure_future(_run_async())',
+      '                else:',
+      '                    exec(code, globals())',
+      '            except Exception as e: import traceback; traceback.print_exc()',
+      '            except BaseException as e: import traceback; traceback.print_exc()',
+      '        elif isinstance(data, dict) and data.get("type") == "praxis:interaction_response":',
+      '            import web_bridge',
+      '            web_bridge.handle_interaction_response(data.get("id"), data.get("value"))',
+      '    except Exception as e: js.console.error(f"Execution error: {e}")',
       '',
-      '# Setup BroadcastChannel',
       'try:',
       '    if hasattr(js, "BroadcastChannel"):',
-      '        # Try .new() first (Pyodide convention)',
-      '        if hasattr(js.BroadcastChannel, "new"):',
-      '            _praxis_channel = js.BroadcastChannel.new("praxis_repl")',
-      '        else:',
-      '            # Fallback to direct constructor',
-      '            _praxis_channel = js.BroadcastChannel("praxis_repl")',
-      '        ',
+      `        _praxis_channel = js.BroadcastChannel.new("${channelName}") if hasattr(js.BroadcastChannel, "new") else js.BroadcastChannel("${channelName}")`,
       '        _praxis_channel.onmessage = _praxis_message_handler',
-      '        ',
-      '        # Register channel with web_bridge for interactive protocols',
-      '        try:',
-      '            import web_bridge',
-      '            web_bridge.register_broadcast_channel(_praxis_channel)',
-      '            print("✓ Interactive protocols enabled (channel registered)")',
-      '        except ImportError:',
-      '            print("! web_bridge not available for channel registration")',
-      '        ',
-      '        print("✓ Asset injection ready (channel created)")',
-      '    else:',
-      '        print("! BroadcastChannel not available")',
-      'except Exception as e:',
-      '    print(f"! Failed to setup injection channel: {e}")',
+      '        import web_bridge',
+      '        web_bridge.register_broadcast_channel(_praxis_channel)',
+      '    if hasattr(js, "window"): js.window.onmessage = _praxis_message_handler',
+      'except Exception as e: js.console.error(f"Failed to setup channel: {e}")',
       '',
-      '# Send ready signal to Angular host',
-      'try:',
-      '    # Must convert dict to JS Object for structured clone in BroadcastChannel',
-      '    from pyodide.ffi import to_js',
-      '    ready_msg = to_js({"type": "praxis:ready"}, dict_converter=js.Object.fromEntries)',
-      '    _praxis_channel.postMessage(ready_msg)',
-      '    print("✓ Ready signal sent")',
-      'except Exception as e:',
-      '    print(f"! Ready signal failed: {e}")',
+      'js.console.log("PRAXIS: Ready signal starting...")',
+      '_send_to_angular({"type": "praxis:ready"})',
     ];
     return lines.join('\n');
   }
 
   private generateBootstrapCode(): string {
     const lines = [
-      '# PyLabRobot Interactive Notebook',
-      '# Installing pylabrobot from local wheel...',
-      'import micropip',
-      'await micropip.install(f"{PRAXIS_HOST_ROOT}assets/wheels/pylabrobot-0.1.6-py3-none-any.whl")',
-      '',
-      '# Ensure WebSerial, WebUSB, and WebFTDI are in builtins for all cells',
-      'import builtins',
-      'if "WebSerial" in globals():',
-      '    builtins.WebSerial = WebSerial',
-      'if "WebUSB" in globals():',
-      '    builtins.WebUSB = WebUSB',
-      'if "WebFTDI" in globals():',
-      '    builtins.WebFTDI = WebFTDI',
-      '',
-      '# Mock pylibftdi (not supported in browser/Pyodide)',
-      'import sys',
-      'from unittest.mock import MagicMock',
-      'sys.modules["pylibftdi"] = MagicMock()',
-      '',
-      '# Load WebSerial/WebUSB/WebFTDI shims for browser I/O',
-      '# Note: These are pre-loaded to avoid extra network requests',
+      'import pyodide.http, micropip, sys, js',
+      'if "." not in sys.path: sys.path.append(".")\n',
       'try:',
-      '    import pyodide_js',
-      '    from pyodide.ffi import to_js',
-      'except ImportError:',
-      '    pass',
+      '    _wheel_url = f"{PRAXIS_HOST_ROOT}assets/wheels/pylabrobot-0.1.6-py3-none-any.whl"',
+      '    js.console.log(f"PRAXIS: Installing wheel from {_wheel_url}")',
+      '    await micropip.install(_wheel_url, deps=False)',
+      '    js.console.log("PRAXIS: Wheel installed successfully")',
+      'except Exception as e:',
+      '    js.console.error(f"PRAXIS: Failed to install wheel: {e}")',
+      '    import traceback; traceback.print_exc()',
       '',
-      '# Shims will be injected directly via code to avoid 404s',
-      '# Patching is done in the bootstrap below',
+      'import builtins',
+      'for s in ["WebSerial", "WebUSB", "WebFTDI"]:',
+      '    if s in globals(): setattr(builtins, s, globals()[s])',
       '',
-      '# Patch pylabrobot.io to use browser shims',
+      'import sys; from unittest.mock import MagicMock;',
+      'sys.modules["pylibftdi"] = MagicMock()',
+      'sys.modules["ssl"] = MagicMock()',
+      '',
       'import pylabrobot.io.serial as _ser',
       'import pylabrobot.io.usb as _usb',
       'import pylabrobot.io.ftdi as _ftdi',
-      '_ser.Serial = WebSerial',
-      '_usb.USB = WebUSB',
+      'if "WebSerial" in globals(): _ser.Serial = WebSerial',
+      'if "WebUSB" in globals(): _usb.USB = WebUSB',
+      'if "WebFTDI" in globals(): _ftdi.FTDI = WebFTDI; _ftdi.HAS_PYLIBFTDI = True',
       '',
-      '# CRITICAL: Patch FTDI for backends like CLARIOstarBackend',
-      '_ftdi.FTDI = WebFTDI',
-      '_ftdi.HAS_PYLIBFTDI = True',
-      'print("✓ Patched pylabrobot.io with WebSerial/WebUSB/WebFTDI")',
-      '',
-      '# Import pylabrobot',
       'import pylabrobot',
-      'from pylabrobot.resources import *',
+      'import pylabrobot.resources as _res',
+      'for _n in dir(_res):',
+      '    if not _n.startswith("_"): globals()[_n] = getattr(_res, _n)',
       '',
-      'print("✓ pylabrobot loaded with browser I/O shims (including FTDI)!")',
-      'print(f"  Version: {pylabrobot.__version__}")',
-      'print("Use the Inventory button to insert asset variables.")',
+      'try:',
+      '    import web_bridge',
+      '    web_bridge.bootstrap_playground(globals())',
+      'except Exception as e: import js; js.console.error(f"Failed to init playground: {e}")',
       '',
     ];
 
@@ -428,16 +407,7 @@ for _p_file in ['__init__.py', 'interactive.py']:
   }
 
   private calculateHostRoot(): string {
-    const href = window.location.href;
-    const anchor = '/assets/jupyterlite/';
-
-    if (href.includes(anchor)) {
-      return href.split(anchor)[0] + '/';
-    }
-
     const baseHref = document.querySelector('base')?.getAttribute('href') || '/';
-    const cleanBase = PathUtils.normalizeBaseHref(baseHref);
-
-    return window.location.origin + cleanBase;
+    return PathUtils.normalizeBaseHref(baseHref);
   }
 }
