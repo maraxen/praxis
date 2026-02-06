@@ -1,4 +1,4 @@
-import { Page, Locator, TestInfo } from '@playwright/test';
+import { Page, Locator, TestInfo, expect } from '@playwright/test';
 
 /**
  * Base page object for E2E tests with worker-indexed DB isolation.
@@ -78,6 +78,35 @@ export abstract class BasePage {
 
     async getTitle(): Promise<string> {
         return await this.page.title();
+    }
+
+    /**
+     * Dismisses the Welcome/Onboarding dialog if it appears.
+     * Uses a short timeout as the dialog might not always be present.
+     */
+    async dismissWelcomeDialogIfPresent(): Promise<void> {
+        // Wait a bit for potential dialog to appear (animations)
+        await this.page.waitForTimeout(1000);
+
+        const dialog = this.page.getByRole('dialog');
+        const isVisible = await dialog.isVisible().catch(() => false);
+
+        if (isVisible) {
+            // Check if it's the welcome dialog
+            const welcomeHeading = this.page.getByRole('heading', { name: /Welcome/i });
+            const hasWelcome = await welcomeHeading.isVisible().catch(() => false);
+
+            if (hasWelcome) {
+                console.log('[BasePage] Welcome dialog detected, dismissing...');
+                const skipButton = this.page.getByRole('button', { name: /Skip/i });
+                const hasSkip = await skipButton.isVisible().catch(() => false);
+                if (hasSkip) {
+                    await skipButton.click();
+                    // Wait for it to disappear
+                    await expect(dialog).not.toBeVisible({ timeout: 5000 });
+                }
+            }
+        }
     }
 
     async waitForOverlay(options: { timeout?: number; dismissWithEscape?: boolean } = {}): Promise<void> {

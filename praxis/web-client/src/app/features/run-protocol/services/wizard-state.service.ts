@@ -394,19 +394,29 @@ export class WizardStateService {
     /**
      * Serialize the current deck state into a Python script.
      * This script rebuilds the deck layout in the worker.
+     *
+     * Architecture Note (Feb 2026):
+     * - Uses PLR factory functions (STARLetDeck/STARDeck) for proper defaults
+     * - When wizard is skipped, serializes from protocol.assets instead of empty deck
+     * - This prevents empty deck issues and ensures resources are available
      */
     serializeToPython(): { script: string; warnings: string[] } {
         const assignments = this._slotAssignments();
         const deckType = this._deckType();
+        const protocol = this._protocol();
+        const isSkipped = this._skipped();
         const warnings: string[] = [];
         const validClasses = getValidPLRClassNames();
+
+        // Check if we have placed resources from wizard
+        const hasPlacedResources = assignments.some(a => a.placed);
 
         // Start building the Python script
         let code = 'import pylabrobot.resources as res\n';
 
-        // Import deck class
+        // Import deck factory functions (preferred over raw constructors)
         if (deckType.includes('HamiltonSTAR')) {
-            code += 'from pylabrobot.resources.hamilton import HamiltonSTARDeck\n';
+            code += 'from pylabrobot.resources.hamilton import STARLetDeck, STARDeck\n';
             code += 'from pylabrobot.resources.hamilton import *\n';
         } else if (deckType.includes('OTDeck')) {
             code += 'from pylabrobot.resources.opentrons import OTDeck\n';
@@ -414,72 +424,117 @@ export class WizardStateService {
 
         code += '\ndef setup_deck():\n';
 
-        // Instantiate Deck
+        // Instantiate Deck using factory functions with proper defaults
+        // Note: Disable trash/teaching_rack for browser simulation (simpler deck)
         if (deckType.includes('HamiltonSTAR')) {
-            code += '    deck = HamiltonSTARDeck()\n';
+            // Use STARLetDeck (32 rails) for STARLet, STARDeck (56 rails) for STAR
+            if (deckType.includes('Let') || deckType === 'HamiltonSTARDeck') {
+                code += '    deck = STARLetDeck()\n';
+            } else {
+                code += '    deck = STARDeck()\n';
+            }
         } else if (deckType.includes('OTDeck')) {
             code += '    deck = OTDeck()\n';
         } else {
             code += '    deck = res.Deck()\n';
         }
 
-        // Track placed carriers
-        const carrierVarNames = new Map<string, string>();
-        const uniqueCarriers = new Map<string, any>();
+        // === CASE 1: Wizard completed with placed resources ===
+        if (hasPlacedResources && !isSkipped) {
+            // Track placed carriers
+            const carrierVarNames = new Map<string, string>();
+            const uniqueCarriers = new Map<string, any>();
 
-        assignments.forEach(a => {
-            if (a.placed && a.carrier) {
-                uniqueCarriers.set(a.carrier.id, a.carrier);
-            }
-        });
-
-        // Instantiate Carriers
-        uniqueCarriers.forEach((carrier, id) => {
-            const varName = id.replace(/[^a-zA-Z0-9_]/g, '_');
-            carrierVarNames.set(id, varName);
-
-            if (!validatePLRClassName(carrier.fqn, validClasses)) {
-                warnings.push(`Unknown carrier class: ${carrier.fqn}`);
-            }
-
-            // Heuristic for class name from FQN
-            const className = carrier.fqn.split('.').pop() || 'Carrier';
-
-            code += `    ${varName} = ${className}(name="${carrier.name}")\n`;
-
-            if (carrier.railPosition !== undefined) {
-                code += `    deck.assign_child_resource(${varName}, rails=${carrier.railPosition})\n`;
-            }
-        });
-
-        // Instantiate Labware
-        assignments.forEach((assign, index) => {
-            if (assign.placed) {
-                const varName = `labware_${index}`;
-                const carrierVar = carrierVarNames.get(assign.carrier.id);
-
-                if (carrierVar) {
-                    // Map resource types to PLR classes
-                    let className = 'Resource';
-                    if (assign.resource.type === 'Plate' || assign.resource.type === 'Trough' || assign.resource.type === 'Reservoir') {
-                        className = 'Plate';
-                    } else if (assign.resource.type === 'TipRack') {
-                        className = 'TipRack';
-                    }
-
-                    code += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
-                    code += `    ${carrierVar}[${assign.slot.index}] = ${varName}\n`;
-                } else if (deckType.includes('OTDeck')) {
-                    // OT-2 direct placement
-                    let className = 'Resource';
-                    if (assign.resource.type === 'Plate') className = 'Plate';
-                    else if (assign.resource.type === 'TipRack') className = 'TipRack';
-
-                    code += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
-                    code += `    deck.assign_child_at_slot(${varName}, ${assign.slot.index + 1})\n`;
+            assignments.forEach(a => {
+                if (a.placed && a.carrier) {
+                    uniqueCarriers.set(a.carrier.id, a.carrier);
                 }
-            }
-        });
+            });
+
+            // Instantiate Carriers
+            uniqueCarriers.forEach((carrier, id) => {
+                const varName = id.replace(/[^a-zA-Z0-9_]/g, '_');
+                carrierVarNames.set(id, varName);
+
+                if (!validatePLRClassName(carrier.fqn, validClasses)) {
+                    warnings.push(`Unknown carrier class: ${carrier.fqn}`);
+                }
+
+                // Heuristic for class name from FQN
+                const className = carrier.fqn.split('.').pop() || 'Carrier';
+
+                code += `    ${varName} = ${className}(name="${carrier.name}")\n`;
+
+                if (carrier.railPosition !== undefined) {
+                    code += `    deck.assign_child_resource(${varName}, rails=${carrier.railPosition})\n`;
+                }
+            });
+
+            // Instantiate Labware
+            assignments.forEach((assign, index) => {
+                if (assign.placed) {
+                    const varName = `labware_${index}`;
+                    const carrierVar = carrierVarNames.get(assign.carrier.id);
+
+                    if (carrierVar) {
+                        // Map resource types to PLR classes
+                        let className = 'Resource';
+                        if (assign.resource.type === 'Plate' || assign.resource.type === 'Trough' || assign.resource.type === 'Reservoir') {
+                            className = 'Plate';
+                        } else if (assign.resource.type === 'TipRack') {
+                            className = 'TipRack';
+                        }
+
+                        code += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
+                        code += `    ${carrierVar}[${assign.slot.index}] = ${varName}\n`;
+                    } else if (deckType.includes('OTDeck')) {
+                        // OT-2 direct placement
+                        let className = 'Resource';
+                        if (assign.resource.type === 'Plate') className = 'Plate';
+                        else if (assign.resource.type === 'TipRack') className = 'TipRack';
+
+                        code += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
+                        code += `    deck.assign_child_at_slot(${varName}, ${assign.slot.index + 1})\n`;
+                    }
+                }
+            });
+        }
+        // === CASE 2: Wizard skipped OR no resources placed - use protocol.assets ===
+        else if (protocol?.assets && protocol.assets.length > 0) {
+            code += '    # Wizard skipped - creating resources from protocol.assets\n';
+
+            let railPosition = 1; // Starting rail for direct assignment
+            protocol.assets.forEach((asset, index) => {
+                const varName = asset.name.replace(/[^a-zA-Z0-9_]/g, '_');
+
+                // Determine resource class from type_hint_str
+                let className = 'Resource';
+                const typeHint = (asset.type_hint_str || '').toLowerCase();
+                if (typeHint.includes('plate') || typeHint.includes('reservoir') || typeHint.includes('trough')) {
+                    className = 'Plate';
+                } else if (typeHint.includes('tiprack') || typeHint.includes('tip_rack')) {
+                    className = 'TipRack';
+                }
+
+                // Standard labware dimensions (127x85mm footprint for SBS plates)
+                const sizeX = className === 'TipRack' ? 127.0 : 127.0;
+                const sizeY = className === 'TipRack' ? 85.0 : 85.0;
+                const sizeZ = className === 'TipRack' ? 100.0 : 14.0;
+
+                code += `    ${varName} = res.${className}(name="${asset.name}", size_x=${sizeX}, size_y=${sizeY}, size_z=${sizeZ})\n`;
+
+                // For Hamilton decks, assign directly to deck at sequential rails
+                // Note: Resources will be spaced 5 rails apart (approx 112.5mm)
+                if (deckType.includes('HamiltonSTAR')) {
+                    code += `    deck.assign_child_resource(${varName}, rails=${railPosition})\n`;
+                    railPosition += 5;
+                } else if (deckType.includes('OTDeck')) {
+                    code += `    deck.assign_child_at_slot(${varName}, ${index + 1})\n`;
+                }
+            });
+
+            warnings.push('Deck setup skipped - using default resource positions from protocol.assets');
+        }
 
         code += '    return deck\n\ndeck = setup_deck()\n';
         return { script: code, warnings };

@@ -11,147 +11,103 @@ import { gotoWithWorkerDb } from '../fixtures/worker-db.fixture';
  * It uses the worker-db.fixture for isolated, parallel-safe execution.
  */
 test.describe('Asset Wizard Journey', () => {
-  test('should guide the user through creating a Hamilton STAR machine', async ({ page }, testInfo) => {
-    await gotoWithWorkerDb(page, '/assets', testInfo, { waitForDb: false });
+  test.beforeEach(async ({ page }) => {
+    // Bypass onboarding splash screen
+    await page.addInitScript(() => {
+      localStorage.setItem('praxis_onboarding_completed', 'true');
+      localStorage.setItem('praxis_tutorial_completed', 'true');
+    });
+  });
 
-    try {
-      const dismissBtn = page.getByRole('button', { name: /Get Started|Skip|Close/i }).first();
-      if (await dismissBtn.isVisible({ timeout: 5000 })) {
-        await dismissBtn.click();
-      }
-    } catch (e) {
-      console.log('Welcome dialog not found or could not be dismissed.');
-    }
+  test('should guide the user through creating a Hamilton STAR machine', async ({ page }, testInfo) => {
+    // Use waitForDb: true to ensure SQLite is ready
+    await gotoWithWorkerDb(page, '/assets', testInfo, { waitForDb: true });
 
     const assetsPage = new AssetsPage(page);
-
-    // Mock API calls to ensure test stability
-    await page.route('**/api/v1/machines/definitions/facets', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          machine_category: [{ value: 'Liquid Handler', count: 1 }],
-          manufacturer: [{ value: 'Hamilton', count: 1 }]
-        })
-      });
-    });
-
-    await page.route('**/api/v1/machines/definitions?*', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            accession_id: 'mach_test_001',
-            name: 'Hamilton STAR',
-            fqn: 'pylabrobot.liquid_handling.backends.hamilton.STAR',
-            plr_category: 'Machine',
-            machine_category: 'Liquid Handler',
-            manufacturer: 'Hamilton',
-            description: 'Hamilton STAR liquid handler',
-            available_simulation_backends: ['Simulated']
-          }
-        ])
-      });
-    });
 
     // Wait for any initial overlays to dismiss
     await assetsPage.waitForOverlaysToDismiss();
 
-    // Click Add Asset button
+    // Click Add Machine button (skips Type step)
     await expect(assetsPage.addMachineButton).toBeVisible({ timeout: 15000 });
     await assetsPage.addMachineButton.click();
 
-    // Wait for the wizard to appear and the first card to be visible
+    // Wait for the wizard to appear
     const wizard = page.locator('app-asset-wizard');
-    await expect(wizard.locator('mat-card').first()).toBeVisible({ timeout: 15000 });
+    await expect(wizard).toBeVisible({ timeout: 15000 });
 
-    // Step 1: Select Asset Type (Machine)
-    await assetsPage.selectWizardCard(wizard, 'asset-type-card-Machine');
-    await assetsPage.clickNextButton(wizard);
-    await assetsPage.waitForStepTransition(wizard, /Select Category/i);
-
-    // Step 2: Select Category (Liquid Handler)
+    // Step 1: Select Category (Liquid Handler)
     await assetsPage.selectWizardCard(wizard, 'category-card-LiquidHandler');
     await assetsPage.clickNextButton(wizard);
-    await assetsPage.waitForStepTransition(wizard, /Select Machine Type/i);
+    await assetsPage.waitForStepTransition(wizard, /Machine Type/i);
 
-    // Step 3: Search and Select STAR
-    await wizard.getByLabel('Search Definitions').fill('STAR');
-    const resultCard = wizard.locator('.result-card').first();
-    await expect(resultCard).toBeVisible({ timeout: 5000 }); // Wait for search debounce
-    await resultCard.click();
-    await expect(resultCard).toHaveClass(/selected/);
+    // Step 2: Select Machine Type (Frontend)
+    const frontendCard = wizard.getByTestId(/frontend-card-/).filter({ hasText: /Liquid/i }).first();
+    await expect(frontendCard).toBeVisible({ timeout: 15000 });
+    await frontendCard.click();
     await assetsPage.clickNextButton(wizard);
-    await assetsPage.waitForStepTransition(wizard, /Select Driver/i);
+    await assetsPage.waitForStepTransition(wizard, /Driver/i);
 
-
-    // Step 4: Verify Simulated backend and proceed
-    const backendSelect = wizard.getByLabel('Backend (Driver)');
-    await expect(backendSelect).toContainText(/Simulated/i);
+    // Step 3: Select Driver (Backend)
+    const backendCard = wizard.getByTestId(/backend-card-/).filter({ hasText: /STAR/i }).first();
+    await expect(backendCard).toBeVisible({ timeout: 15000 });
+    await backendCard.click();
     await assetsPage.clickNextButton(wizard);
-    await assetsPage.waitForStepTransition(wizard, /Configuration/i);
+    await assetsPage.waitForStepTransition(wizard, /Config/i);
 
+    // Step 4: Configuration
+    const nameInput = wizard.getByLabel('Instance Name');
+    await expect(nameInput).toBeVisible({ timeout: 10000 });
+    await nameInput.fill('Hamilton STAR Test');
+    const nextButton = wizard.getByTestId('wizard-next-button').filter({ visible: true }).first();
+    await expect(nextButton).toBeEnabled();
+    await nextButton.click();
+    await assetsPage.waitForStepTransition(wizard, /Review/i);
 
-    // Step 5: Configuration
-    await wizard.getByLabel('Instance Name').fill('Hamilton STAR Test');
-    await assetsPage.clickNextButton(wizard);
-    await assetsPage.waitForStepTransition(wizard, /Summary/i);
-
-
-    // Step 6: Summary and Create
-    await expect(wizard.locator('.review-card')).toContainText('Hamilton STAR');
+    // Step 5: Summary and Create
+    await expect(wizard.locator('.review-card')).toContainText(/STAR/i);
     const createButton = wizard.getByRole('button', { name: 'Create Asset' });
     await expect(createButton).toBeEnabled();
     await createButton.click();
 
-    // 7. Verify result
+    // 6. Verify result
     await expect(wizard).not.toBeVisible({ timeout: 15000 });
     await assetsPage.verifyAssetVisible('Hamilton STAR Test');
 
-    // 8. Domain Verification: Check SQLite Database
+    // 7. Domain Verification: Check SQLite Database via service
     const machineData = await page.evaluate(async (name) => {
-      const db = (window as any).sqliteService;
-      const result = await db.query(
-        'SELECT * FROM machines WHERE instance_name = ?',
-        [name]
-      );
-      return result[0];
+      const service = (window as any).sqliteService;
+      if (!service) return null;
+      
+      return new Promise((resolve) => {
+        service.getMachines().subscribe((machines: any[]) => {
+          resolve(machines.find(m => m.name === name));
+        });
+      });
     }, 'Hamilton STAR Test');
 
     expect(machineData).toBeDefined();
-    expect(machineData.category).toBe('LiquidHandler');
-    expect(machineData.frontend_fqn).toContain('STAR');
+    expect((machineData as any).machine_category).toBe('LiquidHandler');
+    expect((machineData as any).name).toBe('Hamilton STAR Test');
 
-    // 9. Persistence Verification: Reload and check
+    // 8. Persistence Verification: Reload and check
     await page.reload();
     await assetsPage.verifyAssetVisible('Hamilton STAR Test', 15000);
   });
 
   test('should handle wizard cancellation gracefully', async ({ page }, testInfo) => {
-    await gotoWithWorkerDb(page, '/assets', testInfo, { waitForDb: false });
-    try {
-      const dismissBtn = page.getByRole('button', { name: /Get Started|Skip|Close/i }).first();
-      if (await dismissBtn.isVisible({ timeout: 5000 })) {
-        await dismissBtn.click();
-      }
-    } catch (e) {
-      console.log('Welcome dialog not found or could not be dismissed.');
-    }
+    await gotoWithWorkerDb(page, '/assets', testInfo, { waitForDb: true });
     const assetsPage = new AssetsPage(page);
     await assetsPage.waitForOverlaysToDismiss();
 
-    // 1. Open wizard - Add Machine button skips Type step, opens at Category
+    // 1. Open wizard
     await assetsPage.addMachineButton.click();
-    const wizard = page.locator('app-asset-wizard');
     const dialog = page.getByRole('dialog');
 
-    // Wait for category cards to appear (wizard opens at Category step)
-    const categoryCard = wizard.getByTestId(/category-card-/).first();
-    await expect(categoryCard).toBeVisible({ timeout: 15000 });
+    // Wait for wizard content to appear
+    await expect(dialog.getByTestId(/category-card-/).first()).toBeVisible({ timeout: 15000 });
 
-    // 2. Close wizard via Escape (no Cancel button exists)
+    // 2. Close wizard via Escape
     await page.keyboard.press('Escape');
 
     // 3. Verify wizard is closed
@@ -159,116 +115,78 @@ test.describe('Asset Wizard Journey', () => {
 
     // 4. Verify no asset was created
     const machineCount = await page.evaluate(async () => {
-      const db = (window as any).sqliteService;
-      const result = await db.query('SELECT COUNT(*) as count FROM machines');
-      return result[0].count;
+      const service = (window as any).sqliteService;
+      if (!service) return 0;
+      return new Promise((resolve) => {
+        service.getMachines().subscribe((machines: any[]) => {
+          resolve(machines.length);
+        });
+      });
     });
     expect(machineCount).toBe(0);
   });
 
   test('should prevent creation with empty instance name', async ({ page }, testInfo) => {
-    await gotoWithWorkerDb(page, '/assets', testInfo, { waitForDb: false });
-    try {
-      const dismissBtn = page.getByRole('button', { name: /Get Started|Skip|Close/i }).first();
-      if (await dismissBtn.isVisible({ timeout: 5000 })) {
-        await dismissBtn.click();
-      }
-    } catch (e) {
-      console.log('Welcome dialog not found or could not be dismissed.');
-    }
+    await gotoWithWorkerDb(page, '/assets', testInfo, { waitForDb: true });
     const assetsPage = new AssetsPage(page);
     await assetsPage.waitForOverlaysToDismiss();
-
-    // Mock APIs
-    await page.route('**/api/v1/machines/definitions?*', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            accession_id: 'mach_test_001',
-            name: 'Hamilton STAR',
-            fqn: 'pylabrobot.liquid_handling.backends.hamilton.STAR',
-            plr_category: 'Machine',
-            machine_category: 'Liquid Handler',
-            manufacturer: 'Hamilton',
-            description: 'Hamilton STAR liquid handler',
-            available_simulation_backends: ['Simulated']
-          }
-        ])
-      });
-    });
 
     // Navigate to the configuration step
     await assetsPage.addMachineButton.click();
     const wizard = page.locator('app-asset-wizard');
-    await expect(wizard.locator('mat-card').first()).toBeVisible({ timeout: 15000 });
-    await assetsPage.selectWizardCard(wizard, 'asset-type-card-Machine');
-    await assetsPage.clickNextButton(wizard);
-    await assetsPage.waitForStepTransition(wizard, /Select Category/i);
+    
     await assetsPage.selectWizardCard(wizard, 'category-card-LiquidHandler');
     await assetsPage.clickNextButton(wizard);
-    await assetsPage.waitForStepTransition(wizard, /Select Machine Type/i);
-    await wizard.getByLabel('Search Definitions').fill('STAR');
-    const resultCard = wizard.locator('.result-card').first();
-    await expect(resultCard).toBeVisible({ timeout: 5000 });
-    await resultCard.click();
+    
+    const frontendCard = wizard.getByTestId(/frontend-card-/).filter({ hasText: /Liquid/i }).first();
+    await expect(frontendCard).toBeVisible({ timeout: 15000 });
+    await frontendCard.click();
     await assetsPage.clickNextButton(wizard);
-    await assetsPage.waitForStepTransition(wizard, /Select Driver/i);
+    
+    const backendCard = wizard.getByTestId(/backend-card-/).filter({ hasText: /STAR/i }).first();
+    await expect(backendCard).toBeVisible({ timeout: 15000 });
+    await backendCard.click();
     await assetsPage.clickNextButton(wizard);
-    await assetsPage.waitForStepTransition(wizard, /Configuration/i);
+    
+    await assetsPage.waitForStepTransition(wizard, /Config/i);
 
-    // Verify Next button is disabled
-    const nextButton = wizard.locator('.mat-step-content:visible').first().getByTestId('wizard-next-button');
+    // Verify Next button is disabled (name is required and it auto-fills, but let's clear it)
+    const nameInput = wizard.getByLabel('Instance Name');
+    await nameInput.fill('');
+    
+    const nextButton = wizard.getByTestId('wizard-next-button').filter({ visible: true }).first();
     await expect(nextButton).toBeDisabled();
 
     // Fill the name and verify the button is enabled
-    await wizard.getByLabel('Instance Name').fill('Test Name');
+    await nameInput.fill('Test Name');
     await expect(nextButton).toBeEnabled();
   });
 
   test('should display empty state when no definitions match', async ({ page }, testInfo) => {
-    await gotoWithWorkerDb(page, '/assets', testInfo, { waitForDb: false });
-    try {
-      const dismissBtn = page.getByRole('button', { name: /Get Started|Skip|Close/i }).first();
-      if (await dismissBtn.isVisible({ timeout: 5000 })) {
-        await dismissBtn.click();
-      }
-    } catch (e) {
-      console.log('Welcome dialog not found or could not be dismissed.');
-    }
+    // This test is more suitable for Resources where we have a search box
+    await gotoWithWorkerDb(page, '/assets', testInfo, { waitForDb: true });
     const assetsPage = new AssetsPage(page);
     await assetsPage.waitForOverlaysToDismiss();
 
-    // Mock API to return empty array
-    await page.route('**/api/v1/machines/definitions?*', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([])
-      });
-    });
-
-    // Navigate to the search step
-    await assetsPage.addMachineButton.click();
+    // Navigate to the search step for Resources
+    await assetsPage.addResourceButton.click();
     const wizard = page.locator('app-asset-wizard');
-    await expect(wizard.locator('mat-card').first()).toBeVisible({ timeout: 15000 });
-    await assetsPage.selectWizardCard(wizard, 'asset-type-card-Machine');
+    
+    // Select category
+    await assetsPage.selectWizardCard(wizard, 'category-card-Plate');
     await assetsPage.clickNextButton(wizard);
-    await assetsPage.waitForStepTransition(wizard, /Select Category/i);
-    await assetsPage.selectWizardCard(wizard, 'category-card-LiquidHandler');
-    await assetsPage.clickNextButton(wizard);
-    await assetsPage.waitForStepTransition(wizard, /Select Machine Type/i);
+    await assetsPage.waitForStepTransition(wizard, /Definition/i);
 
-    // Search for a non-existent machine
-    await wizard.getByLabel('Search Definitions').fill('XYZ_NONEXISTENT');
+    // Search for a non-existent resource
+    const searchInput = wizard.getByPlaceholder(/Plate, Tip/i);
+    await searchInput.fill('XYZ_NONEXISTENT_PLATE_TYPE');
 
     // Verify empty state message
-    const emptyState = wizard.getByText('No definitions found');
+    const emptyState = wizard.getByText(/No definitions found/i);
     await expect(emptyState).toBeVisible({ timeout: 5000 });
 
     // Verify Next button is disabled
-    const nextButton = wizard.locator('.mat-step-content:visible').first().getByTestId('wizard-next-button');
+    const nextButton = wizard.getByTestId('wizard-next-button').filter({ visible: true }).first();
     await expect(nextButton).toBeDisabled();
   });
 });

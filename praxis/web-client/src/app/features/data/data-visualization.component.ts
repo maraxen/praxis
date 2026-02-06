@@ -64,6 +64,10 @@ interface MockRun {
       <header class="page-header">
         <div class="title-row">
           <h1>Data Visualization</h1>
+          <button mat-flat-button color="primary" (click)="exportChart()">
+            <mat-icon>download</mat-icon>
+            Export
+          </button>
         </div>
         <p class="subtitle">Analyze experiment data and transfer volumes</p>
       </header>
@@ -82,8 +86,8 @@ interface MockRun {
         <mat-card-content>
           <div class="config-row">
             <div>
-              <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block">X-Axis</label>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-[150px]">
+                <mat-label>X-Axis</mat-label>
                 <mat-select [ngModel]="xAxis()" (ngModelChange)="xAxis.set($event)">
                   <mat-option *ngFor="let opt of xAxisOptions" [value]="opt.value">{{ opt.label }}</mat-option>
                 </mat-select>
@@ -91,8 +95,8 @@ interface MockRun {
             </div>
 
             <div>
-              <label class="text-xs font-medium text-sys-on-surface-variant mb-1 block">Y-Axis</label>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-[150px]">
+                <mat-label>Y-Axis</mat-label>
                 <mat-select [ngModel]="yAxis()" (ngModelChange)="yAxis.set($event)">
                   <mat-option *ngFor="let opt of yAxisOptions" [value]="opt.value">{{ opt.label }}</mat-option>
                 </mat-select>
@@ -139,22 +143,46 @@ interface MockRun {
       <!-- Main Chart -->
       <mat-card class="chart-card">
         <mat-card-header>
-          <mat-card-title>{{ chartTitle() }}</mat-card-title>
-          @if (selectedRun()) {
-            <mat-card-subtitle>
-              Run: {{ selectedRun()?.id }} | Started: {{ selectedRun()?.startTime | date:'medium' }}
-            </mat-card-subtitle>
-          }
+          <div class="flex justify-between items-start w-full">
+            <div>
+              <mat-card-title>{{ chartTitle() }}</mat-card-title>
+              @if (selectedRun()) {
+                <mat-card-subtitle>
+                  Run: {{ selectedRun()?.id }} | Started: {{ selectedRun()?.startTime | date:'medium' }}
+                </mat-card-subtitle>
+              }
+            </div>
+            @if (selectedPoint(); as point) {
+              <div class="selected-point-info bg-sys-surface-container-high p-3 rounded-lg border border-sys-outline-variant">
+                <div class="text-xs font-bold uppercase tracking-wider text-sys-primary mb-1">Selected Point</div>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                  <span class="text-sys-on-surface-variant">X: {{ point.x }}</span>
+                  <span class="text-sys-on-surface-variant">Y: {{ point.y }}</span>
+                  @if (point.temp) {
+                    <span class="text-sys-on-surface-variant">Temp: {{ point.temp }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
         </mat-card-header>
         <mat-card-content>
           <div class="chart-container">
-            <plotly-plot
-              [data]="chartData()"
-              [layout]="chartLayout()"
-              [config]="chartConfig"
-              [useResizeHandler]="true"
-              [style]="{position: 'relative', width: '100%', height: '100%'}">
-            </plotly-plot>
+            @if (filteredData().length === 0) {
+              <div class="flex flex-col items-center justify-center h-full text-sys-on-surface-variant">
+                <mat-icon class="text-6xl h-auto w-auto mb-4 opacity-20">analytics</mat-icon>
+                <p class="text-lg">No data available to display.</p>
+              </div>
+            } @else {
+              <plotly-plot
+                [data]="chartData()"
+                [layout]="chartLayout()"
+                [config]="chartConfig"
+                (plotly_click)="onPointClick($event)"
+                [useResizeHandler]="true"
+                [style]="{position: 'relative', width: '100%', height: '100%'}">
+              </plotly-plot>
+            }
           </div>
         </mat-card-content>
       </mat-card>
@@ -371,6 +399,11 @@ interface MockRun {
     .chart-container {
       width: 100%;
       height: 450px;
+      min-height: 450px;
+    }
+
+    .selected-point-info {
+      min-width: 150px;
     }
 
     .stats-grid {
@@ -525,7 +558,8 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   // Data signals
   protocols = signal<ProtocolDefinition[]>([]);
   runs = signal<MockRun[]>([]);
-  private transferData = signal<TransferDataPoint[]>([]);
+  data = signal<TransferDataPoint[]>([]);
+  selectedPoint = signal<{x: any, y: any, well: string, temp?: number} | null>(null);
   private updateSubscription?: Subscription;
 
   availableMeasurementTypes = computed(() => {
@@ -692,9 +726,40 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   }
 
   private generateFallbackData() {
-    // If no data in DB, we rely on SqliteService seeding.
-    // If seeding failed or is skipped, we show a message.
-    console.warn('No runs found in database. Please ensure database is seeded.');
+    console.warn('No runs found in database. Using fallback mock data.');
+    const mockRuns: MockRun[] = [
+      {
+        id: 'mock-run-1',
+        protocolName: 'Mock Transfer Protocol',
+        protocolId: 'proto-1',
+        measurementType: 'Transfer',
+        plateId: 'PLT-001',
+        status: 'completed',
+        startTime: new Date(Date.now() - 3600000),
+        endTime: new Date(Date.now() - 3000000),
+        wellCount: 96,
+        totalVolume: 500
+      }
+    ];
+    this.runs.set(mockRuns);
+    this.selectedRunId = mockRuns[0].id;
+
+    // Generate mock transfer logs
+    const mockLogs: TransferDataPoint[] = [];
+    this.selectedWells().forEach(well => {
+      for (let i = 0; i < 10; i++) {
+        mockLogs.push({
+          timestamp: new Date(mockRuns[0].startTime.getTime() + i * 60000),
+          well,
+          volumeTransferred: 10 + Math.random() * 5,
+          cumulativeVolume: 10 * (i + 1),
+          temperature: 25,
+          protocolName: mockRuns[0].protocolName,
+          status: mockRuns[0].status
+        });
+      }
+    });
+    this.data.set(mockLogs);
   }
 
   ngOnDestroy() {
@@ -746,7 +811,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
           protocolName: run.protocolName,
           status: run.status
         }));
-        this.transferData.set(mappedData);
+        this.data.set(mappedData);
       },
       error: (err) => console.error('Failed to load transfer logs', err)
     });
@@ -757,7 +822,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
     if (!run) return;
 
     // Simple pseudo-random for live data
-    const newData = [...this.transferData()];
+    const newData = [...this.data()];
     const latestTime = new Date();
 
     this.selectedWells().slice(0, 3).forEach(well => {
@@ -774,7 +839,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
         status: run.status
       });
     });
-    this.transferData.set(newData);
+    this.data.set(newData);
   }
 
   formatDuration(start: Date, end: Date): string {
@@ -785,7 +850,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   }
 
   filteredData = computed(() => {
-    return this.transferData().filter(d => this.selectedWells().includes(d.well));
+    return this.data().filter(d => this.selectedWells().includes(d.well));
   });
 
   totalVolume = computed(() => {
@@ -854,6 +919,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
         type: 'scatter',
         mode: 'lines+markers',
         name: group,
+        customdata: groupData.map(d => ({ temp: d.temperature })),
         line: { color: colors[i % colors.length] },
         marker: { color: colors[i % colors.length] }
       };
@@ -928,5 +994,29 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
 
   clearWells() {
     this.selectedWells.set([]);
+  }
+
+  onPointClick(event: any) {
+    if (event.points && event.points.length > 0) {
+      const point = event.points[0];
+      this.selectedPoint.set({
+        x: point.x,
+        y: point.y,
+        well: point.fullData.name,
+        temp: point.customdata?.temp
+      });
+    }
+  }
+
+  exportChart() {
+    const blob = new Blob(['mock chart content'], { type: 'image/png' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'chart.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   }
 }

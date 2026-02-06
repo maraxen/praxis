@@ -7,8 +7,11 @@
 /bazel-out
 
 # JupyterLite generated assets
-/src/assets/jupyterlite
+/src/assets/jupyterlite/*
 !/src/assets/jupyterlite/jupyter-lite.gh-pages.json
+!/src/assets/jupyterlite/repl/
+/src/assets/jupyterlite/repl/*
+!/src/assets/jupyterlite/repl/jupyter-lite.gh-pages.json
 
 # Node
 /node_modules

@@ -55,12 +55,27 @@ test.describe('E2E Deck Setup', () => {
         await expect(continueBtn).toBeEnabled();
         await continueBtn.click();
 
-        // Step 3: Machine -> Assets
+        // Step 3: Machine Selection -> Assets
+        // Select first available machine/backend that is not disabled
+        const machineCard = page.locator('.option-card:not(.disabled)').first();
+        await expect(machineCard).toBeVisible({ timeout: 10000 });
+        await machineCard.click();
+        
         await expect(continueBtn).toBeEnabled();
         await continueBtn.click();
 
-        // Step 4: Assets -> Wells (or Deck)
-        await expect(continueBtn).toBeEnabled();
+        // Step 4: Asset Selection -> Wells (or Deck)
+        // If it's not enabled, try clicking "Auto-fill All" in Guided Setup
+        try {
+            await expect(continueBtn).toBeEnabled({ timeout: 5000 });
+        } catch (e) {
+            console.log('[Test] Assets not auto-filled, attempting manual auto-fill all...');
+            const autoFillBtn = page.getByRole('button', { name: /Auto-fill All/i });
+            if (await autoFillBtn.isVisible()) {
+                await autoFillBtn.click();
+                await expect(continueBtn).toBeEnabled({ timeout: 5000 });
+            }
+        }
         await continueBtn.click();
 
         // Handle optional Well Selection
@@ -68,7 +83,8 @@ test.describe('E2E Deck Setup', () => {
             await expect(page.locator('app-deck-setup-wizard')).toBeVisible({ timeout: 3000 });
         } catch (e) {
             // If not visible, maybe we are at Well Selection?
-            if (await page.getByText('Well Selection').isVisible()) {
+            const wellSelectionHeading = page.getByRole('heading', { name: 'Well Selection' });
+            if (await wellSelectionHeading.isVisible()) {
                 await continueBtn.click();
                 await expect(page.locator('app-deck-setup-wizard')).toBeVisible({ timeout: 5000 });
             } else {
@@ -76,9 +92,9 @@ test.describe('E2E Deck Setup', () => {
             }
         }
 
-        // Capture Empty Deck (Wizard start) - wait for 3D canvas to render
+        // Capture Empty Deck (Wizard start) - wait for deck visualization to render
         await expect(page.locator('app-deck-setup-wizard')).toBeVisible();
-        await expect(page.locator('app-deck-setup-wizard canvas, app-deck-setup-wizard svg')).toBeVisible({ timeout: 5000 });
+        await expect(page.locator('app-deck-view .deck-container')).toBeVisible({ timeout: 10000 });
         await page.screenshot({ path: path.join(SCREENSHOT_DIR, '01_empty_deck.png') });
 
         // Capture Deck Configuration Dialog (Wizard view)

@@ -98,6 +98,10 @@ test.describe('@slow Protocol Simulation Matrix', () => {
                 for (let step = 0; step < 15; step++) {
                     await page.waitForTimeout(500);
 
+                    // Log current step if possible
+                    const stepTitle = await page.locator('mat-step-header .mat-step-label-active, h2, h3').first().textContent().catch(() => 'Unknown Step');
+                    console.log(`[Matrix] Step ${step + 1}: ${stepTitle?.trim()}`);
+
                     // Check if Start button is visible and enabled - we're done!
                     if (await startBtn.first().isVisible({ timeout: 500 }).catch(() => false)) {
                         if (await startBtn.first().isEnabled().catch(() => false)) {
@@ -139,6 +143,23 @@ test.describe('@slow Protocol Simulation Matrix', () => {
                         }
                     }
 
+                    // Handle parameters - fill in default values for empty inputs
+                    const inputs = page.locator('input[matInput], mat-select');
+                    const inputCount = await inputs.count();
+                    for (let i = 0; i < inputCount; i++) {
+                        const input = inputs.nth(i);
+                        const val = await input.inputValue().catch(() => '');
+                        if (!val || val === '') {
+                            console.log(`[Matrix] Filling empty input ${i}`);
+                            if (await input.getAttribute('type') === 'number') {
+                                await input.fill('10');
+                            } else {
+                                await input.fill('test');
+                            }
+                            await page.waitForTimeout(200);
+                        }
+                    }
+
                     // Handle well selection - click "Select All" if available, or first well group
                     const selectAllBtn = page.getByRole('button', { name: /Select All/i });
                     if (await selectAllBtn.isVisible({ timeout: 500 }).catch(() => false)) {
@@ -163,6 +184,11 @@ test.describe('@slow Protocol Simulation Matrix', () => {
                             continue;
                         } else {
                             console.log('[Matrix] Continue is disabled - need more selections');
+                            // Log why it might be disabled
+                            const requiredMissing = await page.locator('.mat-form-field-invalid, .required-missing').count();
+                            if (requiredMissing > 0) {
+                                console.log(`[Matrix] Found ${requiredMissing} invalid fields`);
+                            }
                         }
                     }
 
@@ -178,7 +204,9 @@ test.describe('@slow Protocol Simulation Matrix', () => {
                     }
 
                     // If neither Continue nor Next is available, we might be stuck
-                    console.log(`[Matrix] No advancement buttons visible/enabled on step ${step}`);
+                    if (step > 2) { // Only log if we've had a few steps
+                         console.log(`[Matrix] No advancement buttons visible/enabled on step ${step}`);
+                    }
                 }
 
                 // 6. Start execution

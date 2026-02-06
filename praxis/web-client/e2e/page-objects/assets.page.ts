@@ -1,4 +1,4 @@
-import { Page, Locator, expect } from '@playwright/test';
+import { Page, Locator, expect, TestInfo } from '@playwright/test';
 import { BasePage } from './base.page';
 
 export class AssetsPage extends BasePage {
@@ -10,8 +10,8 @@ export class AssetsPage extends BasePage {
     readonly overviewTab: Locator;
     readonly spatialViewTab: Locator;
 
-    constructor(page: Page) {
-        super(page, '/assets');
+    constructor(page: Page, testInfo?: TestInfo) {
+        super(page, '/assets', testInfo);
         this.addMachineButton = page.getByRole('button', { name: /Add Machine/i });
         this.addResourceButton = page.getByRole('button', { name: /Add Resource/i });
         this.machinesTab = page.getByRole('tab', { name: /Machines/i });
@@ -130,15 +130,20 @@ export class AssetsPage extends BasePage {
     }
 
     /**
+     * Gets the 'Next' button in the current wizard step.
+     */
+    getNextButton(wizard: Locator): Locator {
+        return wizard.locator('.mat-step-content:visible, [role="tabpanel"]:visible').first().getByTestId('wizard-next-button');
+    }
+
+    /**
      * Clicks the 'Next' button in the current wizard step, ensuring it's enabled first.
      */
     async clickNextButton(wizard: Locator): Promise<void> {
-        // Find the next button within the currently visible step
-        const currentStep = wizard.locator('.mat-step-content:visible, [role="tabpanel"]:visible').first();
-        const nextButton = currentStep.getByTestId('wizard-next-button');
-
+        const nextButton = this.getNextButton(wizard);
         await expect(nextButton).toBeEnabled({ timeout: 10000 });
         await nextButton.click();
+        await this.waitForOverlaysToDismiss();
     }
 
     /**
@@ -147,8 +152,21 @@ export class AssetsPage extends BasePage {
     async selectWizardCard(wizard: Locator, testId: string): Promise<void> {
         const card = wizard.getByTestId(testId);
         await expect(card).toBeVisible({ timeout: 15000 });
-        await card.click();
-        await expect(card).toHaveClass(/selected/);
+
+        // Ensure card is stable before click
+        await card.waitFor({ state: 'attached' });
+        await this.page.waitForTimeout(500); // Wait for transitions
+
+        await card.click({ force: true });
+
+        // Wait for selected state with retry
+        await expect(async () => {
+            const hasClass = await card.evaluate(el => el.classList.contains('selected') || el.classList.contains('active'));
+            if (!hasClass) {
+                await card.click({ force: true }).catch(() => { });
+                throw new Error('Card not selected');
+            }
+        }).toPass({ timeout: 5000 });
     }
 
     /**
@@ -279,6 +297,7 @@ export class AssetsPage extends BasePage {
      * Must be called from the Machines tab.
      */
     async deleteMachine(name: string) {
+        await this.navigateToMachines();
         // Set up dialog handler BEFORE triggering the delete
         this.page.once('dialog', dialog => dialog.accept());
 
@@ -308,8 +327,12 @@ export class AssetsPage extends BasePage {
      * Must be called from the Registry/Resources tab.
      */
     async deleteResource(name: string) {
+        await this.navigateToResources();
         // Set up dialog handler BEFORE triggering the delete
-        this.page.once('dialog', dialog => dialog.accept());
+        this.page.once('dialog', async dialog => {
+            if (dialog.type() === 'beforeunload') return;
+            await dialog.accept().catch(() => { });
+        });
 
         // Find the row with the resource name and click delete button
         const row = this.page.locator('tr').filter({ hasText: name });

@@ -753,6 +753,7 @@ export class HardwareDiscoveryService {
         port: SerialPort;
         reader: ReadableStreamDefaultReader<Uint8Array>;
         writer: WritableStreamDefaultWriter<Uint8Array>;
+        buffer: Uint8Array;
     }>();
 
     /**
@@ -783,7 +784,8 @@ export class HardwareDiscoveryService {
         this.openPorts.set(portId, {
             port: device.port,
             reader,
-            writer
+            writer,
+            buffer: new Uint8Array(0)
         });
 
         // Update device status
@@ -841,25 +843,26 @@ export class HardwareDiscoveryService {
             throw new Error(`Port ${portId} is not open`);
         }
 
-        const chunks: Uint8Array[] = [];
-        let bytesRead = 0;
-
-        while (bytesRead < size) {
+        // Read until we have enough data in the buffer
+        while (conn.buffer.length < size) {
             const { value, done } = await conn.reader.read();
-            if (done || !value) break;
-            chunks.push(value);
-            bytesRead += value.length;
+            if (done) break;
+            if (value) {
+                const newBuffer = new Uint8Array(conn.buffer.length + value.length);
+                newBuffer.set(conn.buffer);
+                newBuffer.set(value, conn.buffer.length);
+                conn.buffer = newBuffer;
+            }
         }
 
-        // Concatenate chunks
-        const result = new Uint8Array(bytesRead);
-        let offset = 0;
-        for (const chunk of chunks) {
-            result.set(chunk, offset);
-            offset += chunk.length;
-        }
+        // Extract requested size
+        const actualSize = Math.min(size, conn.buffer.length);
+        const result = conn.buffer.slice(0, actualSize);
 
-        return result.slice(0, size);
+        // Keep remainder
+        conn.buffer = conn.buffer.slice(actualSize);
+
+        return result;
     }
 
     /**
@@ -871,22 +874,32 @@ export class HardwareDiscoveryService {
             throw new Error(`Port ${portId} is not open`);
         }
 
-        const chunks: number[] = [];
         const NEWLINE = 0x0A; // \n
 
         while (true) {
-            const { value, done } = await conn.reader.read();
-            if (done || !value) break;
+            // Check if buffer contains a newline
+            const newlineIndex = conn.buffer.indexOf(NEWLINE);
+            if (newlineIndex !== -1) {
+                const result = conn.buffer.slice(0, newlineIndex + 1);
+                conn.buffer = conn.buffer.slice(newlineIndex + 1);
+                return result;
+            }
 
-            for (let i = 0; i < value.length; i++) {
-                chunks.push(value[i]);
-                if (value[i] === NEWLINE) {
-                    return new Uint8Array(chunks);
-                }
+            // Read more data
+            const { value, done } = await conn.reader.read();
+            if (done) {
+                const result = conn.buffer;
+                conn.buffer = new Uint8Array(0);
+                return result;
+            }
+
+            if (value) {
+                const newBuffer = new Uint8Array(conn.buffer.length + value.length);
+                newBuffer.set(conn.buffer);
+                newBuffer.set(value, conn.buffer.length);
+                conn.buffer = newBuffer;
             }
         }
-
-        return new Uint8Array(chunks);
     }
 
     /**

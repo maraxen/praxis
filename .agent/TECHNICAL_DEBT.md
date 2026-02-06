@@ -215,3 +215,5 @@ This document tracks known issues, temporary patches, and required follow-up wor
   - Fix: Update `pyodide_io_patch.py` to inject shims into `sys.modules['serial']`, `sys.modules['usb']`, etc.
 - [ ] **Missing Pyserial/PyUSB Constants**: Current shims (e.g., `WebSerial`) are missing standard constants like `EIGHTBITS`, `PARITY_NONE` which backends expect.
   - Impact: `AttributeError` when backend try to configure serial parameters.
+
+- [ ] **(Testing)**: Smoke project (1280x720 viewport) fails tabs visibility test on Assets page - responsive design gap where tab UI doesn't render correctly at smaller viewport. The chromium project (1920x1080) passes. Need to either fix responsive styling or adjust smoke project viewport. See: praxis/web-client/playwright.config.ts:55-65

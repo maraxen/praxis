@@ -41,8 +41,8 @@ describe('SqliteService', () => {
         // Constructor already called init
         expect(mockOpfs.init).toHaveBeenCalled();
 
-        // Check status
-        const status = (service as any).statusSubject.value;
+        // Check status via signal
+        const status = service.status();
         expect(status.initialized).toBe(true);
         expect(status.source).toBe('opfs');
     });

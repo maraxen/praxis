@@ -7,7 +7,9 @@
         "disabledExtensions": [
             "@jupyterlab/apputils-extension:announcements"
         ],
-        "defaultKernel": "python"
+        "defaultKernel": "python",
+        "settingsUrl": "../build/schemas",
+        "themesUrl": "../build/themes"
     },
     "piplite": {
         "packages": [

@@ -1,6 +1,7 @@
 import { test, expect } from '../fixtures/workcell.fixture';
 import { WorkcellPage } from '../page-objects/workcell.page';
 import { WelcomePage } from '../page-objects/welcome.page';
+import { buildWorkerUrl } from '../fixtures/worker-db.fixture';
 
 test.describe('Workcell Dashboard - Empty State', () => {
     let workcellPage: WorkcellPage;
@@ -24,35 +25,50 @@ test.describe('Workcell Dashboard - Populated State', () => {
     test.beforeEach(async ({ page, testMachineData }, testInfo) => {
         workcellPage = new WorkcellPage(page);
 
-        await page.addInitScript((machine) => {
-            const mockDb = {
-                run: async () => ({ changes: 1 }),
-                all: async (sql: string) => {
-                    if (sql.includes('FROM machines')) {
-                        return [{
-                            id: machine.id,
-                            name: machine.name,
-                            type: 'LiquidHandler',
-                            backend: 'ChatterBox',
-                            is_simulated: 1,
-                            disabled: 0
-                        }];
-                    }
-                    return [];
-                }
-            };
-
-            (window as any).sqliteService = {
-                getDatabase: async () => mockDb,
-                isReady$: { getValue: () => true }
-            };
-        }, testMachineData);
-        
-        await workcellPage.goto(testInfo);
+        // 1. Navigate to the page with resetdb=1 to start clean
+        const url = buildWorkerUrl('/app/workcell', testInfo.workerIndex, { resetdb: true });
+        await page.goto(url, { waitUntil: 'networkidle' });
         const welcomePage = new WelcomePage(page);
         await welcomePage.handleSplashScreen();
-        await page.reload();
-        await welcomePage.handleSplashScreen();
+
+        // 2. Seed the machine data using the real SqliteService and refresh UI
+        await page.evaluate(async (machine) => {
+            const service = (window as any).sqliteService;
+            if (!service) throw new Error('SqliteService not found');
+
+            const firstValue = <T>(obs: any): Promise<T> => new Promise((resolve, reject) => {
+                const sub = obs.subscribe({
+                    next: (val: T) => { resolve(val); sub.unsubscribe(); },
+                    error: (err: any) => { reject(err); sub.unsubscribe(); }
+                });
+            });
+
+            const repos = await firstValue<any>(service.getAsyncRepositories());
+            
+            // Clean up any existing machines from previous tests in the same worker session
+            await firstValue(service.opfs.exec("DELETE FROM machines"));
+
+            await firstValue(repos.machines.create({
+                accession_id: machine.id,
+                name: machine.name,
+                machine_category: 'LiquidHandler',
+                status: 'IDLE',
+                fqn: 'pylabrobot.hamilton.STAR',
+                asset_type: 'MACHINE',
+                location: 'Bench 1',
+                maintenance_enabled: 0,
+                maintenance_schedule_json: JSON.stringify({ intervals: [], enabled: false }),
+                is_simulation_override: 0,
+                serial_number: 'SN-E2E',
+                properties_json: '{}'
+            }));
+
+            // Refresh UI via the exposed dashboard component
+            const dashboard = (window as any).dashboard;
+            if (dashboard && dashboard.viewService) {
+                await firstValue(dashboard.viewService.loadWorkcellGroups());
+            }
+        }, testMachineData);
     });
 
     test('should load the dashboard page and display machine cards', async () => {

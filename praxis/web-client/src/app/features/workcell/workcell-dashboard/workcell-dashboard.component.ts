@@ -102,7 +102,7 @@ import { DeckSimulationDialogComponent } from '@features/run-protocol/components
           } @else {
             @switch (viewMode()) {
               @case ('grid') {
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 fade-in">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 fade-in grid-view">
                   @for (machine of allMachines(); track machine.accession_id) {
                     <app-machine-card 
                       [machine]="machine"
@@ -120,7 +120,7 @@ import { DeckSimulationDialogComponent } from '@features/run-protocol/components
                 </div>
               }
               @case ('list') {
-                <div class="flex flex-col gap-4 fade-in">
+                <div class="flex flex-col gap-4 fade-in list-view">
                   @for (machine of allMachines(); track machine.accession_id) {
                     <app-machine-card-mini 
                       [machine]="machine"
@@ -180,7 +180,7 @@ import { DeckSimulationDialogComponent } from '@features/run-protocol/components
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WorkcellDashboardComponent implements OnInit {
-  private viewService = inject(WorkcellViewService);
+  public viewService = inject(WorkcellViewService);
   private dialog = inject(MatDialog);
 
   // Local State
@@ -201,6 +201,9 @@ export class WorkcellDashboardComponent implements OnInit {
   contextMenuPosition = { x: '0px', y: '0px' };
 
   ngOnInit() {
+    if (typeof window !== 'undefined') {
+      (window as any).dashboard = this;
+    }
     this.viewService.loadWorkcellGroups().subscribe({
       next: () => this.isLoading.set(false),
       error: (err) => {

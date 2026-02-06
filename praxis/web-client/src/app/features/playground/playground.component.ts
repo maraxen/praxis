@@ -137,6 +137,7 @@ import { PathUtils } from '@core/utils/path.utils';
                     #notebookFrame
                     [src]="jupyterliteUrl"
                     class="notebook-frame"
+                    data-testid="jupyterlite-iframe"
                     (load)="onIframeLoad()"
                     allow="cross-origin-isolated; usb; serial"
                     sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"

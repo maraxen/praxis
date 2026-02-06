@@ -30,37 +30,37 @@ export interface ProtocolTestEntry {
 export const PROTOCOL_TEST_REGISTRY: ProtocolTestEntry[] = [
     {
         id: '03f20569-f5f6-035d-8b42-f403e97b3b70',
-        name: 'Protocol A (03f20569)',
+        name: 'Kinetic Assay',
         requiresHardware: false,
         expectedDuration: 60,
     },
     {
         id: '7f605eec-a223-a5e3-0913-0d27a5ef0286',
-        name: 'Protocol B (7f605eec)',
+        name: 'Plate Reader Assay',
         requiresHardware: false,
         expectedDuration: 45,
     },
     {
         id: '84bcb2f2-81f4-416f-5b33-060dd3b05d4d',
-        name: 'Protocol C (84bcb2f2)',
+        name: 'Simple Transfer',
         requiresHardware: false,
         expectedDuration: 50,
     },
     {
         id: 'cf6d9160-17a2-a7b7-8d35-ddd185df8296',
-        name: 'Protocol D (cf6d9160)',
+        name: 'Plate Preparation',
         requiresHardware: false,
         expectedDuration: 60,
     },
     {
         id: 'f4b413c6-5c09-4d03-1bb6-2546539ff29c',
-        name: 'Protocol E (f4b413c6)',
+        name: 'Serial Dilution',
         requiresHardware: false,
         expectedDuration: 60,
     },
     {
         id: 'f93dda87-fd67-34e9-52d9-b9901c134899',
-        name: 'Protocol F (f93dda87)',
+        name: 'Selective Transfer',
         requiresHardware: false,
         expectedDuration: 45,
     },

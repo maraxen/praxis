@@ -1,15 +1,31 @@
 """Browser-compatible stub for praxis.backend.models.domain.protocol.
 
-This module provides minimal implementations of the Pydantic models that
+This module provides minimal implementations of the Pydantic/SQLModel models that
 cloudpickle needs when deserializing protocol functions in Pyodide.
 The actual SQLModel/SQLAlchemy functionality is not needed - just the
 data structures that get attached to protocol functions.
+
+IMPORTANT: SQLModel is imported from pydantic.BaseModel for cloudpickle compatibility.
+The real sqlmodel library isn't available in Pyodide, so we alias pydantic.BaseModel.
 """
 
-from dataclasses import dataclass, field
 from typing import Any, Optional, List
 import uuid
 from datetime import datetime
+
+# Import SQLModel with robust fallback
+# Priority: 1) sqlmodel stub, 2) pydantic.BaseModel
+try:
+    from sqlmodel import SQLModel
+except ImportError:
+    try:
+        from pydantic import BaseModel as SQLModel
+    except ImportError:
+        # Ultimate fallback - create a minimal class
+        class SQLModel:
+            def __init__(self, **kwargs):
+                for k, v in kwargs.items():
+                    setattr(self, k, v)
 
 
 # Stub for the enum used in protocol definitions
@@ -35,8 +51,7 @@ class ProtocolRunStatusEnum:
     CANCELING = "CANCELING"
 
 
-@dataclass
-class AssetConstraintsModel:
+class AssetConstraintsModel(SQLModel):
     """Stub for AssetConstraintsModel."""
     min_volume_ul: Optional[float] = None
     max_volume_ul: Optional[float] = None
@@ -46,16 +61,14 @@ class AssetConstraintsModel:
     allow_partial: Optional[bool] = None
 
 
-@dataclass
-class LocationConstraintsModel:
+class LocationConstraintsModel(SQLModel):
     """Stub for LocationConstraintsModel."""
     allowed_decks: Optional[List[str]] = None
     allowed_slots: Optional[List[str]] = None
     required_capabilities: Optional[dict] = None
 
 
-@dataclass
-class ParameterConstraintsModel:
+class ParameterConstraintsModel(SQLModel):
     """Stub for ParameterConstraintsModel."""
     min_value: Optional[float] = None
     max_value: Optional[float] = None
@@ -63,7 +76,9 @@ class ParameterConstraintsModel:
     regex: Optional[str] = None
 
 
-class ParameterMetadataModel:
+
+
+class ParameterMetadataModel(SQLModel):
     """Stub for ParameterMetadataModel."""
     name: str
     type_hint: str = ""
@@ -78,8 +93,7 @@ class ParameterMetadataModel:
     is_deck_param: bool = False
 
 
-@dataclass
-class DataViewMetadataModel:
+class DataViewMetadataModel(SQLModel):
     """Stub for DataViewMetadataModel."""
     name: str
     description: Optional[str] = None
@@ -90,8 +104,7 @@ class DataViewMetadataModel:
     default_value_json: Any = None
 
 
-@dataclass
-class AssetRequirementCreate:
+class AssetRequirementCreate(SQLModel):
     """Stub for AssetRequirementCreate."""
     name: str = ""
     type_hint_str: str = ""
@@ -104,8 +117,7 @@ class AssetRequirementCreate:
     protocol_definition_accession_id: Optional[uuid.UUID] = None
 
 
-@dataclass
-class FunctionProtocolDefinitionCreate:
+class FunctionProtocolDefinitionCreate(SQLModel):
     """Stub for FunctionProtocolDefinitionCreate.
 
     This is the main Pydantic model attached to protocol functions by the decorator.

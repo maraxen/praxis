@@ -69,26 +69,33 @@ test.describe('Smoke Test', () => {
   });
 });
 
-test.describe.skip('Command Palette', () => {
+test.describe('Command Palette', () => {
   test('opens with keyboard shortcut and executes command', async ({ page, workerIndex }) => {
-    // SKIPPED: The command palette does not appear when the keyboard shortcut is triggered in the test environment.
-    // This is likely due to an issue with how Playwright handles keyboard events or a configuration issue.
     const smoke = new SmokePage(page, workerIndex);
     await smoke.goto('/assets');
     await smoke.handleSplashScreen();
 
     // Open command palette
-    const isMac = process.platform === 'darwin';
-    const modifier = isMac ? 'Meta' : 'Control';
-    await page.keyboard.press(`${modifier}+k`);
+    // Try both Control+K and Meta+K to be environment-agnostic in CI/headless
+    await page.keyboard.press('Control+k');
+    let commandPalette = page.getByTestId('command-palette');
 
-    const commandPalette = page.getByTestId('command-palette');
-    await expect(commandPalette).toBeVisible();
+    const isVisible = await commandPalette.isVisible();
+    if (!isVisible) {
+      await page.keyboard.press('Meta+k');
+    }
+
+    await expect(commandPalette).toBeVisible({ timeout: 5000 });
 
     // Search and execute
     await page.getByTestId('command-palette-input').fill('settings');
+
+    // Wait for 200ms debounce in CommandPaletteComponent
+    await page.waitForTimeout(500);
+
     await page.keyboard.press('Enter');
 
-    await expect(page).toHaveURL(/.*settings/);
+    // Should navigate to settings page
+    await expect(page).toHaveURL(/.*\/app\/settings.*/, { timeout: 10000 });
   });
 });

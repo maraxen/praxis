@@ -261,11 +261,159 @@ except Exception as e:
     print(f"Error during deck setup: {e}", file=sys.stderr)
     deck = create_browser_deck()
 
+
 if 'deck' in sig.parameters:
     if deck is not None:
         kwargs['deck'] = deck
     else:
         print("Warning: 'deck' argument requested but Deck could not be instantiated.", file=sys.stderr)
+
+# Extended argument resolution for protocol assets
+# === FALLBACK BEHAVIOR (Feb 2026) ===
+# Purpose: When no machine config is provided (e.g., E2E tests, Skip Setup),
+# fall back to simulation backend. This is INTENTIONAL for:
+# 1. Automated E2E testing (no hardware available)
+# 2. Quick protocol validation without physical setup
+# 3. Development/debugging workflows
+#
+# The proper fix for production runs is in wizard-state.service.ts which now
+# serializes protocol.assets to the deck script even when wizard is skipped.
+# These fallbacks remain as a safety net for edge cases.
+# 1. Create LiquidHandler if requested
+liquid_handler = None
+if 'liquid_handler' in sig.parameters:
+    try:
+        from pylabrobot.liquid_handling import LiquidHandler
+        # Check if config_proxy is valid/non-null
+        if config_proxy is not None and not (hasattr(config_proxy, 'typeof') and config_proxy.typeof == 'undefined'):
+            backend = create_configured_backend(config_proxy)
+        else:
+            # Fallback to simulation backend when no config
+            try:
+                from pylabrobot.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend
+                backend = LiquidHandlerChatterboxBackend()
+            except ImportError:
+                # Create minimal mock backend for browser simulation
+                class MockSimBackend:
+                    async def setup(self): pass
+                    async def stop(self): pass
+                    async def aspirate(self, *a, **k): print(f"[MockSim] aspirate")
+                    async def dispense(self, *a, **k): print(f"[MockSim] dispense")
+                    async def pick_up_tips(self, *a, **k): print(f"[MockSim] pick_up_tips")
+                    async def drop_tips(self, *a, **k): print(f"[MockSim] drop_tips")
+                backend = MockSimBackend()
+            print("[Browser] Using simulation backend (no config provided)")
+        liquid_handler = LiquidHandler(backend=backend, deck=deck)
+        kwargs['liquid_handler'] = liquid_handler
+        print(f"[Browser] Created LiquidHandler with backend: {type(backend).__name__}")
+    except Exception as e:
+        # Fallback: create with simulation backend
+        try:
+            from pylabrobot.liquid_handling import LiquidHandler
+            # Try ChatterboxBackend first, fall back to inline mock
+            try:
+                from pylabrobot.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend
+                backend = LiquidHandlerChatterboxBackend()
+            except ImportError:
+                # Create minimal mock backend for browser simulation
+                class MockSimBackend:
+                    async def setup(self): pass
+                    async def stop(self): pass
+                    async def aspirate(self, *a, **k): print(f"[MockSim] aspirate")
+                    async def dispense(self, *a, **k): print(f"[MockSim] dispense")
+                    async def pick_up_tips(self, *a, **k): print(f"[MockSim] pick_up_tips")
+                    async def drop_tips(self, *a, **k): print(f"[MockSim] drop_tips")
+                backend = MockSimBackend()
+            liquid_handler = LiquidHandler(backend=backend, deck=deck)
+            kwargs['liquid_handler'] = liquid_handler
+            print(f"[Browser] Created fallback LiquidHandler with {type(backend).__name__}")
+        except Exception as e2:
+            print(f"[Browser] Failed to create LiquidHandler: {e}, fallback also failed: {e2}", file=sys.stderr)
+
+# 2. Resolve plate/tip_rack assets from deck by matching parameter names
+if deck is not None:
+    try:
+        from pylabrobot.resources import Plate, TipRack
+        
+        # Find all resources on deck (need to traverse carrier sites)
+        def find_resources(container, resource_type=None):
+            \"\"\"Recursively find resources of a specific type on the deck.\"\"\"
+            found = []
+            for child in getattr(container, 'children', []):
+                if resource_type is None or isinstance(child, resource_type):
+                    found.append(child)
+                found.extend(find_resources(child, resource_type))
+            return found
+        
+        all_plates = find_resources(deck, Plate)
+        all_tips = find_resources(deck, TipRack)
+        
+        print(f"[Browser] Found {len(all_plates)} plates, {len(all_tips)} tip racks on deck")
+        
+        # Match parameters by name heuristics
+        for param_name in sig.parameters:
+            if param_name in kwargs:
+                continue  # Already assigned
+            
+            # Match plates by name patterns
+            if 'plate' in param_name.lower():
+                if 'source' in param_name.lower():
+                    for plate in all_plates:
+                        if 'source' in plate.name.lower() or plate.name == 'source_plate':
+                            kwargs[param_name] = plate
+                            print(f"[Browser] Assigned {param_name} = {plate.name}")
+                            break
+                elif 'dest' in param_name.lower():
+                    for plate in all_plates:
+                        if 'dest' in plate.name.lower() or plate.name == 'dest_plate':
+                            kwargs[param_name] = plate
+                            print(f"[Browser] Assigned {param_name} = {plate.name}")
+                            break
+                else:
+                    # Generic plate - use first available
+                    for plate in all_plates:
+                        if plate not in kwargs.values():
+                            kwargs[param_name] = plate
+                            print(f"[Browser] Assigned {param_name} = {plate.name}")
+                            break
+            
+            # Match tip racks
+            elif 'tip' in param_name.lower() or 'rack' in param_name.lower():
+                for tips in all_tips:
+                    if tips not in kwargs.values():
+                        kwargs[param_name] = tips
+                        print(f"[Browser] Assigned {param_name} = {tips.name}")
+                        break
+    except Exception as e:
+        print(f"[Browser] Asset resolution from deck failed: {e}", file=sys.stderr)
+
+# 2b. Fallback: Create placeholder resources for missing params
+# This handles the case when wizard is skipped and deck is empty
+for param_name in sig.parameters:
+    if param_name in kwargs:
+        continue  # Already assigned
+    
+    try:
+        from pylabrobot.resources import Plate, TipRack
+        
+        # Create placeholder plates if param name indicates plate type
+        if 'plate' in param_name.lower():
+            placeholder = Plate(name=param_name, size_x=127.0, size_y=85.0, size_z=14.0, num_items_x=12, num_items_y=8)
+            kwargs[param_name] = placeholder
+            print(f"[Browser] Created placeholder plate for {param_name}")
+        
+        # Create placeholder tip_rack if param name indicates tips
+        elif 'tip' in param_name.lower() or 'rack' in param_name.lower():
+            placeholder = TipRack(name=param_name, size_x=127.0, size_y=85.0, size_z=100.0, num_items_x=12, num_items_y=8)
+            kwargs[param_name] = placeholder
+            print(f"[Browser] Created placeholder tip_rack for {param_name}")
+    except Exception as e:
+        print(f"[Browser] Failed to create placeholder for {param_name}: {e}", file=sys.stderr)
+
+# 3. Create empty state dict if needed
+if 'state' in sig.parameters and 'state' not in kwargs:
+    kwargs['state'] = {}
+    print("[Browser] Created empty state dict")
 
 # Execute
 async def run_wrapper():
@@ -325,8 +473,8 @@ async function initializePyodide(id?: string) {
   // Note: We use a try-catch for pylabrobot as it might have complex deps
   try {
     const micropip = pyodide.pyimport('micropip');
-    await micropip.install(['jedi', 'pylabrobot', 'cloudpickle']);
-    console.log('PyLabRobot and Jedi installed successfully');
+    await micropip.install(['jedi', 'pylabrobot', 'cloudpickle', 'pydantic']);
+    console.log('PyLabRobot, Jedi, and Pydantic installed successfully');
   } catch (err) {
     console.error('Failed to install PyLabRobot/Jedi:', err);
   }
@@ -341,8 +489,8 @@ async function initializePyodide(id?: string) {
     { file: 'web_hid_shim.py', name: 'WebHID' }
   ];
 
-  // Parallel fetch all shims + web_bridge + praxis package
-  const [shimResults, bridgeCode, praxisInit, praxisInteractive, backendStubs, protocolStubs] = await Promise.all([
+  // Parallel fetch all shims + web_bridge + praxis package + sqlmodel stub
+  const [shimResults, bridgeCode, praxisInit, praxisInteractive, sqlmodelInit, backendStubs, protocolStubs] = await Promise.all([
     // Fetch all shims in parallel
     Promise.all(shims.map(async (shim) => {
       try {
@@ -360,6 +508,8 @@ async function initializePyodide(id?: string) {
     // Fetch praxis package files
     fetch('assets/python/praxis/__init__.py').then(r => r.text()).catch(() => null),
     fetch('assets/python/praxis/interactive.py').then(r => r.text()).catch(() => null),
+    // Fetch sqlmodel stub (extends pydantic.BaseModel for cloudpickle compatibility)
+    fetch('assets/python/sqlmodel/__init__.py').then(r => r.text()).catch(() => null),
     // Fetch praxis.backend stubs for cloudpickle deserialization
     Promise.all([
       fetch('assets/python/praxis/backend/__init__.py').then(r => r.text()).catch(() => null),
@@ -374,7 +524,12 @@ async function initializePyodide(id?: string) {
     Promise.all([
       fetch('assets/python/praxis/protocol/__init__.py').then(r => r.text()).catch(() => null),
       fetch('assets/python/praxis/protocol/protocols/__init__.py').then(r => r.text()).catch(() => null),
+      fetch('assets/python/praxis/protocol/protocols/kinetic_assay.py').then(r => r.text()).catch(() => null),
+      fetch('assets/python/praxis/protocol/protocols/plate_preparation.py').then(r => r.text()).catch(() => null),
+      fetch('assets/python/praxis/protocol/protocols/plate_reader_assay.py').then(r => r.text()).catch(() => null),
       fetch('assets/python/praxis/protocol/protocols/selective_transfer.py').then(r => r.text()).catch(() => null),
+      fetch('assets/python/praxis/protocol/protocols/serial_dilution.py').then(r => r.text()).catch(() => null),
+      fetch('assets/python/praxis/protocol/protocols/simple_transfer.py').then(r => r.text()).catch(() => null),
     ])
   ]);
 
@@ -410,6 +565,15 @@ async function initializePyodide(id?: string) {
     console.error('Error loading praxis package:', err);
   }
 
+  // Write sqlmodel stub package (extends pydantic.BaseModel for cloudpickle)
+  try {
+    pyodide.FS.mkdir('sqlmodel');
+    if (sqlmodelInit) pyodide.FS.writeFile('sqlmodel/__init__.py', sqlmodelInit);
+    console.log('SQLModel stub package loaded for cloudpickle');
+  } catch (err) {
+    console.error('Error loading sqlmodel stub:', err);
+  }
+
   // Write praxis.backend stubs for cloudpickle protocol deserialization
   const [
     backendInit, coreInit, decoratorsInit, decoratorsModels,
@@ -439,7 +603,11 @@ async function initializePyodide(id?: string) {
   }
 
   // Write praxis.protocol stubs for cloudpickle protocol deserialization
-  const [protocolInit, protocolsInit, selectiveTransfer] = protocolStubs;
+  const [
+    protocolInit, protocolsInit,
+    kineticAssay, platePreparation, plateReaderAssay,
+    selectiveTransfer, serialDilution, simpleTransfer
+  ] = protocolStubs;
 
   try {
     // Create directory structure
@@ -449,7 +617,12 @@ async function initializePyodide(id?: string) {
     // Write stub files
     if (protocolInit) pyodide.FS.writeFile('praxis/protocol/__init__.py', protocolInit);
     if (protocolsInit) pyodide.FS.writeFile('praxis/protocol/protocols/__init__.py', protocolsInit);
+    if (kineticAssay) pyodide.FS.writeFile('praxis/protocol/protocols/kinetic_assay.py', kineticAssay);
+    if (platePreparation) pyodide.FS.writeFile('praxis/protocol/protocols/plate_preparation.py', platePreparation);
+    if (plateReaderAssay) pyodide.FS.writeFile('praxis/protocol/protocols/plate_reader_assay.py', plateReaderAssay);
     if (selectiveTransfer) pyodide.FS.writeFile('praxis/protocol/protocols/selective_transfer.py', selectiveTransfer);
+    if (serialDilution) pyodide.FS.writeFile('praxis/protocol/protocols/serial_dilution.py', serialDilution);
+    if (simpleTransfer) pyodide.FS.writeFile('praxis/protocol/protocols/simple_transfer.py', simpleTransfer);
 
     console.log('Praxis protocol stubs loaded for cloudpickle');
   } catch (err) {

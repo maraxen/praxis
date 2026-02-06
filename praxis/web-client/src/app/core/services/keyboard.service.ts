@@ -153,6 +153,17 @@ export class KeyboardService {
     });
 
     this.registry.registerCommand({
+      id: 'nav-settings',
+      label: 'Go to Settings',
+      description: 'Manage application preferences and tutorials',
+      icon: 'settings',
+      category: 'Navigation',
+      shortcut: 'Alt+S',
+      action: () => this.router.navigate(['/app/settings']),
+      keywords: ['configuration', 'preferences', 'options', 'tutorial'],
+    });
+
+    this.registry.registerCommand({
       id: 'theme-toggle',
       label: 'Toggle Theme',
       description: 'Switch between light and dark mode',

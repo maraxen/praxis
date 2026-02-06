@@ -2,6 +2,7 @@ import { Component, signal, inject, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { SqliteService } from './core/services/sqlite';
+import { PythonRuntimeService } from './core/services/python-runtime.service';
 import { ApiConfigService } from './core/services/api-config.service';
 import { SessionRecoveryService } from './core/services/session-recovery.service';
 import { SessionRecoveryComponent } from './core/components/session-recovery/session-recovery.component';
@@ -23,12 +24,18 @@ export class App implements OnInit {
   private sessionRecoveryService = inject(SessionRecoveryService);
   private dialog = inject(MatDialog);
 
-  constructor(protected sqlite: SqliteService) {
+  constructor(
+    protected sqlite: SqliteService,
+    protected pythonRuntime: PythonRuntimeService
+  ) {
     // Initialize API client configuration
     this.apiConfig.initialize();
 
-    // Expose for E2E testing (legacy - use data-sqlite-ready attribute instead)
-    (window as any).sqliteService = this.sqlite;
+    // Expose for E2E testing
+    if (typeof window !== 'undefined') {
+      (window as any).sqliteService = this.sqlite;
+      (window as any).pyodideService = this.pythonRuntime;
+    }
   }
 
   ngOnInit(): void {

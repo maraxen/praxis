@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Observable, of, firstValueFrom } from 'rxjs';
 import { map, shareReplay, switchMap } from 'rxjs/operators';
 import { toObservable } from '@angular/core/rxjs-interop';
 
@@ -42,6 +42,10 @@ export class SqliteService {
     private asyncRepositories: AsyncRepositories | null = null;
     private opfs = inject(SqliteOpfsService);
 
+    // Cached URL parameters (captured at construction because redirects may clear them)
+    private readonly cachedDbName: string | undefined;
+    private readonly cachedResetDb: boolean = false;
+
     // Modern Angular Signals
     private readonly _status = signal<SqliteStatus>({
         initialized: false,
@@ -61,26 +65,53 @@ export class SqliteService {
     constructor() {
         if (typeof window !== 'undefined') {
             (window as any).sqliteService = this;
+
+            // Compatibility layer for E2E tests - allows running raw SQL queries
+            // NOTE: This implementation is ASYNC, so tests must await the results
+            (window as any).sqliteService.db = {
+                exec: async (sql: string, bind?: any[]) => {
+                    const res = await firstValueFrom(this.opfs.exec(sql, bind));
+                    // Return in sql.js-compatible format for existing E2E tests
+                    return [{
+                        columns: res.columnNames,
+                        values: res.resultRows.map((row: any) => res.columnNames.map((col: any) => row[col]))
+                    }];
+                },
+                sync: async () => {
+                    // No-op - OPFS auto-syncs
+                }
+            };
         }
 
-        // Get database name from URL params (for E2E test isolation)
-        const dbName = this.getDbNameFromUrl();
-        if (dbName) {
-            console.log(`[SqliteService] Using database from URL: ${dbName}`);
+        // Capture URL parameters immediately (before any redirects occur)
+        this.cachedDbName = this.getDbNameFromUrl();
+        this.cachedResetDb = this.getResetDbFromUrl();
+
+        if (this.cachedDbName) {
+            console.log(`[SqliteService] Using database from URL: ${this.cachedDbName}`);
+        }
+        if (this.cachedResetDb) {
+            console.log('[SqliteService] Force reset requested via URL (resetdb=1)');
         }
 
         // Initialize OPFS and sync status.
         // The isReady$ signal is now emitted *after* opfs.init() completes,
         // which includes schema creation and seeding.
         console.log('[SqliteService] Starting OPFS init subscription...');
-        this.opfs.init(dbName).subscribe({
+
+        const init$ = this.opfs.init(this.cachedDbName);
+        const setup$ = this.cachedResetDb
+            ? init$.pipe(switchMap(() => this.opfs.resetToDefaults()))
+            : init$;
+
+        setup$.subscribe({
             next: () => {
                 this._status.set({
                     initialized: true,
                     source: 'opfs',
                     tableCount: 0 // Note: tableCount is not accurately tracked here yet.
                 });
-                console.log('[SqliteService] OPFS init complete, signaling DB is ready.');
+                console.log(`[SqliteService] OPFS ${this.cachedResetDb ? 'reset & ' : ''}init complete, signaling DB is ready.`);
                 this.isReady.set(true);
             },
             error: (err) => {
@@ -114,6 +145,23 @@ export class SqliteService {
         const params = new URLSearchParams(window.location.search);
         const dbName = params.get('dbName');
         return dbName ? `/${dbName}.db` : undefined;
+    }
+
+    /**
+     * Check if database reset is requested via URL.
+     */
+    private getResetDbFromUrl(): boolean {
+        if (typeof window === 'undefined') return false;
+        const params = new URLSearchParams(window.location.search);
+        return params.get('resetdb') === '1' || params.get('resetdb') === 'true';
+    }
+
+    /**
+     * Get the current database name.
+     */
+    public getDatabaseName(): string {
+        const name = this.cachedDbName;
+        return name ? name.replace(/^\//, '').replace(/\.db$/, '') : 'praxis';
     }
 
     // ============================================

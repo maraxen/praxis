@@ -22,8 +22,10 @@ export const test = base.extend({
             localStorage.setItem('praxis_tour_finished', 'true');
             localStorage.setItem('praxis_onboarding_seen', 'true');
             localStorage.setItem('praxis_onboarding_complete', 'true');
+            localStorage.setItem('praxis_onboarding_completed', 'true');
             localStorage.setItem('praxis_welcome_dialog_dismissed', 'true');
             localStorage.setItem('praxis_welcome_shown', 'true');
+            localStorage.setItem('praxis_tutorial_completed', 'true');
 
             // Disable any pending tutorials
             localStorage.removeItem('praxis_pending_tutorial');
@@ -64,7 +66,7 @@ export function buildIsolatedUrl(basePath: string, testInfo: { workerIndex: numb
  * Helper to wait for SQLite service to be ready.
  * Uses data-testid attribute on app-root for clean detection.
  */
-export async function waitForDbReady(page: import('@playwright/test').Page, timeout = 5000): Promise<void> {
+export async function waitForDbReady(page: import('@playwright/test').Page, timeout = 30000): Promise<void> {
     await page.locator('[data-sqlite-ready="true"]').waitFor({ state: 'attached', timeout });
 }
 
