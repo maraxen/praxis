@@ -263,7 +263,7 @@ export class BrowserMockRouter {
                 name: runBody.name || 'New Run',
                 protocol_definition_accession_id: runBody.protocol_definition_accession_id || '',
                 ...(runBody as object),
-            } as ProtocolRun;
+            } as unknown as ProtocolRun;
             return db.createProtocolRun(newRun) as Observable<T>;
         }
 
