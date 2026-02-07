@@ -440,6 +440,40 @@ export class AssetsPage extends BasePage {
         return await rows.count();
     }
 
+    /**
+     * Opens the Add Machine dialog and navigates through wizard steps
+     * (Category → Frontend → Backend) to reach the Config step (name input).
+     * Returns the wizard locator positioned at the config step.
+     */
+    async navigateToConfigStep(): Promise<Locator> {
+        await this.addMachineButton.click();
+        const wizard = await this.waitForWizard();
+        const dialog = this.page.getByRole('dialog');
+
+        // Step 1: Category (Type is preselected via "Add Machine")
+        const categoryCard = wizard.getByTestId(/category-card-/).first();
+        await expect(categoryCard).toBeVisible({ timeout: 15000 });
+        await categoryCard.click();
+        await dialog.getByRole('button', { name: /Next/i }).click();
+
+        // Step 2: Frontend
+        const frontendCard = wizard.getByTestId(/frontend-card-/).first();
+        await expect(frontendCard).toBeVisible({ timeout: 15000 });
+        await frontendCard.click();
+        await dialog.getByRole('button', { name: /Next/i }).click();
+
+        // Step 3: Backend
+        const backendCard = wizard.getByTestId(/backend-card-/).first();
+        await expect(backendCard).toBeVisible({ timeout: 15000 });
+        await backendCard.click();
+        await dialog.getByRole('button', { name: /Next/i }).click();
+
+        // Now at Step 4: Config — wait for name input
+        await expect(wizard.getByTestId('input-instance-name')).toBeVisible({ timeout: 10000 });
+
+        return wizard;
+    }
+
     async verifyAssetVisible(name: string) {
         await expect(this.page.getByText(name).first()).toBeVisible({ timeout: 10000 });
     }

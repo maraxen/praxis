@@ -11,6 +11,60 @@ export class InventoryDialogPage {
         this.wizard = page.locator('app-asset-wizard');
     }
 
+    /** Tab locators for test assertions */
+    get catalogTab(): Locator {
+        return this.page.getByRole('tab', { name: /Catalog/i });
+    }
+
+    get browseAddTab(): Locator {
+        return this.page.getByRole('tab', { name: /Browse|Add/i });
+    }
+
+    /**
+     * Opens the inventory dialog by clicking the inventory button in the sidebar/toolbar.
+     */
+    async open(): Promise<void> {
+        const inventoryBtn = this.page.locator('button').filter({
+            has: this.page.locator('mat-icon', { hasText: 'inventory_2' })
+        }).or(this.page.getByRole('button', { name: /Inventory/i }));
+        await expect(inventoryBtn).toBeVisible({ timeout: 15000 });
+        await inventoryBtn.click();
+        await this.waitForDialogVisible();
+    }
+
+    /**
+     * Adds a simulated machine from the catalog at the given index.
+     */
+    async addSimulatedMachine(index: number = 0): Promise<void> {
+        const addBtn = this.dialog.getByRole('button', { name: /Add|Select/i }).nth(index);
+        await expect(addBtn).toBeVisible({ timeout: 10000 });
+        await addBtn.click();
+        await this.page.waitForTimeout(500); // Wait for navigation/update
+    }
+
+    /**
+     * Returns a list of machine names currently in the inventory.
+     */
+    async getMachinesInInventory(): Promise<string[]> {
+        const items = this.dialog.locator('.inventory-item, tr td:first-child, .machine-name');
+        const count = await items.count();
+        const names: string[] = [];
+        for (let i = 0; i < count; i++) {
+            const text = await items.nth(i).textContent();
+            if (text?.trim()) names.push(text.trim());
+        }
+        return names;
+    }
+
+    /**
+     * Asserts that a machine matching the given pattern exists in the inventory.
+     */
+    async assertMachineInInventory(pattern: RegExp): Promise<void> {
+        const machines = await this.getMachinesInInventory();
+        const found = machines.some(m => pattern.test(m));
+        expect(found, `Expected machine matching ${pattern} in inventory, got: ${machines.join(', ')}`).toBe(true);
+    }
+
     /**
      * Waits for the inventory dialog to become visible.
      */
@@ -35,7 +89,7 @@ export class InventoryDialogPage {
         // Try multiple ways to find the visible next button
         const nextButton = this.page.locator('button').filter({ hasText: /^Next$/ }).filter({ visible: true }).first();
         const nextButtonById = this.wizard.getByTestId('wizard-next-button').filter({ visible: true }).first();
-        
+
         // Prefer the one that is visible
         if (await nextButtonById.isVisible()) {
             await expect(nextButtonById).toBeEnabled({ timeout: 10000 });

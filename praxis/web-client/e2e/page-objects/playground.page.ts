@@ -103,6 +103,47 @@ export class PlaygroundPage extends BasePage {
     }
 
     /**
+     * Waits for JupyterLite iframe to load and kernel to be ready.
+     * Combines iframe visibility + kernel idle detection.
+     */
+    async waitForJupyterReady(): Promise<void> {
+        await this.waitForBootstrapComplete();
+        await this.waitForKernelReady();
+    }
+
+    /**
+     * Types code into the JupyterLite REPL input.
+     */
+    async typeCode(code: string): Promise<void> {
+        const iframe = this.page.frameLocator('iframe.notebook-frame, iframe[src*="repl"]').first();
+        const codeInput = iframe.locator('.jp-CodeConsole-input .jp-InputArea-editor, .code-cell textarea').first();
+        await expect(codeInput).toBeVisible({ timeout: 15000 });
+        await codeInput.click();
+        await this.page.keyboard.type(code);
+    }
+
+    /**
+     * Runs the currently entered code (Shift+Enter).
+     */
+    async runCode(): Promise<void> {
+        await this.page.keyboard.press('Shift+Enter');
+    }
+
+    /**
+     * Waits for specific output text to appear in the JupyterLite output area.
+     */
+    async waitForOutput(expectedText: string | RegExp, timeout = 30000): Promise<void> {
+        const iframe = this.page.frameLocator('iframe.notebook-frame, iframe[src*="repl"]').first();
+        const outputCell = iframe.locator('.jp-OutputArea-output, .cell-output').last();
+        await expect(outputCell).toBeVisible({ timeout });
+        if (typeof expectedText === 'string') {
+            await expect(outputCell).toContainText(expectedText, { timeout });
+        } else {
+            await expect(outputCell).toContainText(expectedText, { timeout });
+        }
+    }
+
+    /**
      * Executes code in the JupyterLite REPL and returns the output.
      */
     async executeCode(code: string): Promise<string> {

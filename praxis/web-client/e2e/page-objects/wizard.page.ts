@@ -473,6 +473,25 @@ export class WizardPage {
         await expect(continueButton).toBeEnabled();
     }
 
+    /**
+     * Asserts that the wizard is currently on the expected step.
+     * @param stepId Identifier like 'protocol', 'params', 'machine', 'assets', 'wells', 'deck', 'review'
+     */
+    async assertOnStep(stepId: string): Promise<void> {
+        const stepMap: Record<string, RegExp> = {
+            'protocol': /Protocol|Select/i,
+            'params': /Param|Config/i,
+            'machine': /Machine/i,
+            'assets': /Asset/i,
+            'wells': /Well/i,
+            'deck': /Deck/i,
+            'review': /Review|Summary/i,
+        };
+        const pattern = stepMap[stepId] || new RegExp(stepId, 'i');
+        const activeStep = this.page.locator('.mat-step-label-selected, .mat-step-header[aria-selected="true"], .step-active').first();
+        await expect(activeStep).toContainText(pattern, { timeout: 10000 });
+    }
+
     async verifyMachineSelected(expectedAccessionId: string): Promise<void> {
         const selectedId = await this.page.evaluate(() => {
             const runStepComponent = document.querySelector(

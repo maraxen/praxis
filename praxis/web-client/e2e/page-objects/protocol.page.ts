@@ -174,6 +174,39 @@ export class ProtocolPage extends BasePage {
         await monitor.waitForStatus(/(Completed|Succeeded|Finished)/i, timeout);
     }
 
+    /**
+     * Asserts that a protocol with the given name is available in the library.
+     */
+    async assertProtocolAvailable(name: string): Promise<void> {
+        const card = this.protocolCards.filter({ hasText: name });
+        await expect(card.first()).toBeVisible({ timeout: 15000 });
+    }
+
+    /**
+     * Finds a protocol by name and initiates a run.
+     * Works with both card view (clicks card → Run) and table view (clicks row → Run Protocol button).
+     */
+    async runProtocol(name: string): Promise<void> {
+        // Try card view first
+        const card = this.protocolCards.filter({ hasText: name }).first();
+        if (await card.isVisible({ timeout: 5000 }).catch(() => false)) {
+            await card.locator('.praxis-card').click({ force: true });
+            // Look for a Run button in the selection summary or as a follow-up action
+            const runBtn = this.page.getByRole('button', { name: /Run|Start/i }).first();
+            await expect(runBtn).toBeVisible({ timeout: 5000 });
+            await runBtn.click();
+            return;
+        }
+
+        // Fallback: table view
+        const row = this.page.locator('tr').filter({ hasText: name }).first();
+        await expect(row).toBeVisible({ timeout: 10000 });
+        await row.click();
+        const runProtocolBtn = this.page.getByRole('button', { name: /Run Protocol/i });
+        await expect(runProtocolBtn).toBeVisible({ timeout: 5000 });
+        await runProtocolBtn.click();
+    }
+
     async continueFromSelection() {
         const continueButton = this.protocolStep.getByRole('button', { name: /Continue/i }).last();
         await expect(continueButton).toBeEnabled({ timeout: 15000 });
