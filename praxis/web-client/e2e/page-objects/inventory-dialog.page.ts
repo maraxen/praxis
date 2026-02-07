@@ -73,6 +73,21 @@ export class InventoryDialogPage {
     }
 
     /**
+     * Creates a machine through the full wizard flow.
+     * @param name - Instance name for the machine
+     * @param category - Category to select (e.g., 'LiquidHandler')
+     * @param model - Model name pattern to filter/select
+     */
+    async addMachine(name: string, category: string = 'LiquidHandler', model: string = 'STAR'): Promise<void> {
+        await this.selectAssetType('MACHINE');
+        await this.selectCategory(category);
+        await this.selectMachineType(new RegExp(model, 'i'));
+        await this.selectDriver(/Simul/i);
+        await this.fillInstanceName(name);
+        await this.createAsset();
+    }
+
+    /**
      * Closes the inventory dialog if it's open.
      */
     async close(): Promise<void> {

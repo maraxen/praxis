@@ -5,20 +5,20 @@ import { WelcomePage } from '../page-objects/welcome.page';
 test.describe('Asset Inventory', () => {
     // Run tests serially to avoid sandbox slowness and DB contention
     test.describe.configure({ mode: 'serial' });
-    
+
     let assetsPage: AssetsPage;
 
     test.beforeEach(async ({ page }, testInfo) => {
         // Increase timeout for DB reset
         test.setTimeout(120000);
-        
-        assetsPage = new AssetsPage(page, '/app/assets', testInfo);
+
+        assetsPage = new AssetsPage(page, testInfo, '/app/assets');
         // Ensure fresh DB for each test to avoid cross-contamination
         await assetsPage.goto({ resetdb: true });
-        
+
         const welcomePage = new WelcomePage(page);
         await welcomePage.handleSplashScreen();
-        
+
         await assetsPage.navigateToRegistry();
     });
 
@@ -26,7 +26,7 @@ test.describe('Asset Inventory', () => {
         test('should persist created machine across reloads', async () => {
             const testMachineName = `Machine-${Date.now()}`;
             await assetsPage.createMachine(testMachineName);
-            
+
             await assetsPage.navigateToRegistry();
             await assetsPage.selectRegistryTab('Machines');
             await assetsPage.search(testMachineName);
@@ -42,7 +42,7 @@ test.describe('Asset Inventory', () => {
         test('should persist created resource across reloads', async () => {
             const testResourceName = `Resource-${Date.now()}`;
             await assetsPage.createResource(testResourceName, 'Plate', '96');
-            
+
             await assetsPage.navigateToRegistry();
             await assetsPage.selectRegistryTab('Resources');
             await assetsPage.search(testResourceName);
@@ -62,7 +62,7 @@ test.describe('Asset Inventory', () => {
             // Search for Hamilton specifically to bring it to the first page
             await assetsPage.search('Hamilton');
             await expect(assetsPage.page.getByRole('cell', { name: /Hamilton/i }).first()).toBeVisible();
-            
+
             // Search for Corning specifically
             await assetsPage.search('Cor_96_wellplate_360ul_Fb');
             await expect(assetsPage.page.getByRole('cell', { name: 'Cor_96_wellplate_360ul_Fb' }).first()).toBeVisible();
@@ -78,15 +78,15 @@ test.describe('Asset Inventory', () => {
 
         test('should sort resource types by name', async () => {
             await assetsPage.selectRegistryTab('Resource Types');
-            
+
             const firstRow = assetsPage.page.locator('tbody tr').first();
             await expect(firstRow).toBeVisible();
             const initialText = await (await firstRow.innerText()).trim();
-            
+
             // Toggle sort order
             const sortToggle = assetsPage.page.locator('.sort-order-btn').first();
             await sortToggle.click();
-            
+
             // Wait for the text to change (meaning sort applied)
             await expect(async () => {
                 const newText = await (await firstRow.innerText()).trim();
@@ -100,18 +100,18 @@ test.describe('Asset Inventory', () => {
     test.describe('Pagination', () => {
         test('should support pagination for resource types', async () => {
             await assetsPage.selectRegistryTab('Resource Types');
-            
+
             const paginator = assetsPage.page.locator('mat-paginator');
             await expect(paginator).toBeVisible();
-            
+
             // Should show something like "1 – 10 of"
             const rangeLabel = paginator.locator('.mat-mdc-paginator-range-label');
             await expect(rangeLabel).toContainText('1 – 10 of');
-            
+
             // Go to next page
             const nextButton = paginator.locator('button.mat-mdc-paginator-navigation-next');
             await nextButton.click();
-            
+
             await expect(rangeLabel).toContainText('11 – 20 of');
         });
     });

@@ -15,6 +15,19 @@ export class PlaygroundPage extends BasePage {
         this.jupyter = new JupyterlitePage(page);
     }
 
+    /**
+     * Navigate to the playground page.
+     * Accepts either a mode string ('worker', 'browser') or standard BasePage options.
+     */
+    async goto(modeOrOptions?: string | { waitForDb?: boolean; resetdb?: boolean; dbOverride?: string }): Promise<void> {
+        if (typeof modeOrOptions === 'string') {
+            // Mode shorthand: e.g., goto('worker')
+            await super.goto({ waitForDb: modeOrOptions !== 'worker' });
+        } else {
+            await super.goto(modeOrOptions);
+        }
+    }
+
     async openInventory(): Promise<InventoryDialogPage> {
         await expect(this.inventoryButton).toBeVisible({ timeout: 25000 });
         await this.inventoryButton.click();
