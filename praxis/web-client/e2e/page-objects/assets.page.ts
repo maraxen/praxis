@@ -10,7 +10,7 @@ export class AssetsPage extends BasePage {
     readonly overviewTab: Locator;
     readonly spatialViewTab: Locator;
 
-    constructor(page: Page, url: string = '/assets', testInfo?: TestInfo) {
+    constructor(page: Page, testInfo?: TestInfo, url: string = '/assets') {
         super(page, url, testInfo);
         this.addMachineButton = page.getByRole('button', { name: /Add Machine/i });
         this.addResourceButton = page.getByRole('button', { name: /Add Resource/i });

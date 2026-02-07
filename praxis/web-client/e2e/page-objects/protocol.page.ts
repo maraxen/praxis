@@ -50,6 +50,11 @@ export class ProtocolPage extends BasePage {
         const card = cardHost.locator('.praxis-card');
         await expect(card, `Protocol card for ${name} should be visible`).toBeVisible({ timeout: 15000 });
         await this.dismissOverlays();
+
+        // Ensure card is stable before click
+        await card.waitFor({ state: 'attached' });
+        await this.page.waitForTimeout(500); // Wait for transitions
+
         await card.click();
         await this.assertProtocolSelected(name);
         return name;

@@ -235,16 +235,16 @@ export class WizardPage {
         await continueButton.click();
         // Transition might be to Wells or Deck Setup
         console.log('[Wizard] Assets continued, waiting for next step...');
-        await this.page.waitForTimeout(1000); 
+        await this.page.waitForTimeout(1000);
     }
 
     async completeWellSelectionStep() {
         console.log('[Wizard] Checking for Well Selection step...');
-        
+
         // Wait for well step header to be selected or at least visible
         const wellHeader = this.page.locator('.mat-step-header').filter({ hasText: /Select Wells/i }).first();
         const wellStepSelected = await wellHeader.getAttribute('aria-selected').catch(() => 'false') === 'true';
-        
+
         if (!wellStepSelected) {
             // Check if we can even see the step content
             const isVisible = await this.wellStep.isVisible({ timeout: 2000 }).catch(() => false);
@@ -258,13 +258,13 @@ export class WizardPage {
 
         // Select buttons might have labels like "Click to select wells..." or "5 wells selected"
         // Try multiple locators for the well selection buttons
-        const selectButtons = this.wellStep.locator('button').filter({ 
-            has: this.page.locator('mat-icon', { hasText: /grid_on/i }) 
+        const selectButtons = this.wellStep.locator('button').filter({
+            has: this.page.locator('mat-icon', { hasText: /grid_on/i })
         });
-        
+
         // Fallback: any button in the well-selection-required area
         const fallbackButtons = this.wellStep.locator('button:has-text("select wells")');
-        
+
         const effectiveButtons = (await selectButtons.count()) > 0 ? selectButtons : fallbackButtons;
 
         const count = await effectiveButtons.count();
@@ -290,13 +290,13 @@ export class WizardPage {
             const confirmBtn = dialog.getByRole('button', { name: /Confirm Selection|Confirm|Select|OK/i }).last();
             await expect(confirmBtn).toBeEnabled();
             await confirmBtn.click();
-            
+
             await dialog.waitFor({ state: 'hidden', timeout: 10000 });
         }
 
         // Wait for validation to propagate and "Continue" to be enabled
         const continueButton = this.wellStep.getByRole('button', { name: /^Continue$/i }).first();
-        
+
         // If "Continue" is not enabled, maybe there's a problem
         try {
             await expect(continueButton).toBeEnabled({ timeout: 10000 });
@@ -310,14 +310,14 @@ export class WizardPage {
 
         console.log('[Wizard] Clicking Well Step Continue button...');
         await continueButton.click({ force: true });
-        
+
         // Wait for transition to next step
         await expect(wellHeader).toHaveAttribute('aria-selected', 'false', { timeout: 10000 });
     }
 
     async advanceDeckSetup() {
         console.log('[Wizard] Advancing Deck Setup...');
-        
+
         // Wait for stepper header to indicate "Deck Setup" is active
         const deckHeader = this.page.locator('.mat-step-header').filter({ hasText: /Deck Setup/i }).first();
         await expect(deckHeader).toHaveAttribute('aria-selected', 'true', { timeout: 30000 });
@@ -325,14 +325,14 @@ export class WizardPage {
         // Wait for the step content to be visible and stable
         const activeStepContent = this.page.locator('.mat-horizontal-stepper-content-current, .mat-step-content:not([hidden])').first();
         await expect(activeStepContent).toBeVisible({ timeout: 20000 });
-        
+
         // Ensure our deck step root is inside the active content
         const deckStepInActive = activeStepContent.locator('[data-tour-id="run-step-deck"]');
         await deckStepInActive.waitFor({ state: 'visible', timeout: 15000 }).catch(async (e) => {
-             console.log('[Wizard] deckStep not found in active content, checking fallback');
-             await this.deckStep.waitFor({ state: 'visible', timeout: 10000 });
+            console.log('[Wizard] deckStep not found in active content, checking fallback');
+            await this.deckStep.waitFor({ state: 'visible', timeout: 10000 });
         });
-        
+
         // Wait a tiny bit for animations to settle (even if disabled, better safe)
         await this.page.waitForTimeout(500);
 
@@ -358,7 +358,7 @@ export class WizardPage {
         const isSelected = await reviewTab.getAttribute('aria-selected');
         if (isSelected === 'true') {
             console.log('[Wizard] Already on review step');
-            await this.reviewHeading.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+            await this.reviewHeading.waitFor({ state: 'visible', timeout: 10000 }).catch(() => { });
             return;
         }
 
@@ -396,12 +396,12 @@ export class WizardPage {
         const startButton = await this.waitForStartReady();
         console.log('[Wizard] Clicking Start Execution button...');
         await startButton.click();
-        
+
         console.log('[Wizard] Waiting for monitor page navigation...');
         // More forgiving regex for monitor URL
-        await this.page.waitForURL(/\/app\/monitor\/[a-f0-9-]+/, { 
+        await this.page.waitForURL(/\/app\/monitor\/[a-f0-9-]+/, {
             waitUntil: 'domcontentloaded',
-            timeout: 30000 
+            timeout: 30000
         });
         console.log('[Wizard] Successfully navigated to monitor page:', this.page.url());
     }

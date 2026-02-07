@@ -1,4 +1,4 @@
-import { test as base, expect } from './app.fixture';
+import { test as base, expect } from './worker-db.fixture';
 import { ProtocolPage } from '../page-objects/protocol.page';
 import { WizardPage } from '../page-objects/wizard.page';
 import { ExecutionMonitorPage } from '../page-objects/monitor.page';
@@ -37,7 +37,7 @@ export const test = base.extend<ExecutionReadyFixtures>({
         await monitorPage.waitForLiveDashboard();
 
         await use({ protocolPage, wizardPage, monitorPage });
-        
+
         // Cleanup: None needed for read-only deck inspection
     }
 });

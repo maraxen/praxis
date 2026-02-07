@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/app.fixture';
+import { test, expect } from '../fixtures/worker-db.fixture';
 import { ProtocolPage } from '../page-objects/protocol.page';
 import { WizardPage } from '../page-objects/wizard.page';
 
@@ -6,12 +6,11 @@ test.describe('Protocol Wizard Flow', () => {
     let protocolPage: ProtocolPage;
     let wizardPage: WizardPage;
 
-    test.beforeEach(async ({ page }) => {
-        protocolPage = new ProtocolPage(page);
-        wizardPage = new WizardPage(page);
-        // The app fixture navigates and handles the welcome dialog automatically.
-        // We can now expect to be on the home page.
-        await expect(page).toHaveURL(/\/app\/home/, { timeout: 15000 });
+    test.beforeEach(async ({ page }, testInfo) => {
+        protocolPage = new ProtocolPage(page, testInfo);
+        wizardPage = new WizardPage(page, testInfo);
+        // Navigate using the page object which handles worker-scoped DB isolation
+        await protocolPage.goto();
         await protocolPage.ensureSimulationMode();
     });
 
