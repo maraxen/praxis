@@ -56,14 +56,33 @@ export class ProtocolPage extends BasePage {
     }
 
     async selectFirstProtocol(): Promise<string> {
-        const firstCardHost = this.protocolCards.first();
-        const firstCard = firstCardHost.locator('.praxis-card');
-        await firstCard.waitFor({ state: 'visible' });
-        const name = (await firstCardHost.locator('h3.card-title').textContent())?.trim() || 'Protocol';
-        await this.dismissOverlays();
-        await firstCard.click({ force: true });
-        await this.assertProtocolSelected(name);
-        return name;
+        // Wait for protocol cards (wizard view)
+        if (await this.protocolCards.first().isVisible({ timeout: 5000 }).catch(() => false)) {
+            const firstCardHost = this.protocolCards.first();
+            const firstCard = firstCardHost.locator('.praxis-card');
+            await firstCard.waitFor({ state: 'visible' });
+            const name = (await firstCardHost.locator('h3.card-title').textContent())?.trim() || 'Protocol';
+            await this.dismissOverlays();
+            await firstCard.click({ force: true });
+            await this.assertProtocolSelected(name);
+            return name;
+        }
+
+        // Fallback for Library view (table) if we ended up there
+        const tableRow = this.page.locator('[data-tour-id="protocol-table"] tbody tr').first();
+        if (await tableRow.isVisible({ timeout: 5000 }).catch(() => false)) {
+            const name = await tableRow.locator('td').first().textContent().then(t => t?.trim() || 'Protocol');
+            await tableRow.click();
+            // In library, clicking a row opens a dialog
+            const runButton = this.page.getByRole('button', { name: /Run Protocol/i });
+            await runButton.waitFor({ state: 'visible' });
+            await runButton.click();
+            // This navigates to /app/run?protocolId=...
+            await this.assertProtocolSelected(name);
+            return name;
+        }
+
+        throw new Error('No protocols found in either card or table view');
     }
 
     async assertProtocolSelected(expectedName: string) {

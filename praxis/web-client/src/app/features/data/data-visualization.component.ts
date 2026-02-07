@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { ViewControlsComponent } from '@shared/components/view-controls/view-controls.component';
@@ -55,6 +56,7 @@ interface MockRun {
     MatButtonModule,
     MatTableModule,
     MatTooltipModule,
+    MatProgressSpinnerModule,
     PlotlyModule,
     FormsModule,
     ViewControlsComponent
@@ -551,6 +553,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   yAxis = signal<string>('volumeTransferred');
 
   // Selection state
+  isLoading = signal(true);
   selectedRunId = '';
   showFilters = signal(true);
   groupBy = computed(() => this.viewState().groupBy || 'well');
@@ -662,6 +665,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit() {
+    this.isLoading.set(true);
     this.initializeViewControls();
     // Load protocols first to populate filter options
     this.protocolService.getProtocols().subscribe({
@@ -674,6 +678,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
     // Load runs (from seeded DB or backend)
     this.protocolService.getRuns().subscribe({
       next: (runs) => {
+        this.isLoading.set(false);
         if (runs && runs.length > 0) {
           // Map backend/SQLite run objects to MockRun interface for visualization
           const mappedRuns: MockRun[] = runs.map(r => {
@@ -712,6 +717,7 @@ export class DataVisualizationComponent implements OnInit, OnDestroy {
       },
       error: (e) => {
         console.warn('Failed to load runs, using fallback', e);
+        this.isLoading.set(false);
         this.generateFallbackData();
       }
     });

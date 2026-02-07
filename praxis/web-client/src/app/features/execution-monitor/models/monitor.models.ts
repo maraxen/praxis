@@ -39,6 +39,7 @@ export interface RunDetail extends RunSummary {
     resolved_assets_json?: Record<string, unknown>;
     output_data_json?: Record<string, unknown>;
     logs?: string[];
+    plr_definition?: any;
 }
 
 /**

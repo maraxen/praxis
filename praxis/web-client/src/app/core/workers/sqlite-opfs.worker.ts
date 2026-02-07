@@ -74,10 +74,17 @@ addEventListener('message', async ({ data }: { data: SqliteWorkerRequest }) => {
 async function handleInit(id: string, payload: SqliteInitRequest) {
     const startTime = performance.now();
     const timings: Record<string, number> = {};
+    const dbName = payload.dbName || VFS_DB_NAME;
 
     if (db) {
-        sendResponse(id, 'initialized', { success: true, message: 'Already initialized' });
-        return;
+        if (currentDbName === dbName) {
+            sendResponse(id, 'initialized', { success: true, message: 'Already initialized' });
+            return;
+        } else {
+            console.log(`[SqliteOpfsWorker] Re-initializing from ${currentDbName} to ${dbName}`);
+            db.close();
+            db = null;
+        }
     }
 
     const wasmPath = getWasmPath();
@@ -110,9 +117,11 @@ async function handleInit(id: string, payload: SqliteInitRequest) {
         // This VFS is preferred for performance and doesn't require SharedArrayBuffer
         // proxyUri must point to our copied asset to avoid Vite's dynamic import issues
         try {
+            const poolDirectory = payload.poolDirectory || 'praxis-data';
+            console.log(`[SqliteOpfsWorker] Installing opfs-sahpool VFS with directory: ${poolDirectory}`);
             poolUtil = await (sqlite3 as any).installOpfsSAHPoolVfs({
                 name: 'opfs-sahpool', // Standard name used by the library
-                directory: 'praxis-data',
+                directory: poolDirectory,
                 clearOnInit: false,
                 proxyUri: `${wasmPath}sqlite3-opfs-async-proxy.js`
             });
@@ -126,7 +135,6 @@ async function handleInit(id: string, payload: SqliteInitRequest) {
     timings['vfsInstall'] = performance.now() - startTime;
 
     // Open the database
-    const dbName = payload.dbName || VFS_DB_NAME;
     currentDbName = dbName;
 
     if (useMemoryFallback) {

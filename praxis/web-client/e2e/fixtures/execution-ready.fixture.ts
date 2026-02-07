@@ -29,6 +29,7 @@ export const test = base.extend<ExecutionReadyFixtures>({
         await wizardPage.completeParameterStep();
         await wizardPage.selectFirstCompatibleMachine();
         await wizardPage.waitForAssetsAutoConfigured();
+        await wizardPage.completeWellSelectionStep();
         await wizardPage.advanceDeckSetup();
         await wizardPage.openReviewStep();
         await wizardPage.startExecution();

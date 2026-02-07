@@ -19,6 +19,8 @@ export interface SqliteWorkerRequest {
 
 export interface SqliteInitRequest {
     dbName?: string;
+    /** Optional directory in OPFS to use for the SAH pool. Defaults to 'praxis-data' */
+    poolDirectory?: string;
 }
 
 export interface SqliteExecRequest {

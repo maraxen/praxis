@@ -12,6 +12,12 @@ import { ProtocolDefinition } from '../models/protocol.models';
   providedIn: 'root'
 })
 export class ProtocolService {
+  constructor() {
+    if (typeof window !== 'undefined') {
+      (window as any).protocolService = this;
+    }
+  }
+
   private apiWrapper = inject(ApiWrapperService);
   private http = inject(HttpClient);
   private readonly API_URL = '/api/v1';

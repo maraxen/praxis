@@ -21,6 +21,8 @@ import { StateHistoryTimelineComponent } from './state-history-timeline';
 import { StateDeltaComponent } from './state-delta/state-delta.component';
 import { ParameterViewerComponent } from './parameter-viewer';
 import { DeckViewComponent } from '@shared/components/deck-view/deck-view.component';
+import { ResourceInspectorPanelComponent } from '@features/workcell/machine-focus-view/resource-inspector-panel.component';
+import { PlrResourceDetails } from '@core/models/plr.models';
 import { ExecutionService } from '@features/run-protocol/services/execution.service';
 
 /**
@@ -44,7 +46,8 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
     StateHistoryTimelineComponent,
     StateDeltaComponent,
     ParameterViewerComponent,
-    DeckViewComponent
+    DeckViewComponent,
+    ResourceInspectorPanelComponent
   ],
   template: `
     <div class="p-6 max-w-screen-xl mx-auto" data-testid="run-detail-view">
@@ -321,26 +324,25 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
           <!-- Live View Tab -->
           <mat-tab label="Live View">
             <div class="tab-content flex flex-col items-center justify-center min-h-[500px] p-6 bg-[var(--plr-bg)] rounded-b-xl border-x border-b border-[var(--theme-border)]">
-              @if (isLive()) {
-                @if (executionService.currentRun(); as runState) {
-                  @if (runState.plr_definition) {
+              @if (executionService.currentRun()?.plr_definition || run()?.plr_definition; as plrDef) {
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 w-full h-full min-h-[600px]">
+                  <div class="lg:col-span-3 flex items-center justify-center bg-[var(--mat-sys-surface-container-low)] rounded-xl border border-[var(--mat-sys-outline-variant)] relative overflow-hidden">
                     <app-deck-view
                       data-testid="deck-view"
-                      [resource]="runState.plr_definition"
-                      [state]="runState.wellState || {}">
+                      [resource]="plrDef"
+                      [state]="executionService.currentRun()?.wellState || {}"
+                      (resourceSelected)="selectedResource.set($event)"
+                      class="max-w-full max-h-full">
                     </app-deck-view>
-                  } @else {
-                    <div class="empty-state text-center py-12 text-sys-text-tertiary">
-                      <mat-icon class="!w-12 !h-12 !text-[48px] opacity-30 mb-4">view_quilt</mat-icon>
-                      <p>Deck layout not available for this run</p>
-                    </div>
-                  }
-                }
+                  </div>
+                  <div class="lg:col-span-1 h-full bg-[var(--mat-sys-surface-container)] rounded-xl border border-[var(--mat-sys-outline-variant)] overflow-hidden">
+                    <app-resource-inspector-panel [resource]="selectedResource()"></app-resource-inspector-panel>
+                  </div>
+                </div>
               } @else {
                 <div class="empty-state text-center py-12 text-sys-text-tertiary">
-                  <mat-icon class="!w-12 !h-12 !text-[48px] opacity-30 mb-4">history</mat-icon>
-                  <p>Live view only available for active runs.</p>
-                  <p class="text-sm">This run is currently in terminal state: {{ run()?.status }}</p>
+                  <mat-icon class="!w-12 !h-12 !text-[48px] opacity-30 mb-4">view_quilt</mat-icon>
+                  <p>Deck layout not available for this run</p>
                 </div>
               }
             </div>
@@ -388,6 +390,7 @@ export class RunDetailComponent implements OnInit, OnDestroy {
 
   readonly run = signal<RunDetail | null>(null);
   readonly isLoading = signal(true);
+  readonly selectedResource = signal<PlrResourceDetails | undefined>(undefined);
   readonly stateHistory = signal<StateHistory | null>(null);
   readonly isLoadingStateHistory = signal(false);
   readonly currentOperationIndex = signal(0);

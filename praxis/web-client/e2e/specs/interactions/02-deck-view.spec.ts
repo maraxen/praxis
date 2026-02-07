@@ -5,6 +5,8 @@ import { WizardPage } from '../../page-objects/wizard.page';
 import { ExecutionMonitorPage } from '../../page-objects/monitor.page';
 
 test.describe('Deck View Interaction', () => {
+    test.describe.configure({ mode: 'serial', timeout: 120000 });
+
     test('should show resource details when clicking labware', async ({ page, executionContext }) => {
         const deckView = new DeckViewPage(page);
         

@@ -122,11 +122,7 @@ export class SqliteService {
                     tableCount: 0,
                     error: err.message
                 });
-                // Ensure isReady remains false on error
                 this.isReady.set(false);
-            },
-            complete: () => {
-                console.log('[SqliteService] OPFS init subscription completed');
             }
         });
     }
@@ -185,17 +181,11 @@ export class SqliteService {
         );
     }
 
-    /**
-     * @deprecated Use getAsyncRepositories()
-     */
     public getRepositories(): Observable<AsyncRepositories> {
         return this.getAsyncRepositories();
     }
 
-    // ============================================
-    // Repository Accessors
-    // ============================================
-
+    // ... rest of the file ...
     public get protocolRuns(): Observable<AsyncProtocolRunRepository> {
         return this.getAsyncRepositories().pipe(map(r => r.protocolRuns));
     }
@@ -259,10 +249,6 @@ export class SqliteService {
     public get assetRequirements(): Observable<AsyncProtocolAssetRequirementRepository> {
         return this.getAsyncRepositories().pipe(map(r => r.assetRequirements));
     }
-
-    // ============================================
-    // Convenience Query Methods
-    // ============================================
 
     public getProtocols(): Observable<FunctionProtocolDefinition[]> {
         return this.getAsyncRepositories().pipe(
@@ -338,31 +324,18 @@ export class SqliteService {
         );
     }
 
-    // ============================================
-    // Database Operations (Delegate to OPFS)
-    // ============================================
-
-    /**
-     * Create a new protocol run (convenience wrapper)
-     */
     public createProtocolRun(entity: any): Observable<ProtocolRun> {
         return this.protocolRuns.pipe(
             switchMap(repo => repo.create(entity))
         );
     }
 
-    /**
-     * Create a new machine (convenience wrapper)
-     */
     public createMachine(entity: any): Observable<Machine> {
         return this.machines.pipe(
             switchMap(repo => repo.create(entity))
         );
     }
 
-    /**
-     * Update protocol run status (convenience wrapper)
-     */
     public updateProtocolRunStatus(runId: string, status: string): Observable<void> {
         return this.protocolRuns.pipe(
             switchMap(repo => repo.update(runId, { status } as any)),
@@ -370,18 +343,11 @@ export class SqliteService {
         );
     }
 
-    /**
-     * Save state resolution (convenience wrapper)
-     */
     public saveStateResolution(runId: string, resolution: any): Observable<void> {
-        // Implementation pending in repositories, mock for now to fix build
         console.warn('saveStateResolution: NOT YET IMPLEMENTED', runId, resolution);
         return of(undefined);
     }
 
-    /**
-     * Get state history for a run (convenience wrapper)
-     */
     public getRunStateHistory(runId: string): Observable<any> {
         return this.protocolRuns.pipe(
             switchMap(repo => repo.findById(runId)),
@@ -389,31 +355,18 @@ export class SqliteService {
         );
     }
 
-    /**
-     * Export database as Uint8Array
-     */
     public exportDatabase(): Observable<Uint8Array> {
         return this.opfs.exportDatabase();
     }
 
-    /**
-     * Import database from Uint8Array
-     */
     public importDatabase(data: Uint8Array): Observable<void> {
         return this.opfs.importDatabase(data);
     }
 
-    /**
-     * Close database connection
-     */
     public close(): Observable<void> {
         return this.opfs.close();
     }
 
-    /**
-     * Reset database to factory defaults.
-     * Clears all user data and reloads from the prebuilt praxis.db.
-     */
     public resetToDefaults(): Observable<void> {
         console.log('[SqliteService] Resetting database to defaults...');
         this.isReady.set(false);

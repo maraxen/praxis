@@ -31,6 +31,8 @@ export class SqliteOpfsService {
     private initPromise: Promise<void> | null = null;
     /** Track current database name to detect when a different DB is requested */
     private currentDbName: string | undefined = undefined;
+    /** Track current pool directory */
+    private currentPoolDirectory: string | undefined = undefined;
 
     constructor() { }
 
@@ -42,13 +44,18 @@ export class SqliteOpfsService {
      * The legacy sql.js + IndexedDB path has been removed.
      * 
      * @param dbName Optional database name (defaults to 'praxis.db' in worker)
+     * @param poolDirectory Optional OPFS directory for the SAH pool
      * @returns Observable that completes when initialization is successful
      */
-    init(dbName?: string): Observable<void> {
+    init(dbName?: string, poolDirectory?: string): Observable<void> {
+        // If no dbName provided, use the current one if available
+        const targetDbName = dbName !== undefined ? dbName : this.currentDbName;
+        const targetPoolDir = poolDirectory !== undefined ? poolDirectory : this.currentPoolDirectory;
+
         // Critical: If a different database is requested, reset the cached promise
         // This prevents parallel workers with different dbNames from sharing promises
-        if (this.initPromise && this.currentDbName !== dbName) {
-            console.log(`[SqliteOpfsService] Database changed from ${this.currentDbName} to ${dbName}, resetting init promise`);
+        if (this.initPromise && (this.currentDbName !== targetDbName || this.currentPoolDirectory !== targetPoolDir)) {
+            console.log(`[SqliteOpfsService] Database/Pool changed, resetting init promise`);
             this.initPromise = null;
         }
 
@@ -56,7 +63,8 @@ export class SqliteOpfsService {
             return from(this.initPromise);
         }
 
-        this.currentDbName = dbName;
+        this.currentDbName = targetDbName;
+        this.currentPoolDirectory = targetPoolDir;
 
         this.initPromise = new Promise<void>((resolve, reject) => {
             if (!this.worker) {
@@ -79,7 +87,11 @@ export class SqliteOpfsService {
             }
 
             console.time('DB_INIT_TOTAL');
-            const payload: SqliteInitRequest = { dbName };
+
+            const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+            const shouldReset = params?.get('resetdb') === '1';
+
+            const payload: SqliteInitRequest = { dbName: this.currentDbName, poolDirectory: this.currentPoolDirectory };
             this.sendRequest<unknown>('init', payload).pipe(
                 switchMap((result: any) => {
                     // Check for schema mismatch response
@@ -87,6 +99,10 @@ export class SqliteOpfsService {
                         const mismatch = result as SqliteSchemaMismatchPayload;
                         console.warn(`[SqliteOpfsService] Schema version mismatch: DB=${mismatch.currentVersion}, App=${mismatch.expectedVersion}`);
                         return this.handleSchemaMismatch(mismatch.currentVersion, mismatch.expectedVersion);
+                    }
+                    if (shouldReset) {
+                        console.log('[SqliteOpfsService] resetdb=1 detected, wiping DB...');
+                        return this.resetToDefaults();
                     }
                     return this.ensureSchemaAndSeeds();
                 })

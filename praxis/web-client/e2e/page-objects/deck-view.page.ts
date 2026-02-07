@@ -23,13 +23,27 @@ export class DeckViewPage {
         );
     }
     
+    async ensureLiveViewActive() {
+        // Try to click the "Live View" tab if it's not already active
+        const liveViewTab = this.page.getByRole('tab', { name: /Live View/i });
+        if (await liveViewTab.isVisible()) {
+            const isSelected = await liveViewTab.getAttribute('aria-selected');
+            if (isSelected !== 'true') {
+                await liveViewTab.click();
+            }
+        }
+        await expect(this.page.getByTestId('deck-view')).toBeVisible({ timeout: 15000 });
+    }
+
     async getFirstResource(): Promise<DeckResource> {
+        await this.ensureLiveViewActive();
         const node = this.resourceNodes.first();
         await expect(node).toBeVisible({ timeout: 15000 });
         return new DeckResource(this.page, node);
     }
     
     async getResources(): Promise<DeckResource[]> {
+        await this.ensureLiveViewActive();
         const count = await this.resourceNodes.count();
         const resources: DeckResource[] = [];
         for (let i = 0; i < count; i++) {

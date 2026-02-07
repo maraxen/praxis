@@ -16,17 +16,17 @@ export class DataVisualizationPage extends BasePage {
     readonly wellSelectorButton: Locator;
 
     constructor(page: Page, testInfo?: TestInfo) {
-        super(page, '/run/data-visualization', testInfo);
+        super(page, '/app/data', testInfo);
 
         this.heading = page.getByRole('heading', { level: 1, name: 'Data Visualization' });
         this.chart = page.locator('plotly-plot').first();
-        this.xAxisSelect = page.getByLabel('X-Axis');
-        this.yAxisSelect = page.getByLabel('Y-Axis');
+        this.xAxisSelect = page.locator('mat-select').first();
+        this.yAxisSelect = page.locator('mat-select').nth(1);
         this.exportButton = page.getByRole('button', { name: /export/i });
         this.emptyStateMessage = page.getByText('No data available to display.');
-        this.selectedPointInfo = page.locator('.selected-point-info'); // Add data-testid in component
+        this.selectedPointInfo = page.locator('.selected-point-info');
         this.runHistoryTable = page.locator('.run-table');
-        this.wellSelectorButton = page.getByRole('button', { name: /select wells/i });
+        this.wellSelectorButton = page.locator('.well-filter button').first();
     }
 
     /**
