@@ -1,4 +1,4 @@
-import { test, expect, buildIsolatedUrl } from '../fixtures/app.fixture';
+import { test, expect, buildIsolatedUrl, waitForDbReady } from '../fixtures/app.fixture';
 import { ProtocolLibraryPage } from '../page-objects/protocol-library.page';
 
 test.describe('Protocol Library', () => {
@@ -10,6 +10,7 @@ test.describe('Protocol Library', () => {
     // We need to navigate to the correct page for this test suite,
     // preserving the worker-isolated database parameters.
     await page.goto(buildIsolatedUrl('/app/protocols', testInfo));
+    await waitForDbReady(page);
     await protocolLibrary.waitForTableReady();
   });
 
@@ -77,35 +78,35 @@ test.describe('Protocol Library', () => {
     // Verify a known seeded protocol has correct data
     const kineticRow = protocolLibrary.getRowByName('Kinetic Assay');
     await expect(kineticRow).toBeVisible();
-    
+
     // Check category badge is present
     await expect(kineticRow).toContainText(/Plate Reading|Assay/i);
-    
+
     // Check version format (e.g., "1.0.0" or similar)
     await expect(kineticRow).toContainText(/\d+\.\d+/);
   });
 
   test('should display full protocol details in dialog', async () => {
     await protocolLibrary.openProtocolDetails('Kinetic Assay');
-    
+
     // Verify dialog shows protocol name
     await protocolLibrary.assertDialogContent('Kinetic Assay');
-    
+
     // Verify dialog has key elements
     const dialog = protocolLibrary.detailDialog;
     await expect(dialog.getByRole('button', { name: /Run Protocol/i })).toBeVisible();
-    
+
     // Could add: description, category, parameter list verification
   });
 
   test('should display empty state when no protocols match search', async ({ page }) => {
     await protocolLibrary.searchProtocol('NONEXISTENT_PROTOCOL_XYZ');
-    
+
     // Wait for filter to apply
     await page.waitForFunction(() => {
       return document.querySelectorAll('tr[mat-row]').length === 0;
     }, { timeout: 10000 });
-    
+
     // Verify empty state message
     await expect(page.getByText(/No protocols found/i)).toBeVisible();
   });
@@ -113,10 +114,10 @@ test.describe('Protocol Library', () => {
   test('should handle protocol load failure gracefully', async ({ page }) => {
     // Intercept the protocol service and fail it
     await page.route('**/api/protocols**', route => route.abort('failed'));
-    
+
     // Navigate fresh (not using goto which expects success)
     await page.goto('/app/protocols?mode=browser');
-    
+
     // Verify error handling (depends on component implementation)
     // At minimum, page should not crash
     await expect(page.getByRole('heading', { level: 1 })).toContainText(/Protocol/i);
@@ -126,13 +127,13 @@ test.describe('Protocol Library', () => {
     // Get the first protocol's name to trace
     const firstRow = protocolLibrary.getRowByName('Kinetic Assay');
     await expect(firstRow).toBeVisible();
-    
+
     // Click run button
-    const playButton = firstRow.getByRole('button').filter({ 
-      has: page.locator('mat-icon:has-text("play_arrow")') 
+    const playButton = firstRow.getByRole('button').filter({
+      has: page.locator('mat-icon:has-text("play_arrow")')
     });
     await playButton.click();
-    
+
     // Verify URL contains protocolId parameter
     await expect(page).toHaveURL(/\/run\?.*protocolId=/);
   });
@@ -145,7 +146,7 @@ test.describe('Protocol Library', () => {
       );
       return component?.protocols()?.length ?? 0;
     });
-    
+
     expect(protocolCount).toBeGreaterThan(0);
   });
 
