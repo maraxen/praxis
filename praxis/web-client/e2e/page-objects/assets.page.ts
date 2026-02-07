@@ -474,8 +474,8 @@ export class AssetsPage extends BasePage {
         return wizard;
     }
 
-    async verifyAssetVisible(name: string) {
-        await expect(this.page.getByText(name).first()).toBeVisible({ timeout: 10000 });
+    async verifyAssetVisible(name: string, timeout: number = 10000) {
+        await expect(this.page.getByText(name).first()).toBeVisible({ timeout });
     }
 
     async verifyAssetNotVisible(name: string, timeout: number = 5000) {

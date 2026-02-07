@@ -14,8 +14,10 @@ export class SmokePage extends BasePage {
   /**
    * OVERRIDE: Navigate using 'browser' mode with pre-seeded database.
    * Using resetdb=false to preserve the seeded praxis.db data.
+   * Accepts a path string or BasePage options.
    */
-  async goto(path: string): Promise<void> {
+  override async goto(pathOrOptions?: string | { waitForDb?: boolean; resetdb?: boolean; dbOverride?: string }): Promise<void> {
+    const path = typeof pathOrOptions === 'string' ? pathOrOptions : '/';
     const url = buildWorkerUrl(path, this.workerIndex, {
       resetdb: false,
       mode: 'browser',
@@ -23,7 +25,6 @@ export class SmokePage extends BasePage {
     await this.page.goto(url, { waitUntil: 'domcontentloaded' });
 
     // Wait for SQLite ready signal using modern attribute-based selector
-    // This is more robust than waitForFunction polling window objects
     await this.page.locator('[data-sqlite-ready="true"]').waitFor({
       state: 'attached',
       timeout: 30000

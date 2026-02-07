@@ -1,4 +1,4 @@
-import { Page, Locator, expect } from '@playwright/test';
+import { Page, Locator, expect, TestInfo } from '@playwright/test';
 import { BasePage } from './base.page';
 import { InventoryDialogPage } from './inventory-dialog.page';
 import { JupyterlitePage } from './jupyterlite.page';
@@ -8,8 +8,8 @@ export class PlaygroundPage extends BasePage {
     readonly directControlTab: Locator;
     readonly jupyter: JupyterlitePage;
 
-    constructor(page: Page) {
-        super(page, '/playground');
+    constructor(page: Page, testInfo?: TestInfo) {
+        super(page, '/playground', testInfo);
         this.inventoryButton = page.locator('button').filter({ has: page.locator('mat-icon', { hasText: 'inventory_2' }) });
         this.directControlTab = page.getByRole('tab', { name: 'Direct Control' });
         this.jupyter = new JupyterlitePage(page);
@@ -19,7 +19,7 @@ export class PlaygroundPage extends BasePage {
      * Navigate to the playground page.
      * Accepts either a mode string ('worker', 'browser') or standard BasePage options.
      */
-    async goto(modeOrOptions?: string | { waitForDb?: boolean; resetdb?: boolean; dbOverride?: string }): Promise<void> {
+    override async goto(modeOrOptions?: string | { waitForDb?: boolean; resetdb?: boolean; dbOverride?: string }): Promise<void> {
         if (typeof modeOrOptions === 'string') {
             // Mode shorthand: e.g., goto('worker')
             await super.goto({ waitForDb: modeOrOptions !== 'worker' });

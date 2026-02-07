@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../out-tsc/e2e",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2022",
+    "types": [
+      "bun-types"
+    ],
+    "paths": {}
+  },
+  "include": [
+    "**/*.ts"
+  ]
+}

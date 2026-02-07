@@ -22,10 +22,15 @@ export class WorkcellPage extends BasePage {
         this.focusView = page.locator('app-machine-focus-view');
     }
 
-    async goto(testInfo: TestInfo) {
-        const url = buildWorkerUrl('/app/workcell', testInfo.workerIndex);
-        await this.page.goto(url, { waitUntil: 'networkidle' });
-        
+    override async goto(testInfoOrOptions?: TestInfo | { waitForDb?: boolean; resetdb?: boolean; dbOverride?: string }) {
+        if (testInfoOrOptions && 'workerIndex' in testInfoOrOptions) {
+            // Called with TestInfo — build worker URL
+            const url = buildWorkerUrl('/app/workcell', testInfoOrOptions.workerIndex);
+            await this.page.goto(url, { waitUntil: 'networkidle' });
+        } else {
+            await super.goto(testInfoOrOptions as any);
+        }
+
         // Wait for content to be fully loaded (handles Angular lazy loading timing)
         await waitForContentReady(this.page, {
             contentSelector: 'app-workcell-dashboard',

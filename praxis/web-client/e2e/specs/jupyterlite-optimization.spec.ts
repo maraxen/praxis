@@ -17,24 +17,23 @@ test.describe('@slow JupyterLite Optimization Validation', () => {
     await playground.goto('worker');
     await playground.waitForKernelReady();
 
+    const consoleLogs: string[] = [];
+    page.on('console', msg => consoleLogs.push(msg.text()));
+
     // Assertion: Pylabrobot should be importable and version check
-    await playground.executeCode('import pylabrobot; print(f"PLR_FOUND_{pylabrobot.__version__}")');
-    // Wait for the output to be rendered before asserting its content
-    await playground.getOutput().waitFor();
-    await expect(playground.getOutput()).toContainText(/PLR_FOUND_0\.\d+\.\d+/);
+    const plrOutput = await playground.executeCode('import pylabrobot; print(f"PLR_FOUND_{pylabrobot.__version__}")');
+    expect(plrOutput).toMatch(/PLR_FOUND_0\.\d+\.\d+/);
 
     // Domain Coverage: Beyond just import, verify a core method works
-    await playground.executeCode(`
+    const lhOutput = await playground.executeCode(`
 from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.liquid_handling.backends import SimulatorBackend
 print("LH_INIT_SUCCESS" if LiquidHandler else "LH_INIT_FAIL")
 `);
-    await playground.getOutput().waitFor();
-    await expect(playground.getOutput()).toContainText('LH_INIT_SUCCESS');
+    expect(lhOutput).toContain('LH_INIT_SUCCESS');
 
     // Critical Assertion: We should NOT see "Installing pylabrobot..."
-    // The console log is still useful for this negative assertion.
-    const hasManualInstallLog = playground.hasConsoleLog('Installing pylabrobot from local wheel...');
+    const hasManualInstallLog = consoleLogs.some(log => log.includes('Installing pylabrobot from local wheel...'));
     expect(hasManualInstallLog, 'Manual installation of pylabrobot detected! It should be pre-loaded.').toBe(false);
   });
 
@@ -54,7 +53,7 @@ print("LH_INIT_SUCCESS" if LiquidHandler else "LH_INIT_FAIL")
 
     if (!swStatus.available) {
       console.log('[Phase 2] SW test skipped:', swStatus);
-      test.skip('Service Worker not active - likely running in dev mode');
+      test.skip(true, 'Service Worker not active - likely running in dev mode');
     }
 
     playground = new PlaygroundPage(page, testInfo);

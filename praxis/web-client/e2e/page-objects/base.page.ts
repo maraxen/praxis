@@ -8,7 +8,7 @@ import { Page, Locator, TestInfo, expect } from '@playwright/test';
  * OPFS contention between parallel tests.
  */
 export abstract class BasePage {
-    protected page: Page;
+    readonly page: Page;
     protected testInfo?: TestInfo;
     readonly url: string;
 

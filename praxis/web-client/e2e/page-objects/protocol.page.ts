@@ -25,7 +25,7 @@ export class ProtocolPage extends BasePage {
         await this.page.keyboard.press('Escape').catch((e) => console.log('[Test] Silent catch (Overlay Escape):', e));
     }
 
-    async goto(options: { waitForDb?: boolean } = {}) {
+    override async goto(options: { waitForDb?: boolean } = {}) {
         await super.goto(options);
         // Remove waits that rely on data being present
         // await this.protocolStep.waitFor({ state: 'visible' });

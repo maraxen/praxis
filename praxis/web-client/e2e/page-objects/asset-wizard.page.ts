@@ -5,13 +5,7 @@ export class AssetWizardPage extends BasePage {
   readonly dialog: Locator;
   readonly stepper: Locator;
 
-  // Step indicators
-  readonly stepType: Locator;
-  readonly stepCategory: Locator;
-  readonly stepMachineType: Locator;
-  readonly stepDriver: Locator;
-  readonly stepConfig: Locator;
-  readonly stepReview: Locator;
+  // Step indicators (resolved dynamically via waitForStep)
 
   // Type Step
   readonly machineTypeCard: Locator;

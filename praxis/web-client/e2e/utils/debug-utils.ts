@@ -13,8 +13,8 @@ import * as path from 'path';
  */
 export async function captureAccessibilityTree(page: Page): Promise<string> {
     try {
-        const snapshot = await page.accessibility.snapshot({ root: page.locator('body').first() });
-        return formatAccessibilityNode(snapshot, 0);
+        const snapshot = await page.locator('body').ariaSnapshot();
+        return snapshot;
     } catch (error) {
         return `[Error capturing accessibility tree: ${error}]`;
     }

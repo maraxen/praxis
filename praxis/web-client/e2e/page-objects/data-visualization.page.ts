@@ -32,7 +32,7 @@ export class DataVisualizationPage extends BasePage {
     /**
      * Navigate to the data visualization page and wait for content to load.
      */
-    async goto(options: { waitForDb?: boolean } = {}) {
+    override async goto(options: { waitForDb?: boolean } = {}) {
         await super.goto(options);
 
         // Wait for content to be fully loaded (handles Angular lazy loading timing)

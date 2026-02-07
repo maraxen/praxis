@@ -55,7 +55,7 @@ test.describe('Run Protocol - Machine Selection', () => {
         const protocolPage = new ProtocolPage(page);
         const wizardPage = new WizardPage(page);
 
-        await protocolPage.goto('/app/run?mode=physical');
+        await page.goto('/app/run?mode=physical');
         await welcomePage.handleSplashScreen();
 
         await protocolPage.selectFirstProtocol();
@@ -74,7 +74,7 @@ test.describe('Run Protocol - Machine Selection', () => {
 
         // Attempt to click and verify no selection change
         await simulatedCard.click({ force: true }); // Force click to ensure no selection
-        await wizardPage.verifyMachineSelected(null);
+        await wizardPage.verifyMachineSelected('');
     });
 
     test('should handle machine fetch failure gracefully', async ({ page }) => {
