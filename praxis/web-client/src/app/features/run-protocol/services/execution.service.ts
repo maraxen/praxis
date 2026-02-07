@@ -140,7 +140,8 @@ export class ExecutionService {
     runName: string,
     parameters?: Record<string, unknown>,
     simulationMode: boolean = true,
-    _notes?: string
+    notes?: string,
+    protocol?: any
   ): Observable<{ run_id: string }> {
     // AUDIT-01: Defense-in-depth validation
     if (!simulationMode && parameters) {
@@ -155,7 +156,7 @@ export class ExecutionService {
 
     // Browser mode: execute via Pyodide
     if (this.modeService.isBrowserMode()) {
-      return this.startBrowserRun(protocolId, runName, parameters, _notes);
+      return this.startBrowserRun(protocolId, runName, parameters, notes, protocol);
     }
 
     // Production mode: use HTTP API
@@ -186,7 +187,8 @@ export class ExecutionService {
     protocolId: string,
     runName: string,
     parameters?: Record<string, unknown>,
-    notes?: string
+    notes?: string,
+    protocol?: any
   ): Observable<{ run_id: string }> {
     const runId = crypto.randomUUID();
 
@@ -247,7 +249,8 @@ export class ExecutionService {
   private async executeBrowserProtocol(
     protocolId: string,
     runId: string,
-    parameters?: Record<string, unknown>
+    parameters?: Record<string, unknown>,
+    protocol?: any
   ): Promise<void> {
     try {
       // Update status to running
@@ -315,7 +318,7 @@ export class ExecutionService {
       await new Promise<void>((resolve, reject) => {
         let hasError = false;
 
-        this.pythonRuntime.executeBlob(blob, runId, machineConfig, deckSetupScript).subscribe({
+        this.pythonRuntime.executeBlob(blob, runId, machineConfig, deckSetupScript, parameters).subscribe({
           next: (output) => {
             if (output.type === 'stdout') {
               this.addLog(output.content);

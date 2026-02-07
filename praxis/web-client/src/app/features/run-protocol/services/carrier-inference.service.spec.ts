@@ -2,14 +2,33 @@ import { CarrierInferenceService } from './carrier-inference.service';
 import { DeckCatalogService } from './deck-catalog.service';
 import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 import { describe, it, expect, beforeEach } from 'vitest';
+import { TestBed } from '@angular/core/testing';
+import { SqliteService } from '@core/services/sqlite';
+import { of } from 'rxjs';
 
 describe('CarrierInferenceService', () => {
     let service: CarrierInferenceService;
-    let deckCatalog: DeckCatalogService;
 
     beforeEach(() => {
-        deckCatalog = new DeckCatalogService();
-        service = new CarrierInferenceService(deckCatalog);
+        const sqliteMock = {
+            deckDefinitions: of({ findAll: () => of([]) }),
+            resourceDefinitions: of({ findAll: () => of([]) }),
+            machineDefinitions: of({ findAll: () => of([]) })
+        };
+
+        TestBed.configureTestingModule({
+            providers: [
+                {
+                    provide: CarrierInferenceService,
+                    useFactory: (deckCatalog: DeckCatalogService) => new CarrierInferenceService(deckCatalog),
+                    deps: [DeckCatalogService]
+                },
+                DeckCatalogService,
+                { provide: SqliteService, useValue: sqliteMock }
+            ]
+        });
+
+        service = TestBed.inject(CarrierInferenceService);
     });
 
     it('should be created', () => {

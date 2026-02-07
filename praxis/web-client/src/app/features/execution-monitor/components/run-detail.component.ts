@@ -117,9 +117,10 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- Main Info Card -->
-          <mat-card class="lg:col-span-2 detail-card">
+          <mat-card class="lg:col-span-2 detail-card" data-testid="run-info-card">
             <mat-card-header>
               <mat-card-title>Run Information</mat-card-title>
+              <mat-card-subtitle>Run ID: {{ runId() }}</mat-card-subtitle>
             </mat-card-header>
             <mat-card-content class="pt-4">
               <!-- Status -->

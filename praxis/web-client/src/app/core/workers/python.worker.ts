@@ -7,6 +7,10 @@ interface PythonWorkerGlobalScope extends WorkerGlobalScope {
   protocol_bytes: Uint8Array;
   machine_config: any;
   deck_setup_script: string;
+  parameters: any;
+  metadata: any;
+  asset_requirements: any;
+  asset_specs: any;
   handlePythonOutput: (type: string, content: string) => void;
 }
 declare const self: PythonWorkerGlobalScope;
@@ -214,17 +218,38 @@ addEventListener('message', async (event) => {
         if (!pyodide) throw new Error('Pyodide not initialized');
         currentExecutionId = id;
         try {
-          const { blob, machine_config, deck_setup_script } = payload as { blob: ArrayBuffer, machine_config: any, deck_setup_script?: string };
+          const { 
+            blob, 
+            machine_config, 
+            deck_setup_script,
+            parameters,
+            metadata,
+            asset_requirements,
+            asset_specs
+          } = payload as { 
+            blob: ArrayBuffer, 
+            machine_config: any, 
+            deck_setup_script?: string,
+            parameters?: any,
+            metadata?: any,
+            asset_requirements?: any,
+            asset_specs?: any
+          };
           self.protocol_bytes = new Uint8Array(blob);
           self.machine_config = machine_config;
           self.deck_setup_script = deck_setup_script || '';
+          self.parameters = parameters || {};
+          self.metadata = metadata || {};
+          self.asset_requirements = asset_requirements || {};
+          self.asset_specs = asset_specs || {};
 
           await pyodide.runPythonAsync(`
 import cloudpickle
 import js
 import inspect
 import sys
-from web_bridge import create_configured_backend, create_browser_deck
+import json
+from web_bridge import create_configured_backend, create_browser_deck, resolve_parameters
 
 # Load function from bytes
 protocol_bytes = bytes(js.protocol_bytes)
@@ -234,11 +259,23 @@ protocol_func = cloudpickle.loads(protocol_bytes)
 sig = inspect.signature(protocol_func)
 kwargs = {}
 
-# Get config from JS
-config_proxy = js.machine_config
+# Resolve parameters using web_bridge
+print("[Browser] Resolving parameters...")
+try:
+    # Convert JS proxies to Python dicts where needed
+    py_params = js.parameters.toJs() if hasattr(js.parameters, 'toJs') else js.parameters
+    py_metadata = js.metadata.toJs() if hasattr(js.metadata, 'toJs') else js.metadata
+    py_asset_reqs = js.asset_requirements.toJs() if hasattr(js.asset_requirements, 'toJs') else js.asset_requirements
+    py_asset_specs = js.asset_specs.toJs() if hasattr(js.asset_specs, 'toJs') else js.asset_specs
 
-if 'backend' in sig.parameters:
-    # Pass the proxy directly, the python function handles conversion
+    resolved_params = resolve_parameters(py_params, py_metadata, py_asset_reqs, py_asset_specs)
+    kwargs.update(resolved_params)
+except Exception as e:
+    print(f"Error resolving parameters: {e}", file=sys.stderr)
+
+# Fallback/Explicit injections for specific parameter names if not already resolved
+config_proxy = js.machine_config
+if 'backend' in sig.parameters and 'backend' not in kwargs:
     kwargs['backend'] = create_configured_backend(config_proxy)
 
 # Setup Deck
@@ -417,6 +454,7 @@ if 'state' in sig.parameters and 'state' not in kwargs:
 
 # Execute
 async def run_wrapper():
+    print(f"[Browser] Calling protocol function with args: {list(kwargs.keys())}")
     if inspect.iscoroutinefunction(protocol_func):
         await protocol_func(**kwargs)
     else:

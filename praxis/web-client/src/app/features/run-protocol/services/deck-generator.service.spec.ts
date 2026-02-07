@@ -3,21 +3,40 @@ import { DeckCatalogService } from './deck-catalog.service';
 import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Machine, MachineStatus } from '@features/assets/models/asset.models';
+import { TestBed } from '@angular/core/testing';
+import { SqliteService } from '@core/services/sqlite';
+import { AssetService } from '@features/assets/services/asset.service';
+import { of } from 'rxjs';
 
 describe('DeckGeneratorService', () => {
     let service: DeckGeneratorService;
-    let assetService: any;
-    let deckCatalog: DeckCatalogService;
 
     beforeEach(() => {
-        // Create DeckCatalogService instance
-        deckCatalog = new DeckCatalogService();
-        assetService = {
-            getResourceDefinition: () => Promise.resolve(null)
+        const sqliteMock = {
+            deckDefinitions: of({ findAll: () => of([]) }),
+            resourceDefinitions: of({ findAll: () => of([]) }),
+            machineDefinitions: of({ findAll: () => of([]) })
         };
 
-        // Create service instance with dependency
-        service = new DeckGeneratorService(deckCatalog, assetService as any);
+        const assetServiceMock = {
+            getResourceDefinition: vi.fn().mockResolvedValue(null)
+        };
+
+        TestBed.configureTestingModule({
+            providers: [
+                {
+                    provide: DeckGeneratorService,
+                    useFactory: (deckCatalog: DeckCatalogService, assetService: AssetService) => 
+                        new DeckGeneratorService(deckCatalog, assetService),
+                    deps: [DeckCatalogService, AssetService]
+                },
+                DeckCatalogService,
+                { provide: SqliteService, useValue: sqliteMock },
+                { provide: AssetService, useValue: assetServiceMock }
+            ]
+        });
+
+        service = TestBed.inject(DeckGeneratorService);
     });
 
     it('should be created', () => {

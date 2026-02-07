@@ -178,7 +178,16 @@ export class PythonRuntimeService implements ReplRuntime {
     return subject.asObservable();
   }
 
-  executeBlob(blob: ArrayBuffer, id?: string, machineConfig?: any, deckSetupScript?: string): Observable<ReplOutput> {
+  executeBlob(
+    blob: ArrayBuffer, 
+    id?: string, 
+    machineConfig?: any, 
+    deckSetupScript?: string,
+    parameters?: Record<string, any>,
+    metadata?: Record<string, any>,
+    assetRequirements?: Record<string, any>,
+    assetSpecs?: Record<string, any>
+  ): Observable<ReplOutput> {
     const runId = id || crypto.randomUUID();
     const subject = new Subject<ReplOutput>();
     this.stdoutSubjects.set(runId, subject);
@@ -194,7 +203,11 @@ export class PythonRuntimeService implements ReplRuntime {
         payload: {
           blob,
           machine_config: machineConfig,
-          deck_setup_script: deckSetupScript
+          deck_setup_script: deckSetupScript,
+          parameters,
+          metadata,
+          asset_requirements: assetRequirements,
+          asset_specs: assetSpecs
         }
       });
 

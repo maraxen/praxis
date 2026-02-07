@@ -5,16 +5,16 @@ import { WizardPage } from '../../page-objects/wizard.page';
 import { ExecutionMonitorPage } from '../../page-objects/monitor.page';
 
 test.describe('Execution Monitoring', () => {
-  test.beforeEach(async ({ page }) => {
-    const welcomePage = new WelcomePage(page);
+  test.beforeEach(async ({ page }, testInfo) => {
+    const welcomePage = new WelcomePage(page, testInfo);
     await welcomePage.goto();
     await welcomePage.handleSplashScreen();
   });
 
-  test('should display execution log panel during protocol run', async ({ page }) => {
-    const protocolPage = new ProtocolPage(page);
+  test('should display execution log panel during protocol run', async ({ page }, testInfo) => {
+    const protocolPage = new ProtocolPage(page, testInfo);
     const wizardPage = new WizardPage(page);
-    const monitorPage = new ExecutionMonitorPage(page);
+    const monitorPage = new ExecutionMonitorPage(page, testInfo);
 
     // 1. Navigate to protocols and start a run
     await protocolPage.goto();
@@ -25,6 +25,7 @@ test.describe('Execution Monitoring', () => {
     await wizardPage.completeParameterStep();
     await wizardPage.selectFirstCompatibleMachine();
     await wizardPage.waitForAssetsAutoConfigured();
+    await wizardPage.completeWellSelectionStep();
     await wizardPage.advanceDeckSetup();
     await wizardPage.openReviewStep();
     await wizardPage.startExecution();

@@ -6,6 +6,12 @@ import { WizardPage } from '../page-objects/wizard.page';
 
 test.describe.serial('Protocol Execution E2E', () => {
     test.beforeEach(async ({ page }) => {
+        page.on('console', msg => {
+            const text = msg.text();
+            if (msg.type() === 'error' || text.includes('[Python') || text.includes('[Worker]') || text.includes('[Browser]')) {
+                console.log(`[Browser Console] ${text}`);
+            }
+        });
         await page.goto('/');
         // In browser mode, we expect a redirect to /app/home
         await page.waitForURL('**/app/home', { timeout: 15000 }).catch((e) => {

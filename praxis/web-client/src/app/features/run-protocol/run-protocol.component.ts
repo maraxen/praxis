@@ -398,7 +398,7 @@ interface FilterCategory {
                         <span class="font-medium">{{ param.name }}</span>
                         <span class="text-sm text-sys-text-tertiary">{{ param.description }}</span>
                       </div>
-                      <button mat-stroked-button (click)="openWellSelector(param)" class="w-full !justify-start">
+                      <button mat-stroked-button (click)="openWellSelector(param)" class="w-full !justify-start" data-testid="well-selection-button">
                         <mat-icon class="mr-2">grid_on</mat-icon>
                         {{ getWellSelectionLabel(param.name) }}
                       </button>
@@ -1007,8 +1007,8 @@ export class RunProtocolComponent implements OnInit, HasUnsavedChanges {
 
   /** Called when inline deck setup wizard is skipped */
   onDeckSetupSkipped() {
-    // Allow proceeding even if skipped
-    this.configuredAssets.set({});
+    // Allow proceeding even if skipped. 
+    // We keep the configuredAssets from the Asset Selection step (Step 4).
     this.deckFormGroup.patchValue({ valid: true });
 
     // Auto-advance to verification step
@@ -1096,7 +1096,7 @@ export class RunProtocolComponent implements OnInit, HasUnsavedChanges {
     // Check for pre-selected protocol from query params
     this.route.queryParams.subscribe((params: any) => {
       const protocolId = params['protocolId'];
-      if (protocolId && this.protocols().length > 0) {
+      if (protocolId) {
         this.loadProtocolById(protocolId);
       }
     });
@@ -1508,12 +1508,10 @@ export class RunProtocolComponent implements OnInit, HasUnsavedChanges {
       const runName = this.runNameControl.value?.trim() || `${protocol.name} - ${new Date().toLocaleString()}`;
       const runNotes = this.runNotesControl.value?.trim() || '';
 
-      // Merge parameters form values with configured assets and well selections
-      // This ensures backend receives both standard parameters and asset mappings
+      // Merge parameters form values with well selections
       const wellSelections = this.wellSelections();
       const params: Record<string, any> = {
         ...this.parametersFormGroup.value,
-        ...this.configuredAssets(),
       };
 
       // Add well selections, serializing arrays to comma-separated strings
@@ -1522,15 +1520,26 @@ export class RunProtocolComponent implements OnInit, HasUnsavedChanges {
         params[name] = wellsStr;
       });
 
+      // Map configured assets (consumables/resources) to their parameter names
+      const assetMappings = this.configuredAssets() || {};
+      protocol.assets?.forEach(assetReq => {
+        const selectedResource = assetMappings[assetReq.accession_id];
+        if (selectedResource) {
+          // Use original parameter name (assetReq.name) as the key
+          params[assetReq.name] = selectedResource.accession_id;
+        }
+      });
+
       // Add machine argument mappings from per-argument selector
       const machineAssignments = this.machineSelections();
       for (const sel of machineAssignments) {
+        const key = sel.parameterName || sel.argumentName;
         if (sel.selectedMachine) {
           // Existing machine: reference by accession_id
-          params[sel.argumentName] = sel.selectedMachine.accession_id;
+          params[key] = sel.selectedMachine.accession_id;
         } else if (sel.selectedBackend) {
           // New simulated instance: pass backend info for runtime creation
-          params[sel.argumentName] = {
+          params[key] = {
             _create_from_backend: true,
             backend_accession_id: sel.selectedBackend.accession_id,
             frontend_accession_id: sel.frontendId,
@@ -1545,7 +1554,8 @@ export class RunProtocolComponent implements OnInit, HasUnsavedChanges {
         runName,
         params,
         this.store.simulationMode(),  // Use global store
-        runNotes  // Add notes parameter
+        runNotes,  // Add notes parameter
+        protocol
       ).pipe(
         finalize(() => this.isStartingRun.set(false))
       ).subscribe({

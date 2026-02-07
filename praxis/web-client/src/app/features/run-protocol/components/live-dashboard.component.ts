@@ -27,7 +27,7 @@ import { Subscription } from 'rxjs';
     TelemetryChartComponent
   ],
   template: `
-    <div class="p-6">
+    <div class="p-6" data-testid="run-detail-view">
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold">Execution Monitor</h1>
         <div class="flex items-center gap-2">
@@ -41,7 +41,7 @@ import { Subscription } from 'rxjs';
       @if (executionService.currentRun(); as run) {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- Status Card -->
-          <mat-card class="glass-panel">
+          <mat-card class="glass-panel" data-testid="run-info-card">
             <mat-card-header>
               <mat-card-title>{{ run.protocolName }}</mat-card-title>
               <mat-card-subtitle>Run ID: {{ run.runId }}</mat-card-subtitle>
@@ -50,6 +50,7 @@ import { Subscription } from 'rxjs';
               <div class="flex items-center gap-2 mb-4">
                 <mat-chip-set>
                   <mat-chip [highlighted]="run.status === ExecutionStatus.RUNNING"
+                    data-testid="run-status"
                     [style.background-color]="run.status === ExecutionStatus.COMPLETED ? 'var(--theme-status-success-muted)' : (run.status === ExecutionStatus.FAILED ? 'var(--theme-status-error-muted)' : 'transparent')">
                     {{ run.status | uppercase }}
                   </mat-chip>
@@ -84,12 +85,15 @@ import { Subscription } from 'rxjs';
           </mat-card>
     
           <!-- Log Output -->
-          <mat-card class="glass-panel lg:col-span-2">
+          <mat-card class="glass-panel lg:col-span-2" role="region" aria-label="Execution Log">
             <mat-card-header>
               <mat-card-title>Execution Log</mat-card-title>
             </mat-card-header>
             <mat-card-content class="pt-4">
-              <div style="background-color: var(--mat-sys-surface-container);" [style.color]="'var(--theme-status-success)'" class="font-mono text-sm p-4 rounded-lg h-64 overflow-y-auto">
+              <div style="background-color: var(--mat-sys-surface-container);" 
+                   [style.color]="'var(--theme-status-success)'" 
+                   class="font-mono text-sm p-4 rounded-lg h-64 overflow-y-auto"
+                   data-testid="log-panel">
                 @for (log of run.logs; track $index) {
                   <div class="mb-1">{{ log }}</div>
                 }

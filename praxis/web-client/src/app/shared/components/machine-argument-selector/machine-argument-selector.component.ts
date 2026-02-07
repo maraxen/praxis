@@ -17,6 +17,7 @@ import { firstValueFrom } from 'rxjs';
 export interface MachineArgumentSelection {
   argumentId: string;  // The asset requirement accession_id
   argumentName: string;  // Display name
+  parameterName: string; // The original Python parameter name
   frontendId: string;  // Frontend definition accession_id
   selectedMachine?: Machine;  // If user selected an existing machine
   selectedBackend?: MachineBackendDefinition;  // If user selected a backend to create new
@@ -723,6 +724,7 @@ export class MachineArgumentSelectorComponent implements OnInit, OnChanges {
         selection: {
           argumentId: req.requirement.accession_id || '',
           argumentName: this.getArgumentDisplayName(req.requirement),
+          parameterName: req.requirement.name,
           frontendId: req.frontend?.accession_id || '',
           selectedMachine: machine,
           selectedBackend: undefined,
@@ -776,6 +778,7 @@ export class MachineArgumentSelectorComponent implements OnInit, OnChanges {
         selection: {
           argumentId: req.requirement.accession_id || '',
           argumentName: this.getArgumentDisplayName(req.requirement),
+          parameterName: req.requirement.name,
           frontendId: req.frontend?.accession_id || '',
           selectedMachine: newMachine,
           selectedBackend: backend,

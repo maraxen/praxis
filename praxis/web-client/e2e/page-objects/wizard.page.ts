@@ -485,4 +485,3 @@ export class WizardPage {
         expect(selectedId).toBe(expectedAccessionId);
     }
 }
-

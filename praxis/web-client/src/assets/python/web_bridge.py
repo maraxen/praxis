@@ -57,6 +57,10 @@ def resolve_parameters(params, metadata, asset_reqs, asset_specs=None):
     # Check if this parameter is a resource (Plate, TipRack, etc.)
     effective_type = type_hint or asset_type
     is_resource = any(t in effective_type for t in ["plate", "tiprack", "resource", "container"])
+    
+    # Heuristic for JS resource objects even if metadata is missing
+    if not is_resource and isinstance(value, dict) and ("fqn" in value or "asset_type" in value):
+      is_resource = True
 
     if is_resource:
       # If value is a dict, it's likely a Resource object from the frontend
@@ -65,11 +69,28 @@ def resolve_parameters(params, metadata, asset_reqs, asset_specs=None):
         resource_fqn = value.get("fqn", "")
         resource_name = value.get("name", name)
 
-        # Simple heuristic fallback
+        # 1. Try to dynamically import and instantiate from FQN
+        if resource_fqn:
+          try:
+            parts = resource_fqn.split('.')
+            module_path = ".".join(parts[:-1])
+            class_name = parts[-1]
+            # Use __import__ to load the module
+            module = __import__(module_path, fromlist=[class_name])
+            ResourceClass = getattr(module, class_name)
+            # Instantiate with name
+            resolved[name] = ResourceClass(name=resource_name)
+            continue # Success!
+          except Exception as e:
+            pass # Fallback to heuristics
+
+        # 2. Simple heuristic fallback
         if "plate" in resource_fqn.lower() or "plate" in effective_type:
-          resolved[name] = res.Plate(name=resource_name, size_x=12, size_y=8, lid=False)
+          resolved[name] = res.Plate(name=resource_name, size_x=127.7, size_y=85.4, size_z=14.5, num_items_x=12, num_items_y=8)
         elif "tiprack" in resource_fqn.lower() or "tiprack" in effective_type:
-          resolved[name] = res.TipRack(name=resource_name, size_x=12, size_y=8)
+          resolved[name] = res.TipRack(name=resource_name, size_x=127.7, size_y=85.4, size_z=14.5, num_items_x=12, num_items_y=8)
+        elif "trough" in resource_fqn.lower() or "reservoir" in resource_fqn.lower() or "trough" in effective_type:
+          resolved[name] = res.Plate(name=resource_name, size_x=127.7, size_y=85.4, size_z=14.5, num_items_x=1, num_items_y=1) # Simple fallback
         else:
           resolved[name] = res.Resource(name=resource_name, size_x=0, size_y=0, size_z=0)
 
@@ -93,7 +114,7 @@ def resolve_parameters(params, metadata, asset_reqs, asset_specs=None):
             sx, sy = 12, 8  # Default fallback
 
           if "plate" in effective_type:
-            resolved[name] = res.Plate(name=r_name, size_x=sx, size_y=sy, lid=False)
+            resolved[name] = res.Plate(name=r_name, size_x=sx, size_y=sy, size_z=10)
           elif "tiprack" in effective_type:
             resolved[name] = res.TipRack(name=r_name, size_x=sx, size_y=sy)
           else:
@@ -103,9 +124,9 @@ def resolve_parameters(params, metadata, asset_reqs, asset_specs=None):
         else:
           # Fallback if no spec found
           if "plate" in effective_type:
-            resolved[name] = res.Plate(name=name, size_x=12, size_y=8, lid=False)
+            resolved[name] = res.Plate(name=name, size_x=127.7, size_y=85.4, size_z=14.5, num_items_x=12, num_items_y=8)
           elif "tiprack" in effective_type:
-            resolved[name] = res.TipRack(name=name, size_x=12, size_y=8)
+            resolved[name] = res.TipRack(name=name, size_x=127.7, size_y=85.4, size_z=14.5, num_items_x=12, num_items_y=8)
           else:
             resolved[name] = value
     else:
@@ -730,9 +751,21 @@ def create_configured_backend(config):
   Returns:
       A PLR backend instance
   """
+  if config is None:
+    return WebBridgeBackend()
+
   # config might be a JsProxy if coming directly from JS, so we convert if needed
   if hasattr(config, "to_py"):
     config = config.to_py()
+
+  if config is None: # In case to_py() returned None
+    return WebBridgeBackend()
+
+  if not isinstance(config, dict):
+    # If it's not a dict, it might be a JsProxy that didn't convert well, or just some other value
+    # Try to treat it as a dict if it has a .get method, otherwise fallback
+    if not hasattr(config, "get"):
+      return WebBridgeBackend()
 
   fqn = config.get("backend_fqn", "pylabrobot.liquid_handling.backends.LiquidHandlerBackend")
 

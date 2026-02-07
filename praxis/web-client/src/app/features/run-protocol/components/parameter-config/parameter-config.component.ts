@@ -299,15 +299,16 @@ export class ParameterConfigComponent implements OnChanges {
   private isWellParameter(param: ParameterMetadata): boolean {
     const name = (param.name || '').toLowerCase();
 
-    // Check name patterns - only hide if specifically declared as handled elsewhere
-    // For now, allow these to show if they are in the parameters list
-    const hiddenPatterns = ['internal_well_state', 'temp_wells'];
-    if (hiddenPatterns.some(p => name.includes(p))) {
+    // Check name patterns - hide if it looks like a well selection parameter
+    // These are handled by the separate Well Selection step in the wizard
+    const wellNamePatterns = ['well', 'wells', 'source_wells', 'target_wells', 'well_ids', 'indices'];
+    if (wellNamePatterns.some(p => name.includes(p))) {
       return true;
     }
 
     // Check ui_hint if available
-    if ((param as any).ui_hint?.type === 'well_selector') {
+    const uiHint = (param as any).ui_hint;
+    if (uiHint === 'well_selector' || uiHint?.type === 'well_selector') {
       return true;
     }
 

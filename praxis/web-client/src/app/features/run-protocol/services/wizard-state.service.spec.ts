@@ -1,22 +1,39 @@
-import { WizardStateService, WizardStep } from './wizard-state.service';
+import { TestBed } from '@angular/core/testing';
+import { WizardStateService } from './wizard-state.service';
 import { CarrierInferenceService } from './carrier-inference.service';
 import { DeckCatalogService } from './deck-catalog.service';
+import { ConsumableAssignmentService } from './consumable-assignment.service';
 import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 describe('WizardStateService', () => {
     let service: WizardStateService;
-    let carrierInference: CarrierInferenceService;
-    let consumableAssignment: any;
-    let deckCatalog: DeckCatalogService;
+    let mockCarrierInference: any;
 
     beforeEach(() => {
-        deckCatalog = new DeckCatalogService();
-        carrierInference = new CarrierInferenceService(deckCatalog);
-        consumableAssignment = {
-            findCompatibleConsumable: () => Promise.resolve(null)
+        mockCarrierInference = {
+            createDeckSetup: vi.fn().mockReturnValue({
+                carrierRequirements: [],
+                slotAssignments: [],
+                stackingHints: [],
+                complete: false
+            })
         };
-        service = new WizardStateService(carrierInference, deckCatalog, consumableAssignment as any);
+
+        TestBed.configureTestingModule({
+            providers: [
+                {
+                    provide: WizardStateService,
+                    useFactory: (a: any, b: any, c: any) => new WizardStateService(a, b, c),
+                    deps: [CarrierInferenceService, DeckCatalogService, ConsumableAssignmentService]
+                },
+                { provide: CarrierInferenceService, useValue: mockCarrierInference },
+                { provide: DeckCatalogService, useValue: {} },
+                { provide: ConsumableAssignmentService, useValue: {} }
+            ]
+        });
+
+        service = TestBed.inject(WizardStateService);
     });
 
     it('should be created', () => {
@@ -30,9 +47,7 @@ describe('WizardStateService', () => {
                 accession_id: 'test_1',
                 version: '1.0',
                 is_top_level: true,
-                assets: [
-                    { name: 'Plate1', accession_id: 'req_1', type_hint_str: 'Plate', fqn: '', optional: false, constraints: { required_methods: [], required_attributes: [], required_method_signatures: {}, required_method_args: {} }, location_constraints: { location_requirements: [], on_resource_type: '', stack: false, directly_position: false, position_condition: [] } },
-                ],
+                assets: [],
                 parameters: []
             };
 
@@ -40,7 +55,7 @@ describe('WizardStateService', () => {
 
             expect(service.currentStep()).toBe('carrier-placement');
             expect(service.protocol()).toBe(protocol);
-            expect(service.carrierRequirements().length).toBeGreaterThan(0);
+            expect(mockCarrierInference.createDeckSetup).toHaveBeenCalled();
         });
 
         it('should start with empty assignments for empty protocol', () => {
@@ -105,14 +120,22 @@ describe('WizardStateService', () => {
 
     describe('carrier placement tracking', () => {
         beforeEach(() => {
+            mockCarrierInference.createDeckSetup.mockReturnValue({
+                carrierRequirements: [
+                    { carrierFqn: 'fqn1', placed: false },
+                    { carrierFqn: 'fqn2', placed: false }
+                ],
+                slotAssignments: [],
+                stackingHints: [],
+                complete: false
+            });
+
             const protocol: ProtocolDefinition = {
                 name: 'Test',
                 accession_id: 'test_1',
                 version: '1.0',
                 is_top_level: true,
-                assets: [
-                    { name: 'Plate1', accession_id: 'req_1', type_hint_str: 'Plate', fqn: '', optional: false, constraints: { required_methods: [], required_attributes: [], required_method_signatures: {}, required_method_args: {} }, location_constraints: { location_requirements: [], on_resource_type: '', stack: false, directly_position: false, position_condition: [] } },
-                ],
+                assets: [],
                 parameters: []
             };
             service.initialize(protocol);
@@ -190,27 +213,30 @@ describe('WizardStateService', () => {
 
     describe('progress computation', () => {
         it('should compute progress correctly', () => {
+            mockCarrierInference.createDeckSetup.mockReturnValue({
+                carrierRequirements: [{ carrierFqn: 'c1', placed: false }],
+                slotAssignments: [{ resource: { name: 'r1' }, placed: false }],
+                stackingHints: [],
+                complete: false
+            });
+
             const protocol: ProtocolDefinition = {
                 name: 'Test',
                 accession_id: 'test_1',
                 version: '1.0',
                 is_top_level: true,
-                assets: [
-                    { name: 'Plate1', accession_id: 'req_1', type_hint_str: 'Plate', fqn: '', optional: false, constraints: { required_methods: [], required_attributes: [], required_method_signatures: {}, required_method_args: {} }, location_constraints: { location_requirements: [], on_resource_type: '', stack: false, directly_position: false, position_condition: [] } },
-                    { name: 'Plate2', accession_id: 'req_2', type_hint_str: 'Plate', fqn: '', optional: false, constraints: { required_methods: [], required_attributes: [], required_method_signatures: {}, required_method_args: {} }, location_constraints: { location_requirements: [], on_resource_type: '', stack: false, directly_position: false, position_condition: [] } },
-                ],
+                assets: [],
                 parameters: []
             };
             service.initialize(protocol);
 
             expect(service.progress()).toBe(0);
 
-            // Mark carrier placed (1 carrier for 2 plates)
-            const reqs = service.carrierRequirements();
-            service.markCarrierPlaced(reqs[0].carrierFqn, true);
+            // Mark carrier placed
+            service.markCarrierPlaced('c1', true);
 
-            // 1 carrier + 0 resources / (1 carrier + 2 resources) = 33%
-            expect(service.progress()).toBeGreaterThan(0);
+            // 1 / 2 = 50%
+            expect(service.progress()).toBe(50);
         });
     });
 });
