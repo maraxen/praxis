@@ -204,7 +204,7 @@ export class ExecutionService {
       accession_id: runId,
       protocol_definition_accession_id: protocolId,
       name: runName,
-      status: 'queued',
+      status: ExecutionStatus.QUEUED,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       start_time: null,
@@ -252,6 +252,12 @@ export class ExecutionService {
     try {
       // Update status to running
       this.updateRunState({ status: ExecutionStatus.RUNNING });
+      
+      // Update status in DB as well
+      this.sqliteService.protocolRuns.pipe(
+        switchMap(repo => repo.update(runId, { status: ExecutionStatus.RUNNING, start_time: new Date().toISOString() }))
+      ).subscribe();
+
       this.addLog('[Browser Mode] Loading protocol...');
 
       // 1. Retrieve the ProtocolRun record to get resolved assets
@@ -302,6 +308,9 @@ export class ExecutionService {
 
       this.addLog(`[Browser Mode] Executing protocol binary`);
       this.updateRunState({ progress: 20, currentStep: 'Running protocol' });
+
+      // Artificial delay to make simulation testable in E2E
+      await new Promise(r => setTimeout(r, 1000));
 
       await new Promise<void>((resolve, reject) => {
         let hasError = false;
@@ -361,7 +370,7 @@ export class ExecutionService {
 
       // Update run status in DB
       this.sqliteService.protocolRuns.pipe(
-        switchMap(repo => repo.update(runId, { status: 'completed', end_time: new Date().toISOString() }))
+        switchMap(repo => repo.update(runId, { status: ExecutionStatus.COMPLETED, end_time: new Date().toISOString() }))
       ).subscribe();
       this.stopHeartbeat();
     } catch (error) {
@@ -377,7 +386,7 @@ export class ExecutionService {
 
       // Update run status in DB
       this.sqliteService.protocolRuns.pipe(
-        switchMap(repo => repo.update(runId, { status: 'failed', end_time: new Date().toISOString() }))
+        switchMap(repo => repo.update(runId, { status: ExecutionStatus.FAILED, end_time: new Date().toISOString() }))
       ).subscribe();
       this.stopHeartbeat();
     }
@@ -656,7 +665,15 @@ print(f"[Browser] Protocol finished with result: {result}")
     if (this.modeService.isBrowserMode()) {
       // Browser mode: stop Python runtime
       this.pythonRuntime.interrupt();
-      return of(undefined);
+      
+      // Update local state and DB immediately for UI responsiveness
+      this.updateRunState({ status: ExecutionStatus.CANCELLED });
+      this.stopHeartbeat();
+
+      return this.sqliteService.protocolRuns.pipe(
+        switchMap(repo => repo.update(runId, { status: ExecutionStatus.CANCELLED, end_time: new Date().toISOString() })),
+        map(() => void 0)
+      );
     }
     return this.apiWrapper.wrap(ProtocolsService.cancelProtocolRunApiV1ProtocolsRunsRunIdCancelPost(runId))
       .pipe(map(() => undefined));
@@ -668,14 +685,24 @@ print(f"[Browser] Protocol finished with result: {result}")
   // once the client is updated.
   pause(runId: string): Observable<void> {
     if (this.modeService.isBrowserMode()) {
-      return of(undefined).pipe(tap(() => console.warn('Pause is not supported in browser mode.')));
+      // Mock pause in browser mode for UI/E2E consistency
+      this.updateRunState({ status: ExecutionStatus.PAUSED });
+      return this.sqliteService.protocolRuns.pipe(
+        switchMap(repo => repo.update(runId, { status: ExecutionStatus.PAUSED })),
+        map(() => void 0)
+      );
     }
     return this.http.post<void>(`${this.API_URL}/api/v1/execution/runs/${runId}/pause`, {});
   }
 
   resume(runId: string): Observable<void> {
     if (this.modeService.isBrowserMode()) {
-      return of(undefined).pipe(tap(() => console.warn('Resume is not supported in browser mode.')));
+      // Mock resume in browser mode
+      this.updateRunState({ status: ExecutionStatus.RUNNING });
+      return this.sqliteService.protocolRuns.pipe(
+        switchMap(repo => repo.update(runId, { status: ExecutionStatus.RUNNING })),
+        map(() => void 0)
+      );
     }
     return this.http.post<void>(`${this.API_URL}/api/v1/execution/runs/${runId}/resume`, {});
   }

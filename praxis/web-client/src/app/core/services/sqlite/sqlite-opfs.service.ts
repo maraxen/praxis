@@ -118,7 +118,8 @@ export class SqliteOpfsService {
     private ensureSchemaAndSeeds(): Observable<void> {
         // Check for protocols specifically - they only exist in praxis.db
         return this.exec("SELECT COUNT(*) as count FROM function_protocol_definitions").pipe(
-            catchError(() => {
+            catchError((err) => {
+                console.warn('[SqliteOpfsService] Table check failed (expected if fresh):', err.message);
                 // Table doesn't exist yet - need full initialization
                 return of({ resultRows: [{ count: 0 }] } as SqliteExecResult);
             }),
@@ -151,9 +152,12 @@ export class SqliteOpfsService {
      */
     private initializeFreshDatabase(): Observable<void> {
         console.log('[SqliteOpfsService] Attempting to load prebuilt database...');
+        const url = assetUrl('assets/db/praxis.db');
+        console.log(`[SqliteOpfsService] Fetching from: ${url}`);
 
-        return from(fetch(assetUrl('assets/db/praxis.db'))).pipe(
+        return from(fetch(url)).pipe(
             switchMap(res => {
+                console.log(`[SqliteOpfsService] Fetch response: ${res.status} ${res.ok}`);
                 if (!res.ok) {
                     console.warn(`[SqliteOpfsService] Prebuilt DB fetch failed (${res.status}), falling back to schema + seeds`);
                     return this.initializeFromSchema();

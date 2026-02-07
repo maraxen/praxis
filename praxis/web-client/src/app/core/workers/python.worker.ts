@@ -427,17 +427,37 @@ async def run_wrapper():
 
 await run_wrapper()
           `);
+          postMessage({ type: 'EXEC_COMPLETE', id, payload: null });
         } finally {
           currentExecutionId = undefined;
-          postMessage({ type: 'EXEC_COMPLETE', id, payload: null });
         }
         break;
     }
   } catch (error: unknown) {
+    let errorMessage = (error as Error).message || String(error);
+
+    // Try to get full Python traceback if it's a Pyodide error
+    if (pyodide) {
+      try {
+        const tracebackCode = `
+import sys
+import traceback
+_tb = traceback.format_exc()
+_tb if _tb and _tb.strip() != 'NoneType: None' else ''
+`.trim();
+        const traceback = pyodide.runPython(tracebackCode);
+        if (traceback && String(traceback).trim()) {
+          errorMessage = String(traceback);
+        }
+      } catch (err) {
+        // Fallback to original error if traceback capture fails
+      }
+    }
+
     postMessage({
       type: 'ERROR',
       id,
-      payload: (error as Error).message || String(error)
+      payload: errorMessage
     });
   }
 });

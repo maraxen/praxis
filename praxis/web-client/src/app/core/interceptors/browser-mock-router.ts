@@ -99,13 +99,13 @@ export class BrowserMockRouter {
                                 name: run.name,
                                 start_time: run.created_at, // Approximation if started_at missing
                                 end_time: run.updated_at,
-                                duration_ms: run.status === 'completed' ? 262000 : null,
+                                duration_ms: run.status === 'COMPLETED' ? 262000 : null,
                                 logs: [
                                     'Starting protocol execution...',
                                     'Initializing liquid handler...',
                                     'Loading deck configuration...',
                                     `Executing ${run.name}...`,
-                                    run.status === 'completed' ? 'Protocol completed successfully.' : 'Protocol execution in progress...',
+                                    run.status === 'COMPLETED' ? 'Protocol completed successfully.' : 'Protocol execution in progress...',
                                 ],
                             };
                         }
@@ -122,7 +122,7 @@ export class BrowserMockRouter {
                     created_at: r.created_at,
                     start_time: r.created_at,
                     end_time: r.updated_at,
-                    duration_ms: r.status === 'completed' ? 262000 : null,
+                    duration_ms: r.status === 'COMPLETED' ? 262000 : null,
                     protocol_name: r.name,
                     protocol_accession_id: r.top_level_protocol_definition_accession_id,
                 })))
@@ -146,7 +146,7 @@ export class BrowserMockRouter {
                             name: run.name,
                             start_time: run.created_at,
                             end_time: run.updated_at,
-                            duration_ms: run.status === 'completed' ? 262000 : null,
+                            duration_ms: run.status === 'COMPLETED' ? 262000 : null,
                         };
                     }
                     return null;
@@ -255,7 +255,7 @@ export class BrowserMockRouter {
         // POST protocol run - simulate creation
         if (url.includes('/protocols/runs') && method === 'POST') {
             const runBody = isCreateProtocolRunBody(body) ? body : {};
-            const newRun: ProtocolRun = {
+            const newRun = {
                 accession_id: crypto.randomUUID(),
                 status: 'queued',
                 created_at: new Date().toISOString(),

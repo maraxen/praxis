@@ -1,84 +1,106 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { RunProtocolComponent } from './run-protocol.component';
 import { ProtocolService } from '@features/protocols/services/protocol.service';
 import { ExecutionService } from './services/execution.service';
-import { DeckGeneratorService } from './services/deck-generator.service';
-import { WizardStateService } from './services/wizard-state.service';
 import { ModeService } from '@core/services/mode.service';
-import { SqliteService } from '@core/services/sqlite'; // Import SqliteService
 import { AppStore } from '@core/store/app.store';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
 import { signal } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { RouterTestingModule } from '@angular/router/testing';
+import { patchState } from '@ngrx/signals';
+import { DeckGeneratorService } from './services/deck-generator.service';
+import { AssetService } from '@features/assets/services/asset.service';
+import { DeckCatalogService } from './services/deck-catalog.service';
+import { WizardStateService } from './services/wizard-state.service';
 
 describe('RunProtocolComponent', () => {
     let component: RunProtocolComponent;
     let fixture: ComponentFixture<RunProtocolComponent>;
-    let mockStore: any;
+    let protocolService: any;
+    let executionService: any;
+    let modeService: any;
+    let store: any;
+    let router: any;
+    let deckGenerator: any;
+    let assetService: any;
+    let deckCatalog: any;
+    let wizardState: any;
 
     beforeEach(async () => {
-        mockStore = {
-            simulationMode: signal(false), // Default to physical
-            setSimulationMode: vi.fn()
-        };
+        // Mock matchMedia for AppStore
+        Object.defineProperty(window, 'matchMedia', {
+            writable: true,
+            value: vi.fn().mockImplementation(query => ({
+                matches: false,
+                media: query,
+                onchange: null,
+                addListener: vi.fn(),
+                removeListener: vi.fn(),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+                dispatchEvent: vi.fn(),
+            })),
+        });
 
-        const mockProtocolService = {
-            getProtocols: () => of([])
+        protocolService = {
+            getProtocols: vi.fn().mockReturnValue(of([])),
+            getProtocol: vi.fn()
         };
-
-        const mockExecutionService = {
-            getCompatibility: () => of([]),
-            startRun: () => of({}),
-            isRunning: signal(false)
+        executionService = {
+            isRunning: signal(false),
+            startRun: vi.fn().mockReturnValue(of({ id: 'run-123' })),
+            getCompatibility: vi.fn().mockReturnValue(of([]))
         };
-
-        const mockDeckGenerator = {
-            generateDeckForProtocol: () => null
+        modeService = {
+            mode: signal('browser'),
+            isBrowserMode: signal(true)
         };
-
-        const mockWizardState = {
-            getAssetMap: () => ({})
+        router = {
+            navigate: vi.fn()
         };
-
-        const mockModeService = {
-            isBrowserMode: () => false
+        deckGenerator = {
+            generateDeckForProtocol: vi.fn().mockReturnValue({ resource: {}, state: {} })
         };
-
-        const mockSqliteService = {
-            initDb: vi.fn(),
-            // Add other methods as needed
+        assetService = {
+            getMachineDefinitions: vi.fn().mockReturnValue(of([])),
+            getResourceDefinition: vi.fn().mockReturnValue(Promise.resolve(null)),
+            getMachineFrontendDefinitions: vi.fn().mockReturnValue(of([])),
+            getBackendsForFrontend: vi.fn().mockReturnValue(of([])),
+            getMachineBackendDefinitions: vi.fn().mockReturnValue(of([]))
+        };
+        deckCatalog = {
+            getDeckTypeForMachine: vi.fn().mockReturnValue('HamiltonSTARDeck'),
+            getDeckDefinition: vi.fn()
+        };
+        wizardState = {
+            getAssetMap: vi.fn().mockReturnValue({}),
+            setAssetMap: vi.fn()
         };
 
         await TestBed.configureTestingModule({
-            imports: [
-                RunProtocolComponent,
-                NoopAnimationsModule,
-                HttpClientTestingModule,
-                RouterTestingModule
-            ],
+            imports: [RunProtocolComponent, NoopAnimationsModule],
             providers: [
-                { provide: ProtocolService, useValue: mockProtocolService },
-                { provide: ExecutionService, useValue: mockExecutionService },
-                { provide: DeckGeneratorService, useValue: mockDeckGenerator },
-                { provide: WizardStateService, useValue: mockWizardState },
-                { provide: ModeService, useValue: mockModeService },
-                { provide: SqliteService, useValue: mockSqliteService }, // Provide mock SqliteService
-                { provide: AppStore, useValue: mockStore },
-                {
-                    provide: ActivatedRoute,
-                    useValue: {
-                        queryParams: of({}),
-                        snapshot: { queryParams: {} }
-                    }
-                }
+                { provide: ProtocolService, useValue: protocolService },
+                { provide: ExecutionService, useValue: executionService },
+                { provide: ModeService, useValue: modeService },
+                { provide: ActivatedRoute, useValue: { snapshot: { queryParams: {} }, queryParams: of({}) } },
+                { provide: Router, useValue: router },
+                { provide: MatSnackBar, useValue: { open: vi.fn() } },
+                { provide: MatDialog, useValue: { open: vi.fn() } },
+                { provide: DeckGeneratorService, useValue: deckGenerator },
+                { provide: AssetService, useValue: assetService },
+                { provide: DeckCatalogService, useValue: deckCatalog },
+                { provide: WizardStateService, useValue: wizardState },
+                AppStore
             ]
         }).compileComponents();
 
         fixture = TestBed.createComponent(RunProtocolComponent);
         component = fixture.componentInstance;
+        store = TestBed.inject(AppStore);
         fixture.detectChanges();
     });
 
@@ -88,106 +110,82 @@ describe('RunProtocolComponent', () => {
 
     describe('Machine Validation', () => {
         it('should identify simulated machine correctly', () => {
-            // 1. is_simulation_override = true
-            component.selectedMachine.set({
-                machine: { is_simulation_override: true, connection_info: {} } as any,
-                compatibility: { is_compatible: true } as any
-            });
-            expect(component.isMachineSimulated()).toBe(true);
-
-            // 2. is_simulated = true (legacy/duck type)
-            component.selectedMachine.set({
-                machine: { is_simulated: true, connection_info: {} } as any,
-                compatibility: { is_compatible: true } as any
-            });
-            expect(component.isMachineSimulated()).toBe(true);
-
-            // 3. backend includes 'Simulator'
-            component.selectedMachine.set({
-                machine: { connection_info: { backend: 'SomethingSimulatorBackend' } } as any,
-                compatibility: { is_compatible: true } as any
-            });
-            expect(component.isMachineSimulated()).toBe(true);
-
-            // 4. Real machine
-            component.selectedMachine.set({
-                machine: { connection_info: { backend: 'HamiltonSTAR' } } as any,
-                compatibility: { is_compatible: true } as any
-            });
-            expect(component.isMachineSimulated()).toBe(false);
+            const simulatedBackend = { backend_type: 'simulator' };
+            const selections = [{ argumentName: 'test', selectedBackend: simulatedBackend }] as any;
+            
+            component.machineSelections.set(selections);
+            patchState(store, { simulationMode: false });
+            
+            expect(component.showMachineError()).toBe(true);
         });
 
-        it('should show error when in Physical mode and machine is simulated', () => {
-            // Physical Mode
-            mockStore.simulationMode.set(false);
-
-            // Simulated Machine
-            component.selectedMachine.set({
-                machine: { is_simulation_override: true } as any,
-                compatibility: { is_compatible: true } as any
-            });
+        it('should show error when in Physical mode and machine is simulated', async () => {
+            patchState(store, { simulationMode: false });
+            
+            component.machineSelections.set([
+                { 
+                  argumentName: 'lh',
+                  selectedMachine: { 
+                    accession_id: 'm1', 
+                    backend_definition: { backend_type: 'simulator' } 
+                  }
+                } as any
+            ]);
 
             expect(component.showMachineError()).toBe(true);
         });
 
-        it('should NOT show error when in Simulation mode', () => {
-            // Simulation Mode
-            mockStore.simulationMode.set(true);
-
-            // Simulated Machine
-            component.selectedMachine.set({
-                machine: { is_simulation_override: true } as any,
-                compatibility: { is_compatible: true } as any
-            });
-
-            expect(component.showMachineError()).toBe(false);
-        });
-
-        it('should NOT show error for real machine', () => {
-            // Physical Mode
-            mockStore.simulationMode.set(false);
-
-            // Real Machine
-            component.selectedMachine.set({
-                machine: { connection_info: { backend: 'RealBackend' } } as any,
-                compatibility: { is_compatible: true } as any
-            });
+        it('should NOT show error when in Simulation mode', async () => {
+            patchState(store, { simulationMode: true });
+            
+            component.machineSelections.set([
+                { 
+                  argumentName: 'lh',
+                  selectedMachine: { 
+                    accession_id: 'm1', 
+                    backend_definition: { backend_type: 'simulator' } 
+                  }
+                } as any
+            ]);
 
             expect(component.showMachineError()).toBe(false);
         });
     });
 
-    describe('clearProtocol', () => {
-        it('should NOT clear protocol if stepper index > 0', () => {
-            const protocol = { accession_id: 'p1', name: 'Test' } as any;
-            component.selectedProtocol.set(protocol);
-            (component as any).stepper = { selectedIndex: 1 };
-
-            component.clearProtocol();
-
-            expect(component.selectedProtocol()).toBe(protocol);
+    describe('Navigation Guard', () => {
+        it('should have unsaved changes if a protocol is selected', () => {
+            component.selectedProtocol.set({ id: 'test', accession_id: 'test' } as any);
+            expect(component.hasUnsavedChanges()).toBe(true);
         });
 
-        it('should NOT clear protocol if stepper is undefined but protocol is already selected', () => {
-            // This guards against initialization race conditions
-            const protocol = { accession_id: 'p1', name: 'Test' } as any;
-            component.selectedProtocol.set(protocol);
-            (component as any).stepper = undefined;
-
-            component.clearProtocol();
-
-            // Guard treats undefined stepper + existing protocol as "deep in wizard"
-            expect(component.selectedProtocol()).toBe(protocol);
-        });
-
-        it('should allow clearing when no protocol selected and stepper at step 0', () => {
+        it('should NOT have unsaved changes if no protocol is selected', () => {
             component.selectedProtocol.set(null);
-            (component as any).stepper = { selectedIndex: 0 };
+            expect(component.hasUnsavedChanges()).toBe(false);
+        });
+    });
 
-            component.clearProtocol();
+    describe('State Hydration', () => {
+        it('should load state from localStorage', () => {
+            const state = {
+                protocolId: 'test-proto',
+                stepperIndex: 2,
+                machineSelections: [{ argumentName: 'lh', selectedMachine: { accession_id: 'm1' } }]
+            };
+            localStorage.setItem('praxis_run_wizard_state', JSON.stringify(state));
+            
+            // Mock protocols so find() works
+            component.protocols.set([{ accession_id: 'test-proto', name: 'Test' } as any]);
+            
+            const result = (component as any).loadStateFromStorage();
+            expect(result).toBe(true);
+            expect(component.selectedProtocol()?.accession_id).toBe('test-proto');
+            expect(component.machineSelections()).toEqual(state.machineSelections);
+        });
 
-            // Clearing proceeds since no protocol was selected
-            expect(component.selectedProtocol()).toBeNull();
+        it('should return false if no state in localStorage', () => {
+            localStorage.removeItem('praxis_run_wizard_state');
+            const result = (component as any).loadStateFromStorage();
+            expect(result).toBe(false);
         });
     });
 });

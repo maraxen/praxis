@@ -41,9 +41,11 @@ import { AssetService } from '@features/assets/services/asset.service';
 import { SimulationConfigDialogComponent } from './components/simulation-config-dialog/simulation-config-dialog.component';
 import { Machine as _Machine, MachineDefinition, MachineStatus as _MachineStatus } from '@features/assets/models/asset.models';
 import { MACHINE_CATEGORIES, PLRCategory } from '@core/db/plr-category';
+import { HasUnsavedChanges } from '@core/guards/navigation.guard';
 
 
 const RECENTS_KEY = 'praxis_recent_protocols';
+const WIZARD_STORAGE_KEY = 'praxis_run_wizard_state';
 const MAX_RECENTS = 5;
 
 interface FilterOption {
@@ -673,8 +675,15 @@ interface FilterCategory {
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RunProtocolComponent implements OnInit {
-  @ViewChild('stepper') stepper!: MatStepper;
+export class RunProtocolComponent implements OnInit, HasUnsavedChanges {
+  @ViewChild('stepper') set stepperRef(v: MatStepper) {
+    if (v) {
+      this.stepper = v;
+      // Auto-save on step change
+      v.selectionChange.subscribe(() => this.saveStateToStorage());
+    }
+  }
+  stepper!: MatStepper;
   private _formBuilder = inject(FormBuilder);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -720,6 +729,11 @@ export class RunProtocolComponent implements OnInit {
     return protocol?.parameters?.some(p => this.isWellSelectionParameter(p)) ?? false;
   });
   wellSelections = signal<Record<string, string[]>>({});
+
+  hasUnsavedChanges(): boolean {
+    // Only block if a protocol is selected and we haven't successfully started a run
+    return !!this.selectedProtocol() && !this.isStartingRun();
+  }
 
   // Compute asset IDs that should be excluded from GuidedSetup (because they are machines)
   excludedMachineAssetIds = computed(() => {
@@ -768,6 +782,100 @@ export class RunProtocolComponent implements OnInit {
         }, 100);
       }
     });
+
+    // Auto-save state when relevant data changes (Hydration Support)
+    effect(() => {
+      // Access signals to trigger effect
+      this.selectedProtocol();
+      this.machineSelections();
+      this.configuredAssets();
+      this.wellSelections();
+      this.runNameControl.value;
+      this.runNotesControl.value;
+      this.store.simulationMode();
+
+      this.saveStateToStorage();
+    });
+  }
+
+  private saveStateToStorage() {
+    if (!this.selectedProtocol() || this.isStartingRun()) {
+      // If no protocol or starting run, we don't need to keep setup state
+      // (starting run clears it anyway in subscribe)
+      return;
+    }
+
+    try {
+      const state = {
+        protocolId: this.selectedProtocol()?.accession_id,
+        parameters: this.parametersFormGroup.value,
+        machineSelections: this.machineSelections(),
+        configuredAssets: this.configuredAssets(),
+        wellSelections: this.wellSelections(),
+        stepperIndex: this.stepper?.selectedIndex || 0,
+        runName: this.runNameControl.value,
+        runNotes: this.runNotesControl.value,
+        simulationMode: this.store.simulationMode()
+      };
+      localStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.warn('[RunProtocol] Failed to save state', e);
+    }
+  }
+
+  private loadStateFromStorage(): boolean {
+    try {
+      const stored = localStorage.getItem(WIZARD_STORAGE_KEY);
+      if (!stored) return false;
+
+      const state = JSON.parse(stored);
+      if (!state.protocolId) return false;
+
+      const protocol = this.protocols().find(p => p.accession_id === state.protocolId);
+      if (!protocol) return false;
+
+      console.log('[RunProtocol] Hydrating state from Storage for protocol:', protocol.name);
+
+      // 1. Restore protocol (this resets forms, so we do it first)
+      this.selectProtocol(protocol);
+
+      // 2. Restore other states
+      if (state.parameters) {
+        this.parametersFormGroup.patchValue(state.parameters);
+      }
+      if (state.machineSelections) {
+        this.machineSelections.set(state.machineSelections);
+        // If selections exist, mark form as valid
+        const isValid = !!state.machineSelections.length;
+        this.machineSelectionsValid.set(isValid);
+        this.machineFormGroup.get('machineId')?.setValue(isValid ? 'valid' : '');
+      }
+      if (state.configuredAssets) {
+        this.configuredAssets.set(state.configuredAssets);
+        this.assetsFormGroup.patchValue({ valid: this.canProceedFromAssetSelection() });
+      }
+      if (state.wellSelections) {
+        this.wellSelections.set(state.wellSelections);
+        this.validateWellSelections();
+      }
+      if (state.runName) this.runNameControl.setValue(state.runName);
+      if (state.runNotes) this.runNotesControl.setValue(state.runNotes);
+      if (state.simulationMode !== undefined) this.store.setSimulationMode(state.simulationMode);
+
+      // 3. Restore Stepper index after a short delay
+      if (state.stepperIndex > 0) {
+        setTimeout(() => {
+          if (this.stepper) {
+            this.stepper.selectedIndex = state.stepperIndex;
+          }
+        }, 100);
+      }
+
+      return true;
+    } catch (e) {
+      console.warn('[RunProtocol] Failed to load state', e);
+      return false;
+    }
   }
 
   /** Helper to check if a machine is simulated */
@@ -995,12 +1103,25 @@ export class RunProtocolComponent implements OnInit {
   }
 
   loadProtocols() {
+    this.isLoading.set(true);
+    console.log('[RunProtocol] Loading protocols...');
     this.protocolService.getProtocols().pipe(
-      finalize(() => this.isLoading.set(false))
+      finalize(() => {
+        this.isLoading.set(false);
+        console.log('[RunProtocol] Protocol load finished. isLoading=false');
+      })
     ).subscribe({
       next: (protocols) => {
+        console.log(`[RunProtocol] Received ${protocols?.length || 0} protocols`);
         this.protocols.set(protocols);
-        // Check for pre-selected from query
+
+        // Priority 1: Hydrate from Storage
+        if (this.loadStateFromStorage()) {
+          console.log('[RunProtocol] Loaded state from storage.');
+          return;
+        }
+
+        // Priority 2: Check for pre-selected from query
         const protocolId = this.route.snapshot.queryParams['protocolId'];
         if (protocolId) {
           this.loadProtocolById(protocolId);
@@ -1020,7 +1141,15 @@ export class RunProtocolComponent implements OnInit {
   selectProtocol(protocol: ProtocolDefinition) {
     this.selectedProtocol.set(protocol);
     this.configuredAssets.set(null); // Reset deck config
-    this.parametersFormGroup = this._formBuilder.group({});
+
+    // Create form controls for parameters to support hydration and validation
+    const group: any = {};
+    if (protocol.parameters) {
+      protocol.parameters.forEach(p => {
+        group[p.name] = [p.default_value_repr ?? ''];
+      });
+    }
+    this.parametersFormGroup = this._formBuilder.group(group);
 
     // Auto-generate default run name
     const date = new Date().toISOString().split('T')[0];
@@ -1420,8 +1549,10 @@ export class RunProtocolComponent implements OnInit {
       ).pipe(
         finalize(() => this.isStartingRun.set(false))
       ).subscribe({
-        next: () => {
-          this.router.navigate(['live'], { relativeTo: this.route });
+        next: (response) => {
+          // Clear wizard state on success
+          localStorage.removeItem(WIZARD_STORAGE_KEY);
+          this.router.navigate(['/app/monitor', response.run_id]);
         },
         error: (err) => console.error('[RunProtocol] Failed to start run:', err)
       });

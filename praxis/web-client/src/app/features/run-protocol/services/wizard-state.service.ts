@@ -429,12 +429,12 @@ export class WizardStateService {
         if (deckType.includes('HamiltonSTAR')) {
             // Use STARLetDeck (32 rails) for STARLet, STARDeck (56 rails) for STAR
             if (deckType.includes('Let') || deckType === 'HamiltonSTARDeck') {
-                code += '    deck = STARLetDeck()\n';
+                code += '    deck = STARLetDeck(name="deck")\n';
             } else {
-                code += '    deck = STARDeck()\n';
+                code += '    deck = STARDeck(name="deck")\n';
             }
         } else if (deckType.includes('OTDeck')) {
-            code += '    deck = OTDeck()\n';
+            code += '    deck = OTDeck(name="deck")\n';
         } else {
             code += '    deck = res.Deck()\n';
         }

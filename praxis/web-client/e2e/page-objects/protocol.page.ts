@@ -1,4 +1,4 @@
-import { Page, Locator, expect } from '@playwright/test';
+import { Page, Locator, expect, TestInfo } from '@playwright/test';
 import { BasePage } from './base.page';
 import { WizardPage } from './wizard.page';
 import { ExecutionMonitorPage } from './monitor.page';
@@ -8,8 +8,8 @@ export class ProtocolPage extends BasePage {
     readonly protocolCards: Locator;
     readonly summaryTitle: Locator;
 
-    constructor(page: Page) {
-        super(page, '/app/protocols');
+    constructor(page: Page, testInfo?: TestInfo) {
+        super(page, '/app/protocols', testInfo);
         this.protocolStep = page.locator('[data-tour-id="run-step-protocol"]');
         this.protocolCards = page.locator('app-protocol-card');
         this.summaryTitle = this.protocolStep.locator('h2');
@@ -43,7 +43,10 @@ export class ProtocolPage extends BasePage {
     }
 
     async selectProtocolByName(name: string): Promise<string> {
+        console.log(`[ProtocolPage] Selecting protocol by name: ${name}`);
         const cardHost = this.protocolCards.filter({ hasText: name }).first();
+        // Wait for card to exist and be visible
+        await expect(cardHost).toBeVisible({ timeout: 30000 });
         const card = cardHost.locator('.praxis-card');
         await expect(card, `Protocol card for ${name} should be visible`).toBeVisible({ timeout: 15000 });
         await this.dismissOverlays();

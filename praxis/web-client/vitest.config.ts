@@ -9,6 +9,7 @@ export default defineConfig({
             '@shared': resolve(__dirname, './src/app/shared'),
             '@env': resolve(__dirname, './src/environments'),
             '@assets': resolve(__dirname, './src/assets'),
+            '@api': resolve(__dirname, './src/app/core/api-generated'),
         },
     },
     test: {

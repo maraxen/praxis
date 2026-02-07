@@ -72,25 +72,10 @@ export abstract class BasePage {
         // Wait for SQLite service ready signal - the definitive indicator that:
         // 1. OPFS initialized, 2. Worker active, 3. Schema migrated, 4. Seeding complete
         if (waitForDb && finalUrl.includes('mode=browser')) {
-            await this.page.waitForFunction(
-                () => {
-                    const service = (window as any).sqliteService;
-                    const hasService = !!service;
-                    // Signal check first (isReady is a function in Angular signals)
-                    const isSignal = typeof service?.isReady === 'function';
-                    const hasGetValue = typeof service?.isReady$?.getValue === 'function';
-                    const value = isSignal
-                        ? service.isReady()
-                        : (hasGetValue ? service.isReady$.getValue() : undefined);
-
-                    // Debug output visible in browser console
-                    console.log('[E2E] DB Ready check:', { hasService, isSignal, hasGetValue, value });
-
-                    return value === true;
-                },
-                null,
-                { timeout: 30000, polling: 500 }  // Increased timeout to 30s
-            );
+            await this.page.locator('[data-sqlite-ready="true"]').waitFor({
+                state: 'attached',
+                timeout: 60000
+            });
         }
     }
 

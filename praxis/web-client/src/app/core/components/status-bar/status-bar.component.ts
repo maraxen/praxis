@@ -47,27 +47,27 @@ import { PythonRuntimeService } from '@core/services/python-runtime.service';
       @if (currentRun()) {
         <div class="status-center">
           @switch (currentRun()?.status) {
-            @case ('running') {
+            @case (ExecutionStatus.RUNNING) {
               <span>
                 <mat-icon fontIcon="play_arrow"></mat-icon> Protocol Running: {{ currentRun()?.protocolName }}
               </span>
             }
-            @case ('pending') {
+            @case (ExecutionStatus.PENDING) {
               <span>
                 <mat-icon fontIcon="hourglass_empty"></mat-icon> Protocol Pending: {{ currentRun()?.protocolName }}
               </span>
             }
-            @case ('completed') {
+            @case (ExecutionStatus.COMPLETED) {
               <span>
                 <mat-icon fontIcon="check_circle_outline"></mat-icon> Protocol Completed: {{ currentRun()?.protocolName }}
               </span>
             }
-            @case ('failed') {
+            @case (ExecutionStatus.FAILED) {
               <span>
                 <mat-icon fontIcon="error_outline"></mat-icon> Protocol Failed: {{ currentRun()?.protocolName }}
               </span>
             }
-            @case ('cancelled') {
+            @case (ExecutionStatus.CANCELLED) {
               <span>
                 <mat-icon fontIcon="cancel"></mat-icon> Protocol Cancelled: {{ currentRun()?.protocolName }}
               </span>
@@ -129,6 +129,7 @@ import { PythonRuntimeService } from '@core/services/python-runtime.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StatusBarComponent {
+  readonly ExecutionStatus = ExecutionStatus;
   readonly executionService = inject(ExecutionService);
   readonly appStore = inject(AppStore);
   readonly pythonRuntime = inject(PythonRuntimeService);

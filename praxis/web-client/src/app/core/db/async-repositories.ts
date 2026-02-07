@@ -67,7 +67,7 @@ export class AsyncProtocolRunRepository extends SqliteAsyncRepository<WithIndex<
      * Find running protocol runs
      */
     findRunning(): Observable<ProtocolRun[]> {
-        return this.findByStatus(['running', 'preparing', 'resuming'] as ProtocolRunStatus[]);
+        return this.findByStatus(['RUNNING', 'PREPARING', 'RESUMING'] as ProtocolRunStatus[]);
     }
 
     /**
@@ -76,7 +76,7 @@ export class AsyncProtocolRunRepository extends SqliteAsyncRepository<WithIndex<
     findCompletedInRange(startDate: string, endDate: string): Observable<ProtocolRun[]> {
         const sql = `
             SELECT * FROM ${this.tableName}
-            WHERE status = 'completed'
+            WHERE status = 'COMPLETED'
             AND end_time >= ?
             AND end_time <= ?
             ORDER BY end_time DESC

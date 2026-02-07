@@ -207,34 +207,34 @@ export const MachineStatusValues = {
  * Enumeration for the operational status of a protocol run.
  */
 export type ProtocolRunStatus =
-  | 'queued'
-  | 'pending'
-  | 'preparing'
-  | 'running'
-  | 'pausing'
-  | 'paused'
-  | 'resuming'
-  | 'completed'
-  | 'failed'
-  | 'canceling'
-  | 'cancelled'
-  | 'intervening'
-  | 'requires_intervention';
+  | 'QUEUED'
+  | 'PENDING'
+  | 'PREPARING'
+  | 'RUNNING'
+  | 'PAUSING'
+  | 'PAUSED'
+  | 'RESUMING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELING'
+  | 'CANCELLED'
+  | 'INTERVENING'
+  | 'REQUIRES_INTERVENTION';
 
 export const ProtocolRunStatusValues = {
-  QUEUED: 'queued' as const,
-  PENDING: 'pending' as const,
-  PREPARING: 'preparing' as const,
-  RUNNING: 'running' as const,
-  PAUSING: 'pausing' as const,
-  PAUSED: 'paused' as const,
-  RESUMING: 'resuming' as const,
-  COMPLETED: 'completed' as const,
-  FAILED: 'failed' as const,
-  CANCELING: 'canceling' as const,
-  CANCELLED: 'cancelled' as const,
-  INTERVENING: 'intervening' as const,
-  REQUIRES_INTERVENTION: 'requires_intervention' as const,
+  QUEUED: 'QUEUED' as const,
+  PENDING: 'PENDING' as const,
+  PREPARING: 'PREPARING' as const,
+  RUNNING: 'RUNNING' as const,
+  PAUSING: 'PAUSING' as const,
+  PAUSED: 'PAUSED' as const,
+  RESUMING: 'RESUMING' as const,
+  COMPLETED: 'COMPLETED' as const,
+  FAILED: 'FAILED' as const,
+  CANCELING: 'CANCELING' as const,
+  CANCELLED: 'CANCELLED' as const,
+  INTERVENING: 'INTERVENING' as const,
+  REQUIRES_INTERVENTION: 'REQUIRES_INTERVENTION' as const,
 } as const;
 
 /**

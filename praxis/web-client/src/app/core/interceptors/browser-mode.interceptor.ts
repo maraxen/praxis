@@ -40,7 +40,7 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
         return sqliteService.getProtocolRuns().pipe(
             map((runs: ProtocolRun[]) => {
                 const activeRuns = runs.filter((r: ProtocolRun) =>
-                    r.status && ['pending', 'preparing', 'queued', 'running'].includes(r.status.toLowerCase())
+                    r.status && ['PENDING', 'PREPARING', 'QUEUED', 'RUNNING', 'PAUSED'].includes(r.status.toUpperCase())
                 ).map(r => ({
                     accession_id: r.accession_id,
                     name: r.name,
@@ -189,7 +189,7 @@ function getMockResponse(req: HttpRequest<unknown>, sqliteService: SqliteService
             accession_id: crypto.randomUUID(),
             protocol_definition_accession_id: (isCreateProtocolRunBody(body) ? body.protocol_definition_accession_id : undefined) || 'unknown',
             name: (isCreateProtocolRunBody(body) ? body.name : undefined) || 'Run',
-            status: 'queued',
+            status: 'QUEUED',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             properties_json: {},

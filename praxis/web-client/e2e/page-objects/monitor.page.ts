@@ -1,4 +1,4 @@
-import { Page, Locator, expect } from '@playwright/test';
+import { Page, Locator, expect, TestInfo } from '@playwright/test';
 import { BasePage } from './base.page';
 
 interface RunMeta {
@@ -13,8 +13,8 @@ export class ExecutionMonitorPage extends BasePage {
     private readonly logPanel: Locator;
     private readonly historyTable: Locator;
 
-    constructor(page: Page) {
-        super(page, '/app/monitor');
+    constructor(page: Page, testInfo?: TestInfo) {
+        super(page, '/app/monitor', testInfo);
         this.liveHeader = page.getByRole('heading', { name: /Execution Monitor/i }).first();
         this.statusChip = page.getByTestId('run-status');
         this.runInfoCard = page.locator('mat-card').filter({ hasText: 'Run Information' }).first();
@@ -25,13 +25,43 @@ export class ExecutionMonitorPage extends BasePage {
     async waitForLiveDashboard() {
         const detailView = this.page.getByTestId('run-detail-view');
         await detailView.waitFor({ state: 'visible', timeout: 15000 });
+        
+        // Wait for skeleton loaders to disappear
+        const skeleton = this.page.locator('ngx-skeleton-loader');
+        await skeleton.first().waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {
+            console.log('[Monitor] No skeleton loader found or it persisted');
+        });
+
+        // Ensure status is visible
+        await expect(this.statusChip).toBeVisible({ timeout: 10000 });
     }
 
     async captureRunMeta(): Promise<RunMeta> {
         await this.runInfoCard.waitFor({ state: 'visible' });
-        const runName = (await this.runInfoCard.locator('mat-card-title').textContent())?.trim() || 'Protocol Run';
-        const subtitle = await this.runInfoCard.locator('mat-card-subtitle').innerText();
-        const runId = subtitle.replace('Run ID:', '').trim();
+        const runName = (await this.page.locator('h1').first().textContent())?.trim() || 'Protocol Run';
+        
+        // Run ID might be in a subtitle or a paragraph in the header
+        let runId = '';
+        const runIdLocators = [
+            this.page.locator('p.text-sys-text-secondary'),
+            this.runInfoCard.locator('mat-card-subtitle'),
+            this.page.locator('.run-id-display')
+        ];
+
+        for (const loc of runIdLocators) {
+            if (await loc.isVisible().catch(() => false)) {
+                runId = (await loc.innerText()).replace(/Run ID:|ID:/i, '').trim();
+                if (runId) break;
+            }
+        }
+
+        // Fallback: extract from URL
+        if (!runId) {
+            const url = this.page.url();
+            const match = url.match(/\/monitor\/([a-f0-9-]+)/);
+            if (match) runId = match[1];
+        }
+
         return { runName, runId };
     }
 

@@ -543,7 +543,10 @@ export class RunDetailComponent implements OnInit, OnDestroy {
   cancelRun() {
     this.isCancelling.set(true);
     this.executionService.cancel(this.runId()).subscribe({
-      next: () => this.snackBar.open('Run cancelled', 'Close', { duration: 3000 }),
+      next: () => {
+        this.snackBar.open('Run cancelled', 'Close', { duration: 3000 });
+        this.loadRunDetail();
+      },
       error: (err: Error) => this.snackBar.open('Failed to cancel: ' + err.message, 'Close'),
       complete: () => this.isCancelling.set(false)
     });
@@ -553,7 +556,9 @@ export class RunDetailComponent implements OnInit, OnDestroy {
     this.isToggling.set(true);
     const action = this.run()?.status === 'paused' ? 'resume' : 'pause';
     this.executionService[action](this.runId()).subscribe({
-      next: () => { },
+      next: () => {
+        this.loadRunDetail();
+      },
       error: (err: Error) => this.snackBar.open('Failed to ' + action + ': ' + err.message, 'Close'),
       complete: () => this.isToggling.set(false)
     });

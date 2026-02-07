@@ -1,7 +1,10 @@
 import { expect, Locator, Page } from '@playwright/test';
 
+import { TestInfo } from '@playwright/test';
+
 export class WizardPage {
     private readonly page: Page;
+    private readonly testInfo?: TestInfo;
     private readonly parameterStep: Locator;
     private readonly machineStep: Locator;
     private readonly assetsStep: Locator;
@@ -11,8 +14,9 @@ export class WizardPage {
     private readonly reviewProtocolName: Locator;
     private readonly runProtocolRoot: Locator;
 
-    constructor(page: Page) {
+    constructor(page: Page, testInfo?: TestInfo) {
         this.page = page;
+        this.testInfo = testInfo;
         this.parameterStep = page.locator('[data-tour-id="run-step-params"]');
         this.machineStep = page.locator('[data-tour-id="run-step-machine"]');
         this.assetsStep = page.locator('[data-tour-id="run-step-assets"]');
@@ -86,6 +90,9 @@ export class WizardPage {
         const continueButton = this.parameterStep.getByRole('button', { name: /Continue/i }).first();
         await expect(continueButton).toBeEnabled();
         await continueButton.click();
+        // Wait for transition to Machine step
+        const machineHeader = this.page.locator('.mat-step-header').filter({ hasText: /Select Machines/i }).first();
+        await expect(machineHeader).toHaveAttribute('aria-selected', 'true', { timeout: 10000 });
     }
 
     async selectFirstCompatibleMachine() {
@@ -150,6 +157,9 @@ export class WizardPage {
         const continueButton = this.machineStep.getByRole('button', { name: /Continue/i }).first();
         await expect(continueButton).toBeEnabled({ timeout: 10000 });
         await continueButton.click();
+        // Wait for transition to Assets step
+        const assetsHeader = this.page.locator('.mat-step-header').filter({ hasText: /Select Assets/i }).first();
+        await expect(assetsHeader).toHaveAttribute('aria-selected', 'true', { timeout: 10000 });
     }
 
     async selectAssetForRequirement(requirementName: string, assetName: string) {
@@ -223,87 +233,139 @@ export class WizardPage {
         const continueButton = this.assetsStep.getByRole('button', { name: /Continue/i }).first();
         await expect(continueButton).toBeEnabled({ timeout: 20000 });
         await continueButton.click();
+        // Transition might be to Wells or Deck Setup
+        console.log('[Wizard] Assets continued, waiting for next step...');
+        await this.page.waitForTimeout(1000); 
     }
 
     async completeWellSelectionStep() {
-        // Only wait and complete if the step is visible
-        if (await this.wellStep.isVisible({ timeout: 5000 }).catch((e) => {
-            console.log('[Test] Silent catch (wellStep isVisible):', e);
-            return false;
-        })) {
-            console.log('[Wizard] Completing Well Selection step...');
-
-            // Check if there are "Click to select wells" buttons
-            const selectButtons = this.wellStep.getByRole('button', { name: /select wells/i });
-            const count = await selectButtons.count();
-
-            for (let i = 0; i < count; i++) {
-                const btn = selectButtons.nth(i);
-                await btn.click();
-
-                // Dialog should open
-                const dialog = this.page.getByRole('dialog').filter({ hasText: /Select Wells/i });
-                await dialog.waitFor({ state: 'visible' });
-
-                // Select first available well
-                const well = dialog.locator('.well.available').first();
-                if (await well.isVisible()) {
-                    await well.click();
-                }
-
-                // Confirm selection
-                await dialog.getByRole('button', { name: /Confirm/i }).click();
-                await dialog.waitFor({ state: 'hidden' });
+        console.log('[Wizard] Checking for Well Selection step...');
+        
+        // Wait for well step header to be selected or at least visible
+        const wellHeader = this.page.locator('.mat-step-header').filter({ hasText: /Select Wells/i }).first();
+        const wellStepSelected = await wellHeader.getAttribute('aria-selected').catch(() => 'false') === 'true';
+        
+        if (!wellStepSelected) {
+            // Check if we can even see the step content
+            const isVisible = await this.wellStep.isVisible({ timeout: 2000 }).catch(() => false);
+            if (!isVisible) {
+                console.log('[Wizard] Well Selection step not active or visible, skipping');
+                return;
             }
-
-            const continueButton = this.wellStep.getByRole('button', { name: /Continue/i }).first();
-            await expect(continueButton).toBeEnabled({ timeout: 5000 });
-            await continueButton.click();
         }
+
+        console.log('[Wizard] Well Selection step is active, completing...');
+
+        // Select buttons might have labels like "Click to select wells..." or "5 wells selected"
+        // Try multiple locators for the well selection buttons
+        const selectButtons = this.wellStep.locator('button').filter({ 
+            has: this.page.locator('mat-icon', { hasText: /grid_on/i }) 
+        });
+        
+        // Fallback: any button in the well-selection-required area
+        const fallbackButtons = this.wellStep.locator('button:has-text("select wells")');
+        
+        const effectiveButtons = (await selectButtons.count()) > 0 ? selectButtons : fallbackButtons;
+
+        const count = await effectiveButtons.count();
+        console.log(`[Wizard] Found ${count} well selection buttons`);
+
+        for (let i = 0; i < count; i++) {
+            const btn = effectiveButtons.nth(i);
+            const btnText = await btn.innerText();
+            console.log(`[Wizard] Clicking well selection button ${i}: "${btnText}"`);
+            await btn.click();
+
+            // Dialog should open
+            const dialog = this.page.getByRole('dialog').filter({ hasText: /Select Wells/i });
+            await dialog.waitFor({ state: 'visible', timeout: 10000 });
+
+            // Select first well (A1)
+            // The well buttons in the dialog might have different classes
+            const well = dialog.locator('.well-btn, .well-item, [data-testid="well-cell"]').first();
+            await well.waitFor({ state: 'visible', timeout: 5000 });
+            await well.click();
+
+            // Confirm selection
+            const confirmBtn = dialog.getByRole('button', { name: /Confirm Selection|Confirm|Select|OK/i }).last();
+            await expect(confirmBtn).toBeEnabled();
+            await confirmBtn.click();
+            
+            await dialog.waitFor({ state: 'hidden', timeout: 10000 });
+        }
+
+        // Wait for validation to propagate and "Continue" to be enabled
+        const continueButton = this.wellStep.getByRole('button', { name: /^Continue$/i }).first();
+        
+        // If "Continue" is not enabled, maybe there's a problem
+        try {
+            await expect(continueButton).toBeEnabled({ timeout: 10000 });
+        } catch (e) {
+            console.log('[Wizard] Continue button not enabled on Well Step. Validation failed?');
+            // Log what we see
+            const html = await this.wellStep.innerHTML();
+            console.log('[Wizard] Well Step HTML:', html);
+            throw e;
+        }
+
+        console.log('[Wizard] Clicking Well Step Continue button...');
+        await continueButton.click({ force: true });
+        
+        // Wait for transition to next step
+        await expect(wellHeader).toHaveAttribute('aria-selected', 'false', { timeout: 10000 });
     }
 
     async advanceDeckSetup() {
-        await this.deckStep.waitFor({ state: 'visible' });
+        console.log('[Wizard] Advancing Deck Setup...');
+        
+        // Wait for stepper header to indicate "Deck Setup" is active
+        const deckHeader = this.page.locator('.mat-step-header').filter({ hasText: /Deck Setup/i }).first();
+        await expect(deckHeader).toHaveAttribute('aria-selected', 'true', { timeout: 30000 });
+
+        // Wait for the step content to be visible and stable
+        const activeStepContent = this.page.locator('.mat-horizontal-stepper-content-current, .mat-step-content:not([hidden])').first();
+        await expect(activeStepContent).toBeVisible({ timeout: 20000 });
+        
+        // Ensure our deck step root is inside the active content
+        const deckStepInActive = activeStepContent.locator('[data-tour-id="run-step-deck"]');
+        await deckStepInActive.waitFor({ state: 'visible', timeout: 15000 }).catch(async (e) => {
+             console.log('[Wizard] deckStep not found in active content, checking fallback');
+             await this.deckStep.waitFor({ state: 'visible', timeout: 10000 });
+        });
+        
+        // Wait a tiny bit for animations to settle (even if disabled, better safe)
+        await this.page.waitForTimeout(500);
 
         // Click Skip Setup if visible
         const skipButton = this.deckStep.getByRole('button', { name: /Skip Setup/i }).first();
-        if (await skipButton.isVisible({ timeout: 5000 }).catch((e) => {
-            console.log('[Test] Silent catch (skipButton isVisible):', e);
-            return false;
-        })) {
+        if (await skipButton.isVisible({ timeout: 5000 }).catch(() => false)) {
             await skipButton.click();
         }
 
         // Click Continue to Review if visible (some flows show this after skip)
         const continueButton = this.deckStep.getByRole('button', { name: /Continue to Review|Continue/i }).first();
-        if (await continueButton.isVisible({ timeout: 2000 }).catch((e) => {
-            console.log('[Test] Silent catch (continueButton isVisible):', e);
-            return false;
-        })) {
+        if (await continueButton.isVisible({ timeout: 2000 }).catch(() => false)) {
             await continueButton.click();
         }
-        // Don't call markDeckValid() - we've already advanced
     }
 
     async openReviewStep() {
-        const reviewTab = this.page.getByRole('tab', { name: /Review & Run/i }).first();
+        // MDC Stepper uses .mat-step-header instead of role="tab" in some versions
+        const reviewTab = this.page.locator('.mat-step-header').filter({ hasText: /Review & Run/i }).first();
         await expect(reviewTab).toBeVisible({ timeout: 15000 });
 
         // Check if we're already on the review step
         const isSelected = await reviewTab.getAttribute('aria-selected');
         if (isSelected === 'true') {
             console.log('[Wizard] Already on review step');
-            // Just wait for review content
-            await this.reviewHeading.waitFor({ state: 'visible', timeout: 10000 }).catch((e) => {
-                console.log('[Test] Silent catch (reviewHeading waitFor):', e);
-            });
+            await this.reviewHeading.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
             return;
         }
 
         // Need to navigate to review
-        await expect(reviewTab).toBeEnabled({ timeout: 15000 });
+        await expect(reviewTab).toBeEnabled({ timeout: 20000 });
         await reviewTab.click();
-        await this.reviewHeading.waitFor({ state: 'visible', timeout: 10000 });
+        await this.reviewHeading.waitFor({ state: 'visible', timeout: 15000 });
     }
 
     async assertReviewSummary(protocolName: string) {
@@ -332,10 +394,16 @@ export class WizardPage {
 
     async startExecution() {
         const startButton = await this.waitForStartReady();
-        await Promise.all([
-            this.page.waitForURL('**/run/live', { waitUntil: 'domcontentloaded' }),
-            startButton.click()
-        ]);
+        console.log('[Wizard] Clicking Start Execution button...');
+        await startButton.click();
+        
+        console.log('[Wizard] Waiting for monitor page navigation...');
+        // More forgiving regex for monitor URL
+        await this.page.waitForURL(/\/app\/monitor\/[a-f0-9-]+/, { 
+            waitUntil: 'domcontentloaded',
+            timeout: 30000 
+        });
+        console.log('[Wizard] Successfully navigated to monitor page:', this.page.url());
     }
 
     async handleConfigureSimulationDialog(): Promise<boolean> {

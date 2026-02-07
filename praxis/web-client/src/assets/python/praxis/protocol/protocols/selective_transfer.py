@@ -4,10 +4,15 @@ This includes ALL functions from the backend that cloudpickle may reference
 during protocol deserialization and execution.
 """
 
+from typing import Any
 from pylabrobot.liquid_handling import LiquidHandler
 from pylabrobot.resources import Plate, TipRack
+from praxis.backend.core.decorators import protocol_function
 
-
+@protocol_function(
+    name="selective_transfer",
+    version="1.0.0",
+)
 def selective_transfer(*args, **kwargs):
     """Stub - actual function comes from pickle."""
     pass
