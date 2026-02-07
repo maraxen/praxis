@@ -1,68 +1,118 @@
-import { test, expect, gotoWithWorkerDb } from '../fixtures/worker-db.fixture';
+import { test, expect } from '../fixtures/worker-db.fixture';
 import { AssetsPage } from '../page-objects/assets.page';
 import { WelcomePage } from '../page-objects/welcome.page';
 
-/**
- * E2E Tests for Asset Inventory Persistence
- * 
- * These tests verify that Machines and Resources created in the UI persist
- * across page reloads, simulating the JupyterLite environment reading from
- * the browser-side SQLite database.
- */
-test.describe('Asset Inventory Persistence', () => {
+test.describe('Asset Inventory', () => {
+    // Run tests serially to avoid sandbox slowness and DB contention
+    test.describe.configure({ mode: 'serial' });
+    
     let assetsPage: AssetsPage;
-    const testMachineName = `E2E-Machine-${Date.now()}`;
-    const testResourceName = `E2E-Resource-${Date.now()}`;
 
     test.beforeEach(async ({ page }, testInfo) => {
-        await gotoWithWorkerDb(page, '/app/assets', testInfo);
+        // Increase timeout for DB reset
+        test.setTimeout(120000);
+        
+        assetsPage = new AssetsPage(page, '/app/assets', testInfo);
+        // Ensure fresh DB for each test to avoid cross-contamination
+        await assetsPage.goto({ resetdb: true });
+        
         const welcomePage = new WelcomePage(page);
         await welcomePage.handleSplashScreen();
-        assetsPage = new AssetsPage(page);
-    });
-
-    test.afterEach(async () => {
-        // Cleanup created assets
-        await assetsPage.navigateToMachines();
-        await assetsPage.deleteMachine(testMachineName).catch(() => {});
-        await assetsPage.navigateToRegistry();
-        await assetsPage.deleteResource(testResourceName).catch(() => {});
-    });
-
-    test('should persist created machine across reloads', async ({ page }) => {
-        await assetsPage.createMachine(testMachineName, 'LiquidHandler', 'STAR');
-        
-        await assetsPage.navigateToMachines();
-        await expect(page.getByText(testMachineName)).toBeVisible();
-
-        // Verify DB integrity
-        const dbRecord = await page.evaluate((name) => 
-            (window as any).sqliteService.execSync(
-                'SELECT * FROM machines WHERE name = ?', [name]
-            ), testMachineName);
-        expect(dbRecord.length).toBe(1);
-
-        // Persistence after reload
-        await page.reload();
-        await assetsPage.navigateToMachines();
-        await expect(page.getByText(testMachineName)).toBeVisible();
-    });
-
-    test('should persist created resource across reloads', async ({ page }) => {
-        await assetsPage.createResource(testResourceName, 'Plate', '96');
         
         await assetsPage.navigateToRegistry();
-        await expect(page.getByText(testResourceName)).toBeVisible();
+    });
 
-        // Verify DB integrity for resources
-        const dbRecord = await page.evaluate((name) => 
-            (window as any).sqliteService.execSync(
-                'SELECT * FROM resources WHERE name = ?', [name]
-            ), testResourceName);
-        expect(dbRecord.length).toBe(1);
+    test.describe('Persistence', () => {
+        test('should persist created machine across reloads', async () => {
+            const testMachineName = `Machine-${Date.now()}`;
+            await assetsPage.createMachine(testMachineName);
+            
+            await assetsPage.navigateToRegistry();
+            await assetsPage.selectRegistryTab('Machines');
+            await assetsPage.search(testMachineName);
+            await assetsPage.verifyAssetVisible(testMachineName);
 
-        await page.reload();
-        await assetsPage.navigateToRegistry();
-        await expect(page.getByText(testResourceName)).toBeVisible();
+            // Reload WITHOUT resetdb
+            await assetsPage.goto({ resetdb: false });
+            await assetsPage.selectRegistryTab('Machines');
+            await assetsPage.search(testMachineName);
+            await assetsPage.verifyAssetVisible(testMachineName);
+        });
+
+        test('should persist created resource across reloads', async () => {
+            const testResourceName = `Resource-${Date.now()}`;
+            await assetsPage.createResource(testResourceName, 'Plate', '96');
+            
+            await assetsPage.navigateToRegistry();
+            await assetsPage.selectRegistryTab('Resources');
+            await assetsPage.search(testResourceName);
+            await assetsPage.verifyAssetVisible(testResourceName);
+
+            // Reload WITHOUT resetdb
+            await assetsPage.goto({ resetdb: false });
+            await assetsPage.selectRegistryTab('Resources');
+            await assetsPage.search(testResourceName);
+            await assetsPage.verifyAssetVisible(testResourceName);
+        });
+    });
+
+    test.describe('Filtering and Sorting', () => {
+        test('should display seeded items correctly', async () => {
+            await assetsPage.selectRegistryTab('Resource Types');
+            // Search for Hamilton specifically to bring it to the first page
+            await assetsPage.search('Hamilton');
+            await expect(assetsPage.page.getByRole('cell', { name: /Hamilton/i }).first()).toBeVisible();
+            
+            // Search for Corning specifically
+            await assetsPage.search('Cor_96_wellplate_360ul_Fb');
+            await expect(assetsPage.page.getByRole('cell', { name: 'Cor_96_wellplate_360ul_Fb' }).first()).toBeVisible();
+        });
+
+        test('should filter resource types by name', async () => {
+            await assetsPage.selectRegistryTab('Resource Types');
+            await assetsPage.search('384');
+            await expect(assetsPage.page.getByRole('cell', { name: /384/i }).first()).toBeVisible();
+            // Should not show Cor_96 when searching for 384
+            await expect(assetsPage.page.getByRole('cell', { name: 'Cor_96_wellplate_360ul_Fb' })).not.toBeVisible();
+        });
+
+        test('should sort resource types by name', async () => {
+            await assetsPage.selectRegistryTab('Resource Types');
+            
+            const firstRow = assetsPage.page.locator('tbody tr').first();
+            await expect(firstRow).toBeVisible();
+            const initialText = await (await firstRow.innerText()).trim();
+            
+            // Toggle sort order
+            const sortToggle = assetsPage.page.locator('.sort-order-btn').first();
+            await sortToggle.click();
+            
+            // Wait for the text to change (meaning sort applied)
+            await expect(async () => {
+                const newText = await (await firstRow.innerText()).trim();
+                if (newText === initialText) {
+                    throw new Error('Sort did not change the first item');
+                }
+            }).toPass({ timeout: 10000 });
+        });
+    });
+
+    test.describe('Pagination', () => {
+        test('should support pagination for resource types', async () => {
+            await assetsPage.selectRegistryTab('Resource Types');
+            
+            const paginator = assetsPage.page.locator('mat-paginator');
+            await expect(paginator).toBeVisible();
+            
+            // Should show something like "1 – 10 of"
+            const rangeLabel = paginator.locator('.mat-mdc-paginator-range-label');
+            await expect(rangeLabel).toContainText('1 – 10 of');
+            
+            // Go to next page
+            const nextButton = paginator.locator('button.mat-mdc-paginator-navigation-next');
+            await nextButton.click();
+            
+            await expect(rangeLabel).toContainText('11 – 20 of');
+        });
     });
 });

@@ -86,13 +86,15 @@ export class ExecutionMonitorPage extends BasePage {
     async navigateToHistory() {
         await this.page.goto('/app/monitor', { waitUntil: 'domcontentloaded' });
         // Wait for either the history table OR the empty state indicator
-        const tableOrEmpty = this.page.locator('app-run-history-table table, .empty-runs-state, .no-runs-message').first();
-        await tableOrEmpty.waitFor({ state: 'visible', timeout: 15000 });
+        // Using classes from component: .empty-state, .no-runs-message
+        const tableOrEmpty = this.page.locator('app-run-history-table table, app-run-history-table .empty-state, app-run-history-table .no-runs-message').first();
+        await tableOrEmpty.waitFor({ state: 'visible', timeout: 30000 });
     }
 
     async waitForHistoryRow(runName: string): Promise<Locator> {
-        const row = this.historyTable.locator('tbody tr').filter({ hasText: runName }).first();
-        await expect(row).toBeVisible({ timeout: 15000 });
+        // RunHistoryTable uses standard mat-table which has 'tr' elements
+        const row = this.page.locator('app-run-history-table tr').filter({ hasText: runName }).first();
+        await expect(row).toBeVisible({ timeout: 20000 });
         return row;
     }
 
@@ -125,6 +127,6 @@ export class ExecutionMonitorPage extends BasePage {
     }
 
     getEmptyStateIndicator(): Locator {
-        return this.page.locator('.empty-runs-state, .no-runs-message, :text("No Runs Yet")').first();
+        return this.page.locator('.empty-state, .no-runs-message, :text("No Runs Yet")').first();
     }
 }

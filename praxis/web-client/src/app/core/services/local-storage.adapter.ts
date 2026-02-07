@@ -178,7 +178,7 @@ export class LocalStorageAdapter {
             ...run,
             accession_id: run.accession_id || crypto.randomUUID(),
             created_at: run.created_at || new Date().toISOString(),
-            status: run.status || 'QUEUED'
+            status: run.status || 'queued'
         });
         this.runsVersion.update(v => v + 1);
         return of(created);

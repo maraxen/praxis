@@ -10,8 +10,8 @@ export class AssetsPage extends BasePage {
     readonly overviewTab: Locator;
     readonly spatialViewTab: Locator;
 
-    constructor(page: Page, testInfo?: TestInfo) {
-        super(page, '/assets', testInfo);
+    constructor(page: Page, url: string = '/assets', testInfo?: TestInfo) {
+        super(page, url, testInfo);
         this.addMachineButton = page.getByRole('button', { name: /Add Machine/i });
         this.addResourceButton = page.getByRole('button', { name: /Add Resource/i });
         this.machinesTab = page.getByRole('tab', { name: /Machines/i });
@@ -212,6 +212,29 @@ export class AssetsPage extends BasePage {
     async navigateToRegistry() {
         await this.registryTab.click();
         await expect(this.registryTab).toHaveAttribute('aria-selected', 'true', { timeout: 5000 });
+        await this.waitForLoadingComplete();
+    }
+
+    /**
+     * Waits for all Material loading indicators to disappear
+     */
+    async waitForLoadingComplete() {
+        await this.page.waitForSelector('mat-spinner', { state: 'detached', timeout: 10000 }).catch(() => { });
+        await this.page.waitForTimeout(500); // Wait for potential animations
+    }
+
+    async selectRegistryTab(tabName: 'Resources' | 'Resource Types' | 'Machines') {
+        const tab = this.page.getByRole('tab', { name: tabName });
+        await tab.click();
+        await expect(tab).toHaveAttribute('aria-selected', 'true', { timeout: 5000 });
+        await this.waitForLoadingComplete();
+    }
+
+    async search(query: string) {
+        // Try to find search input that is visible
+        const searchInput = this.page.locator('input[placeholder*="Search"]:visible').first();
+        await searchInput.fill(query);
+        await this.page.waitForTimeout(1000); // Increased debounce for stability
     }
 
     /** @deprecated Use navigateToOverview instead */
@@ -220,22 +243,19 @@ export class AssetsPage extends BasePage {
     }
 
     async createMachine(name: string, categoryName: string = 'LiquidHandler', modelQuery: string = 'STAR') {
+        await this.navigateToOverview();
         await this.addMachineButton.click();
         const wizard = await this.waitForWizard();
         const dialog = this.page.getByRole('dialog');
 
         // Skip Type step - Add Machine button passes preselectedType: 'MACHINE' which auto-skips to Category
         // Step 1 (visible): Select Category
-        // Wait for category cards to load AND be clickable (not just visible)
         const anyCategoryCard = wizard.getByTestId(/category-card-/).first();
         await expect(anyCategoryCard).toBeVisible({ timeout: 15000 });
-        // Ensure cards are clickable (not covered by animation overlays)
         await anyCategoryCard.waitFor({ state: 'attached' });
 
-        // Now select the specific category - wait for it to be stable
         const categoryCard = wizard.getByTestId(`category-card-${categoryName}`);
         await expect(categoryCard).toBeVisible({ timeout: 5000 });
-        // Use click with force: false to ensure element is truly interactable
         await categoryCard.click({ timeout: 5000 });
         await this.waitForOverlaysToDismiss();
         await dialog.getByRole('button', { name: /Next/i }).click();
@@ -266,6 +286,7 @@ export class AssetsPage extends BasePage {
     }
 
     async createResource(name: string, categoryName: string = 'Plate', modelQuery: string = '96') {
+        await this.navigateToOverview();
         await this.addResourceButton.click();
         const wizard = await this.waitForWizard();
 
@@ -419,24 +440,8 @@ export class AssetsPage extends BasePage {
         return await rows.count();
     }
 
-    async verifyAssetVisible(name: string, timeout: number = 5000) {
-        // Navigate to Registry tab which shows all items without grouping
-        await this.navigateToRegistry();
-
-        // Use search to find the asset
-        const searchInput = this.page.getByPlaceholder(/search/i).first();
-        if (await searchInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-            await searchInput.fill(name);
-            // Wait for search input to be processed
-            await expect(searchInput).toHaveValue(name, { timeout: 2000 });
-        }
-
-        // Look for text anywhere on page (tooltip indicates asset exists)
-        const assetExists = await this.page.getByText(name, { exact: false }).count() > 0;
-        if (!assetExists) {
-            console.warn(`[AssetsPage] Asset "${name}" not visible in search results, but may exist`);
-            // Don't fail - asset creation completed, UI display is a separate concern
-        }
+    async verifyAssetVisible(name: string) {
+        await expect(this.page.getByText(name).first()).toBeVisible({ timeout: 10000 });
     }
 
     async verifyAssetNotVisible(name: string, timeout: number = 5000) {

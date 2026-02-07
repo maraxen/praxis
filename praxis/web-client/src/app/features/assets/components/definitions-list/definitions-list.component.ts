@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatPaginatorModule } from '@angular/material/paginator';
 import { AssetService } from '../../services/asset.service';
 import { ResourceDefinition } from '../../models/asset.models';
 import { getPropertyTooltip } from '@shared/constants/resource-tooltips';
@@ -23,7 +24,8 @@ import { ModeService } from '@core/services/mode.service';
     MatTooltipModule,
     MatTabsModule,
     MachineDefinitionAccordionComponent,
-    ViewControlsComponent
+    ViewControlsComponent,
+    MatPaginatorModule
   ],
   template: `
     <div class="definitions-list-container">
@@ -126,6 +128,15 @@ import { ModeService } from '@core/services/mode.service';
                 </td>
               </tr>
             </table>
+
+            <mat-paginator
+              [length]="totalResourceCount()"
+              [pageSize]="pageSize()"
+              [pageIndex]="pageIndex()"
+              [pageSizeOptions]="[5, 10, 25, 100]"
+              (page)="onPageChange($event)"
+              aria-label="Select page of resource definitions">
+            </mat-paginator>
           </div>
         </mat-tab>
       </mat-tab-group>
@@ -279,7 +290,12 @@ export class DefinitionsListComponent {
     return Array.from(cats).sort();
   });
 
-  filteredResourceDefinitions = computed(() => {
+  pageSize = signal(10);
+  pageIndex = signal(0);
+
+  totalResourceCount = computed(() => this.allFilteredResourceDefinitions().length);
+
+  allFilteredResourceDefinitions = computed(() => {
     const state = this.resourceViewState();
     let filtered = this.resourceDefinitions();
 
@@ -328,7 +344,19 @@ export class DefinitionsListComponent {
 
   onResourceViewStateChange(state: ViewControlsState) {
     this.resourceViewState.set(state);
+    this.pageIndex.set(0); // Reset to first page on filter change
   }
+
+  onPageChange(event: any) {
+    this.pageSize.set(event.pageSize);
+    this.pageIndex.set(event.pageIndex);
+  }
+
+  filteredResourceDefinitions = computed(() => {
+    const all = this.allFilteredResourceDefinitions();
+    const start = this.pageIndex() * this.pageSize();
+    return all.slice(start, start + this.pageSize());
+  });
 
   displayedResourceColumns: string[] = ['name', 'type', 'manufacturer', 'model', 'consumable', 'actions'];
 

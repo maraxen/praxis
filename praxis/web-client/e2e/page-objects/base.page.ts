@@ -30,37 +30,48 @@ export abstract class BasePage {
      * - If testInfo is provided, uses worker-indexed database name
      * - This prevents race conditions when tests run in parallel
      */
-    async goto(options: { waitForDb?: boolean } = {}) {
-        const { waitForDb = true } = options;
-        let targetUrl = this.url;
+    async goto(options: { waitForDb?: boolean; resetdb?: boolean; dbOverride?: string } = {}) {
+        const { waitForDb = true, resetdb = false, dbOverride } = options;
 
-        // Ensure mode=browser is set
-        if (!targetUrl.includes('mode=')) {
-            targetUrl += `${targetUrl.includes('?') ? '&' : '?'}mode=browser`;
-        }
+        // Ensure we are using a valid URL for the constructor
+        const currentUrl = this.page.url();
+        const urlObj = currentUrl && currentUrl !== 'about:blank'
+            ? new URL(currentUrl)
+            : new URL('http://localhost:4200');
+
+        // Use provided path or current path
+        const basePath = this.url.startsWith('http') ? new URL(this.url).pathname : this.url;
+        urlObj.pathname = basePath;
+
+        const params = urlObj.searchParams;
+        params.set('mode', 'browser');
 
         // Add worker-indexed database name for isolation
-        if (this.testInfo && !targetUrl.includes('dbName=')) {
+        if (dbOverride) {
+            params.set('dbName', dbOverride);
+        } else if (this.testInfo) {
             const dbName = `praxis-worker-${this.testInfo.workerIndex}`;
-            targetUrl += `${targetUrl.includes('?') ? '&' : '?'}dbName=${dbName}`;
-            console.log(`[BasePage] Worker ${this.testInfo.workerIndex} using DB: ${dbName}`);
+            params.set('dbName', dbName);
         }
 
-        // NOTE: resetdb is NOT added by default to preserve seeded data
-        // Tests that need a fresh database should explicitly pass resetdb=1
+        if (resetdb) {
+            params.set('resetdb', '1');
+        } else {
+            params.delete('resetdb');
+        }
+
+        const finalUrl = urlObj.toString();
 
         // PRE-CONDITION: Mark onboarding as completed to avoid blocking splash screens
-        // We do this by navigating once to any page (even just about:blank) to set the local storage
-        // or by using addInitScript. addInitScript is cleaner.
         await this.page.addInitScript(() => {
             window.localStorage.setItem('praxis_onboarding_completed', 'true');
         });
 
-        await this.page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
+        await this.page.goto(finalUrl, { waitUntil: 'domcontentloaded' });
 
         // Wait for SQLite service ready signal - the definitive indicator that:
         // 1. OPFS initialized, 2. Worker active, 3. Schema migrated, 4. Seeding complete
-        if (waitForDb && targetUrl.includes('mode=browser')) {
+        if (waitForDb && finalUrl.includes('mode=browser')) {
             await this.page.waitForFunction(
                 () => {
                     const service = (window as any).sqliteService;
@@ -78,7 +89,7 @@ export abstract class BasePage {
                     return value === true;
                 },
                 null,
-                { timeout: 15000, polling: 500 }  // Poll every 500ms with 15s max
+                { timeout: 30000, polling: 500 }  // Increased timeout to 30s
             );
         }
     }

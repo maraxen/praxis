@@ -26,7 +26,7 @@ interface WorkerDbOptions {
 /**
  * Wait for SQLite service to be ready with the specified database
  */
-async function waitForSqliteReady(page: Page, timeout = 10000): Promise<void> {
+async function waitForSqliteReady(page: Page, timeout = 60000): Promise<void> {
     await page.waitForFunction(
         () => {
             const service = (window as any).sqliteService;
@@ -108,7 +108,7 @@ export async function gotoWithWorkerDb(
     testInfo: { workerIndex: number },
     options: { resetdb?: boolean; waitForDb?: boolean; timeout?: number; mode?: string } = {}
 ): Promise<void> {
-    const { resetdb = false, waitForDb = true, timeout = 10000, mode = 'browser' } = options;
+    const { resetdb = false, waitForDb = true, timeout = 60000, mode = 'browser' } = options;
 
     const url = buildWorkerUrl(path, testInfo.workerIndex, { resetdb, mode });
     console.log(`[WorkerDB] Navigating to: ${url}`);

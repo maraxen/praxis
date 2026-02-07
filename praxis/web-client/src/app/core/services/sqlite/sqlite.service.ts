@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, of, firstValueFrom } from 'rxjs';
-import { map, shareReplay, switchMap } from 'rxjs/operators';
+import { filter, map, shareReplay, switchMap, take } from 'rxjs/operators';
 import { toObservable } from '@angular/core/rxjs-interop';
 
 // Type imports
@@ -172,7 +172,9 @@ export class SqliteService {
      * Get async repositories (OPFS Worker backed)
      */
     public getAsyncRepositories(): Observable<AsyncRepositories> {
-        return this.opfs.init().pipe(
+        return this.isReady$.pipe(
+            filter(ready => ready),
+            take(1),
             map(() => {
                 if (!this.asyncRepositories) {
                     this.asyncRepositories = createAsyncRepositories(this.opfs);

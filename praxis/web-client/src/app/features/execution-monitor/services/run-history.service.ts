@@ -102,12 +102,12 @@ export class RunHistoryService {
 
     /**
      * Get active (in-progress) runs.
-     * Uses the /runs/queue endpoint which returns PENDING, PREPARING, QUEUED, RUNNING statuses.
+     * Uses the /runs/queue endpoint which returns pending, preparing, queued, running statuses.
      */
     getActiveRuns(): Observable<RunSummary[]> {
         // Browser mode: filter for active statuses
         if (this.modeService.isBrowserMode()) {
-            const activeStatuses: RunStatus[] = ['PENDING', 'PREPARING', 'QUEUED', 'RUNNING', 'PAUSED'];
+            const activeStatuses: RunStatus[] = ['pending', 'preparing', 'queued', 'running', 'paused'];
             return this.sqliteService.getProtocolRuns().pipe(
                 map(runs => (runs as unknown as ProtocolRun[]).map(run => ({
                     ...run,
@@ -165,21 +165,22 @@ export class RunHistoryService {
      * Returns color class based on run status.
      */
     getStatusColor(status: RunStatus): string {
-        switch (status) {
-            case 'RUNNING':
+        const s = status?.toLowerCase();
+        switch (s) {
+            case 'running':
                 return 'text-sys-primary';
-            case 'QUEUED':
-            case 'PREPARING':
+            case 'queued':
+            case 'preparing':
                 return 'text-sys-secondary';
-            case 'PENDING':
+            case 'pending':
                 return 'text-sys-tertiary';
-            case 'COMPLETED':
+            case 'completed':
                 return 'text-sys-success';
-            case 'FAILED':
+            case 'failed':
                 return 'text-sys-error';
-            case 'CANCELLED':
+            case 'cancelled':
                 return 'text-sys-on-surface-variant';
-            case 'PAUSED':
+            case 'paused':
                 return 'text-sys-warning';
             default:
                 return 'text-sys-on-surface-variant';
@@ -190,22 +191,23 @@ export class RunHistoryService {
      * Returns icon name based on run status.
      */
     getStatusIcon(status: RunStatus): string {
-        switch (status) {
-            case 'RUNNING':
+        const s = status?.toLowerCase();
+        switch (s) {
+            case 'running':
                 return 'play_circle';
-            case 'QUEUED':
+            case 'queued':
                 return 'schedule';
-            case 'PREPARING':
+            case 'preparing':
                 return 'hourglass_empty';
-            case 'PENDING':
+            case 'pending':
                 return 'pending';
-            case 'COMPLETED':
+            case 'completed':
                 return 'check_circle';
-            case 'FAILED':
+            case 'failed':
                 return 'error';
-            case 'CANCELLED':
+            case 'cancelled':
                 return 'cancel';
-            case 'PAUSED':
+            case 'paused':
                 return 'pause_circle_filled';
             default:
                 return 'help';
@@ -295,7 +297,7 @@ export class RunHistoryService {
     resumeRun(runId: string): Observable<boolean> {
         // Browser mode: update run status locally
         if (this.modeService.isBrowserMode()) {
-            return this.sqliteService.updateProtocolRunStatus(runId, 'RUNNING').pipe(
+            return this.sqliteService.updateProtocolRunStatus(runId, 'running').pipe(
                 map(() => true),
                 catchError((err) => {
                     console.error('[RunHistoryService] Failed to resume run:', err);
@@ -319,7 +321,7 @@ export class RunHistoryService {
     abortRun(runId: string, reason?: string): Observable<boolean> {
         // Browser mode: update run status locally
         if (this.modeService.isBrowserMode()) {
-            return this.sqliteService.updateProtocolRunStatus(runId, 'CANCELLED').pipe(
+            return this.sqliteService.updateProtocolRunStatus(runId, 'cancelled').pipe(
                 map(() => true),
                 catchError((err) => {
                     console.error('[RunHistoryService] Failed to abort run:', err);

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, Subject, filter, take, switchMap, map, from, of, concatMap, last, catchError } from 'rxjs';
+import { Observable, Subject, filter, take, switchMap, map, from, of, concatMap, last, catchError, shareReplay, firstValueFrom } from 'rxjs';
 import {
     SqliteWorkerRequest,
     SqliteWorkerResponse,
@@ -213,13 +213,20 @@ export class SqliteOpfsService {
     resetToDefaults(): Observable<void> {
         console.log('[SqliteOpfsService] Resetting database to defaults...');
 
-        // Close current connection, clear OPFS, and reinitialize
-        return this.sendRequest<void>('clear', {}).pipe(
+        // Invalidate current initPromise and replace it with the reset sequence
+        // This ensures subsequent calls to init() will wait for the reset to complete.
+        const reset$ = this.sendRequest<void>('clear', {}).pipe(
             switchMap(() => this.initializeFreshDatabase()),
+            switchMap(() => this.seedDefaultAssets()),
             map(() => {
-                console.log('[SqliteOpfsService] Database reset complete.');
-            })
+                console.log('[SqliteOpfsService] Database reset complete (including default assets).');
+            }),
+            // Use shareReplay so multiple subscribers wait for the same reset
+            shareReplay(1)
         );
+
+        this.initPromise = firstValueFrom(reset$);
+        return reset$;
     }
 
     /**
@@ -364,8 +371,7 @@ export class SqliteOpfsService {
                         }
 
                         const now = new Date().toISOString();
-                        const tasks: Observable<any>[] = [];
-                        tasks.push(this.exec('BEGIN TRANSACTION'));
+                        const operations: { sql: string; bind: any[] }[] = [];
 
                         const insertResource = `
                             INSERT OR IGNORE INTO resources (accession_id, asset_type, name, fqn, created_at, updated_at, properties_json, resource_definition_accession_id, status)
@@ -377,22 +383,22 @@ export class SqliteOpfsService {
                             const cleanName = (row.name as string).replace(/\s+/g, '_').toLowerCase();
                             const instanceFqn = `resources.default.${cleanName}`;
 
-                            tasks.push(this.exec(insertResource, [
-                                assetId,
-                                row.name,
-                                instanceFqn,
-                                now,
-                                now,
-                                JSON.stringify({ is_default: true }),
-                                row.accession_id,
-                                'available'
-                            ]));
+                            operations.push({
+                                sql: insertResource,
+                                bind: [
+                                    assetId,
+                                    row.name,
+                                    instanceFqn,
+                                    now,
+                                    now,
+                                    JSON.stringify({ is_default: true }),
+                                    row.accession_id,
+                                    'available'
+                                ]
+                            });
                         }
 
-                        tasks.push(this.exec('COMMIT'));
-                        return from(tasks).pipe(
-                            concatMap(t => t),
-                            last(),
+                        return this.execBatch(operations).pipe(
                             map(() => void 0)
                         );
                     })

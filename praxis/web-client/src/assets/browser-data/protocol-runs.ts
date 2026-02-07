@@ -6,7 +6,7 @@ export const MOCK_PROTOCOL_RUNS = [
         accession_id: 'aaaa1111-1111-1111-1111-111111111111',
         protocol_definition_accession_id: '11111111-1111-1111-1111-111111111111',
         protocol_name: 'PCR Prep (96-well)',
-        status: 'COMPLETED',
+        status: 'completed',
         input_parameters_json: {
             source_plate: 'plate-001',
             destination_plate: 'plate-002',
@@ -25,7 +25,7 @@ export const MOCK_PROTOCOL_RUNS = [
         accession_id: 'aaaa2222-2222-2222-2222-222222222222',
         protocol_definition_accession_id: '22222222-2222-2222-2222-222222222222',
         protocol_name: 'Cell Culture Feed (24-well)',
-        status: 'RUNNING',
+        status: 'running',
         input_parameters_json: {
             plate: 'plate-003',
             media_volume_ul: 500.0
@@ -40,7 +40,7 @@ export const MOCK_PROTOCOL_RUNS = [
         accession_id: 'aaaa3333-3333-3333-3333-333333333333',
         protocol_definition_accession_id: '33333333-3333-3333-3333-333333333333',
         protocol_name: 'Daily System Maintenance',
-        status: 'QUEUED',
+        status: 'queued',
         input_parameters_json: {
             wash_cycles: 2
         },
@@ -51,7 +51,7 @@ export const MOCK_PROTOCOL_RUNS = [
         accession_id: 'aaaa4444-4444-4444-4444-444444444444',
         protocol_definition_accession_id: '11111111-1111-1111-1111-111111111111',
         protocol_name: 'PCR Prep (96-well)',
-        status: 'FAILED',
+        status: 'failed',
         input_parameters_json: {
             source_plate: 'plate-005',
             destination_plate: 'plate-006',

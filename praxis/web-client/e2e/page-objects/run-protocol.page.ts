@@ -13,17 +13,17 @@ export class RunProtocolPage extends BasePage {
 
     constructor(page: Page) {
         super(page, '/run');
-        this.protocolCards = page.locator('.protocol-card, [data-testid="protocol-card"]');
-        this.machineSelection = page.locator('app-machine-selection, [data-testid="machine-selection"]');
-        this.continueButton = page.locator('button:has-text("Continue"), button:has-text("Next")');
-        this.startExecutionButton = page.locator('button:has-text("Start"), button:has-text("Run")');
+        this.protocolCards = page.locator('app-protocol-card, .protocol-card, [data-testid="protocol-card"]');
+        this.machineSelection = page.locator('app-machine-selection, app-machine-argument-selector, [data-testid="machine-selection"]');
+        this.continueButton = page.locator('button:has-text("Continue"), button:has-text("Next"), button:has-text("Skip Setup")');
+        this.startExecutionButton = page.locator('button:has-text("Start Execution"), button:has-text("Start"), button:has-text("Run")');
     }
 
     /**
      * Wait for protocols to be loaded in the wizard
      */
     async waitForProtocolsLoaded(): Promise<void> {
-        await this.page.waitForSelector('.protocol-card, [data-testid="protocol-card"], app-protocol-selector', {
+        await this.page.waitForSelector('app-protocol-card, .protocol-card, [data-testid="protocol-card"]', {
             timeout: 30000,
             state: 'visible',
         }).catch(() => {
@@ -38,12 +38,12 @@ export class RunProtocolPage extends BasePage {
      */
     async selectFirstProtocol(): Promise<void> {
         const firstCard = this.protocolCards.first();
-        if (await firstCard.isVisible({ timeout: 5000 })) {
+        if (await firstCard.isVisible({ timeout: 10000 })) {
             await firstCard.click();
         } else {
             // Try alternative: table row
-            const tableRow = this.page.locator('table tbody tr').first();
-            if (await tableRow.isVisible({ timeout: 2000 })) {
+            const tableRow = this.page.locator('table tbody tr, .praxis-card').first();
+            if (await tableRow.isVisible({ timeout: 5000 })) {
                 await tableRow.click();
             }
         }
@@ -53,14 +53,21 @@ export class RunProtocolPage extends BasePage {
      * Select the first available machine
      */
     async selectFirstMachine(): Promise<void> {
-        const machineCard = this.page.locator('.machine-card, [data-testid="machine-card"]').first();
-        if (await machineCard.isVisible({ timeout: 5000 })) {
+        // Try various locators for machine selection (cards, options, etc.)
+        // Important: Filter out disabled cards
+        const machineCard = this.page.locator('.option-card:not(.disabled), .machine-card:not(.disabled), [data-testid="machine-card"]:not([disabled])').filter({ visible: true }).first();
+        
+        if (await machineCard.isVisible({ timeout: 10000 })) {
+            console.log('[RunProtocolPage] Clicking machine card/option');
             await machineCard.click();
         } else {
             // Try alternative: radio button or list item
             const radioBtn = this.machineSelection.locator('input[type="radio"]').first();
             if (await radioBtn.isVisible({ timeout: 2000 })) {
+                console.log('[RunProtocolPage] Clicking machine radio button');
                 await radioBtn.click();
+            } else {
+                console.warn('[RunProtocolPage] Could not find machine selection element');
             }
         }
     }

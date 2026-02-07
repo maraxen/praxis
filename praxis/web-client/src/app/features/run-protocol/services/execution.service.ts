@@ -222,19 +222,23 @@ export class ExecutionService {
       previous_accession_id: null
     };
 
-    this.sqliteService.protocolRuns.pipe(
-      switchMap(repo => repo.create(runRecord as any))
-    ).subscribe({
-      error: (err) => console.warn('[ExecutionService] Failed to persist run:', err)
-    });
+    return this.sqliteService.protocolRuns.pipe(
+      switchMap(repo => repo.create(runRecord as any)),
+      tap(() => {
+        // Execute asynchronously
+        this.executeBrowserProtocol(protocolId, runId, parameters);
 
-    // Execute asynchronously
-    this.executeBrowserProtocol(protocolId, runId, parameters);
-
-    // Start heartbeat
-    this.startHeartbeat(runId);
-
-    return of({ run_id: runId });
+        // Start heartbeat
+        this.startHeartbeat(runId);
+      }),
+      map(() => ({ run_id: runId })),
+      catchError(err => {
+        console.warn('[ExecutionService] Failed to persist run:', err);
+        // Still try to run even if persistence failed? 
+        // Better to fail the start if we can't persist history.
+        return throwError(() => err);
+      })
+    );
   }
 
   /**
@@ -748,7 +752,7 @@ print(f"[Browser] Protocol finished with result: {result}")
         function_protocol_definition_accession_id: 'browser_execution',
         sequence_in_run: logData.sequence,
         name: logData.method_name,
-        status: logData.status === 'completed' ? 'COMPLETED' : 'FAILED',
+        status: logData.status === 'completed' ? ExecutionStatus.COMPLETED : ExecutionStatus.FAILED,
         start_time: new Date(logData.start_time * 1000).toISOString(),
         end_time: logData.end_time ? new Date(logData.end_time * 1000).toISOString() : null,
         duration_ms: logData.duration_ms ?? null,

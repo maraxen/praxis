@@ -7,14 +7,14 @@
  * Matches backend ProtocolRunStatusEnum.
  */
 export type RunStatus =
-    | 'PENDING'
-    | 'PREPARING'
-    | 'QUEUED'
-    | 'RUNNING'
-    | 'COMPLETED'
-    | 'FAILED'
-    | 'CANCELLED'
-    | 'PAUSED';
+    | 'pending'
+    | 'preparing'
+    | 'queued'
+    | 'running'
+    | 'completed'
+    | 'failed'
+    | 'cancelled'
+    | 'paused';
 
 /**
  * Summary representation of a protocol run for list views.

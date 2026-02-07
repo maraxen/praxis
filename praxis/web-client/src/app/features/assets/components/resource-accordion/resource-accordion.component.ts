@@ -8,6 +8,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatChipsModule } from '@angular/material/chips';
 import { ReactiveFormsModule } from '@angular/forms';
 import { AssetService } from '../../services/asset.service';
 import { Resource, ResourceStatus, ResourceDefinition, Machine } from '../../models/asset.models';
@@ -52,6 +53,7 @@ export interface ResourceDefinitionGroup {
     MatBadgeModule,
     MatSlideToggleModule,
     MatDialogModule,
+    MatChipsModule,
     ReactiveFormsModule,
     AssetStatusChipComponent,
     ResourceChipsComponent,
@@ -71,9 +73,14 @@ export interface ResourceDefinitionGroup {
 
       @if (viewState().viewType === 'accordion') {
         <ng-template #definitionItem let-defGroup="defGroup">
-          <div class="definition-item" (click)="openInstancesDialog(defGroup)">
+          <div class="definition-item" (click)="openInstancesDialog(defGroup)" [attr.data-testid]="'resource-item-' + defGroup.definition.accession_id">
             <div class="def-info">
               <span class="def-name">{{ getDisplayLabel(defGroup.definition) }}</span>
+              @if (viewState().search && getMatchingInstanceName(defGroup)) {
+                <span class="text-xs text-[var(--mat-sys-on-surface-variant)] italic">
+                  Matches: {{ getMatchingInstanceName(defGroup) }}
+                </span>
+              }
               <!-- Prioritized chip ordering: Status (if itemized) → Count → Type flags → Vendor -->
               <div class="def-chips">
                 @if (defGroup.isConsumable && defGroup.primaryStatus) {
@@ -119,7 +126,7 @@ export interface ResourceDefinitionGroup {
         @if (viewState().groupBy) {
           <mat-accordion multi="true">
           @for (group of filteredGroups(); track group.category) {
-            <mat-expansion-panel class="category-panel">
+            <mat-expansion-panel class="category-panel" [expanded]="!!viewState().search">
               <mat-expansion-panel-header>
                 <mat-panel-title>
                   <mat-icon class="category-icon" [matTooltip]="getCategoryTooltip(group.category)">{{ getCategoryIcon(group.category) }}</mat-icon>
@@ -625,14 +632,24 @@ export class ResourceAccordionComponent implements OnInit {
           }
         }
 
-        // Search Filter (Name or Category) - Applies to Definition
+        // Search Filter (Name, Category or Instance Name)
         if (state.search) {
           const searchLower = state.search.toLowerCase();
-          const matchesName = defGroup.definition.name.toLowerCase().includes(searchLower);
+          const matchesDefName = defGroup.definition.name.toLowerCase().includes(searchLower);
           const matchesCategory = group.category.toLowerCase().includes(searchLower);
+          const matchesInstanceName = matchingInstances.some(inst =>
+            inst.name.toLowerCase().includes(searchLower)
+          );
 
-          if (!matchesName && !matchesCategory) {
+          if (!matchesDefName && !matchesCategory && !matchesInstanceName) {
             return null;
+          }
+
+          // If instance name matches but def name doesn't, we filter instances
+          if (matchesInstanceName && !matchesDefName && !matchesCategory) {
+            matchingInstances = matchingInstances.filter(inst =>
+              inst.name.toLowerCase().includes(searchLower)
+            );
           }
         }
 
@@ -668,7 +685,7 @@ export class ResourceAccordionComponent implements OnInit {
       }).filter((d): d is ResourceDefinitionGroup => d !== null);
 
       // Sort Definitions
-      filteredDefs.sort((a, b) => {
+      const sortedDefs = [...filteredDefs].sort((a, b) => {
         let valA: any = '';
         let valB: any = '';
 
@@ -693,8 +710,8 @@ export class ResourceAccordionComponent implements OnInit {
 
       return {
         ...group,
-        definitions: filteredDefs,
-        totalCount: filteredDefs.length
+        definitions: sortedDefs,
+        totalCount: sortedDefs.length
       };
 
     }).filter(group => group.definitions.length > 0).sort((a, b) => {
@@ -713,6 +730,7 @@ export class ResourceAccordionComponent implements OnInit {
 
   loadData() {
     this.assetService.getResources().subscribe(resources => {
+      console.debug(`[ASSET-DEBUG] ResourceAccordion: Loaded ${resources.length} resources`, resources.map(r => r.name));
       this.resources.set(resources);
     });
 
@@ -751,6 +769,13 @@ export class ResourceAccordionComponent implements OnInit {
 
   getPropertyTooltip(property: string): string {
     return getPropertyTooltip(property);
+  }
+
+  getMatchingInstanceName(defGroup: ResourceDefinitionGroup): string | null {
+    const search = this.viewState().search.toLowerCase();
+    if (!search) return null;
+    const match = defGroup.instances.find(inst => inst.name.toLowerCase().includes(search));
+    return match ? match.name : null;
   }
 
   openInstancesDialog(defGroup: ResourceDefinitionGroup) {

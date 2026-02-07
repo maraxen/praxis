@@ -85,13 +85,13 @@ export class ExecutionMonitorComponent implements OnInit {
         type: 'multiselect',
         pinned: true,
         options: [
-          { label: 'Running', value: 'RUNNING' },
-          { label: 'Completed', value: 'COMPLETED' },
-          { label: 'Failed', value: 'FAILED' },
-          { label: 'Paused', value: 'PAUSED' },
-          { label: 'Pending', value: 'PENDING' },
-          { label: 'Queued', value: 'QUEUED' },
-          { label: 'Cancelled', value: 'CANCELLED' }
+          { label: 'Running', value: 'running' },
+          { label: 'Completed', value: 'completed' },
+          { label: 'Failed', value: 'failed' },
+          { label: 'Paused', value: 'paused' },
+          { label: 'Pending', value: 'pending' },
+          { label: 'Queued', value: 'queued' },
+          { label: 'Cancelled', value: 'cancelled' }
         ]
       },
       {

@@ -345,9 +345,12 @@ async function handleClose(id: string) {
 
 /**
  * Clear all database files from OPFS (factory reset)
+ * 
+ * CRITICAL: For E2E test isolation, we should only delete the current database file,
+ * NOT wipe all files via poolUtil.wipeFiles(), because parallel workers share the same OPFS.
  */
 async function handleClear(id: string) {
-    console.log('[SqliteOpfsWorker] Clearing database...');
+    console.log(`[SqliteOpfsWorker] Clearing database: ${currentDbName}`);
 
     // Close current database if open
     if (db) {
@@ -355,18 +358,16 @@ async function handleClear(id: string) {
         db = null;
     }
 
-    // Use pool utility to wipe all managed files if available
-    if (poolUtil && typeof poolUtil.wipeFiles === 'function') {
-        console.log('[SqliteOpfsWorker] Wiping pool files...');
-        await poolUtil.wipeFiles();
-    } else if (poolUtil && typeof poolUtil.unlink === 'function') {
-        // Try to delete the main database file
+    if (poolUtil && typeof poolUtil.unlink === 'function') {
+        // Only delete the specific database file for this worker/instance
         try {
             await poolUtil.unlink(currentDbName);
             console.log(`[SqliteOpfsWorker] Deleted ${currentDbName}`);
-        } catch (err) {
-            console.warn('[SqliteOpfsWorker] Could not delete praxis.db:', err);
+        } catch (err: any) {
+            console.warn(`[SqliteOpfsWorker] Could not delete ${currentDbName}:`, err.message);
         }
+    } else {
+        console.warn('[SqliteOpfsWorker] Pool utility unlink not available for clear operation');
     }
 
     console.log('[SqliteOpfsWorker] Database cleared.');

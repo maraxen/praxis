@@ -168,8 +168,8 @@ export class RunStatsPanelComponent implements OnInit {
       return runDate >= today;
     }).length;
 
-    const completedRuns = runs.filter(r => r.status === 'COMPLETED').length;
-    const failedRuns = runs.filter(r => r.status === 'FAILED').length;
+    const completedRuns = runs.filter(r => r.status === 'completed').length;
+    const failedRuns = runs.filter(r => r.status === 'failed').length;
     const finishedRuns = completedRuns + failedRuns;
 
     const successRate = finishedRuns > 0

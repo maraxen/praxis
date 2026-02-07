@@ -480,7 +480,7 @@ export class MachineListComponent implements OnInit, OnDestroy {
     }
 
     // 6. Sort
-    filtered.sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       let valA: string | number = '';
       let valB: string | number = '';
 
@@ -506,8 +506,6 @@ export class MachineListComponent implements OnInit, OnDestroy {
       const comparison = valA > valB ? 1 : (valA < valB ? -1 : 0);
       return state.sortOrder === 'asc' ? comparison : -comparison;
     });
-
-    return filtered;
   });
 
   onContextMenu(event: MouseEvent, machine: Machine) {
@@ -544,4 +542,3 @@ export class MachineListComponent implements OnInit, OnDestroy {
     }
   }
 }
-

@@ -174,14 +174,14 @@ import { ExecutionService } from '@features/run-protocol/services/execution.serv
                 <mat-card-title>Actions</mat-card-title>
               </mat-card-header>
               <mat-card-content class="pt-4 space-y-2">
-                @if (run()?.status === 'RUNNING' || run()?.status === 'PAUSED') {
+                @if (run()?.status === 'running' || run()?.status === 'paused') {
                   <div class="run-controls">
                     <button mat-raised-button color="warn" (click)="cancelRun()" [disabled]="isCancelling()" data-testid="cancel-button">
                       <mat-icon>stop</mat-icon> Cancel
                     </button>
                     <button mat-raised-button (click)="togglePause()" [disabled]="isToggling()" data-testid="pause-button">
-                      <mat-icon>{{ run()?.status === 'PAUSED' ? 'play_arrow' : 'pause' }}</mat-icon>
-                      {{ run()?.status === 'PAUSED' ? 'Resume' : 'Pause' }}
+                      <mat-icon>{{ run()?.status === 'paused' ? 'play_arrow' : 'pause' }}</mat-icon>
+                      {{ run()?.status === 'paused' ? 'Resume' : 'Pause' }}
                     </button>
                   </div>
                 }
@@ -401,7 +401,7 @@ export class RunDetailComponent implements OnInit, OnDestroy {
 
   readonly isLive = computed(() => {
     const r = this.run();
-    return r && ['RUNNING', 'PAUSED', 'PREPARING'].includes(r.status);
+    return r && ['running', 'paused', 'preparing'].includes(r.status);
   });
   readonly timelineSteps = computed(() => {
     const run = this.run();
@@ -414,7 +414,7 @@ export class RunDetailComponent implements OnInit, OnDestroy {
     let completeState: 'pending' | 'active' | 'completed' | 'error' = 'pending';
 
     // Setup Phase
-    if (['QUEUED', 'PREPARING', 'PENDING'].includes(status)) {
+    if (['queued', 'preparing', 'pending'].includes(status)) {
       setupState = 'active';
     } else {
       // If we are past setup, it's completed.
@@ -422,16 +422,16 @@ export class RunDetailComponent implements OnInit, OnDestroy {
     }
 
     // Running Phase
-    if (status === 'RUNNING' || status === 'PAUSED') {
+    if (status === 'running' || status === 'paused') {
       runningState = 'active';
-    } else if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(status)) {
+    } else if (['completed', 'failed', 'cancelled'].includes(status)) {
       runningState = 'completed';
     }
 
     // Complete Phase
-    if (status === 'COMPLETED') {
+    if (status === 'completed') {
       completeState = 'completed';
-    } else if (status === 'FAILED' || status === 'CANCELLED') {
+    } else if (status === 'failed' || status === 'cancelled') {
       completeState = 'error';
     }
 
@@ -551,7 +551,7 @@ export class RunDetailComponent implements OnInit, OnDestroy {
 
   togglePause() {
     this.isToggling.set(true);
-    const action = this.run()?.status === 'PAUSED' ? 'resume' : 'pause';
+    const action = this.run()?.status === 'paused' ? 'resume' : 'pause';
     this.executionService[action](this.runId()).subscribe({
       next: () => { },
       error: (err: Error) => this.snackBar.open('Failed to ' + action + ': ' + err.message, 'Close'),

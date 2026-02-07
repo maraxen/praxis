@@ -21,11 +21,11 @@ import { GlobalInjector } from '@core/utils/global-injector';
 import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 
 import {
-  isConnectHardwareBody,
-  isCreateProtocolRunBody,
-  isRegisterHardwareBody,
-  isReplCommandBody,
-  RegisterHardwareRequestBody,
+    isConnectHardwareBody,
+    isCreateProtocolRunBody,
+    isRegisterHardwareBody,
+    isReplCommandBody,
+    RegisterHardwareRequestBody,
 } from './interceptor.models';
 
 function getSqliteService(): SqliteService {
@@ -74,7 +74,7 @@ export class BrowserMockRouter {
             return db.getProtocolRuns().pipe(
                 map(runs => {
                     return runs.filter((r: ProtocolRun) =>
-                        ['PENDING', 'PREPARING', 'QUEUED', 'RUNNING'].includes(r.status || '')
+                        ['pending', 'preparing', 'queued', 'running'].includes(r.status || '')
                     ).map((r: ProtocolRun) => ({
                         accession_id: r.accession_id,
                         name: r.name,
@@ -254,7 +254,7 @@ export class BrowserMockRouter {
 
         // POST protocol run - simulate creation
         if (url.includes('/protocols/runs') && method === 'POST') {
-          const runBody = isCreateProtocolRunBody(body) ? body : {};
+            const runBody = isCreateProtocolRunBody(body) ? body : {};
             const newRun: ProtocolRun = {
                 accession_id: crypto.randomUUID(),
                 status: 'queued',
@@ -385,11 +385,11 @@ export class BrowserMockRouter {
         if (url.includes('/hardware/register') && method === 'POST') {
             let payload: RegisterHardwareRequestBody = {};
             if (isRegisterHardwareBody(body)) {
-              if (typeof body === 'string') {
-                payload = JSON.parse(body);
-              } else {
-                payload = body;
-              }
+                if (typeof body === 'string') {
+                    payload = JSON.parse(body);
+                } else {
+                    payload = body;
+                }
             }
 
             console.log('[BrowserMockRouter] Hardware register payload (parsed):', payload);
