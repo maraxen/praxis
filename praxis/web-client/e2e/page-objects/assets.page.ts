@@ -24,20 +24,15 @@ export class AssetsPage extends BasePage {
     /**
      * Waits for the dialog container and animation to complete before interaction.
      * Material CDK dialogs use ~200ms enter animation.
+     * 
+     * NOTE: Do NOT use .or() to combine the overlay pane with the inner wizard —
+     * the wizard is nested INSIDE the overlay pane, so both always exist simultaneously,
+     * causing a Playwright strict mode violation (2 elements matched).
      */
     async waitForDialogReady(): Promise<void> {
-        // Wait for overlay backdrop (indicates dialog is opening)
-        const backdrop = this.page.locator('.cdk-overlay-backdrop');
-        await backdrop.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {
-            // Backdrop may not always be present for inline wizards
-        });
-        // Wait for animation to complete (CDK uses ~200ms)
-        await this.page.waitForTimeout(250);
-        // Wait for dialog container to stabilize
-        const dialogContainer = this.page.locator('.cdk-overlay-pane:has(app-asset-wizard)');
-        await dialogContainer.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {
-            // May not be in a dialog overlay
-        });
+        // Wait for the wizard component itself (always unique — only one dialog at a time)
+        const wizard = this.page.locator('app-asset-wizard');
+        await expect(wizard).toBeVisible({ timeout: 10000 });
     }
 
     /**
@@ -153,31 +148,22 @@ export class AssetsPage extends BasePage {
         const card = wizard.getByTestId(testId);
         await expect(card).toBeVisible({ timeout: 15000 });
 
-        // Ensure card is stable before click
-        await card.waitFor({ state: 'attached' });
-        await this.page.waitForTimeout(500); // Wait for transitions
+        // Click the card
+        await card.click();
 
-        await card.click({ force: true });
-
-        // Wait for selected state with retry
-        await expect(async () => {
-            const hasClass = await card.evaluate(el => el.classList.contains('selected') || el.classList.contains('active'));
-            if (!hasClass) {
-                await card.click({ force: true }).catch(() => { });
-                throw new Error('Card not selected');
-            }
-        }).toPass({ timeout: 5000 });
+        // Wait for selected state using web-first assertion
+        await expect(card).toHaveClass(/selected|active/, { timeout: 5000 });
     }
 
     /**
      * Waits for any overlays (dialogs, spinners) to dismiss before continuing.
      */
     async waitForOverlaysToDismiss(): Promise<void> {
-        // Wait for any loading spinners to disappear
-        const spinner = this.page.locator('mat-spinner, .loading-overlay, .cdk-overlay-backdrop');
-        await expect(spinner).not.toBeVisible({ timeout: 10000 }).catch(() => {
-            // Spinner might not exist - that's fine
-        });
+        // Wait for any loading spinners to disappear (only if they exist)
+        const spinner = this.page.locator('mat-spinner, .loading-overlay');
+        if (await spinner.count() > 0) {
+            await expect(spinner).not.toBeVisible({ timeout: 10000 });
+        }
     }
 
     /**
@@ -219,8 +205,10 @@ export class AssetsPage extends BasePage {
      * Waits for all Material loading indicators to disappear
      */
     async waitForLoadingComplete() {
-        await this.page.waitForSelector('mat-spinner', { state: 'detached', timeout: 10000 }).catch(() => { });
-        await this.page.waitForTimeout(500); // Wait for potential animations
+        const spinner = this.page.locator('mat-spinner');
+        if (await spinner.count() > 0) {
+            await expect(spinner).not.toBeVisible({ timeout: 10000 });
+        }
     }
 
     async selectRegistryTab(tabName: 'Resources' | 'Resource Types' | 'Machines') {
@@ -231,10 +219,10 @@ export class AssetsPage extends BasePage {
     }
 
     async search(query: string) {
-        // Try to find search input that is visible
         const searchInput = this.page.locator('input[placeholder*="Search"]:visible').first();
         await searchInput.fill(query);
-        await this.page.waitForTimeout(1000); // Increased debounce for stability
+        // Wait for search results to update by checking the input has the value
+        await expect(searchInput).toHaveValue(query, { timeout: 2000 });
     }
 
     /** @deprecated Use navigateToOverview instead */
@@ -243,7 +231,9 @@ export class AssetsPage extends BasePage {
     }
 
     async createMachine(name: string, categoryName: string = 'LiquidHandler', modelQuery: string = 'STAR') {
-        await this.navigateToOverview();
+        // Ensure we're on the Machines tab (not Overview) so the header button says "Add Machine"
+        // and the machine list is visible after wizard closes for verification.
+        await this.navigateToMachines();
         await this.addMachineButton.click();
         const wizard = await this.waitForWizard();
         const dialog = this.page.getByRole('dialog');
@@ -272,6 +262,16 @@ export class AssetsPage extends BasePage {
         await backendCard.click();
         await dialog.getByRole('button', { name: /Next/i }).click();
 
+        // Step 3B (conditional): Select Deck - only shown for LiquidHandlers with multiple compatible decks
+        const deckStep = wizard.getByTestId('wizard-step-deck');
+        const deckStepVisible = await deckStep.isVisible().catch(() => false);
+        if (deckStepVisible) {
+            const deckCard = wizard.getByTestId(/deck-card-/).first();
+            await expect(deckCard).toBeVisible({ timeout: 10000 });
+            await deckCard.click();
+            await dialog.getByRole('button', { name: /Next/i }).click();
+        }
+
         // Step 4: Config
         const nameInput = wizard.getByTestId('input-instance-name');
         await expect(nameInput).toBeVisible({ timeout: 10000 });
@@ -286,7 +286,8 @@ export class AssetsPage extends BasePage {
     }
 
     async createResource(name: string, categoryName: string = 'Plate', modelQuery: string = '96') {
-        await this.navigateToOverview();
+        // Ensure we're on the Resources tab so the header button says "Add Resource"
+        await this.navigateToResources();
         await this.addResourceButton.click();
         const wizard = await this.waitForWizard();
 
@@ -391,10 +392,6 @@ export class AssetsPage extends BasePage {
     async selectCategoryFilter(category: string) {
         const chip = this.page.locator('app-filter-chip').filter({ hasText: new RegExp(category, 'i') });
         await chip.click();
-        // Wait for chip to show selected state
-        await expect(chip).toHaveClass(/selected|active/, { timeout: 5000 }).catch(() => {
-            // Some implementations may not use a class - just ensure click was processed
-        });
     }
 
     /**
@@ -406,10 +403,6 @@ export class AssetsPage extends BasePage {
         );
         if (await clearBtn.isVisible({ timeout: 1000 })) {
             await clearBtn.click();
-            // Wait for clear button to disappear or filters to reset
-            await expect(clearBtn).not.toBeVisible({ timeout: 5000 }).catch(() => {
-                // Button may stay visible - that's OK
-            });
         }
     }
 

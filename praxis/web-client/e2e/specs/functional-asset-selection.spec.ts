@@ -16,11 +16,10 @@ test.describe('Functional Asset Selection', () => {
         wizardPage = new WizardPage(page);
 
         await welcomePage.goto();
-        await welcomePage.handleSplashScreen();
     });
 
     test.afterEach(async ({ page }, testInfo) => {
-        await page.keyboard.press('Escape').catch(() => {});
+        await page.keyboard.press('Escape').catch(() => { });
 
         const testId = testInfo.testId;
         const sourcePlateName = `Source Plate ${testId}`;
@@ -31,12 +30,12 @@ test.describe('Functional Asset Selection', () => {
         await assetsPage.goto();
 
         await assetsPage.navigateToResources();
-        await assetsPage.deleteResource(sourcePlateName).catch(() => {});
-        await assetsPage.deleteResource(destPlateName).catch(() => {});
-        await assetsPage.deleteResource(tipRackName).catch(() => {});
+        await assetsPage.deleteResource(sourcePlateName).catch(() => { });
+        await assetsPage.deleteResource(destPlateName).catch(() => { });
+        await assetsPage.deleteResource(tipRackName).catch(() => { });
 
         await assetsPage.navigateToMachines();
-        await assetsPage.deleteMachine('MyHamilton').catch(() => {});
+        await assetsPage.deleteMachine('MyHamilton').catch(() => { });
     });
 
     test.setTimeout(300000); // 5 minutes for full E2E flow
@@ -68,17 +67,19 @@ test.describe('Functional Asset Selection', () => {
         await assetsPage.verifyAssetVisible(tipRackName);
 
         const dbAssets = await page.evaluate(async () => {
-            const db = (window as any).sqliteService;
-            const resources = await db.query('SELECT name, category FROM resources');
-            const machines = await db.query('SELECT name, driver_type FROM machines');
-            return { resources, machines };
+            const e2e = (window as any).__e2e;
+            if (!e2e) return { resources: [], machines: [] };
+            return {
+                resources: await e2e.query('SELECT name, plr_category FROM resources'),
+                machines: await e2e.query('SELECT name, machine_category FROM machines')
+            };
         });
 
         expect(dbAssets.resources).toContainEqual(
-            expect.objectContaining({ name: sourcePlateName, category: 'Plate' })
+            expect.objectContaining({ name: sourcePlateName, plr_category: 'Plate' })
         );
         expect(dbAssets.machines).toContainEqual(
-            expect.objectContaining({ name: 'MyHamilton', driver_type: 'Hamilton' })
+            expect.objectContaining({ name: 'MyHamilton', machine_category: 'LiquidHandler' })
         );
 
         // 2. Select protocol

@@ -22,7 +22,7 @@ test.describe('Protocol Wizard Flow', () => {
     test('should display protocol library', async ({ page }) => {
         await protocolPage.navigateToProtocols();
         await expect(protocolPage.protocolCards.first()).toBeVisible();
-        
+
         await test.info().attach('protocol-library', {
             body: await page.screenshot(),
             contentType: 'image/png'
@@ -94,19 +94,21 @@ test.describe('Protocol Wizard Flow', () => {
 
         await test.step('Verify run persisted to database', async () => {
             const runRecord = await page.evaluate(async () => {
-                const db = await (window as any).sqliteService.getDatabase();
-                const result = db.exec("SELECT id, status FROM run_history ORDER BY created_at DESC LIMIT 1");
-                return result[0]?.values[0];
+                const e2e = (window as any).__e2e;
+                if (!e2e) throw new Error('__e2e test API not found');
+                const rows = await e2e.query("SELECT accession_id, status FROM protocol_runs ORDER BY created_at DESC LIMIT 1");
+                return rows[0] ? [rows[0].accession_id, rows[0].status] : null;
             });
             expect(runRecord).toBeTruthy();
-            expect(runRecord[1]).toMatch(/COMPLETED|SUCCEEDED/i);
+            expect(runRecord![1]).toMatch(/COMPLETED|SUCCEEDED/i);
         });
 
         await test.step('Verify parameter serialization', async () => {
             const runParams = await page.evaluate(async () => {
-                const db = await (window as any).sqliteService.getDatabase();
-                const result = db.exec("SELECT parameters FROM run_history ORDER BY created_at DESC LIMIT 1");
-                return result[0]?.values[0]?.[0];
+                const e2e = (window as any).__e2e;
+                if (!e2e) throw new Error('__e2e test API not found');
+                const rows = await e2e.query("SELECT parameters_json FROM protocol_runs ORDER BY created_at DESC LIMIT 1");
+                return rows[0]?.parameters_json ?? null;
             });
             expect(runParams).toBeTruthy();
             const parsed = JSON.parse(runParams);
@@ -120,10 +122,10 @@ test.describe('Protocol Wizard Flow', () => {
         // This protocol is assumed to exist and have no compatible machines in the default test setup.
         // A more robust solution would be to seed this protocol state.
         await protocolPage.selectProtocol('Hardware-Only Protocol');
-        
+
         const noMachinesState = page.locator('.no-machines-state, .empty-state');
         await expect(noMachinesState).toBeVisible();
-        
+
         // Verify Continue is disabled
         const continueBtn = page.getByRole('button', { name: /Continue/i });
         await expect(continueBtn).toBeDisabled();
@@ -134,16 +136,16 @@ test.describe('Protocol Wizard Flow', () => {
         await protocolPage.selectProtocol('Simple Transfer');
         await protocolPage.advanceToReview();
         await protocolPage.startExecution();
-      
+
         // Wait for running state
         await expect(page.locator('[data-testid="run-status"]')).toContainText(/RUNNING/i, { timeout: 15000 });
-      
+
         // Click abort button
         await page.getByRole('button', { name: /Abort|Cancel|Stop/i }).click();
-      
+
         // Confirm in dialog
         await page.getByRole('button', { name: /Confirm/i }).click();
-      
+
         // Verify aborted state
         await expect(page.locator('[data-testid="run-status"]')).toContainText(/ABORTED|CANCELLED/i, { timeout: 15000 });
     });

@@ -10,7 +10,6 @@ test.describe('Workcell Dashboard - Empty State', () => {
         workcellPage = new WorkcellPage(page);
         await workcellPage.goto(testInfo);
         const welcomePage = new WelcomePage(page);
-        await welcomePage.handleSplashScreen();
     });
 
     test('should load the dashboard page and display empty state', async () => {
@@ -29,7 +28,6 @@ test.describe('Workcell Dashboard - Populated State', () => {
         const url = buildWorkerUrl('/app/workcell', testInfo.workerIndex, { resetdb: true });
         await page.goto(url, { waitUntil: 'networkidle' });
         const welcomePage = new WelcomePage(page);
-        await welcomePage.handleSplashScreen();
 
         // 2. Seed the machine data using the real SqliteService and refresh UI
         await page.evaluate(async (machine) => {
@@ -44,9 +42,9 @@ test.describe('Workcell Dashboard - Populated State', () => {
             });
 
             const repos = await firstValue<any>(service.getAsyncRepositories());
-            
+
             // Clean up any existing machines from previous tests in the same worker session
-            await firstValue(service.opfs.exec("DELETE FROM machines"));
+            await (window as any).__e2e.exec("DELETE FROM machines");
 
             await firstValue(repos.machines.create({
                 accession_id: machine.id,
@@ -81,14 +79,14 @@ test.describe('Workcell Dashboard - Populated State', () => {
         await expect(card).toContainText(testMachineData.name);
         await expect(card).toContainText('Liquid Handler');
     });
-    
+
     test('should switch between view modes', async ({ page }) => {
         const gridBtn = page.getByRole('button', { name: /Grid/i });
         const listBtn = page.getByRole('button', { name: /List/i });
-        
+
         await listBtn.click();
         await expect(page.locator('.list-view')).toBeVisible();
-        
+
         await gridBtn.click();
         await expect(page.locator('.grid-view')).toBeVisible();
     });
@@ -96,7 +94,7 @@ test.describe('Workcell Dashboard - Populated State', () => {
     test('should filter machines by search query', async ({ testMachineData }) => {
         await workcellPage.searchMachines('Liquid');
         await expect(workcellPage.machineCards).toHaveCount(1);
-        
+
         await workcellPage.searchMachines('nonexistent');
         await expect(workcellPage.emptyStateMessage).toBeVisible();
     });

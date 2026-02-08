@@ -16,7 +16,6 @@ test.describe('Asset Management Flow', () => {
         assetsPage = new AssetsPage(page, testInfo);
 
         await welcomePage.goto();
-        await welcomePage.handleSplashScreen();
 
         // Capture debug logs
         page.on('console', msg => {
@@ -112,18 +111,16 @@ test.describe('Asset Management Flow', () => {
             await assetsPage.createMachine(machineName);
             await assetsPage.verifyAssetVisible(machineName);
 
-            // NEW: Verify data integrity via SQLite query
+            // Verify data integrity via __e2e test API (correct table: machines)
             const machineData = await page.evaluate(async (name) => {
-                const db = (window as any).sqliteService?.db;
-                if (!db) return null;
-                const result = db.exec(`SELECT id, class_name, frontend_id FROM instances WHERE instance_name = '${name}'`);
-                if (result.length === 0 || result[0].values.length === 0) return null;
-                const [id, className, frontendId] = result[0].values[0];
-                return { id, className, frontendId };
+                const e2e = (window as any).__e2e;
+                if (!e2e) return null;
+                const rows = await e2e.query(`SELECT accession_id, machine_category, name FROM machines WHERE name = ?`, [name]);
+                return rows[0] ?? null;
             }, machineName);
 
             expect(machineData).not.toBeNull();
-            expect(machineData!.className).toBe('LiquidHandler');
+            expect(machineData!.machine_category).toBe('LiquidHandler');
         });
 
         test('should add a new resource', async ({ page }) => {
@@ -156,9 +153,10 @@ test.describe('Asset Management Flow', () => {
 
             // Get the ID before reload
             const machineId = await page.evaluate(async (name) => {
-                const db = (window as any).sqliteService?.db;
-                const result = db.exec(`SELECT id FROM instances WHERE instance_name = '${name}'`);
-                return result[0]?.values[0]?.[0] ?? null;
+                const e2e = (window as any).__e2e;
+                if (!e2e) return null;
+                const rows = await e2e.query(`SELECT accession_id FROM machines WHERE name = ?`, [name]);
+                return rows[0]?.accession_id ?? null;
             }, machineName);
 
             await page.reload();
@@ -166,9 +164,10 @@ test.describe('Asset Management Flow', () => {
 
             // NEW: Verify same ID exists after reload (proves OPFS persistence)
             const persistedId = await page.evaluate(async (name) => {
-                const db = (window as any).sqliteService?.db;
-                const result = db.exec(`SELECT id FROM instances WHERE instance_name = '${name}'`);
-                return result[0]?.values[0]?.[0] ?? null;
+                const e2e = (window as any).__e2e;
+                if (!e2e) return null;
+                const rows = await e2e.query(`SELECT accession_id FROM machines WHERE name = ?`, [name]);
+                return rows[0]?.accession_id ?? null;
             }, machineName);
 
             expect(persistedId).toBe(machineId);

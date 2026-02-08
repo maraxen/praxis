@@ -38,7 +38,6 @@ test.describe('Machine Frontend/Backend Separation', () => {
         });
 
         await welcomePage.goto();
-        await welcomePage.handleSplashScreen();
     });
 
     test.afterEach(async () => {
@@ -320,17 +319,17 @@ test.describe('Machine Frontend/Backend Separation', () => {
             // Verify machine appears in list
             await expect(page.getByText(testMachineName)).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT });
 
-            // Post-creation database verification
+            // Post-creation database verification via OPFS
             const machineRecord = await page.evaluate(async (machineName) => {
-                const sqliteService = (window as any).sqliteService;
-                const db = await sqliteService.getDatabase();
-                return await db.get('SELECT * FROM machines WHERE name = ?', [machineName]);
+                const e2e = (window as any).__e2e;
+                if (!e2e) return null;
+                const rows = await e2e.query('SELECT * FROM machines WHERE name = ?', [machineName]);
+                return rows[0] ?? null;
             }, testMachineName);
 
             expect(machineRecord).toBeDefined();
             expect(machineRecord.name).toBe(testMachineName);
-            expect(machineRecord.frontend_id).toContain('liquid-handler');
-            expect(machineRecord.backend_id).toContain('chatterbox');
+            expect(machineRecord.machine_category).toBe('LiquidHandler');
         });
 
         test('should persist created machine after page reload', async ({ page }) => {

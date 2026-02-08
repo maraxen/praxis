@@ -76,16 +76,15 @@ test.describe('Inventory Dialog Verification', () => {
     await playground.waitForBootstrapComplete();
 
     const dbResult = await page.evaluate(async () => {
-      const db = await (window as any).sqliteService?.getDatabase();
-      if (!db) {
-        return { tables: [], machineCount: 0 };
-      }
-      const tablesResult = db.exec("SELECT name FROM sqlite_master WHERE type='table'");
-      const machineCountResult = db.exec("SELECT COUNT(*) FROM machine_definitions");
+      const e2e = (window as any).__e2e;
+      if (!e2e) return { tables: [], machineCount: 0 };
+
+      const tables = await e2e.query("SELECT name FROM sqlite_master WHERE type='table'");
+      const machineCount = await e2e.count('machine_definitions');
 
       return {
-        tables: tablesResult[0]?.values.flat() || [],
-        machineCount: machineCountResult[0]?.values[0][0] || 0,
+        tables: tables.map((r: any) => r.name),
+        machineCount,
       };
     });
 

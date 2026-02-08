@@ -66,20 +66,34 @@ export class SqliteService {
         if (typeof window !== 'undefined') {
             (window as any).sqliteService = this;
 
-            // Compatibility layer for E2E tests - allows running raw SQL queries
-            // NOTE: This implementation is ASYNC, so tests must await the results
-            (window as any).sqliteService.db = {
-                exec: async (sql: string, bind?: any[]) => {
-                    const res = await firstValueFrom(this.opfs.exec(sql, bind));
-                    // Return in sql.js-compatible format for existing E2E tests
-                    return [{
-                        columns: res.columnNames,
-                        values: res.resultRows.map((row: any) => res.columnNames.map((col: any) => row[col]))
-                    }];
+            // ═══════════════════════════════════════════════════════════════
+            // E2E Test API — purpose-built for Playwright page.evaluate()
+            // Usage: (window as any).__e2e.query('SELECT * FROM machines')
+            // Returns: plain objects with named keys (e.g. [{name: 'X', ...}])
+            // ═══════════════════════════════════════════════════════════════
+            (window as any).__e2e = {
+                /** Run a SELECT query, returns array of row objects with named keys */
+                query: async (sql: string, params?: any[]): Promise<Record<string, any>[]> => {
+                    const res = await firstValueFrom(this.opfs.exec(sql, params));
+                    return res.resultRows as Record<string, any>[];
                 },
-                sync: async () => {
-                    // No-op - OPFS auto-syncs
-                }
+
+                /** Run a write statement (INSERT/UPDATE/DELETE), returns nothing */
+                exec: async (sql: string, params?: any[]): Promise<void> => {
+                    await firstValueFrom(this.opfs.exec(sql, params));
+                },
+
+                /** Shortcut: SELECT COUNT(*) — returns the count as a number */
+                count: async (table: string, where?: string, params?: any[]): Promise<number> => {
+                    const sql = where
+                        ? `SELECT COUNT(*) as c FROM ${table} WHERE ${where}`
+                        : `SELECT COUNT(*) as c FROM ${table}`;
+                    const res = await firstValueFrom(this.opfs.exec(sql, params));
+                    return (res.resultRows?.[0] as any)?.c ?? 0;
+                },
+
+                /** Check if the database is initialized and ready */
+                isReady: (): boolean => this.isReady(),
             };
         }
 

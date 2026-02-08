@@ -18,7 +18,6 @@ test.describe('User Journeys', () => {
 
     // 3. Handle Welcome Dialog
     const welcomePage = new WelcomePage(page);
-    await welcomePage.handleSplashScreen();
 
     // 4. Ensure Shell is loaded as a sanity check
     await expect(page.locator('.sidebar-rail')).toBeVisible({ timeout: 10000 });
@@ -39,10 +38,10 @@ test.describe('User Journeys', () => {
 
     // Optional: Deep verification via evaluate
     const assetExists = await page.evaluate(async () => {
-      const db = (window as any).sqliteService?.db;
-      if (!db) return false;
-      const result = db.exec("SELECT name FROM machines WHERE name = 'New Robot'");
-      return result.length > 0 && result[0].values.length > 0;
+      const e2e = (window as any).__e2e;
+      if (!e2e) return false;
+      const rows = await e2e.query("SELECT name FROM machines WHERE name = 'New Robot'");
+      return rows.length > 0;
     });
     expect(assetExists).toBe(true);
   });
