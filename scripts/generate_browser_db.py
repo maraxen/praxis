@@ -850,6 +850,125 @@ def add_sample_workcell(conn: sqlite3.Connection) -> None:
   conn.commit()
 
 
+def enrich_resource_definitions(conn: sqlite3.Connection) -> int:
+  """Second pass: instantiate each resource and call .serialize().
+
+  Populates plr_definition_details_json with the full serialized
+  representation and backfills indexed columns (size, num_items, etc.)
+  from the serialized data.
+  """
+  import inspect
+
+  # Abstract/base classes that can't be meaningfully instantiated.
+  SKIP_NAMES = {
+    "TecanPlate", "TecanResource", "TecanTipRack", "TecanTrash",
+    "TecanPlateCarrier", "TecanTipCarrier", "TecanWashStation",
+  }
+
+  cursor = conn.execute("SELECT accession_id, fqn, name FROM resource_definitions")
+  rows = cursor.fetchall()
+
+  # TODO: Open PLR issue — many carrier factories omit pedestal_size_z but
+  # PlateHolder.__init__ now requires it. Default to 4.74 (from PLT_CAR_L5AC_A00).
+  _patched = False
+  try:
+    from pylabrobot.resources.carrier import PlateHolder
+    _orig_init = PlateHolder.__init__
+
+    def _patched_init(self, *a, pedestal_size_z=4.74, **kw):
+      _orig_init(self, *a, pedestal_size_z=pedestal_size_z, **kw)
+
+    PlateHolder.__init__ = _patched_init
+    _patched = True
+  except Exception:
+    pass
+
+  enriched = 0
+  errors = 0
+
+  for accession_id, fqn, name in rows:
+    # Skip abstract base classes
+    _, attr_name = fqn.rsplit(".", 1)
+    if attr_name in SKIP_NAMES:
+      continue
+
+    try:
+      module_path = fqn.rsplit(".", 1)[0]
+      module = importlib.import_module(module_path)
+      obj = getattr(module, attr_name)
+
+      # Instantiate — factory function or class
+      instance = None
+      if inspect.isfunction(obj):
+        try:
+          instance = obj(name=f"_enrich_{attr_name}")
+        except Exception:
+          pass
+      elif isinstance(obj, type):
+        try:
+          instance = obj(name=f"_enrich_{attr_name}")
+        except TypeError:
+          try:
+            instance = obj(name=f"_enrich_{attr_name}", size_x=0, size_y=0, size_z=0)
+          except Exception:
+            pass
+
+      if instance is None:
+        continue
+
+      # Serialize the full resource
+      if not hasattr(instance, "serialize"):
+        continue
+
+      serialized = instance.serialize()
+
+      # Extract indexed columns from serialized dict
+      size_x = serialized.get("size_x")
+      size_y = serialized.get("size_y")
+      size_z = serialized.get("size_z")
+
+      if not size_x:  # skip zero-dimension fallback instances
+        continue
+
+      num_items = None
+      if hasattr(instance, "num_items"):
+        try:
+          num_items = instance.num_items
+        except Exception:
+          pass
+
+      plate_type = serialized.get("plate_type") or getattr(instance, "plate_type", None)
+
+      conn.execute(
+        """UPDATE resource_definitions SET
+            size_x_mm = ?, size_y_mm = ?, size_z_mm = ?,
+            num_items = COALESCE(?, num_items),
+            plate_type = COALESCE(?, plate_type),
+            plr_definition_details_json = ?
+           WHERE accession_id = ?""",
+        (
+          size_x, size_y, size_z,
+          num_items,
+          plate_type,
+          safe_json_dumps(serialized),
+          accession_id,
+        ),
+      )
+      enriched += 1
+    except Exception as e:
+      errors += 1
+      if errors <= 5:
+        print(f"  [WARN] Could not enrich {name} ({fqn}): {e}")
+
+  # Restore original PlateHolder init
+  if _patched:
+    PlateHolder.__init__ = _orig_init
+
+  conn.commit()
+  print(f"[generate_browser_db] Enriched {enriched}/{len(rows)} resource definitions ({errors} errors)")
+  return enriched
+
+
 def main() -> None:
   """Main entry point for database generation."""
   # Ensure output directory exists
@@ -873,6 +992,9 @@ def main() -> None:
 
     # Discover and insert PLR definitions using static analysis
     discover_resources_static(conn)
+
+    # Enrich with runtime-extracted properties via .serialize()
+    enrich_resource_definitions(conn)
 
     discover_machines_static(conn)
 

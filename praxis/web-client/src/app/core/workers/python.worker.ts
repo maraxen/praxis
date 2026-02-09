@@ -5,12 +5,7 @@ import { loadPyodide, PyodideInterface } from 'pyodide';
 // Define a typed worker scope
 interface PythonWorkerGlobalScope extends WorkerGlobalScope {
   protocol_bytes: Uint8Array;
-  machine_config: any;
-  deck_setup_script: string;
-  parameters: any;
-  metadata: any;
-  asset_requirements: any;
-  asset_specs: any;
+  manifest: any;
   handlePythonOutput: (type: string, content: string) => void;
 }
 declare const self: PythonWorkerGlobalScope;
@@ -213,35 +208,19 @@ addEventListener('message', async (event) => {
           postMessage({ type: 'SIGNATURE_RESULT', id, payload: { signatures: [] } });
         }
         break;
-
       case 'EXECUTE_BLOB':
         if (!pyodide) throw new Error('Pyodide not initialized');
         currentExecutionId = id;
         try {
-          const { 
-            blob, 
-            machine_config, 
-            deck_setup_script,
-            parameters,
-            metadata,
-            asset_requirements,
-            asset_specs
-          } = payload as { 
-            blob: ArrayBuffer, 
-            machine_config: any, 
-            deck_setup_script?: string,
-            parameters?: any,
-            metadata?: any,
-            asset_requirements?: any,
-            asset_specs?: any
+          const {
+            blob,
+            manifest
+          } = payload as {
+            blob: ArrayBuffer,
+            manifest: any
           };
           self.protocol_bytes = new Uint8Array(blob);
-          self.machine_config = machine_config;
-          self.deck_setup_script = deck_setup_script || '';
-          self.parameters = parameters || {};
-          self.metadata = metadata || {};
-          self.asset_requirements = asset_requirements || {};
-          self.asset_specs = asset_specs || {};
+          self.manifest = manifest;
 
           await pyodide.runPythonAsync(`
 import cloudpickle
@@ -249,208 +228,34 @@ import js
 import inspect
 import sys
 import json
-from web_bridge import create_configured_backend, create_browser_deck, resolve_parameters
+from web_bridge import materialize_context
+
+# Redirect stdout/stderr to route through JS handlePythonOutput
+import io
+class JSOutputStream(io.TextIOBase):
+    def __init__(self, stream_type):
+        self._type = stream_type
+    def write(self, text):
+        if text and text.strip():
+            js.handlePythonOutput(self._type, text)
+        return len(text) if text else 0
+    def flush(self):
+        pass
+
+sys.stdout = JSOutputStream("STDOUT")
+sys.stderr = JSOutputStream("STDERR")
 
 # Load function from bytes
 protocol_bytes = bytes(js.protocol_bytes)
 protocol_func = cloudpickle.loads(protocol_bytes)
 
-# Inspect signature to inject arguments
-sig = inspect.signature(protocol_func)
-kwargs = {}
-
-# Resolve parameters using web_bridge
-print("[Browser] Resolving parameters...")
+# Materialize context from manifest
+print("[Browser] Materializing execution context...")
 try:
-    # Convert JS proxies to Python dicts where needed
-    py_params = js.parameters.toJs() if hasattr(js.parameters, 'toJs') else js.parameters
-    py_metadata = js.metadata.toJs() if hasattr(js.metadata, 'toJs') else js.metadata
-    py_asset_reqs = js.asset_requirements.toJs() if hasattr(js.asset_requirements, 'toJs') else js.asset_requirements
-    py_asset_specs = js.asset_specs.toJs() if hasattr(js.asset_specs, 'toJs') else js.asset_specs
-
-    resolved_params = resolve_parameters(py_params, py_metadata, py_asset_reqs, py_asset_specs)
-    kwargs.update(resolved_params)
+    kwargs = materialize_context(js.manifest)
 except Exception as e:
-    print(f"Error resolving parameters: {e}", file=sys.stderr)
-
-# Fallback/Explicit injections for specific parameter names if not already resolved
-config_proxy = js.machine_config
-if 'backend' in sig.parameters and 'backend' not in kwargs:
-    kwargs['backend'] = create_configured_backend(config_proxy)
-
-# Setup Deck
-deck = None
-try:
-    if js.deck_setup_script:
-        # Run the serialized deck setup script
-        print("[Browser] Running deck setup script...")
-        setup_ns = {}
-        exec(js.deck_setup_script, setup_ns)
-        if 'deck' in setup_ns:
-            deck = setup_ns['deck']
-        else:
-            print("Warning: 'deck' variable not found in setup script.", file=sys.stderr)
-            deck = create_browser_deck()
-    else:
-        # Fallback to default empty deck
-        deck = create_browser_deck()
-except Exception as e:
-    print(f"Error during deck setup: {e}", file=sys.stderr)
-    deck = create_browser_deck()
-
-
-if 'deck' in sig.parameters:
-    if deck is not None:
-        kwargs['deck'] = deck
-    else:
-        print("Warning: 'deck' argument requested but Deck could not be instantiated.", file=sys.stderr)
-
-# Extended argument resolution for protocol assets
-# === FALLBACK BEHAVIOR (Feb 2026) ===
-# Purpose: When no machine config is provided (e.g., E2E tests, Skip Setup),
-# fall back to simulation backend. This is INTENTIONAL for:
-# 1. Automated E2E testing (no hardware available)
-# 2. Quick protocol validation without physical setup
-# 3. Development/debugging workflows
-#
-# The proper fix for production runs is in wizard-state.service.ts which now
-# serializes protocol.assets to the deck script even when wizard is skipped.
-# These fallbacks remain as a safety net for edge cases.
-# 1. Create LiquidHandler if requested
-liquid_handler = None
-if 'liquid_handler' in sig.parameters:
-    try:
-        from pylabrobot.liquid_handling import LiquidHandler
-        # Check if config_proxy is valid/non-null
-        if config_proxy is not None and not (hasattr(config_proxy, 'typeof') and config_proxy.typeof == 'undefined'):
-            backend = create_configured_backend(config_proxy)
-        else:
-            # Fallback to simulation backend when no config
-            try:
-                from pylabrobot.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend
-                backend = LiquidHandlerChatterboxBackend()
-            except ImportError:
-                # Create minimal mock backend for browser simulation
-                class MockSimBackend:
-                    async def setup(self): pass
-                    async def stop(self): pass
-                    async def aspirate(self, *a, **k): print(f"[MockSim] aspirate")
-                    async def dispense(self, *a, **k): print(f"[MockSim] dispense")
-                    async def pick_up_tips(self, *a, **k): print(f"[MockSim] pick_up_tips")
-                    async def drop_tips(self, *a, **k): print(f"[MockSim] drop_tips")
-                backend = MockSimBackend()
-            print("[Browser] Using simulation backend (no config provided)")
-        liquid_handler = LiquidHandler(backend=backend, deck=deck)
-        kwargs['liquid_handler'] = liquid_handler
-        print(f"[Browser] Created LiquidHandler with backend: {type(backend).__name__}")
-    except Exception as e:
-        # Fallback: create with simulation backend
-        try:
-            from pylabrobot.liquid_handling import LiquidHandler
-            # Try ChatterboxBackend first, fall back to inline mock
-            try:
-                from pylabrobot.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend
-                backend = LiquidHandlerChatterboxBackend()
-            except ImportError:
-                # Create minimal mock backend for browser simulation
-                class MockSimBackend:
-                    async def setup(self): pass
-                    async def stop(self): pass
-                    async def aspirate(self, *a, **k): print(f"[MockSim] aspirate")
-                    async def dispense(self, *a, **k): print(f"[MockSim] dispense")
-                    async def pick_up_tips(self, *a, **k): print(f"[MockSim] pick_up_tips")
-                    async def drop_tips(self, *a, **k): print(f"[MockSim] drop_tips")
-                backend = MockSimBackend()
-            liquid_handler = LiquidHandler(backend=backend, deck=deck)
-            kwargs['liquid_handler'] = liquid_handler
-            print(f"[Browser] Created fallback LiquidHandler with {type(backend).__name__}")
-        except Exception as e2:
-            print(f"[Browser] Failed to create LiquidHandler: {e}, fallback also failed: {e2}", file=sys.stderr)
-
-# 2. Resolve plate/tip_rack assets from deck by matching parameter names
-if deck is not None:
-    try:
-        from pylabrobot.resources import Plate, TipRack
-        
-        # Find all resources on deck (need to traverse carrier sites)
-        def find_resources(container, resource_type=None):
-            \"\"\"Recursively find resources of a specific type on the deck.\"\"\"
-            found = []
-            for child in getattr(container, 'children', []):
-                if resource_type is None or isinstance(child, resource_type):
-                    found.append(child)
-                found.extend(find_resources(child, resource_type))
-            return found
-        
-        all_plates = find_resources(deck, Plate)
-        all_tips = find_resources(deck, TipRack)
-        
-        print(f"[Browser] Found {len(all_plates)} plates, {len(all_tips)} tip racks on deck")
-        
-        # Match parameters by name heuristics
-        for param_name in sig.parameters:
-            if param_name in kwargs:
-                continue  # Already assigned
-            
-            # Match plates by name patterns
-            if 'plate' in param_name.lower():
-                if 'source' in param_name.lower():
-                    for plate in all_plates:
-                        if 'source' in plate.name.lower() or plate.name == 'source_plate':
-                            kwargs[param_name] = plate
-                            print(f"[Browser] Assigned {param_name} = {plate.name}")
-                            break
-                elif 'dest' in param_name.lower():
-                    for plate in all_plates:
-                        if 'dest' in plate.name.lower() or plate.name == 'dest_plate':
-                            kwargs[param_name] = plate
-                            print(f"[Browser] Assigned {param_name} = {plate.name}")
-                            break
-                else:
-                    # Generic plate - use first available
-                    for plate in all_plates:
-                        if plate not in kwargs.values():
-                            kwargs[param_name] = plate
-                            print(f"[Browser] Assigned {param_name} = {plate.name}")
-                            break
-            
-            # Match tip racks
-            elif 'tip' in param_name.lower() or 'rack' in param_name.lower():
-                for tips in all_tips:
-                    if tips not in kwargs.values():
-                        kwargs[param_name] = tips
-                        print(f"[Browser] Assigned {param_name} = {tips.name}")
-                        break
-    except Exception as e:
-        print(f"[Browser] Asset resolution from deck failed: {e}", file=sys.stderr)
-
-# 2b. Fallback: Create placeholder resources for missing params
-# This handles the case when wizard is skipped and deck is empty
-for param_name in sig.parameters:
-    if param_name in kwargs:
-        continue  # Already assigned
-    
-    try:
-        from pylabrobot.resources import Plate, TipRack
-        
-        # Create placeholder plates if param name indicates plate type
-        if 'plate' in param_name.lower():
-            placeholder = Plate(name=param_name, size_x=127.0, size_y=85.0, size_z=14.0, num_items_x=12, num_items_y=8)
-            kwargs[param_name] = placeholder
-            print(f"[Browser] Created placeholder plate for {param_name}")
-        
-        # Create placeholder tip_rack if param name indicates tips
-        elif 'tip' in param_name.lower() or 'rack' in param_name.lower():
-            placeholder = TipRack(name=param_name, size_x=127.0, size_y=85.0, size_z=100.0, num_items_x=12, num_items_y=8)
-            kwargs[param_name] = placeholder
-            print(f"[Browser] Created placeholder tip_rack for {param_name}")
-    except Exception as e:
-        print(f"[Browser] Failed to create placeholder for {param_name}: {e}", file=sys.stderr)
-
-# 3. Create empty state dict if needed
-if 'state' in sig.parameters and 'state' not in kwargs:
-    kwargs['state'] = {}
-    print("[Browser] Created empty state dict")
+    print(f"Error materializing context: {e}", file=sys.stderr)
+    kwargs = {}
 
 # Execute
 async def run_wrapper():
@@ -462,6 +267,7 @@ async def run_wrapper():
         result = protocol_func(**kwargs)
         if inspect.isawaitable(result):
             await result
+    print("[Browser] Protocol execution complete")
 
 await run_wrapper()
           `);
@@ -478,11 +284,11 @@ await run_wrapper()
     if (pyodide) {
       try {
         const tracebackCode = `
-import sys
+        import sys
 import traceback
 _tb = traceback.format_exc()
 _tb if _tb and _tb.strip() != 'NoneType: None' else ''
-`.trim();
+          `.trim();
         const traceback = pyodide.runPython(tracebackCode);
         if (traceback && String(traceback).trim()) {
           errorMessage = String(traceback);
@@ -503,7 +309,7 @@ _tb if _tb and _tb.strip() != 'NoneType: None' else ''
 // Expose callbacks for Python to call
 self.handlePythonOutput = (type: string, content: string) => {
   // Always log to console for debugging/testing visibility
-  console.log(`[Python ${type}]: ${content}`);
+  console.log(`[Python ${type}]: ${content} `);
 
   if (currentExecutionId) {
     postMessage({ type, id: currentExecutionId, payload: content });
@@ -598,7 +404,7 @@ async function initializePyodide(id?: string) {
       pyodide.FS.writeFile(shim.file, code);
       console.log(`${shim.name} Shim loaded successfully`);
     } else {
-      console.error(`Failed to load ${shim.name} Shim:`, error);
+      console.error(`Failed to load ${shim.name} Shim: `, error);
     }
   }
 
@@ -702,32 +508,32 @@ def stderr_callback(s):
 
 # Create console with our callbacks
 console = PyodideConsole(
-    stdout_callback=stdout_callback,
-    stderr_callback=stderr_callback
+    stdout_callback = stdout_callback,
+    stderr_callback = stderr_callback
 )
 
 # Import web_bridge to make it available
 import web_bridge
 
-# Bootstrap the Playground environment (redirects sys.stdout/stderr, auto-imports)
+# Bootstrap the Playground environment(redirects sys.stdout / stderr, auto - imports)
 web_bridge.bootstrap_playground(console.globals)
 
 console
-`;
+`.trim();
 
   const consoleProxy = await pyodide.runPythonAsync(consoleCode);
   pyConsole = consoleProxy;
 
-  // Verification call
-  try {
-    const checkCode = `
+    // Verification call
+    try {
+      const checkCode = `
 import builtins
 print(f"SCOPE CHECK: WebSerial in builtins: {hasattr(builtins, 'WebSerial')}")
 print(f"SCOPE CHECK: WebUSB in builtins: {hasattr(builtins, 'WebUSB')}")
 print(f"SCOPE CHECK: WebFTDI in builtins: {hasattr(builtins, 'WebFTDI')}")
 print(f"SCOPE CHECK: WebHID in builtins: {hasattr(builtins, 'WebHID')}")
 
-# Verify FTDI patching (critical for CLARIOstarBackend)
+# Verify FTDI patching(critical for CLARIOstarBackend)
 try:
     import pylabrobot.io.ftdi as _ftdi
     print(f"SCOPE CHECK: pylabrobot.io.ftdi.FTDI = {_ftdi.FTDI}")
@@ -735,18 +541,20 @@ try:
 except Exception as e:
     print(f"SCOPE CHECK: FTDI check failed: {e}")
 
-# Verify HID patching (critical for Inheco)
+# Verify HID patching(critical for Inheco)
 try:
     import pylabrobot.io.hid as _hid
     print(f"SCOPE CHECK: pylabrobot.io.hid.HID = {_hid.HID}")
     print(f"SCOPE CHECK: HID is WebHID? {'WebHID' in str(_hid.HID)}")
 except Exception as e:
     print(f"SCOPE CHECK: HID check failed: {e}")
-    `.trim();
-    pyConsole.push(checkCode);
-  } catch (e) {
-    console.warn('Scope check failed:', e);
-  }
+`.trim();
+      pyConsole.push(checkCode);
+    } catch (e) {
+      console.warn('Scope check failed:', e);
+    }
+
+  
 
   postMessage({ type: 'INIT_COMPLETE', id });
 }
@@ -798,7 +606,7 @@ import traceback
 _tb = traceback.format_exc()
 # If no exception is active, format_exc returns 'NoneType: None\\n'
 _tb if _tb and _tb.strip() != 'NoneType: None' else str(sys.exc_info()[1]) if sys.exc_info()[1] else ''
-`;
+  `;
         const tracebackProxy = pyodide.runPython(tracebackCode);
         errorMessage = String(tracebackProxy);
         if (typeof tracebackProxy?.destroy === 'function') {
@@ -858,21 +666,21 @@ import web_bridge
 
 # Try to get existing console from globals, or create new one
 try:
-    console = web_bridge._console
+console = web_bridge._console
 except AttributeError:
     # Create new console with our callbacks
     def stdout_callback(s):
-        js.handlePythonOutput("STDOUT", s)
+js.handlePythonOutput("STDOUT", s)
     def stderr_callback(s):
-        js.handlePythonOutput("STDERR", s)
-    console = PyodideConsole(
-        stdout_callback=stdout_callback,
-        stderr_callback=stderr_callback
-    )
-    web_bridge.bootstrap_playground(console.globals)
+js.handlePythonOutput("STDERR", s)
+console = PyodideConsole(
+  stdout_callback = stdout_callback,
+  stderr_callback = stderr_callback
+)
+web_bridge.bootstrap_playground(console.globals)
 
 console
-`;
+  `;
     const consoleProxy = await pyodide.runPythonAsync(consoleCode);
     pyConsole = consoleProxy;
 

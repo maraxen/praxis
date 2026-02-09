@@ -706,6 +706,7 @@ export class RunProtocolComponent implements OnInit, HasUnsavedChanges {
 
   isLoading = signal(true);
   isStartingRun = signal(false);
+  private executionSubmitted = signal(false);
   searchQuery = signal('');
   activeFilters = signal<Record<string, Set<string>>>({});
   configuredAssets = signal<Record<string, any> | null>(null);
@@ -731,8 +732,9 @@ export class RunProtocolComponent implements OnInit, HasUnsavedChanges {
   wellSelections = signal<Record<string, string[]>>({});
 
   hasUnsavedChanges(): boolean {
-    // Only block if a protocol is selected and we haven't successfully started a run
-    return !!this.selectedProtocol() && !this.isStartingRun();
+    // Don't block navigation if execution was submitted or is currently starting
+    if (this.executionSubmitted() || this.isStartingRun()) return false;
+    return !!this.selectedProtocol();
   }
 
   // Compute asset IDs that should be excluded from GuidedSetup (because they are machines)
@@ -1560,11 +1562,20 @@ export class RunProtocolComponent implements OnInit, HasUnsavedChanges {
         finalize(() => this.isStartingRun.set(false))
       ).subscribe({
         next: (response) => {
+          // Mark submission as successful BEFORE navigation so the guard won't fire
+          this.executionSubmitted.set(true);
           // Clear wizard state on success
           localStorage.removeItem(WIZARD_STORAGE_KEY);
           this.router.navigate(['/app/monitor', response.run_id]);
         },
-        error: (err) => console.error('[RunProtocol] Failed to start run:', err)
+        error: (err) => {
+          console.error('[RunProtocol] Failed to start run:', err);
+          this.snackBar.open(
+            `Failed to start run: ${err?.message || 'Unknown error'}`,
+            'Dismiss',
+            { duration: 8000, panelClass: 'error-snackbar' }
+          );
+        }
       });
     }
   }

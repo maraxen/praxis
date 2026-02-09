@@ -144,17 +144,56 @@ except Exception:
 KEYCLOAK_DSN_FROM_CONFIG = keycloak_dsn_from_config
 PRAXIS_DATABASE_URL = praxis_database_url
 
-async_engine = create_async_engine(
-  PRAXIS_DATABASE_URL,
-  echo=False,  # Set to True for debugging SQL queries
-)
+# Lazy engine/session factory — only created on first access.
+# This allows modules that import from praxis.backend.utils (e.g.
+# plr_static_analysis used by generate_browser_db.py) to load without
+# requiring a live PostgreSQL connection.
+_async_engine = None
+_async_session_local = None
 
-AsyncSessionLocal = async_sessionmaker(
-  async_engine,
-  expire_on_commit=False,
-  autocommit=False,
-  autoflush=False,
-)
+
+def get_async_engine():
+  """Return the async engine, creating it lazily on first call."""
+  global _async_engine
+  if _async_engine is None:
+    _async_engine = create_async_engine(
+      PRAXIS_DATABASE_URL,
+      echo=False,
+    )
+  return _async_engine
+
+
+def get_async_session_factory():
+  """Return the async session factory, creating it lazily on first call."""
+  global _async_session_local
+  if _async_session_local is None:
+    _async_session_local = async_sessionmaker(
+      get_async_engine(),
+      expire_on_commit=False,
+      autocommit=False,
+      autoflush=False,
+    )
+  return _async_session_local
+
+
+# Backward-compatible module-level aliases.
+# These are lazy descriptors: accessing them triggers engine creation.
+class _LazyProxy:
+  """Module-level attribute that defers creation until first access."""
+  def __init__(self, factory):
+    self._factory = factory
+    self._obj = None
+  def __getattr__(self, name):
+    if self._obj is None:
+      self._obj = self._factory()
+    return getattr(self._obj, name)
+  def __call__(self, *args, **kw):
+    if self._obj is None:
+      self._obj = self._factory()
+    return self._obj(*args, **kw)
+
+async_engine = _LazyProxy(get_async_engine)
+AsyncSessionLocal = _LazyProxy(get_async_session_factory)
 
 
 class Base(MappedAsDataclass, DeclarativeBase):

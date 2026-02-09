@@ -255,7 +255,7 @@ export class ExecutionService {
     try {
       // Update status to running
       this.updateRunState({ status: ExecutionStatus.RUNNING });
-      
+
       // Update status in DB as well
       this.sqliteService.protocolRuns.pipe(
         switchMap(repo => repo.update(runId, { status: ExecutionStatus.RUNNING, start_time: new Date().toISOString() }))
@@ -266,50 +266,67 @@ export class ExecutionService {
       // 1. Retrieve the ProtocolRun record to get resolved assets
       const run = await firstValueFrom(this.sqliteService.getProtocolRun(runId));
 
-      // 2. Extract machine config if assets are resolved
-      let machineConfig: any = null;
+      // 2. Build machine configuration from resolved assets or defaults
+      const machineEntries: any[] = [];
       if (run?.resolved_assets_json) {
         try {
           const resolvedAssets = typeof run.resolved_assets_json === 'string'
             ? JSON.parse(run.resolved_assets_json)
             : run.resolved_assets_json;
 
-          // Find machine asset (look for machine_instance or definition)
           const assets = Array.isArray(resolvedAssets) ? resolvedAssets : Object.values(resolvedAssets);
-          const machineAsset = assets.find((a: any) => a.machine_instance || a.definition);
 
-          if (machineAsset) {
-            const instance = machineAsset.machine_instance;
-            const definition = machineAsset.definition;
+          assets.forEach((a: any) => {
+            const definition = a.definition;
+            const instance = a.machine_instance;
 
-            machineConfig = {
-              backend_fqn: definition.fqn,
-              port_id: instance?.backend_config?.port_id,
-              baudrate: instance?.backend_config?.baudrate,
-              is_simulated: definition.is_simulation_override || false
-            };
-            this.addLog(`[Browser Mode] Using machine: ${definition.name} (${definition.fqn})`);
-          }
+            if (definition) {
+              // Determine machine type from FQN or category
+              let machineType = 'LiquidHandler'; // Default
+              if (definition.fqn?.includes('Reader')) machineType = 'PlateReader';
+              if (definition.fqn?.includes('HeaterShaker')) machineType = 'HeaterShaker';
+
+              machineEntries.push({
+                param_name: a.param_name || 'liquid_handler', // Fallback
+                machine_type: machineType,
+                backend_fqn: definition.fqn,
+                port_id: instance?.backend_config?.port_id,
+                is_simulated: definition.is_simulation_override || false
+              });
+              this.addLog(`[Browser Mode] Using machine: ${definition.name} (${definition.fqn})`);
+            }
+          });
         } catch (e) {
           console.warn('[ExecutionService] Failed to parse resolved_assets_json:', e);
         }
       }
 
+      // If no machines found in resolved_assets, add a default simulator for STARlet
+      if (machineEntries.length === 0) {
+        machineEntries.push({
+          param_name: 'liquid_handler',
+          machine_type: 'LiquidHandler',
+          backend_fqn: 'pylabrobot.liquid_handling.backends.hamilton.STAR.STAR',
+          is_simulated: true
+        });
+      }
+
       // Fetch protocol blob
       const blob = await firstValueFrom(this.fetchProtocolBlob(protocolId));
 
-      // NEW: Get serialized deck setup from WizardStateService
-      const { script: deckSetupScript, warnings } = this.wizardState.serializeToPython();
+      // BUILD EXECUTION MANIFEST
+      const manifest = this.wizardState.buildExecutionManifest(machineEntries);
 
-      if (warnings.length > 0) {
-        this.snackBar.open(`Deck Serialization Warnings:\n- ${warnings.join('\n- ')}`, 'Close', {
-          duration: 10000, // 10 seconds
-          panelClass: ['warning-snackbar']
+      // Patch manifest with actual user parameter values
+      if (parameters) {
+        manifest.parameters.forEach(p => {
+          if (parameters[p.name] !== undefined) {
+            p.value = parameters[p.name];
+          }
         });
-        this.addLog(`[Deck Setup] Warnings: ${warnings.join(', ')}`);
       }
 
-      this.addLog(`[Browser Mode] Executing protocol binary`);
+      this.addLog(`[Browser Mode] Executing protocol with Typed Manifest`);
       this.updateRunState({ progress: 20, currentStep: 'Running protocol' });
 
       // Artificial delay to make simulation testable in E2E
@@ -318,7 +335,7 @@ export class ExecutionService {
       await new Promise<void>((resolve, reject) => {
         let hasError = false;
 
-        this.pythonRuntime.executeBlob(blob, runId, machineConfig, deckSetupScript, parameters).subscribe({
+        this.pythonRuntime.executeBlob(blob, runId, manifest).subscribe({
           next: (output) => {
             if (output.type === 'stdout') {
               this.addLog(output.content);
@@ -363,6 +380,10 @@ export class ExecutionService {
         });
       });
 
+      // Allow async logs to flush
+      await new Promise(resolve => setTimeout(resolve, 200));
+      this.addLog('[Protocol Execution Complete]');
+
       // Success
       this.updateRunState({
         status: ExecutionStatus.COMPLETED,
@@ -395,87 +416,6 @@ export class ExecutionService {
     }
   }
 
-  /**
-   * Build Python code to execute a protocol
-   */
-  private buildProtocolExecutionCode(
-    protocol: any, // ProtocolDefinition
-    parameters?: Record<string, unknown>,
-    assetSpecs?: Record<string, any>,
-    runId?: string
-  ): string {
-    const moduleName = protocol.module_name || protocol.fqn.split('.').slice(0, -1).join('.');
-    const functionName = protocol.function_name || protocol.fqn.split('.').pop() || 'run';
-
-    // Serialize parameters and metadata for Python
-    const paramsStr = parameters ? JSON.stringify(parameters) : '{}';
-    const assetSpecsStr = assetSpecs ? JSON.stringify(assetSpecs) : '{}';
-
-    // Extract parameter metadata (name -> type_hint)
-    const metadata: Record<string, string> = {};
-    if (protocol.parameters) {
-      protocol.parameters.forEach((p: any) => {
-        metadata[p.name] = p.type_hint;
-      });
-    }
-
-    // Extract asset requirements (accession_id -> type_hint)
-    const assetRequirements: Record<string, string> = {};
-    if (protocol.assets) {
-      protocol.assets.forEach((a: any) => {
-        assetRequirements[a.accession_id] = a.type_hint_str;
-      });
-    }
-
-    const metadataStr = JSON.stringify(metadata);
-    const assetReqsStr = JSON.stringify(assetRequirements);
-
-    return `
-# Browser mode protocol execution
-import json
-import time
-from web_bridge import resolve_parameters, patch_state_emission, patch_function_call_logging
-
-print("[Browser] Setting up simulation environment...")
-
-# Import the protocol module
-try:
-    from ${moduleName} import ${functionName}
-except ImportError as e:
-    print(f"[Browser] Protocol import not available in browser: {e}")
-    print("[Browser] Running simulation placeholder instead...")
-
-    # Simulation placeholder
-    def ${functionName}(*args, **kwargs):
-        print("[Simulation] Protocol started")
-        return {"status": "simulated"}
-
-# Parse parameters and metadata
-params = json.loads('''${paramsStr}''')
-metadata = json.loads('''${metadataStr}''')
-asset_reqs = json.loads('''${assetReqsStr}''')
-asset_specs = json.loads('''${assetSpecsStr}''')
-
-# Resolve parameters (instantiate PLR objects for plates/etc)
-print("[Browser] Resolving parameters...")
-resolved_params = resolve_parameters(params, metadata, asset_reqs, asset_specs)
-
-# Patch for real-time state emission (searching for LiquidHandler in resolved_params)
-for p_value in resolved_params.values():
-    try:
-        from pylabrobot.liquid_handling import LiquidHandler
-        if isinstance(p_value, LiquidHandler):
-            patch_state_emission(p_value)
-            patch_function_call_logging(p_value, '${runId}')
-    except ImportError:
-        pass
-
-# Execute the protocol
-print("[Browser] Executing protocol...")
-result = ${functionName}(**resolved_params) if resolved_params else ${functionName}()
-print(f"[Browser] Protocol finished with result: {result}")
-`;
-  }
 
   /**
    * Helper to update run state
@@ -668,7 +608,7 @@ print(f"[Browser] Protocol finished with result: {result}")
     if (this.modeService.isBrowserMode()) {
       // Browser mode: stop Python runtime
       this.pythonRuntime.interrupt();
-      
+
       // Update local state and DB immediately for UI responsiveness
       this.updateRunState({ status: ExecutionStatus.CANCELLED });
       this.stopHeartbeat();

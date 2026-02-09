@@ -45,8 +45,8 @@ describe('ExecutionService', () => {
       createProtocolRun: vi.fn().mockReturnValue(of({})),
       updateProtocolRunStatus: vi.fn().mockReturnValue(of({})),
       protocolRuns: of({
-          findById: vi.fn().mockReturnValue(of(null)),
-          update: vi.fn().mockReturnValue(of({}))
+        findById: vi.fn().mockReturnValue(of(null)),
+        update: vi.fn().mockReturnValue(of({}))
       }),
       machineDefinitions: of({
         findAll: vi.fn().mockReturnValue(of([]))
@@ -64,11 +64,15 @@ describe('ExecutionService', () => {
     };
 
     const mockWizardState = {
-        serializeToPython: vi.fn().mockReturnValue({ script: '', warnings: [] })
+      buildExecutionManifest: vi.fn().mockReturnValue({
+        protocol: { fqn: 'test.protocol', requires_deck: true },
+        machines: [],
+        parameters: []
+      })
     };
 
     const mockSnackBar = {
-        open: vi.fn()
+      open: vi.fn()
     };
 
     TestBed.configureTestingModule({

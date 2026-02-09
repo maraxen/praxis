@@ -27,6 +27,15 @@ export class WizardPage {
         this.runProtocolRoot = page.locator('app-run-protocol').first();
     }
 
+    async completeProtocolStep() {
+        // Step 1: Select Protocol (should already be selected via query param)
+        const protocolStep = this.page.locator('.mat-step-header').filter({ hasText: /Protocol|Select/i }).first();
+        const continueButton = this.page.getByRole('button', { name: /Continue/i }).first();
+        if (await continueButton.isVisible() && await continueButton.isEnabled()) {
+            await continueButton.click();
+        }
+    }
+
     async getFormState() {
         const protocolContinue = this.parameterStep.getByRole('button', { name: /Continue/i }).first();
         const machineContinue = this.machineStep.getByRole('button', { name: /Continue/i }).first();

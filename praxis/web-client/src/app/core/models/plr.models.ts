@@ -15,6 +15,7 @@ export interface PlrResource {
     size_y: number;
     size_z: number;
     children: PlrResource[];
+    fqn?: string;
     color?: string; // Optional override
     /** Optional: ID of the slot this resource occupies (for slot-based placement) */
     slot_id?: string;

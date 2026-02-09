@@ -3,6 +3,7 @@ import { AssetsPage } from '../page-objects/assets.page';
 import { WelcomePage } from '../page-objects/welcome.page';
 import { WizardPage } from '../page-objects/wizard.page';
 import { ProtocolPage } from '../page-objects/protocol.page';
+import { ExecutionMonitorPage } from '../page-objects/monitor.page';
 
 test.describe('User Journeys', () => {
   test.beforeEach(async ({ page }, testInfo) => {
@@ -57,6 +58,8 @@ test.describe('User Journeys', () => {
     await page.waitForURL(/.*\/run/);
 
     // Use WizardPage methods
+    // In Browser mode, the wizard starts at step 1 even if protocol is pre-selected
+    await wizard.completeProtocolStep();
     await wizard.completeParameterStep();
     await wizard.selectFirstCompatibleMachine();
     await wizard.waitForAssetsAutoConfigured();
@@ -75,5 +78,38 @@ test.describe('User Journeys', () => {
       const statusText = await page.getByTestId('execution-status').textContent();
       expect(['Running', 'Queued', 'Starting']).toContain(statusText);
     }).toPass({ timeout: 10000 });
+  });
+
+  test('Protocol Workflow: Completion and Logs Validation', async ({ page }, testInfo) => {
+    const wizard = new WizardPage(page, testInfo);
+    const protocolPage = new ProtocolPage(page, testInfo);
+    const monitor = new ExecutionMonitorPage(page, testInfo);
+
+    await gotoWithWorkerDb(page, '/app/protocols', testInfo);
+
+    // Click run on Simple Transfer
+    await protocolPage.runProtocol('Simple Transfer');
+    await page.waitForURL(/.*\/run/);
+
+    // Complete wizard
+    await wizard.completeProtocolStep();
+    await wizard.completeParameterStep();
+    await wizard.selectFirstCompatibleMachine();
+    await wizard.waitForAssetsAutoConfigured();
+    await wizard.advanceDeckSetup();
+    await wizard.openReviewStep();
+    await wizard.startExecution();
+
+    // Verify execution started
+    await page.waitForURL('**/run/live');
+
+    // Wait for completion (using the newly added method in monitor.page.ts)
+    await monitor.assertProtocolCompleted();
+
+    // Verify logs
+    const logPanel = page.getByTestId('log-panel');
+    const logs = await logPanel.textContent();
+    expect(logs).toContain('[Protocol Execution Complete]');
+    expect(logs).toContain('[Browser Mode] Execution completed successfully.');
   });
 });

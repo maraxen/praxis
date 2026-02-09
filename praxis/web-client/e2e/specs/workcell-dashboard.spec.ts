@@ -24,9 +24,12 @@ test.describe('Workcell Dashboard - Populated State', () => {
     test.beforeEach(async ({ page, testMachineData }, testInfo) => {
         workcellPage = new WorkcellPage(page, testInfo);
 
-        // 1. Navigate to the page with resetdb=1 to start clean
-        const url = buildWorkerUrl('/app/workcell', testInfo.workerIndex, { resetdb: true });
+        // 1. Navigate to the page and wait for DB initialization
+        const url = buildWorkerUrl('/app/workcell', testInfo.workerIndex, { resetdb: false });
         await page.goto(url, { waitUntil: 'networkidle' });
+
+        // Wait for __e2e to be available
+        await page.waitForFunction(() => (window as any).__e2e, { timeout: 10000 });
         const welcomePage = new WelcomePage(page, testInfo);
 
         // 2. Seed the machine data using __e2e API
@@ -45,7 +48,8 @@ test.describe('Workcell Dashboard - Populated State', () => {
         }, testMachineData);
 
         // 3. Reload to pick up seeded data
-        await page.goto(url.replace('resetdb=true', 'resetdb=false'), { waitUntil: 'networkidle' });
+        await page.reload({ waitUntil: 'networkidle' });
+        await page.waitForTimeout(1000); // Small buffer for worker sync
     });
 
     test('should load the dashboard page and display machine cards', async () => {

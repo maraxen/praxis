@@ -4,6 +4,11 @@ interface PyodideInterface {
     runPythonAsync: (code: string) => Promise<unknown>;
     loadPackage: (packages: string | string[]) => Promise<void>;
     globals: { get: (name: string) => unknown };
+    FS: {
+        writeFile: (path: string, data: string | Uint8Array, options?: { encoding?: string }) => void;
+        mkdir: (path: string) => void;
+        readdir: (path: string) => string[];
+    };
 }
 
 declare global {
@@ -106,43 +111,43 @@ print("Browser mocks installed")
 `);
 
             // Load browser I/O shims (WebSerial, WebUSB, WebFTDI)
-            // Add cache-busting timestamp to ensure latest version is loaded
             // Use relative paths (no leading slash) for GitHub Pages compatibility
             const cacheBust = Date.now();
             console.log('[DirectControlKernel] Loading browser shims...');
+
+            const shims = [
+                { file: 'web_serial_shim.py', name: 'WebSerial' },
+                { file: 'web_usb_shim.py', name: 'WebUSB' },
+                { file: 'web_ftdi_shim.py', name: 'WebFTDI' },
+                { file: 'web_hid_shim.py', name: 'WebHID' }
+            ];
+
+            for (const shim of shims) {
+                try {
+                    const response = await fetch(`assets/shims/${shim.file}?v=${cacheBust}`);
+                    const code = await response.text();
+                    this.pyodide.FS.writeFile(shim.file, code);
+                    console.log(`✓ ${shim.name} shim loaded`);
+                } catch (e) {
+                    console.error(`! Failed to load ${shim.name} shim:`, e);
+                }
+            }
+
+            // Inject shims into builtins
             await this.pyodide.runPythonAsync(`
-import pyodide.http
 import builtins
+import sys
 
-# Load WebSerial shim
-print("Loading WebSerial shim...")
-try:
-    _shim_code = await (await pyodide.http.pyfetch('assets/shims/web_serial_shim.py?v=${cacheBust}')).string()
-    exec(_shim_code, globals())
-    builtins.WebSerial = WebSerial
-    print("✓ WebSerial shim loaded and added to builtins")
-except Exception as e:
-    print(f"! Failed to load WebSerial shim: {e}")
-
-# Load WebUSB shim
-print("Loading WebUSB shim...")
-try:
-    _shim_code = await (await pyodide.http.pyfetch('assets/shims/web_usb_shim.py?v=${cacheBust}')).string()
-    exec(_shim_code, globals())
-    builtins.WebUSB = WebUSB
-    print("✓ WebUSB shim loaded and added to builtins")
-except Exception as e:
-    print(f"! Failed to load WebUSB shim: {e}")
-
-# Load WebFTDI shim (CRITICAL for CLARIOstarBackend!)
-print("Loading WebFTDI shim...")
-try:
-    _shim_code = await (await pyodide.http.pyfetch('assets/shims/web_ftdi_shim.py?v=${cacheBust}')).string()
-    exec(_shim_code, globals())
-    builtins.WebFTDI = WebFTDI
-    print("✓ WebFTDI shim loaded and added to builtins")
-except Exception as e:
-    print(f"! Failed to load WebFTDI shim: {e}")
+# Add shims to builtins if they were written to FS
+_SHIM_MAP = {"WebSerial": "web_serial_shim.py", "WebUSB": "web_usb_shim.py", "WebFTDI": "web_ftdi_shim.py", "WebHID": "web_hid_shim.py"}
+for shim_name, shim_file in _SHIM_MAP.items():
+    try:
+        with open(shim_file, 'r') as f:
+            exec(f.read(), globals())
+        setattr(builtins, shim_name, globals()[shim_name])
+        print(f"✓ {shim_name} injected into builtins")
+    except Exception as e:
+        print(f"! Failed to inject {shim_name}: {e}")
 `);
 
             // CRITICAL: Patch pylabrobot.io BEFORE importing any backends
@@ -153,7 +158,7 @@ import pylabrobot.io.serial as _ser
 import pylabrobot.io.usb as _usb
 import pylabrobot.io.ftdi as _ftdi
 
-# Patch Serial and USB
+# Patch Serial, USB, and FTDI
 _ser.Serial = WebSerial
 _usb.USB = WebUSB 
 print("✓ pylabrobot.io.serial patched with WebSerial")
@@ -163,7 +168,14 @@ print("✓ pylabrobot.io.usb patched with WebUSB")
 _ftdi.FTDI = WebFTDI
 _ftdi.HAS_PYLIBFTDI = True  # Prevent import error check
 print("✓ pylabrobot.io.ftdi patched with WebFTDI")
-print("[DIAG] CLARIOstarBackend will now use WebFTDI for USB-to-Serial!")
+
+# Patch HID for Inheco and similar HID-based devices
+try:
+    import pylabrobot.io.hid as _hid
+    _hid.HID = WebHID
+    print("✓ pylabrobot.io.hid patched with WebHID")
+except Exception as e:
+    print(f"! HID patch skipped: {e}")
 
 # Verify the patches took effect
 print(f"[DIAG] pylabrobot.io.usb.USB = {_usb.USB}")
@@ -172,28 +184,30 @@ print(f"[DIAG] FTDI is WebFTDI? {_ftdi.FTDI is WebFTDI}")
 `);
 
             // Now import pylabrobot (backends will use the patched FTDI/USB/Serial)
+            // and preload web_bridge.py into the Pyodide filesystem
+            console.log('[DirectControlKernel] Preloading web_bridge.py...');
+            try {
+                const bridgeResponse = await fetch(`assets/python/web_bridge.py?v=${cacheBust}`);
+                const bridgeCode = await bridgeResponse.text();
+                this.pyodide.FS.writeFile('web_bridge.py', bridgeCode);
+                console.log('✓ web_bridge.py written to FS');
+            } catch (e) {
+                console.error('! Failed to fetch web_bridge.py:', e);
+            }
+
             await this.pyodide.runPythonAsync(`
+import sys, os, importlib
 import pylabrobot
 from pylabrobot.resources import *
 print(f"PyLabRobot {pylabrobot.__version__} ready for Direct Control")
 
-# Verify what the plate_reading backend will use
-from pylabrobot.plate_reading.clario_star_backend import CLARIOstarBackend
-# Check what FTDI class it imports
-import pylabrobot.io.ftdi as verify_ftdi
-print(f"[DIAG] After backend import, pylabrobot.io.ftdi.FTDI = {verify_ftdi.FTDI}")
-print(f"[DIAG] FTDI is WebFTDI? {verify_ftdi.FTDI is WebFTDI}")
-
-# Check CLARIOstarBackend's __init__ to see what it uses
-import inspect
+# Import web_bridge.py - FS.writeFile ensures it's in the default import path
 try:
-    src = inspect.getsource(CLARIOstarBackend.__init__)
-    if 'FTDI' in src:
-        print("[DIAG] CLARIOstarBackend uses FTDI in __init__ - CORRECT!")
-    elif 'USB' in src or 'usb' in src:
-        print("[DIAG] CLARIOstarBackend uses USB in __init__")
-except:
-    print("[DIAG] Could not inspect CLARIOstarBackend")
+    importlib.invalidate_caches()
+    import web_bridge
+    print(f"✓ web_bridge.py imported successfully")
+except Exception as e:
+    print(f"! Failed to import web_bridge.py: {e}")
 `);
 
             this.isReady.set(true);
@@ -277,56 +291,29 @@ _output
             await this.boot();
         }
 
-        console.log(`[DirectControlKernel] Instantiating ${machineName} as ${varName}...`);
+        console.log(`[DirectControlKernel] Instantiating ${machineName} as ${varName} (${category})...`);
 
-        // Generate import code based on category
-        const frontendMap: Record<string, { module: string; cls: string }> = {
-            'PlateReader': { module: 'pylabrobot.plate_reading', cls: 'PlateReader' },
-            'LiquidHandler': { module: 'pylabrobot.liquid_handling', cls: 'LiquidHandler' },
-            'Shaker': { module: 'pylabrobot.shaking', cls: 'Shaker' },
-            'HeaterShaker': { module: 'pylabrobot.heating_shaking', cls: 'HeaterShaker' },
-            'Centrifuge': { module: 'pylabrobot.centrifuge', cls: 'Centrifuge' },
-            'Incubator': { module: 'pylabrobot.incubator', cls: 'Incubator' },
-        };
-
-        const frontend = frontendMap[category] || { module: 'pylabrobot.liquid_handling', cls: 'LiquidHandler' };
-        const backendClass = backendFqn.split('.').pop() || 'Backend';
-        const backendModule = backendFqn.substring(0, backendFqn.lastIndexOf('.'));
-
-        // Different machine types need different constructor arguments
-        let frontendArgs: string;
-
-        if (category === 'PlateReader') {
-            // PlateReader requires size dimensions - use typical microplate reader dimensions
-            frontendArgs = `name="${machineName}", size_x=400.0, size_y=400.0, size_z=200.0, backend=${backendClass}()`;
-        } else if (category === 'LiquidHandler') {
-            // LiquidHandler takes just name and backend
-            frontendArgs = `name="${machineName}", backend=${backendClass}()`;
-        } else {
-            // Default: name and backend
-            frontendArgs = `name="${machineName}", backend=${backendClass}()`;
-        }
+        // Sanitize names for Python string literals
+        const safeName = machineName.replace(/['"\\]/g, '_');
+        const safeVar = varName.replace(/[^a-zA-Z0-9_]/g, '_');
 
         const initCode = `
-# Initialize: ${machineName}
-from ${backendModule} import ${backendClass}
-from ${frontend.module} import ${frontend.cls}
+# Initialize: ${safeName}
+from web_bridge import create_configured_backend, create_machine_frontend
 
-${varName} = ${frontend.cls}(${frontendArgs})
-print("Created: ${varName} (${machineName})")
-
-# DIAGNOSTIC: Check what USB type the backend is using
-backend = ${varName}.backend
-print(f"[DIAG-INST] Backend type: {type(backend)}")
-print(f"[DIAG-INST] Backend __dict__:")
-for k, v in backend.__dict__.items():
-    print(f"  {k}: {type(v).__name__} = {repr(v)[:100]}")
+config = ${JSON.stringify({
+            backend_fqn: backendFqn || 'pylabrobot.liquid_handling.backends.simulation.SimulatorBackend',
+            is_simulated: true
+        })}
+backend = create_configured_backend(config)
+${safeVar} = create_machine_frontend("${category}", backend, name="${safeName}")
+print(f"Created: ${safeVar} ({safeName})")
 `;
 
         await this.execute(initCode);
-        this.instantiatedMachines.set(machineId, varName);
+        this.instantiatedMachines.set(machineId, safeVar);
 
-        return varName;
+        return safeVar;
     }
 
     /**

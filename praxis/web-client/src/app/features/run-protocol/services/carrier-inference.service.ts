@@ -150,7 +150,8 @@ export class CarrierInferenceService {
                 size_y: slot.dimensions.height,
                 size_z: 10,
                 children: [],
-                slot_id: slot.id
+                slot_id: slot.id,
+                fqn: asset.fqn
             };
 
             slot.resource = resource;

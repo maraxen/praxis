@@ -7,6 +7,58 @@ import { DeckCatalogService } from './deck-catalog.service';
 import { ConsumableAssignmentService } from './consumable-assignment.service';
 import { getValidPLRClassNames, validatePLRClassName } from '@core/utils/plr-validator';
 
+// =============================================================================
+// Typed Execution Manifest Interfaces
+// =============================================================================
+
+export interface ParameterEntry {
+    name: string;                    // protocol function param name
+    value: any;                      // scalar value OR resource reference name
+    type_hint: string;               // from ProtocolDefinition
+    fqn?: string;                    // for PLR resource types
+    is_deck_resource?: boolean;      // true = resolve from constructed deck by name
+}
+
+export interface ResourceEntry {
+    resource_fqn: string;
+    name: string;                    // the name the protocol uses to reference this resource
+    slot: number;
+}
+
+export interface CarrierEntry {
+    carrier_fqn: string;
+    name: string;
+    rails: number;
+    children: ResourceEntry[];
+}
+
+export interface SlotEntry {
+    resource_fqn: string;
+    name: string;
+    slot: number;
+}
+
+export interface DeckManifest {
+    fqn: string;                     // e.g. 'pylabrobot.resources.hamilton.STARlet.STARLetDeck'
+    layout_type: 'rail-based' | 'slot-based';
+    layout: CarrierEntry[] | SlotEntry[];
+}
+
+export interface MachineEntry {
+    param_name: string;              // matches the protocol function parameter name (e.g. 'liquid_handler')
+    machine_type: string;            // 'LiquidHandler' | 'PlateReader' | 'HeaterShaker' etc.
+    backend_fqn: string;            // e.g. 'pylabrobot.liquid_handling.backends.hamilton.STAR'
+    port_id?: string;
+    is_simulated: boolean;
+    deck?: DeckManifest;             // only for machines that use a deck (LiquidHandler)
+}
+
+export interface ExecutionManifest {
+    protocol: { fqn: string; requires_deck: boolean };
+    machines: MachineEntry[];        // one per machine parameter the protocol needs
+    parameters: ParameterEntry[];    // scalar + resource params
+}
+
 export type WizardStep = 'carrier-placement' | 'resource-placement' | 'verification';
 
 export interface WizardState {
@@ -460,168 +512,126 @@ export class WizardStateService {
     }
 
     /**
-     * Serialize the current deck state into a Python script.
-     * This script rebuilds the deck layout in the worker.
-     *
-     * Architecture Note (Feb 2026):
-     * - Uses PLR factory functions (STARLetDeck/STARDeck) for proper defaults
-     * - When wizard is skipped, serializes from protocol.assets instead of empty deck
-     * - This prevents empty deck issues and ensures resources are available
+     * Builds a Typed Execution Manifest representing the protocol and configured deck state.
+     * This manifest is "materialized" by the Pyodide worker into a live PLR context.
+     * 
+     * @param machineConfigs Pre-built machine entries containing backend/port info (from ExecutionService)
      */
-    serializeToPython(): { script: string; warnings: string[] } {
+    buildExecutionManifest(machineConfigs: MachineEntry[]): ExecutionManifest {
+        const protocol = this._protocol();
         const assignments = this._slotAssignments();
         const deckType = this._deckType();
-        const protocol = this._protocol();
         const isSkipped = this._skipped();
-        const warnings: string[] = [];
-        const validClasses = getValidPLRClassNames();
 
-        // Check if we have placed resources from wizard
-        const hasPlacedResources = assignments.some(a => a.placed);
-
-        // Start building the Python script
-        let code = 'import pylabrobot.resources as res\n';
-
-        // Import deck factory functions (preferred over raw constructors)
-        if (deckType.includes('HamiltonSTAR')) {
-            code += 'from pylabrobot.resources.hamilton import STARLetDeck, STARDeck\n';
-            code += 'from pylabrobot.resources.hamilton import *\n';
-        } else if (deckType.includes('OTDeck')) {
-            code += 'from pylabrobot.resources.opentrons import OTDeck\n';
+        if (!protocol) {
+            throw new Error('Cannot build manifest: protocol not initialized');
         }
 
-        code += '\ndef setup_deck():\n';
+        // 1. Build Deck Layout
+        const deckSpec = this.deckCatalog.getDeckDefinition(deckType);
+        const layoutType = deckSpec?.layoutType || 'rail-based';
 
-        // Instantiate Deck using factory functions with proper defaults
-        // Note: Disable trash/teaching_rack for browser simulation (simpler deck)
-        if (deckType.includes('HamiltonSTAR')) {
-            // Use STARLetDeck (32 rails) for STARLet, STARDeck (56 rails) for STAR
-            if (deckType.includes('Let') || deckType === 'HamiltonSTARDeck') {
-                code += '    deck = STARLetDeck(name="deck")\n';
-            } else {
-                code += '    deck = STARDeck(name="deck")\n';
-            }
-        } else if (deckType.includes('OTDeck')) {
-            code += '    deck = OTDeck(name="deck")\n';
-        } else {
-            code += '    deck = res.Deck()\n';
-        }
+        let layout: CarrierEntry[] | SlotEntry[] = [];
 
-        // === CASE 1: Wizard completed with placed resources ===
-        if (hasPlacedResources && !isSkipped) {
-            // Track placed carriers
-            const carrierVarNames = new Map<string, string>();
-            const uniqueCarriers = new Map<string, any>();
+        if (layoutType === 'rail-based') {
+            // Group assignments by carrier
+            const carrierMap = new Map<string, CarrierEntry>();
 
             assignments.forEach(a => {
-                if (a.placed && a.carrier) {
-                    uniqueCarriers.set(a.carrier.id, a.carrier);
+                if (!a.placed && !isSkipped) return;
+
+                let carrierEntry = carrierMap.get(a.carrier.id);
+                if (!carrierEntry) {
+                    carrierEntry = {
+                        carrier_fqn: a.carrier.fqn,
+                        name: a.carrier.name,
+                        rails: a.carrier.railPosition,
+                        children: []
+                    };
+                    carrierMap.set(a.carrier.id, carrierEntry);
                 }
+
+                carrierEntry.children.push({
+                    resource_fqn: a.resource.fqn || 'pylabrobot.resources.Resource', // Fallback
+                    name: a.resource.name,
+                    slot: a.slot.index
+                });
             });
-
-            // Instantiate Carriers
-            uniqueCarriers.forEach((carrier, id) => {
-                const varName = id.replace(/[^a-zA-Z0-9_]/g, '_');
-                carrierVarNames.set(id, varName);
-
-                // Derive class name candidates: carrier name is usually the PLR class name
-                // (e.g. PLT_CAR_L5AC_A00). FQN suffix (plt_car_l5ac) may also work.
-                const fqnSuffix = carrier.fqn.split('.').pop() || '';
-                const carrierClassName = carrier.name || fqnSuffix || 'Carrier';
-
-                if (!validatePLRClassName(carrier.fqn, validClasses)) {
-                    warnings.push(`Unknown carrier class: ${carrier.fqn} (using ${carrierClassName})`);
-                }
-
-                // Robust instantiation: try carrier name first, then FQN suffix, then generic fallback
-                const dims = carrier.dimensions || { width: 135, height: 497, depth: 10 };
-                code += `    # Carrier: ${carrier.fqn}\n`;
-                code += `    try:\n`;
-                code += `        ${varName} = ${carrierClassName}(name="${carrier.name}")\n`;
-                code += `    except (NameError, TypeError):\n`;
-                if (fqnSuffix && fqnSuffix !== carrierClassName) {
-                    code += `        try:\n`;
-                    code += `            ${varName} = ${fqnSuffix}(name="${carrier.name}")\n`;
-                    code += `        except (NameError, TypeError):\n`;
-                    code += `            ${varName} = res.Carrier(name="${carrier.name}", size_x=${dims.width}, size_y=${dims.height}, size_z=${dims.depth}, sites=[])\n`;
-                } else {
-                    code += `        ${varName} = res.Carrier(name="${carrier.name}", size_x=${dims.width}, size_y=${dims.height}, size_z=${dims.depth}, sites=[])\n`;
-                }
-
-                if (carrier.railPosition !== undefined) {
-                    code += `    deck.assign_child_resource(${varName}, rails=${carrier.railPosition})\n`;
-                }
-            });
-
-            // Instantiate Labware
-            assignments.forEach((assign, index) => {
-                if (assign.placed) {
-                    const varName = `labware_${index}`;
-                    const carrierVar = carrierVarNames.get(assign.carrier.id);
-
-                    // Map resource types to PLR classes
-                    let className = 'Resource';
-                    if (assign.resource.type === 'Plate' || assign.resource.type === 'Trough' || assign.resource.type === 'Reservoir') {
-                        className = 'Plate';
-                    } else if (assign.resource.type === 'TipRack') {
-                        className = 'TipRack';
-                    }
-
-                    if (carrierVar) {
-                        code += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
-                        code += `    try:\n`;
-                        code += `        ${carrierVar}[${assign.slot.index}] = ${varName}\n`;
-                        code += `    except (IndexError, TypeError):\n`;
-                        code += `        try:\n`;
-                        code += `            ${carrierVar}.assign_child_resource(${varName})\n`;
-                        code += `        except Exception:\n`;
-                        code += `            pass  # carrier may not support slot assignment\n`;
-                    } else if (deckType.includes('OTDeck')) {
-                        // OT-2 direct placement
-                        code += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
-                        code += `    deck.assign_child_at_slot(${varName}, ${assign.slot.index + 1})\n`;
-                    }
-                }
-            });
-        }
-        // === CASE 2: Wizard skipped OR no resources placed - use protocol.assets ===
-        else if (protocol?.assets && protocol.assets.length > 0) {
-            code += '    # Wizard skipped - creating resources from protocol.assets\n';
-
-            let railPosition = 1; // Starting rail for direct assignment
-            protocol.assets.forEach((asset, index) => {
-                const varName = asset.name.replace(/[^a-zA-Z0-9_]/g, '_');
-
-                // Determine resource class from type_hint_str
-                let className = 'Resource';
-                const typeHint = (asset.type_hint_str || '').toLowerCase();
-                if (typeHint.includes('plate') || typeHint.includes('reservoir') || typeHint.includes('trough')) {
-                    className = 'Plate';
-                } else if (typeHint.includes('tiprack') || typeHint.includes('tip_rack')) {
-                    className = 'TipRack';
-                }
-
-                // Standard labware dimensions (127x85mm footprint for SBS plates)
-                const sizeX = className === 'TipRack' ? 127.0 : 127.0;
-                const sizeY = className === 'TipRack' ? 85.0 : 85.0;
-                const sizeZ = className === 'TipRack' ? 100.0 : 14.0;
-
-                code += `    ${varName} = res.${className}(name="${asset.name}", size_x=${sizeX}, size_y=${sizeY}, size_z=${sizeZ})\n`;
-
-                // For Hamilton decks, assign directly to deck at sequential rails
-                // Note: Resources will be spaced 5 rails apart (approx 112.5mm)
-                if (deckType.includes('HamiltonSTAR')) {
-                    code += `    deck.assign_child_resource(${varName}, rails=${railPosition})\n`;
-                    railPosition += 5;
-                } else if (deckType.includes('OTDeck')) {
-                    code += `    deck.assign_child_at_slot(${varName}, ${index + 1})\n`;
-                }
-            });
-
-            warnings.push('Deck setup skipped - using default resource positions from protocol.assets');
+            layout = Array.from(carrierMap.values());
+        } else {
+            // Slot-based
+            layout = assignments
+                .filter(a => a.placed || isSkipped)
+                .map(a => ({
+                    resource_fqn: a.resource.fqn || 'pylabrobot.resources.Resource',
+                    name: a.resource.name,
+                    slot: a.slot.index
+                }));
         }
 
-        code += '    return deck\n\ndeck = setup_deck()\n';
-        return { script: code, warnings };
+        const deckManifest: DeckManifest = {
+            fqn: deckType.includes('.') ? deckType : this.getDeckFqnForType(deckType),
+            layout_type: layoutType,
+            layout: layout
+        };
+
+        // 2. Map machines and attach deck to LiquidHandler
+        const machines = machineConfigs.map(m => {
+            if (m.machine_type === 'LiquidHandler') {
+                return { ...m, deck: deckManifest };
+            }
+            return m;
+        });
+
+        // 3. Map parameters and assets
+        const parameters: ParameterEntry[] = [];
+
+        // Add scalar parameters
+        if (protocol.parameters) {
+            protocol.parameters.forEach(p => {
+                const typeHintLower = p.type_hint.toLowerCase();
+                const isResource = typeHintLower.includes('plate') ||
+                    typeHintLower.includes('tiprack') ||
+                    typeHintLower.includes('resource');
+
+                parameters.push({
+                    name: p.name,
+                    value: p.default_value_repr, // ExecutionService will overwrite with actual user values
+                    type_hint: p.type_hint,
+                    fqn: p.fqn,
+                    is_deck_resource: isResource
+                });
+            });
+        }
+
+        // Add non-parameter assets that might be needed
+        if (protocol.assets) {
+            protocol.assets.forEach(a => {
+                // If it's a machine, it's already in machines[] (via ExecutionService)
+                // If it's labware on deck, protocol likely references it via parameter name.
+                // We ensure it's detectable.
+            });
+        }
+
+        return {
+            protocol: {
+                fqn: protocol.fqn || `${protocol.module_name}.${protocol.function_name}`,
+                requires_deck: protocol.requires_deck !== false
+            },
+            machines: machines,
+            parameters: parameters
+        };
+    }
+
+    /**
+     * Helper to map short deck type names to PLR FQNs if not already FQN.
+     */
+    private getDeckFqnForType(type: string): string {
+        switch (type) {
+            case 'HamiltonSTARDeck': return 'pylabrobot.resources.hamilton.STARDeck';
+            case 'HamiltonSTARLetDeck': return 'pylabrobot.resources.hamilton.STARLetDeck';
+            case 'OTDeck': return 'pylabrobot.resources.opentrons.OTDeck';
+            default: return 'pylabrobot.resources.Deck';
+        }
     }
 }

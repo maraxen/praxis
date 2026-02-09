@@ -9,7 +9,7 @@ export class PlaygroundPage extends BasePage {
     readonly jupyter: JupyterlitePage;
 
     constructor(page: Page, testInfo?: TestInfo) {
-        super(page, '/playground', testInfo);
+        super(page, '/app/playground', testInfo);
         this.inventoryButton = page.locator('button').filter({ has: page.locator('mat-icon', { hasText: 'inventory_2' }) });
         this.directControlTab = page.getByRole('tab', { name: 'Direct Control' });
         this.jupyter = new JupyterlitePage(page);

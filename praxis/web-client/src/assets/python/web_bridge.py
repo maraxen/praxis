@@ -7,7 +7,258 @@ This module provides:
 2. WebBridgeBackend: A high-level backend that sends PLR commands to the browser
    (legacy approach, kept for compatibility).
 3. patch_io_for_browser: Helper to patch any PLR machine's IO layer for browser mode.
+4. materialize_context: Materializes the execution context from a Typed Execution Manifest.
 """
+import json
+import js
+import sys
+import importlib
+
+def materialize_context(manifest):
+  """
+  Materializes the execution context from a Typed Execution Manifest.
+  
+  Args:
+      manifest: Dictionary or JsProxy conforming to ExecutionManifest interface.
+      
+  Returns:
+      A dictionary of resolved kwargs for protocol execution.
+  """
+  if hasattr(manifest, "to_py"):
+    manifest = manifest.to_py()
+  
+  print(f"[Browser] Materializing context for protocol: {manifest['protocol']['fqn']}")
+  
+  protocol_info = manifest.get("protocol", {})
+  requires_deck = protocol_info.get("requires_deck", True)
+  
+  # 1. Instantiate Deck
+  deck = None
+  if requires_deck:
+    deck_manifest = None
+    # Find deck manifest in machines (LiquidHandler)
+    for m in manifest.get("machines", []):
+      if m.get("machine_type") == "LiquidHandler" and "deck" in m:
+        deck_manifest = m["deck"]
+        break
+    
+    if deck_manifest:
+      fqn = deck_manifest["fqn"]
+      print(f"[Browser] Instantiating deck: {fqn}")
+      try:
+        module_path, class_name = fqn.rsplit(".", 1)
+        module = importlib.import_module(module_path)
+        DeckClass = getattr(module, class_name)
+        # NOTE: STARLetDeck() etc don't take 'name' argument in newer PLR
+        deck = DeckClass()
+      except Exception as e:
+        print(f"Error instantiating deck {fqn}: {e}. Falling back to generic Deck.")
+        try:
+          from pylabrobot.resources import Deck
+          deck = Deck()
+        except ImportError:
+          print("Could not import pylabrobot.resources.Deck, deck will be None")
+      
+      # Populate Layout (Carriers and Resources)
+      layout = deck_manifest.get("layout", [])
+      layout_type = deck_manifest.get("layout_type", "rail-based")
+      
+      for entry in layout:
+        try:
+          if layout_type == "rail-based":
+            _materialize_rail_entry(deck, entry)
+          else:
+            _materialize_slot_entry(deck, entry)
+        except Exception as e:
+          print(f"Error materializing layout entry {entry.get('name', '?')}: {e}")
+
+  # 2. Instantiate Machines
+  machines = {}
+  for m_entry in manifest.get("machines", []):
+    machine_name = m_entry["param_name"]
+    m_type = m_entry.get("machine_type", "LiquidHandler")
+    print(f"[Browser] Instantiating machine: {machine_name} (type={m_type}, backend={m_entry['backend_fqn']})")
+    
+    backend = create_configured_backend(m_entry)
+    
+    try:
+      machine = _instantiate_machine(m_type, backend, deck, manifest)
+      machines[machine_name] = machine
+    except Exception as e:
+      print(f"Error instantiating machine {machine_name}: {e}")
+
+  # 3. Resolve Parameters
+  kwargs = {}
+  kwargs.update(machines)
+  
+  for p in manifest.get("parameters", []):
+    p_name = p["name"]
+    if p_name in kwargs:
+      continue  # Already provided as a machine
+    
+    if p.get("is_deck_resource") and deck:
+      try:
+        resource = deck.get_resource(p["name"])
+        if resource:
+          kwargs[p_name] = resource
+        else:
+          print(f"Warning: Resource '{p['name']}' not found on deck. Skipping.")
+      except Exception as e:
+        print(f"Warning: Could not resolve deck resource '{p['name']}': {e}")
+    else:
+      kwargs[p_name] = p.get("value")
+      
+  return kwargs
+
+
+def _import_class(fqn):
+  """Import a class by its fully qualified name."""
+  module_path, class_name = fqn.rsplit(".", 1)
+  module = importlib.import_module(module_path)
+  return getattr(module, class_name)
+
+
+def instantiate_resource(fqn, name):
+  """Public API: Instantiate a PLR resource class by FQN.
+  
+  Called from materialize_context (deck layout) and
+  PlaygroundComponent.generateResourceCode (JupyterLite notebook injection).
+  
+  PLR resource subclasses (Plate, TipRack, etc.) define their own sizes
+  in their __init__ or class body. We only pass `name` to avoid overriding
+  class-defined dimensions. Falls back to base Resource with zero sizes.
+  """
+  try:
+    ResourceClass = _import_class(fqn)
+    # Try name-only first (works for most PLR resource subclasses)
+    try:
+      return ResourceClass(name=name)
+    except TypeError:
+      # Some base classes require size args
+      return ResourceClass(name=name, size_x=0, size_y=0, size_z=0)
+  except Exception as e:
+    print(f"Could not instantiate resource {fqn}: {e}")
+    from pylabrobot.resources import Resource
+    return Resource(name=name, size_x=0, size_y=0, size_z=0)
+
+
+def _materialize_rail_entry(deck, entry):
+  """Materialize a carrier + children onto a rail-based deck."""
+  # TODO: Open PLR issue — many carrier factories omit pedestal_size_z but
+  # PlateHolder.__init__ now requires it. Default to 4.74 (from PLT_CAR_L5AC_A00).
+  try:
+    from pylabrobot.resources.carrier import PlateHolder
+    _orig = PlateHolder.__init__
+    def _patched(self, *a, pedestal_size_z=4.74, **kw):
+      _orig(self, *a, pedestal_size_z=pedestal_size_z, **kw)
+    PlateHolder.__init__ = _patched
+  except Exception:
+    _orig = None
+
+  carrier_fqn = entry["carrier_fqn"]
+  CarrierClass = _import_class(carrier_fqn)
+  carrier = CarrierClass(name=entry["name"])
+  deck.assign_child_resource(carrier, rails=entry["rails"])
+  
+  for child in entry.get("children", []):
+    resource = instantiate_resource(child["resource_fqn"], child["name"])
+    # PLR Carrier uses __setitem__ which delegates to assign_resource_to_site
+    carrier[child["slot"]] = resource
+
+  # Restore original
+  if _orig is not None:
+    PlateHolder.__init__ = _orig
+
+
+def _materialize_slot_entry(deck, entry):
+  """Materialize a resource onto a slot-based deck (e.g. OTDeck)."""
+  resource = instantiate_resource(entry["resource_fqn"], entry["name"])
+  # OTDeck uses assign_child_at_slot(resource, slot_number), not assign_child_resource
+  deck.assign_child_at_slot(resource, entry["slot"])
+
+
+# Machine type → (module_path, class_name) mapping for supported PLR machine types
+_MACHINE_CLASS_MAP = {
+  "LiquidHandler": ("pylabrobot.liquid_handling", "LiquidHandler"),
+  "PlateReader": ("pylabrobot.plate_reading", "PlateReader"),
+  "HeaterShaker": ("pylabrobot.heating_shaking", "HeaterShaker"),
+  "Shaker": ("pylabrobot.shaking", "Shaker"),
+  "Centrifuge": ("pylabrobot.centrifuge", "Centrifuge"),
+  "Incubator": ("pylabrobot.incubator", "Incubator"),
+}
+
+def create_machine_frontend(category, backend, name=None, deck=None):
+  """Public API: Instantiate a PLR machine frontend by category string.
+  
+  Called from:
+    - materialize_context (protocol execution manifest)
+    - DirectControlKernelService.ensureMachineInstantiated (generated Python)
+    - PlaygroundComponent.generateMachineCode (JupyterLite notebook injection)
+  
+  Args:
+      category: Machine category string (e.g., 'LiquidHandler', 'PlateReader')
+      backend: A PLR backend instance (from create_configured_backend)
+      name: Optional name for the machine (required by some types like PlateReader)
+      deck: Optional deck instance (used by LiquidHandler)
+      
+  Returns:
+      A PLR machine frontend instance, or the raw backend as fallback.
+  """
+  import inspect
+  
+  mapping = _MACHINE_CLASS_MAP.get(category)
+  if not mapping:
+    print(f"Warning: Unknown machine category '{category}', returning raw backend")
+    return backend
+  
+  try:
+    mod_path, cls_name = mapping
+    mod = importlib.import_module(mod_path)
+    MachineClass = getattr(mod, cls_name)
+    
+    # Introspect the constructor to pass only accepted kwargs
+    sig = inspect.signature(MachineClass.__init__)
+    params = sig.parameters
+    
+    kwargs = {}
+    if "backend" in params:
+      kwargs["backend"] = backend
+    if "deck" in params and deck is not None:
+      kwargs["deck"] = deck
+    if "name" in params and name is not None:
+      kwargs["name"] = name
+    # PlateReader and similar require size; provide defaults if accepted but not given
+    for dim in ("size_x", "size_y", "size_z"):
+      if dim in params and params[dim].default is inspect.Parameter.empty:
+        kwargs[dim] = 0.0
+    
+    machine = MachineClass(**kwargs)
+    print(f"[web_bridge] Created {cls_name}({', '.join(f'{k}=...' for k in kwargs)})")
+    return machine
+    
+  except Exception as e:
+    print(f"Warning: Could not instantiate {category} ({e}), returning raw backend")
+    return backend
+
+
+def _instantiate_machine(machine_type, backend, deck, manifest):
+  """Internal: Instantiate machine and apply execution patches.
+  
+  Wraps create_machine_frontend with protocol-specific patches
+  (state emission, function call logging) used only during EXECUTE_BLOB.
+  """
+  machine = create_machine_frontend(machine_type, backend, deck=deck)
+  
+  if machine_type == "LiquidHandler" and machine is not backend:
+    try:
+      patch_state_emission(machine)
+      run_id = manifest.get("run_id") if manifest else None
+      if run_id:
+        patch_function_call_logging(machine, run_id)
+    except Exception as e:
+      print(f"Warning: Could not apply execution patches: {e}")
+  
+  return machine
 
 import asyncio
 import builtins

@@ -158,6 +158,17 @@ export class ExecutionMonitorPage extends BasePage {
         await expect(paramItem.locator('.parameter-value')).toContainText(value);
     }
 
+    async assertProtocolCompleted(): Promise<void> {
+        // Status check
+        await expect(this.statusChip).toContainText(/COMPLETED/i, { timeout: 60000 });
+
+        // Logs present
+        await expect(this.logPanel).not.toBeEmpty();
+
+        // Completion marker
+        await expect(this.logPanel).toContainText(/Protocol Execution Complete|successfully/i);
+    }
+
     getEmptyStateIndicator(): Locator {
         return this.page.locator('.empty-state, .no-runs-message, :text("No Runs Yet")').first();
     }

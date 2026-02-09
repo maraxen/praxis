@@ -461,5 +461,51 @@ describe('WizardStateService', () => {
             // railPosition=7, railSpacing=22.5, offset=100 → x = 100 + 7*22.5 = 257.5
             expect(carrier.location.x).toBe(257.5);
         });
+        describe('buildExecutionManifest', () => {
+            beforeEach(() => {
+                const protocol: ProtocolDefinition = {
+                    name: 'Test',
+                    accession_id: 'test_1',
+                    version: '1.0',
+                    is_top_level: true,
+                    assets: [],
+                    parameters: [
+                        { name: 'source_plate', type_hint: 'Plate', default_value_repr: 'None', fqn: 'pylabrobot.resources.Plate' }
+                    ]
+                };
+                service.initialize(protocol);
+            });
+
+            it('should build a valid manifest', () => {
+                const machineConfigs = [
+                    {
+                        param_name: 'liquid_handler',
+                        machine_type: 'LiquidHandler',
+                        backend_fqn: 'pylabrobot.liquid_handling.backends.hamilton.STAR.STAR',
+                        is_simulated: true
+                    }
+                ];
+
+                const manifest = service.buildExecutionManifest(machineConfigs);
+
+                expect(manifest.protocol.requires_deck).toBe(true);
+                expect(manifest.machines.length).toBe(1);
+                expect(manifest.machines[0].machine_type).toBe('LiquidHandler');
+                expect(manifest.machines[0].deck).toBeTruthy();
+                expect(manifest.parameters.length).toBe(1);
+                expect(manifest.parameters[0].name).toBe('source_plate');
+                expect(manifest.parameters[0].is_deck_resource).toBe(true);
+            });
+
+            it('should include correct deck manifest', () => {
+                const machineConfigs = [{ param_name: 'lh', machine_type: 'LiquidHandler', backend_fqn: 'STAR', is_simulated: true }];
+                const manifest = service.buildExecutionManifest(machineConfigs);
+                const deck = manifest.machines[0].deck;
+
+                expect(deck).toBeTruthy();
+                expect(deck?.fqn).toBe('pylabrobot.resources.hamilton.STARDeck');
+                expect(deck?.layout_type).toBe('rail-based');
+            });
+        });
     });
 });
