@@ -22,39 +22,19 @@ def _sync_fetch(url):
     return None
 
 
-def _install_wheels(host_root):
+async def _install_wheels(host_root):
     """Install PyLabRobot and pylibftdi wheels via micropip.
     
-    micropip.install() is async, but we're in a sync context.
-    In Pyodide/JupyterLite, we use the running webloop's event loop.
+    This is async — called from async praxis_main which runs via
+    JupyterLite's runPythonAsync (supports top-level await).
     """
     import micropip
-    import asyncio
 
     plr_url = f'{host_root}assets/wheels/pylabrobot-0.1.6-py3-none-any.whl'
     ftdi_url = f'{host_root}assets/wheels/pylibftdi-0.0.0-py3-none-any.whl'
 
-    async def _do_install():
-        await micropip.install(plr_url, deps=False)
-        await micropip.install(ftdi_url, deps=False)
-
-    # In Pyodide, there's a running event loop we can use
-    try:
-        loop = asyncio.get_running_loop()
-        # We're inside a running loop — use run_until_complete won't work.
-        # Instead, use Pyodide's synchronous eval for async code.
-        import pyodide.code
-        pyodide.code.run_sync(
-            f"import micropip; await micropip.install('{plr_url}', deps=False)"
-        )
-        pyodide.code.run_sync(
-            f"import micropip; await micropip.install('{ftdi_url}', deps=False)"
-        )
-    except RuntimeError:
-        # No running loop — create one (testing/non-Pyodide context)
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(_do_install())
-        loop.close()
+    await micropip.install(plr_url, deps=False)
+    await micropip.install(ftdi_url, deps=False)
 
 
 def _mock_native_deps():
@@ -174,7 +154,7 @@ def _setup_broadcast_listener():
     globals()['_praxis_channel'] = ch
 
 
-def praxis_main(host_root):
+async def praxis_main(host_root):
     """Full bootstrap: fetch files, install wheels, patch IO, import resources, listen."""
     import js
 
@@ -238,7 +218,7 @@ def praxis_main(host_root):
     # --- 5. Install wheels ---
     try:
         js.console.log('[Bootstrap] Installing PyLabRobot wheel...')
-        _install_wheels(host_root)
+        await _install_wheels(host_root)
         js.console.log('[Bootstrap] \u2713 Wheels installed')
     except Exception as e:
         js.console.error(f'[Bootstrap] Wheel install failed: {e}')

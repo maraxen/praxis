@@ -166,10 +166,11 @@ export class PlaygroundJupyterliteService {
 
   public getMinimalBootstrap(): string {
     // Compute host root in TypeScript and embed it — no js.window needed in worker.
-    // Uses synchronous XMLHttpRequest — works in web workers without async/await.
+    // Uses synchronous XMLHttpRequest to fetch praxis_bootstrap.py, then runs
+    // praxis_main() as an async coroutine via asyncio.ensure_future.
     const hostRoot = this.calculateHostRoot();
     return `
-import js
+import js, asyncio
 HOST_ROOT = '${hostRoot}'
 try:
     js.console.log(f'[Bootstrap] Fetching praxis_bootstrap.py from {HOST_ROOT}')
@@ -179,7 +180,7 @@ try:
     code = str(xhr.responseText)
     js.console.log(f'[Bootstrap] Fetched {len(code)} bytes, executing...')
     exec(compile(code, 'praxis_bootstrap.py', 'exec'))
-    praxis_main(HOST_ROOT)
+    asyncio.ensure_future(praxis_main(HOST_ROOT))
 except Exception as e:
     js.console.error(f'[Bootstrap] FATAL: {e}')
     import traceback; traceback.print_exc()
