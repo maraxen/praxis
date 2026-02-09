@@ -15,6 +15,8 @@ import { MatDialogRef, MatDialogModule, MAT_DIALOG_DATA } from '@angular/materia
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AssetService } from '@features/assets/services/asset.service';
 import { ModeService } from '@core/services/mode.service';
+import { DeckCatalogService } from '@features/run-protocol/services/deck-catalog.service';
+import { DeckDefinitionSpec } from '@features/run-protocol/models/deck-layout.models';
 import {
   MachineDefinition,
   ResourceDefinition,
@@ -54,6 +56,7 @@ export class AssetWizard implements OnInit {
   private fb = inject(FormBuilder);
   private assetService = inject(AssetService);
   public modeService = inject(ModeService);
+  private deckCatalog = inject(DeckCatalogService);
   private dialogRef = inject(MatDialogRef<AssetWizard>);
   public data = inject(MAT_DIALOG_DATA, { optional: true });
   private snackBar = inject(MatSnackBar);
@@ -85,6 +88,11 @@ export class AssetWizard implements OnInit {
     backend: ['', Validators.required]
   });
 
+  // Step 4B: Deck selection (for LiquidHandler machines with multiple compatible decks)
+  deckStepFormGroup: FormGroup = this.fb.group({
+    deckType: ['', Validators.required]
+  });
+
   // For resources, we still use definition selection
   definitionStepFormGroup: FormGroup = this.fb.group({
     definition: ['', Validators.required]
@@ -106,6 +114,11 @@ export class AssetWizard implements OnInit {
   // Backend definitions for selected frontend
   backends$: Observable<MachineBackendDefinition[]> = of([]);
   selectedBackend: MachineBackendDefinition | null = null;
+
+  // Deck selection state (for LiquidHandler machines)
+  compatibleDecks: DeckDefinitionSpec[] = [];
+  selectedDeckType: DeckDefinitionSpec | null = null;
+  showDeckStep = false;
 
   // For resources: still use the old search-based approach
   // For resources: signal-based search with observable for debounce
@@ -260,6 +273,39 @@ export class AssetWizard implements OnInit {
   selectBackend(backend: MachineBackendDefinition) {
     this.selectedBackend = backend;
     this.backendStepFormGroup.patchValue({ backend: backend.accession_id });
+
+    // Resolve compatible decks for this backend (only for LiquidHandlers with has_deck)
+    this.selectedDeckType = null;
+    this.deckStepFormGroup.reset();
+
+    if (this.selectedFrontend?.has_deck && backend.fqn) {
+      const decks = this.deckCatalog.getCompatibleDeckTypes(backend.fqn);
+      this.compatibleDecks = decks;
+
+      if (decks.length === 0) {
+        // No compatible decks — skip deck step
+        this.showDeckStep = false;
+      } else if (decks.length === 1) {
+        // Single compatible deck — auto-select and skip step
+        this.showDeckStep = false;
+        this.selectedDeckType = decks[0];
+        this.deckStepFormGroup.patchValue({ deckType: decks[0].fqn });
+      } else {
+        // Multiple compatible decks — show selection step
+        this.showDeckStep = true;
+      }
+    } else {
+      this.compatibleDecks = [];
+      this.showDeckStep = false;
+    }
+  }
+
+  /**
+   * Select a deck type (for LiquidHandler machines)
+   */
+  selectDeck(deck: DeckDefinitionSpec) {
+    this.selectedDeckType = deck;
+    this.deckStepFormGroup.patchValue({ deckType: deck.fqn });
   }
 
   /**
@@ -316,7 +362,9 @@ export class AssetWizard implements OnInit {
             : undefined,
           connection_info: config.connection_info ? { address: config.connection_info } : undefined,
           // Include backend config for hardware connections
-          backend_config: this.selectedBackend?.connection_config
+          backend_config: this.selectedBackend?.connection_config,
+          // Include selected deck type for LiquidHandler machines
+          deck_type: this.selectedDeckType?.fqn
         };
         createdAsset = await firstValueFrom(this.assetService.createMachine(machinePayload));
       } else {

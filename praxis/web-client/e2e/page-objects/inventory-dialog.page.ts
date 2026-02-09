@@ -39,7 +39,8 @@ export class InventoryDialogPage {
         const addBtn = this.dialog.getByRole('button', { name: /Add|Select/i }).nth(index);
         await expect(addBtn).toBeVisible({ timeout: 10000 });
         await addBtn.click();
-        await this.page.waitForTimeout(500); // Wait for navigation/update
+        // Wait for the dialog to update after adding
+        await expect(this.dialog).toBeVisible({ timeout: 5000 });
     }
 
     /**
@@ -83,6 +84,7 @@ export class InventoryDialogPage {
         await this.selectCategory(category);
         await this.selectMachineType(new RegExp(model, 'i'));
         await this.selectDriver(/Simul/i);
+        await this.handleDeckStep();
         await this.fillInstanceName(name);
         await this.createAsset();
     }
@@ -91,7 +93,7 @@ export class InventoryDialogPage {
      * Closes the inventory dialog if it's open.
      */
     async close(): Promise<void> {
-        if (await this.dialog.isVisible({ timeout: 1000 }).catch(() => false)) {
+        if (await this.dialog.count() > 0 && await this.dialog.isVisible()) {
             await this.page.keyboard.press('Escape');
             await expect(this.dialog).not.toBeVisible({ timeout: 5000 });
         }
@@ -169,6 +171,22 @@ export class InventoryDialogPage {
             await backendCard.click();
         }
         await this.clickNext();
+    }
+
+    /**
+     * Handles the conditional deck selection step.
+     * If the deck step appears (LiquidHandlers with multiple compatible decks),
+     * selects the first available deck and advances. Otherwise, no-ops.
+     */
+    async handleDeckStep(): Promise<void> {
+        const deckStep = this.wizard.getByTestId('wizard-step-deck');
+        const deckStepVisible = await deckStep.isVisible().catch(() => false);
+        if (deckStepVisible) {
+            const deckCard = this.wizard.getByTestId(/deck-card-/).first();
+            await expect(deckCard).toBeVisible({ timeout: 10000 });
+            await deckCard.click();
+            await this.clickNext();
+        }
     }
 
     /**

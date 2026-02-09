@@ -1,8 +1,9 @@
-import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy, effect, untracked } from '@angular/core';
 import { Location } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
+import { ModeService } from '@core/services/mode.service';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
@@ -397,6 +398,7 @@ export class RunDetailComponent implements OnInit, OnDestroy {
   readonly currentOperationIndex = signal(0);
 
   readonly executionService = inject(ExecutionService);
+  private readonly modeService = inject(ModeService);
   private readonly snackBar = inject(MatSnackBar);
 
   isCancelling = signal(false);
@@ -405,13 +407,14 @@ export class RunDetailComponent implements OnInit, OnDestroy {
 
   readonly isLive = computed(() => {
     const r = this.run();
-    return r && ['running', 'paused', 'preparing'].includes(r.status);
+    const status = r?.status?.toLowerCase();
+    return r && ['running', 'paused', 'preparing'].includes(status || '');
   });
   readonly timelineSteps = computed(() => {
     const run = this.run();
     if (!run) return [];
 
-    const status = run.status;
+    const status = run.status?.toLowerCase();
 
     let setupState: 'pending' | 'active' | 'completed' | 'error' = 'pending';
     let runningState: 'pending' | 'active' | 'completed' | 'error' = 'pending';
@@ -448,25 +451,50 @@ export class RunDetailComponent implements OnInit, OnDestroy {
 
   runId = signal(''); // Changed runId to a signal
 
+  constructor() {
+    // In browser mode, sync live execution state from ExecutionService signals
+    // into the run() signal so the template stays updated as status changes.
+    // Use untracked() for run() to avoid an infinite feedback loop.
+    effect(() => {
+      const liveRun = this.executionService.currentRun();
+      if (!liveRun) return;
+      const currentRun = untracked(() => this.run());
+      if (currentRun && liveRun.runId === currentRun.accession_id) {
+        const newStatus = liveRun.status?.toLowerCase() as any;
+        if (currentRun.status !== newStatus) {
+          this.run.set({
+            ...currentRun,
+            status: newStatus,
+            logs: liveRun.logs
+          });
+        }
+      }
+    });
+  }
+
   ngOnInit(): void {
     const runId = this.route.snapshot.paramMap.get('id');
     if (runId) {
       this.runId.set(runId);
       this.loadRunDetail();
       this.loadStateHistory(); // Kept loadStateHistory
-      this.executionService.connectWebSocket(runId);
 
-      // Subscribe to real-time errors
-      this.executionService.errors$
-        .pipe(takeUntil(this.destroy$))
-        .subscribe(err => {
-          this.snackBar.open(`Connection Error: ${err.message}`, 'Retry', {
-            duration: 5000,
-            panelClass: ['snackbar-error']
-          }).onAction().subscribe(() => {
-            window.location.reload();
+      // Only connect WebSocket in non-browser mode (browser mode uses signals + OPFS DB)
+      if (!this.modeService.isBrowserMode()) {
+        this.executionService.connectWebSocket(runId);
+
+        // Subscribe to real-time errors
+        this.executionService.errors$
+          .pipe(takeUntil(this.destroy$))
+          .subscribe(err => {
+            this.snackBar.open(`Connection Error: ${err.message}`, 'Retry', {
+              duration: 5000,
+              panelClass: ['snackbar-error']
+            }).onAction().subscribe(() => {
+              window.location.reload();
+            });
           });
-        });
+      }
     } else {
       this.isLoading.set(false);
     }
@@ -484,7 +512,7 @@ export class RunDetailComponent implements OnInit, OnDestroy {
       next: (detail) => {
         this.run.set(detail);
         this.isLoading.set(false);
-        if (this.isLive()) {
+        if (this.isLive() && !this.modeService.isBrowserMode()) {
           this.executionService.connectWebSocket(this.runId());
         }
       },

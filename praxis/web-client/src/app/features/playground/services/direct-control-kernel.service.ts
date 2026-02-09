@@ -84,13 +84,15 @@ await micropip.install('assets/wheels/pylabrobot-0.1.6-py3-none-any.whl')
 print("PyLabRobot installed from local wheel")
 `);
 
-            // Mock dependencies not available in browser
+            // Install pylibftdi stub wheel (provides real FtdiError, Device, driver types)
+            // and mock remaining native dependencies not available in browser
             await this.pyodide.runPythonAsync(`
-import sys
+import micropip, sys
 from unittest.mock import MagicMock
 
-# Mock pylibftdi (not supported in browser/Pyodide)
-sys.modules["pylibftdi"] = MagicMock()
+# Install pylibftdi stub — proper types so except FtdiError clauses work
+await micropip.install('assets/wheels/pylibftdi-0.0.0-py3-none-any.whl', deps=False)
+print("✓ pylibftdi stub installed from wheel")
 
 # Mock other native dependencies that may cause issues
 sys.modules["usb"] = MagicMock()

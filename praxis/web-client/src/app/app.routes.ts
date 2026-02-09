@@ -1,4 +1,5 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Routes, Router, CanActivateFn } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { MainLayoutComponent } from './layout/main-layout.component';
 import { UnifiedShellComponent } from './layout/unified-shell.component';
@@ -6,11 +7,30 @@ import { LoginComponent } from './features/auth/login.component';
 import { RegisterComponent } from './features/auth/register.component';
 import { ForgotPasswordComponent } from './features/auth/forgot-password.component';
 import { SplashComponent } from './features/splash/splash.component';
+import { ModeService } from './core/services/mode.service';
+
+/**
+ * Bypass splash page in browser mode.
+ * When there's no auth backend (browser/GH-Pages), the splash serves no purpose.
+ * Redirects to /app/home while preserving all query params (mode, dbName, etc.).
+ */
+const browserModeSplashGuard: CanActivateFn = () => {
+  const modeService = inject(ModeService);
+  if (modeService.isBrowserMode()) {
+    const router = inject(Router);
+    const params = new URLSearchParams(window.location.search);
+    const queryParams: Record<string, string> = {};
+    params.forEach((v, k) => queryParams[k] = v);
+    return router.createUrlTree(['/app/home'], { queryParams });
+  }
+  return true;
+};
 
 export const routes: Routes = [
-  // Public splash page (no auth required)
+  // Public splash page — bypassed in browser mode (no auth = no splash needed)
   {
     path: '',
+    canActivate: [browserModeSplashGuard],
     component: SplashComponent,
     pathMatch: 'full'
   },

@@ -19,7 +19,7 @@
  */
 
 import { test, expect, gotoWithWorkerDb } from '../fixtures/worker-db.fixture';
-import { WelcomePage } from '../page-objects/welcome.page';
+
 import { RunProtocolPage } from '../page-objects/run-protocol.page';
 import { SIMULATABLE_PROTOCOLS, ProtocolTestEntry } from '../helpers/protocol-registry';
 import { categorizeFailure, MatrixResult, formatMatrixSummary } from '../helpers/matrix-reporter';
@@ -64,11 +64,8 @@ test.describe('@slow Protocol Simulation Matrix', () => {
                 // 1. Navigate with worker-scoped database
                 await gotoWithWorkerDb(page, '/app/run', testInfo, { resetdb: true });
 
-                // 2. Handle splash screen if present
-                const welcomePage = new WelcomePage(page);
-                await welcomePage.handleSplashScreen().catch(() => {
-                    // Splash may not appear if already dismissed
-                });
+
+                // 2. Splash bypass handled by BasePage addInitScript
 
                 // 3. Wait for protocols to load
                 const runPage = new RunProtocolPage(page);

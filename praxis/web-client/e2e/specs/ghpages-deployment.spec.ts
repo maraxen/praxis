@@ -15,12 +15,11 @@ import { test, expect } from '../fixtures/worker-db.fixture';
  *   - SPA routing rewrites
  */
 
-test.describe('GitHub Pages Deployment Verification', () => {
+test.describe('@ghpages GitHub Pages Deployment Verification', () => {
 
     test.describe('JupyterLite Path Resolution (Critical)', () => {
 
-        test.fixme('@slow no 404 errors for JupyterLite core resources', async ({ page }) => {
-            // FIXME: Requires full Pyodide bootstrap - need mock or snapshot/restore
+        test('@slow no 404 errors for JupyterLite core resources', async ({ page }) => {
             test.slow();
             const failedResources: { url: string; status: number }[] = [];
 
@@ -51,8 +50,7 @@ test.describe('GitHub Pages Deployment Verification', () => {
             ).toHaveLength(0);
         });
 
-        test.fixme('@slow no path doubling in resource URLs', async ({ page }) => {
-            // FIXME: Requires full Pyodide bootstrap - need mock or snapshot/restore
+        test('@slow no path doubling in resource URLs', async ({ page }) => {
             test.slow();
             const doubledPaths: string[] = [];
 
@@ -104,17 +102,19 @@ test.describe('GitHub Pages Deployment Verification', () => {
             expect(response?.headers()['content-type']).toContain('application/json');
         });
 
-        test('REPL config has correct absolute path resolution for GH Pages', async ({ page }) => {
-            // Verify the nested REPL config exists and has the right absolute paths
+        test('REPL config has correct baseUrl-relative paths for GH Pages', async ({ page }) => {
+            // Verify the nested REPL config uses baseUrl-relative paths (not ../relative).
+            // JupyterLab's themesplugins.ts does: URLExt.join(PageConfig.getBaseUrl(), paths.urls.themes)
+            // So themesUrl must be baseUrl-relative ("build/themes"), not absolute or file-relative.
             const response = await page.goto('assets/jupyterlite/repl/jupyter-lite.json');
             expect(response?.status()).toBe(200);
 
             const config = await response?.json();
             const configData = config['jupyter-config-data'];
 
-            // GH Pages REPL uses absolute paths to prevent path doubling
-            expect(configData['settingsUrl']).toBe('/praxis/assets/jupyterlite/build/schemas');
-            expect(configData['themesUrl']).toBe('/praxis/assets/jupyterlite/build/themes');
+            // baseUrl-relative paths: JupyterLab joins these with baseUrl via posix.join
+            expect(configData['settingsUrl']).toBe('build/schemas');
+            expect(configData['themesUrl']).toBe('build/themes');
         });
 
         test('root config uses absolute paths for GH Pages', async ({ page }) => {
@@ -124,9 +124,9 @@ test.describe('GitHub Pages Deployment Verification', () => {
             const config = await response?.json();
             const configData = config['jupyter-config-data'];
 
-            // GH Pages deployment uses absolute paths for reliable resolution
+            // baseUrl is absolute — JupyterLab uses it as the root for URL composition
             expect(configData['baseUrl']).toBe('/praxis/assets/jupyterlite/');
-            expect(configData['fullStaticUrl']).toBe('/praxis/assets/jupyterlite/build');
+            expect(configData['fullStaticUrl']).toBe('./build');
         });
     });
 

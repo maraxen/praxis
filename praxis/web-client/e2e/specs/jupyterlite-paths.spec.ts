@@ -15,14 +15,15 @@ import { createPathDoublingMonitor } from '../helpers/path-verifier';
 test.describe('@slow JupyterLite Path Resolution', () => {
 
     test.describe('Development Mode', () => {
-        test('REPL config uses relative paths', async ({ page }) => {
+        test('REPL config uses baseUrl-relative paths', async ({ page }) => {
             // Fetch the REPL config directly
             const response = await page.goto('/assets/jupyterlite/repl/jupyter-lite.json');
             expect(response?.status()).toBe(200);
 
             const config = await response?.json();
-            expect(config['jupyter-config-data']['settingsUrl']).toBe('../build/schemas');
-            expect(config['jupyter-config-data']['themesUrl']).toBe('../build/themes');
+            // baseUrl-relative paths: JupyterLab joins these with baseUrl via posix.join
+            expect(config['jupyter-config-data']['settingsUrl']).toBe('build/schemas');
+            expect(config['jupyter-config-data']['themesUrl']).toBe('build/themes');
         });
 
         test('schemas endpoint accessible', async ({ page }) => {
@@ -71,28 +72,3 @@ test.describe('@slow JupyterLite Path Resolution', () => {
     });
 });
 
-/**
- * Separate test file for GH Pages simulation
- * These tests require a special server setup with COOP/COEP headers
- * Run with: npx playwright test --config=playwright.ghpages.config.ts
- */
-test.describe.skip('GH Pages Simulation (requires separate config)', () => {
-    test('root config has correct baseUrl', async ({ page }) => {
-        // This test requires baseURL to be http://localhost:8080/praxis
-        const response = await page.goto('/assets/jupyterlite/jupyter-lite.json');
-        expect(response?.status()).toBe(200);
-
-        const config = await response?.json();
-        expect(config['jupyter-config-data']['baseUrl']).toBe('/praxis/assets/jupyterlite/');
-    });
-
-    test('REPL config still uses relative paths in production', async ({ page }) => {
-        const response = await page.goto('/assets/jupyterlite/repl/jupyter-lite.json');
-        expect(response?.status()).toBe(200);
-
-        const config = await response?.json();
-        // Even in production, nested configs should use relative paths
-        expect(config['jupyter-config-data']['settingsUrl']).toBe('../build/schemas');
-        expect(config['jupyter-config-data']['themesUrl']).toBe('../build/themes');
-    });
-});

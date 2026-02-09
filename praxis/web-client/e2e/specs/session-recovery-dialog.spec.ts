@@ -52,7 +52,6 @@ test.describe('Session Recovery Service', () => {
 
         await gotoWithWorkerDb(page, '/app/home', { workerIndex }, { resetdb: true });
         await waitForSqliteReady(page);
-        await dismissWelcomeDialogIfPresent(page);
 
         // Create orphaned run via repository
         const createResult = await page.evaluate(async (heartbeat: number) => {
@@ -126,7 +125,6 @@ test.describe('Session Recovery Service', () => {
 
         await gotoWithWorkerDb(page, '/app/home', { workerIndex }, { resetdb: true });
         await waitForSqliteReady(page);
-        await dismissWelcomeDialogIfPresent(page);
 
         // Create and then update orphaned run
         const result = await page.evaluate(async (heartbeat: number) => {
@@ -178,7 +176,6 @@ test.describe('Session Recovery Service', () => {
     test('no orphaned runs when none exist', async ({ page, workerIndex }) => {
         await gotoWithWorkerDb(page, '/app/home', { workerIndex }, { resetdb: true });
         await waitForSqliteReady(page);
-        await dismissWelcomeDialogIfPresent(page);
 
         // Check for orphaned runs (should be none)
         const orphanedRuns = await page.evaluate(async () => {
@@ -214,7 +211,6 @@ test.describe('Session Recovery Service', () => {
     test('does not show session recovery dialog when no orphaned runs', async ({ page, workerIndex }) => {
         await gotoWithWorkerDb(page, '/app/home', { workerIndex }, { resetdb: true });
         await waitForSqliteReady(page);
-        await dismissWelcomeDialogIfPresent(page);
 
         // Wait for any dialogs that might appear
         await page.waitForTimeout(2000);

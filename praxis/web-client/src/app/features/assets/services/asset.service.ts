@@ -505,6 +505,128 @@ export class AssetService {
     );
   }
 
+  // --- Resource Lifecycle (Model C: Hybrid) ---
+
+  /**
+   * Resolve an available resource instance for a definition, or JIT-create one.
+   *
+   * Model C Hybrid Lifecycle:
+   * 1. Look for an existing instance with status AVAILABLE
+   * 2. If found → mark it IN_USE and return it
+   * 3. If not found → auto-create from definition, tag as auto_instantiated, return it
+   *
+   * @param definitionAccessionId The resource definition to resolve an instance for
+   * @returns Observable of the resolved (or newly created) Resource instance
+   */
+  resolveOrCreateResource(definitionAccessionId: string): Observable<Resource> {
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => {
+          // 1. Get the definition
+          return repos.resourceDefinitions.findOneBy({ accession_id: definitionAccessionId }).pipe(
+            switchMap(definition => {
+              if (!definition) {
+                throw new Error(`Resource definition not found: ${definitionAccessionId}`);
+              }
+
+              // 2. Find existing instances for this definition
+              return repos.resources.findBy({
+                resource_definition_accession_id: definitionAccessionId
+              }).pipe(
+                switchMap(instances => {
+                  // 3. Look for an available instance
+                  const available = instances.find(
+                    (r: any) => r.status === ResourceStatus.AVAILABLE
+                  );
+
+                  if (available) {
+                    // Mark it IN_USE and return
+                    return repos.resources.update(available.accession_id!, {
+                      status: ResourceStatus.IN_USE,
+                      updated_at: new Date().toISOString()
+                    } as any).pipe(
+                      map(updated => updated as unknown as Resource)
+                    );
+                  }
+
+                  // 4. No available instance → create one
+                  const cleanName = (definition.name as string).replace(/\s+/g, '_').toLowerCase();
+                  const newResource: any = {
+                    accession_id: crypto.randomUUID(),
+                    name: definition.name,
+                    fqn: `resources.jit.${cleanName}`,
+                    status: ResourceStatus.IN_USE,
+                    asset_type: 'RESOURCE',
+                    resource_definition_accession_id: definitionAccessionId,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    properties_json: {
+                      auto_instantiated: true,
+                      source: 'protocol_setup'
+                    }
+                  };
+
+                  return repos.resources.create(newResource).pipe(
+                    map(r => r as unknown as Resource)
+                  );
+                })
+              );
+            })
+          );
+        })
+      );
+    }
+
+    // Production mode: delegate to API
+    // TODO: Implement API-based resolve when backend supports it
+    return this.apiWrapper.wrap(
+      ResourcesService.getMultiApiV1ResourcesGet()
+    ).pipe(
+      map(resources => {
+        const match = resources.find(
+          (r: any) => r.resource_definition_accession_id === definitionAccessionId &&
+            r.status === 'available'
+        );
+        if (!match) {
+          throw new Error(`No available resource for definition: ${definitionAccessionId}`);
+        }
+        return match as unknown as Resource;
+      })
+    );
+  }
+
+  /**
+   * Release a resource after protocol completion.
+   *
+   * @param accessionId The resource instance to release
+   * @param outcome 'reuse' → AVAILABLE, 'deplete' → DEPLETED
+   * @returns Observable of the updated Resource
+   */
+  releaseResource(accessionId: string, outcome: 'reuse' | 'deplete'): Observable<Resource> {
+    const newStatus = outcome === 'reuse'
+      ? ResourceStatus.AVAILABLE
+      : ResourceStatus.DEPLETED;
+
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => repos.resources.update(accessionId, {
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        } as any)),
+        map(r => r as unknown as Resource)
+      );
+    }
+
+    // Production mode: delegate to API
+    return this.apiWrapper.wrap(
+      ResourcesService.updateApiV1ResourcesAccessionIdPut(accessionId, {
+        status: newStatus
+      } as any)
+    ).pipe(
+      map(r => r as unknown as Resource)
+    );
+  }
+
   /**
    * Resolves an asset path, accounting for baseHref in production/GH-Pages builds.
    * @param assetPath The path to the asset relative to the 'assets' folder.

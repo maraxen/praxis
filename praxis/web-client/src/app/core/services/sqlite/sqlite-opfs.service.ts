@@ -184,8 +184,18 @@ export class SqliteOpfsService {
                         console.log(`[SqliteOpfsService] Loading prebuilt database (${data.length} bytes)...`);
                         return this.importDatabase(data);
                     }),
-                    map(() => {
-                        console.log('[SqliteOpfsService] Prebuilt database loaded successfully.');
+                    // Set user_version after import so subsequent opens skip re-initialization
+                    switchMap(() => this.exec(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION}`)),
+                    // Verify the import actually worked by checking for protocol definitions
+                    switchMap(() => this.exec('SELECT COUNT(*) as count FROM function_protocol_definitions')),
+                    switchMap(result => {
+                        const count = (result.resultRows[0] as any)?.count || 0;
+                        if (count === 0) {
+                            console.warn('[SqliteOpfsService] Prebuilt DB imported but has no protocols — falling back to schema + seeds');
+                            return this.initializeFromSchema();
+                        }
+                        console.log(`[SqliteOpfsService] Prebuilt database loaded successfully (${count} protocols, user_version=${CURRENT_SCHEMA_VERSION}).`);
+                        return of(void 0);
                     })
                 );
             }),
@@ -367,64 +377,71 @@ export class SqliteOpfsService {
     }
 
     /**
-     * Seed default assets if none exist.
+     * Seed default assets if definitions are missing instances.
      * 
-     * NOTE: This seeding is for BROWSER MODE ONLY. The prebuilt praxis.db
-     * should contain resources, but this acts as a fallback when the database
-     * is reset or the prebuilt file is unavailable.
+     * Model C Hybrid Lifecycle: Coverage-based seeding.
+     * Instead of checking if ANY resources exist (which broke when prebuilt DB
+     * had a single stray entry), this iterates all definitions and seeds
+     * instances only for those with zero existing instances.
      * 
-     * TODO: Add a configuration toggle to disable auto-seeding for production
-     * environments where inventory should be managed explicitly.
+     * NOTE: This seeding is for BROWSER MODE ONLY.
      */
     private seedDefaultAssets(): Observable<void> {
-        return this.exec("SELECT COUNT(*) as count FROM resources").pipe(
-            switchMap(result => {
-                const count = (result.resultRows[0] as any)?.count || 0;
-                if (count > 0) return of(void 0);
+        const seedResources$ = this.exec("SELECT accession_id, name, fqn FROM resource_definitions").pipe(
+            switchMap(resDefs => {
+                const definitions = resDefs.resultRows;
+                if (definitions.length === 0) return of(void 0);
 
-                return this.exec("SELECT accession_id, name, fqn FROM resource_definitions").pipe(
-                    switchMap(resDefs => {
-                        const rows = resDefs.resultRows;
-                        if (rows.length === 0) {
-                            console.warn('[SqliteOpfsService] No resource definitions found for asset seeding.');
-                            return of(void 0);
+                return this.exec("SELECT resource_definition_accession_id, COUNT(*) as cnt FROM resources GROUP BY resource_definition_accession_id").pipe(
+                    switchMap(existingResult => {
+                        const existingCoverage = new Map<string, number>();
+                        for (const row of existingResult.resultRows) {
+                            existingCoverage.set(row.resource_definition_accession_id as string, (row as any).cnt as number);
                         }
 
+                        const uncoveredDefs = definitions.filter(d => !existingCoverage.has(d.accession_id as string) || existingCoverage.get(d.accession_id as string)! === 0);
+                        if (uncoveredDefs.length === 0) return of(void 0);
+
+                        console.debug(`[SqliteOpfsService] Seeding ${uncoveredDefs.length} resources.`);
                         const now = new Date().toISOString();
-                        const operations: { sql: string; bind: any[] }[] = [];
-
-                        const insertResource = `
-                            INSERT OR IGNORE INTO resources (accession_id, asset_type, name, fqn, created_at, updated_at, properties_json, resource_definition_accession_id, status)
-                            VALUES (?, 'RESOURCE', ?, ?, ?, ?, ?, ?, ?)
-                        `;
-
-                        for (const row of rows) {
-                            const assetId = crypto.randomUUID();
-                            const cleanName = (row.name as string).replace(/\s+/g, '_').toLowerCase();
-                            const instanceFqn = `resources.default.${cleanName}`;
-
-                            operations.push({
-                                sql: insertResource,
-                                bind: [
-                                    assetId,
-                                    row.name,
-                                    instanceFqn,
-                                    now,
-                                    now,
-                                    JSON.stringify({ is_default: true }),
-                                    row.accession_id,
-                                    'available'
-                                ]
-                            });
-                        }
-
-                        return this.execBatch(operations).pipe(
-                            map(() => void 0)
-                        );
+                        const operations = uncoveredDefs.map(row => ({
+                            sql: `INSERT OR IGNORE INTO resources (accession_id, asset_type, name, fqn, created_at, updated_at, properties_json, resource_definition_accession_id, status) VALUES (?, 'RESOURCE', ?, ?, ?, ?, ?, ?, ?)`,
+                            bind: [crypto.randomUUID(), row.name, `resources.default.${(row.name as string).replace(/\s+/g, '_').toLowerCase()}`, now, now, JSON.stringify({ auto_instantiated: true, source: 'seed' }), row.accession_id, 'available']
+                        }));
+                        return this.execBatch(operations);
                     })
                 );
             })
         );
+
+        const seedMachines$ = this.exec("SELECT accession_id, name, fqn FROM machine_definitions").pipe(
+            switchMap(machDefs => {
+                const definitions = machDefs.resultRows;
+                if (definitions.length === 0) return of(void 0);
+
+                return this.exec("SELECT fqn, COUNT(*) as cnt FROM machines GROUP BY fqn").pipe(
+                    switchMap(existingResult => {
+                        const existingCoverage = new Map<string, number>();
+                        for (const row of existingResult.resultRows) {
+                            existingCoverage.set(row.fqn as string, (row as any).cnt as number);
+                        }
+
+                        const uncoveredDefs = definitions.filter(d => !existingCoverage.has(d.fqn as string) || existingCoverage.get(d.fqn as string)! === 0);
+                        if (uncoveredDefs.length === 0) return of(void 0);
+
+                        console.debug(`[SqliteOpfsService] Seeding ${uncoveredDefs.length} machines.`);
+                        const now = new Date().toISOString();
+                        const operations = uncoveredDefs.map(row => ({
+                            sql: `INSERT OR IGNORE INTO machines (accession_id, name, asset_type, fqn, created_at, updated_at, properties_json, maintenance_enabled, status_details) VALUES (?, ?, 'MACHINE', ?, ?, ?, ?, 0, ?)`,
+                            bind: [crypto.randomUUID(), row.name, row.fqn, now, now, JSON.stringify({ auto_instantiated: true, source: 'seed' }), 'online']
+                        }));
+                        return this.execBatch(operations);
+                    })
+                );
+            })
+        );
+
+        return seedResources$.pipe(switchMap(() => seedMachines$), map(() => void 0));
     }
 
     /**

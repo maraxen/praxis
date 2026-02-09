@@ -18,21 +18,21 @@ test.describe('Catalog to Inventory Workflow', () => {
         await expect(wizard).toBeVisible({ timeout: 10000 });
         const dialog = page.getByRole('dialog');
 
-        // Step 1: Select Category (wizard opens pre-selected as MACHINE in playground context)
-        const categoryCard = wizard.getByTestId(/category-card-/).first();
+        // Step 1: Select Category (explicitly select LiquidHandler to ensure driver visibility)
+        const categoryCard = wizard.getByTestId('category-card-LiquidHandler');
         await expect(categoryCard).toBeVisible({ timeout: 15000 });
         await categoryCard.click();
         await dialog.getByRole('button', { name: /Next/i }).click();
 
         // Step 2: Select Machine Type (Frontend)
         const frontendCard = wizard.getByTestId(/frontend-card-/).first();
-        await expect(frontendCard).toBeVisible({ timeout: 10000 });
+        await expect(frontendCard).toBeVisible({ timeout: 15000 });
         await frontendCard.click();
         await dialog.getByRole('button', { name: /Next/i }).click();
 
         // Step 3: Select Driver (Backend) — pick first (simulated)
         const backendCard = wizard.getByTestId(/backend-card-/).first();
-        await expect(backendCard).toBeVisible({ timeout: 10000 });
+        await expect(backendCard).toBeVisible({ timeout: 15000 });
         await backendCard.click();
         await dialog.getByRole('button', { name: /Next/i }).click();
 
@@ -63,6 +63,12 @@ test.describe('Catalog to Inventory Workflow', () => {
         const machineCount = await page.evaluate(async () => {
             const e2e = (window as any).__e2e;
             if (!e2e) return 0;
+            // Wait for DB to be ready in the evaluate context
+            let retries = 0;
+            while (!e2e.isReady() && retries < 10) {
+                await new Promise(r => setTimeout(r, 500));
+                retries++;
+            }
             return await e2e.count('machines');
         });
         expect(machineCount).toBeGreaterThan(0);
@@ -79,21 +85,20 @@ test.describe('Catalog to Inventory Workflow', () => {
         const wizard = page.locator('app-asset-wizard');
         await expect(wizard).toBeVisible({ timeout: 10000 });
         const dialog = page.getByRole('dialog');
-        const inventory = new InventoryDialogPage(page);
 
         // Walk through wizard quickly
-        const categoryCard = wizard.getByTestId(/category-card-/).first();
-        await expect(categoryCard).toBeVisible({ timeout: 10000 });
+        const categoryCard = wizard.getByTestId('category-card-LiquidHandler');
+        await expect(categoryCard).toBeVisible({ timeout: 15000 });
         await categoryCard.click();
         await dialog.getByRole('button', { name: /Next/i }).click();
 
         const frontendCard = wizard.getByTestId(/frontend-card-/).first();
-        await expect(frontendCard).toBeVisible({ timeout: 10000 });
+        await expect(frontendCard).toBeVisible({ timeout: 15000 });
         await frontendCard.click();
         await dialog.getByRole('button', { name: /Next/i }).click();
 
         const backendCard = wizard.getByTestId(/backend-card-/).first();
-        await expect(backendCard).toBeVisible({ timeout: 10000 });
+        await expect(backendCard).toBeVisible({ timeout: 15000 });
         await backendCard.click();
         await dialog.getByRole('button', { name: /Next/i }).click();
 
@@ -121,6 +126,12 @@ test.describe('Catalog to Inventory Workflow', () => {
         const machineCount = await page.evaluate(async () => {
             const e2e = (window as any).__e2e;
             if (!e2e) return 0;
+            // Wait for DB to be ready in the evaluate context
+            let retries = 0;
+            while (!e2e.isReady() && retries < 10) {
+                await new Promise(r => setTimeout(r, 500));
+                retries++;
+            }
             return await e2e.count('machines');
         });
         expect(machineCount).toBeGreaterThan(0);

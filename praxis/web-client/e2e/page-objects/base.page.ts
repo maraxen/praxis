@@ -21,6 +21,15 @@ export abstract class BasePage {
         this.page = page;
         this.url = url;
         this.testInfo = testInfo;
+
+        // Pre-seed localStorage BEFORE any navigation to bypass splash/onboarding/tutorial.
+        // This runs in the constructor so it applies regardless of which fixture or
+        // goto() override is used. addInitScript persists for the page's lifetime.
+        void page.addInitScript(() => {
+            localStorage.setItem('praxis_onboarding_completed', 'true');
+            localStorage.setItem('praxis_tutorial_completed', 'true');
+            localStorage.setItem('praxis_splash_dismissed', 'true');
+        });
     }
 
     /**
@@ -62,21 +71,22 @@ export abstract class BasePage {
 
         const finalUrl = urlObj.toString();
 
-        // PRE-CONDITION: Mark onboarding as completed to avoid blocking splash screens
-        await this.page.addInitScript(() => {
-            window.localStorage.setItem('praxis_onboarding_completed', 'true');
-        });
-
         await this.page.goto(finalUrl, { waitUntil: 'domcontentloaded' });
 
-        // Wait for SQLite service ready signal - the definitive indicator that:
-        // 1. OPFS initialized, 2. Worker active, 3. Schema migrated, 4. Seeding complete
+        // Wait for SQLite service ready signal
         if (waitForDb && finalUrl.includes('mode=browser')) {
-            await this.page.locator('[data-sqlite-ready="true"]').waitFor({
-                state: 'attached',
-                timeout: 60000
-            });
+            await BasePage.waitForDbReady(this.page);
         }
+    }
+
+    /**
+     * Reusable DB-ready wait. Use this instead of inline [data-sqlite-ready] waits.
+     */
+    static async waitForDbReady(page: Page, timeout = 60_000) {
+        await page.locator('[data-sqlite-ready="true"]').waitFor({
+            state: 'attached',
+            timeout,
+        });
     }
 
     async getTitle(): Promise<string> {

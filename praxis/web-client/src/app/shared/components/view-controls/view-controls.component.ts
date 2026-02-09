@@ -391,7 +391,12 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ViewControlsComponent implements OnInit, OnDestroy {
-  @Input() config: ViewControlsConfig = {};
+  @Input() set config(value: ViewControlsConfig) {
+    this._config.set(value);
+  }
+  get config(): ViewControlsConfig {
+    return this._config();
+  }
 
   @Input() set state(value: ViewControlsState) {
     this._state.set({
@@ -412,6 +417,8 @@ export class ViewControlsComponent implements OnInit, OnDestroy {
     sortOrder: 'asc' | 'desc';
   }>();
   @Output() searchChange = new EventEmitter<string>();
+
+  private _config = signal<ViewControlsConfig>({});
 
   private _state = signal<ViewControlsState>({
     viewType: 'card',
@@ -435,7 +442,7 @@ export class ViewControlsComponent implements OnInit, OnDestroy {
   // Filters pinned to the bar (always visible)
   pinnedFilters = computed(() => {
     // Default pinning: Status and Category or first 2
-    const filters = this.config.filters || [];
+    const filters = this._config().filters || [];
     if (filters.some(f => f.pinned)) {
       return filters.filter(f => f.pinned);
     }
@@ -453,7 +460,7 @@ export class ViewControlsComponent implements OnInit, OnDestroy {
   // Filters in the "+ Add Filter" menu
   unpinnedFilters = computed(() => {
     const pinnedKeys = new Set(this.pinnedFilters().map(f => f.key));
-    return (this.config.filters || []).filter(f => !pinnedKeys.has(f.key));
+    return (this._config().filters || []).filter(f => !pinnedKeys.has(f.key));
   });
 
   // Active filters for chip display
@@ -464,7 +471,7 @@ export class ViewControlsComponent implements OnInit, OnDestroy {
     for (const [key, values] of Object.entries(currentState.filters)) {
       if (!values || (Array.isArray(values) && values.length === 0)) continue;
 
-      const config = this.config.filters?.find(f => f.key === key);
+      const config = this._config().filters?.find(f => f.key === key);
       if (!config) continue;
 
       const valArray = Array.isArray(values) ? values : [values];

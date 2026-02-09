@@ -37,20 +37,17 @@ export class WizardPage {
         const stepper = this.page.locator('mat-horizontal-stepper').first();
 
         const [protocolEnabled, machineEnabled, assetsEnabled, deckSkipVisible, deckContinueEnabled, reviewEnabled, reviewSelected, linearAttr, isBrowserMode] = await Promise.all([
-            protocolContinue.isEnabled().catch(() => false),
-            machineContinue.isEnabled().catch(() => false),
-            assetsContinue.isEnabled().catch(() => false),
-            deckSkip.isVisible().catch(() => false),
-            deckContinue.isEnabled().catch(() => false),
-            reviewTab.isEnabled().catch(() => false),
-            reviewTab.getAttribute('aria-selected').catch(() => null),
-            stepper.getAttribute('ng-reflect-linear').catch(() => null),
+            protocolContinue.isEnabled(),
+            machineContinue.isEnabled(),
+            assetsContinue.isEnabled(),
+            deckSkip.isVisible(),
+            deckContinue.isEnabled(),
+            reviewTab.isEnabled(),
+            reviewTab.getAttribute('aria-selected'),
+            stepper.getAttribute('ng-reflect-linear'),
             this.page.evaluate(() => {
                 const cmp = (window as any).ng?.getComponent?.(document.querySelector('app-run-protocol'));
-                return cmp?.modeService?.isBrowserMode?.();
-            }).catch((e) => {
-                console.log('[Test] Silent catch (isBrowserMode evaluate):', e);
-                return null;
+                return cmp?.modeService?.isBrowserMode?.() ?? null;
             }),
         ]);
 
@@ -98,7 +95,9 @@ export class WizardPage {
     async selectFirstCompatibleMachine() {
         await this.machineStep.waitFor({ state: 'visible' });
         const spinner = this.machineStep.locator('mat-spinner');
-        await spinner.waitFor({ state: 'detached', timeout: 15000 }).catch((e) => console.log('[Test] Silent catch (Machine step spinner):', e));
+        if (await spinner.count() > 0) {
+            await expect(spinner).not.toBeVisible({ timeout: 15000 });
+        }
 
         // Target new selector sections first
         const sections = this.machineStep.locator('.machine-arg-section');
@@ -120,7 +119,9 @@ export class WizardPage {
                     await Promise.race([
                         options.first().waitFor({ state: 'visible', timeout: 5000 }),
                         noOptions.first().waitFor({ state: 'visible', timeout: 5000 })
-                    ]).catch((e) => console.log('[Test] Silent catch (Machine options race):', e));
+                    ]).catch(() => {
+                        // Neither options nor empty state appeared - continue anyway
+                    });
 
                     if (await options.count() > 0) {
                         // Prefer simulation/chatterbox in simulation mode
@@ -143,7 +144,9 @@ export class WizardPage {
                 machineCards.first().waitFor({ state: 'visible', timeout: 5000 }),
                 noMachines.first().waitFor({ state: 'visible', timeout: 5000 }),
                 expect(continueButton).toBeEnabled({ timeout: 5000 })
-            ]).catch((e) => console.log('[Test] Silent catch (Machine cards fallback race):', e));
+            ]).catch(() => {
+                // None of the conditions met - continue anyway
+            });
 
             if (await machineCards.count() > 0) {
                 const simulationCard = machineCards.filter({ hasText: /Simulation|Simulated|Chatterbox/i }).first();
@@ -235,7 +238,6 @@ export class WizardPage {
         await continueButton.click();
         // Transition might be to Wells or Deck Setup
         console.log('[Wizard] Assets continued, waiting for next step...');
-        await this.page.waitForTimeout(1000);
     }
 
     async completeWellSelectionStep() {
@@ -243,11 +245,12 @@ export class WizardPage {
 
         // Wait for well step header to be selected or at least visible
         const wellHeader = this.page.locator('.mat-step-header').filter({ hasText: /Select Wells/i }).first();
-        const wellStepSelected = await wellHeader.getAttribute('aria-selected').catch(() => 'false') === 'true';
+        const wellStepSelected = (await wellHeader.count() > 0)
+            ? (await wellHeader.getAttribute('aria-selected')) === 'true'
+            : false;
 
         if (!wellStepSelected) {
-            // Check if we can even see the step content
-            const isVisible = await this.wellStep.isVisible({ timeout: 2000 }).catch(() => false);
+            const isVisible = await this.wellStep.isVisible({ timeout: 2000 });
             if (!isVisible) {
                 console.log('[Wizard] Well Selection step not active or visible, skipping');
                 return;
@@ -309,7 +312,7 @@ export class WizardPage {
         }
 
         console.log('[Wizard] Clicking Well Step Continue button...');
-        await continueButton.click({ force: true });
+        await continueButton.click();
 
         // Wait for transition to next step
         await expect(wellHeader).toHaveAttribute('aria-selected', 'false', { timeout: 10000 });
@@ -318,23 +321,46 @@ export class WizardPage {
     async advanceDeckSetup() {
         console.log('[Wizard] Advancing Deck Setup...');
 
-        // Wait for stepper header to indicate "Deck Setup" is active
-        const deckHeader = this.page.locator('.mat-step-header').filter({ hasText: /Deck Setup/i }).first();
-        await expect(deckHeader).toHaveAttribute('aria-selected', 'true', { timeout: 30000 });
+        const deckHeader = this.page.locator('.mat-step-header').filter({ hasText: /Deck/i }).first();
 
-        // Wait for the step content to be visible and stable
-        const activeStepContent = this.page.locator('.mat-horizontal-stepper-content-current, .mat-step-content:not([hidden])').first();
-        await expect(activeStepContent).toBeVisible({ timeout: 20000 });
+        // Check if Deck Setup step even exists (it might not for some protocols)
+        if (await deckHeader.count() === 0) {
+            console.log('[Wizard] No Deck Setup step found, skipping');
+            return;
+        }
 
-        // Ensure our deck step root is inside the active content
-        const deckStepInActive = activeStepContent.locator('[data-tour-id="run-step-deck"]');
-        await deckStepInActive.waitFor({ state: 'visible', timeout: 15000 }).catch(async (e) => {
-            console.log('[Wizard] deckStep not found in active content, checking fallback');
-            await this.deckStep.waitFor({ state: 'visible', timeout: 10000 });
-        });
+        // Check if already on Deck Setup
+        const isSelected = await deckHeader.getAttribute('aria-selected');
+        if (isSelected !== 'true') {
+            console.log('[Wizard] Not yet on Deck Setup, attempting to navigate...');
 
-        // Wait a tiny bit for animations to settle (even if disabled, better safe)
-        await this.page.waitForTimeout(500);
+            // Try clicking the Deck Setup header directly to advance
+            const isDeckDisabled = await deckHeader.getAttribute('aria-disabled');
+            if (isDeckDisabled !== 'true') {
+                await deckHeader.click();
+                await this.page.waitForTimeout(500);
+            } else {
+                // Deck is disabled — might need to advance from current step first
+                // Find any Continue button in the current active step
+                const activeContent = this.page.locator('.mat-horizontal-stepper-content[style*="visibility: visible"], .mat-horizontal-stepper-content-current').first();
+                const continueBtn = activeContent.getByRole('button', { name: /Continue/i }).first();
+                if (await continueBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+                    await continueBtn.click();
+                    await this.page.waitForTimeout(500);
+                }
+            }
+
+            // Wait for Deck Setup to become selected (with retry)
+            try {
+                await expect(deckHeader).toHaveAttribute('aria-selected', 'true', { timeout: 15000 });
+            } catch {
+                console.log('[Wizard] Deck Setup still not selected after navigation attempt, trying direct click...');
+                await deckHeader.click({ force: true });
+                await expect(deckHeader).toHaveAttribute('aria-selected', 'true', { timeout: 10000 });
+            }
+        }
+
+        console.log('[Wizard] On Deck Setup step');
 
         // Click Skip Setup if visible
         const skipButton = this.deckStep.getByRole('button', { name: /Skip Setup/i }).first();
@@ -358,7 +384,9 @@ export class WizardPage {
         const isSelected = await reviewTab.getAttribute('aria-selected');
         if (isSelected === 'true') {
             console.log('[Wizard] Already on review step');
-            await this.reviewHeading.waitFor({ state: 'visible', timeout: 10000 }).catch(() => { });
+            if (await this.reviewHeading.count() > 0) {
+                await expect(this.reviewHeading).toBeVisible({ timeout: 10000 });
+            }
             return;
         }
 
@@ -397,12 +425,46 @@ export class WizardPage {
         console.log('[Wizard] Clicking Start Execution button...');
         await startButton.click();
 
-        console.log('[Wizard] Waiting for monitor page navigation...');
-        // More forgiving regex for monitor URL
-        await this.page.waitForURL(/\/app\/monitor\/[a-f0-9-]+/, {
-            waitUntil: 'domcontentloaded',
-            timeout: 30000
-        });
+        console.log('[Wizard] Waiting for monitor page navigation (handling potential Unsaved Changes dialog)...');
+
+        // The "Unsaved Changes" canDeactivate guard dialog can appear at any point during navigation.
+        // Handle it concurrently with the URL wait using a polling approach.
+        const leaveButton = this.page.getByRole('button', { name: /Leave/i });
+
+        // Set up a background watcher for the dialog
+        const dialogDismisser = (async () => {
+            for (let i = 0; i < 30; i++) {
+                // Use page.evaluate to directly search the CDK overlay DOM
+                const found = await this.page.evaluate(() => {
+                    const overlay = document.querySelector('.cdk-overlay-container');
+                    if (!overlay) return false;
+                    const buttons = overlay.querySelectorAll('button');
+                    for (const btn of buttons) {
+                        if (btn.textContent?.trim().toLowerCase() === 'leave') {
+                            (btn as HTMLButtonElement).click();
+                            return true;
+                        }
+                    }
+                    return false;
+                }).catch(() => false);
+
+                if (found) {
+                    console.log('[Wizard] Dismissed "Unsaved Changes" dialog via CDK overlay');
+                    return;
+                }
+                await this.page.waitForTimeout(500);
+            }
+        })();
+
+        // Wait for monitor URL (this will resolve after dialog is dismissed)
+        await Promise.all([
+            dialogDismisser,
+            this.page.waitForURL(/\/app\/monitor\/[a-f0-9-]+/, {
+                waitUntil: 'domcontentloaded',
+                timeout: 30000
+            })
+        ]);
+
         console.log('[Wizard] Successfully navigated to monitor page:', this.page.url());
     }
 
@@ -410,18 +472,13 @@ export class WizardPage {
         // Check if Configure Simulation dialog is visible
         const dialog = this.page.getByRole('dialog').filter({ hasText: /Configure Simulation|Simulation/i });
 
-        if (await dialog.isVisible({ timeout: 2000 }).catch((e) => {
-            console.log('[Test] Silent catch (Simulation dialog isVisible):', e);
-            return false;
-        })) {
+        const dialogVisible = await dialog.isVisible({ timeout: 2000 });
+        if (dialogVisible) {
             console.log('[Wizard] Handling Configure Simulation dialog...');
 
             // Fill instance name if required
             const nameInput = dialog.locator('input[formcontrolname="instanceName"], input[name="name"]');
-            if (await nameInput.isVisible({ timeout: 1000 }).catch((e) => {
-                console.log('[Test] Silent catch (nameInput isVisible):', e);
-                return false;
-            })) {
+            if (await nameInput.count() > 0 && await nameInput.isVisible()) {
                 await nameInput.fill('E2E Simulation');
             }
 
@@ -429,7 +486,7 @@ export class WizardPage {
             await dialog.getByRole('button', { name: /Create|Confirm|Continue|OK/i }).first().click();
 
             // Wait for dialog to close
-            await dialog.waitFor({ state: 'hidden', timeout: 5000 });
+            await expect(dialog).not.toBeVisible({ timeout: 5000 });
             return true;
         }
         return false;

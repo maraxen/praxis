@@ -10,7 +10,6 @@ test.describe('Run Protocol - Machine Selection', () => {
         const wizardPage = new WizardPage(page);
 
         await protocolPage.goto();
-        await welcomePage.handleSplashScreen();
 
         await protocolPage.selectFirstProtocol();
         await protocolPage.continueFromSelection();
@@ -34,7 +33,6 @@ test.describe('Run Protocol - Machine Selection', () => {
         const wizardPage = new WizardPage(page);
 
         await protocolPage.goto();
-        await welcomePage.handleSplashScreen();
 
         // This protocol is known to have machine requirements
         await protocolPage.selectProtocolByName('Kinetic Assay');
@@ -56,7 +54,6 @@ test.describe('Run Protocol - Machine Selection', () => {
         const wizardPage = new WizardPage(page);
 
         await page.goto('/app/run?mode=physical');
-        await welcomePage.handleSplashScreen();
 
         await protocolPage.selectFirstProtocol();
         await protocolPage.continueFromSelection();
@@ -86,7 +83,6 @@ test.describe('Run Protocol - Machine Selection', () => {
         const wizardPage = new WizardPage(page);
 
         await protocolPage.goto();
-        await welcomePage.handleSplashScreen();
 
         await protocolPage.selectFirstProtocol();
         await protocolPage.continueFromSelection();

@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pylibftdi"
+version = "0.0.0"
+description = "Stub package for pylibftdi — provides symbols without native FTDI hardware"
+requires-python = ">=3.10"
+
+[tool.setuptools]
+packages = ["pylibftdi"]

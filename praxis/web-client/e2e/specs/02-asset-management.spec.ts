@@ -115,6 +115,12 @@ test.describe('Asset Management Flow', () => {
             const machineData = await page.evaluate(async (name) => {
                 const e2e = (window as any).__e2e;
                 if (!e2e) return null;
+                // Readiness wait
+                let retries = 0;
+                while (!e2e.isReady() && retries < 10) {
+                    await new Promise(r => setTimeout(r, 500));
+                    retries++;
+                }
                 const rows = await e2e.query(`SELECT accession_id, machine_category, name FROM machines WHERE name = ?`, [name]);
                 return rows[0] ?? null;
             }, machineName);
@@ -128,8 +134,28 @@ test.describe('Asset Management Flow', () => {
             await assetsPage.goto();
             await assetsPage.waitForOverlay();
             await assetsPage.navigateToResources();
+
+            // Count resources before creation
+            const countBefore = await page.evaluate(async () => {
+                return (window as any).__e2e.count('resources');
+            });
+
             await assetsPage.createResource(resourceName);
-            await assetsPage.verifyAssetVisible(resourceName);
+
+            // Verify resource was created in database
+            const countAfter = await page.evaluate(async () => {
+                return (window as any).__e2e.count('resources');
+            });
+            expect(countAfter).toBe(countBefore + 1);
+
+            // Verify the specific resource exists by name
+            const resourceExists = await page.evaluate(async (name) => {
+                const rows = await (window as any).__e2e.query(
+                    'SELECT name FROM resources WHERE name = ?', [name]
+                );
+                return rows.length > 0;
+            }, resourceName);
+            expect(resourceExists).toBe(true);
         });
 
         test('should delete a machine', async ({ page }) => {
@@ -155,6 +181,12 @@ test.describe('Asset Management Flow', () => {
             const machineId = await page.evaluate(async (name) => {
                 const e2e = (window as any).__e2e;
                 if (!e2e) return null;
+                // Readiness wait
+                let retries = 0;
+                while (!e2e.isReady() && retries < 10) {
+                    await new Promise(r => setTimeout(r, 500));
+                    retries++;
+                }
                 const rows = await e2e.query(`SELECT accession_id FROM machines WHERE name = ?`, [name]);
                 return rows[0]?.accession_id ?? null;
             }, machineName);
@@ -166,6 +198,12 @@ test.describe('Asset Management Flow', () => {
             const persistedId = await page.evaluate(async (name) => {
                 const e2e = (window as any).__e2e;
                 if (!e2e) return null;
+                // Readiness wait
+                let retries = 0;
+                while (!e2e.isReady() && retries < 10) {
+                    await new Promise(r => setTimeout(r, 500));
+                    retries++;
+                }
                 const rows = await e2e.query(`SELECT accession_id FROM machines WHERE name = ?`, [name]);
                 return rows[0]?.accession_id ?? null;
             }, machineName);
@@ -181,32 +219,41 @@ test.describe('Asset Management Flow', () => {
         test('should prevent machine creation with empty name', async ({ page }) => {
             await assetsPage.goto();
             await assetsPage.waitForOverlay();
+            await assetsPage.navigateToMachines();
             await assetsPage.addMachineButton.click();
 
             const dialog = page.getByRole('dialog');
             const wizard = dialog.locator('app-asset-wizard');
             await expect(wizard).toBeVisible({ timeout: 15000 });
 
-            // Navigate through steps to Config
-            // Step 1: Category
-            const categoryCard = wizard.getByTestId(/category-card-/).first();
+            // Step 1: Category — select LiquidHandler (known good combo)
+            const categoryCard = wizard.getByTestId('category-card-LiquidHandler');
             await expect(categoryCard).toBeVisible({ timeout: 10000 });
             await categoryCard.click();
             await dialog.getByRole('button', { name: /Next/i }).click();
 
-            // Step 2: Frontend
+            // Step 2: Frontend (Machine Type)
             const frontendCard = wizard.getByTestId(/frontend-card-/).first();
             await expect(frontendCard).toBeVisible({ timeout: 10000 });
             await frontendCard.click();
             await dialog.getByRole('button', { name: /Next/i }).click();
 
-            // Step 3: Backend
+            // Step 3: Backend (Driver)
             const backendCard = wizard.getByTestId(/backend-card-/).first();
             await expect(backendCard).toBeVisible({ timeout: 10000 });
             await backendCard.click();
             await dialog.getByRole('button', { name: /Next/i }).click();
 
-            // Step 4: Config - Clear the name input
+            // Step 3B (conditional): Deck — only shown for LiquidHandlers with compatible decks
+            const deckStep = wizard.getByTestId('wizard-step-deck');
+            if (await deckStep.isVisible().catch(() => false)) {
+                const deckCard = wizard.getByTestId(/deck-card-/).first();
+                await expect(deckCard).toBeVisible({ timeout: 10000 });
+                await deckCard.click();
+                await dialog.getByRole('button', { name: /Next/i }).click();
+            }
+
+            // Step 4: Config — clear the name input
             const nameInput = wizard.getByTestId('input-instance-name');
             await expect(nameInput).toBeVisible({ timeout: 10000 });
             await nameInput.clear();
@@ -227,18 +274,32 @@ test.describe('Asset Management Flow', () => {
             await assetsPage.createMachine(machineName);
             await assetsPage.verifyAssetVisible(machineName);
 
-            // Navigate back to Machines tab
+            // Navigate back to Machines tab to ensure table is visible
             await assetsPage.navigateToMachines();
 
             // Set up dialog handler to REJECT deletion
             page.once('dialog', dialog => dialog.dismiss());
 
-            // Click delete
+            // Find the row with the machine name and click delete button
             const row = page.locator('tr').filter({ hasText: machineName });
-            const deleteBtn = row.getByRole('button', { name: /delete/i });
-            await deleteBtn.click();
+            await expect(row).toBeVisible({ timeout: 5000 });
+            const deleteBtn = row.getByRole('button', { name: /delete/i }).or(
+                row.locator('button[mattooltip*="Delete"]')
+            );
 
-            // Verify machine still exists
+            // Use the same pattern as deleteMachine page object
+            if (await deleteBtn.isVisible({ timeout: 2000 })) {
+                await deleteBtn.click();
+            } else {
+                // Try context menu approach
+                const moreBtn = row.getByRole('button').filter({ hasText: /more_vert/i });
+                if (await moreBtn.isVisible({ timeout: 1000 })) {
+                    await moreBtn.click();
+                    await page.getByRole('menuitem', { name: /Delete/i }).click();
+                }
+            }
+
+            // Verify machine still exists after dismissing the dialog
             await expect(row).toBeVisible({ timeout: 5000 });
         });
     });

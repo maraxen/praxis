@@ -24,11 +24,11 @@ export class ConsumableAssignmentService {
 
     /**
      * Find a compatible consumable for the given requirement.
+     * Uses JIT instantiation as fallback if no existing instances match.
      */
     async findCompatibleConsumable(requirement: AssetRequirement): Promise<string | null> {
         try {
             // 1. Get all resources
-            // In a real app we might want to cache this or use a more specific query
             const allResources = await firstValueFrom(this.assetService.getResources());
 
             // 2. Filter basic availability
@@ -44,7 +44,8 @@ export class ConsumableAssignmentService {
             );
 
             if (typeCandidates.length === 0) {
-                return null;
+                // JIT Fallback: try to resolve from definitions
+                return this.jitResolveFromDefinitions(requirement);
             }
 
             // 4. Score candidates
@@ -65,6 +66,39 @@ export class ConsumableAssignmentService {
 
         } catch (e) {
             console.warn('[ConsumableAssignment] Error finding compatible consumable:', e);
+            return null;
+        }
+    }
+
+    /**
+     * JIT fallback: Try to find a matching definition and auto-instantiate it.
+     * Model C Hybrid Lifecycle — creates ephemeral resource instances on demand.
+     */
+    private async jitResolveFromDefinitions(requirement: AssetRequirement): Promise<string | null> {
+        try {
+            const definitions = await firstValueFrom(this.assetService.getResourceDefinitions());
+
+            // Find a matching definition by type hint
+            const matchingDef = definitions.find(d =>
+                this.isTypeMatch(requirement.type_hint_str, d.fqn || '') ||
+                this.isTypeMatch(requirement.type_hint_str, d.name || '')
+            );
+
+            if (!matchingDef) {
+                console.debug(`[ConsumableAssignment] No definition found for type "${requirement.type_hint_str}"`);
+                return null;
+            }
+
+            // Auto-instantiate via AssetService
+            const instance = await firstValueFrom(
+                this.assetService.resolveOrCreateResource(matchingDef.accession_id)
+            );
+
+            console.debug(`[ConsumableAssignment] JIT-created instance "${instance.name}" for ${requirement.name}`);
+            return instance.accession_id;
+
+        } catch (e) {
+            console.warn('[ConsumableAssignment] JIT resolution failed:', e);
             return null;
         }
     }
@@ -139,10 +173,8 @@ export class ConsumableAssignmentService {
 
         let candidateVol = 0;
         if (def.nominal_volume_ul) candidateVol = def.nominal_volume_ul;
-        // Or specific property bag
-        // @ts-expect-error properties_json typing is loose
+        // Check properties_json for volume
         if (resource.properties_json && resource.properties_json['volume_ul']) {
-            // @ts-expect-error properties_json typing is loose
             candidateVol = resource.properties_json['volume_ul'];
         }
 

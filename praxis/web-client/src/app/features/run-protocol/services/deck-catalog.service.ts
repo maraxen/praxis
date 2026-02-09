@@ -40,6 +40,12 @@ export class DeckCatalogService {
     /** Standard carrier rail spans */
     private readonly STANDARD_CARRIER_RAIL_SPAN = 6;
 
+    /** Tecan EVO rail spacing in mm */
+    private readonly TECAN_RAIL_SPACING = 25;
+
+    /** Tecan EVO first rail X position */
+    private readonly TECAN_RAIL_OFFSET = 100.0;
+
     // ========================================================================
     // Public API
     // ========================================================================
@@ -87,6 +93,22 @@ export class DeckCatalogService {
             fqn.toLowerCase().includes('opentrons')) {
             return this.getOTDeckSpec();
         }
+
+        // Tecan EVO detection
+        if (fqn.includes('EVO100') || fqn.includes('Evo100')) {
+            return this.getTecanEVO100Spec();
+        }
+        if (fqn.includes('EVO150') || fqn.includes('Evo150')) {
+            return this.getTecanEVO150Spec();
+        }
+        if (fqn.includes('EVO200') || fqn.includes('Evo200')) {
+            return this.getTecanEVO200Spec();
+        }
+        // Catch-all for Tecan/EVO
+        if (fqn.includes('Tecan') || fqn.includes('EVO') || fqn.includes('Freedom')) {
+            return this.getTecanEVO150Spec(); // Default to EVO150 (most common)
+        }
+
         return null;
     }
 
@@ -152,6 +174,11 @@ export class DeckCatalogService {
         // Hamilton STAR Deck (legacy check + FQN check)
         if (deckFqn.includes('Hamilton') || deckFqn.includes('STAR') || deckFqn.includes('Vantage')) {
             return this.getHamiltonCarriers();
+        }
+
+        // Tecan EVO Deck
+        if (deckFqn.includes('Tecan') || deckFqn.includes('EVO')) {
+            return []; // TODO: add Tecan carrier definitions
         }
 
         // Opentrons OT-2 Deck
@@ -408,6 +435,153 @@ export class DeckCatalogService {
                 depth: 900
             }
         };
+    }
+
+    /**
+     * Get Tecan EVO100 deck specification.
+     * 30 rails, 940mm width, 25mm rail spacing. From PyLabRobot tecan_decks.py.
+     */
+    getTecanEVO100Spec(): DeckDefinitionSpec {
+        const numRails = 30;
+        const railPositions: number[] = [];
+
+        for (let i = 0; i < numRails; i++) {
+            railPositions.push(this.TECAN_RAIL_OFFSET + (i * this.TECAN_RAIL_SPACING));
+        }
+
+        return {
+            fqn: 'pylabrobot.resources.tecan.tecan_decks.EVO100Deck',
+            name: 'Tecan Freedom EVO 100',
+            manufacturer: 'Tecan',
+            layoutType: 'rail-based',
+            numRails: numRails,
+            railSpacing: this.TECAN_RAIL_SPACING,
+            railPositions: railPositions,
+            compatibleCarriers: [], // TODO: add Tecan carrier definitions
+            dimensions: {
+                width: 940,
+                height: 780,
+                depth: 765
+            }
+        };
+    }
+
+    /**
+     * Get Tecan EVO150 deck specification.
+     * 45 rails, 1315mm width, 25mm rail spacing. From PyLabRobot tecan_decks.py.
+     */
+    getTecanEVO150Spec(): DeckDefinitionSpec {
+        const numRails = 45;
+        const railPositions: number[] = [];
+
+        for (let i = 0; i < numRails; i++) {
+            railPositions.push(this.TECAN_RAIL_OFFSET + (i * this.TECAN_RAIL_SPACING));
+        }
+
+        return {
+            fqn: 'pylabrobot.resources.tecan.tecan_decks.EVO150Deck',
+            name: 'Tecan Freedom EVO 150',
+            manufacturer: 'Tecan',
+            layoutType: 'rail-based',
+            numRails: numRails,
+            railSpacing: this.TECAN_RAIL_SPACING,
+            railPositions: railPositions,
+            compatibleCarriers: [], // TODO: add Tecan carrier definitions
+            dimensions: {
+                width: 1315,
+                height: 780,
+                depth: 765
+            }
+        };
+    }
+
+    /**
+     * Get Tecan EVO200 deck specification.
+     * 69 rails, 1915mm width, 25mm rail spacing. From PyLabRobot tecan_decks.py.
+     */
+    getTecanEVO200Spec(): DeckDefinitionSpec {
+        const numRails = 69;
+        const railPositions: number[] = [];
+
+        for (let i = 0; i < numRails; i++) {
+            railPositions.push(this.TECAN_RAIL_OFFSET + (i * this.TECAN_RAIL_SPACING));
+        }
+
+        return {
+            fqn: 'pylabrobot.resources.tecan.tecan_decks.EVO200Deck',
+            name: 'Tecan Freedom EVO 200',
+            manufacturer: 'Tecan',
+            layoutType: 'rail-based',
+            numRails: numRails,
+            railSpacing: this.TECAN_RAIL_SPACING,
+            railPositions: railPositions,
+            compatibleCarriers: [], // TODO: add Tecan carrier definitions
+            dimensions: {
+                width: 1915,
+                height: 780,
+                depth: 765
+            }
+        };
+    }
+
+    /**
+     * Get all compatible deck types for a given backend definition FQN.
+     * Used by the Asset Wizard to show deck selection when creating LiquidHandler machines.
+     *
+     * Returns an array of DeckDefinitionSpec. If empty, the deck step should be skipped.
+     * If exactly one result, the deck step should auto-select it.
+     */
+    getCompatibleDeckTypes(backendFqn: string): DeckDefinitionSpec[] {
+        if (!backendFqn) return [];
+
+        const fqnLower = backendFqn.toLowerCase();
+
+        // ── Hamilton backends ──
+        if (fqnLower.includes('hamilton.star') && !fqnLower.includes('starlet')) {
+            // STAR backend → STAR deck + STARLet deck (STAR can run on either)
+            return [
+                this.getHamiltonSTARSpec(),
+                this.getHamiltonSTARLetSpec()
+            ];
+        }
+        if (fqnLower.includes('starlet') || fqnLower.includes('star_let')) {
+            // STARLet backend → STARLet deck only
+            return [this.getHamiltonSTARLetSpec()];
+        }
+        if (fqnLower.includes('vantage')) {
+            // Vantage backend → Vantage deck only
+            return [this.getVantageSpec()];
+        }
+
+        // ── Opentrons backends ──
+        if (fqnLower.includes('opentrons') || fqnLower.includes('ot2') || fqnLower.includes('flex')) {
+            return [this.getOTDeckSpec()];
+        }
+
+        // ── Tecan backends ──
+        if (fqnLower.includes('tecan') || fqnLower.includes('evo') || fqnLower.includes('fluent')) {
+            return [
+                this.getTecanEVO100Spec(),
+                this.getTecanEVO150Spec(),
+                this.getTecanEVO200Spec()
+            ];
+        }
+
+        // ── Simulated / Chatterbox backends → offer all decks ──
+        if (fqnLower.includes('chatterbox') || fqnLower.includes('simulator') || fqnLower.includes('simulated')) {
+            return [
+                this.getHamiltonSTARSpec(),
+                this.getHamiltonSTARLetSpec(),
+                this.getVantageSpec(),
+                this.getOTDeckSpec(),
+                this.getTecanEVO100Spec(),
+                this.getTecanEVO150Spec(),
+                this.getTecanEVO200Spec()
+            ];
+        }
+
+        // Unknown backend → empty (skip deck step)
+        return [];
     }
 
     /**

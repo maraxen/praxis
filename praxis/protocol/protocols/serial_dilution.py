@@ -109,7 +109,7 @@ async def serial_dilution(
     await liquid_handler.pick_up_tips(tip_rack["A1"])
     
     for well in well_positions[1:]:
-        await liquid_handler.aspirate(diluent_trough["A1"], vols=[diluent_volume_ul])
+        await liquid_handler.aspirate([diluent_trough], vols=[diluent_volume_ul])
         await liquid_handler.dispense(plate[well], vols=[diluent_volume_ul])
         
         dilution_steps.append({

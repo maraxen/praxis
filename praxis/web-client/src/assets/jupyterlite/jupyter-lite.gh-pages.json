@@ -387,7 +387,7 @@
       }
     },
     "fullLabextensionsUrl": "./extensions",
-    "fullStaticUrl": "/praxis/assets/jupyterlite/build",
+    "fullStaticUrl": "./build",
     "licensesUrl": "./lab/api/licenses",
     "litePluginSettings": {
       "@jupyterlite/pyodide-kernel-extension:kernel": {

@@ -6,17 +6,25 @@ test.describe('First-Time User Experience', () => {
     test('should show welcome screen and navigate to dashboard', async ({ page }, testInfo) => {
         const welcomePage = new WelcomePage(page, testInfo);
         await welcomePage.goto();
-        await welcomePage.handleSplashScreen(); // Skips tutorial
         await welcomePage.verifyDashboardLoaded();
         await welcomePage.verifyOnboardingCompleted();
     });
 
     test('should complete tutorial flow when clicking Start Tutorial', async ({ page }, testInfo) => {
+        // Create page objects first — BasePage constructor registers addInitScript(setItem)
         const welcomePage = new WelcomePage(page, testInfo);
         const tutorialPage = new TutorialPage(page);
 
+        // Register AFTER page objects so this runs LAST during page load,
+        // overriding BasePage's localStorage seeding for this first-time-user test.
+        await page.addInitScript(() => {
+            localStorage.removeItem('praxis_onboarding_completed');
+            localStorage.removeItem('praxis_tutorial_completed');
+            localStorage.removeItem('praxis_splash_dismissed');
+        });
+
         await welcomePage.goto();
-        
+
         // Click Start Tutorial on the welcome dialog
         await welcomePage.startTutorial();
 
@@ -24,11 +32,11 @@ test.describe('First-Time User Experience', () => {
         // 1. Intro step
         await tutorialPage.verifyStepVisible(/This is your dashboard overview/i);
         await tutorialPage.startTour();
-      
+
         // 2. Next step (Asset Management)
         await tutorialPage.verifyStepVisible(/Click here to manage your lab inventory/i);
         await tutorialPage.skipSection();
-        
+
         // 3. Next step (Protocols)
         await tutorialPage.verifyStepVisible(/Click here to access your protocol library/i);
         await tutorialPage.skipSection();

@@ -255,6 +255,54 @@
     </mat-step>
     }
 
+    <!-- Step 4B: Deck Selection (LiquidHandlers with multiple compatible decks) -->
+    @if (isMachine && showDeckStep) {
+    <mat-step [stepControl]="deckStepFormGroup" data-testid="wizard-step-deck">
+      <form [formGroup]="deckStepFormGroup">
+        <ng-template matStepLabel>Deck</ng-template>
+        <div class="step-content">
+          <h3><mat-icon>dashboard</mat-icon> Select Deck Type</h3>
+          <p class="text-sm text-sys-text-secondary mb-4">
+            Choose the deck layout for your {{ selectedFrontend?.name }}.
+            {{ selectedBackend ? getBackendDisplayName(selectedBackend) + ' supports ' + compatibleDecks.length + ' deck types.' : '' }}
+          </p>
+
+          <div class="results-grid" data-testid="deck-grid">
+            @for (deck of compatibleDecks; track deck.fqn) {
+            <div class="praxis-card premium result-card group"
+              [class.selected]="selectedDeckType?.fqn === deck.fqn"
+              [attr.data-testid]="'deck-card-' + deck.name"
+              (click)="selectDeck(deck)">
+              <div class="card-header">
+                <div class="flex items-center gap-3 w-full">
+                  <div class="card-icon-avatar bg-[var(--mat-sys-tertiary)] text-[var(--mat-sys-on-tertiary)]">
+                    <mat-icon>dashboard</mat-icon>
+                  </div>
+                  <div class="min-w-0">
+                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors">{{ deck.name }}</h3>
+                    <span class="text-xs text-sys-text-secondary">{{ deck.manufacturer }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="card-content">
+                <div class="flex flex-wrap gap-1 mt-1">
+                  <span class="chip-small">{{ deck.layoutType === 'rail-based' ? deck.numRails + ' rails' : deck.numSlots + ' slots' }}</span>
+                  <span class="chip-small">{{ deck.dimensions.width }}×{{ deck.dimensions.height }}mm</span>
+                </div>
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+        <div class="step-actions">
+          <button mat-button matStepperPrevious data-testid="wizard-back-button">Back</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="deckStepFormGroup.invalid"
+            data-testid="wizard-next-button">Next</button>
+        </div>
+      </form>
+    </mat-step>
+    }
+
     <!-- Step 3B: Definition Selection (RESOURCES ONLY) -->
     @if (!isMachine) {
     <mat-step [stepControl]="definitionStepFormGroup" data-testid="wizard-step-definition">
@@ -409,6 +457,17 @@
                 }
               </span>
             </div>
+            @if (selectedDeckType) {
+            <div class="review-row">
+              <span class="label">Deck</span>
+              <span class="value">
+                {{ selectedDeckType.name }}
+                <span class="text-xs text-sys-text-secondary ml-1">
+                  ({{ selectedDeckType.layoutType === 'rail-based' ? selectedDeckType.numRails + ' rails' : selectedDeckType.numSlots + ' slots' }})
+                </span>
+              </span>
+            </div>
+            }
             } @else {
             <div class="review-row">
               <span class="label">Definition</span>

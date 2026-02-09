@@ -113,6 +113,13 @@ export async function gotoWithWorkerDb(
     const url = buildWorkerUrl(path, testInfo.workerIndex, { resetdb, mode });
     console.log(`[WorkerDB] Navigating to: ${url}`);
 
+    // Pre-seed localStorage to bypass splash/onboarding/tutorial dialogs
+    await page.addInitScript(() => {
+        localStorage.setItem('praxis_onboarding_completed', 'true');
+        localStorage.setItem('praxis_tutorial_completed', 'true');
+        localStorage.setItem('praxis_splash_dismissed', 'true');
+    });
+
     await page.goto(url, { waitUntil: 'domcontentloaded' });
 
     if (waitForDb) {

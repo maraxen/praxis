@@ -10,7 +10,6 @@ test.describe('Browser Mode Database Export', () => {
     test.beforeEach(async ({ page }, testInfo) => {
         settingsPage = new SettingsPage(page, testInfo);
         await settingsPage.goto();
-        await settingsPage.dismissWelcomeDialogIfPresent();
         await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
     });
 
@@ -52,7 +51,6 @@ test.describe('Import Database - Full Path', () => {
         settingsPage = new SettingsPage(page, testInfo);
         assetsPage = new AssetsPage(page, testInfo);
         await settingsPage.goto();
-        await settingsPage.dismissWelcomeDialogIfPresent();
     });
 
     test('successfully imports and restores data', async ({ page }, testInfo) => {
@@ -78,7 +76,6 @@ test.describe('Import/Reset - Error and Edge Case Coverage', () => {
     test.beforeEach(async ({ page }, testInfo) => {
         settingsPage = new SettingsPage(page, testInfo);
         await settingsPage.goto();
-        await settingsPage.dismissWelcomeDialogIfPresent();
     });
 
     test('rejects non-SQLite file upload', async ({ page }) => {

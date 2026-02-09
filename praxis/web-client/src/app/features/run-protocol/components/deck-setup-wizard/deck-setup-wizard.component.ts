@@ -95,9 +95,9 @@ import { RequirementsPanelComponent, DeckValidationState } from '../requirement-
                 </div>
                 
                 <div class="deck-preview">
-                    @if (deckResource()) {
+                    @if (liveDeckResource()) {
                         <app-deck-view 
-                            [resource]="deckResource()"
+                            [resource]="liveDeckResource()"
                             [state]="{}"
                             (itemDropped)="onDropOnDeck($event)">
                         </app-deck-view>
@@ -237,6 +237,17 @@ export class DeckSetupWizardComponent implements OnInit {
     // Signals initialized from Dialog Data or Input
     protocol = signal<ProtocolDefinition | null>(null);
     deckResource = signal<PlrResource | null>(null);
+
+    /**
+     * Reactive deck resource that updates as items are placed in the wizard.
+     * Falls back to the static input resource when wizard hasn't built anything.
+     */
+    liveDeckResource = computed(() => {
+        const wizardResource = this.wizardState.deckResource();
+        // Use wizard-built tree once it has meaningful dimensions (i.e. initialized)
+        // Otherwise fall back to the static input resource
+        return wizardResource?.size_x > 0 ? wizardResource : this.deckResource();
+    });
 
     setupComplete = output<void>();
     setupSkipped = output<void>();

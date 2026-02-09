@@ -9,6 +9,7 @@ import { Subscription, forkJoin } from 'rxjs';
 import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 import { AssetService } from '../../services/asset.service';
 import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/asset.models';
+import { ModeService } from '@core/services/mode.service';
 
 
 @Component({
@@ -69,10 +70,10 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
                @if (isLoading()) {
                  <ngx-skeleton-loader count="1" appearance="line" [theme]="{ width: '40px', height: '24px', 'margin-bottom': '0' }"></ngx-skeleton-loader>
                } @else {
-                 {{ totalResourcesCount() }}
+                 {{ totalResourcesCount() }}<span class="text-lg font-normal text-sys-text-secondary">/{{ totalDefinitionsCount() }}</span>
                }
             </span>
-            <span class="text-xs font-semibold text-sys-text-secondary uppercase tracking-wider leading-tight">Total Items</span>
+            <span class="text-xs font-semibold text-sys-text-secondary uppercase tracking-wider leading-tight">Instances · Types</span>
           </div>
           @if (lowStockCount() > 0) {
             <div class="absolute top-4 right-4 flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-400/10 border border-amber-400/20">
@@ -139,6 +140,12 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
                <mat-icon class="mr-2 group-hover:text-primary transition-colors">search</mat-icon>
                Browse Registry
              </button>
+             @if (isBrowserMode) {
+               <button mat-stroked-button class="!border-red-500/30 !text-red-400 !justify-start !px-4 !py-4 hover:!bg-red-500/10 hover:!border-red-500/50 transition-all group flex items-center col-span-2" (click)="triggerAction('reset-lab')">
+                 <mat-icon class="mr-2 text-red-400 group-hover:text-red-300 transition-colors">restart_alt</mat-icon>
+                 Reset Lab to Defaults
+               </button>
+             }
           </div>
         </section>
 
@@ -205,8 +212,11 @@ import { Machine, Resource, ResourceStatus, MachineStatus } from '../../models/a
 })
 export class AssetDashboardComponent implements OnInit, OnDestroy {
   private assetService = inject(AssetService);
+  private modeService = inject(ModeService);
   private router = inject(Router);
   private subscription = new Subscription();
+
+  isBrowserMode = this.modeService.isBrowserMode();
 
   // Signals
   machines = signal<Machine[]>([]);

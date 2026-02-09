@@ -9,7 +9,8 @@ export class ProtocolPage extends BasePage {
     readonly summaryTitle: Locator;
 
     constructor(page: Page, testInfo?: TestInfo) {
-        super(page, '/app/protocols', testInfo);
+        // Navigate to /app/run (Execute Protocol wizard) where protocolStep/protocolCards selectors exist
+        super(page, '/app/run', testInfo);
         this.protocolStep = page.locator('[data-tour-id="run-step-protocol"]');
         this.protocolCards = page.locator('app-protocol-card');
         this.summaryTitle = this.protocolStep.locator('h2');
@@ -19,10 +20,14 @@ export class ProtocolPage extends BasePage {
         const dismissButtons = this.page
             .locator('.cdk-overlay-container button, .mat-mdc-dialog-container button')
             .filter({ hasText: /Close|Dismiss|Got it|OK|Continue|Skip|Start/i });
-        if (await dismissButtons.count()) {
-            await dismissButtons.first().click({ timeout: 2000 }).catch((e) => console.log('[Test] Silent catch (Overlay dismiss button click):', e));
+        if (await dismissButtons.count() > 0) {
+            await dismissButtons.first().click({ timeout: 2000 });
         }
-        await this.page.keyboard.press('Escape').catch((e) => console.log('[Test] Silent catch (Overlay Escape):', e));
+        // Only press Escape if an overlay backdrop is visible
+        const backdrop = this.page.locator('.cdk-overlay-backdrop');
+        if (await backdrop.count() > 0 && await backdrop.first().isVisible()) {
+            await this.page.keyboard.press('Escape');
+        }
     }
 
     override async goto(options: { waitForDb?: boolean } = {}) {
@@ -50,44 +55,38 @@ export class ProtocolPage extends BasePage {
         await expect(card, `Protocol card for ${name} should be visible`).toBeVisible({ timeout: 15000 });
         await this.dismissOverlays();
 
-        // Retry click+assert cycle to handle Angular click propagation issues
-        await expect(async () => {
-            await card.waitFor({ state: 'attached' });
-            await this.page.waitForTimeout(300);
-            await card.click({ force: true, delay: 50 });
-            await this.assertProtocolSelected(name);
-        }).toPass({ timeout: 20000, intervals: [1000, 2000, 3000] });
+        // Click and wait for selection to render (h2 inside @if block)
+        await card.click({ delay: 50 });
+        await this.assertProtocolSelected(name);
 
         return name;
     }
 
     async selectFirstProtocol(): Promise<string> {
         // Wait for protocol cards (wizard view)
-        if (await this.protocolCards.first().isVisible({ timeout: 5000 }).catch(() => false)) {
+        const firstCardVisible = await this.protocolCards.first().isVisible({ timeout: 5000 });
+        if (firstCardVisible) {
             const firstCardHost = this.protocolCards.first();
             const firstCard = firstCardHost.locator('.praxis-card');
             await firstCard.waitFor({ state: 'visible' });
-            const name = (await firstCardHost.locator('h3.card-title').textContent())?.trim() || 'Protocol';
             await this.dismissOverlays();
 
-            // Retry click+assert cycle
-            await expect(async () => {
-                await firstCard.click({ force: true, delay: 50 });
-                await this.assertProtocolSelected(name);
-            }).toPass({ timeout: 20000, intervals: [1000, 2000, 3000] });
+            // Click card to trigger selection — name will be read from h2 summary after render
+            await firstCard.click({ delay: 50 });
+            const name = await this.waitForProtocolSelected();
 
             return name;
         }
 
         // Fallback for Library view (table) if we ended up there
         const tableRow = this.page.locator('[data-tour-id="protocol-table"] tbody tr').first();
-        if (await tableRow.isVisible({ timeout: 5000 }).catch(() => false)) {
-            const name = await tableRow.locator('td').first().textContent().then(t => t?.trim() || 'Protocol');
+        const tableVisible = await tableRow.isVisible({ timeout: 5000 });
+        if (tableVisible) {
             await tableRow.click();
             const runButton = this.page.getByRole('button', { name: /Run Protocol/i });
-            await runButton.waitFor({ state: 'visible' });
+            await expect(runButton).toBeVisible({ timeout: 10000 });
             await runButton.click();
-            await this.assertProtocolSelected(name);
+            const name = await this.waitForProtocolSelected();
             return name;
         }
 
@@ -95,22 +94,22 @@ export class ProtocolPage extends BasePage {
     }
 
     /**
-     * Asserts protocol is selected via summary title (h2/h3/.summary-title)
-     * or URL containing protocolId parameter.
+     * Waits for the protocol summary h2 to appear (renders inside @if(selectedProtocol()) block)
+     * and returns the protocol name from it. This is the authoritative source — the h2 only
+     * contains {{ selectedProtocol()?.name }}, free of badge text like "Top Level".
+     */
+    async waitForProtocolSelected(): Promise<string> {
+        const summaryEl = this.protocolStep.getByRole('heading', { level: 2 });
+        await expect(summaryEl, 'Selected protocol summary should appear').toBeVisible({ timeout: 15000 });
+        const name = (await summaryEl.innerText())?.trim() || 'Protocol';
+        return name;
+    }
+
+    /**
+     * Asserts protocol is selected by checking the h2 heading contains the expected name.
      */
     async assertProtocolSelected(expectedName: string) {
-        // Broader locator: h2, h3, or any element with summary-title class
-        const summaryEl = this.protocolStep.locator('h2, h3, .card-title, .summary-title').first();
-        const urlHasProtocol = this.page.url().includes('protocolId=');
-
-        if (urlHasProtocol) {
-            // URL already has protocol — trust it even if summary element is slow
-            await expect(summaryEl).toContainText(expectedName, { timeout: 10000 }).catch(() => {
-                console.log(`[ProtocolPage] Protocol selected via URL param, summary text check skipped`);
-            });
-            return;
-        }
-
+        const summaryEl = this.protocolStep.getByRole('heading', { level: 2 });
         await expect(summaryEl, 'Selected protocol summary should appear').toContainText(expectedName, {
             timeout: 15000
         });
@@ -120,9 +119,21 @@ export class ProtocolPage extends BasePage {
         await this.goto();
     }
 
-    async selectProtocol(name: string) {
+    /** Navigate to the Protocol Library page (table view at /app/protocols) */
+    async navigateToLibrary() {
+        const url = new URL(this.page.url() || 'http://localhost:4200');
+        url.pathname = '/app/protocols';
+        url.searchParams.set('mode', 'browser');
+        if (this.testInfo) {
+            url.searchParams.set('dbName', `praxis-worker-${this.testInfo.workerIndex}`);
+        }
+        await this.page.goto(url.toString(), { waitUntil: 'domcontentloaded' });
+    }
+
+    async selectProtocol(name: string): Promise<string> {
         await this.selectProtocolByName(name);
         await this.continueFromSelection();
+        return name;
     }
 
     async configureParameter(name: string, value: string) {
@@ -133,33 +144,15 @@ export class ProtocolPage extends BasePage {
             .or(this.page.locator(`input[name="${name}"]`))
             .first();
 
-        if (await paramInput.isVisible({ timeout: 5000 }).catch((e) => {
-            console.log('[Test] Silent catch (paramInput isVisible):', e);
-            return false;
-        })) {
+        const isVisible = await paramInput.isVisible({ timeout: 5000 });
+        if (isVisible) {
             await paramInput.fill(value);
         } else {
-            console.log(`Parameter ${name} (Label: ${label}) not found or not visible.`);
-
-            // Debug: List all labels and headers
-            const labels = await this.page.locator('mat-label').allTextContents();
-            const headers = await this.page.locator('h3').allTextContents();
-            const emptyState = await this.page.locator('.empty-state').isVisible();
-            console.log(`[Debug] Visible labels: ${labels.join(', ') || 'NONE'}`);
-            console.log(`[Debug] Visible headers: ${headers.join(', ') || 'NONE'}`);
-            console.log(`[Debug] Empty state visible: ${emptyState}`);
-
-            // Fallback: try to find any input in a form-field that has the label text nearby
+            console.log(`[ProtocolPage] Parameter ${name} (Label: ${label}) not found. Trying fallback.`);
+            // Fallback: find any input in a form-field that has the label text nearby
             const fallback = this.page.locator('mat-form-field').filter({ hasText: new RegExp(label, 'i') }).locator('input').first();
-            if (await fallback.isVisible({ timeout: 2000 }).catch((e) => {
-                console.log('[Test] Silent catch (fallback isVisible):', e);
-                return false;
-            })) {
-                console.log(`[Debug] Found fallback for ${label}`);
-                await fallback.fill(value);
-            } else {
-                console.log(`[Debug] Fallback also failed for ${label}`);
-            }
+            await expect(fallback, `Parameter input for '${label}' should be visible`).toBeVisible({ timeout: 5000 });
+            await fallback.fill(value);
         }
     }
 
@@ -184,14 +177,14 @@ export class ProtocolPage extends BasePage {
 
     async getExecutionStatus(): Promise<string> {
         const monitor = new ExecutionMonitorPage(this.page);
-        // We assume we are on the monitor page now
-        const statusChip = this.page.locator('mat-chip'); // Using locator from monitor page logic
-        return await statusChip.textContent() || '';
+        await monitor.waitForLiveDashboard();
+        const statusEl = this.page.getByTestId('run-status');
+        return await statusEl.textContent() || '';
     }
 
     async waitForCompletion(timeout: number = 300000) { // 5 minutes default
         const monitor = new ExecutionMonitorPage(this.page);
-        await monitor.waitForStatus(/(Completed|Succeeded|Finished)/i, timeout);
+        await monitor.waitForStatus(/(completed|succeeded|finished)/i, timeout);
     }
 
     /**
@@ -209,9 +202,10 @@ export class ProtocolPage extends BasePage {
     async runProtocol(name: string): Promise<void> {
         // Try card view first
         const card = this.protocolCards.filter({ hasText: name }).first();
-        if (await card.isVisible({ timeout: 5000 }).catch(() => false)) {
-            await card.locator('.praxis-card').click({ force: true });
-            // Look for a Run button in the selection summary or as a follow-up action
+        const cardVisible = await card.isVisible({ timeout: 5000 });
+        if (cardVisible) {
+            await this.dismissOverlays();
+            await card.locator('.praxis-card').click();
             const runBtn = this.page.getByRole('button', { name: /Run|Start/i }).first();
             await expect(runBtn).toBeVisible({ timeout: 5000 });
             await runBtn.click();

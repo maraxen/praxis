@@ -10,7 +10,6 @@ test.describe('@slow Playground Direct Control', () => {
         playgroundPage = new PlaygroundPage(page);
         welcomePage = new WelcomePage(page);
         await playgroundPage.goto('worker');
-        await welcomePage.handleSplashScreen();
     });
 
     test('should allow adding a machine and using direct control', async ({ page }) => {

@@ -437,6 +437,10 @@ export class AssetsPage extends BasePage {
      * Opens the Add Machine dialog and navigates through wizard steps
      * (Category → Frontend → Backend) to reach the Config step (name input).
      * Returns the wizard locator positioned at the config step.
+     *
+     * NOTE: This intentionally mirrors the createMachine() flow which is proven
+     * to work — including waitForOverlaysToDismiss() and waitFor({ state: 'attached' })
+     * calls that give Angular Material animations and reactive data loads time to complete.
      */
     async navigateToConfigStep(): Promise<Locator> {
         await this.addMachineButton.click();
@@ -444,21 +448,28 @@ export class AssetsPage extends BasePage {
         const dialog = this.page.getByRole('dialog');
 
         // Step 1: Category (Type is preselected via "Add Machine")
-        const categoryCard = wizard.getByTestId(/category-card-/).first();
+        // Use LiquidHandler specifically — it's guaranteed to have backend definitions.
+        // Using .first() can pick categories like "PlateReader" where some frontends
+        // (Imager, ImageReader) have zero backends in the prebuilt DB.
+        const categoryCard = wizard.getByTestId('category-card-LiquidHandler');
         await expect(categoryCard).toBeVisible({ timeout: 15000 });
+        await categoryCard.waitFor({ state: 'attached' });
         await categoryCard.click();
+        await this.waitForOverlaysToDismiss();
         await dialog.getByRole('button', { name: /Next/i }).click();
 
         // Step 2: Frontend
         const frontendCard = wizard.getByTestId(/frontend-card-/).first();
         await expect(frontendCard).toBeVisible({ timeout: 15000 });
         await frontendCard.click();
+        await this.waitForOverlaysToDismiss();
         await dialog.getByRole('button', { name: /Next/i }).click();
 
         // Step 3: Backend
         const backendCard = wizard.getByTestId(/backend-card-/).first();
         await expect(backendCard).toBeVisible({ timeout: 15000 });
         await backendCard.click();
+        await this.waitForOverlaysToDismiss();
         await dialog.getByRole('button', { name: /Next/i }).click();
 
         // Now at Step 4: Config — wait for name input

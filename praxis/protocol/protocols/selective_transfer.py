@@ -134,7 +134,7 @@ async def _perform_transfer(
   tip_spot = tip_rack.get_item(tip_idx % num_tips)
 
   if tip_spot:  # Should always be true for standard rack
-    await lh.pick_up_tips(tip_spot)
+    await lh.pick_up_tips([tip_spot])
     await lh.aspirate(src_plate[src_well], vols=[vol])
     await lh.dispense(dst_plate[dst_well], vols=[vol])
     await lh.return_tips()  # Return to save simulation tips/avoid trash config issues

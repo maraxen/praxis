@@ -8,7 +8,6 @@ test.describe('Execution Monitoring', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     const welcomePage = new WelcomePage(page, testInfo);
     await welcomePage.goto();
-    await welcomePage.handleSplashScreen();
   });
 
   test('should display execution log panel during protocol run', async ({ page }, testInfo) => {

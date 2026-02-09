@@ -19,6 +19,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ModeService } from '@core/services/mode.service';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { SqliteService } from '@core/services/sqlite';
+import { ConfirmationDialogComponent } from '@shared/components/confirmation-dialog';
 
 @Component({
   selector: 'app-assets',
@@ -212,6 +214,7 @@ export class AssetsComponent implements OnInit, OnDestroy {
   private ngZone = inject(NgZone);
   public modeService = inject(ModeService);
   private snackBar = inject(MatSnackBar);
+  private sqlite = inject(SqliteService);
 
   @ViewChild('machineList') machineList!: MachineListComponent;
   @ViewChild('resourceAccordion') resourceAccordion!: ResourceAccordionComponent;
@@ -299,8 +302,37 @@ export class AssetsComponent implements OnInit, OnDestroy {
       if (action === 'add-machine') this.openAddMachine();
       if (action === 'add-resource') this.openAddResource();
       if (action === 'discover') this.openHardwareDiscovery();
+      if (action === 'reset-lab') this.resetLab();
     });
   };
+
+  private resetLab() {
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: {
+        title: 'Reset Lab to Defaults?',
+        message: 'This will delete all custom resources, machines, and protocol run history, then restore the default simulated lab. This action cannot be undone.',
+        confirmText: 'Reset Everything',
+        color: 'warn',
+        icon: 'restart_alt'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.snackBar.open('Resetting lab...', '', { duration: 0 });
+        this.sqlite.resetToDefaults().subscribe({
+          next: () => {
+            this.snackBar.open('Lab reset complete. Reloading...', 'OK', { duration: 2000 });
+            setTimeout(() => window.location.reload(), 1500);
+          },
+          error: (err: Error) => {
+            console.error('[Assets] Reset failed:', err);
+            this.snackBar.open('Reset failed: ' + err.message, 'Close', { duration: 5000 });
+          }
+        });
+      }
+    });
+  }
 
   openAddAsset() {
     if (this.isLoading()) return; // Prevent multiple clicks

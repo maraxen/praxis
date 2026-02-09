@@ -10,7 +10,6 @@ test.describe('Execution Controls Interaction', () => {
     test.beforeEach(async ({ page }, testInfo) => {
         const welcomePage = new WelcomePage(page, testInfo);
         await welcomePage.goto();
-        await welcomePage.handleSplashScreen();
     });
 
     test.afterEach(async ({ page }) => {

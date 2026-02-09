@@ -154,7 +154,15 @@ export class SqliteService {
         if (typeof window === 'undefined') return undefined;
         const params = new URLSearchParams(window.location.search);
         const dbName = params.get('dbName');
-        return dbName ? `/${dbName}.db` : undefined;
+        if (dbName) {
+            // Persist to sessionStorage so it survives full page reloads
+            // (e.g., page.goto('/app/monitor') in E2E tests)
+            sessionStorage.setItem('praxis_dbName', dbName);
+            return `/${dbName}.db`;
+        }
+        // Fallback: read from sessionStorage (survives page.goto reloads within same tab)
+        const cached = sessionStorage.getItem('praxis_dbName');
+        return cached ? `/${cached}.db` : undefined;
     }
 
     /**

@@ -22,7 +22,6 @@ test.describe('Interactive Protocol Execution', () => {
     });
     
     await playground.goto();
-    await welcomePage.handleSplashScreen();
     await playground.waitForJupyterReady();
   });
 

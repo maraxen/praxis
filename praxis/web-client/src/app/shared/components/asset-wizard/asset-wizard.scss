@@ -1,7 +1,7 @@
 .asset-wizard-container {
   display: flex;
   flex-direction: column;
-  min-height: 650px; // Stable height to prevent canvas jumps between steps
+  min-height: 650px; // Stable minimum height to prevent canvas jumps between steps
   max-height: 90vh;
   width: 100%; // Fill dialog surface
   margin: 0;
@@ -10,7 +10,8 @@
   ::ng-deep {
     .mat-horizontal-stepper-header-container {
       padding: var(--spacing-sm) var(--spacing-lg) 0;
-      background: var(--mat-sys-surface-container-low); // Subtle header background
+      background: var(--mat-sys-surface-container-low);
+      flex-shrink: 0;
     }
 
     .mat-step-header {
@@ -22,20 +23,24 @@
       }
     }
 
+    // Content container: constrain so step panels don't expand parent
     .mat-horizontal-content-container {
       padding: 0 !important;
       overflow: hidden;
+      flex: 1;
+      min-height: 0;
     }
 
+    // Each step panel: let Angular Material collapse inactive steps (height: 0).
+    // Only the active step gets flex column layout and fills available height.
     .mat-horizontal-stepper-content {
       overflow: hidden !important;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
 
       &.mat-horizontal-stepper-content-current {
         visibility: visible !important;
         display: flex !important;
+        flex-direction: column;
+        height: 100%;
       }
     }
   }

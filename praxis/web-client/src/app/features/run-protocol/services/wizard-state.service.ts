@@ -1,6 +1,7 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 import { CarrierRequirement, SlotAssignment, DeckSetupResult } from '../models/carrier-inference.models';
+import { PlrResource } from '@core/models/plr.models';
 import { CarrierInferenceService } from './carrier-inference.service';
 import { DeckCatalogService } from './deck-catalog.service';
 import { ConsumableAssignmentService } from './consumable-assignment.service';
@@ -78,6 +79,73 @@ export class WizardStateService {
         const placedCarriers = carriers.filter(c => c.placed).length;
         const placedResources = resources.filter(r => r.placed).length;
         return Math.round(((placedCarriers + placedResources) / totalItems) * 100);
+    });
+
+    /**
+     * Reactively builds a PlrResource tree from the current wizard placement state.
+     * DeckViewComponent consumes this to render placed carriers and resources on the deck preview.
+     */
+    readonly deckResource = computed<PlrResource>(() => {
+        const deckType = this._deckType();
+        const carriers = this._carrierRequirements();
+        const assignments = this._slotAssignments();
+
+        // Get deck spec for dimensions and rail spacing
+        const spec = this.deckCatalog.getDeckDefinition(deckType);
+        const railSpacing = spec?.railSpacing ?? 22.5;
+        const railOffset = 100.0; // Standard rail offset
+
+        // Build deck shell
+        const deck: PlrResource = {
+            name: 'deck',
+            type: deckType,
+            location: { x: 0, y: 0, z: 0, type: 'Coordinate' },
+            size_x: spec?.dimensions?.width ?? 1200,
+            size_y: spec?.dimensions?.height ?? 653.5,
+            size_z: spec?.dimensions?.depth ?? 500,
+            num_rails: spec?.numRails ?? 30,
+            children: []
+        };
+
+        // Only add placed carriers as deck children
+        const placedCarriers = carriers.filter(c => c.placed);
+        for (const carrierReq of placedCarriers) {
+            // Find assignments belonging to this carrier
+            const carrierAssignments = assignments.filter(
+                a => a.carrier.fqn === carrierReq.carrierFqn
+            );
+
+            // Get carrier info from first assignment (all share same carrier)
+            const firstAssignment = carrierAssignments[0];
+            if (!firstAssignment) continue;
+
+            const carrierInfo = firstAssignment.carrier;
+            const carrierX = railOffset + (carrierInfo.railPosition * railSpacing);
+
+            const carrierResource: PlrResource = {
+                name: carrierReq.carrierName,
+                type: carrierInfo.fqn.split('.').pop() || 'Carrier',
+                location: { x: carrierX, y: 63, z: 0, type: 'Coordinate' },
+                size_x: carrierInfo.dimensions.width,
+                size_y: carrierInfo.dimensions.height,
+                size_z: carrierInfo.dimensions.depth,
+                children: []
+            };
+
+            // Add placed resources as carrier children
+            for (const assignment of carrierAssignments) {
+                if (assignment.placed) {
+                    carrierResource.children.push({
+                        ...assignment.resource,
+                        location: { ...assignment.resource.location, type: 'Coordinate' }
+                    });
+                }
+            }
+
+            deck.children.push(carrierResource);
+        }
+
+        return deck;
     });
 
     constructor(
@@ -456,14 +524,29 @@ export class WizardStateService {
                 const varName = id.replace(/[^a-zA-Z0-9_]/g, '_');
                 carrierVarNames.set(id, varName);
 
+                // Derive class name candidates: carrier name is usually the PLR class name
+                // (e.g. PLT_CAR_L5AC_A00). FQN suffix (plt_car_l5ac) may also work.
+                const fqnSuffix = carrier.fqn.split('.').pop() || '';
+                const carrierClassName = carrier.name || fqnSuffix || 'Carrier';
+
                 if (!validatePLRClassName(carrier.fqn, validClasses)) {
-                    warnings.push(`Unknown carrier class: ${carrier.fqn}`);
+                    warnings.push(`Unknown carrier class: ${carrier.fqn} (using ${carrierClassName})`);
                 }
 
-                // Heuristic for class name from FQN
-                const className = carrier.fqn.split('.').pop() || 'Carrier';
-
-                code += `    ${varName} = ${className}(name="${carrier.name}")\n`;
+                // Robust instantiation: try carrier name first, then FQN suffix, then generic fallback
+                const dims = carrier.dimensions || { width: 135, height: 497, depth: 10 };
+                code += `    # Carrier: ${carrier.fqn}\n`;
+                code += `    try:\n`;
+                code += `        ${varName} = ${carrierClassName}(name="${carrier.name}")\n`;
+                code += `    except (NameError, TypeError):\n`;
+                if (fqnSuffix && fqnSuffix !== carrierClassName) {
+                    code += `        try:\n`;
+                    code += `            ${varName} = ${fqnSuffix}(name="${carrier.name}")\n`;
+                    code += `        except (NameError, TypeError):\n`;
+                    code += `            ${varName} = res.Carrier(name="${carrier.name}", size_x=${dims.width}, size_y=${dims.height}, size_z=${dims.depth}, sites=[])\n`;
+                } else {
+                    code += `        ${varName} = res.Carrier(name="${carrier.name}", size_x=${dims.width}, size_y=${dims.height}, size_z=${dims.depth}, sites=[])\n`;
+                }
 
                 if (carrier.railPosition !== undefined) {
                     code += `    deck.assign_child_resource(${varName}, rails=${carrier.railPosition})\n`;
@@ -476,23 +559,25 @@ export class WizardStateService {
                     const varName = `labware_${index}`;
                     const carrierVar = carrierVarNames.get(assign.carrier.id);
 
-                    if (carrierVar) {
-                        // Map resource types to PLR classes
-                        let className = 'Resource';
-                        if (assign.resource.type === 'Plate' || assign.resource.type === 'Trough' || assign.resource.type === 'Reservoir') {
-                            className = 'Plate';
-                        } else if (assign.resource.type === 'TipRack') {
-                            className = 'TipRack';
-                        }
+                    // Map resource types to PLR classes
+                    let className = 'Resource';
+                    if (assign.resource.type === 'Plate' || assign.resource.type === 'Trough' || assign.resource.type === 'Reservoir') {
+                        className = 'Plate';
+                    } else if (assign.resource.type === 'TipRack') {
+                        className = 'TipRack';
+                    }
 
+                    if (carrierVar) {
                         code += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
-                        code += `    ${carrierVar}[${assign.slot.index}] = ${varName}\n`;
+                        code += `    try:\n`;
+                        code += `        ${carrierVar}[${assign.slot.index}] = ${varName}\n`;
+                        code += `    except (IndexError, TypeError):\n`;
+                        code += `        try:\n`;
+                        code += `            ${carrierVar}.assign_child_resource(${varName})\n`;
+                        code += `        except Exception:\n`;
+                        code += `            pass  # carrier may not support slot assignment\n`;
                     } else if (deckType.includes('OTDeck')) {
                         // OT-2 direct placement
-                        let className = 'Resource';
-                        if (assign.resource.type === 'Plate') className = 'Plate';
-                        else if (assign.resource.type === 'TipRack') className = 'TipRack';
-
                         code += `    ${varName} = res.${className}(name="${assign.resource.name}", size_x=${assign.resource.size_x}, size_y=${assign.resource.size_y}, size_z=${assign.resource.size_z})\n`;
                         code += `    deck.assign_child_at_slot(${varName}, ${assign.slot.index + 1})\n`;
                     }

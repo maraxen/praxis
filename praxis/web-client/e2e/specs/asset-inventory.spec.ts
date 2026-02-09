@@ -1,6 +1,5 @@
 import { test, expect } from '../fixtures/worker-db.fixture';
 import { AssetsPage } from '../page-objects/assets.page';
-import { WelcomePage } from '../page-objects/welcome.page';
 
 test.describe('Asset Inventory', () => {
     // Run tests serially to avoid sandbox slowness and DB contention
@@ -15,9 +14,6 @@ test.describe('Asset Inventory', () => {
         assetsPage = new AssetsPage(page, testInfo, '/app/assets');
         // Ensure fresh DB for each test to avoid cross-contamination
         await assetsPage.goto({ resetdb: true });
-
-        const welcomePage = new WelcomePage(page);
-        await welcomePage.handleSplashScreen();
 
         await assetsPage.navigateToRegistry();
     });

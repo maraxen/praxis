@@ -47,28 +47,58 @@ export class ProtocolLibraryPage extends BasePage {
     );
   }
 
-  async openStatusFilter(): Promise<Locator> {
-    const statusCombobox = this.page.getByRole('combobox', { name: /Status/i });
-    await expect(statusCombobox).toBeVisible({ timeout: 5000 });
-    await statusCombobox.click();
-    const panel = this.page.getByRole('listbox');
-    await expect(panel).toBeVisible({ timeout: 10000 });
-    return panel;
+  /**
+   * Opens a multiselect filter dropdown from the ViewControls bar.
+   *
+   * The PraxisMultiselectComponent wraps a MatSelect which renders as
+   * a combobox with an accessible name matching the filter label (e.g. "Status", "Category").
+   * When opened, options appear as role="option" inside a role="listbox".
+   */
+  private async openFilter(label: RegExp): Promise<void> {
+    const combobox = this.page.getByRole('combobox', { name: label });
+    await expect(combobox).toBeVisible({ timeout: 5000 });
+    await combobox.click();
+
+    // Wait for the listbox to appear with options
+    await expect(this.page.getByRole('option').first()).toBeVisible({ timeout: 5000 });
+  }
+
+  async openStatusFilter(): Promise<void> {
+    await this.openFilter(/Status/i);
+  }
+
+  async openCategoryFilter(): Promise<void> {
+    await this.openFilter(/Category/i);
+  }
+
+  /**
+   * Selects a filter option from an open multiselect dropdown.
+   * Options render as role="option" in the listbox panel.
+   */
+  async selectFilterOption(optionName: string): Promise<void> {
+    const option = this.page.getByRole('option', { name: new RegExp(optionName, 'i') });
+    await expect(option).toBeVisible({ timeout: 5000 });
+    await option.click();
   }
 
   async filterByStatus(status: string): Promise<void> {
-    // This method assumes the filter panel is already open
-    const option = this.page.getByRole('option', { name: new RegExp(status, 'i') });
-    await expect(option).toBeVisible({ timeout: 5000 });
-    await option.click();
-    
-    // Wait for filter to apply - by waiting for the spinner to show and then hide.
-    // Use a small timeout for appearance as it might be quick.
-    await expect(this.loadingSpinner).toBeVisible({ timeout: 2000 }).catch(() => {
-      // Ignore errors if the spinner is too fast to be caught, proceed to wait for it to be gone.
-      console.log('[Test] Spinner not caught, proceeding.');
-    });
-    await expect(this.loadingSpinner).not.toBeVisible({ timeout: 15000 });
+    await this.selectFilterOption(status);
+
+    // Close the dropdown by pressing Escape
+    await this.page.keyboard.press('Escape');
+
+    // Wait for filter to apply
+    await this.page.waitForTimeout(500);
+  }
+
+  async filterByCategory(category: string): Promise<void> {
+    await this.selectFilterOption(category);
+
+    // Close the dropdown
+    await this.page.keyboard.press('Escape');
+
+    // Wait for filter to apply
+    await this.page.waitForTimeout(500);
   }
 
   async openProtocolDetails(name?: string): Promise<void> {
@@ -84,11 +114,17 @@ export class ProtocolLibraryPage extends BasePage {
     await expect(this.page).toHaveURL(/\/run/, { timeout: 10000 });
   }
 
+  /**
+   * Toggles to card view using the ViewTypeToggle (MatButtonToggleGroup).
+   * The toggle group has aria-label="View Type" with individual toggles
+   * for card, list, and table views.
+   */
   async toggleToCardView(): Promise<void> {
-    const cardViewToggle = this.page.getByRole('button', { name: /Card/i })
-      .or(this.page.locator('[aria-label*="card"]'));
-    if (await cardViewToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await cardViewToggle.click();
+    const toggleGroup = this.page.getByLabel('View Type');
+    const cardToggle = toggleGroup.locator('mat-button-toggle[value="card"]');
+
+    if (await cardToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await cardToggle.click();
       await expect(this.page.locator('app-protocol-card').first()).toBeVisible({ timeout: 10000 });
     }
   }

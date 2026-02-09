@@ -239,4 +239,227 @@ describe('WizardStateService', () => {
             expect(service.progress()).toBe(50);
         });
     });
+
+    describe('deckResource computed signal', () => {
+        const mockCarrier = {
+            id: 'carrier_1',
+            fqn: 'pylabrobot.resources.ml_star.plt_car_l5ac',
+            name: 'PLT_CAR_L5AC',
+            type: 'plate' as const,
+            railPosition: 7,
+            railSpan: 6,
+            slots: [
+                {
+                    id: 'carrier_1_slot_0',
+                    index: 0,
+                    name: 'Position 1',
+                    compatibleResourceTypes: ['Plate'],
+                    occupied: false,
+                    resource: null,
+                    position: { x: 10, y: 10, z: 0 },
+                    dimensions: { width: 127, height: 85 }
+                }
+            ],
+            dimensions: { width: 135, height: 497, depth: 10 }
+        };
+
+        const mockResource = {
+            name: 'my_plate',
+            type: 'Plate',
+            location: { x: 10, y: 0, z: 0, type: 'Coordinate' },
+            size_x: 127.76,
+            size_y: 85.48,
+            size_z: 14.5,
+            children: []
+        };
+
+        let mockDeckCatalog: any;
+
+        beforeEach(() => {
+            mockDeckCatalog = {
+                getDeckDefinition: vi.fn().mockReturnValue({
+                    fqn: 'HamiltonSTARDeck',
+                    name: 'Hamilton STAR Deck',
+                    manufacturer: 'Hamilton',
+                    layoutType: 'rail-based',
+                    numRails: 30,
+                    railSpacing: 22.5,
+                    dimensions: { width: 1200, height: 653.5, depth: 500 }
+                })
+            };
+
+            mockCarrierInference.createDeckSetup.mockReturnValue({
+                carrierRequirements: [{
+                    resourceType: 'Plate',
+                    count: 1,
+                    carrierFqn: mockCarrier.fqn,
+                    carrierType: 'plate',
+                    carrierName: mockCarrier.name,
+                    slotsNeeded: 1,
+                    slotsAvailable: 5,
+                    suggestedRails: [7],
+                    placed: false
+                }],
+                slotAssignments: [{
+                    resource: mockResource,
+                    slot: mockCarrier.slots[0],
+                    carrier: mockCarrier,
+                    placementOrder: 0,
+                    placed: false
+                }],
+                stackingHints: [],
+                complete: false
+            });
+
+            TestBed.resetTestingModule();
+            TestBed.configureTestingModule({
+                providers: [
+                    {
+                        provide: WizardStateService,
+                        useFactory: (a: any, b: any, c: any) => new WizardStateService(a, b, c),
+                        deps: [CarrierInferenceService, DeckCatalogService, ConsumableAssignmentService]
+                    },
+                    { provide: CarrierInferenceService, useValue: mockCarrierInference },
+                    { provide: DeckCatalogService, useValue: mockDeckCatalog },
+                    { provide: ConsumableAssignmentService, useValue: {} }
+                ]
+            });
+
+            service = TestBed.inject(WizardStateService);
+        });
+
+        it('should return a valid deck shell with correct dimensions after initialization', () => {
+            const protocol: ProtocolDefinition = {
+                name: 'Test',
+                accession_id: 'test_1',
+                version: '1.0',
+                is_top_level: true,
+                assets: [],
+                parameters: []
+            };
+            service.initialize(protocol);
+
+            const deck = service.deckResource();
+            expect(deck).toBeTruthy();
+            expect(deck.name).toBe('deck');
+            expect(deck.type).toBe('HamiltonSTARDeck');
+            expect(deck.size_x).toBe(1200);
+            expect(deck.size_y).toBe(653.5);
+            expect(deck.size_z).toBe(500);
+        });
+
+        it('should have empty children when no carriers are placed', () => {
+            const protocol: ProtocolDefinition = {
+                name: 'Test',
+                accession_id: 'test_1',
+                version: '1.0',
+                is_top_level: true,
+                assets: [],
+                parameters: []
+            };
+            service.initialize(protocol);
+
+            const deck = service.deckResource();
+            expect(deck.children).toEqual([]);
+        });
+
+        it('should add carrier as deck child when markCarrierPlaced is called', () => {
+            const protocol: ProtocolDefinition = {
+                name: 'Test',
+                accession_id: 'test_1',
+                version: '1.0',
+                is_top_level: true,
+                assets: [],
+                parameters: []
+            };
+            service.initialize(protocol);
+
+            service.markCarrierPlaced(mockCarrier.fqn, true);
+
+            const deck = service.deckResource();
+            expect(deck.children.length).toBe(1);
+            expect(deck.children[0].name).toBe(mockCarrier.name);
+            expect(deck.children[0].type).toContain('plt_car_l5ac');
+            expect(deck.children[0].size_x).toBe(135);
+            expect(deck.children[0].size_y).toBe(497);
+        });
+
+        it('should add resource as carrier child when markResourcePlaced is called', () => {
+            const protocol: ProtocolDefinition = {
+                name: 'Test',
+                accession_id: 'test_1',
+                version: '1.0',
+                is_top_level: true,
+                assets: [],
+                parameters: []
+            };
+            service.initialize(protocol);
+
+            // Place carrier first, then resource
+            service.markCarrierPlaced(mockCarrier.fqn, true);
+            service.markResourcePlaced(mockResource.name, true);
+
+            const deck = service.deckResource();
+            const carrier = deck.children[0];
+            expect(carrier.children.length).toBe(1);
+            expect(carrier.children[0].name).toBe('my_plate');
+            expect(carrier.children[0].type).toBe('Plate');
+            expect(carrier.children[0].size_x).toBe(127.76);
+        });
+
+        it('should remove carrier child when placement is reverted', () => {
+            const protocol: ProtocolDefinition = {
+                name: 'Test',
+                accession_id: 'test_1',
+                version: '1.0',
+                is_top_level: true,
+                assets: [],
+                parameters: []
+            };
+            service.initialize(protocol);
+
+            service.markCarrierPlaced(mockCarrier.fqn, true);
+            expect(service.deckResource().children.length).toBe(1);
+
+            service.markCarrierPlaced(mockCarrier.fqn, false);
+            expect(service.deckResource().children.length).toBe(0);
+        });
+
+        it('should show resource under carrier only when BOTH are placed', () => {
+            const protocol: ProtocolDefinition = {
+                name: 'Test',
+                accession_id: 'test_1',
+                version: '1.0',
+                is_top_level: true,
+                assets: [],
+                parameters: []
+            };
+            service.initialize(protocol);
+
+            // Place resource without placing carrier first
+            service.markResourcePlaced(mockResource.name, true);
+
+            const deck = service.deckResource();
+            // Carrier not placed, so no children on deck
+            expect(deck.children.length).toBe(0);
+        });
+
+        it('should use correct carrier position from railPosition and rail spacing', () => {
+            const protocol: ProtocolDefinition = {
+                name: 'Test',
+                accession_id: 'test_1',
+                version: '1.0',
+                is_top_level: true,
+                assets: [],
+                parameters: []
+            };
+            service.initialize(protocol);
+
+            service.markCarrierPlaced(mockCarrier.fqn, true);
+
+            const carrier = service.deckResource().children[0];
+            // railPosition=7, railSpacing=22.5, offset=100 → x = 100 + 7*22.5 = 257.5
+            expect(carrier.location.x).toBe(257.5);
+        });
+    });
 });

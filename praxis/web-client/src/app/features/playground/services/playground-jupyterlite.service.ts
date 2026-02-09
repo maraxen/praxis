@@ -52,8 +52,8 @@ export class PlaygroundJupyterliteService {
       this.replChannel = null;
     }
     if (this.messageListener) {
-        window.removeEventListener('message', this.messageListener);
-        this.messageListener = null;
+      window.removeEventListener('message', this.messageListener);
+      this.messageListener = null;
     }
     if (this.loadingTimeout) {
       clearTimeout(this.loadingTimeout);
@@ -65,20 +65,20 @@ export class PlaygroundJupyterliteService {
       this.replChannel.close();
     }
     if (this.messageListener) {
-        window.removeEventListener('message', this.messageListener);
+      window.removeEventListener('message', this.messageListener);
     }
 
     const channelName = 'praxis_repl';
     console.log('[REPL] Setting up BroadcastChannel:', channelName);
 
     this.replChannel = new BroadcastChannel(channelName);
-    
+
     const messageHandler = async (data: any) => {
       if (!data) return;
-      
+
       const type = data.type;
       console.log('[REPL] Processing message type:', type);
-      
+
       if (type === 'praxis:ready' || type === 'r') {
         console.log('[REPL] Received kernel ready signal');
         this.isLoading.set(false);
@@ -87,12 +87,12 @@ export class PlaygroundJupyterliteService {
           clearTimeout(this.loadingTimeout);
           this.loadingTimeout = undefined;
         }
-        
+
         // If it was just the minimal ready ('r'), we need to send the bootstrap
         if (type === 'r') {
-            console.log('[REPL] Minimal ready, sending full bootstrap');
-            const bootstrapCode = await this.getOptimizedBootstrap();
-            this.sendMessageToKernel({ type: 'praxis:bootstrap', code: bootstrapCode });
+          console.log('[REPL] Minimal ready, sending full bootstrap');
+          const bootstrapCode = await this.getOptimizedBootstrap();
+          this.sendMessageToKernel({ type: 'praxis:bootstrap', code: bootstrapCode });
         }
       } else if (type === 'USER_INTERACTION') {
         console.log('[REPL] USER_INTERACTION received:', data.payload);
@@ -101,22 +101,22 @@ export class PlaygroundJupyterliteService {
         console.log('[Pyodide] Received snapshot query');
         const snapshot = await this.snapshotService.getSnapshot();
         if (snapshot) {
-            console.log('[Pyodide] Sending snapshot to iframe');
-            const postLoadCode = this.getPostLoadCode();
-            this.sendMessageToKernel({
-                type: 'praxis:snapshot_load',
-                payload: snapshot,
-                post_load_code: postLoadCode,
-            });
+          console.log('[Pyodide] Sending snapshot to iframe');
+          const postLoadCode = this.getPostLoadCode();
+          this.sendMessageToKernel({
+            type: 'praxis:snapshot_load',
+            payload: snapshot,
+            post_load_code: postLoadCode,
+          });
         } else {
-            console.log('[Pyodide] No snapshot found. Sending full bootstrap.');
-            const bootstrapCode = await this.getOptimizedBootstrap();
-            this.sendMessageToKernel({ type: 'praxis:bootstrap', code: bootstrapCode });
+          console.log('[Pyodide] No snapshot found. Sending full bootstrap.');
+          const bootstrapCode = await this.getOptimizedBootstrap();
+          this.sendMessageToKernel({ type: 'praxis:bootstrap', code: bootstrapCode });
         }
       } else if (type === 'praxis:save_snapshot') {
-          console.log('[Pyodide] Received snapshot to save');
-          await this.snapshotService.saveSnapshot(data.payload);
-          console.log('[Pyodide] Snapshot saved for future fast-start');
+        console.log('[Pyodide] Received snapshot to save');
+        await this.snapshotService.saveSnapshot(data.payload);
+        console.log('[Pyodide] Snapshot saved for future fast-start');
       } else if (type === 'praxis:snapshot_query_failed') {
         console.warn('[Pyodide] Snapshot restore failed, doing fresh init');
         await this.snapshotService.invalidateSnapshot();
@@ -142,24 +142,24 @@ export class PlaygroundJupyterliteService {
   }
 
   private sendMessageToKernel(message: any): void {
-      if (this.replChannel) {
-          this.replChannel.postMessage(message);
+    if (this.replChannel) {
+      this.replChannel.postMessage(message);
+    }
+    // Fallback: also try postMessage to all iframes
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+      try {
+        iframe.contentWindow?.postMessage(message, '*');
+      } catch (e) {
+        // Ignore cross-origin errors
       }
-      // Fallback: also try postMessage to all iframes
-      const iframes = document.querySelectorAll('iframe');
-      iframes.forEach(iframe => {
-          try {
-              iframe.contentWindow?.postMessage(message, '*');
-          } catch (e) {
-              // Ignore cross-origin errors
-          }
-      });
+    });
   }
 
   private async handleUserInteraction(payload: any): Promise<void> {
     if (!payload.id || this.processedInteractionIds.has(payload.id)) {
-        console.log('[REPL] Skipping duplicate interaction request:', payload.id);
-        return;
+      console.log('[REPL] Skipping duplicate interaction request:', payload.id);
+      return;
     }
     this.processedInteractionIds.add(payload.id);
 
@@ -172,15 +172,15 @@ export class PlaygroundJupyterliteService {
     console.log('[REPL] Interaction result obtained:', result, 'ID:', payload.id);
 
     this.sendMessageToKernel({
-        type: 'praxis:interaction_response',
-        id: payload.id,
-        value: result
+      type: 'praxis:interaction_response',
+      id: payload.id,
+      value: result
     });
-    
+
     // Keep set size manageable
     if (this.processedInteractionIds.size > 100) {
-        const first = this.processedInteractionIds.values().next().value;
-        if (first) this.processedInteractionIds.delete(first);
+      const first = this.processedInteractionIds.values().next().value;
+      if (first) this.processedInteractionIds.delete(first);
     }
   }
 
@@ -380,8 +380,9 @@ except Exception as e:
       'for s in ["WebSerial", "WebUSB", "WebFTDI"]:',
       '    if s in globals(): setattr(builtins, s, globals()[s])',
       '',
-      'import sys; from unittest.mock import MagicMock;',
-      'sys.modules["pylibftdi"] = MagicMock()',
+      'import sys; from unittest.mock import MagicMock',
+      `await micropip.install(f'{PRAXIS_HOST_ROOT}assets/wheels/pylibftdi-0.0.0-py3-none-any.whl', deps=False)`,
+      'js.console.log("PRAXIS: pylibftdi stub installed from wheel")',
       'sys.modules["ssl"] = MagicMock()',
       '',
       'import pylabrobot.io.serial as _ser',

@@ -74,7 +74,7 @@ export interface Machine extends AssetBase {
   frontend_definition_accession_id?: string;
   backend_definition_accession_id?: string;
   backend_config?: Record<string, any>;
-  
+
   // Joined fields
   frontend_definition?: MachineFrontendDefinition;
   backend_definition?: MachineBackendDefinition;
@@ -97,6 +97,7 @@ export interface MachineCreate {
   frontend_definition_accession_id?: string;
   backend_definition_accession_id?: string;
   backend_config?: Record<string, any>;
+  deck_type?: string; // FQN of selected deck definition (for LiquidHandler machines)
   maintenance_enabled?: boolean;
   maintenance_schedule_json?: MaintenanceSchedule;
   last_maintenance_json?: Record<string, MaintenanceRecord>;
@@ -110,6 +111,7 @@ export interface Resource extends AssetBase {
   machine_location_accession_id?: string;
   workcell_accession_id?: string;
   children?: Resource[];
+  properties_json?: Record<string, any>;
 }
 
 export interface ResourceCreate {
@@ -117,6 +119,7 @@ export interface ResourceCreate {
   status?: ResourceStatus;
   resource_definition_accession_id?: string;
   parent_accession_id?: string;
+  properties_json?: Record<string, any>;
 }
 
 export interface MachineDefinition {

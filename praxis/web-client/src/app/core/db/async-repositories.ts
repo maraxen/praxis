@@ -429,8 +429,8 @@ export class AsyncMachineRepository extends SqliteAsyncRepository<WithIndex<Mach
     }
 
     /**
-     * Create a new machine (overrides generic create to handle Joined Table Inheritance)
-     * Inserts into 'assets' and 'machines' tables.
+     * Create a new machine (overrides generic create for flattened schema).
+     * Inserts directly into the 'machines' table.
      */
     override create(entity: Omit<WithIndex<Machine>, 'created_at' | 'updated_at'>): Observable<WithIndex<Machine>> {
         // Flattened schema: Insert directly into machines table

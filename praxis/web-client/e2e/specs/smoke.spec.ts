@@ -5,7 +5,6 @@ test.describe('Smoke Test', () => {
   test('should load the dashboard and display navigation', async ({ page, workerIndex }) => {
     const smoke = new SmokePage(page, workerIndex);
     await smoke.goto('app/home');
-    await smoke.handleSplashScreen();
     await expect(smoke.navRail).toBeVisible({ timeout: 3000 });
     await expect(page).toHaveTitle(/Praxis/);
 
@@ -22,7 +21,6 @@ test.describe('Smoke Test', () => {
   }) => {
     const smoke = new SmokePage(page, workerIndex);
     await smoke.goto('app/assets');
-    await smoke.handleSplashScreen();
     await expect(smoke.assetsComponent).toBeVisible({ timeout: 3000 });
 
     // Check for Tabs
@@ -45,7 +43,6 @@ test.describe('Smoke Test', () => {
   }) => {
     const smoke = new SmokePage(page, workerIndex);
     await smoke.goto('app/protocols');
-    await smoke.handleSplashScreen();
     await expect(smoke.protocolLibrary).toBeVisible({ timeout: 3000 });
     // Verify the Protocol Library heading is visible
     await expect(page.getByText('Protocol Library')).toBeVisible();
@@ -57,7 +54,6 @@ test.describe('Smoke Test', () => {
   test('should navigate to Run Protocol wizard', async ({ page, workerIndex }) => {
     const smoke = new SmokePage(page, workerIndex);
     await smoke.goto('app/run');
-    await smoke.handleSplashScreen();
     await expect(smoke.runProtocolComponent).toBeVisible({ timeout: 3000 });
 
     // Check page header
@@ -73,7 +69,6 @@ test.describe('Command Palette', () => {
   test('opens with keyboard shortcut and executes command', async ({ page, workerIndex }) => {
     const smoke = new SmokePage(page, workerIndex);
     await smoke.goto('/assets');
-    await smoke.handleSplashScreen();
 
     // Open command palette
     // Try both Control+K and Meta+K to be environment-agnostic in CI/headless

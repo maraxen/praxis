@@ -139,7 +139,7 @@ async def plate_preparation(
         # For simplicity, assuming trough has infinite volume or we aspirate per dispense for single-channel
         # Real optimization would aspirate large vol then multi-dispense.
         # Here: simple asp/disp cycle per well.
-        await liquid_handler.aspirate(reagent_trough["A1"], vols=[volume_ul])
+        await liquid_handler.aspirate([reagent_trough], vols=[volume_ul])
         await liquid_handler.dispense(plate[well], vols=[volume_ul])
 
         dispense_operations.append({

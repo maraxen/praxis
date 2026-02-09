@@ -4,15 +4,16 @@ import { defineConfig, devices } from '@playwright/test';
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  globalSetup: require.resolve('./e2e/global-setup'),
+  // globalSetup removed — webServer block handles dev server startup/readiness
   timeout: 60000,  // 60s is sufficient with proper waits
 
-  // Skip @slow tests in CI (JupyterLite/Pyodide = 180s+ WASM bootstrap)
-  grepInvert: process.env.CI ? /@slow/ : undefined,
+  // Exclude @slow on CI, @ghpages always (requires separate GH-Pages config)
+  grepInvert: process.env.CI ? /@slow|@ghpages/ : /@ghpages/,
+  // Canary diagnostics live in e2e/diagnostics/ (outside testDir, naturally excluded)
   testDir: './e2e/specs',
   outputDir: 'test-results/',
-  /* Run tests in files in parallel */
-  fullyParallel: false,
+  /* Run tests in files in parallel — safe because BasePage uses worker-indexed DBs */
+  fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */

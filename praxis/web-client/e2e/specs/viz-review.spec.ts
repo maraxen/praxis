@@ -11,7 +11,6 @@ test.describe('Visualization Review Panel', () => {
 
         // 1. Initial navigation (isolated DB handles clean state mostly, but we use resetdb=true for certainty)
         await gotoWithWorkerDb(page, '/app/data', testInfo, { resetdb: true });
-        await welcomePage.handleSplashScreen();
 
         // 2. Wait for component to be present
         await page.waitForSelector('app-data-visualization', { timeout: 10000 });

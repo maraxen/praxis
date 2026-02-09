@@ -25,7 +25,7 @@ export class ExecutionMonitorPage extends BasePage {
     async waitForLiveDashboard() {
         const detailView = this.page.getByTestId('run-detail-view');
         await detailView.waitFor({ state: 'visible', timeout: 15000 });
-        
+
         // Wait for skeleton loaders to disappear
         const skeleton = this.page.locator('ngx-skeleton-loader');
         await skeleton.first().waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {
@@ -39,7 +39,7 @@ export class ExecutionMonitorPage extends BasePage {
     async captureRunMeta(): Promise<RunMeta> {
         await this.runInfoCard.waitFor({ state: 'visible' });
         const runName = (await this.page.locator('h1').first().textContent())?.trim() || 'Protocol Run';
-        
+
         // Run ID might be in a subtitle or a paragraph in the header
         let runId = '';
         const runIdLocators = [
@@ -68,29 +68,31 @@ export class ExecutionMonitorPage extends BasePage {
     async waitForStatus(expected: string | RegExp, timeout = 60000) {
         // AUDIT: Simulation mode can be very fast. If we wait for RUNNING but it's already COMPLETED,
         // we should accept both to avoid timing-out on "perfect" runs.
-        const combined = expected instanceof RegExp
-            ? new RegExp(`${expected.source}|COMPLETED`)
-            : new RegExp(`${expected}|COMPLETED`);
+        // Use case-insensitive matching because the status chip may contain lowercase text.
+        const source = expected instanceof RegExp ? expected.source : expected;
+        const combined = new RegExp(`${source}|COMPLETED`, 'i');
 
         await expect(this.statusChip).toContainText(combined, { timeout });
     }
 
     async waitForProgressAtLeast(minValue: number) {
-        const progressBar = this.page.locator('mat-progress-bar');
-
-        // If already completed, progress bar might have been removed from DOM
-        const status = await this.statusChip.innerText();
-        if (status.includes('COMPLETED')) {
-            console.log(`[Monitor] Status is COMPLETED, skipping progress check for ${minValue}%`);
+        // Check for terminal status first — progress bar may already be gone
+        const status = await this.statusChip.innerText().catch(() => '');
+        if (/COMPLETED|FAILED|ERROR/i.test(status)) {
+            console.log(`[Monitor] Status is ${status.trim()}, skipping progress check for ${minValue}%`);
             return;
         }
 
-        await expect(progressBar).toBeVisible({ timeout: 10000 }).catch((e) => {
-            console.log('[Test] Silent catch (Progress bar not visible):', e);
-        });
-
-        const chipText = await this.statusChip.innerText();
-        if (chipText.includes('COMPLETED')) return;
+        // The run-detail component may not use mat-progress-bar.
+        // Try to find it but bail gracefully if it doesn't exist.
+        const progressBar = this.page.locator('mat-progress-bar');
+        const isVisible = await progressBar.isVisible().catch(() => false);
+        if (!isVisible) {
+            console.log(`[Monitor] No progress bar found, skipping progress check for ${minValue}%`);
+            // Wait briefly for status to potentially transition
+            await this.page.waitForTimeout(2000);
+            return;
+        }
 
         const handle = await progressBar.elementHandle();
         if (!handle) return;
