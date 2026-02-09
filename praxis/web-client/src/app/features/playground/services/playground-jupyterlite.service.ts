@@ -20,7 +20,7 @@ export class PlaygroundJupyterliteService {
   // JupyterLite Iframe Configuration
   jupyterliteUrl = signal<SafeResourceUrl | undefined>(undefined);
   isLoading = signal(true);
-  loadingError = signal(false);
+  loadingError = signal<string | null>(null);
   private currentTheme = '';
   private loadingTimeout: ReturnType<typeof setTimeout> | undefined;
   private replChannel: BroadcastChannel | null = null;
@@ -41,6 +41,7 @@ export class PlaygroundJupyterliteService {
 
   public reloadNotebook(): void {
     this.jupyterliteUrl.set(undefined);
+    this.loadingError.set(null);
     setTimeout(() => {
       this.buildJupyterliteUrl();
     }, 100);
@@ -73,6 +74,15 @@ export class PlaygroundJupyterliteService {
 
     this.replChannel = new BroadcastChannel(channelName);
 
+    // 60s timeout with error UI
+    this.loadingTimeout = setTimeout(() => {
+      if (this.isLoading()) {
+        console.warn('[REPL] Loading timeout (60s) reached');
+        this.loadingError.set('Bootstrap timeout. Check console for errors.');
+        this.isLoading.set(false);
+      }
+    }, 60000);
+
     const messageHandler = async (data: any) => {
       if (!data) return;
 
@@ -82,6 +92,7 @@ export class PlaygroundJupyterliteService {
       if (type === 'praxis:ready' || type === 'r') {
         console.log('[REPL] Received kernel ready signal');
         this.isLoading.set(false);
+        this.loadingError.set(null);
         (window as any).__praxis_pyodide_ready = true;
         if (this.loadingTimeout) {
           clearTimeout(this.loadingTimeout);
@@ -189,33 +200,31 @@ export class PlaygroundJupyterliteService {
   }
 
   public getMinimalBootstrap(): string {
-    const channelName = 'praxis_repl';
-
-    // Ultra minimal bootstrap to avoid URL length limits and ensure reliability
+    // CRITICAL: Must use js.Object.fromEntries to create a real JS object.
+    // Python dicts are PyProxy objects that cannot be structured-cloned
+    // by BroadcastChannel.postMessage(), causing the message to be silently dropped.
     return `
-import js, asyncio
-js.console.log('PRAXIS: Minimal boot starting, URL:', js.window.location.href)
-async def _h(e):
-  d = e.data.to_py() if hasattr(e.data, 'to_py') else e.data
-  if d.get('type') == 'praxis:bootstrap':
-    js.console.log('PRAXIS: Executing bootstrap...')
-    exec("async def _f():\\n" + "\\n".join("  "+l for l in d.get('code').split("\\n")), globals())
-    await globals()['_f']()
-c = js.BroadcastChannel.new('${channelName}') if hasattr(js.BroadcastChannel, 'new') else js.BroadcastChannel('${channelName}')
-c.onmessage = lambda e: asyncio.ensure_future(_h(e))
-c.postMessage(js.Object.fromEntries([('type', 'r')]))
-if hasattr(js, 'window'): js.window.parent.postMessage(js.Object.fromEntries([('type', 'r')]), '*')
+import js
+ch = js.BroadcastChannel.new('praxis_repl')
+msg = js.Object.fromEntries([['type', 'r']])
+ch.postMessage(msg)
+if hasattr(js, 'window'): js.window.parent.postMessage(msg, '*')
 js.console.log('PRAXIS: Minimal boot ready')
 `.trim();
   }
 
-  private async buildJupyterliteUrl(): Promise<void> {
-    if (this.loadingTimeout) {
-      clearTimeout(this.loadingTimeout);
+  private validateUrlSize(url: string): void {
+    if (url.length > 2000) {
+      console.warn(`URL length ${url.length} exceeds safe limit (2000)`);
     }
+  }
+
+  private async buildJupyterliteUrl(): Promise<void> {
+    // NOTE: Do NOT clear loadingTimeout here — setupReadyListener() owns it.
+    // Clearing it would prevent the 60s timeout from ever firing.
 
     this.isLoading.set(true);
-    this.loadingError.set(false);
+    this.loadingError.set(null);
     this.jupyterliteUrl.set(undefined);
 
     const isDark = this.getIsDarkMode();
@@ -238,14 +247,10 @@ js.console.log('PRAXIS: Minimal boot ready')
     }
 
     const fullUrl = `${baseUrl}?${params.toString()}`;
+    this.validateUrlSize(fullUrl);
     this.jupyterliteUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl));
 
-    this.loadingTimeout = setTimeout(() => {
-      if (this.isLoading()) {
-        console.warn('[REPL] Loading timeout (300s) reached');
-        this.isLoading.set(false);
-      }
-    }, 300000);
+    // setupReadyListener already sets a timeout
   }
 
   private async updateJupyterliteTheme(_: string): Promise<void> {
@@ -258,52 +263,106 @@ js.console.log('PRAXIS: Minimal boot ready')
       await this.buildJupyterliteUrl();
     }
   }
+
   public async getOptimizedBootstrap(): Promise<string> {
-    const shims = ['web_serial_shim.py', 'web_usb_shim.py', 'web_ftdi_shim.py'];
+    const baseUrl = this.calculateHostRoot();
+    const response = await fetch(`${baseUrl}assets/jupyterlite/praxis_bootstrap.py`);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch bootstrap: ${response.status}`);
+    }
+
+    const bootstrapText = await response.text();
+
+    const shims = [
+      { file: 'web_serial_shim.py', name: 'WebSerial' },
+      { file: 'web_usb_shim.py', name: 'WebUSB' },
+      { file: 'web_ftdi_shim.py', name: 'WebFTDI' },
+      { file: 'web_hid_shim.py', name: 'WebHID' }
+    ];
+    const praxisFiles = ['__init__.py', 'interactive.py'];
     const hostRoot = this.calculateHostRoot();
+    const cacheBust = Date.now();
 
-    let shimInjections = `# --- Host Root --- \n`;
-    shimInjections += `PRAXIS_HOST_ROOT = "${hostRoot}"\n`;
-    shimInjections += 'import sys\nimport os\n';
-    shimInjections += 'if "." not in sys.path: sys.path.append(".")\n';
-    shimInjections += 'import pyodide.http\n';
+    // Parallel fetch all assets in the main thread (robust path handling)
+    const [fetchedShims, fetchedBridge, fetchedPraxis] = await Promise.all([
+      Promise.all(shims.map(async s => {
+        try {
+          const r = await fetch(`${hostRoot}assets/shims/${s.file}?v=${cacheBust}`);
+          return { ...s, code: await r.text() };
+        } catch (e) {
+          console.error(`Failed to fetch shim ${s.file}:`, e);
+          return { ...s, code: null };
+        }
+      })),
+      fetch(`${hostRoot}assets/python/web_bridge.py?v=${cacheBust}`).then(r => r.text()).catch(e => {
+        console.error('Failed to fetch web_bridge.py:', e);
+        return null;
+      }),
+      Promise.all(praxisFiles.map(async f => {
+        try {
+          const r = await fetch(`${hostRoot}assets/python/praxis/${f}?v=${cacheBust}`);
+          return { file: f, code: await r.text() };
+        } catch (e) {
+          console.error(`Failed to fetch praxis/${f}:`, e);
+          return { file: f, code: null };
+        }
+      }))
+    ]);
 
-    for (const shim of shims) {
-      shimInjections += `
-try:
-    _shim_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/shims/${shim}')).string()
-    exec(_shim_code, globals())
-except Exception as e:
-    print(f"Failed to load ${shim}: {e}")
-`;
+    let bootstrap = `# --- Host Root --- \n`;
+    bootstrap += `PRAXIS_HOST_ROOT = "${hostRoot}"\n`;
+    bootstrap += 'import sys, os, importlib, json, base64\n';
+
+    // File writing logic — base64-encode contents to avoid Python string parsing
+    // issues with backslashes, quotes, and triple-quotes in source code
+    const filesToRotate: Record<string, string> = {};
+    if (fetchedBridge) filesToRotate['web_bridge.py'] = fetchedBridge;
+
+    fetchedShims.forEach(s => {
+      if (s.code) filesToRotate[s.file] = s.code;
+    });
+
+    fetchedPraxis.forEach(p => {
+      if (p.code) filesToRotate[`praxis/${p.file}`] = p.code;
+    });
+
+    const base64Files: Record<string, string> = {};
+    for (const [path, content] of Object.entries(filesToRotate)) {
+      base64Files[path] = btoa(unescape(encodeURIComponent(content)));
     }
+    bootstrap += `_files_b64 = ${JSON.stringify(base64Files)}\n`;
+    bootstrap += `_files = {k: base64.b64decode(v).decode('utf-8') for k, v in _files_b64.items()}\n`;
+    bootstrap += `
+for path, code in _files.items():
+    try:
+        _dir = os.path.dirname(path)
+        if _dir and not os.path.exists(_dir):
+            os.makedirs(_dir)
+        with open(path, 'w') as f:
+            f.write(code)
+    except Exception as e:
+        print(f"Failed to write {path}: {e}")
 
-    shimInjections += `
-try:
-    _bridge_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/python/web_bridge.py')).string()
-    with open('web_bridge.py', 'w') as f:
-        f.write(_bridge_code)
-except Exception as e:
-    print(f"Failed to load web_bridge.py: {e}")
-
-if not os.path.exists('praxis'):
-    os.makedirs('praxis')
-    
+importlib.invalidate_caches()
 `;
 
-    for (const file of ['__init__.py', 'interactive.py']) {
-      shimInjections += `
-try:
-    _p_code = await (await pyodide.http.pyfetch(f'{PRAXIS_HOST_ROOT}assets/python/praxis/${file}')).string()
-    with open(f'praxis/${file}', 'w') as f:
-        f.write(_p_code)
-except Exception as e:
-    print(f"Failed to load praxis/${file}: {e}")
+    // Shim injection into builtins
+    bootstrap += `
+import builtins
+_SHIM_MAP = {"WebSerial": "web_serial_shim.py", "WebUSB": "web_usb_shim.py", "WebFTDI": "web_ftdi_shim.py", "WebHID": "web_hid_shim.py"}
+for shim_name, shim_file in _SHIM_MAP.items():
+    if os.path.exists(shim_file):
+        try:
+            with open(shim_file, 'r') as f:
+                exec(f.read(), globals())
+            setattr(builtins, shim_name, globals()[shim_name])
+        except Exception as e:
+            print(f"Failed to inject {shim_name}: {e}")
 `;
-    }
 
     const baseBootstrap = this.generateBootstrapCode();
-    return shimInjections + '\n' + baseBootstrap;
+    return bootstrap + '\n' + bootstrapText + '\n' + baseBootstrap;
   }
 
   private getPostLoadCode(): string {
@@ -377,7 +436,7 @@ except Exception as e:
       '    import traceback; traceback.print_exc()',
       '',
       'import builtins',
-      'for s in ["WebSerial", "WebUSB", "WebFTDI"]:',
+      'for s in ["WebSerial", "WebUSB", "WebFTDI", "WebHID"]:',
       '    if s in globals(): setattr(builtins, s, globals()[s])',
       '',
       'import sys; from unittest.mock import MagicMock',
@@ -391,6 +450,11 @@ except Exception as e:
       'if "WebSerial" in globals(): _ser.Serial = WebSerial',
       'if "WebUSB" in globals(): _usb.USB = WebUSB',
       'if "WebFTDI" in globals(): _ftdi.FTDI = WebFTDI; _ftdi.HAS_PYLIBFTDI = True',
+      '',
+      'try:',
+      '    import pylabrobot.io.hid as _hid',
+      '    if "WebHID" in globals(): _hid.HID = WebHID',
+      'except Exception: pass',
       '',
       'import pylabrobot',
       'import pylabrobot.resources as _res',

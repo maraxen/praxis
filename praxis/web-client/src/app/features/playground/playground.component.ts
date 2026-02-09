@@ -5,14 +5,12 @@ import {
   OnDestroy,
   ViewChild,
   inject,
-  effect,
   ChangeDetectorRef,
   signal,
   computed,
   AfterViewInit,
 } from '@angular/core';
 import { InteractionService } from '@core/services/interaction.service';
-import { AppStore } from '@core/store/app.store';
 
 import { FormsModule } from '@angular/forms';
 
@@ -29,7 +27,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+
 import { ModeService } from '@core/services/mode.service';
 import { SqliteService } from '@core/services/sqlite';
 import { AssetService } from '@features/assets/services/asset.service';
@@ -48,7 +46,7 @@ import { DirectControlComponent } from './components/direct-control/direct-contr
 import { DirectControlKernelService } from './services/direct-control-kernel.service';
 import { JupyterChannelService } from './services/jupyter-channel.service';
 import { PlaygroundJupyterliteService } from './services/playground-jupyterlite.service';
-import { PathUtils } from '@core/utils/path.utils';
+
 
 /**
  * Playground Component
@@ -146,15 +144,30 @@ import { PathUtils } from '@core/utils/path.utils';
 
                 @if (jupyterliteService.isLoading()) {
                   <div class="loading-overlay">
-                    <div class="loading-content">
-                      <mat-spinner diameter="48"></mat-spinner>
-                      <p>Initializing Pyodide Environment...</p>
-                      @if (jupyterliteService.loadingError()) {
-                        <button mat-flat-button color="warn" (click)="reloadNotebook()">
-                          <mat-icon>refresh</mat-icon>
-                          Retry Loading
-                        </button>
-                      }
+                    <div class="skeleton-container">
+                      <!-- Header bar -->
+                      <div class="skeleton-bar header"></div>
+                      <!-- Toolbar -->
+                      <div class="skeleton-bar toolbar"></div>
+                      <!-- Content cells -->
+                      <div class="skeleton-content">
+                        <div class="skeleton-cell"></div>
+                        <div class="skeleton-cell short"></div>
+                      </div>
+                      <div class="loading-text">Initializing Python environment...</div>
+                    </div>
+                  </div>
+                }
+
+                @if (jupyterliteService.loadingError()) {
+                  <div class="error-overlay">
+                    <div class="error-content">
+                      <mat-icon color="warn" class="error-icon">error_outline</mat-icon>
+                      <div class="error-message">{{ jupyterliteService.loadingError() }}</div>
+                      <button mat-flat-button color="primary" (click)="retryBootstrap()">
+                        <mat-icon>refresh</mat-icon>
+                        Retry Loading
+                      </button>
                     </div>
                   </div>
                 }
@@ -369,30 +382,84 @@ import { PathUtils } from '@core/utils/path.utils';
 
       .loading-overlay {
         position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
+        inset: 0;
         background: var(--mat-sys-surface-container-low);
+        z-index: 100;
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 100;
-        transition: opacity 0.5s ease-out;
+
+        .skeleton-container {
+          width: 90%;
+          max-width: 800px;
+        }
+
+        .skeleton-bar {
+          height: 40px;
+          background: linear-gradient(90deg, var(--mat-sys-surface-container-high) 25%, var(--mat-sys-surface-container-highest) 50%, var(--mat-sys-surface-container-high) 75%);
+          background-size: 200% 100%;
+          animation: shimmer 1.5s infinite;
+          margin-bottom: 8px;
+          border-radius: 4px;
+
+          &.header { height: 48px; }
+          &.toolbar { height: 36px; width: 60%; }
+        }
+
+        .skeleton-cell {
+          height: 60px;
+          background: var(--mat-sys-surface-container);
+          border-left: 3px solid var(--mat-sys-outline-variant);
+          margin-bottom: 12px;
+          border-radius: 4px;
+
+          &.short { width: 70%; }
+        }
+
+        .loading-text {
+          text-align: center;
+          color: var(--mat-sys-on-surface-variant);
+          margin-top: 24px;
+          font-weight: 500;
+        }
       }
 
-      .loading-content {
+      .error-overlay {
+        position: absolute;
+        inset: 0;
+        background: color-mix(in srgb, var(--mat-sys-surface-container-low) 95%, transparent);
+        z-index: 101;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .error-content {
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 16px;
-        color: var(--mat-sys-on-surface-variant);
+        text-align: center;
+        max-width: 400px;
+        padding: 24px;
       }
 
-      .loading-content p {
-        margin: 0;
+      .error-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        margin-bottom: 8px;
+      }
+
+      .error-message {
+        color: var(--mat-sys-error);
         font-weight: 500;
-        letter-spacing: 0.02em;
+        margin-bottom: 16px;
+      }
+
+      @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
       }
 
       /* Direct Control Dashboard */
@@ -562,12 +629,10 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild(DirectControlComponent) directControlComponent?: DirectControlComponent;
 
   private modeService = inject(ModeService);
-  private store = inject(AppStore);
   private snackBar = inject(MatSnackBar);
   private cdr = inject(ChangeDetectorRef);
   private assetService = inject(AssetService);
   private sqliteService = inject(SqliteService);
-  private sanitizer = inject(DomSanitizer);
   private dialog = inject(MatDialog);
   private interactionService = inject(InteractionService);
   private jupyterChannel = inject(JupyterChannelService);
@@ -581,12 +646,6 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
   modeLabel = computed(() => this.modeService.modeLabel());
 
-  // JupyterLite Iframe Configuration
-  jupyterliteUrl: SafeResourceUrl | undefined;
-  currentTheme = '';
-  isLoading = signal(true);
-  loadingError = signal(false);
-  private loadingTimeout: ReturnType<typeof setTimeout> | undefined;
   private viewInitialized = false;
 
   private subscription = new Subscription();
@@ -605,25 +664,19 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   constructor() {
     // Expose helpers for E2E tests
     (window as any).setPlaygroundCode = (code: string) => {
-        (window as any).__praxis_pending_code = code;
+      (window as any).__praxis_pending_code = code;
     };
     (window as any).runPlaygroundCode = () => {
-        const code = (window as any).__praxis_pending_code;
-        if (code) {
-            this.jupyterChannel.sendMessage({
-                type: 'praxis:execute',
-                code: code
-            });
-        }
+      const code = (window as any).__praxis_pending_code;
+      if (code) {
+        this.jupyterChannel.sendMessage({
+          type: 'praxis:execute',
+          code: code
+        });
+      }
     };
 
-    effect(() => {
-      const theme = this.store.theme();
-      // Only update if view is initialized to avoid early DOM mounting issues
-      if (this.viewInitialized) {
-        this.updateJupyterliteTheme(theme);
-      }
-    });
+    // Theme syncing is handled by PlaygroundJupyterliteService's own effect
     // Initialize WebSerial Polyfill if WebUSB is available
     if (typeof navigator !== 'undefined' && 'usb' in navigator) {
       try {
@@ -711,11 +764,8 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnDestroy() {
     this.subscription.unsubscribe();
-    // Clean up event listener
     window.removeEventListener('machine-registered', this.machineRegisteredHandler);
-    if (this.loadingTimeout) {
-      clearTimeout(this.loadingTimeout);
-    }
+    this.jupyterliteService.destroy();
   }
 
   /**
@@ -804,74 +854,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  // Helper for AssetService (kept for reference or if we need to reload dialog data via service, though dialog handles it)
-  // loadInventory removed as Dialog manages its own data.
   /* Helper methods for Code Generation */
-
-  /**
-   * Helper to determine if dark mode is active based on body class or store
-   */
-  private getIsDarkMode(): boolean {
-    // Single source of truth for the UI is the class on document.body
-    return document.body.classList.contains('dark-theme');
-  }
-
-  /**
-   * Build the JupyterLite URL with configuration parameters
-   */
-  private buildJupyterliteUrl() {
-    if (this.loadingTimeout) {
-      clearTimeout(this.loadingTimeout);
-    }
-
-    this.isLoading.set(true);
-    this.loadingError.set(false);
-    this.jupyterliteUrl = undefined;
-    this.cdr.detectChanges();
-
-    const isDark = this.getIsDarkMode();
-    this.currentTheme = isDark ? 'dark' : 'light';
-
-    console.log('[REPL] Building JupyterLite URL. Effective Theme Class:', this.currentTheme);
-
-    const baseUrl = './assets/jupyterlite/repl/index.html';
-    const params = new URLSearchParams({
-      kernel: 'python',
-      toolbar: '1',
-      theme: isDark ? 'JupyterLab Dark' : 'JupyterLab Light',
-    });
-
-    const fullUrl = `${baseUrl}?${params.toString()}`;
-    this.jupyterliteUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
-
-    // Set a timeout to show error/retry if iframe load is slow
-    // Pyodide/JupyterLite can take 20+ seconds to fully boot on slower connections
-    this.loadingTimeout = setTimeout(() => {
-      if (this.isLoading()) {
-        console.warn('[REPL] Loading timeout (300s) reached - Pyodide kernel may still be booting');
-        console.warn('[REPL] Tip: Check browser console in the iframe for bootstrap errors');
-        this.isLoading.set(false);
-        this.cdr.detectChanges();
-      }
-    }, 300000); // 5 minute fallback
-
-    this.cdr.detectChanges();
-  }
-
-  /**
-   * Update theme when app theme changes
-   */
-  private updateJupyterliteTheme(_: string) {
-    const isDark = this.getIsDarkMode();
-    const newTheme = isDark ? 'dark' : 'light';
-
-    // Only reload if theme actually changed
-    if (this.currentTheme !== newTheme) {
-      console.log('[REPL] Theme changed from', this.currentTheme, 'to', newTheme, '- rebuilding URL');
-      this.currentTheme = newTheme;
-      this.buildJupyterliteUrl();
-    }
-  }
 
   /**
    * Generate a Python-safe variable name from an asset
@@ -886,26 +869,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     return `${desc}_${prefix}`;
   }
 
-  /**
-   * Calculate the absolute host root URL for asset injection.
-   * This is done in TypeScript because window.location in the Pyodide worker is unreliable.
-   */
-  private calculateHostRoot(): string {
-    const href = window.location.href;
-    const anchor = '/assets/jupyterlite/';
 
-    if (href.includes(anchor)) {
-      // We are likely inside the iframe context (if code runs there) or main window
-      return href.split(anchor)[0] + '/';
-    }
-
-    // Fallback: We are in the main Angular app (e.g., localhost:4200/app/playground)
-    // We need to construct the root path to where assets are served.
-    const baseHref = document.querySelector('base')?.getAttribute('href') || '/';
-    const cleanBase = PathUtils.normalizeBaseHref(baseHref);
-
-    return window.location.origin + cleanBase;
-  }
 
   /**
    * Handle iframe load event
@@ -975,24 +939,31 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
+   * Retry the bootstrap process after an error or timeout
+   */
+  retryBootstrap(): void {
+    console.log('[Playground] Retrying bootstrap...');
+    this.jupyterliteService.loadingError.set(null);
+    this.jupyterliteService.isLoading.set(true);
+    this.jupyterliteService.initialize();
+  }
+
+  /**
    * Generate Python code to instantiate a resource
    */
   private generateResourceCode(resource: Resource, variableName?: string): string {
     const varName = variableName || this.assetToVarName(resource);
     const fqn = resource.fqn || resource.plr_definition?.fqn;
+    const safeName = resource.name.replace(/['"\\]/g, '_');
 
     if (!fqn) {
-      // Fallback: just create a comment with the name
-      return `# Resource: ${resource.name} (no FQN available)`;
+      return `# Resource: ${safeName} (no FQN available)`;
     }
 
-    const parts = fqn.split('.');
-    const className = parts[parts.length - 1];
-
     const lines = [
-      `# Resource: ${resource.name}`,
-      `from pylabrobot.resources import ${className}`,
-      `${varName} = ${className}(name="${varName}")`,
+      `# Resource: ${safeName}`,
+      `from web_bridge import instantiate_resource`,
+      `${varName} = instantiate_resource("${fqn}", "${varName}")`,
       `print(f"Created: {${varName}}")`
     ];
 
@@ -1004,18 +975,12 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
    */
   private async generateMachineCode(machine: Machine, variableName?: string, deckConfigId?: string): Promise<string> {
     const varName = variableName || this.assetToVarName(machine);
+    const safeName = machine.name.replace(/['"\\]/g, '_');
 
-    // Extract FQNs
-    const frontendFqn = machine.plr_definition?.frontend_fqn || machine.frontend_definition?.fqn;
+    // Extract backend FQN
     const backendFqn = machine.plr_definition?.fqn || machine.backend_definition?.fqn || machine.simulation_backend_name;
     const isSimulated = !!(machine.is_simulation_override || machine.simulation_backend_name);
-
-    if (!frontendFqn) {
-      return `# Machine: ${machine.name} (Missing Frontend FQN)`;
-    }
-
-    const frontendClass = frontendFqn.split('.').pop()!;
-    const frontendModule = frontendFqn.substring(0, frontendFqn.lastIndexOf('.'));
+    const category = (machine as any).machine_category || 'LiquidHandler';
 
     const config = {
       backend_fqn: backendFqn || 'pylabrobot.liquid_handling.backends.simulation.SimulatorBackend',
@@ -1025,13 +990,12 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     };
 
     const lines = [
-      `# Machine: ${machine.name}`,
-      `from web_bridge import create_configured_backend`,
-      `from ${frontendModule} import ${frontendClass}`,
+      `# Machine: ${safeName}`,
+      `from web_bridge import create_configured_backend, create_machine_frontend`,
       ``,
       `config = ${JSON.stringify(config, null, 2)}`,
       `backend = create_configured_backend(config)`,
-      `${varName} = ${frontendClass}(backend=backend)`,
+      `${varName} = create_machine_frontend("${category}", backend, name="${safeName}")`,
       `await ${varName}.setup()`,
       `print(f"Created: {${varName}}")`
     ];
@@ -1052,8 +1016,8 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
    */
   public executeCodeForTest(code: string) {
     this.jupyterChannel.sendMessage({
-        type: 'praxis:execute',
-        code: code
+      type: 'praxis:execute',
+      code: code
     });
   }
 
