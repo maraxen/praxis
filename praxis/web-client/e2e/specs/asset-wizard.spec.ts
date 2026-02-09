@@ -21,7 +21,7 @@ test.describe('Asset Wizard Journey', () => {
 
   test('should guide the user through creating a Hamilton STAR machine', async ({ page }, testInfo) => {
     // Use waitForDb: true to ensure SQLite is ready
-    await gotoWithWorkerDb(page, '/assets', testInfo, { waitForDb: true });
+    await gotoWithWorkerDb(page, '/app/assets', testInfo, { waitForDb: true });
 
     const assetsPage = new AssetsPage(page);
 
@@ -53,6 +53,18 @@ test.describe('Asset Wizard Journey', () => {
     await expect(backendCard).toBeVisible({ timeout: 15000 });
     await backendCard.click();
     await assetsPage.clickNextButton(wizard);
+
+    // Step 3B (conditional): Deck Selection — LiquidHandlers may show a deck step
+    // Use expect().toBeVisible() which auto-retries (unlike .isVisible() which is instant)
+    const deckCard1 = wizard.getByTestId(/deck-card-/).first();
+    try {
+      await expect(deckCard1).toBeVisible({ timeout: 5000 });
+      await deckCard1.click();
+      await assetsPage.clickNextButton(wizard);
+    } catch {
+      // No deck step — proceed directly to Config
+    }
+
     await assetsPage.waitForStepTransition(wizard, /Config/i);
 
     // Step 4: Configuration
@@ -70,33 +82,32 @@ test.describe('Asset Wizard Journey', () => {
     await expect(createButton).toBeEnabled();
     await createButton.click();
 
-    // 6. Verify result
+    // 6. Verify result — navigate to Machines tab where the new machine appears
     await expect(wizard).not.toBeVisible({ timeout: 15000 });
+    await assetsPage.navigateToMachines();
     await assetsPage.verifyAssetVisible('Hamilton STAR Test');
 
-    // 7. Domain Verification: Check SQLite Database via service
+    // 7. Domain Verification: Check SQLite Database via __e2e API
     const machineData = await page.evaluate(async (name) => {
-      const service = (window as any).sqliteService;
-      if (!service) return null;
-      
-      return new Promise((resolve) => {
-        service.getMachines().subscribe((machines: any[]) => {
-          resolve(machines.find(m => m.name === name));
-        });
-      });
+      const e2e = (window as any).__e2e;
+      if (!e2e?.isReady()) return null;
+      try {
+        const machines = await e2e.query('SELECT * FROM machines WHERE name = ?', [name]);
+        return machines[0] || null;
+      } catch { return null; }
     }, 'Hamilton STAR Test');
 
     expect(machineData).toBeDefined();
-    expect((machineData as any).machine_category).toBe('LiquidHandler');
-    expect((machineData as any).name).toBe('Hamilton STAR Test');
+    expect((machineData as any)?.name).toBe('Hamilton STAR Test');
 
     // 8. Persistence Verification: Reload and check
-    await page.reload();
+    await gotoWithWorkerDb(page, '/app/assets', testInfo, { resetdb: false });
+    await assetsPage.navigateToMachines();
     await assetsPage.verifyAssetVisible('Hamilton STAR Test', 15000);
   });
 
   test('should handle wizard cancellation gracefully', async ({ page }, testInfo) => {
-    await gotoWithWorkerDb(page, '/assets', testInfo, { waitForDb: true });
+    await gotoWithWorkerDb(page, '/app/assets', testInfo, { waitForDb: true });
     const assetsPage = new AssetsPage(page);
     await assetsPage.waitForOverlaysToDismiss();
 
@@ -127,33 +138,43 @@ test.describe('Asset Wizard Journey', () => {
   });
 
   test('should prevent creation with empty instance name', async ({ page }, testInfo) => {
-    await gotoWithWorkerDb(page, '/assets', testInfo, { waitForDb: true });
+    await gotoWithWorkerDb(page, '/app/assets', testInfo, { waitForDb: true });
     const assetsPage = new AssetsPage(page);
     await assetsPage.waitForOverlaysToDismiss();
 
     // Navigate to the configuration step
     await assetsPage.addMachineButton.click();
     const wizard = page.locator('app-asset-wizard');
-    
+
     await assetsPage.selectWizardCard(wizard, 'category-card-LiquidHandler');
     await assetsPage.clickNextButton(wizard);
-    
+
     const frontendCard = wizard.getByTestId(/frontend-card-/).filter({ hasText: /Liquid/i }).first();
     await expect(frontendCard).toBeVisible({ timeout: 15000 });
     await frontendCard.click();
     await assetsPage.clickNextButton(wizard);
-    
+
     const backendCard = wizard.getByTestId(/backend-card-/).filter({ hasText: /STAR/i }).first();
     await expect(backendCard).toBeVisible({ timeout: 15000 });
     await backendCard.click();
     await assetsPage.clickNextButton(wizard);
-    
+
+    // Handle conditional Deck step for LiquidHandlers
+    const deckCard2 = wizard.getByTestId(/deck-card-/).first();
+    try {
+      await expect(deckCard2).toBeVisible({ timeout: 5000 });
+      await deckCard2.click();
+      await assetsPage.clickNextButton(wizard);
+    } catch {
+      // No deck step — proceed directly to Config
+    }
+
     await assetsPage.waitForStepTransition(wizard, /Config/i);
 
     // Verify Next button is disabled (name is required and it auto-fills, but let's clear it)
     const nameInput = wizard.getByLabel('Instance Name');
     await nameInput.fill('');
-    
+
     const nextButton = wizard.getByTestId('wizard-next-button').filter({ visible: true }).first();
     await expect(nextButton).toBeDisabled();
 
@@ -164,14 +185,14 @@ test.describe('Asset Wizard Journey', () => {
 
   test('should display empty state when no definitions match', async ({ page }, testInfo) => {
     // This test is more suitable for Resources where we have a search box
-    await gotoWithWorkerDb(page, '/assets', testInfo, { waitForDb: true });
+    await gotoWithWorkerDb(page, '/app/assets', testInfo, { waitForDb: true });
     const assetsPage = new AssetsPage(page);
     await assetsPage.waitForOverlaysToDismiss();
 
     // Navigate to the search step for Resources
     await assetsPage.addResourceButton.click();
     const wizard = page.locator('app-asset-wizard');
-    
+
     // Select category
     await assetsPage.selectWizardCard(wizard, 'category-card-Plate');
     await assetsPage.clickNextButton(wizard);

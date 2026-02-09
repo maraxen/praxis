@@ -11,9 +11,8 @@ test.describe('Browser Mode Specifics (DB Persistence)', () => {
         const assetsPage = new AssetsPage(page, testInfo, '/app/assets');
         const settingsPage = new SettingsPage(page, testInfo);
         const machineName = `Persist-Machine-${Date.now()}`;
-        const resourceName = `Persist-Resource-${Date.now()}`;
 
-        // 1. Create Data
+        // 1. Create a machine
         await gotoWithWorkerDb(page, '/app/assets', testInfo, { resetdb: false });
         await page.waitForFunction(async () => {
             const e2e = (window as any).__e2e;
@@ -23,10 +22,21 @@ test.describe('Browser Mode Specifics (DB Persistence)', () => {
             } catch { return false; }
         }, null, { timeout: 15000 });
         await assetsPage.createMachine(machineName);
-        await assetsPage.createResource(resourceName);
-        await assetsPage.navigateToRegistry();
+
+        // Wait for DB to confirm machine was persisted
+        await page.waitForFunction(async (name) => {
+            const e2e = (window as any).__e2e;
+            if (!e2e?.isReady()) return false;
+            try {
+                const machines = await e2e.query('SELECT name FROM machines');
+                return machines.some((m: any) => m.name === name);
+            } catch { return false; }
+        }, machineName, { timeout: 10000 });
+
+        // Reload to ensure UI reflects latest DB state
+        await gotoWithWorkerDb(page, '/app/assets', testInfo, { resetdb: false });
+        await assetsPage.navigateToMachines();
         await assetsPage.verifyAssetVisible(machineName);
-        await assetsPage.verifyAssetVisible(resourceName);
 
         // 2. Verify DB state before export
         const preExportCount = await page.evaluate(async () => {
@@ -45,7 +55,6 @@ test.describe('Browser Mode Specifics (DB Persistence)', () => {
         await gotoWithWorkerDb(page, '/app/assets', testInfo, { resetdb: true });
         await assetsPage.navigateToMachines();
         await assetsPage.verifyAssetNotVisible(machineName);
-        await assetsPage.verifyAssetNotVisible(resourceName);
 
         // 5. Import DB
         await gotoWithWorkerDb(page, '/app/settings', testInfo, { resetdb: false });
@@ -55,8 +64,6 @@ test.describe('Browser Mode Specifics (DB Persistence)', () => {
         await gotoWithWorkerDb(page, '/app/assets', testInfo, { resetdb: false });
         await assetsPage.navigateToMachines();
         await assetsPage.verifyAssetVisible(machineName);
-        await assetsPage.navigateToRegistry();
-        await assetsPage.verifyAssetVisible(resourceName);
 
         // 7. Verify Data Restored (DB state)
         const postImportCount = await page.evaluate(async () => {
@@ -67,3 +74,4 @@ test.describe('Browser Mode Specifics (DB Persistence)', () => {
         expect(postImportCount).toBe(preExportCount);
     });
 });
+

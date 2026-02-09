@@ -263,13 +263,14 @@ export class AssetsPage extends BasePage {
         await dialog.getByRole('button', { name: /Next/i }).click();
 
         // Step 3B (conditional): Select Deck - only shown for LiquidHandlers with multiple compatible decks
-        const deckStep = wizard.getByTestId('wizard-step-deck');
-        const deckStepVisible = await deckStep.isVisible().catch(() => false);
-        if (deckStepVisible) {
-            const deckCard = wizard.getByTestId(/deck-card-/).first();
-            await expect(deckCard).toBeVisible({ timeout: 10000 });
+        // Use expect().toBeVisible() which auto-retries (isVisible() is instant and can miss post-transition content)
+        const deckCard = wizard.getByTestId(/deck-card-/).first();
+        try {
+            await expect(deckCard).toBeVisible({ timeout: 5000 });
             await deckCard.click();
             await dialog.getByRole('button', { name: /Next/i }).click();
+        } catch {
+            // No deck step — proceed directly to Config
         }
 
         // Step 4: Config
