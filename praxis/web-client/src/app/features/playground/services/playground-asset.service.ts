@@ -55,22 +55,48 @@ export class PlaygroundAssetService {
       code = this.generateResourceCode(asset as Resource, varName);
     }
 
-    try {
-      const channel = new BroadcastChannel('praxis_repl');
-      channel.postMessage({
-        type: 'praxis:execute',
-        code: code
-      });
-      setTimeout(() => channel.close(), 100);
+    // Try injecting via JupyterLite's native console:inject command (visible in REPL)
+    const injected = this.injectViaJupyterApp(code);
 
+    if (injected) {
       this.snackBar.open(`Inserted ${varName}`, 'OK', { duration: 2000 });
-    } catch (e) {
-      console.error('Failed to send asset to REPL:', e);
-      navigator.clipboard.writeText(code).then(() => {
-        this.snackBar.open(`Code copied to clipboard (BroadcastChannel failed)`, 'OK', {
-          duration: 2000,
+    } else {
+      // Fallback: BroadcastChannel (runs in kernel but output not visible in REPL cells)
+      console.warn('[PlaygroundAsset] jupyterapp not available, falling back to BroadcastChannel');
+      try {
+        const channel = new BroadcastChannel('praxis_repl');
+        channel.postMessage({
+          type: 'praxis:execute',
+          code: code,
+          label: `${asset.name} (${varName})`
         });
-      });
+        setTimeout(() => channel.close(), 100);
+        this.snackBar.open(`Inserted ${varName} (background)`, 'OK', { duration: 2000 });
+      } catch (e) {
+        console.error('Failed to send asset to REPL:', e);
+        navigator.clipboard.writeText(code).then(() => {
+          this.snackBar.open(`Code copied to clipboard`, 'OK', { duration: 2000 });
+        });
+      }
+    }
+  }
+
+  /**
+   * Inject code into the JupyterLite REPL via the iframe's jupyterapp commands API.
+   * This makes the code appear as a real REPL cell with visible output.
+   */
+  private injectViaJupyterApp(code: string): boolean {
+    try {
+      const iframe = document.querySelector<HTMLIFrameElement>('iframe.notebook-frame');
+      const jupyterapp = (iframe?.contentWindow as any)?.jupyterapp;
+      if (!jupyterapp?.commands) {
+        return false;
+      }
+      jupyterapp.commands.execute('console:inject', { code, activate: false });
+      return true;
+    } catch (e) {
+      console.warn('[PlaygroundAsset] Failed to inject via jupyterapp:', e);
+      return false;
     }
   }
 

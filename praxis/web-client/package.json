@@ -11,7 +11,7 @@
     "build:all": "bun run jupyterlite:build && ng build",
     "build": "ng build",
     "build:browser": "ng build --configuration=browser",
-    "build:gh-pages": "ng build --configuration=gh-pages && cp src/assets/jupyterlite/jupyter-lite.gh-pages.json dist/web-client/browser/assets/jupyterlite/jupyter-lite.json && cp src/assets/jupyterlite/repl/jupyter-lite.gh-pages.json dist/web-client/browser/assets/jupyterlite/repl/jupyter-lite.json",
+    "build:gh-pages": "ng build --configuration=gh-pages && cp src/assets/jupyterlite/jupyter-lite.gh-pages.json dist/web-client/browser/assets/jupyterlite/jupyter-lite.json",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "generate-api": "node node_modules/openapi-typescript-codegen/bin/index.js --input ./src/assets/api/openapi.json --output ./src/app/core/api-generated --client fetch --useUnionTypes --request ./src/app/core/http/custom-request.ts",

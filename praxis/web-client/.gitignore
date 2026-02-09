@@ -11,7 +11,7 @@
 !/src/assets/jupyterlite/jupyter-lite.gh-pages.json
 !/src/assets/jupyterlite/repl/
 /src/assets/jupyterlite/repl/*
-!/src/assets/jupyterlite/repl/jupyter-lite.gh-pages.json
+!/src/assets/jupyterlite/repl/jupyter-lite.json
 
 # Node
 /node_modules

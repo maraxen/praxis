@@ -108,6 +108,26 @@ def _setup_broadcast_listener():
 
             if msg_type == 'praxis:execute':
                 code = data.get('code', '')
+                label = data.get('label', '')
+
+                # --- Echo the injected code so the user sees it in the REPL ---
+                if code.strip():
+                    # Extract variable name from assignment pattern (e.g. "lh = LiquidHandler(...)")
+                    var_name = ''
+                    for line in code.split('\n'):
+                        stripped = line.strip()
+                        if '=' in stripped and not stripped.startswith('#') and not stripped.startswith('from ') and not stripped.startswith('import ') and not stripped.startswith('await ') and not stripped.startswith('print'):
+                            var_name = stripped.split('=')[0].strip()
+                            if var_name and var_name.isidentifier():
+                                break
+                            var_name = ''
+                    header = f"[Praxis] Injected: {label or var_name or 'code'}"
+                    print(f"\n{'─' * 50}")
+                    print(f"  {header}")
+                    print(f"{'─' * 50}")
+                    print(code)
+                    print(f"{'─' * 50}\n")
+
                 try:
                     if 'await ' in code:
                         # Wrap async code
