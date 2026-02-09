@@ -125,7 +125,7 @@ import { PlaygroundJupyterliteService } from './services/playground-jupyterlite.
             </div>
           </div>
 
-          <mat-tab-group class="repl-tabs" [selectedIndex]="selectedTabIndex()" (selectedIndexChange)="selectedTabIndex.set($event)">
+          <mat-tab-group class="repl-tabs" [selectedIndex]="selectedTabIndex()" (selectedIndexChange)="selectedTabIndex.set($event)" [preserveContent]="true">
             <mat-tab label="Notebook">
               <!-- JupyterLite iframe -->
               <div class="repl-notebook-wrapper" data-tour-id="repl-notebook" [hidden]="selectedTabIndex() !== 0">
