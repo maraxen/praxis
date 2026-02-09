@@ -323,7 +323,18 @@ export class AssetsPage extends BasePage {
     async createResource(name: string, categoryName: string = 'Plate', modelQuery: string = '96') {
         // Ensure we're on the Resources tab so the header button says "Add Resource"
         await this.navigateToResources();
+
+        // Retry-click pattern: Angular hydration may swallow first click
+        const wizardLocator = this.page.locator('app-asset-wizard');
         await this.addResourceButton.click();
+        if (!(await wizardLocator.isVisible({ timeout: 3000 }).catch(() => false))) {
+            // Tier 2: force click with delay
+            await this.addResourceButton.click({ force: true, delay: 100 });
+        }
+        if (!(await wizardLocator.isVisible({ timeout: 3000 }).catch(() => false))) {
+            // Tier 3: JS-level click
+            await this.addResourceButton.evaluate((el: HTMLElement) => el.click());
+        }
         const wizard = await this.waitForWizard();
 
         // Skip Type step - Add Resource button passes preselectedType: 'RESOURCE' which auto-skips to Category

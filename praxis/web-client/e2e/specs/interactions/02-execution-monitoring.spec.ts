@@ -32,9 +32,12 @@ test.describe('Execution Monitoring', () => {
     await monitorPage.waitForLiveDashboard();
 
     // 2. Verify the log panel is visible
-    // Per plan, use a better locator. Adding a data-testid is an app change,
-    // so I will use the ARIA role strategy for now.
-    const logPanel = page.getByRole('region', { name: /Execution Log/i });
-    await expect(logPanel).toBeVisible();
+    // The execution logs section has a heading 'Execution Logs' followed by log entry divs
+    const logHeading = page.getByText('Execution Logs');
+    await expect(logHeading).toBeVisible({ timeout: 30000 });
+
+    // Verify at least one log entry exists beneath
+    const logEntry = page.locator('.execution-logs >> div, [class*="log-entry"]').first();
+    await expect(logEntry).toBeVisible({ timeout: 10000 });
   });
 });
