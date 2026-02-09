@@ -715,33 +715,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     this.cdr.detectChanges();
   }
 
-  /**
-   * Fetches the Python bootstrap script and sends it to the JupyterLite kernel.
-   */
-  private async sendBootstrapCode() {
-    try {
-      // AUDIT-07: Send full optimized bootstrap code via channel
-      const bootstrapCode = await this.jupyterliteService.getOptimizedBootstrap();
 
-      this.jupyterChannel.sendMessage({
-        type: 'praxis:bootstrap',
-        code: bootstrapCode,
-      });
-      console.log('[REPL] Full bootstrap code sent to kernel.');
-    } catch (error) {
-      console.error('[REPL] Error sending bootstrap code:', error);
-      this.snackBar.open('Failed to initialize Python environment.', 'Retry', {
-        duration: 5000,
-      }).onAction().subscribe(() => this.sendBootstrapCode());
-    }
-  }
-
-  /**
-   * Gets the correct path to the bootstrap script, resolving for GH-Pages.
-   */
-  private getBootstrapPath(): string {
-    return this.assetService.resolve('jupyterlite/bootstrap.py');
-  }
 
   /**
    * Handle USER_INTERACTION requests from the REPL channel and show UI dialogs

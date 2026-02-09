@@ -168,19 +168,25 @@ export class PlaygroundJupyterliteService {
     // The kernel fetches praxis_bootstrap.py directly — no BroadcastChannel code transfer.
     // praxis_bootstrap.py handles everything: fetching shims, bridge, packages,
     // writing to VFS, injecting into builtins, and signaling ready.
+    // Uses js.fetch (always available) instead of pyodide.http.pyfetch.
     return `
 import js, asyncio
-from pyodide.http import pyfetch
 async def _praxis_init():
-    href = str(js.window.location.href)
-    idx = href.find('/assets/jupyterlite/')
-    host_root = href[:idx+1] if idx >= 0 else str(js.window.location.origin) + '/'
-    js.console.log(f'[Bootstrap] Fetching praxis_bootstrap.py from {host_root}')
-    r = await pyfetch(host_root + 'assets/jupyterlite/praxis_bootstrap.py')
-    code = await r.string()
-    g = dict(globals())
-    exec(compile(code, 'praxis_bootstrap.py', 'exec'), g)
-    await g['praxis_main'](host_root)
+    try:
+        href = str(js.window.location.href)
+        idx = href.find('/assets/jupyterlite/')
+        host_root = href[:idx+1] if idx >= 0 else str(js.window.location.origin) + '/'
+        js.console.log(f'[Bootstrap] Fetching praxis_bootstrap.py from {host_root}')
+        url = host_root + 'assets/jupyterlite/praxis_bootstrap.py'
+        r = await js.fetch(url)
+        code = str(await r.text())
+        js.console.log(f'[Bootstrap] Fetched {len(code)} bytes, executing...')
+        g = dict(globals())
+        exec(compile(code, 'praxis_bootstrap.py', 'exec'), g)
+        await g['praxis_main'](host_root)
+    except Exception as e:
+        js.console.error(f'[Bootstrap] FATAL: {e}')
+        import traceback; traceback.print_exc()
 asyncio.ensure_future(_praxis_init())
 `.trim();
   }

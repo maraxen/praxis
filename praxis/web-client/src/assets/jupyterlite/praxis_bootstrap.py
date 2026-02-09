@@ -1,7 +1,8 @@
 """
 Praxis JupyterLite Bootstrap (Phase 2)
 Self-contained: fetches its own shims, bridge, and packages from the server.
-Called by the minimal URL bootstrap which passes PRAXIS_HOST_ROOT.
+Called by the minimal URL bootstrap which passes host_root.
+Uses js.fetch (always available) instead of pyodide.http.pyfetch.
 """
 import os
 import sys
@@ -12,7 +13,6 @@ import importlib
 async def praxis_main(host_root: str):
     """Full bootstrap: fetch files, write to VFS, inject shims, signal ready."""
     import js
-    from pyodide.http import pyfetch
 
     js.console.log(f'[Bootstrap] Starting with host_root: {host_root}')
 
@@ -29,7 +29,7 @@ async def praxis_main(host_root: str):
         'praxis/interactive.py': f'{host_root}assets/python/praxis/interactive.py',
     }
 
-    # --- 2. Fetch all files in parallel ---
+    # --- 2. Fetch all files ---
     all_urls = {}
     all_urls.update({k: v[1] for k, v in shims.items()})
     all_urls.update(other_files)
@@ -37,9 +37,9 @@ async def praxis_main(host_root: str):
     fetched = {}
     for filename, url in all_urls.items():
         try:
-            r = await pyfetch(url)
+            r = await js.fetch(url)
             if r.status == 200:
-                fetched[filename] = await r.string()
+                fetched[filename] = str(await r.text())
                 js.console.log(f'[Bootstrap] ✓ Fetched {filename}')
             else:
                 js.console.warn(f'[Bootstrap] ✗ {filename}: HTTP {r.status}')
