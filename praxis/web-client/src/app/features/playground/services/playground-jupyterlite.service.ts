@@ -165,29 +165,24 @@ export class PlaygroundJupyterliteService {
   }
 
   public getMinimalBootstrap(): string {
-    // The kernel fetches praxis_bootstrap.py directly — no BroadcastChannel code transfer.
-    // praxis_bootstrap.py handles everything: fetching shims, bridge, packages,
-    // writing to VFS, injecting into builtins, and signaling ready.
-    // Uses js.fetch (always available) instead of pyodide.http.pyfetch.
+    // Compute host root in TypeScript and embed it — no js.window needed in worker.
+    // Uses synchronous XMLHttpRequest — works in web workers without async/await.
+    const hostRoot = this.calculateHostRoot();
     return `
-import js, asyncio
-async def _praxis_init():
-    try:
-        href = str(js.window.location.href)
-        idx = href.find('/assets/jupyterlite/')
-        host_root = href[:idx+1] if idx >= 0 else str(js.window.location.origin) + '/'
-        js.console.log(f'[Bootstrap] Fetching praxis_bootstrap.py from {host_root}')
-        url = host_root + 'assets/jupyterlite/praxis_bootstrap.py'
-        r = await js.fetch(url)
-        code = str(await r.text())
-        js.console.log(f'[Bootstrap] Fetched {len(code)} bytes, executing...')
-        g = dict(globals())
-        exec(compile(code, 'praxis_bootstrap.py', 'exec'), g)
-        await g['praxis_main'](host_root)
-    except Exception as e:
-        js.console.error(f'[Bootstrap] FATAL: {e}')
-        import traceback; traceback.print_exc()
-asyncio.ensure_future(_praxis_init())
+import js
+HOST_ROOT = '${hostRoot}'
+try:
+    js.console.log(f'[Bootstrap] Fetching praxis_bootstrap.py from {HOST_ROOT}')
+    xhr = js.XMLHttpRequest.new()
+    xhr.open('GET', HOST_ROOT + 'assets/jupyterlite/praxis_bootstrap.py', False)
+    xhr.send(None)
+    code = str(xhr.responseText)
+    js.console.log(f'[Bootstrap] Fetched {len(code)} bytes, executing...')
+    exec(compile(code, 'praxis_bootstrap.py', 'exec'))
+    praxis_main(HOST_ROOT)
+except Exception as e:
+    js.console.error(f'[Bootstrap] FATAL: {e}')
+    import traceback; traceback.print_exc()
 `.trim();
   }
 

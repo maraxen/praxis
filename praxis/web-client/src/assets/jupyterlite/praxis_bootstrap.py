@@ -1,8 +1,8 @@
 """
 Praxis JupyterLite Bootstrap (Phase 2)
 Self-contained: fetches its own shims, bridge, and packages from the server.
+Fully synchronous — uses XMLHttpRequest, no async/await needed.
 Called by the minimal URL bootstrap which passes host_root.
-Uses js.fetch (always available) instead of pyodide.http.pyfetch.
 """
 import os
 import sys
@@ -10,7 +10,18 @@ import builtins
 import importlib
 
 
-async def praxis_main(host_root: str):
+def _sync_fetch(url):
+    """Fetch a URL synchronously using XMLHttpRequest (works in web workers)."""
+    import js
+    xhr = js.XMLHttpRequest.new()
+    xhr.open('GET', url, False)  # False = synchronous
+    xhr.send(None)
+    if xhr.status == 200:
+        return str(xhr.responseText)
+    return None
+
+
+def praxis_main(host_root: str):
     """Full bootstrap: fetch files, write to VFS, inject shims, signal ready."""
     import js
 
@@ -37,14 +48,14 @@ async def praxis_main(host_root: str):
     fetched = {}
     for filename, url in all_urls.items():
         try:
-            r = await js.fetch(url)
-            if r.status == 200:
-                fetched[filename] = str(await r.text())
-                js.console.log(f'[Bootstrap] ✓ Fetched {filename}')
+            code = _sync_fetch(url)
+            if code:
+                fetched[filename] = code
+                js.console.log(f'[Bootstrap] \u2713 Fetched {filename}')
             else:
-                js.console.warn(f'[Bootstrap] ✗ {filename}: HTTP {r.status}')
+                js.console.warn(f'[Bootstrap] \u2717 {filename}: fetch failed')
         except Exception as e:
-            js.console.warn(f'[Bootstrap] ✗ {filename}: {e}')
+            js.console.warn(f'[Bootstrap] \u2717 {filename}: {e}')
 
     # --- 3. Write files to Pyodide VFS ---
     for path, code in fetched.items():
@@ -67,7 +78,7 @@ async def praxis_main(host_root: str):
                 exec(fetched[filename], ns)
                 if shim_name in ns:
                     setattr(builtins, shim_name, ns[shim_name])
-                    js.console.log(f'[Bootstrap] ✓ {shim_name} injected into builtins')
+                    js.console.log(f'[Bootstrap] \u2713 {shim_name} injected into builtins')
             except Exception as e:
                 js.console.warn(f'[Bootstrap] Failed to inject {shim_name}: {e}')
 
@@ -75,7 +86,7 @@ async def praxis_main(host_root: str):
     if 'web_bridge.py' in fetched:
         try:
             import web_bridge
-            js.console.log('[Bootstrap] ✓ web_bridge imported')
+            js.console.log('[Bootstrap] \u2713 web_bridge imported')
         except Exception as e:
             js.console.error(f'[Bootstrap] Failed to import web_bridge: {e}')
 
@@ -84,8 +95,6 @@ async def praxis_main(host_root: str):
         ch = js.BroadcastChannel.new('praxis_repl')
         msg = js.Object.fromEntries([['type', 'praxis:ready']])
         ch.postMessage(msg)
-        if hasattr(js, 'window'):
-            js.window.parent.postMessage(msg, '*')
-        js.console.log('[Bootstrap] ✓ Praxis bootstrap complete, ready signal sent')
+        js.console.log('[Bootstrap] \u2713 Praxis bootstrap complete, ready signal sent')
     except Exception as e:
         js.console.error(f'[Bootstrap] Failed to signal ready: {e}')
