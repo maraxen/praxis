@@ -1,10 +1,11 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, APP_INITIALIZER } from '@angular/core';
-import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
+import { provideRouter, withComponentInputBinding, withInMemoryScrolling, RouteReuseStrategy } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideHttpClient, withInterceptors, HttpRequest, HttpHandlerFn, HttpClient } from '@angular/common/http';
 import { provideMarkdown } from 'ngx-markdown';
 import { inject } from '@angular/core';
 import { routes } from './app.routes';
+import { PlaygroundRouteReuseStrategy } from './features/playground/playground-route-reuse.strategy';
 import { errorInterceptor } from './core/http/error.interceptor';
 import { browserModeInterceptor } from './core/interceptors/browser-mode.interceptor';
 import { importProvidersFrom } from '@angular/core';
@@ -83,6 +84,8 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     // Browser Mode interceptor runs FIRST to catch API requests before they hit proxy
     provideHttpClient(withInterceptors([browserModeInterceptor, keycloakInterceptor, errorInterceptor])),
+    // Keep playground component alive during navigation (preserves JupyterLite kernel)
+    { provide: RouteReuseStrategy, useClass: PlaygroundRouteReuseStrategy },
     provideMarkdown({
       loader: HttpClient,
       mermaid: true
