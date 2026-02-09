@@ -4,10 +4,10 @@ import { WizardPage } from '../page-objects/wizard.page';
 import { WelcomePage } from '../page-objects/welcome.page';
 
 test.describe('Run Protocol - Machine Selection', () => {
-    test('should navigate and select a simulated machine', async ({ page }) => {
-        const welcomePage = new WelcomePage(page);
-        const protocolPage = new ProtocolPage(page);
-        const wizardPage = new WizardPage(page);
+    test('should navigate and select a simulated machine', async ({ page }, testInfo) => {
+        const welcomePage = new WelcomePage(page, testInfo);
+        const protocolPage = new ProtocolPage(page, testInfo);
+        const wizardPage = new WizardPage(page, testInfo);
 
         await protocolPage.goto();
 
@@ -27,10 +27,10 @@ test.describe('Run Protocol - Machine Selection', () => {
         await wizardPage.verifyMachineSelected(accessionId!);
     });
 
-    test('should prevent selection of incompatible machine', async ({ page }) => {
-        const welcomePage = new WelcomePage(page);
-        const protocolPage = new ProtocolPage(page);
-        const wizardPage = new WizardPage(page);
+    test('should prevent selection of incompatible machine', async ({ page }, testInfo) => {
+        const welcomePage = new WelcomePage(page, testInfo);
+        const protocolPage = new ProtocolPage(page, testInfo);
+        const wizardPage = new WizardPage(page, testInfo);
 
         await protocolPage.goto();
 
@@ -48,12 +48,17 @@ test.describe('Run Protocol - Machine Selection', () => {
         await expect(continueButton).toBeDisabled();
     });
 
-    test('should block simulated machines in physical mode', async ({ page }) => {
-        const welcomePage = new WelcomePage(page);
-        const protocolPage = new ProtocolPage(page);
-        const wizardPage = new WizardPage(page);
+    test('should block simulated machines in physical mode', async ({ page }, testInfo) => {
+        const welcomePage = new WelcomePage(page, testInfo);
+        const protocolPage = new ProtocolPage(page, testInfo);
+        const wizardPage = new WizardPage(page, testInfo);
 
-        await page.goto('/app/run?mode=physical');
+        // Navigate with worker DB isolation + physical mode
+        await protocolPage.goto();
+        // Switch to physical mode via URL
+        const url = page.url();
+        const newUrl = url.replace('mode=browser', 'mode=physical');
+        await page.goto(newUrl, { waitUntil: 'domcontentloaded' });
 
         await protocolPage.selectFirstProtocol();
         await protocolPage.continueFromSelection();
@@ -74,13 +79,13 @@ test.describe('Run Protocol - Machine Selection', () => {
         await wizardPage.verifyMachineSelected('');
     });
 
-    test('should handle machine fetch failure gracefully', async ({ page }) => {
+    test('should handle machine fetch failure gracefully', async ({ page }, testInfo) => {
         // Intercept and fail the machine list request
         await page.route('**/api/machines**', route => route.abort());
 
-        const welcomePage = new WelcomePage(page);
-        const protocolPage = new ProtocolPage(page);
-        const wizardPage = new WizardPage(page);
+        const welcomePage = new WelcomePage(page, testInfo);
+        const protocolPage = new ProtocolPage(page, testInfo);
+        const wizardPage = new WizardPage(page, testInfo);
 
         await protocolPage.goto();
 

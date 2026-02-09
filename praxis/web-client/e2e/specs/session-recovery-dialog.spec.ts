@@ -5,9 +5,7 @@
  * 1. The session recovery service correctly identifies orphaned runs
  * 2. The dialog appears on page load when orphaned runs exist (requires page reload)
  * 
- * Note: Testing dialog appearance after navigation is complex due to OPFS 
- * database isolation between worker instances. These tests focus on 
- * verifying the service logic works within a single session.
+ * Uses __e2e API for direct SQL access instead of Angular repository patterns.
  */
 import { test, expect, gotoWithWorkerDb } from '../fixtures/worker-db.fixture';
 
@@ -36,48 +34,33 @@ async function dismissWelcomeDialogIfPresent(page: any): Promise<void> {
 }
 
 /**
- * Wait for SQLite to be ready
+ * Wait for SQLite to be ready via data attribute
  */
 async function waitForSqliteReady(page: any): Promise<void> {
-    await page.waitForFunction(() => {
-        const service = (window as any).sqliteService;
-        return typeof service?.isReady === 'function' && service.isReady() === true;
-    }, null, { timeout: 15000 });
+    await page.locator('[data-sqlite-ready="true"]').waitFor({ state: 'attached', timeout: 15000 });
 }
 
 test.describe('Session Recovery Service', () => {
 
-    test('checkForOrphanedRuns returns orphaned runs correctly', async ({ page, workerIndex }) => {
+    test('checkForOrphanedRuns returns orphaned runs correctly', async ({ page, workerIndex }, testInfo) => {
         const staleHeartbeat = Date.now() - 60000; // 60 seconds ago (stale)
 
-        await gotoWithWorkerDb(page, '/app/home', { workerIndex }, { resetdb: true });
+        await gotoWithWorkerDb(page, '/app/home', testInfo, { resetdb: true });
         await waitForSqliteReady(page);
 
-        // Create orphaned run via repository
+        // Create orphaned run via __e2e API
         const createResult = await page.evaluate(async (heartbeat: number) => {
-            const service = (window as any).sqliteService;
-            if (!service) return { error: 'sqliteService not exposed' };
+            const e2e = (window as any).__e2e;
+            if (!e2e) return { error: '__e2e API not found' };
 
-            const repo = await new Promise((resolve) => {
-                service.protocolRuns.subscribe((r: any) => {
-                    if (r) resolve(r);
-                });
-            }) as any;
-
-            // Create the orphaned run
             try {
-                await new Promise<void>((resolve, reject) => {
-                    repo.create({
-                        accession_id: 'orphaned-run-test-1',
-                        name: 'Test Protocol Run',
-                        status: 'running',
-                        properties_json: { lastHeartbeat: heartbeat },
-                        top_level_protocol_definition_accession_id: 'test-protocol-def'
-                    }).subscribe({
-                        next: () => resolve(),
-                        error: (err: any) => reject(err)
-                    });
-                });
+                const now = new Date().toISOString();
+                const properties = JSON.stringify({ lastHeartbeat: heartbeat });
+                await e2e.exec(
+                    `INSERT INTO protocol_runs (accession_id, name, status, properties_json, top_level_protocol_definition_accession_id, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?)`,
+                    ['orphaned-run-test-1', 'Test Protocol Run', 'running', properties, 'test-protocol-def', now]
+                );
                 return { success: true };
             } catch (err: any) {
                 return { error: err.message };
@@ -87,28 +70,19 @@ test.describe('Session Recovery Service', () => {
         expect(createResult.error).toBeUndefined();
         expect(createResult.success).toBe(true);
 
-        // Test that checkForOrphanedRuns finds the run
+        // Test that we can find the orphaned run via query
         const orphanedRuns = await page.evaluate(async () => {
-            const service = (window as any).sqliteService;
-
-            const repo = await new Promise((resolve) => {
-                service.protocolRuns.subscribe((r: any) => {
-                    if (r) resolve(r);
-                });
-            }) as any;
+            const e2e = (window as any).__e2e;
+            const staleThreshold = Date.now() - 30000;
 
             // Find runs with 'running' status
-            const runs = await new Promise<any[]>((resolve) => {
-                repo.findByStatus(['running']).subscribe({
-                    next: (r: any[]) => resolve(r),
-                    error: () => resolve([])
-                });
-            });
+            const runs = await e2e.query("SELECT * FROM protocol_runs WHERE status = 'running'");
 
             // Filter for stale heartbeat (30 seconds)
-            const staleThreshold = Date.now() - 30000;
             const orphaned = runs.filter((run: any) => {
-                const lastHeartbeat = run.properties_json?.lastHeartbeat ?? 0;
+                let props: any = {};
+                try { props = typeof run.properties_json === 'string' ? JSON.parse(run.properties_json) : (run.properties_json || {}); } catch { }
+                const lastHeartbeat = props.lastHeartbeat ?? 0;
                 return lastHeartbeat < staleThreshold;
             });
 
@@ -120,85 +94,64 @@ test.describe('Session Recovery Service', () => {
         expect(orphanedRuns[0].status).toBe('running');
     });
 
-    test('markAsFailed updates run status correctly', async ({ page, workerIndex }) => {
+    test('markAsFailed updates run status correctly', async ({ page, workerIndex }, testInfo) => {
         const staleHeartbeat = Date.now() - 60000;
 
-        await gotoWithWorkerDb(page, '/app/home', { workerIndex }, { resetdb: true });
+        await gotoWithWorkerDb(page, '/app/home', testInfo, { resetdb: true });
         await waitForSqliteReady(page);
 
-        // Create and then update orphaned run
+        // Create and then update orphaned run via __e2e API
         const result = await page.evaluate(async (heartbeat: number) => {
-            const service = (window as any).sqliteService;
-            if (!service) return { error: 'sqliteService not exposed' };
+            const e2e = (window as any).__e2e;
+            if (!e2e) return { error: '__e2e API not found' };
 
-            const repo = await new Promise((resolve) => {
-                service.protocolRuns.subscribe((r: any) => {
-                    if (r) resolve(r);
-                });
-            }) as any;
+            try {
+                const now = new Date().toISOString();
+                const properties = JSON.stringify({ lastHeartbeat: heartbeat });
 
-            // Create orphaned run
-            await new Promise<void>((resolve, reject) => {
-                repo.create({
-                    accession_id: 'orphaned-run-test-2',
-                    name: 'Test Protocol Run 2',
-                    status: 'running',
-                    properties_json: { lastHeartbeat: heartbeat },
-                    top_level_protocol_definition_accession_id: 'test-protocol-def'
-                }).subscribe({
-                    next: () => resolve(),
-                    error: (err: any) => reject(err)
-                });
-            });
+                // Create orphaned run
+                await e2e.exec(
+                    `INSERT INTO protocol_runs (accession_id, name, status, properties_json, top_level_protocol_definition_accession_id, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?)`,
+                    ['orphaned-run-test-2', 'Test Protocol Run 2', 'running', properties, 'test-protocol-def', now]
+                );
 
-            // Update to failed
-            await new Promise<void>((resolve, reject) => {
-                repo.update('orphaned-run-test-2', { status: 'failed' }).subscribe({
-                    next: () => resolve(),
-                    error: (err: any) => reject(err)
-                });
-            });
+                // Update to failed
+                await e2e.exec(
+                    "UPDATE protocol_runs SET status = 'failed' WHERE accession_id = ?",
+                    ['orphaned-run-test-2']
+                );
 
-            // Verify update
-            const updated = await new Promise<any>((resolve) => {
-                repo.findById('orphaned-run-test-2').subscribe({
-                    next: (r: any) => resolve(r),
-                    error: () => resolve(null)
-                });
-            });
-
-            return { status: updated?.status };
+                // Verify update
+                const rows = await e2e.query("SELECT status FROM protocol_runs WHERE accession_id = 'orphaned-run-test-2'");
+                return { status: rows[0]?.status };
+            } catch (err: any) {
+                return { error: err.message };
+            }
         }, staleHeartbeat);
 
         expect(result.status).toBe('failed');
     });
 
-    test('no orphaned runs when none exist', async ({ page, workerIndex }) => {
-        await gotoWithWorkerDb(page, '/app/home', { workerIndex }, { resetdb: true });
+    test('no orphaned runs when none exist', async ({ page, workerIndex }, testInfo) => {
+        await gotoWithWorkerDb(page, '/app/home', testInfo, { resetdb: true });
         await waitForSqliteReady(page);
 
-        // Check for orphaned runs (should be none)
+        // Check for orphaned runs (should be none in clean DB)
         const orphanedRuns = await page.evaluate(async () => {
-            const service = (window as any).sqliteService;
-
-            const repo = await new Promise((resolve) => {
-                service.protocolRuns.subscribe((r: any) => {
-                    if (r) resolve(r);
-                });
-            }) as any;
+            const e2e = (window as any).__e2e;
 
             // Find runs with active status
-            const runs = await new Promise<any[]>((resolve) => {
-                repo.findByStatus(['running', 'pausing', 'resuming']).subscribe({
-                    next: (r: any[]) => resolve(r),
-                    error: () => resolve([])
-                });
-            });
+            const runs = await e2e.query(
+                "SELECT * FROM protocol_runs WHERE status IN ('running', 'pausing', 'resuming')"
+            );
 
             // Filter for stale heartbeat
             const staleThreshold = Date.now() - 30000;
             const orphaned = runs.filter((run: any) => {
-                const lastHeartbeat = run.properties_json?.lastHeartbeat ?? 0;
+                let props: any = {};
+                try { props = typeof run.properties_json === 'string' ? JSON.parse(run.properties_json) : (run.properties_json || {}); } catch { }
+                const lastHeartbeat = props.lastHeartbeat ?? 0;
                 return lastHeartbeat < staleThreshold;
             });
 
@@ -208,8 +161,8 @@ test.describe('Session Recovery Service', () => {
         expect(orphanedRuns.length).toBe(0);
     });
 
-    test('does not show session recovery dialog when no orphaned runs', async ({ page, workerIndex }) => {
-        await gotoWithWorkerDb(page, '/app/home', { workerIndex }, { resetdb: true });
+    test('does not show session recovery dialog when no orphaned runs', async ({ page, workerIndex }, testInfo) => {
+        await gotoWithWorkerDb(page, '/app/home', testInfo, { resetdb: true });
         await waitForSqliteReady(page);
 
         // Wait for any dialogs that might appear

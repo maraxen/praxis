@@ -1,33 +1,32 @@
-import { test, expect } from '../fixtures/worker-db.fixture';
+import { test, expect, gotoWithWorkerDb } from '../fixtures/worker-db.fixture';
 import { AssetsPage } from '../page-objects/assets.page';
 import { WelcomePage } from '../page-objects/welcome.page';
 import { WizardPage } from '../page-objects/wizard.page';
 import { ProtocolPage } from '../page-objects/protocol.page';
 
 test.describe('User Journeys', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
     // 1. Bypass login token check if needed
     await page.addInitScript(() => {
       localStorage.setItem('auth_token', 'fake-token');
       localStorage.setItem('auth_user', JSON.stringify({ username: 'test_user' }));
     });
 
-    // 2. Initial Navigation with browser mode - manually to avoid base.page.ts issue
-    await page.goto('/?mode=browser'); // Start at root
-    await page.waitForURL('**/app/home**'); // Wait for redirect to home
+    // 2. Initial Navigation with browser mode + worker DB isolation
+    await gotoWithWorkerDb(page, '/app/home', testInfo);
 
     // 3. Handle Welcome Dialog
-    const welcomePage = new WelcomePage(page);
+    const welcomePage = new WelcomePage(page, testInfo);
 
     // 4. Ensure Shell is loaded as a sanity check
     await expect(page.locator('.sidebar-rail')).toBeVisible({ timeout: 10000 });
   });
 
-  test('Asset Management: View and Create Machine', async ({ page }) => {
-    const assetsPage = new AssetsPage(page);
+  test('Asset Management: View and Create Machine', async ({ page }, testInfo) => {
+    const assetsPage = new AssetsPage(page, testInfo);
 
     // Navigate with proper isolation
-    await page.goto('/assets?mode=browser');
+    await gotoWithWorkerDb(page, '/app/assets', testInfo);
     await assetsPage.navigateToMachines();
 
     // Create using POM method (already handles all wizard steps)
@@ -46,11 +45,11 @@ test.describe('User Journeys', () => {
     expect(assetExists).toBe(true);
   });
 
-  test('Protocol Workflow: Select and Run', async ({ page }) => {
-    const wizard = new WizardPage(page);
-    const protocolPage = new ProtocolPage(page);
+  test('Protocol Workflow: Select and Run', async ({ page }, testInfo) => {
+    const wizard = new WizardPage(page, testInfo);
+    const protocolPage = new ProtocolPage(page, testInfo);
 
-    await page.goto('/protocols?mode=browser');
+    await gotoWithWorkerDb(page, '/app/protocols', testInfo);
 
     // Click run on Simple Transfer
     await protocolPage.runProtocol('Simple Transfer');

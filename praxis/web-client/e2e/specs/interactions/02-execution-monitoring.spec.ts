@@ -12,7 +12,7 @@ test.describe('Execution Monitoring', () => {
 
   test('should display execution log panel during protocol run', async ({ page }, testInfo) => {
     const protocolPage = new ProtocolPage(page, testInfo);
-    const wizardPage = new WizardPage(page);
+    const wizardPage = new WizardPage(page, testInfo);
     const monitorPage = new ExecutionMonitorPage(page, testInfo);
 
     // 1. Navigate to protocols and start a run

@@ -6,9 +6,9 @@ test.describe('@slow Playground Direct Control', () => {
     let playgroundPage: PlaygroundPage;
     let welcomePage: WelcomePage;
 
-    test.beforeEach(async ({ page }) => {
-        playgroundPage = new PlaygroundPage(page);
-        welcomePage = new WelcomePage(page);
+    test.beforeEach(async ({ page }, testInfo) => {
+        playgroundPage = new PlaygroundPage(page, testInfo);
+        welcomePage = new WelcomePage(page, testInfo);
         await playgroundPage.goto('worker');
     });
 

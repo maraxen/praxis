@@ -7,9 +7,9 @@ test.describe('Workcell Dashboard - Empty State', () => {
     let workcellPage: WorkcellPage;
 
     test.beforeEach(async ({ page }, testInfo) => {
-        workcellPage = new WorkcellPage(page);
+        workcellPage = new WorkcellPage(page, testInfo);
         await workcellPage.goto(testInfo);
-        const welcomePage = new WelcomePage(page);
+        const welcomePage = new WelcomePage(page, testInfo);
     });
 
     test('should load the dashboard page and display empty state', async () => {
@@ -22,51 +22,30 @@ test.describe('Workcell Dashboard - Populated State', () => {
     let workcellPage: WorkcellPage;
 
     test.beforeEach(async ({ page, testMachineData }, testInfo) => {
-        workcellPage = new WorkcellPage(page);
+        workcellPage = new WorkcellPage(page, testInfo);
 
         // 1. Navigate to the page with resetdb=1 to start clean
         const url = buildWorkerUrl('/app/workcell', testInfo.workerIndex, { resetdb: true });
         await page.goto(url, { waitUntil: 'networkidle' });
-        const welcomePage = new WelcomePage(page);
+        const welcomePage = new WelcomePage(page, testInfo);
 
-        // 2. Seed the machine data using the real SqliteService and refresh UI
+        // 2. Seed the machine data using __e2e API
         await page.evaluate(async (machine) => {
-            const service = (window as any).sqliteService;
-            if (!service) throw new Error('SqliteService not found');
-
-            const firstValue = <T>(obs: any): Promise<T> => new Promise((resolve, reject) => {
-                const sub = obs.subscribe({
-                    next: (val: T) => { resolve(val); sub.unsubscribe(); },
-                    error: (err: any) => { reject(err); sub.unsubscribe(); }
-                });
-            });
-
-            const repos = await firstValue<any>(service.getAsyncRepositories());
+            const e2e = (window as any).__e2e;
+            if (!e2e) throw new Error('__e2e API not found');
 
             // Clean up any existing machines from previous tests in the same worker session
-            await (window as any).__e2e.exec("DELETE FROM machines");
+            await e2e.exec("DELETE FROM machines");
 
-            await firstValue(repos.machines.create({
-                accession_id: machine.id,
-                name: machine.name,
-                machine_category: 'LiquidHandler',
-                status: 'IDLE',
-                fqn: 'pylabrobot.hamilton.STAR',
-                asset_type: 'MACHINE',
-                location: 'Bench 1',
-                maintenance_enabled: 0,
-                maintenance_schedule_json: JSON.stringify({ intervals: [], enabled: false }),
-                is_simulation_override: 0,
-                serial_number: 'SN-E2E',
-                properties_json: '{}'
-            }));
-
-            // Refresh UI via the exposed dashboard component
-            const dashboard = (window as any).dashboard;
-            if (dashboard && dashboard.viewService) {
-                await firstValue(dashboard.viewService.loadWorkcellGroups());
-            }
+            await e2e.exec(
+                `INSERT INTO machines (accession_id, name, machine_category, status, fqn, asset_type, location, maintenance_enabled, maintenance_schedule_json, is_simulation_override, serial_number, properties_json)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [machine.id, machine.name, 'LiquidHandler', 'IDLE', 'pylabrobot.hamilton.STAR', 'MACHINE', 'Bench 1', 0, JSON.stringify({ intervals: [], enabled: false }), 0, 'SN-E2E', '{}']
+            );
         }, testMachineData);
+
+        // 3. Reload to pick up seeded data
+        await page.goto(url.replace('resetdb=true', 'resetdb=false'), { waitUntil: 'networkidle' });
     });
 
     test('should load the dashboard page and display machine cards', async () => {

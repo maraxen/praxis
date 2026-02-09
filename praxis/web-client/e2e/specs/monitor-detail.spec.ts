@@ -1,61 +1,32 @@
 import { test, expect, buildIsolatedUrl, waitForDbReady } from '../fixtures/app.fixture';
+import { gotoWithWorkerDb } from '../fixtures/worker-db.fixture';
 import { ExecutionMonitorPage } from '../page-objects/monitor.page';
 
 /**
  * Seeding helper to inject a fake protocol run directly into the browser SQLite DB.
+ * Uses the __e2e API instead of sqliteService for reliability.
  */
 async function seedFakeRun(page: any, runId: string, runName: string, status = 'COMPLETED') {
   console.log(`[Seeding] Starting for run ${runId}...`);
   const result = await page.evaluate(async ({ id, name, runStatus }: { id: string; name: string; runStatus: string }) => {
-    const sqlite = (window as any).sqliteService;
-    if (!sqlite) throw new Error('sqliteService not found on window');
+    const e2e = (window as any).__e2e;
+    if (!e2e) throw new Error('__e2e API not found');
 
-    // 1. Get Repositories
-    const repos = await new Promise<any>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Timeout getting repositories')), 20000);
-      sqlite.getAsyncRepositories().subscribe({
-        next: (r: any) => {
-          clearTimeout(timeout);
-          resolve(r);
-        },
-        error: (err: any) => {
-          clearTimeout(timeout);
-          reject(err);
-        }
-      });
-    });
-
-    // 2. Ensure Protocol exists
-    const protocols = await new Promise<any[]>(resolve => {
-      repos.protocolDefinitions.findAll().subscribe({
-        next: (p: any) => resolve(p || []),
-        error: () => resolve([])
-      });
-    });
-    let protocol = protocols.find((p: any) => p.name === 'Kinetic Assay');
-
-    if (!protocol) {
+    // 1. Ensure protocol definition exists
+    const protocols = await e2e.query("SELECT * FROM function_protocol_definitions WHERE name = 'Kinetic Assay'");
+    let protocolId = 'proto-kinetic-assay';
+    if (!protocols || protocols.length === 0) {
       console.log('[Seeding] Protocol not found, creating dummy...');
-      protocol = await new Promise<any>(resolve => {
-        repos.protocolDefinitions.create({
-          accession_id: 'proto-kinetic-assay',
-          name: 'Kinetic Assay',
-          fqn: 'pylabrobot.protocols.kinetic_assay',
-          version: '1.0.0',
-          description: 'Seeded for E2E testing',
-          source_file_path: 'kinetic_assay.py',
-          module_name: 'kinetic_assay',
-          function_name: 'run',
-          is_top_level: 1,
-          solo_execution: 1,
-          preconfigure_deck: 1,
-          requires_deck: 1,
-          deprecated: 0
-        }).subscribe((p: any) => resolve(p));
-      });
+      await e2e.exec(
+        `INSERT INTO function_protocol_definitions (accession_id, name, fqn, version, description, source_file_path, module_name, function_name, is_top_level, solo_execution, preconfigure_deck, requires_deck, deprecated)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [protocolId, 'Kinetic Assay', 'pylabrobot.protocols.kinetic_assay', '1.0.0', 'Seeded for E2E testing', 'kinetic_assay.py', 'kinetic_assay', 'run', 1, 1, 1, 1, 0]
+      );
+    } else {
+      protocolId = protocols[0].accession_id;
     }
 
-    // 3. Create the protocol run
+    // 2. Create state history
     const stateBefore = { tips: { tips_loaded: false, tips_count: 0 }, liquids: {}, on_deck: [] };
     const stateAfter = { tips: { tips_loaded: true, tips_count: 8 }, liquids: {}, on_deck: [] };
     const stateHistory = {
@@ -77,36 +48,21 @@ async function seedFakeRun(page: any, runId: string, runName: string, status = '
       final_state: stateAfter
     };
 
+    // 3. Create the protocol run
     console.log('[Seeding] Creating run record...');
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Timeout creating run')), 10000);
-      repos.protocolRuns.create({
-        accession_id: id,
-        protocol_definition_accession_id: protocol.accession_id,
-        top_level_protocol_definition_accession_id: protocol.accession_id,
-        name: name,
-        status: runStatus,
-        created_at: new Date().toISOString(),
-        start_time: new Date().toISOString(),
-        end_time: runStatus === 'COMPLETED' ? new Date().toISOString() : null,
-        input_parameters_json: { "Output Directory": "/tmp/output", "Volume": 50 },
-        properties_json: {
-          notes: "Seeded for E2E testing",
-          simulation_mode: true,
-          state_history: stateHistory
-        },
-        resolved_assets_json: []
-      }).subscribe({
-        next: () => {
-          clearTimeout(timeout);
-          resolve();
-        },
-        error: (err: any) => {
-          clearTimeout(timeout);
-          reject(err);
-        }
-      });
+    const now = new Date().toISOString();
+    const inputParams = JSON.stringify({ "Output Directory": "/tmp/output", "Volume": 50 });
+    const properties = JSON.stringify({
+      notes: "Seeded for E2E testing",
+      simulation_mode: true,
+      state_history: stateHistory
     });
+
+    await e2e.exec(
+      `INSERT INTO protocol_runs (accession_id, protocol_definition_accession_id, top_level_protocol_definition_accession_id, name, status, created_at, start_time, end_time, input_parameters_json, properties_json, resolved_assets_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, protocolId, protocolId, name, runStatus, now, now, runStatus === 'COMPLETED' ? now : null, inputParams, properties, '[]']
+    );
 
     return { success: true };
   }, { id: runId, name: runName, runStatus: status });
@@ -118,19 +74,19 @@ test.describe('Run Detail View (using seeded data)', () => {
   const SEEDED_RUN_ID = 'e2e00000000000000000000000000001';
   const SEEDED_RUN_NAME = 'Seeded Kinetic Assay';
 
-  test.beforeEach(async ({ page }) => {
-    monitorPage = new ExecutionMonitorPage(page);
+  test.beforeEach(async ({ page }, testInfo) => {
+    monitorPage = new ExecutionMonitorPage(page, testInfo);
   });
 
   test.afterEach(async ({ page }) => {
     await page.keyboard.press('Escape').catch(() => { });
   });
 
-  test('verifies seeded run details', async ({ page }) => {
+  test('verifies seeded run details', async ({ page }, testInfo) => {
     page.on('console', msg => console.log(`[Browser] ${msg.type()}: ${msg.text()}`));
 
-    // 1. Navigate to monitor page first to get DB context
-    await page.goto('/app/monitor?mode=browser');
+    // 1. Navigate to monitor page with worker DB isolation
+    await gotoWithWorkerDb(page, '/app/monitor', testInfo, { resetdb: true });
     await waitForDbReady(page, 30000);
 
     // 2. Seed data
@@ -138,7 +94,7 @@ test.describe('Run Detail View (using seeded data)', () => {
 
     // 3. Reload to pick up seeded data
     console.log('[Test] Reloading page...');
-    await page.reload();
+    await gotoWithWorkerDb(page, '/app/monitor', testInfo, { resetdb: false });
     await waitForDbReady(page, 30000);
 
     // 4. Verify in history table

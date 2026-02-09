@@ -15,68 +15,29 @@ test.describe('Visualization Review Panel', () => {
         // 2. Wait for component to be present
         await page.waitForSelector('app-data-visualization', { timeout: 10000 });
 
-        // 3. Seed mock data
+        // 3. Seed mock data using __e2e API (sqliteService is not exposed in test builds)
         await page.evaluate(async () => {
-            console.log('[E2E Seed] Starting seeding...');
-            const service = (window as any).sqliteService;
-            if (!service) throw new Error("sqliteService not found");
+            console.log('[E2E Seed] Starting seeding via __e2e API...');
+            const e2e = (window as any).__e2e;
+            if (!e2e) throw new Error("__e2e API not found");
 
-            const repos = await new Promise(resolve => service.getAsyncRepositories().subscribe(resolve)) as any;
-            
-            // Create a mock run
             const runId = 'e2e-run-' + Date.now();
             console.log(`[E2E Seed] Creating run ${runId}`);
-            await new Promise(resolve => repos.protocolRuns.create({
-                accession_id: runId,
-                name: 'PCR Prep Test',
-                status: 'COMPLETED',
-                created_at: new Date().toISOString(),
-                top_level_protocol_definition_accession_id: 'kinetic-assay'
-            }).subscribe(resolve));
-            
-            // Force component to refresh runs
-            const el = document.querySelector('app-data-visualization');
-            if (!el) {
-                console.warn('[E2E Seed] app-data-visualization element not found');
-                return;
-            }
-            
-            const ng = (window as any).ng;
-            if (!ng) {
-                console.warn('[E2E Seed] window.ng not found (production build?)');
-                return;
-            }
 
-            const component = ng.getComponent(el);
-            if (component) {
-                console.log('[E2E Seed] Found component, refreshing runs...');
-                // We have to wait for the next tick for the DB to be updated
-                setTimeout(() => {
-                    (window as any).protocolService?.getRuns().subscribe((runs: any) => {
-                        console.log(`[E2E Seed] Got ${runs.length} runs from service`);
-                        // Component mapping logic
-                        const mappedRuns = runs.map((r: any) => ({
-                            id: r.accession_id,
-                            protocolName: r.name || 'Unknown Protocol',
-                            status: (r.status || 'failed').toLowerCase(),
-                            startTime: new Date(r.created_at),
-                            wellCount: 96,
-                            totalVolume: 1000
-                        }));
-                        component.runs.set(mappedRuns);
-                        // Select the first run
-                        if (mappedRuns.length > 0) {
-                            console.log('[E2E Seed] Selecting first run');
-                            component.selectRun(mappedRuns[0]);
-                        }
-                    });
-                }, 200);
-            } else {
-                console.warn('[E2E Seed] Could not get component instance');
-            }
+            // Insert test run directly via SQL
+            await e2e.query(
+                `INSERT INTO protocol_runs (accession_id, name, status, created_at, top_level_protocol_definition_accession_id)
+                 VALUES (?, ?, ?, ?, ?)`,
+                [runId, 'PCR Prep Test', 'COMPLETED', new Date().toISOString(), 'kinetic-assay']
+            );
+            console.log(`[E2E Seed] Run ${runId} inserted`);
         });
-        
-        // Wait for the table to appear in the same page load
+
+        // 4. Reload to pick up seeded data
+        await gotoWithWorkerDb(page, '/app/data', testInfo, { resetdb: false });
+        await page.waitForSelector('app-data-visualization', { timeout: 10000 });
+
+        // 5. Wait for the run to appear in the table
         await expect(vizPage.runHistoryTable.locator('tr').filter({ hasText: 'PCR Prep Test' })).toBeVisible({ timeout: 20000 });
     });
 
@@ -86,7 +47,7 @@ test.describe('Visualization Review Panel', () => {
         // Verify assertions about the review panel
         await expect(vizPage.heading).toBeVisible();
         await expect(page.locator('.stat-card')).toHaveCount(4);
-        
+
         // Check if chart becomes visible
         await expect(vizPage.chart).toBeVisible({ timeout: 60000 });
     });
@@ -96,11 +57,11 @@ test.describe('Visualization Review Panel', () => {
 
         await expect(vizPage.wellSelectorButton).toBeVisible();
         await vizPage.wellSelectorButton.click();
-        
+
         // Verify dialog opens
         await expect(page.locator('mat-dialog-container')).toBeVisible();
         await expect(page.getByText('Select Wells for Visualization')).toBeVisible();
-        
+
         // Close dialog
         await page.keyboard.press('Escape');
     });

@@ -1,30 +1,18 @@
 
-import { test, expect } from '../fixtures/worker-db.fixture';
+import { test, expect, gotoWithWorkerDb } from '../fixtures/worker-db.fixture';
 
 test.describe('Data Visualization Page', () => {
     test.slow();
 
-    test.beforeEach(async ({ page }) => {
-        // Mock authentication by setting a token in local storage and adding E2E_TEST flag
-        await page.addInitScript(() => {
-            localStorage.setItem('auth_token', 'mock_token');
-            (window as any).E2E_TEST = true;
-        });
-        await page.goto('/app/data');
+    test.beforeEach(async ({ page }, testInfo) => {
+        // Navigate with worker DB isolation
+        await gotoWithWorkerDb(page, '/app/data', testInfo);
 
         // Close any possible overlays (onboarding, etc)
         await page.keyboard.press('Escape');
 
-        // Wait for SQLite DB to be ready (signal or BehaviorSubject)
-        await page.waitForFunction(
-            () => {
-                const service = (window as any).sqliteService;
-                const isSignal = typeof service?.isReady === 'function';
-                return isSignal ? service.isReady() === true : service?.isReady$?.getValue() === true;
-            },
-            null,
-            { timeout: 30000 }
-        );
+        // Wait for SQLite DB to be ready via data attribute
+        await page.locator('[data-sqlite-ready="true"]').waitFor({ state: 'attached', timeout: 30000 });
     });
 
     test('should load the data visualization page', async ({ page }) => {
@@ -39,7 +27,7 @@ test.describe('Data Visualization Page', () => {
 
     test('should change x-axis', async ({ page }) => {
         // Ensure any loading overlays are gone
-        await page.locator('.cdk-overlay-backdrop').waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
+        await page.locator('.cdk-overlay-backdrop').waitFor({ state: 'detached', timeout: 5000 }).catch(() => { });
 
         // Use keyboard to interact with mat-select for better reliability
         const select = page.locator('mat-select').first();
@@ -57,7 +45,7 @@ test.describe('Data Visualization Page', () => {
 
     test('should export the chart', async ({ page }) => {
         // Ensure any loading overlays are gone
-        await page.locator('.cdk-overlay-backdrop').waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
+        await page.locator('.cdk-overlay-backdrop').waitFor({ state: 'detached', timeout: 5000 }).catch(() => { });
 
         const downloadPromise = page.waitForEvent('download');
         // Click via evaluate to bypass overlays
