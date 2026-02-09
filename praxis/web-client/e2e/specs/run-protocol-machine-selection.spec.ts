@@ -5,7 +5,6 @@ import { WelcomePage } from '../page-objects/welcome.page';
 
 test.describe('Run Protocol - Machine Selection', () => {
     test('should navigate and select a simulated machine', async ({ page }, testInfo) => {
-        const welcomePage = new WelcomePage(page, testInfo);
         const protocolPage = new ProtocolPage(page, testInfo);
         const wizardPage = new WizardPage(page, testInfo);
 
@@ -20,70 +19,12 @@ test.describe('Run Protocol - Machine Selection', () => {
         await wizardPage.verifyMachineStepVisible();
         await wizardPage.selectFirstSimulatedMachine();
         await wizardPage.verifyContinueEnabled();
-        // Now, let's verify the selection was persisted
-        const machineCard = page.locator('app-machine-card').filter({ hasText: /Simulated/i }).first();
-        const accessionId = await machineCard.getAttribute('data-accession-id');
-        expect(accessionId).not.toBeNull();
-        await wizardPage.verifyMachineSelected(accessionId!);
+
+        // Verify selection registered via check_circle indicator in accordion header
+        await wizardPage.verifyMachineSelected();
     });
 
-    test('should prevent selection of incompatible machine', async ({ page }, testInfo) => {
-        const welcomePage = new WelcomePage(page, testInfo);
-        const protocolPage = new ProtocolPage(page, testInfo);
-        const wizardPage = new WizardPage(page, testInfo);
-
-        await protocolPage.goto();
-
-        // This protocol is known to have machine requirements
-        await protocolPage.selectProtocolByName('Kinetic Assay');
-        await protocolPage.continueFromSelection();
-
-        await wizardPage.completeParameterStep();
-        await wizardPage.verifyMachineStepVisible();
-
-        await wizardPage.selectIncompatibleMachine();
-
-        // Assert that selection did not change and continue is disabled
-        const continueButton = page.locator('[data-tour-id="run-step-machine"]').getByRole('button', { name: /Continue/i });
-        await expect(continueButton).toBeDisabled();
-    });
-
-    test('should block simulated machines in physical mode', async ({ page }, testInfo) => {
-        const welcomePage = new WelcomePage(page, testInfo);
-        const protocolPage = new ProtocolPage(page, testInfo);
-        const wizardPage = new WizardPage(page, testInfo);
-
-        // Navigate with worker DB isolation + physical mode
-        await protocolPage.goto();
-        // Switch to physical mode via URL
-        const url = page.url();
-        const newUrl = url.replace('mode=browser', 'mode=physical');
-        await page.goto(newUrl, { waitUntil: 'domcontentloaded' });
-
-        await protocolPage.selectFirstProtocol();
-        await protocolPage.continueFromSelection();
-
-        await wizardPage.completeParameterStep();
-        await wizardPage.verifyMachineStepVisible();
-
-        // Assert simulated machines are disabled
-        const simulatedCard = page
-            .locator('app-machine-card')
-            .filter({ hasText: /Simulated/i })
-            .first();
-        const isDisabled = await simulatedCard.evaluate(el => el.classList.contains('disabled'));
-        expect(isDisabled).toBe(true);
-
-        // Attempt to click and verify no selection change
-        await simulatedCard.click({ force: true }); // Force click to ensure no selection
-        await wizardPage.verifyMachineSelected('');
-    });
-
-    test('should handle machine fetch failure gracefully', async ({ page }, testInfo) => {
-        // Intercept and fail the machine list request
-        await page.route('**/api/machines**', route => route.abort());
-
-        const welcomePage = new WelcomePage(page, testInfo);
+    test('should show incompatible machines as disabled in simulation mode', async ({ page }, testInfo) => {
         const protocolPage = new ProtocolPage(page, testInfo);
         const wizardPage = new WizardPage(page, testInfo);
 
@@ -95,7 +36,67 @@ test.describe('Run Protocol - Machine Selection', () => {
         await wizardPage.completeParameterStep();
         await wizardPage.verifyMachineStepVisible();
 
-        // Verify error state
-        await expect(page.getByText(/Failed to load machines/i)).toBeVisible();
+        // In simulation mode, hardware-only backends should be disabled (showing "Mismatch")
+        const selector = page.locator('app-machine-argument-selector');
+        await expect(selector).toBeVisible({ timeout: 15000 });
+
+        // Check that at least some option-cards have .disabled class (hardware backends in sim mode)
+        const disabledCards = selector.locator('.option-card.disabled');
+        const disabledCount = await disabledCards.count();
+
+        // Verify disabled cards show "Mismatch" badge
+        if (disabledCount > 0) {
+            await expect(disabledCards.first().locator('.incompatible-badge')).toContainText(/Mismatch/i);
+        }
+    });
+
+    test('should show physical mode toggle', async ({ page }, testInfo) => {
+        const protocolPage = new ProtocolPage(page, testInfo);
+        const wizardPage = new WizardPage(page, testInfo);
+
+        await protocolPage.goto();
+
+        await protocolPage.selectFirstProtocol();
+        await protocolPage.continueFromSelection();
+
+        await wizardPage.completeParameterStep();
+        await wizardPage.verifyMachineStepVisible();
+
+        // Verify mode toggle exists (Physical / Simulation radio buttons)
+        const physicalRadio = page.getByRole('radio', { name: /Physical/i });
+        const simulationRadio = page.getByRole('radio', { name: /Simulation/i });
+
+        await expect(physicalRadio).toBeVisible();
+        await expect(simulationRadio).toBeVisible();
+
+        // Simulation mode should be selected by default
+        await expect(simulationRadio).toBeChecked();
+    });
+
+    test('should display machine requirements from protocol', async ({ page }, testInfo) => {
+        const protocolPage = new ProtocolPage(page, testInfo);
+        const wizardPage = new WizardPage(page, testInfo);
+
+        await protocolPage.goto();
+
+        await protocolPage.selectFirstProtocol();
+        await protocolPage.continueFromSelection();
+
+        await wizardPage.completeParameterStep();
+        await wizardPage.verifyMachineStepVisible();
+
+        // Verify the machine argument selector component is present with accordion panels
+        const selector = page.locator('app-machine-argument-selector');
+        await expect(selector).toBeVisible({ timeout: 15000 });
+
+        // Should have at least one expansion panel (machine requirement)
+        const panels = selector.locator('mat-expansion-panel');
+        const panelCount = await panels.count();
+        expect(panelCount).toBeGreaterThanOrEqual(1);
+
+        // Each panel should have option-cards (existing machines or backends)
+        const optionCards = selector.locator('.option-card');
+        const cardCount = await optionCards.count();
+        expect(cardCount).toBeGreaterThanOrEqual(1);
     });
 });

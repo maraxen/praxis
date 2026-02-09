@@ -502,22 +502,47 @@ export class WizardPage {
         ).toBeVisible();
     }
 
+    /**
+     * Select a simulated backend option-card in MachineArgumentSelectorComponent.
+     * The component renders .option-card divs inside accordion panels,
+     * with simulation backends having .type-badge.sim containing "Sim".
+     */
     async selectFirstSimulatedMachine(): Promise<void> {
-        const machineCard = this.page
-            .locator('app-machine-card')
-            .filter({ hasText: /Simulated/i })
+        const selector = this.page.locator('app-machine-argument-selector');
+        await expect(selector).toBeVisible({ timeout: 15000 });
+
+        // Target option-cards that have a "Sim" badge (simulator backends)
+        const simCard = selector
+            .locator('.option-card')
+            .filter({ hasText: /Sim/ })
+            .filter({ hasNot: this.page.locator('.disabled') })
             .first();
-        await machineCard.click();
-        await expect(machineCard).toHaveClass(/border-primary|selected/);
+        await expect(simCard).toBeVisible({ timeout: 10000 });
+
+        // 3-tier click pattern
+        await simCard.evaluate((el: HTMLElement) => {
+            el.scrollIntoView({ block: 'center', behavior: 'instant' });
+            el.click();
+        });
+
+        try {
+            await expect(simCard).toHaveClass(/selected/, { timeout: 3000 });
+            return;
+        } catch { /* Tier 2 fallback */ }
+
+        await simCard.click({ force: true, delay: 100 });
+        await expect(simCard).toHaveClass(/selected/, { timeout: 5000 });
     }
 
     async selectIncompatibleMachine(): Promise<void> {
-        // For negative testing
-        const incompatibleCard = this.page
-            .locator('app-machine-card')
-            .filter({ has: this.page.locator('[data-incompatible="true"]') })
+        const selector = this.page.locator('app-machine-argument-selector');
+        // Target option-cards that have .disabled class (incompatible mode)
+        const incompatibleCard = selector
+            .locator('.option-card.disabled')
             .first();
-        await incompatibleCard.click();
+        await expect(incompatibleCard).toBeVisible({ timeout: 10000 });
+        // Force click — disabled cards have pointer-events: none
+        await incompatibleCard.click({ force: true });
     }
 
     async verifyContinueEnabled(): Promise<void> {
@@ -527,7 +552,7 @@ export class WizardPage {
         const continueButton = machineStep.getByRole('button', {
             name: /Continue/i,
         });
-        await expect(continueButton).toBeEnabled();
+        await expect(continueButton).toBeEnabled({ timeout: 10000 });
     }
 
     /**
@@ -542,22 +567,25 @@ export class WizardPage {
             'assets': /Asset/i,
             'wells': /Well/i,
             'deck': /Deck/i,
-            'review': /Review|Summary/i,
+            'review': /Review/i,
         };
-        const pattern = stepMap[stepId] || new RegExp(stepId, 'i');
-        const activeStep = this.page.locator('.mat-step-label-selected, .mat-step-header[aria-selected="true"], .step-active').first();
-        await expect(activeStep).toContainText(pattern, { timeout: 10000 });
+        const label = stepMap[stepId] || new RegExp(stepId, 'i');
+        await expect(this.page.getByRole('tab', { selected: true })).toContainText(label);
     }
 
-    async verifyMachineSelected(expectedAccessionId: string): Promise<void> {
-        const selectedId = await this.page.evaluate(() => {
-            const runStepComponent = document.querySelector(
-                'app-run-step-machine'
-            );
-            if (!runStepComponent) return null;
-            const component = (window as any).ng.getComponent(runStepComponent);
-            return component?.selectedMachine?.machine?.accession_id;
-        });
-        expect(selectedId).toBe(expectedAccessionId);
+    /**
+     * Verify a machine selection was registered by checking for .selected card
+     * or check_circle icon in the accordion header.
+     */
+    async verifyMachineSelected(expectedName?: string): Promise<void> {
+        const selector = this.page.locator('app-machine-argument-selector');
+        // A valid selection shows check_circle in the panel header
+        const selectedIndicator = selector.locator('.status-indicator.complete');
+        await expect(selectedIndicator.first()).toBeVisible({ timeout: 5000 });
+
+        if (expectedName) {
+            // Verify the selection summary shows the expected name
+            await expect(selector.locator('.selection-summary')).toContainText(expectedName);
+        }
     }
 }

@@ -230,6 +230,45 @@ export class AssetsPage extends BasePage {
         await this.navigateToOverview();
     }
 
+    /**
+     * 3-Tier State Recovery pattern for wizard card clicks.
+     * Handles Angular hydration/async races where Playwright clicks fire
+     * before Angular has wired the (click) handler via Zone.js.
+     *
+     * Tier 1: evaluate(el.click()) — bypasses Playwright actionability
+     * Tier 2: click({ force: true, delay: 100 }) — native force click
+     * Verification: Assert .selected class after each attempt
+     */
+    async clickWizardCard(card: Locator, nextButton?: Locator): Promise<void> {
+        await expect(card).toBeVisible({ timeout: 15000 });
+
+        // Tier 1: JS-level click (bypasses Playwright actionability checks)
+        await card.evaluate((el: HTMLElement) => {
+            el.scrollIntoView({ block: 'center', behavior: 'instant' });
+            el.click();
+        });
+
+        try {
+            await expect(card).toHaveClass(/selected/, { timeout: 3000 });
+            return;
+        } catch { /* Tier 2 fallback */ }
+
+        // Tier 2: Force click with delay (mimics natural user pause)
+        await card.click({ force: true, delay: 100 });
+
+        try {
+            await expect(card).toHaveClass(/selected/, { timeout: 3000 });
+            return;
+        } catch { /* Final attempt */ }
+
+        // Tier 3: Dispatch raw MouseEvent for Zone.js capture
+        await card.evaluate((el: HTMLElement) => {
+            const event = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+            el.dispatchEvent(event);
+        });
+        await expect(card).toHaveClass(/selected/, { timeout: 5000 });
+    }
+
     async createMachine(name: string, categoryName: string = 'LiquidHandler', modelQuery: string = 'STAR') {
         // Ensure we're on the Machines tab (not Overview) so the header button says "Add Machine"
         // and the machine list is visible after wizard closes for verification.
@@ -242,32 +281,27 @@ export class AssetsPage extends BasePage {
         // Step 1 (visible): Select Category
         const anyCategoryCard = wizard.getByTestId(/category-card-/).first();
         await expect(anyCategoryCard).toBeVisible({ timeout: 15000 });
-        await anyCategoryCard.waitFor({ state: 'attached' });
 
         const categoryCard = wizard.getByTestId(`category-card-${categoryName}`);
-        await expect(categoryCard).toBeVisible({ timeout: 5000 });
-        await categoryCard.click({ timeout: 5000 });
+        await this.clickWizardCard(categoryCard);
         await this.waitForOverlaysToDismiss();
         await dialog.getByRole('button', { name: /Next/i }).click();
 
         // Step 2: Select Machine Type (Frontend)
         const frontendCard = wizard.getByTestId(/frontend-card-/).first();
-        await expect(frontendCard).toBeVisible({ timeout: 15000 });
-        await frontendCard.click();
+        await this.clickWizardCard(frontendCard);
         await dialog.getByRole('button', { name: /Next/i }).click();
 
         // Step 3: Select Driver (Backend)
         const backendCard = wizard.getByTestId(/backend-card-/).first();
-        await expect(backendCard).toBeVisible({ timeout: 15000 });
-        await backendCard.click();
+        await this.clickWizardCard(backendCard);
         await dialog.getByRole('button', { name: /Next/i }).click();
 
         // Step 3B (conditional): Select Deck - only shown for LiquidHandlers with multiple compatible decks
-        // Use expect().toBeVisible() which auto-retries (isVisible() is instant and can miss post-transition content)
         const deckCard = wizard.getByTestId(/deck-card-/).first();
         try {
             await expect(deckCard).toBeVisible({ timeout: 5000 });
-            await deckCard.click();
+            await this.clickWizardCard(deckCard);
             await dialog.getByRole('button', { name: /Next/i }).click();
         } catch {
             // No deck step — proceed directly to Config

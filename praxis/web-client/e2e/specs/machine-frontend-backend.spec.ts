@@ -154,7 +154,7 @@ test.describe('Machine Frontend/Backend Separation', () => {
             await expect(categoryCard).toBeVisible({ timeout: DATA_LOAD_TIMEOUT });
 
             // Step 1: Select LiquidHandler category
-            await categoryCard.click();
+            await assetsPage.clickWizardCard(categoryCard);
             await page.getByRole('dialog').getByRole('button', { name: /Next/i }).click();
 
             // Step 2: Wait for frontend cards and select first one
@@ -188,13 +188,13 @@ test.describe('Machine Frontend/Backend Separation', () => {
             // Wait for category cards and select one
             const categoryCard = dialog.getByTestId('category-card-LiquidHandler');
             await expect(categoryCard).toBeVisible({ timeout: DATA_LOAD_TIMEOUT });
-            await categoryCard.click();
+            await assetsPage.clickWizardCard(categoryCard);
             await page.getByRole('dialog').getByRole('button', { name: /Next/i }).click();
 
             // Select first frontend
             const frontendCard = dialog.getByTestId(/frontend-card-/).first();
             await expect(frontendCard).toBeVisible({ timeout: DATA_LOAD_TIMEOUT });
-            await frontendCard.click();
+            await assetsPage.clickWizardCard(frontendCard);
             await page.getByRole('dialog').getByRole('button', { name: /Next/i }).click();
 
             // Look for "Simulated" chip/badge on backend cards
@@ -219,13 +219,13 @@ test.describe('Machine Frontend/Backend Separation', () => {
             // Step 1: Select LiquidHandler category (has backends in seed data)
             const categoryCard = dialog.getByTestId('category-card-LiquidHandler');
             await expect(categoryCard).toBeVisible({ timeout: DATA_LOAD_TIMEOUT });
-            await categoryCard.click();
+            await assetsPage.clickWizardCard(categoryCard);
             await dialog.getByRole('button', { name: /Next/i }).click();
 
             // Step 2: Select first LiquidHandler frontend
             const frontendCard = dialog.getByTestId(/frontend-card-/).first();
             await expect(frontendCard).toBeVisible({ timeout: DATA_LOAD_TIMEOUT });
-            await frontendCard.click();
+            await assetsPage.clickWizardCard(frontendCard);
             await dialog.getByRole('button', { name: /Next/i }).click();
 
             // Step 3: Verify backend cards are loaded for the selected frontend
@@ -256,19 +256,19 @@ test.describe('Machine Frontend/Backend Separation', () => {
             // Step 1: Select LiquidHandler category
             const categoryCard = dialog.getByTestId('category-card-LiquidHandler');
             await expect(categoryCard).toBeVisible({ timeout: DATA_LOAD_TIMEOUT });
-            await categoryCard.click();
+            await assetsPage.clickWizardCard(categoryCard);
             await dialog.getByRole('button', { name: /Next/i }).click();
 
             // Step 2: Select first frontend
             const frontendCard = dialog.getByTestId(/frontend-card-/).first();
             await expect(frontendCard).toBeVisible({ timeout: DATA_LOAD_TIMEOUT });
-            await frontendCard.click();
+            await assetsPage.clickWizardCard(frontendCard);
             await dialog.getByRole('button', { name: /Next/i }).click();
 
             // Step 3: Select first backend
             const backendCard = dialog.getByTestId(/backend-card-/).first();
             await expect(backendCard).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT });
-            await backendCard.click();
+            await assetsPage.clickWizardCard(backendCard);
             await dialog.getByRole('button', { name: /Next/i }).click();
 
             // Step 4: Verify Config step
@@ -292,19 +292,19 @@ test.describe('Machine Frontend/Backend Separation', () => {
             // Step 1: Select LiquidHandler category
             const categoryCard = dialog.getByTestId('category-card-LiquidHandler');
             await expect(categoryCard).toBeVisible({ timeout: DATA_LOAD_TIMEOUT });
-            await categoryCard.click();
+            await assetsPage.clickWizardCard(categoryCard);
             await dialog.getByRole('button', { name: /Next/i }).click();
 
             // Step 2: Select first frontend
             const frontendCard = dialog.getByTestId(/frontend-card-/).first();
             await expect(frontendCard).toBeVisible({ timeout: DATA_LOAD_TIMEOUT });
-            await frontendCard.click();
+            await assetsPage.clickWizardCard(frontendCard);
             await dialog.getByRole('button', { name: /Next/i }).click();
 
             // Step 3: Select first backend
             const backendCard = dialog.getByTestId(/backend-card-/).first();
             await expect(backendCard).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT });
-            await backendCard.click();
+            await assetsPage.clickWizardCard(backendCard);
             await dialog.getByRole('button', { name: /Next/i }).click();
 
             // Step 4: Verify name is pre-populated
@@ -388,7 +388,7 @@ test.describe('Machine Frontend/Backend Separation', () => {
             // Step 1: Select category
             const categoryCard = dialog.getByTestId('category-card-LiquidHandler');
             await expect(categoryCard).toBeVisible({ timeout: DATA_LOAD_TIMEOUT });
-            await categoryCard.click();
+            await assetsPage.clickWizardCard(categoryCard);
             await dialog.getByRole('button', { name: /Next/i }).click();
 
             // Step 2: Verify on frontend step
@@ -419,17 +419,12 @@ test.describe('Machine Frontend/Backend Separation', () => {
             // Step 1: Select category
             const categoryCard = dialog.getByTestId('category-card-LiquidHandler');
             await expect(categoryCard).toBeVisible({ timeout: DATA_LOAD_TIMEOUT });
-            await categoryCard.click();
+            await assetsPage.clickWizardCard(categoryCard);
             await dialog.getByRole('button', { name: /Next/i }).click();
 
-            // Step 2: Select first frontend
+            // Step 2: Select first frontend (3-tier click pattern)
             const frontendCard = dialog.getByTestId(/frontend-card-/).first();
-            await expect(frontendCard).toBeVisible({ timeout: DATA_LOAD_TIMEOUT });
-            // Dismiss any CDK overlays that may intercept clicks
-            await page.locator('.cdk-overlay-backdrop').click({ force: true, timeout: 1000 }).catch(() => { });
-            await frontendCard.click({ force: true, delay: 50 });
-            // Wait for Angular to register the selection
-            await expect(frontendCard).toHaveClass(/selected/, { timeout: 5000 });
+            await assetsPage.clickWizardCard(frontendCard);
             await dialog.getByRole('button', { name: /Next/i }).click();
 
             // Step 3: Verify on Backend step
@@ -460,15 +455,12 @@ test.describe('Machine Frontend/Backend Separation', () => {
             // Step 1: Select category
             const categoryCard = dialog.getByTestId('category-card-LiquidHandler');
             await expect(categoryCard).toBeVisible({ timeout: DATA_LOAD_TIMEOUT });
-            await categoryCard.click();
+            await assetsPage.clickWizardCard(categoryCard);
             await dialog.getByRole('button', { name: /Next/i }).click();
 
-            // Step 2: Select first frontend
+            // Step 2: Select first frontend (3-tier click pattern)
             const frontendCard = dialog.getByTestId(/frontend-card-/).first();
-            await expect(frontendCard).toBeVisible({ timeout: DATA_LOAD_TIMEOUT });
-            await page.locator('.cdk-overlay-backdrop').click({ force: true, timeout: 1000 }).catch(() => { });
-            await frontendCard.click({ force: true, delay: 50 });
-            await expect(frontendCard).toHaveClass(/selected/, { timeout: 5000 });
+            await assetsPage.clickWizardCard(frontendCard);
             await dialog.getByRole('button', { name: /Next/i }).click();
 
             // Step 3: On Backend step, click Category tab to go back
