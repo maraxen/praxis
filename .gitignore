@@ -21,6 +21,8 @@ parts/
 sdist/
 var/
 wheels/
+# But do NOT ignore JupyterLite/Pyodide asset wheels (deployed assets, not build artifacts)
+!**/src/assets/wheels/
 share/python-wheels/
 *.egg-info/
 .installed.cfg

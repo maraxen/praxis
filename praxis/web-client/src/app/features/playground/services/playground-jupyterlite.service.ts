@@ -232,9 +232,31 @@ except Exception as e:
     const newTheme = isDark ? 'dark' : 'light';
 
     if (this.currentTheme !== newTheme) {
-      console.log('[REPL] Theme changed from', this.currentTheme, 'to', newTheme, '- rebuilding URL');
+      console.log('[REPL] Theme changed from', this.currentTheme, 'to', newTheme);
       this.currentTheme = newTheme;
-      await this.buildJupyterliteUrl();
+
+      const iframe = document.querySelector('iframe.notebook-frame') as HTMLIFrameElement | null;
+      if (!iframe?.contentWindow) return;
+
+      const themeName = isDark ? 'JupyterLab Dark' : 'JupyterLab Light';
+
+      try {
+        // Try JupyterLab command API (same-origin iframe)
+        const win = iframe.contentWindow as any;
+        if (win.jupyterapp?.commands) {
+          await win.jupyterapp.commands.execute('apputils:change-theme', { theme: themeName });
+          return;
+        }
+
+        // Fallback: set body data attributes directly
+        const body = iframe.contentDocument?.body;
+        if (body) {
+          body.dataset['jpThemeName'] = themeName;
+          body.dataset['jpThemeLight'] = isDark ? 'false' : 'true';
+        }
+      } catch (e) {
+        console.warn('[REPL] Could not update iframe theme:', e);
+      }
     }
   }
 

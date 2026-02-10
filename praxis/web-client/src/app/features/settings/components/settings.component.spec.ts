@@ -1,8 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SettingsComponent } from './settings.component';
 import { AppStore } from '@core/store/app.store';
-import { OnboardingService, TutorialState } from '@core/services/onboarding.service';
-import { TutorialService } from '@core/services/tutorial.service';
+import { OnboardingService } from '@core/services/onboarding.service';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { SqliteService } from '@core/services/sqlite';
 import { BrowserService } from '@core/services/browser.service';
@@ -25,13 +24,10 @@ describe('SettingsComponent', () => {
     };
 
     const onboardingMock = {
-        getTutorialState: vi.fn((): TutorialState | null => null),
-        clearTutorialState: vi.fn(),
-        hasCompletedTutorial: vi.fn(() => false)
-    };
-
-    const tutorialMock = {
-        start: vi.fn()
+        showHints: vi.fn(() => false),
+        enableHints: vi.fn(),
+        disableHints: vi.fn(),
+        resetTooltips: vi.fn()
     };
 
     const sqliteMock = {
@@ -60,7 +56,6 @@ describe('SettingsComponent', () => {
             providers: [
                 { provide: AppStore, useValue: storeMock },
                 { provide: OnboardingService, useValue: onboardingMock },
-                { provide: TutorialService, useValue: tutorialMock },
                 { provide: SqliteService, useValue: sqliteMock },
                 { provide: MatSnackBar, useValue: snackBarMock },
                 { provide: MatDialog, useValue: dialogMock },
@@ -84,36 +79,6 @@ describe('SettingsComponent', () => {
     it('should set theme', () => {
         component.setTheme('dark');
         expect(storeMock.setTheme).toHaveBeenCalledWith('dark');
-    });
-
-    it('should check for tutorial progress', () => {
-        onboardingMock.getTutorialState.mockReturnValue(null);
-        let hasProgress = component.hasTutorialProgress();
-        expect(hasProgress).toBe(false);
-
-        onboardingMock.getTutorialState.mockReturnValue({ sessionId: 123, stepId: 'intro' });
-        hasProgress = component.hasTutorialProgress();
-        expect(hasProgress).toBe(true);
-    });
-
-    it('should show completed state when hasCompletedTutorial is true', () => {
-        // hasTutorialProgress is false when completed (since state is cleared)
-        onboardingMock.getTutorialState.mockReturnValue(null);
-        onboardingMock.hasCompletedTutorial.mockReturnValue(true);
-
-        expect(component.hasTutorialProgress()).toBe(false);
-        expect(component.onboarding.hasCompletedTutorial()).toBe(true);
-    });
-
-    it('should resume tutorial', () => {
-        component.resumeTutorial();
-        expect(tutorialMock.start).toHaveBeenCalledWith(true);
-    });
-
-    it('should restart tutorial', () => {
-        component.restartTutorial();
-        expect(onboardingMock.clearTutorialState).toHaveBeenCalled();
-        expect(tutorialMock.start).toHaveBeenCalledWith(false);
     });
 
     it('should call exportDatabase when exportData is called', async () => {

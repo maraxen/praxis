@@ -155,12 +155,12 @@ export class KeyboardService {
     this.registry.registerCommand({
       id: 'nav-settings',
       label: 'Go to Settings',
-      description: 'Manage application preferences and tutorials',
+      description: 'Manage application preferences and hints',
       icon: 'settings',
       category: 'Navigation',
       shortcut: 'Alt+S',
       action: () => this.router.navigate(['/app/settings']),
-      keywords: ['configuration', 'preferences', 'options', 'tutorial'],
+      keywords: ['configuration', 'preferences', 'options', 'hints'],
     });
 
     this.registry.registerCommand({

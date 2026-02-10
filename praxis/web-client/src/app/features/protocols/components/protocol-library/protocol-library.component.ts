@@ -16,6 +16,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ViewControlsComponent } from '@shared/components/view-controls/view-controls.component';
 import { ViewControlsConfig, ViewControlsState } from '@shared/components/view-controls/view-controls.types';
 import { ProtocolCardComponent } from '@features/run-protocol/components/protocol-card/protocol-card.component';
+import { PageTooltipComponent } from '@shared/components/page-tooltip/page-tooltip.component';
 
 import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protocol-detail-dialog.component';
 
@@ -34,10 +35,16 @@ import { ProtocolDetailDialogComponent } from '../protocol-detail-dialog/protoco
     FormsModule,
     MatProgressSpinnerModule,
     ViewControlsComponent,
-    ProtocolCardComponent
+    ProtocolCardComponent,
+    PageTooltipComponent
   ],
   template: `
-    <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col">
+    <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col" #protocolsRoot>
+      <app-page-tooltip 
+        id="protocols-intro" 
+        text="Access your library of experimental protocols. You can upload new definitions, view detailed specifications, and start execution directly from here." 
+        [target]="protocolsRoot">
+      </app-page-tooltip>
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <h1 class="text-3xl font-bold text-sys-text-primary mb-1">Protocol Library</h1>

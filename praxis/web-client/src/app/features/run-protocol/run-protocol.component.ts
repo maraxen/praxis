@@ -37,6 +37,7 @@ import { DeckGeneratorService } from './services/deck-generator.service';
 import { ExecutionService } from './services/execution.service';
 import { WizardStateService } from './services/wizard-state.service';
 import { ProtocolSummaryComponent } from './components/protocol-summary/protocol-summary.component';
+import { PageTooltipComponent } from '@shared/components/page-tooltip/page-tooltip.component';
 import { AssetService } from '@features/assets/services/asset.service';
 import { SimulationConfigDialogComponent } from './components/simulation-config-dialog/simulation-config-dialog.component';
 import { Machine as _Machine, MachineDefinition, MachineStatus as _MachineStatus } from '@features/assets/models/asset.models';
@@ -88,10 +89,16 @@ interface FilterCategory {
     DeckSetupWizardComponent,
     ProtocolSummaryComponent,
     GuidedSetupComponent,
-    MatSnackBarModule
+    MatSnackBarModule,
+    PageTooltipComponent
   ],
   template: `
-    <div class="h-full flex flex-col p-6 max-w-screen-2xl mx-auto">
+    <div class="h-full flex flex-col p-6 max-w-screen-2xl mx-auto" #runRoot>
+      <app-page-tooltip 
+        id="run-intro" 
+        text="Follow the wizard steps to configure your protocol run. You can select parameters, machines, and labware before starting execution." 
+        [target]="runRoot">
+      </app-page-tooltip>
       <!-- Top Bar -->
       <div class="flex items-center justify-between mb-6">
         <div>

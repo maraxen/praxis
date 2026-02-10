@@ -3,7 +3,6 @@ import { WelcomeDialogComponent } from './welcome-dialog.component';
 import { MatDialogRef } from '@angular/material/dialog';
 import { OnboardingService } from '@core/services/onboarding.service';
 import { ModeService } from '@core/services/mode.service';
-import { TutorialService } from '@core/services/tutorial.service';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 describe('WelcomeDialogComponent', () => {
@@ -18,14 +17,11 @@ describe('WelcomeDialogComponent', () => {
     const onboardingMock = {
         hasCompletedOnboarding: vi.fn(() => false),
         markOnboardingComplete: vi.fn(),
+        enableHints: vi.fn(),
     };
 
     const modeServiceMock = {
         isBrowserMode: vi.fn(() => false)
-    };
-
-    const tutorialMock = {
-        start: vi.fn()
     };
 
     beforeEach(async () => {
@@ -34,8 +30,7 @@ describe('WelcomeDialogComponent', () => {
             providers: [
                 { provide: MatDialogRef, useValue: dialogRefMock },
                 { provide: OnboardingService, useValue: onboardingMock },
-                { provide: ModeService, useValue: modeServiceMock },
-                { provide: TutorialService, useValue: tutorialMock }
+                { provide: ModeService, useValue: modeServiceMock }
             ]
         }).compileComponents();
 
@@ -48,11 +43,11 @@ describe('WelcomeDialogComponent', () => {
         expect(component).toBeTruthy();
     });
 
-    it('should start tutorial and close dialog', () => {
-        component.startTutorial();
+    it('should enable hints and close dialog', () => {
+        component.enableHints();
         expect(onboardingMock.markOnboardingComplete).toHaveBeenCalled();
+        expect(onboardingMock.enableHints).toHaveBeenCalled();
         expect(dialogRefMock.close).toHaveBeenCalled();
-        expect(tutorialMock.start).toHaveBeenCalled();
     });
 
     it('should skip and close dialog', () => {

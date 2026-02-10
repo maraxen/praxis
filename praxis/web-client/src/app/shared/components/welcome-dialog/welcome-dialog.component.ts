@@ -6,7 +6,6 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
 import { OnboardingService } from '@core/services/onboarding.service';
 import { ModeService } from '@core/services/mode.service';
-import { TutorialService } from '@core/services/tutorial.service';
 
 @Component({
   selector: 'app-welcome-dialog',
@@ -28,7 +27,7 @@ import { TutorialService } from '@core/services/tutorial.service';
     </mat-dialog-content>
     <mat-dialog-actions align="end" class="gap-2">
       <button mat-button (click)="skip()">Skip for Now</button>
-      <button mat-raised-button color="primary" (click)="startTutorial()">Start Tutorial</button>
+      <button mat-raised-button color="primary" (click)="enableHints()">Show Hints</button>
     </mat-dialog-actions>
   `,
   styles: [`
@@ -42,12 +41,11 @@ export class WelcomeDialogComponent {
   private dialogRef = inject(MatDialogRef<WelcomeDialogComponent>);
   private onboarding = inject(OnboardingService);
   private modeService = inject(ModeService);
-  private tutorial = inject(TutorialService);
 
-  startTutorial() {
+  enableHints() {
     this.onboarding.markOnboardingComplete();
+    this.onboarding.enableHints();
     this.dialogRef.close();
-    this.tutorial.start();
   }
 
   skip() {

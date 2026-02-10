@@ -10,7 +10,6 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDividerModule } from '@angular/material/divider';
 import { AppStore } from '@core/store/app.store';
 import { OnboardingService } from '@core/services/onboarding.service';
-import { TutorialService } from '@core/services/tutorial.service';
 import { MatButtonModule } from '@angular/material/button';
 import { BrowserService } from '@core/services/browser.service';
 import { MatDialog } from '@angular/material/dialog';
@@ -110,43 +109,26 @@ type Theme = 'light' | 'dark' | 'system';
         <mat-card class="glass-panel" data-tour-id="settings-onboarding">
           <mat-card-header>
             <mat-icon mat-card-avatar class="text-primary scale-125 ml-1 box-content">school</mat-icon>
-            <mat-card-title>Onboarding</mat-card-title>
-            <mat-card-subtitle>Manage tutorial settings</mat-card-subtitle>
+            <mat-card-title>Onboarding & Help</mat-card-title>
+            <mat-card-subtitle>Manage onboarding and hint settings</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content class="pt-4 space-y-4">
              <div class="flex items-center justify-between">
                <div>
-                 <h3 class="font-medium">Guided Tutorial</h3>
+                 <h3 class="font-medium">Page Hints</h3>
                  <p class="text-sm text-secondary">
-                   @if (hasTutorialProgress()) {
-                     Resume or restart the interactive tour
-                   } @else if (onboarding.hasCompletedTutorial()) {
-                     <span class="flex items-center text-status-success">
-                       <mat-icon class="mr-1 text-sm h-4 w-4">check_circle</mat-icon>
-                       You have completed the tour. Feel free to restart it anytime.
-                     </span>
-                   } @else {
-                     Start the interactive tour of features
-                   }
+                   Show contextual tooltips on key features across the application.
                  </p>
                </div>
-               <div class="flex gap-2">
-                 @if (hasTutorialProgress()) {
-                   <button mat-stroked-button color="primary" (click)="resumeTutorial()">
-                     <mat-icon class="mr-1">play_arrow</mat-icon> Resume
-                   </button>
-                   <button mat-stroked-button color="accent" (click)="restartTutorial()">
-                     <mat-icon class="mr-1">restart_alt</mat-icon> Restart
-                   </button>
-                 } @else if (onboarding.hasCompletedTutorial()) {
-                   <button mat-flat-button color="accent" (click)="restartTutorial()">
-                     <mat-icon class="mr-1">restart_alt</mat-icon> Restart Tutorial
-                   </button>
-                 } @else {
-                   <button mat-stroked-button color="primary" (click)="restartTutorial()">
-                     <mat-icon class="mr-1">play_arrow</mat-icon> Start Tutorial
-                   </button>
-                 }
+               <div class="flex items-center gap-4">
+                 <mat-slide-toggle 
+                   [checked]="onboarding.showHints()" 
+                   (change)="$event.checked ? onboarding.enableHints() : onboarding.disableHints()"
+                   color="primary">
+                 </mat-slide-toggle>
+                 <button mat-stroked-button color="accent" (click)="onboarding.resetTooltips()" [disabled]="!onboarding.showHints()">
+                   <mat-icon class="mr-1">restart_alt</mat-icon> Reset Hints
+                 </button>
                </div>
              </div>
           </mat-card-content>
@@ -308,7 +290,6 @@ type Theme = 'light' | 'dark' | 'system';
 export class SettingsComponent {
   store = inject(AppStore);
   onboarding = inject(OnboardingService);
-  tutorial = inject(TutorialService);
   sqlite = inject(SqliteService);
   dialog = inject(MatDialog);
   snackBar = inject(MatSnackBar);
@@ -320,18 +301,8 @@ export class SettingsComponent {
     this.store.setTheme(theme);
   }
 
-  hasTutorialProgress(): boolean {
-    return this.onboarding.getTutorialState() !== null;
-  }
-
-  resumeTutorial() {
-    this.tutorial.start(true); // Resume from saved step
-  }
-
-  restartTutorial() {
-    this.onboarding.clearTutorialState();
-    this.tutorial.start(false); // Start fresh
-  }
+  // Removed hasTutorialProgress, resumeTutorial, restartTutorial methods
+  // as they are replaced by onboarding service methods and template logic.
 
   resetToDefaults() {
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {

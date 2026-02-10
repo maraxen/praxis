@@ -9,14 +9,17 @@ import {
   signal,
   computed,
   AfterViewInit,
+  HostListener
 } from '@angular/core';
 import { InteractionService } from '@core/services/interaction.service';
+import { CommandRegistryService } from '@core/services/command-registry.service';
 
 import { FormsModule } from '@angular/forms';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatListModule } from '@angular/material/list';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -47,6 +50,8 @@ import { DirectControlKernelService } from './services/direct-control-kernel.ser
 import { JupyterChannelService } from './services/jupyter-channel.service';
 import { PlaygroundJupyterliteService } from './services/playground-jupyterlite.service';
 import { PlaygroundAssetService } from './services/playground-asset.service';
+import { PageTooltipComponent } from '@shared/components/page-tooltip/page-tooltip.component';
+import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-select/praxis-select.component';
 
 
 /**
@@ -64,6 +69,7 @@ import { PlaygroundAssetService } from './services/playground-asset.service';
     MatCardModule,
     MatIconModule,
     MatButtonModule,
+    MatButtonToggleModule,
     MatTooltipModule,
     MatListModule,
     MatSnackBarModule,
@@ -77,285 +83,146 @@ import { PlaygroundAssetService } from './services/playground-asset.service';
     MatTabsModule,
     HardwareDiscoveryButtonComponent,
     DirectControlComponent,
+    PageTooltipComponent,
+    PraxisSelectComponent
   ],
   template: `
-    <div class="repl-container">
-      <!-- Main Notebook Area -->
-      <div class="notebook-area">
-        <mat-card class="repl-card">
-          <!-- Menu Bar -->
-          <div class="repl-header">
-            <div class="header-title">
-              <mat-icon>auto_stories</mat-icon>
-              <h2>Playground ({{ modeLabel() }})</h2>
-            </div>
-            
-            <div class="header-actions flex items-center gap-2">
-              <app-hardware-discovery-button></app-hardware-discovery-button>
-              <button 
-                mat-icon-button 
-                (click)="reloadNotebook()"
-                matTooltip="Restart Kernel (reload notebook)"
-                aria-label="Restart Kernel (reload notebook)">
-                <mat-icon>restart_alt</mat-icon>
-              </button>
-              <button 
-                mat-icon-button 
-                (click)="openAddMachine()"
-                matTooltip="Add Machine"
-                aria-label="Add Machine"
-                color="primary">
-                <mat-icon>precision_manufacturing</mat-icon>
-              </button>
-              <button 
-                mat-icon-button 
-                (click)="openAddResource()"
-                matTooltip="Add Resource"
-                aria-label="Add Resource"
-                color="primary">
-                <mat-icon>science</mat-icon>
-              </button>
-              <button 
-                mat-icon-button 
-                (click)="openInventory()"
-                matTooltip="Browse Inventory"
-                aria-label="Browse Inventory"
-                color="primary">
-                <mat-icon>inventory_2</mat-icon>
-              </button>
-            </div>
-          </div>
+    <div class="playground-layout" #playgroundRoot>
+      <app-page-tooltip
+        id="playground-intro"
+        text="The Playground provides a full Jupyter environment for interactive hardware control and protocol development."
+        [target]="playgroundRoot">
+      </app-page-tooltip>
 
-          <mat-tab-group class="repl-tabs" [selectedIndex]="selectedTabIndex()" (selectedIndexChange)="selectedTabIndex.set($event)" [preserveContent]="true">
-            <mat-tab label="Notebook">
-              <!-- JupyterLite iframe -->
-              <div class="repl-notebook-wrapper" data-tour-id="repl-notebook" [hidden]="selectedTabIndex() !== 0">
+      <!-- Central View Area -->
+      <div class="playground-canvas">
+        <!-- JupyterLite View (stays alive in DOM) -->
+        <div class="view-pane" [hidden]="playgroundMode() !== 'jupyter'">
+          <div class="iframe-wrapper" data-tour-id="repl-notebook">
+            @if (jupyterliteService.jupyterliteUrl()) {
+              <iframe
+                #notebookFrame
+                [src]="jupyterliteService.jupyterliteUrl()"
+                class="notebook-frame"
+                data-testid="jupyterlite-iframe"
+                (load)="onIframeLoad()"
+                allow="cross-origin-isolated; usb; serial"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
+              ></iframe>
+            }
 
-                @if (jupyterliteService.jupyterliteUrl()) {
-                  <iframe
-                    #notebookFrame
-                    [src]="jupyterliteService.jupyterliteUrl()"
-                    class="notebook-frame"
-                    data-testid="jupyterlite-iframe"
-                    (load)="onIframeLoad()"
-                    allow="cross-origin-isolated; usb; serial"
-                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
-                  ></iframe>
-                }
-
-                @if (jupyterliteService.isLoading()) {
-                  <div class="loading-overlay">
-                    <div class="skeleton-container">
-                      <!-- Header bar -->
-                      <div class="skeleton-bar header"></div>
-                      <!-- Toolbar -->
-                      <div class="skeleton-bar toolbar"></div>
-                      <!-- Content cells -->
-                      <div class="skeleton-content">
-                        <div class="skeleton-cell"></div>
-                        <div class="skeleton-cell short"></div>
-                      </div>
-                      <div class="loading-text">Initializing Python environment...</div>
-                    </div>
+            @if (jupyterliteService.isLoading()) {
+              <div class="loading-overlay">
+                <div class="skeleton-container">
+                  <div class="skeleton-bar header"></div>
+                  <div class="skeleton-bar toolbar"></div>
+                  <div class="skeleton-content">
+                    <div class="skeleton-cell"></div>
+                    <div class="skeleton-cell short"></div>
                   </div>
-                }
-
-                @if (jupyterliteService.loadingError()) {
-                  <div class="error-overlay">
-                    <div class="error-content">
-                      <mat-icon color="warn" class="error-icon">error_outline</mat-icon>
-                      <div class="error-message">{{ jupyterliteService.loadingError() }}</div>
-                      <button mat-flat-button color="primary" (click)="retryBootstrap()">
-                        <mat-icon>refresh</mat-icon>
-                        Retry Loading
-                      </button>
-                    </div>
-                  </div>
-                }
-              </div>
-            </mat-tab>
-            
-            <mat-tab label="Direct Control">
-              <div class="direct-control-dashboard" [hidden]="selectedTabIndex() !== 1">
-                <!-- Machine Selector Sidebar -->
-                <div class="machine-selector-panel">
-                    <div class="panel-header">
-                      <h3>Available Machines</h3>
-                      <button mat-icon-button (click)="loadMachinesForDirectControl()" matTooltip="Refresh machines">
-                        <mat-icon>refresh</mat-icon>
-                      </button>
-                    </div>
-                    
-                    @if (availableMachines().length === 0) {
-                      <div class="empty-machines">
-                        <mat-icon>precision_manufacturing</mat-icon>
-                        <p>No machines registered</p>
-                        <button mat-stroked-button (click)="openAssetWizard('MACHINE')">
-                          <mat-icon>add</mat-icon>
-                          Add Machine
-                        </button>
-                      </div>
-                    } @else {
-                      <div class="machine-list">
-                        @for (machine of availableMachines(); track machine.accession_id) {
-                          <div 
-                            class="machine-card" 
-                            [class.selected]="selectedMachine()?.accession_id === machine.accession_id"
-                            (click)="selectMachineForControl(machine)">
-                            <div class="machine-icon">
-                              <mat-icon>{{ getMachineIcon($any(machine).machine_category) }}</mat-icon>
-                            </div>
-                            <div class="machine-info">
-                              <span class="machine-name">{{ machine.name }}</span>
-                              <span class="machine-category">{{ $any(machine).machine_category || 'Machine' }}</span>
-                            </div>
-                            <div class="machine-status" [class]="$any(machine).status?.toLowerCase() || 'offline'">
-                              <span class="status-dot"></span>
-                            </div>
-                          </div>
-                        }
-                      </div>
-                    }
-                  </div>
-                  
-                  <!-- Control Panel -->
-                  <div class="control-panel">
-                    @if (selectedMachine()) {
-                      <app-direct-control 
-                        [machine]="$any(selectedMachine())"
-                        (executeCommand)="onExecuteCommand($event)">
-                      </app-direct-control>
-                    } @else {
-                      <div class="empty-state">
-                        <mat-icon>settings_remote</mat-icon>
-                        <p>Select a machine from the list to control it</p>
-                      </div>
-                    }
-                  </div>
+                  <div class="loading-text">Initializing Python environment...</div>
                 </div>
-            </mat-tab>
-          </mat-tab-group>
-        </mat-card>
+              </div>
+            }
+
+            @if (jupyterliteService.loadingError()) {
+              <div class="error-overlay">
+                <div class="error-content">
+                  <mat-icon color="warn" class="error-icon">error_outline</mat-icon>
+                  <div class="error-message">{{ jupyterliteService.loadingError() }}</div>
+                  <button mat-flat-button color="primary" (click)="retryBootstrap()">
+                    <mat-icon>refresh</mat-icon>
+                    Retry Loading
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Direct Control View -->
+        <div class="view-pane" [hidden]="playgroundMode() !== 'direct-control'">
+          <app-direct-control
+            [machine]="$any(selectedMachine())"
+            (executeCommand)="onExecuteCommand($event)">
+          </app-direct-control>
+        </div>
       </div>
+
+      <!-- Floating Toolbar (horizontal, top right) -->
+      <div class="toolbar-rail" role="toolbar" aria-label="Playground tools">
+        <!-- View Mode Split Toggle -->
+        <mat-button-toggle-group
+          [value]="playgroundMode()"
+          (change)="playgroundMode.set($event.value)"
+          class="mode-toggle"
+          hideSingleSelectionIndicator>
+          <mat-button-toggle value="jupyter"
+            matTooltip="Jupyter Notebook"
+            matTooltipPosition="left"
+            aria-label="Switch to Jupyter Notebook">
+            <mat-icon>auto_stories</mat-icon>
+          </mat-button-toggle>
+          <mat-button-toggle value="direct-control"
+            matTooltip="Direct Control"
+            matTooltipPosition="left"
+            aria-label="Switch to Direct Control">
+            <mat-icon>tune</mat-icon>
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+
+        <!-- Action Buttons -->
+        <button mat-icon-button
+          (click)="openInventory()"
+          matTooltip="Add Asset"
+          matTooltipPosition="left"
+          aria-label="Add Asset">
+          <mat-icon>add_circle_outline</mat-icon>
+        </button>
+        <app-hardware-discovery-button></app-hardware-discovery-button>
+      </div>
+
+      <!-- Machine Selector (renders to left of toolbar in DC mode) -->
+      @if (playgroundMode() === 'direct-control' && availableMachines().length > 0) {
+        <div class="machine-selector-float">
+          <app-praxis-select
+            placeholder="Select Machine"
+            [options]="machineSelectOptions()"
+            (selectionChange)="onMachineSelected($event)">
+          </app-praxis-select>
+        </div>
+      }
     </div>
   `,
   styles: [
     `
-      .repl-container {
+      .playground-layout {
         height: 100%;
         width: 100%;
-        box-sizing: border-box;
         display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        padding: 16px;
-        gap: 0; 
-      }
-
-      .notebook-area {
-        height: 100%;
-        min-width: 0; /* Allow shrinking */
-        display: flex;
-        flex-direction: column;
-      }
-
-      .repl-card {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        padding: 0;
-        background: var(--mat-sys-surface-container);
-        border: 1px solid var(--mat-sys-outline-variant);
-        color: var(--mat-sys-on-surface);
-        border-radius: 8px;
-        overflow: hidden;
-      }
-
-      .repl-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 8px 16px;
-        background: var(--mat-sys-surface-container-high);
-        border-bottom: 1px solid var(--mat-sys-outline-variant);
-        flex-shrink: 0;
-        height: 56px;
-        box-sizing: border-box;
-      }
-
-      .header-title {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-
-      .repl-header mat-icon {
-        color: var(--mat-sys-primary);
-      }
-
-      .repl-header h2 {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 500;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .repl-tabs {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        min-height: 0;
-      }
-
-      :host ::ng-deep .repl-tabs {
-        .mat-mdc-tab-body-wrapper {
-          flex: 1;
-        }
-      }
-  .repl-tabs {
-  ::ng-deep .mat-mdc-tab-header {
-    background: transparent;
-    border-bottom: 1px solid var(--mat-sys-outline-variant);
-  }
-
-  ::ng-deep .mat-mdc-tab {
-    min-width: 80px;
-    opacity: 0.7;
-    transition: opacity 0.2s ease;
-    
-    &:hover {
-      opacity: 1;
-    }
-    
-    &.mdc-tab--active {
-      opacity: 1;
-    }
-  }
-
-  ::ng-deep .mat-mdc-tab-labels {
-    gap: 0;
-  }
-  
-  ::ng-deep .mdc-tab-indicator__content--underline {
-    border-color: var(--mat-sys-primary);
-    border-width: 2px;
-    border-radius: 2px 2px 0 0;
-  }
-}
-
-      .repl-notebook-wrapper {
-        height: 100%;
         position: relative;
+        overflow: hidden;
         background: var(--mat-sys-surface-container-low);
       }
 
-      .direct-control-wrapper {
+      .playground-canvas {
+        flex: 1;
         height: 100%;
-        padding: 24px;
-        overflow-y: auto;
-        background: var(--mat-sys-surface-container-low);
+        min-width: 0;
+        position: relative;
+      }
+
+      .view-pane {
+        height: 100%;
+        width: 100%;
+        position: absolute;
+        inset: 0;
+      }
+
+      .iframe-wrapper {
+        height: 100%;
+        width: 100%;
+        position: relative;
       }
 
       .notebook-frame {
@@ -364,23 +231,63 @@ import { PlaygroundAssetService } from './services/playground-asset.service';
         border: none;
       }
 
-      .empty-state {
+      /* ─── Floating Toolbar (horizontal, top right) ─── */
+      .toolbar-rail {
+        position: absolute;
+        top: 36px;
+        right: 16px;
+        z-index: 10;
+
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
-        justify-content: center;
-        height: 100%;
-        gap: 16px;
-        color: var(--mat-sys-on-surface-variant);
-        text-align: center;
+        padding: 4px 8px;
+        gap: 4px;
+
+        background: linear-gradient(
+          135deg,
+          var(--mat-sys-surface) 0%,
+          var(--mat-sys-surface-container-low) 100%
+        );
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--theme-border, var(--mat-sys-outline-variant));
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+        &:hover {
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+        }
       }
 
-      .empty-state mat-icon {
-        font-size: 48px;
-        width: 48px;
-        height: 48px;
+      .mode-toggle {
+        border-radius: 12px !important;
+        overflow: hidden;
       }
 
+      ::ng-deep .mode-toggle .mat-button-toggle-appearance-standard {
+        background: transparent;
+      }
+
+      ::ng-deep .mode-toggle .mat-button-toggle-checked .mat-button-toggle-appearance-standard {
+        background: var(--mat-sys-primary);
+        color: var(--mat-sys-on-primary);
+      }
+
+      .machine-selector-float {
+        position: absolute;
+        top: 36px;
+        right: calc(16px + 240px);
+        z-index: 10;
+      }
+
+      .toolbar-rail button,
+      .toolbar-rail app-hardware-discovery-button {
+        cursor: pointer;
+      }
+
+      /* ─── Loading & Error Overlays ─── */
       .loading-overlay {
         position: absolute;
         inset: 0;
@@ -391,236 +298,57 @@ import { PlaygroundAssetService } from './services/playground-asset.service';
         justify-content: center;
 
         .skeleton-container {
-          width: 90%;
-          max-width: 800px;
+          width: 80%;
+          max-width: 600px;
         }
 
         .skeleton-bar {
-          height: 40px;
+          height: 32px;
           background: linear-gradient(90deg, var(--mat-sys-surface-container-high) 25%, var(--mat-sys-surface-container-highest) 50%, var(--mat-sys-surface-container-high) 75%);
           background-size: 200% 100%;
           animation: shimmer 1.5s infinite;
           margin-bottom: 8px;
           border-radius: 4px;
-
-          &.header { height: 48px; }
-          &.toolbar { height: 36px; width: 60%; }
+          &.header { height: 40px; }
+          &.toolbar { height: 28px; width: 60%; }
         }
 
         .skeleton-cell {
-          height: 60px;
+          height: 50px;
           background: var(--mat-sys-surface-container);
-          border-left: 3px solid var(--mat-sys-outline-variant);
-          margin-bottom: 12px;
+          margin-bottom: 8px;
           border-radius: 4px;
-
           &.short { width: 70%; }
         }
 
         .loading-text {
           text-align: center;
           color: var(--mat-sys-on-surface-variant);
-          margin-top: 24px;
-          font-weight: 500;
+          margin-top: 16px;
         }
       }
 
       .error-overlay {
         position: absolute;
         inset: 0;
-        background: color-mix(in srgb, var(--mat-sys-surface-container-low) 95%, transparent);
-        z-index: 101;
         display: flex;
         align-items: center;
         justify-content: center;
+        background: var(--mat-sys-surface-container-low);
+        z-index: 100;
       }
 
       .error-content {
+        text-align: center;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 16px;
-        text-align: center;
-        max-width: 400px;
-        padding: 24px;
-      }
-
-      .error-icon {
-        font-size: 48px;
-        width: 48px;
-        height: 48px;
-        margin-bottom: 8px;
-      }
-
-      .error-message {
-        color: var(--mat-sys-error);
-        font-weight: 500;
-        margin-bottom: 16px;
+        gap: 12px;
       }
 
       @keyframes shimmer {
         0% { background-position: 200% 0; }
         100% { background-position: -200% 0; }
-      }
-
-      /* Direct Control Dashboard */
-      .direct-control-dashboard {
-        display: flex;
-        height: 100%;
-        background: var(--mat-sys-surface-container-low);
-      }
-
-      .machine-selector-panel {
-        width: 280px;
-        min-width: 280px;
-        border-right: 1px solid var(--mat-sys-outline-variant);
-        background: var(--mat-sys-surface-container);
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      }
-
-      .panel-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--mat-sys-outline-variant);
-        background: var(--mat-sys-surface-container-high);
-      }
-
-      .panel-header h3 {
-        margin: 0;
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--mat-sys-on-surface);
-      }
-
-      .machine-list {
-        flex: 1;
-        overflow-y: auto;
-        padding: 8px;
-      }
-
-      .machine-card {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: background-color 0.15s ease, box-shadow 0.15s ease;
-        margin-bottom: 4px;
-        background: var(--mat-sys-surface);
-        border: 1px solid transparent;
-      }
-
-      .machine-card:hover {
-        background: var(--mat-sys-surface-container-highest);
-      }
-
-      .machine-card.selected {
-        background: color-mix(in srgb, var(--mat-sys-primary) 12%, var(--mat-sys-surface));
-        border-color: var(--mat-sys-primary);
-      }
-
-      .machine-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
-        background: var(--mat-sys-primary-container);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-      }
-
-      .machine-icon mat-icon {
-        color: var(--mat-sys-on-primary-container);
-      }
-
-      .machine-info {
-        flex: 1;
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-
-      .machine-name {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--mat-sys-on-surface);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .machine-category {
-        font-size: 0.75rem;
-        color: var(--mat-sys-on-surface-variant);
-      }
-
-      .machine-status {
-        flex-shrink: 0;
-      }
-
-      .status-dot {
-        display: block;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--mat-sys-outline);
-      }
-
-      .machine-status.idle .status-dot {
-        background: var(--mat-sys-tertiary);
-      }
-
-      .machine-status.running .status-dot,
-      .machine-status.connected .status-dot {
-        background: var(--mat-sys-primary);
-        animation: pulse 2s infinite;
-      }
-
-      .machine-status.error .status-dot {
-        background: var(--mat-sys-error);
-      }
-
-      @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-      }
-
-      .empty-machines {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        padding: 24px;
-        gap: 12px;
-        color: var(--mat-sys-on-surface-variant);
-        text-align: center;
-      }
-
-      .empty-machines mat-icon {
-        font-size: 40px;
-        width: 40px;
-        height: 40px;
-        opacity: 0.5;
-      }
-
-      .empty-machines p {
-        margin: 0;
-        font-size: 0.875rem;
-      }
-
-      .control-panel {
-        flex: 1;
-        overflow-y: auto;
-        padding: 24px;
-        min-width: 0;
       }
     `,
   ],
@@ -628,6 +356,8 @@ import { PlaygroundAssetService } from './services/playground-asset.service';
 export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('notebookFrame') notebookFrame!: ElementRef<HTMLIFrameElement>;
   @ViewChild(DirectControlComponent) directControlComponent?: DirectControlComponent;
+
+  playgroundMode = signal<'jupyter' | 'direct-control'>('jupyter');
 
   private modeService = inject(ModeService);
   private snackBar = inject(MatSnackBar);
@@ -639,6 +369,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   private jupyterChannel = inject(JupyterChannelService);
   public jupyterliteService = inject(PlaygroundJupyterliteService);
   private playgroundAssetService = inject(PlaygroundAssetService);
+  private commandRegistry = inject(CommandRegistryService);
 
   // Serial Manager for main-thread I/O (Phase B)
   private serialManager = inject(SerialManagerService);
@@ -656,6 +387,15 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   selectedMachine = signal<Machine | null>(null);
   availableMachines = signal<Machine[]>([]);
   selectedTabIndex = signal(0);
+
+  /** Derived SelectOption[] for praxis-select — pure signal, no RxJS */
+  machineSelectOptions = computed<SelectOption[]>(() =>
+    this.availableMachines().map(m => ({
+      label: m.name,
+      value: m.name,
+      icon: this.getMachineIcon(m.asset_type || '')
+    }))
+  );
 
   // Event listener for machine-registered events
   private machineRegisteredHandler = () => {
@@ -710,6 +450,18 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Listen for new machine registrations
     window.addEventListener('machine-registered', this.machineRegisteredHandler);
+
+    // Register keyboard shortcut
+    this.commandRegistry.registerCommand({
+      id: 'toggle-playground-mode',
+      label: 'Toggle Playground Mode',
+      shortcut: 'Alt+T',
+      action: () => this.playgroundMode.set(
+        this.playgroundMode() === 'jupyter' ? 'direct-control' : 'jupyter'
+      ),
+      category: 'Playground',
+      keywords: ['jupyter', 'direct control', 'mode', 'toggle']
+    });
   }
 
   ngAfterViewInit() {
@@ -781,6 +533,15 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     this.selectedMachine.set(machine);
   }
 
+  /** Handle praxis-select machine selection */
+  onMachineSelected(value: unknown): void {
+    const name = value as string;
+    const machine = this.availableMachines().find(m => m.name === name);
+    if (machine) {
+      this.selectMachineForControl(machine);
+    }
+  }
+
   /**
    * Get icon for machine category
    */
@@ -799,6 +560,8 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   openAddMachine() {
     this.openAssetWizard('MACHINE');
   }
+
+
 
   openAddResource() {
     this.openAssetWizard('RESOURCE');
@@ -828,8 +591,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  /* Helper methods for Code Generation */
-
+  /* Asset injection methods — delegated to PlaygroundAssetService */
 
 
 
@@ -862,19 +624,19 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
         const script = iframe!.contentWindow?.document.createElement('script');
         if (script) {
           script.textContent = `
-            (function() {
-              const originalFetch = window.fetch;
-              window.fetch = function(input, init) {
-                const url = typeof input === 'string' ? input : (input instanceof URL ? input.href : input.url);
-                // Suppress network requests for pylabrobot modules that are already in VFS
-                if (url.includes('pylabrobot') && (url.endsWith('.py') || url.endsWith('.so') || url.includes('/__init__.py'))) {
-                  // We could return a fake response here, but Pyodide might need a real network 404 
-                  // to move to the next finder. However, we can log it gracefully.
-                }
-                return originalFetch(input, init);
-              };
-            })();
-          `;
+  (function () {
+    const originalFetch = window.fetch;
+    window.fetch = function (input, init) {
+      const url = typeof input === 'string' ? input : (input instanceof URL ? input.href : input.url);
+      // Suppress network requests for pylabrobot modules that are already in VFS
+      if (url.includes('pylabrobot') && (url.endsWith('.py') || url.endsWith('.so') || url.includes('/__init__.py'))) {
+        // We could return a fake response here, but Pyodide might need a real network 404 
+        // to move to the next finder. However, we can log it gracefully.
+      }
+      return originalFetch(input, init);
+    };
+  })();
+`;
           iframe!.contentWindow?.document.head.appendChild(script);
           console.log('[REPL] Fetch interceptor injected into iframe');
         }
@@ -1066,7 +828,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
   async onExecuteCommand(event: { machineName: string, methodName: string, args: Record<string, unknown> }) {
     const { machineName, methodName, args } = event;
-    console.log(`[DirectControl] Executing ${methodName} on ${machineName}`, args);
+    console.log(`[DirectControl] Executing ${methodName} on ${machineName} `, args);
 
     // Find machine asset
     const machines = this.availableMachines();
@@ -1115,7 +877,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     } catch (e) {
       console.error('[DirectControl] Command failed:', e);
       const errorMsg = e instanceof Error ? e.message : String(e);
-      this.snackBar.open(`Error: ${errorMsg.substring(0, 80)}`, 'Dismiss', { duration: 5000 });
+      this.snackBar.open(`Error: ${errorMsg.substring(0, 80)} `, 'Dismiss', { duration: 5000 });
       // AUDIT-09: Pass error to DirectControl
       this.directControlComponent?.handleCommandError(errorMsg);
     }

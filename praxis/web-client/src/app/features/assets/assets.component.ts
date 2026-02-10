@@ -12,6 +12,7 @@ import { AssetWizard } from '@shared/components/asset-wizard/asset-wizard';
 import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-discovery-dialog/hardware-discovery-dialog.component';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 import { AssetDashboardComponent } from './components/asset-dashboard/asset-dashboard.component';
+import { PageTooltipComponent } from '@shared/components/page-tooltip/page-tooltip.component';
 import { SpatialViewComponent } from './components/spatial-view/spatial-view.component';
 import { AssetService } from './services/asset.service';
 import { finalize } from 'rxjs/operators';
@@ -38,10 +39,16 @@ import { ConfirmationDialogComponent } from '@shared/components/confirmation-dia
     DefinitionsListComponent,
     AssetDashboardComponent,
     SpatialViewComponent,
-    HardwareDiscoveryButtonComponent
+    HardwareDiscoveryButtonComponent,
+    PageTooltipComponent
   ],
   template: `
-    <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col">
+    <div class="p-6 max-w-screen-2xl mx-auto h-full flex flex-col" #assetsRoot>
+      <app-page-tooltip 
+        id="assets-intro" 
+        text="Manage your laboratory hardware and resources here. Track status, perform maintenance, and register new machines." 
+        [target]="assetsRoot">
+      </app-page-tooltip>
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
         <div class="min-w-0 flex-1">
           <h1 class="text-3xl font-bold text-sys-text-primary mb-1 truncate">Asset Management</h1>

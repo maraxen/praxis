@@ -15,8 +15,6 @@ import { CommandRegistryService } from '@core/services/command-registry.service'
 import { HardwareDiscoveryService } from '@core/services/hardware-discovery.service';
 import { HardwareDiscoveryDialogComponent } from '@shared/components/hardware-discovery-dialog/hardware-discovery-dialog.component';
 import { OnboardingService } from '@core/services/onboarding.service';
-import { TutorialService } from '@core/services/tutorial.service';
-import { WelcomeDialogComponent } from '@shared/components/welcome-dialog/welcome-dialog.component';
 import { SessionRecoveryService } from '@core/services/session-recovery.service';
 import { SessionRecoveryComponent } from '@core/components/session-recovery/session-recovery.component';
 import { PRAXIS_LOGO_SVG_DATA } from '@shared/constants/logo';
@@ -445,7 +443,6 @@ export class UnifiedShellComponent implements OnInit {
   private hardwareDiscovery = inject(HardwareDiscoveryService);
   private dialog = inject(MatDialog);
   private onboarding = inject(OnboardingService);
-  private tutorial = inject(TutorialService);
   private sessionRecovery = inject(SessionRecoveryService);
 
   constructor() {
@@ -453,22 +450,14 @@ export class UnifiedShellComponent implements OnInit {
   }
 
   ngOnInit() {
-    // Check if we need to show welcome dialog
+    // On first visit, auto-enable hints instead of showing a welcome dialog
     if (this.onboarding.shouldShowWelcome()) {
-      this.dialog.open(WelcomeDialogComponent, {
-        width: '600px',
-        disableClose: true,
-        autoFocus: false
-      });
-    } else if (localStorage.getItem('praxis_pending_tutorial') === 'true') {
-      // Pending tutorial start after reload
-      localStorage.removeItem('praxis_pending_tutorial');
-      // Small delay to ensure UI is largely rendered
-      setTimeout(() => this.tutorial.start(), 1000);
-    } else {
-      // Check for orphaned runs only if no other dialog is showing
-      this.checkForOrphanedRuns();
+      this.onboarding.enableHints();
+      this.onboarding.markOnboardingComplete();
     }
+
+    // Check for orphaned runs
+    this.checkForOrphanedRuns();
   }
 
   private checkForOrphanedRuns(): void {

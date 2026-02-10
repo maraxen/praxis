@@ -16,6 +16,7 @@ import { ProtocolService } from '@features/protocols/services/protocol.service';
 import { ExecutionService } from '@features/run-protocol/services/execution.service';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 import { SparklineComponent } from '@shared/components/sparkline/sparkline.component';
+import { PageTooltipComponent } from '@shared/components/page-tooltip/page-tooltip.component';
 import { ModeService } from '@core/services/mode.service';
 import { Machine, Resource, MachineStatus } from '@features/assets/models/asset.models';
 import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
@@ -45,10 +46,17 @@ interface RecentRun {
     MatTooltipModule,
     MatBadgeModule,
     HardwareDiscoveryButtonComponent,
-    SparklineComponent
+    SparklineComponent,
+    PageTooltipComponent
   ],
   template: `
-    <div class="p-6 max-w-screen-2xl mx-auto" data-tour-id="dashboard-root">
+    <div class="p-6 max-w-screen-2xl mx-auto" #dashboardRoot>
+      <app-page-tooltip 
+        id="home-intro" 
+        text="Welcome to your Praxis dashboard. Here you can see active runs, hardware status, and quick lab stats at a glance." 
+        [target]="dashboardRoot"
+        [isFirst]="true">
+      </app-page-tooltip>
       <!-- Header with Quick Actions -->
       <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div class="greeting">

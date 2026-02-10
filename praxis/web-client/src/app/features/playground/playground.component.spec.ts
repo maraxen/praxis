@@ -1,15 +1,38 @@
+import { Component, signal, WritableSignal, NO_ERRORS_SCHEMA } from '@angular/core';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+// Mock sub-components MUST be defined BEFORE PlaygroundComponent is imported
+vi.mock('./components/direct-control/direct-control.component', () => ({
+    DirectControlComponent: Component({ selector: 'app-direct-control', standalone: true, template: '' })(class { })
+}));
+vi.mock('@shared/components/hardware-discovery-button/hardware-discovery-button.component', () => ({
+    HardwareDiscoveryButtonComponent: Component({ selector: 'app-hardware-discovery-button', standalone: true, template: '' })(class { })
+}));
+vi.mock('@shared/components/page-tooltip/page-tooltip.component', () => ({
+    PageTooltipComponent: Component({ selector: 'app-page-tooltip', standalone: true, template: '' })(class { })
+}));
+vi.mock('@shared/components/praxis-select/praxis-select.component', () => ({
+    PraxisSelectComponent: Component({ selector: 'app-praxis-select', standalone: true, template: '', inputs: ['options', 'placeholder'] })(class { }),
+    SelectOption: class { }
+}));
+
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PlaygroundComponent } from './playground.component';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { AppStore } from '@core/store/app.store';
 import { ModeService } from '@core/services/mode.service';
 import { AssetService } from '@features/assets/services/asset.service';
 import { SerialManagerService } from '@core/services/serial-manager.service';
+import { SqliteService } from '@core/services/sqlite';
+import { PlaygroundJupyterliteService } from './services/playground-jupyterlite.service';
+import { CommandRegistryService } from '@core/services/command-registry.service';
+import { InteractionService } from '@core/services/interaction.service';
+import { JupyterChannelService } from './services/jupyter-channel.service';
+import { DirectControlKernelService } from './services/direct-control-kernel.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { signal, WritableSignal } from '@angular/core'; // Import signal
-import { of } from 'rxjs';
+import { MatDialog } from '@angular/material/dialog';
+import { Overlay } from '@angular/cdk/overlay';
+import { of, BehaviorSubject } from 'rxjs';
 
 // Mock BroadcastChannel
 class MockBroadcastChannel {
@@ -19,30 +42,32 @@ class MockBroadcastChannel {
 
     constructor(name: string) {
         this.name = name;
-        // Store reference to this instance for testing
         (globalThis as any).mockChannels = (globalThis as any).mockChannels || {};
         (globalThis as any).mockChannels[name] = this;
     }
 
-    postMessage(message: any) {
-        // No-op for now unless we need to simulate self-messages
-    }
-
-    close() {
-        this.closed = true;
-    }
+    postMessage(message: any) { }
+    close() { this.closed = true; }
 }
 
 describe('PlaygroundComponent', () => {
     let component: PlaygroundComponent;
     let fixture: ComponentFixture<PlaygroundComponent>;
 
-    // Signals for mocks
-    let themeSignal: WritableSignal<string>; // Use WritableSignal
-    let modeLabelSignal: WritableSignal<string>; // Use WritableSignal
+    let themeSignal: WritableSignal<string>;
+    let modeLabelSignal: WritableSignal<string>;
+    let isReady$ = new BehaviorSubject<boolean>(true);
+
+    let jupyterliteMock = {
+        isLoading: signal(true),
+        jupyterliteUrl: signal<string | undefined>(undefined),
+        loadingError: signal<string | null>(null),
+        initialize: vi.fn(),
+        destroy: vi.fn(),
+        reload: vi.fn()
+    };
 
     beforeEach(async () => {
-        // Initialize signals here
         themeSignal = signal('light');
         modeLabelSignal = signal('Test Mode');
 
@@ -51,14 +76,15 @@ describe('PlaygroundComponent', () => {
 
         await TestBed.configureTestingModule({
             imports: [PlaygroundComponent, NoopAnimationsModule],
+            schemas: [NO_ERRORS_SCHEMA],
             providers: [
                 {
                     provide: AppStore,
-                    useValue: { theme: themeSignal } // Pass the signal directly
+                    useValue: { theme: themeSignal }
                 },
                 {
                     provide: ModeService,
-                    useValue: { modeLabel: modeLabelSignal } // Pass the signal directly
+                    useValue: { modeLabel: modeLabelSignal }
                 },
                 {
                     provide: AssetService,
@@ -67,10 +93,37 @@ describe('PlaygroundComponent', () => {
                         getResources: () => of([])
                     }
                 },
-                { provide: SerialManagerService, useValue: {} },
-                { provide: MatSnackBar, useValue: { open: vi.fn() } }
+                {
+                    provide: SqliteService,
+                    useValue: { isReady$: isReady$.asObservable() }
+                },
+                {
+                    provide: PlaygroundJupyterliteService,
+                    useValue: jupyterliteMock
+                },
+                {
+                    provide: CommandRegistryService,
+                    useValue: { registerCommand: vi.fn() }
+                },
+                {
+                    provide: InteractionService,
+                    useValue: { handleInteraction: vi.fn() }
+                },
+                {
+                    provide: JupyterChannelService,
+                    useValue: { message$: of(), postMessage: vi.fn() }
+                },
+                {
+                    provide: DirectControlKernelService,
+                    useValue: { execute: vi.fn() }
+                },
+                { provide: SerialManagerService, useValue: { availablePorts: signal([]) } },
+                { provide: MatSnackBar, useValue: { open: vi.fn() } },
+                { provide: MatDialog, useValue: { open: vi.fn() } },
+                { provide: Overlay, useValue: { create: vi.fn(), position: vi.fn() } }
             ]
-        }).compileComponents();
+        })
+            .compileComponents();
 
         fixture = TestBed.createComponent(PlaygroundComponent);
         component = fixture.componentInstance;
@@ -86,37 +139,16 @@ describe('PlaygroundComponent', () => {
         expect(component).toBeTruthy();
     });
 
-    it('should set up ready listener on init', () => {
-        const channel = (globalThis as any).mockChannels['praxis_repl'];
-        expect(channel).toBeDefined();
-        expect(channel.onmessage).toBeDefined();
+    it('should initialize jupyterlite on init', () => {
+        expect(jupyterliteMock.initialize).toHaveBeenCalled();
     });
 
-    it('should handle ready signal', async () => {
-        expect(component.isLoading).toBe(true);
-
-        const channel = (globalThis as any).mockChannels['praxis_repl'];
-        channel.onmessage!({ data: { type: 'praxis:ready' } } as MessageEvent);
-
-        // Ready signal processing is direct, but let's be safe
-        expect(component.isLoading).toBe(false);
-    });
-
-    it('should reset state on reload', async () => {
-        // First Simulate ready
-        const channel = (globalThis as any).mockChannels['praxis_repl'];
-        channel.onmessage!({ data: { type: 'praxis:ready' } } as MessageEvent);
-        expect(component.isLoading).toBe(false);
-
-        // Now reload
-        component.reloadNotebook();
-        expect(component.isLoading).toBe(true);
-        expect(component.jupyterliteUrl).toBeUndefined();
-
-        // Wait for timeout in reloadNotebook (100ms)
-        await new Promise(resolve => setTimeout(resolve, 150));
-
-        // Check if URL is rebuilt
-        expect(component.jupyterliteUrl).toBeDefined();
+    it('should show loading when jupyterlite is loading', () => {
+        jupyterliteMock.isLoading.set(true);
+        fixture.detectChanges();
+        const loadingOverlay = fixture.debugElement.nativeElement.querySelector('.loading-overlay');
+        expect(loadingOverlay).toBeTruthy();
     });
 });
+
+
