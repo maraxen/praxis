@@ -36,6 +36,9 @@ jobs:
       - name: Generate assets
         run: uv run --with pylibftdi scripts/generate_browser_db.py
 
+      - name: Build JupyterLite REPL
+        run: uv run jupyter lite build --config praxis/web-client/jupyterlite-config.json --output-dir praxis/web-client/src/assets/jupyterlite
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -53,6 +56,11 @@ jobs:
         run: |
           cp ./praxis/web-client/dist/web-client/browser/index.html ./praxis/web-client/dist/web-client/browser/404.html
           touch ./praxis/web-client/dist/web-client/browser/.nojekyll
+
+      - name: Add COOP/COEP service worker
+        run: |
+          curl -sSL https://raw.githubusercontent.com/nickvdp/coi-serviceworker/main/coi-serviceworker.js \
+            -o ./praxis/web-client/dist/web-client/browser/coi-serviceworker.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
