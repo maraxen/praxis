@@ -1,6 +1,6 @@
 # REST API Reference
 
-The Praxis backend provides a RESTful API for all operations.
+The Praxis backend provides a RESTful API built with FastAPI. All endpoints are prefixed with `/api/v1`.
 
 ## Base URL
 
@@ -8,351 +8,160 @@ The Praxis backend provides a RESTful API for all operations.
 http://localhost:8000/api/v1
 ```
 
+## Interactive Documentation
+
+FastAPI auto-generates interactive docs:
+
+```
+GET /docs      # Swagger UI
+GET /redoc     # ReDoc
+```
+
 ## Authentication
 
-Most endpoints require authentication via JWT bearer token:
+```
+POST /api/v1/auth/login       # Get JWT token
+POST /api/v1/auth/logout      # Invalidate session
+GET  /api/v1/auth/me          # Current user info
+```
+
+Most endpoints require a JWT bearer token:
 
 ```bash
 curl -H "Authorization: Bearer <token>" http://localhost:8000/api/v1/...
 ```
 
-### Get Token
-
-```
-POST /api/v1/auth/login
-Content-Type: application/json
-
-{
-  "username": "user@example.com",
-  "password": "password"
-}
-```
-
-Response:
-```json
-{
-  "access_token": "eyJ...",
-  "token_type": "bearer",
-  "expires_in": 3600
-}
-```
-
 ## Protocols
 
-### List Protocols
+### Definitions (CRUD)
 
 ```
-GET /api/v1/protocols
+GET    /api/v1/protocols/definitions            # List protocol definitions
+GET    /api/v1/protocols/definitions/{id}        # Get protocol definition
+POST   /api/v1/protocols/definitions             # Create protocol definition
+PUT    /api/v1/protocols/definitions/{id}        # Update protocol definition
+DELETE /api/v1/protocols/definitions/{id}        # Delete protocol definition
 ```
 
-Query parameters:
-| Param | Type | Description |
-|-------|------|-------------|
-| `search` | string | Search by name/description |
-| `category` | string | Filter by category |
-| `skip` | int | Pagination offset |
-| `limit` | int | Page size (default 20) |
-
-Response:
-```json
-{
-  "items": [
-    {
-      "id": "abc123",
-      "accession_id": "PROTO-001",
-      "name": "Simple Transfer",
-      "description": "Transfer liquid between plates",
-      "category": "Transfers",
-      "parameters": {...},
-      "created_at": "2025-01-01T00:00:00Z"
-    }
-  ],
-  "total": 42,
-  "skip": 0,
-  "limit": 20
-}
-```
-
-### Get Protocol
+### Runs
 
 ```
-GET /api/v1/protocols/{id}
+GET    /api/v1/protocols/runs                    # List protocol runs
+GET    /api/v1/protocols/runs/{id}               # Get run details
+POST   /api/v1/protocols/runs/actions/start       # Start a protocol run
 ```
 
-### Sync Protocols
+### Execution Control
 
 ```
-POST /api/v1/discovery/sync-all
-```
-
-Triggers protocol discovery from configured directories.
-
-## Protocol Execution
-
-### Execute Protocol
-
-```
-POST /api/v1/execution/run
-Content-Type: application/json
-
-{
-  "protocol_id": "abc123",
-  "parameters": {
-    "volume": 100,
-    "wells": 96
-  },
-  "assets": {
-    "machines": {
-      "liquid_handler": "mach-001"
-    },
-    "resources": {
-      "source_plate": "res-001",
-      "dest_plate": "res-002",
-      "tip_rack": "res-003"
-    }
-  },
-  "simulation": false
-}
-```
-
-Response:
-```json
-{
-  "run_id": "run-xyz",
-  "status": "RUNNING",
-  "started_at": "2025-01-01T12:00:00Z"
-}
-```
-
-### Get Run Status
-
-```
-GET /api/v1/execution/runs/{run_id}
-```
-
-Response:
-```json
-{
-  "id": "run-xyz",
-  "protocol_id": "abc123",
-  "status": "RUNNING",
-  "current_step": 3,
-  "total_steps": 10,
-  "progress": 30,
-  "started_at": "2025-01-01T12:00:00Z"
-}
-```
-
-### Control Run
-
-```
-POST /api/v1/execution/runs/{run_id}/pause
-POST /api/v1/execution/runs/{run_id}/resume
-POST /api/v1/execution/runs/{run_id}/cancel
-```
-
-### Schedule Run
-
-```
-POST /api/v1/execution/schedule
-Content-Type: application/json
-
-{
-  "protocol_id": "abc123",
-  "parameters": {...},
-  "scheduled_for": "2025-01-02T09:00:00Z"
-}
+POST   /api/v1/protocols/runs/{run_id}/pause     # Pause a running protocol
+POST   /api/v1/protocols/runs/{run_id}/resume    # Resume a paused protocol
 ```
 
 ## Machines
 
-### List Machines
-
 ```
-GET /api/v1/machines
-```
-
-Query parameters:
-| Param | Type | Description |
-|-------|------|-------------|
-| `status` | string | Filter by status (IDLE, RUNNING, OFFLINE) |
-| `type` | string | Filter by machine type |
-
-### Get Machine
-
-```
-GET /api/v1/machines/{id}
+GET    /api/v1/machines/definitions              # List machine definitions (CRUD)
+GET    /api/v1/machines/definitions/{id}         # Get machine definition
+POST   /api/v1/machines/definitions              # Create machine
+PUT    /api/v1/machines/definitions/{id}         # Update machine
+DELETE /api/v1/machines/definitions/{id}         # Delete machine
+PATCH  /api/v1/machines/{id}/status              # Update machine status
 ```
 
-### Create Machine
+### Machine Frontends & Backends
 
 ```
-POST /api/v1/machines
-Content-Type: application/json
+GET    /api/v1/machine-frontends/                # List frontend definitions
+GET    /api/v1/machine-frontends/{id}            # Get frontend
+GET    /api/v1/machine-frontends/{id}/backends   # List backends for frontend
+POST   /api/v1/machine-frontends/                # Create frontend
+PUT    /api/v1/machine-frontends/{id}            # Update frontend
+DELETE /api/v1/machine-frontends/{id}            # Delete frontend
 
-{
-  "name": "Flex Lab A",
-  "model": "Opentrons Flex",
-  "manufacturer": "Opentrons",
-  "status": "OFFLINE",
-  "connection_info": {
-    "host": "192.168.1.50",
-    "port": 31950
-  },
-  "machine_definition_accession_id": "def-123"
-}
+GET    /api/v1/machine-backends/                 # List backend definitions
+POST   /api/v1/machine-backends/                 # Create backend
 ```
 
-### Update Machine
+## Resources (Labware)
 
 ```
-PUT /api/v1/machines/{id}
+GET    /api/v1/resources/definitions             # List resource definitions (CRUD)
+GET    /api/v1/resources/definitions/{id}        # Get resource definition
+POST   /api/v1/resources/definitions             # Create resource
+PUT    /api/v1/resources/definitions/{id}        # Update resource
+DELETE /api/v1/resources/definitions/{id}        # Delete resource
+GET    /api/v1/resources/{id}                    # Get individual resource instance
 ```
 
-### Delete Machine
+## Decks
 
 ```
-DELETE /api/v1/machines/{id}
+GET    /api/v1/decks/                            # List decks (CRUD)
+GET    /api/v1/decks/{id}                        # Get deck
+POST   /api/v1/decks/                            # Create deck
+PUT    /api/v1/decks/{id}                        # Update deck
+DELETE /api/v1/decks/{id}                        # Delete deck
+GET    /api/v1/decks/types                       # List deck type definitions
 ```
 
-## Resources
+## Workcell
 
-### List Resources
-
-```
-GET /api/v1/resources
-```
-
-Query parameters:
-| Param | Type | Description |
-|-------|------|-------------|
-| `category` | string | Filter by category (Plate, TipRack, etc.) |
-| `consumable` | boolean | Filter by consumable property |
-| `available` | boolean | Filter by availability |
-
-### Get Resource
+> **Note:** This prefix is singular (`/workcell`), not plural.
 
 ```
-GET /api/v1/resources/{id}
+GET    /api/v1/workcell/                         # List workcells (CRUD)
+GET    /api/v1/workcell/{id}                     # Get workcell
+POST   /api/v1/workcell/                         # Create workcell
+PUT    /api/v1/workcell/{id}                     # Update workcell
+DELETE /api/v1/workcell/{id}                     # Delete workcell
 ```
 
-### Create Resource
+## Discovery
 
 ```
-POST /api/v1/resources
-Content-Type: application/json
-
-{
-  "name": "96-Well Plate #1",
-  "category": "Plate",
-  "properties": {
-    "consumable": false,
-    "reusable": true
-  },
-  "resource_definition_accession_id": "def-456"
-}
+POST   /api/v1/discovery/sync-all                # Trigger protocol/hardware discovery
 ```
 
-### Update Resource
+## Hardware
 
 ```
-PUT /api/v1/resources/{id}
+GET    /api/v1/hardware/discover/serial          # Discover serial devices
+GET    /api/v1/hardware/discover/usb             # Discover USB devices
+POST   /api/v1/hardware/register                 # Register a hardware device
+GET    /api/v1/hardware/status                   # Hardware status overview
 ```
 
-### Delete Resource
+## Scheduler
 
 ```
-DELETE /api/v1/resources/{id}
-```
-
-## Definitions
-
-### List Machine Definitions
-
-```
-GET /api/v1/discovery/machines
-```
-
-### List Resource Definitions
-
-```
-GET /api/v1/discovery/resources
-```
-
-Query parameters:
-| Param | Type | Description |
-|-------|------|-------------|
-| `category` | string | Filter by category |
-| `search` | string | Search by name/FQN |
-
-## Hardware Discovery
-
-### Discover Serial Devices
-
-```
-GET /api/v1/hardware/discover/serial
-```
-
-### Discover USB Devices
-
-```
-GET /api/v1/hardware/discover/usb
-```
-
-### Register Device
-
-```
-POST /api/v1/hardware/register
-Content-Type: application/json
-
-{
-  "name": "Device Name",
-  "device_type": "serial",
-  "port": "/dev/ttyUSB0",
-  "fqn": "pylabrobot.backends.SomeBackend",
-  "connection_info": {...}
-}
+GET    /api/v1/scheduler/entries                 # List scheduled entries (CRUD)
+GET    /api/v1/scheduler/entries/{id}            # Get entry
+POST   /api/v1/scheduler/entries                 # Create entry
+PUT    /api/v1/scheduler/entries/{id}            # Update entry
+DELETE /api/v1/scheduler/entries/{id}            # Delete entry
+POST   /api/v1/scheduler/entries/{id}/execute    # Execute entry now
 ```
 
 ## Data Outputs
 
-### List Run Outputs
-
 ```
-GET /api/v1/outputs?run_id={run_id}
-```
-
-### Get Output
-
-```
-GET /api/v1/outputs/{id}
+GET    /api/v1/data-outputs/outputs              # List run outputs
+GET    /api/v1/data-outputs/outputs/{id}         # Get output
+GET    /api/v1/data-outputs/outputs/{id}/export  # Export (format=csv|json)
 ```
 
-### Export Output
+## WebSockets
 
 ```
-GET /api/v1/outputs/{id}/export?format=csv
-GET /api/v1/outputs/{id}/export?format=json
+WS     /api/v1/ws/execution/{run_id}             # Real-time execution updates
 ```
 
-## Workcells
-
-### List Workcells
+## REPL
 
 ```
-GET /api/v1/workcells
-```
-
-### Get Workcell
-
-```
-GET /api/v1/workcells/{id}
-```
-
-### Get Workcell Deck
-
-```
-GET /api/v1/workcells/{id}/deck
+WS     /api/v1/repl/session                      # Interactive Python REPL
+POST   /api/v1/repl/save_session                 # Save REPL session
 ```
 
 ## Error Responses
@@ -361,13 +170,9 @@ All errors follow a consistent format:
 
 ```json
 {
-  "error": "ErrorType",
-  "message": "Human-readable description",
-  "details": {...}
+  "detail": "Human-readable error description"
 }
 ```
-
-Common HTTP status codes:
 
 | Code | Meaning |
 |------|---------|
@@ -379,42 +184,8 @@ Common HTTP status codes:
 | 422 | Unprocessable Entity - Validation error |
 | 500 | Internal Server Error |
 
-## Pagination
-
-List endpoints support pagination:
-
-```
-GET /api/v1/protocols?skip=20&limit=10
-```
-
-Response includes pagination metadata:
-```json
-{
-  "items": [...],
-  "total": 100,
-  "skip": 20,
-  "limit": 10
-}
-```
-
-## Filtering
-
-Many endpoints support filtering via query parameters:
-
-```
-GET /api/v1/resources?category=Plate&consumable=true&status=AVAILABLE
-```
-
 ## OpenAPI Schema
-
-The full OpenAPI (Swagger) schema is available at:
 
 ```
 GET /api/v1/openapi.json
-```
-
-Interactive documentation:
-```
-GET /docs      # Swagger UI
-GET /redoc     # ReDoc
 ```

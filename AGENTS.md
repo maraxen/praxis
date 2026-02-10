@@ -197,7 +197,7 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 
 | Layer | Technology |
 |-------|------------|
-| **Frontend** | Angular 19 (standalone, signals, zoneless) |
+| **Frontend** | Angular 21 (standalone, signals, zoneless) |
 | **Language** | TypeScript (strict mode) |
 | **Build** | Angular CLI / esbuild |
 | **Unit Tests** | Vitest |

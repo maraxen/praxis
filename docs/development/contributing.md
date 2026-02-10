@@ -74,7 +74,8 @@ We use:
 
 - **ESLint** for linting
 - **Prettier** for formatting (via ESLint)
-- **Karma/Jasmine** for testing
+- **Vitest** for unit testing
+- **Playwright** for E2E testing
 
 ```bash
 cd praxis/web-client

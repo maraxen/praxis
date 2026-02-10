@@ -56,11 +56,19 @@ Click a protocol to see its full details:
 
 ## Running a Protocol
 
-### The 4-Step Wizard
+### The 7-Step Wizard
 
 Click **Run Protocol** to launch the execution wizard:
 
-#### Step 1: Parameters
+#### Step 1: Select Protocol
+
+Choose which protocol to run:
+
+- Browse the protocol library
+- Search by name or category
+- View protocol details and parameters
+
+#### Step 2: Configure Parameters
 
 Configure the protocol inputs:
 
@@ -68,16 +76,7 @@ Configure the protocol inputs:
 - Adjust optional parameters as needed
 - See validation errors in real-time
 
-#### Step 2: Resources
-
-Select the labware to use:
-
-- See required resource types
-- Select from available inventory
-- Filter by category or properties
-- Check quantities for consumables
-
-#### Step 3: Machines
+#### Step 3: Select Machines
 
 Assign hardware:
 
@@ -86,12 +85,36 @@ Assign hardware:
 - Check status (must be IDLE)
 - View connection info
 
-#### Step 4: Review & Run
+#### Step 4: Select Assets
+
+Select labware and resources:
+
+- See required resource types
+- Select from available inventory
+- Filter by category or properties
+- Check quantities for consumables
+
+#### Step 5: Select Wells *(conditional)*
+
+Choose target wells on plates:
+
+- Interactive well grid selector
+- Select individual wells or ranges
+- Only shown when the protocol requires well selection
+
+#### Step 6: Deck Setup *(conditional)*
+
+Configure the deck layout:
+
+- Assign resources to deck positions
+- Optional when the protocol does not require a deck (`requires_deck === false`)
+
+#### Step 7: Review & Run
 
 Confirm and execute:
 
 - Review all selections
-- Toggle simulation mode
+- Toggle **Simulation Mode** to dry-run without hardware
 - Click **Run** to start
 - Or **Schedule** for later
 

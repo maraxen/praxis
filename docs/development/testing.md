@@ -8,9 +8,9 @@ Praxis uses a layered testing strategy:
 
 | Layer | Framework | Purpose |
 |-------|-----------|---------|
-| Unit | pytest / Jasmine | Isolated component tests |
+| Unit | pytest / Vitest | Isolated component tests |
 | Integration | pytest | Database and service tests |
-| E2E | Playwright (planned) | Full stack tests |
+| E2E | Playwright | Full stack tests (30+ specs active) |
 
 ## Backend Testing
 
@@ -218,7 +218,7 @@ import { of } from 'rxjs';
 describe('MachineListComponent', () => {
   let component: MachineListComponent;
   let fixture: ComponentFixture<MachineListComponent>;
-  let mockAssetService: jasmine.SpyObj<AssetService>;
+  let mockAssetService: { getMachines: ReturnType<typeof vi.fn> };
 
   const mockMachines = [
     { id: '1', name: 'Machine 1', status: 'IDLE' },
@@ -226,8 +226,7 @@ describe('MachineListComponent', () => {
   ];
 
   beforeEach(async () => {
-    mockAssetService = jasmine.createSpyObj('AssetService', ['getMachines']);
-    mockAssetService.getMachines.and.returnValue(of(mockMachines));
+    mockAssetService = { getMachines: vi.fn().mockReturnValue(of(mockMachines)) };
 
     await TestBed.configureTestingModule({
       imports: [MachineListComponent],

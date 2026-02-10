@@ -18,7 +18,7 @@ Praxis is configured through environment variables and configuration files.
 |----------|---------|-------------|
 | `PRAXIS_ENV` | `development` | Environment: development, staging, production |
 | `LOG_LEVEL` | `INFO` | Logging level: DEBUG, INFO, WARNING, ERROR |
-| `CORS_ORIGINS` | `*` | Allowed CORS origins (comma-separated) |
+| `CORS_ORIGINS` | `http://localhost:5173,http://localhost:4200` | Allowed CORS origins (comma-separated) |
 | `API_PREFIX` | `/api/v1` | API route prefix |
 
 ### Authentication
@@ -44,6 +44,55 @@ Praxis is configured through environment variables and configuration files.
 |----------|---------|-------------|
 | `PROTOCOL_DIRS` | `./protocols` | Protocol search directories (comma-separated) |
 | `PROTOCOL_PATTERNS` | `*.py` | File patterns to scan |
+
+## praxis.ini
+
+The primary configuration file for backend settings. Located at the project root.
+
+```ini
+[output_directories]
+protocol_output = "./protocol_output"
+
+[protocol_directories]
+default_directory = ./praxis/protocol/protocols
+additional_directories = ["./test_protocols"]
+
+[database]
+host = localhost
+port = 5433
+praxis_dsn = postgresql://praxis:praxis@localhost:5433/praxis_db
+keycloak_dsn = postgresql://keycloak:keycloak@localhost:5432/keycloak
+
+[redis]
+host = localhost
+port = 6379
+db = 0
+
+[celery]
+broker = redis://localhost:6379/0
+backend = redis://localhost:6379/0
+
+[logging]
+level = INFO
+logfile = logs/praxis.log
+
+[baseline_decks]
+liquid_handler_1 = "/path/to/baseline/deck_1.json"
+liquid_handler_2 = "/path/to/baseline/deck_2.json"
+
+[admin]
+username = admin
+password = admin  ; Change this to a strong password
+
+[app]
+url = http://localhost:5137
+
+[keycloak]
+server_url = http://localhost:8080
+realm_name = praxis
+client_id = praxis-client
+client_secret = <your-client-secret>
+```
 
 ## Configuration Files
 

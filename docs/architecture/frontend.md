@@ -1,6 +1,6 @@
 # Frontend Components
 
-The Praxis frontend is built with Angular 19+ using standalone components, signal-based reactivity, and Material Design.
+The Praxis frontend is built with Angular 21 using standalone components, signal-based reactivity, and Material Design.
 
 ## Architecture Overview
 
@@ -25,9 +25,12 @@ graph TD
     Assets --> ResourceList[ResourceAccordionComponent]
     Assets --> DefList[DefinitionsListComponent]
     
+    Run --> ProtocolStep[ProtocolStepComponent]
     Run --> ParamStep[ParameterStepComponent]
-    Run --> ResourceStep[ResourceStepComponent]
     Run --> MachineStep[MachineStepComponent]
+    Run --> AssetStep[AssetStepComponent]
+    Run --> WellStep[WellSelectionStepComponent]
+    Run --> DeckStep[DeckSetupStepComponent]
     Run --> ReviewStep[ReviewStepComponent]
     Run --> Monitor[ExecutionMonitorComponent]
     
@@ -148,8 +151,7 @@ Manages machines and resources with chip-based filtering.
 | `MachineListComponent` | Machine grid with status indicators |
 | `ResourceAccordionComponent` | Grouped resource list |
 | `DefinitionsListComponent` | PLR definitions browser |
-| `MachineDialogComponent` | Add/edit machine form |
-| `ResourceDialogComponent` | Add/edit resource form |
+| `AssetWizard` | Multi-step add/edit wizard for all asset types |
 | `HardwareDiscoveryDialogComponent` | USB/serial device scanning |
 
 ### Protocols Feature
@@ -166,23 +168,29 @@ Protocol library with search, filtering, and execution wizard.
 
 ### Run Protocol Feature
 
-4-step wizard for protocol configuration and execution.
+7-step wizard for protocol configuration and execution.
 
 ```mermaid
 graph LR
-    A[Parameters] --> B[Resources]
-    B --> C[Machines]
-    C --> D[Review & Run]
+    A[Select Protocol] --> B[Configure Parameters]
+    B --> C[Select Machines]
+    C --> D[Select Assets]
+    D --> E[Select Wells]
+    E --> F[Deck Setup]
+    F --> G[Review & Run]
 ```
 
 **Components:**
 
 | Component | Purpose |
 |-----------|---------|
-| `RunProtocolComponent` | Wizard container |
+| `RunProtocolComponent` | Wizard container (MatStepper) |
+| `ProtocolStepComponent` | Protocol selection |
 | `ParameterStepComponent` | Parameter form |
-| `ResourceStepComponent` | Resource selection |
 | `MachineStepComponent` | Machine assignment |
+| `AssetStepComponent` | Asset/resource selection |
+| `WellSelectionStepComponent` | Well grid selector (conditional) |
+| `DeckSetupStepComponent` | Deck layout configuration (conditional) |
 | `ReviewStepComponent` | Final confirmation |
 | `ExecutionMonitorComponent` | Live execution view |
 

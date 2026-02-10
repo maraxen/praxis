@@ -93,7 +93,7 @@ Manages live PyLabRobot objects - the actual hardware connections.
 - Provide machine and resource instances to the orchestrator
 - Support state serialization for recovery
 
-**Location:** `praxis/backend/core/workcell_runtime.py`
+**Location:** `praxis/backend/core/workcell_runtime/`
 
 ```python
 class WorkcellRuntime:
@@ -130,7 +130,7 @@ Handles the lifecycle and allocation of laboratory assets.
 - Coordinate with WorkcellRuntime for live objects
 - Sync definitions with PyLabRobot discovery
 
-**Location:** `praxis/backend/core/asset_manager.py`
+**Location:** `praxis/backend/core/asset_manager/`
 
 ```python
 class AssetManager:

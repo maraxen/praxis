@@ -18,19 +18,19 @@ bun run start:browser
 
 This starts the Angular dev server with the demo configuration.
 
-## Runtime Toggle
+## Activating Browser Mode
 
-You can also toggle Browser Mode on and off at runtime without rebuilding:
+Browser mode is controlled via Angular environment configuration, not a runtime UI toggle:
 
-1. Open **Settings** > **Onboarding & Demo**.
-2. Toggle "Browser Mode".
-3. The application will reload with the new mode active.
+- **Dev server**: `bun run start:browser` uses `environment.browser.ts`
+- **Build**: `bun run build:demo` produces a static browser-mode bundle
+- **Environment variable**: Set `PRAXIS_BROWSER_MODE=true` when using custom configurations
 
 ## How Browser Mode Works
 
 ### HTTP Interceptor
 
-Demo mode uses an Angular HTTP interceptor that catches all API calls and returns mock data:
+Browser mode uses an Angular HTTP interceptor that catches all API calls and returns mock data:
 
 ```typescript
 // Simplified example of how the interceptor works

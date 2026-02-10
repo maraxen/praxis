@@ -4,11 +4,9 @@ Thank you for your interest in contributing to Praxis! This document will help y
 
 ## Getting Started
 
-See the installation instructions [here](docs/installation.md). For contributing, you should install Praxis from source.
+See the installation instructions [here](docs/getting-started/installation.md). For contributing, you should install Praxis from source.
 
-If this is your first time contributing to open source, check out [How to Open Source](./docs/how-to-open-source.md) for an easy introduction.
-
-It's highly appreciated by the PyLabRobot developers if you communicate what you want to work on, to minimize any duplicate work. You can do this on the [forum](https://forums.PyLabRobot.org/c/Praxis-development/23).
+It's highly appreciated by the developers if you communicate what you want to work on, to minimize any duplicate work.
 
 ## Development Tips
 
@@ -56,7 +54,7 @@ uv run ty check
 
 It is important that you write documentation for your code. As a rule of thumb, all functions and classes, whether public or private, are required to have a docstring. Praxis uses [Google Style Python Docstrings](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html). In addition, Praxis uses [type hints](https://docs.python.org/3/library/typing.html) to document the types of variables.
 
-To build the documentation, run `uv run mkdocs serve` in the root directory. The documentation will be built in `docs/_build/html`. Run `open docs/_build/html/index.html` to open the documentation in your browser.
+To build the documentation, run `uv run mkdocs serve` in the root directory. The documentation will be available at `http://127.0.0.1:8000`. To build static output, run `uv run mkdocs build` and open `site/index.html`.
 
 ## Data Models
 
