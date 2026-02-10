@@ -29,120 +29,301 @@ def materialize_context(manifest):
   
   print(f"[Browser] Materializing context for protocol: {manifest['protocol']['fqn']}")
   
-  protocol_info = manifest.get("protocol", {})
-  requires_deck = protocol_info.get("requires_deck", True)
-  
-  # 1. Instantiate Deck
-  deck = None
-  if requires_deck:
-    deck_manifest = None
-    # Find deck manifest in machines (LiquidHandler)
-    for m in manifest.get("machines", []):
-      if m.get("machine_type") == "LiquidHandler" and "deck" in m:
-        deck_manifest = m["deck"]
-        break
-    
-    if deck_manifest:
-      fqn = deck_manifest["fqn"]
-      print(f"[Browser] Instantiating deck: {fqn}")
-      try:
-        module_path, class_name = fqn.rsplit(".", 1)
-        module = importlib.import_module(module_path)
-        DeckClass = getattr(module, class_name)
-        # NOTE: STARLetDeck() etc don't take 'name' argument in newer PLR
-        deck = DeckClass()
-      except Exception as e:
-        print(f"Error instantiating deck {fqn}: {e}. Falling back to generic Deck.")
-        try:
-          from pylabrobot.resources import Deck
-          deck = Deck()
-        except ImportError:
-          print("Could not import pylabrobot.resources.Deck, deck will be None")
-      
-      # Populate Layout (Carriers and Resources)
-      layout = deck_manifest.get("layout", [])
-      layout_type = deck_manifest.get("layout_type", "rail-based")
-      
-      for entry in layout:
-        try:
-          if layout_type == "rail-based":
-            _materialize_rail_entry(deck, entry)
-          else:
-            _materialize_slot_entry(deck, entry)
-        except Exception as e:
-          print(f"Error materializing layout entry {entry.get('name', '?')}: {e}")
-
-  # 2. Instantiate Machines
+  # 1. Instantiate Machines (each with its own deck if needed)
   machines = {}
+  primary_deck = None
+  deck_resource_registry = {}  # name -> resource object, populated during deck build
+  
   for m_entry in manifest.get("machines", []):
     machine_name = m_entry["param_name"]
     m_type = m_entry.get("machine_type", "LiquidHandler")
     print(f"[Browser] Instantiating machine: {machine_name} (type={m_type}, backend={m_entry['backend_fqn']})")
     
+    # Build deck FOR THIS MACHINE (not shared)
+    machine_deck = None
+    if m_type == "LiquidHandler" and "deck" in m_entry:
+      machine_deck, resources = _build_deck_from_manifest(m_entry["deck"])
+      deck_resource_registry.update(resources)
+      if not primary_deck:
+        primary_deck = machine_deck
+    
     backend = create_configured_backend(m_entry)
     
     try:
-      machine = _instantiate_machine(m_type, backend, deck, manifest)
+      machine = _instantiate_machine(m_type, backend, machine_deck, manifest)
       machines[machine_name] = machine
     except Exception as e:
       print(f"Error instantiating machine {machine_name}: {e}")
 
-  # 3. Resolve Parameters
+  # 2. Resolve Parameters
   kwargs = {}
   kwargs.update(machines)
   
-  for p in manifest.get("parameters", []):
+  params_list = manifest.get("parameters", [])
+  print(f"[Browser] Resolving {len(params_list)} parameters, registry has {len(deck_resource_registry)} resources: {list(deck_resource_registry.keys())}")
+  
+  for p in params_list:
     p_name = p["name"]
+    is_deck = p.get("is_deck_resource", False)
+    
     if p_name in kwargs:
       continue  # Already provided as a machine
     
-    if p.get("is_deck_resource") and deck:
-      try:
-        resource = deck.get_resource(p["name"])
-        if resource:
-          kwargs[p_name] = resource
-        else:
-          print(f"Warning: Resource '{p['name']}' not found on deck. Skipping.")
-      except Exception as e:
-        print(f"Warning: Could not resolve deck resource '{p['name']}': {e}")
+    if is_deck:
+      # Lookup from registry (built during deck construction)
+      resource_name = p.get("value") or p_name
+      resource = deck_resource_registry.get(resource_name)
+      if resource:
+        kwargs[p_name] = resource
+        print(f"[Browser] Resolved deck resource '{p_name}' -> {type(resource).__name__}")
+      else:
+        print(f"[Browser] WARNING: Deck resource '{resource_name}' not in registry. Available: {list(deck_resource_registry.keys())}")
     else:
-      kwargs[p_name] = p.get("value")
+      raw_val = p.get("value")
+      # Convert string repr 'None'/'null'/'' to actual None
+      if raw_val is None or raw_val == 'None' or raw_val == 'null' or raw_val == '':
+        raw_val = None
+      # Strip extra quotes from default_value_repr (Python repr adds quotes: '"A1"' -> 'A1')
+      elif isinstance(raw_val, str) and len(raw_val) >= 2 and raw_val[0] in ('"', "'") and raw_val[-1] == raw_val[0]:
+        raw_val = raw_val[1:-1]
+      # Coerce numeric types from their string repr
+      type_hint = (p.get("type_hint") or "").lower()
+      if raw_val is not None and isinstance(raw_val, str):
+        if 'float' in type_hint:
+          try:
+            raw_val = float(raw_val)
+          except ValueError:
+            pass
+        elif 'int' in type_hint:
+          try:
+            raw_val = int(raw_val)
+          except ValueError:
+            pass
+      # If this is a state/dict parameter and value is None/empty, default to {}
+      if raw_val is None and ('dict' in type_hint or p_name == 'state'):
+        raw_val = {}
+      # If this is a dict-type param but got a string somehow, try to eval or default to {}
+      if isinstance(raw_val, str) and ('dict' in type_hint or p_name == 'state'):
+        raw_val = {}
+      kwargs[p_name] = raw_val
       
+  print(f"[Browser] Final kwargs keys: {list(kwargs.keys())}")
   return kwargs
 
 
-def _import_class(fqn):
-  """Import a class by its fully qualified name."""
-  module_path, class_name = fqn.rsplit(".", 1)
-  module = importlib.import_module(module_path)
-  return getattr(module, class_name)
-
-
-def instantiate_resource(fqn, name):
-  """Public API: Instantiate a PLR resource class by FQN.
+def _build_deck_from_manifest(deck_manifest):
+  """Instantiate and populate a deck from a deck manifest.
   
-  Called from materialize_context (deck layout) and
-  PlaygroundComponent.generateResourceCode (JupyterLite notebook injection).
-  
-  PLR resource subclasses (Plate, TipRack, etc.) define their own sizes
-  in their __init__ or class body. We only pass `name` to avoid overriding
-  class-defined dimensions. Falls back to base Resource with zero sizes.
+  Returns:
+    Tuple of (deck, resource_registry) where resource_registry is a dict
+    mapping resource names to their instantiated objects.
   """
+  fqn = deck_manifest["fqn"]
+  print(f"[Browser] Building deck: {fqn}")
+  deck = None
+  resource_registry = {}  # name -> resource object
+  
+  try:
+    module_path, class_name = fqn.rsplit(".", 1)
+    module = importlib.import_module(module_path)
+    DeckClass = getattr(module, class_name)
+    
+    import inspect
+    # Handle factory functions (STARLetDeck) or classes (HamiltonSTARDeck)
+    if inspect.isfunction(DeckClass):
+      try:
+        deck = DeckClass()
+      except TypeError:
+        # Fallback for old factories or special cases
+        deck = DeckClass(name="deck")
+    else:
+      # It's a class
+      sig = inspect.signature(DeckClass.__init__)
+      if 'size' in sig.parameters and sig.parameters['size'].default is inspect.Parameter.empty:
+        deck = DeckClass(size=1.3)  # VantageDeck
+      else:
+        # Most PLR decks (STARDeck, OTDeck) take name as first arg or have defaults
+        try:
+          deck = DeckClass()
+        except TypeError:
+          deck = DeckClass(name="deck")
+  except Exception as e:
+    print(f"Error instantiating deck {fqn}: {e}. Falling back to generic Deck.")
+    try:
+      from pylabrobot.resources import Deck
+      deck = Deck()
+    except ImportError:
+      return None, {}
+  
+  # Populate Layout (Carriers and Resources)
+  layout = deck_manifest.get("layout", [])
+  layout_type = deck_manifest.get("layout_type", "rail-based")
+  
+  for entry in layout:
+    try:
+      if layout_type == "rail-based":
+        _materialize_rail_entry(deck, entry, resource_registry)
+      else:
+        _materialize_slot_entry(deck, entry, resource_registry)
+    except Exception as e:
+      print(f"Error materializing layout entry {entry.get('name', '?')}: {e}")
+      
+  return deck, resource_registry
+
+
+def _import_class(fqn):
+  """Import a class/factory by its fully qualified name.
+  
+  Falls back to pylabrobot.resources top-level if the specified
+  module path does not resolve (e.g., in Pyodide with a different
+  wheel layout).
+  """
+  module_path, class_name = fqn.rsplit(".", 1)
+  try:
+    module = importlib.import_module(module_path)
+    return getattr(module, class_name)
+  except (ModuleNotFoundError, AttributeError):
+    # Fallback: PLR re-exports many resources at pylabrobot.resources
+    try:
+      import pylabrobot.resources as plr_res
+      if hasattr(plr_res, class_name):
+        print(f"[Browser] Fallback: resolved {class_name} from pylabrobot.resources")
+        return getattr(plr_res, class_name)
+    except ImportError:
+      pass
+    raise
+
+
+def _patch_resource_names(data, old_prefix, new_name):
+  """Recursively rename resource tree from template prefix to target name.
+  
+  PLR serialized JSON from praxis.db uses template names like
+  '_enrich_Cor_96_wellplate_360ul_Fb'. Protocols need unique names
+  like 'dest_plate', so children become 'dest_plate_well_A1' etc.
+  """
+  if isinstance(data, dict):
+    if "name" in data:
+      old_name = data["name"]
+      if old_name.startswith(old_prefix):
+        data["name"] = new_name + old_name[len(old_prefix):]
+      else:
+        # Root node — just set the name
+        data["name"] = new_name
+    for child in data.get("children", []):
+      _patch_resource_names(child, old_prefix, new_name)
+
+
+def instantiate_resource(fqn, name, plr_json=None):
+  """Instantiate a PLR resource by FQN import, matching the playground approach.
+  
+  PLR resource factories (e.g., Cor_96_wellplate_360ul_Fb, PLT_CAR_L5AC_A00)
+  are functions that return fully configured resources with children pre-populated.
+  No deserialization needed — just import and call with name.
+  """
+  from pylabrobot.resources import Resource
+
+  # Resolve FQN if it's not a PLR path (e.g., praxis.protocol.protocols.xxx)
+  if fqn and not fqn.startswith('pylabrobot.'):
+    resolved_fqn = _resolve_plr_fqn_from_name(name)
+    if resolved_fqn:
+      print(f"[Browser] Resolved non-PLR FQN '{fqn}' → '{resolved_fqn}' (from name '{name}')")
+      fqn = resolved_fqn
+
+  if not fqn:
+    print(f"[Browser] No FQN for resource '{name}', creating generic Resource")
+    return Resource(name=name, size_x=0, size_y=0, size_z=0)
+
+  # Import the class/factory by FQN and call with name=name (playground approach)
   try:
     ResourceClass = _import_class(fqn)
-    # Try name-only first (works for most PLR resource subclasses)
     try:
-      return ResourceClass(name=name)
+      resource = ResourceClass(name=name)
+      print(f"[Browser] Instantiated {fqn}(name={name})")
+      return resource
     except TypeError:
-      # Some base classes require size args
-      return ResourceClass(name=name, size_x=0, size_y=0, size_z=0)
+      # Base classes (Plate, TipRack, Trough) need extra constructor args.
+      # Provide standard 96-well defaults for simulation.
+      resource = _instantiate_base_class_with_defaults(ResourceClass, fqn, name)
+      if resource:
+        return resource
+      # Ultimate fallback: plain Resource with zero size
+      print(f"[Browser] Could not instantiate {fqn}, using generic Resource")
+      return Resource(name=name, size_x=0, size_y=0, size_z=0)
   except Exception as e:
-    print(f"Could not instantiate resource {fqn}: {e}")
-    from pylabrobot.resources import Resource
+    print(f"[Browser] Failed to instantiate {fqn}(name={name}): {e}")
+    # Last resort: generic Resource
     return Resource(name=name, size_x=0, size_y=0, size_z=0)
 
 
-def _materialize_rail_entry(deck, entry):
+def _instantiate_base_class_with_defaults(ResourceClass, fqn, name):
+  """Create instances of PLR base classes (Plate, TipRack, etc.) with standard defaults.
+  
+  These base classes require constructor args like size_x/y/z and ordered_items/ordering.
+  We use PLR's own factory functions to generate 96-well standard geometry.
+  """
+  import inspect
+  class_name = fqn.rsplit('.', 1)[-1]
+  
+  try:
+    if class_name == 'Plate':
+      from pylabrobot.resources import Plate, Well, create_equally_spaced_2d
+      items = create_equally_spaced_2d(
+        Well, num_items_x=12, num_items_y=8,
+        dx=9.0, dy=9.0, dz=0.0,
+        item_dx=9.0, item_dy=9.0,
+        size_x=9.0, size_y=9.0, size_z=10.0,
+      )
+      resource = Plate(name=name, size_x=127.76, size_y=85.48, size_z=14.5, ordered_items=items)
+      print(f"[Browser] Instantiated Plate(name={name}) with 96-well defaults")
+      return resource
+    
+    if class_name == 'TipRack':
+      from pylabrobot.resources import TipRack, TipSpot, create_equally_spaced_2d
+      items = create_equally_spaced_2d(
+        TipSpot, num_items_x=12, num_items_y=8,
+        dx=9.0, dy=9.0, dz=0.0,
+        item_dx=9.0, item_dy=9.0,
+        size_x=9.0, size_y=9.0, size_z=0.0,
+      )
+      resource = TipRack(name=name, size_x=127.76, size_y=85.48, size_z=20.0, ordered_items=items)
+      print(f"[Browser] Instantiated TipRack(name={name}) with 96-tip defaults")
+      return resource
+
+    # Generic fallback for other base classes (Trough, TubeRack, etc.) - just add size
+    sig = inspect.signature(ResourceClass.__init__)
+    kwargs = {"name": name}
+    for dim in ("size_x", "size_y", "size_z"):
+      if dim in sig.parameters:
+        kwargs[dim] = 0.0
+    resource = ResourceClass(**kwargs)
+    print(f"[Browser] Instantiated {class_name}(name={name}) with size defaults")
+    return resource
+  except Exception as e:
+    print(f"[Browser] _instantiate_base_class_with_defaults failed for {class_name}: {e}")
+    return None
+
+
+def _resolve_plr_fqn_from_name(name):
+  """Derive a PLR base class FQN from a resource name.
+  
+  When the backend stores FQNs like 'praxis.protocol.protocols.simple_transfer.
+  simple_transfer.dest_plate', we can't import that in Pyodide. Instead, infer
+  the PLR class from the resource name (e.g. 'dest_plate' → Plate).
+  """
+  n = name.lower()
+  if 'plate' in n:
+    return 'pylabrobot.resources.Plate'
+  if 'tip' in n:
+    return 'pylabrobot.resources.TipRack'
+  if 'trough' in n or 'reservoir' in n:
+    return 'pylabrobot.resources.Trough'
+  if 'tube' in n:
+    return 'pylabrobot.resources.TubeRack'
+  # Default to base Resource
+  return 'pylabrobot.resources.Resource'
+
+
+def _materialize_rail_entry(deck, entry, resource_registry=None):
   """Materialize a carrier + children onto a rail-based deck."""
   # TODO: Open PLR issue — many carrier factories omit pedestal_size_z but
   # PlateHolder.__init__ now requires it. Default to 4.74 (from PLT_CAR_L5AC_A00).
@@ -157,24 +338,69 @@ def _materialize_rail_entry(deck, entry):
 
   carrier_fqn = entry["carrier_fqn"]
   CarrierClass = _import_class(carrier_fqn)
-  carrier = CarrierClass(name=entry["name"])
+  
+  # MFX carriers require a 'modules' dict — pass empty if not in manifest
+  import inspect
+  sig = inspect.signature(CarrierClass)
+  kwargs = {"name": entry["name"]}
+  if "modules" in sig.parameters:
+    kwargs["modules"] = entry.get("modules", {})
+  
+  carrier = CarrierClass(**kwargs)
   deck.assign_child_resource(carrier, rails=entry["rails"])
   
   for child in entry.get("children", []):
-    resource = instantiate_resource(child["resource_fqn"], child["name"])
-    # PLR Carrier uses __setitem__ which delegates to assign_resource_to_site
-    carrier[child["slot"]] = resource
+    resource = instantiate_resource(child["resource_fqn"], child["name"], child.get("plr_json"))
+    # PLR Carrier uses __setitem__ which delegates to assign_resource_to_site.
+    # This requires pre-configured sites (ResourceHolder objects) at each slot.
+    # If the carrier was instantiated without sites (e.g. MFX Carrier created with
+    # only name=), we need to create a ResourceHolder at the slot first.
+    slot = child["slot"]
+    assigned = False
+    try:
+      carrier[slot] = resource
+      assigned = True
+    except (KeyError, TypeError) as e:
+      # No site at this slot — create a minimal ResourceHolder and assign into it
+      try:
+        from pylabrobot.resources.resource_holder import ResourceHolder as RH
+        from pylabrobot.resources.coordinate import Coordinate
+        site = RH(
+          name=f"{carrier.name}_site{slot}",
+          size_x=resource.get_size_x() if hasattr(resource, 'get_size_x') else 130,
+          size_y=resource.get_size_y() if hasattr(resource, 'get_size_y') else 90,
+          size_z=0,
+        )
+        site.location = Coordinate(0, 0, 0)
+        carrier.assign_child_resource(site, location=site.location, spot=slot)
+        site.assign_child_resource(resource)
+        assigned = True
+      except Exception as e2:
+        print(f"[Browser] Site creation for {carrier.name}[{slot}] failed: {e2}")
+    except Exception as e:
+      # Other unexpected errors — try direct assign as last resort
+      try:
+        carrier.assign_child_resource(resource, location=None, spot=slot)
+        assigned = True
+      except Exception as e2:
+        print(f"[Browser] All assignment methods failed for {carrier.name}[{slot}]: {e2}")
+    # Register resource by name for direct parameter resolution
+    if resource_registry is not None:
+      resource_registry[child["name"]] = resource
 
   # Restore original
   if _orig is not None:
     PlateHolder.__init__ = _orig
 
 
-def _materialize_slot_entry(deck, entry):
+def _materialize_slot_entry(deck, entry, resource_registry=None):
   """Materialize a resource onto a slot-based deck (e.g. OTDeck)."""
   resource = instantiate_resource(entry["resource_fqn"], entry["name"])
   # OTDeck uses assign_child_at_slot(resource, slot_number), not assign_child_resource
   deck.assign_child_at_slot(resource, entry["slot"])
+  # Register resource by name for direct parameter resolution
+  if resource_registry is not None:
+    resource_registry[entry["name"]] = resource
 
 
 # Machine type → (module_path, class_name) mapping for supported PLR machine types
@@ -416,7 +642,19 @@ def emit_well_state(lh: Any):
 
       for i in range(num_wells):
         well = resource.get_item(i)
-        volume = well.tracker.get_liquids_total()
+        try:
+          # PLR VolumeTracker API varies across versions
+          tracker = well.tracker
+          if hasattr(tracker, 'get_used_volume'):
+            volume = tracker.get_used_volume()
+          elif hasattr(tracker, 'get_liquids_total'):
+            volume = tracker.get_liquids_total()
+          elif hasattr(tracker, 'liquids'):
+            volume = sum(lq.volume for lq in tracker.liquids) if tracker.liquids else 0
+          else:
+            volume = 0
+        except Exception:
+          volume = 0
         if volume > 0:
           liquid_bits |= 1 << i
           volumes.append(volume)
@@ -989,75 +1227,69 @@ def create_browser_machine(
 
 def create_configured_backend(config):
   """
-  Creates a PLR backend instance based on configuration.
-  Supports dynamic loading of backends and patching them for WebBridgeIO.
+  Creates a PLR backend instance from the FQN in the definition table.
+  Each machine category has its own backend (including category-specific chatterbox backends).
+  The FQN flows from the definition table → wizard → execution manifest → here.
 
   Args:
       config: Dictionary with keys:
-          - backend_fqn: Fully qualified name of the backend class
-          - port_id: WebSerial port ID (optional)
+          - backend_fqn: Fully qualified name of the backend class (from definition table)
+          - machine_type: Category (LiquidHandler, PlateReader, etc.) for extra constructor args
+          - port_id: WebSerial port ID (optional, for physical hardware)
           - baudrate: Baud rate for serial (default: 9600)
-          - is_simulated: Whether to use simulation (default: False)
+          - is_simulated: Whether this is a simulation backend
 
   Returns:
-      A PLR backend instance
+      A PLR backend instance, or None if import fails
   """
-  if config is None:
-    return WebBridgeBackend()
+  import importlib
 
-  # config might be a JsProxy if coming directly from JS, so we convert if needed
+  if config is None:
+    config = {}
   if hasattr(config, "to_py"):
     config = config.to_py()
+  if not isinstance(config, dict) and not hasattr(config, "get"):
+    config = {}
 
-  if config is None: # In case to_py() returned None
-    return WebBridgeBackend()
+  fqn = config.get("backend_fqn", "")
+  is_simulated = config.get("is_simulated", True)
+  machine_type = config.get("machine_type", "")
 
-  if not isinstance(config, dict):
-    # If it's not a dict, it might be a JsProxy that didn't convert well, or just some other value
-    # Try to treat it as a dict if it has a .get method, otherwise fallback
-    if not hasattr(config, "get"):
-      return WebBridgeBackend()
+  if not fqn:
+    print(f"[web_bridge] No backend_fqn provided in config, cannot create backend")
+    return None
 
-  fqn = config.get("backend_fqn", "pylabrobot.liquid_handling.backends.LiquidHandlerBackend")
-
-  # Dynamic Import
+  # Dynamic import using importlib (works with Pyodide lazy wheel loading)
   try:
     module_path, class_name = fqn.rsplit(".", 1)
-    module = __import__(module_path, fromlist=[class_name])
+    module = importlib.import_module(module_path)
     BackendClass = getattr(module, class_name)
-  except (ImportError, ValueError, AttributeError) as e:
-    print(f"Error importing backend {fqn}: {e}")
-    # Fallback to simulation
-    return WebBridgeBackend()
 
-  # Instantiate
-  # Note: Some backends might take args. For now assume default constructor.
-  try:
-    backend = BackendClass()
+    # Category-specific extra constructor args
+    extra_kwargs = {}
+    if machine_type == "PlateReader":
+      extra_kwargs = {"size_x": 0, "size_y": 0, "size_z": 0}
+
+    backend = BackendClass(**extra_kwargs)
+    print(f"[web_bridge] Created backend: {class_name} from {module_path}")
+
+    # Patch IO for physical hardware
+    if not is_simulated:
+      port_id = config.get("port_id")
+      baudrate = config.get("baudrate", 9600)
+      if port_id:
+        web_io = WebBridgeIO(port_id=port_id, baudrate=baudrate)
+        for attr in ["io", "_io", "connection", "_connection", "ser", "_ser"]:
+          if hasattr(backend, attr):
+            setattr(backend, attr, web_io)
+            break
+
+    return backend
   except Exception as e:
-    print(f"Error instantiating backend {fqn}: {e}")
-    # Fallback to default constructor attempt or WebBridgeBackend
-    try:
-      backend = BackendClass()
-    except Exception:
-      return WebBridgeBackend()
-
-  # Patch IO if needed
-  if not config.get("is_simulated", False):
-    port_id = config.get("port_id")
-    baudrate = config.get("baudrate", 9600)
-    if port_id:
-      # Create a WebBridgeIO
-      web_io = WebBridgeIO(port_id=port_id, baudrate=baudrate)
-
-      # Inject it - try known IO attribute names
-      io_attrs = ["io", "_io", "connection", "_connection", "ser", "_ser"]
-      for attr in io_attrs:
-        if hasattr(backend, attr):
-          setattr(backend, attr, web_io)
-          break
-
-  return backend
+    print(f"[web_bridge] Error importing/instantiating backend {fqn}: {e}")
+    import traceback
+    traceback.print_exc()
+    return None
 
 
 # =============================================================================

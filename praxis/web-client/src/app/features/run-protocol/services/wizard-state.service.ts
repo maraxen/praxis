@@ -23,6 +23,7 @@ export interface ResourceEntry {
     resource_fqn: string;
     name: string;                    // the name the protocol uses to reference this resource
     slot: number;
+    plr_json?: string;               // full PLR serialized definition for deserialization
 }
 
 export interface CarrierEntry {
@@ -232,6 +233,11 @@ export class WizardStateService {
                 // We want its accession_id as the assignedAssetId
                 return {
                     ...assignment,
+                    resource: {
+                        ...assignment.resource,
+                        // Use the selected inventory resource's FQN (PLR class) if available
+                        fqn: selected.fqn || assignment.resource.fqn
+                    },
                     assignedAssetId: selected.accession_id,
                     placed: false // Explicitly ensure false at start of wizard
                 };
@@ -465,9 +471,17 @@ export class WizardStateService {
                 const assignment = updatedAssignments[index];
                 // If not already assigned an asset ID
                 if (!assignment.assignedAssetId) {
-                    const suggestedId = await this.consumableAssignment.findCompatibleConsumable(asset);
-                    if (suggestedId) {
-                        updatedAssignments[index] = { ...assignment, assignedAssetId: suggestedId };
+                    const result = await this.consumableAssignment.findCompatibleConsumable(asset);
+                    if (result) {
+                        updatedAssignments[index] = {
+                            ...assignment,
+                            assignedAssetId: result.id,
+                            resource: {
+                                ...assignment.resource,
+                                // Propagate the PLR FQN from inventory resource
+                                fqn: result.fqn || assignment.resource.fqn
+                            }
+                        };
                         changed = true;
                     }
                 }
@@ -517,7 +531,7 @@ export class WizardStateService {
      * 
      * @param machineConfigs Pre-built machine entries containing backend/port info (from ExecutionService)
      */
-    buildExecutionManifest(machineConfigs: MachineEntry[]): ExecutionManifest {
+    buildExecutionManifest(machineConfigs: MachineEntry[], plrJsonMap?: Map<string, string>, typeFqnMap?: Map<string, string>): ExecutionManifest {
         const protocol = this._protocol();
         const assignments = this._slotAssignments();
         const deckType = this._deckType();
@@ -551,10 +565,12 @@ export class WizardStateService {
                     carrierMap.set(a.carrier.id, carrierEntry);
                 }
 
+                const resourceFqn = this.resolveResourceFqn(a.resource, typeFqnMap);
                 carrierEntry.children.push({
-                    resource_fqn: a.resource.fqn || 'pylabrobot.resources.Resource', // Fallback
+                    resource_fqn: resourceFqn,
                     name: a.resource.name,
-                    slot: a.slot.index
+                    slot: a.slot.index,
+                    plr_json: plrJsonMap?.get(resourceFqn)
                 });
             });
             layout = Array.from(carrierMap.values());
@@ -563,7 +579,7 @@ export class WizardStateService {
             layout = assignments
                 .filter(a => a.placed || isSkipped)
                 .map(a => ({
-                    resource_fqn: a.resource.fqn || 'pylabrobot.resources.Resource',
+                    resource_fqn: this.resolveResourceFqn(a.resource, typeFqnMap),
                     name: a.resource.name,
                     slot: a.slot.index
                 }));
@@ -592,11 +608,13 @@ export class WizardStateService {
                 const typeHintLower = p.type_hint.toLowerCase();
                 const isResource = typeHintLower.includes('plate') ||
                     typeHintLower.includes('tiprack') ||
+                    typeHintLower.includes('trough') ||
+                    typeHintLower.includes('reservoir') ||
                     typeHintLower.includes('resource');
 
                 parameters.push({
                     name: p.name,
-                    value: p.default_value_repr, // ExecutionService will overwrite with actual user values
+                    value: isResource ? p.name : p.default_value_repr, // USE NAME for deck resources so web_bridge.py can find them
                     type_hint: p.type_hint,
                     fqn: p.fqn,
                     is_deck_resource: isResource
@@ -604,12 +622,30 @@ export class WizardStateService {
             });
         }
 
-        // Add non-parameter assets that might be needed
+        // Add non-machine assets as deck resource parameters
+        // These are labware (Plate, TipRack, etc.) from protocol_asset_requirements
+        // that the protocol function expects as kwargs but aren't in parameter_definitions
         if (protocol.assets) {
+            const machineCategories = new Set(['LiquidHandler', 'PlateReader', 'HeaterShaker', 'Shaker', 'Centrifuge', 'Incubator']);
+            const existingParamNames = new Set(parameters.map(p => p.name));
+
             protocol.assets.forEach(a => {
-                // If it's a machine, it's already in machines[] (via ExecutionService)
-                // If it's labware on deck, protocol likely references it via parameter name.
-                // We ensure it's detectable.
+                // Skip if already added as a parameter
+                if (existingParamNames.has(a.name)) {
+                    return;
+                }
+                // Skip machine assets — they're in machines[]
+                if (machineCategories.has(a.required_plr_category || '')) {
+                    return;
+                }
+
+                parameters.push({
+                    name: a.name,
+                    value: a.name,  // Use asset name for deck lookup
+                    type_hint: a.type_hint_str,
+                    fqn: a.fqn,
+                    is_deck_resource: true
+                });
             });
         }
 
@@ -630,8 +666,43 @@ export class WizardStateService {
         switch (type) {
             case 'HamiltonSTARDeck': return 'pylabrobot.resources.hamilton.STARDeck';
             case 'HamiltonSTARLetDeck': return 'pylabrobot.resources.hamilton.STARLetDeck';
+            case 'VantageDeck': return 'pylabrobot.resources.hamilton.vantage_decks.VantageDeck';
             case 'OTDeck': return 'pylabrobot.resources.opentrons.OTDeck';
-            default: return 'pylabrobot.resources.Deck';
+            case 'EVO100Deck': return 'pylabrobot.resources.tecan.tecan_decks.EVO100Deck';
+            case 'EVO150Deck': return 'pylabrobot.resources.tecan.tecan_decks.EVO150Deck';
+            case 'EVO200Deck': return 'pylabrobot.resources.tecan.tecan_decks.EVO200Deck';
+            default: return type.includes('.') ? type : 'pylabrobot.resources.Deck';
+        }
+    }
+
+    /**
+     * Resolve a resource's FQN to a proper PLR class path.
+     * Protocol assets store FQNs as backend module paths (e.g. 'praxis.protocol.protocols.simple_transfer.simple_transfer.dest_plate')
+     * but the browser needs PLR class FQNs (e.g. 'pylabrobot.resources.Plate').
+     */
+    private resolveResourceFqn(resource: PlrResource, typeFqnMap?: Map<string, string>): string {
+        // If already a PLR FQN, use it (e.g., set by guided setup from inventory selection)
+        if (resource.fqn && resource.fqn.startsWith('pylabrobot.')) {
+            return resource.fqn;
+        }
+
+        // Look up specific factory FQN from resource_definitions table (like playground does)
+        const type = (resource.type || '').toLowerCase();
+        if (typeFqnMap) {
+            const fqn = typeFqnMap.get(type); // Now matches lowercase keys in typeFqnMap
+            if (fqn) {
+                return fqn;
+            }
+        }
+
+        // Last resort: generic base class (may fail if constructor needs extra args)
+        switch (type) {
+            case 'plate': return 'pylabrobot.resources.Plate';
+            case 'tiprack': return 'pylabrobot.resources.TipRack';
+            case 'trough': return 'pylabrobot.resources.Trough';
+            case 'reservoir': return 'pylabrobot.resources.Trough';
+            case 'tuberack': return 'pylabrobot.resources.TubeRack';
+            default: return 'pylabrobot.resources.Resource';
         }
     }
 }

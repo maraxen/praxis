@@ -258,38 +258,40 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
 
 
 # Define critical decks that must always be included
+# NOTE: Deck FQNs are in pylabrobot.resources, NOT pylabrobot.liquid_handling.backends
+# See: external/pylabrobot/pylabrobot/resources/hamilton/__init__.py
 CRITICAL_DECKS = [
   {
-    "name": "STARDeck",
-    "fqn": "pylabrobot.liquid_handling.backends.hamilton.STAR.STARDeck",
+    "name": "HamiltonSTARDeck",
+    "fqn": "pylabrobot.resources.hamilton.HamiltonSTARDeck",
     "category": "Deck",
     "vendor": "Hamilton",
     "manufacturer": "Hamilton",
-    "docstring": "Hamilton STAR Deck definition",
+    "docstring": "Hamilton STAR Deck (base class)",
   },
   {
     "name": "STARLetDeck",
-    "fqn": "pylabrobot.liquid_handling.backends.hamilton.STARlet.STARLetDeck",
+    "fqn": "pylabrobot.resources.hamilton.STARLetDeck",
     "category": "Deck",
     "vendor": "Hamilton",
     "manufacturer": "Hamilton",
-    "docstring": "Hamilton STARLet Deck definition",
+    "docstring": "Hamilton STARLet Deck (factory function)",
   },
   {
     "name": "VantageDeck",
-    "fqn": "pylabrobot.liquid_handling.backends.hamilton.Vantage.VantageDeck",
+    "fqn": "pylabrobot.resources.hamilton.VantageDeck",
     "category": "Deck",
     "vendor": "Hamilton",
     "manufacturer": "Hamilton",
-    "docstring": "Hamilton Vantage Deck definition",
+    "docstring": "Hamilton Vantage Deck",
   },
   {
-    "name": "OT2Deck",
-    "fqn": "pylabrobot.liquid_handling.backends.opentrons.deck.OT2Deck",
+    "name": "OTDeck",
+    "fqn": "pylabrobot.resources.opentrons.OTDeck",
     "category": "Deck",
     "vendor": "Opentrons",
     "manufacturer": "Opentrons",
-    "docstring": "Opentrons OT-2 Deck definition",
+    "docstring": "Opentrons OT-2/Flex Deck",
   },
 ]
 
@@ -339,6 +341,13 @@ def discover_decks_static(conn: sqlite3.Connection) -> int:
 
   # Combine and deduplicate by FQN
   all_decks: dict[str, DiscoveredClass] = {d.fqn: d for d in deck_classes + deck_factories}
+
+  # Filter out direct hamilton_decks imports if common Hamilton decks exist as re-exports
+  hamilton_decks_to_skip = {
+    "pylabrobot.resources.hamilton.hamilton_decks.STARLetDeck",
+    "pylabrobot.resources.hamilton.hamilton_decks.STARDeck",
+  }
+  all_decks = {fqn: d for fqn, d in all_decks.items() if fqn not in hamilton_decks_to_skip}
 
   # Add critical decks if missing (fallback)
   for critical in CRITICAL_DECKS:

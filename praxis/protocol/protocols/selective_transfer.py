@@ -128,16 +128,18 @@ async def _perform_transfer(
   tip_idx: int,
 ) -> None:
   """Execute a single transfer operation with tip handling."""
-  # Simple tip tracking: Wrap around tip rack if needed
-  # Note: In a real protocol, we'd use a TipTracker or similar
-  num_tips = 96  # Assumed standard 96 tip rack for simplicity
-  tip_spot = tip_rack.get_item(tip_idx % num_tips)
+  # Use column-major addressing to cycle through tip positions
+  # Standard 96-tip rack: rows A-H (8), columns 1-12 (12)
+  row_idx = tip_idx % 8
+  col_idx = (tip_idx // 8) % 12
+  row_letter = chr(ord('A') + row_idx)
+  tip_id = f"{row_letter}{col_idx + 1}"
 
-  if tip_spot:  # Should always be true for standard rack
-    await lh.pick_up_tips([tip_spot])
-    await lh.aspirate(src_plate[src_well], vols=[vol])
-    await lh.dispense(dst_plate[dst_well], vols=[vol])
-    await lh.return_tips()  # Return to save simulation tips/avoid trash config issues
+  await lh.pick_up_tips(tip_rack[tip_id])
+  await lh.aspirate(src_plate[src_well], vols=[vol])
+  await lh.dispense(dst_plate[dst_well], vols=[vol])
+  await lh.return_tips()
+
 
 
 def _parse_wells(selection: str) -> list[str]:
