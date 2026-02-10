@@ -90,13 +90,40 @@ class WebUSB:
         "WebUSB is not supported in this browser. Please use Chrome, Edge, or Opera."
       )
 
-    # Request device
+    # Request device — try getDevices() first (works without gesture for
+    # already-authorized devices), then delegate to main thread via UI dialog.
     filters = [{"vendorId": self._id_vendor, "productId": self._id_product}]
 
     try:
-      self.dev = await navigator.usb.requestDevice(to_js({"filters": filters}))
-    except Exception as e:
-      raise RuntimeError(f"Failed to request USB device: {e}")
+      devices = await navigator.usb.getDevices()
+      for d in devices:
+        if d.vendorId == self._id_vendor and d.productId == self._id_product:
+          self.dev = d
+          break
+    except Exception:
+      pass  # getDevices not supported or failed
+
+    if self.dev is None:
+      # No pre-authorized device — delegate to Angular UI for user gesture
+      try:
+        import web_bridge
+        result = await web_bridge.request_user_interaction('device_connect', {
+          'api': 'usb',
+          'filters': filters,
+          'message': f'Connect USB device {hex(self._id_vendor)}:{hex(self._id_product)}'
+        })
+        if not result or not result.get('success'):
+          error_msg = result.get('error', 'denied') if result else 'no response'
+          raise RuntimeError(f"Device authorization failed: {error_msg}")
+        # Re-query — the device is now authorized
+        devices = await navigator.usb.getDevices()
+        for d in devices:
+          if d.vendorId == self._id_vendor and d.productId == self._id_product:
+            self.dev = d
+            break
+      except ImportError:
+        # web_bridge not available — fall back to direct request (will fail without gesture)
+        self.dev = await navigator.usb.requestDevice(to_js({"filters": filters}))
 
     if self.dev is None:
       raise RuntimeError("No USB device selected")

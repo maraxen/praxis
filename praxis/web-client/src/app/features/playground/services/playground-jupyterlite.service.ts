@@ -24,6 +24,10 @@ export class PlaygroundJupyterliteService {
   private processedInteractionIds = new Set<string>();
   private messageListener: ((event: MessageEvent) => void) | null = null;
 
+  // Kernel restart detection
+  private lastKernelId: string | null = null;
+  private kernelPollInterval: ReturnType<typeof setInterval> | undefined;
+
   // Auto-retry: JupyterLite's service-worker-manager unregisters all SWs on first load.
   // The SW needs ~5-10s to re-activate, so we auto-retry with short intervals.
   private bootstrapAttempt = 0;
@@ -61,6 +65,10 @@ export class PlaygroundJupyterliteService {
     }
     if (this.loadingTimeout) {
       clearTimeout(this.loadingTimeout);
+    }
+    if (this.kernelPollInterval) {
+      clearInterval(this.kernelPollInterval);
+      this.kernelPollInterval = undefined;
     }
   }
 
@@ -113,6 +121,8 @@ export class PlaygroundJupyterliteService {
           clearTimeout(this.loadingTimeout);
           this.loadingTimeout = undefined;
         }
+        // Start kernel restart detection after first successful bootstrap
+        this.startKernelRestartDetection();
       } else if (type === 'USER_INTERACTION') {
         console.log('[REPL] USER_INTERACTION received:', data.payload);
         this.handleUserInteraction(data.payload);
@@ -175,6 +185,86 @@ export class PlaygroundJupyterliteService {
     if (this.processedInteractionIds.size > 100) {
       const first = this.processedInteractionIds.values().next().value;
       if (first) this.processedInteractionIds.delete(first);
+    }
+  }
+
+  /**
+   * Poll iframe's JupyterLite kernel status. When the kernel ID changes
+   * (indicating a restart), re-inject the bootstrap code.
+   */
+  private startKernelRestartDetection(): void {
+    // Clear any existing poll
+    if (this.kernelPollInterval) {
+      clearInterval(this.kernelPollInterval);
+    }
+
+    // Snapshot current kernel ID
+    this.lastKernelId = this.getCurrentKernelId();
+
+    this.kernelPollInterval = setInterval(() => {
+      try {
+        const currentId = this.getCurrentKernelId();
+        if (currentId && this.lastKernelId && currentId !== this.lastKernelId) {
+          console.log('[REPL] Kernel restart detected (ID changed:', this.lastKernelId, '->', currentId, ')');
+          this.lastKernelId = currentId;
+          this.isLoading.set(true);
+          this.loadingError.set(null);
+          (window as any).__praxis_pyodide_ready = false;
+          // Wait a moment for the new kernel to be ready, then re-inject
+          setTimeout(() => this.reinjectBootstrap(), 2000);
+        } else if (currentId && !this.lastKernelId) {
+          // First time we see a kernel ID — just record it
+          this.lastKernelId = currentId;
+        }
+      } catch (e) {
+        // Cross-origin or not ready — ignore silently
+      }
+    }, 2000);
+  }
+
+  private getCurrentKernelId(): string | null {
+    try {
+      const iframe = document.querySelector('iframe.notebook-frame') as HTMLIFrameElement | null;
+      const jupyterapp = (iframe?.contentWindow as any)?.jupyterapp;
+      if (!jupyterapp?.serviceManager?.kernels) return null;
+
+      const runningKernels = jupyterapp.serviceManager.kernels.running();
+      const first = runningKernels.next();
+      return first.done ? null : first.value?.id ?? null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  private reinjectBootstrap(): void {
+    const iframe = document.querySelector('iframe.notebook-frame') as HTMLIFrameElement | null;
+    const jupyterapp = (iframe?.contentWindow as any)?.jupyterapp;
+    if (!jupyterapp?.commands) {
+      console.warn('[REPL] Cannot re-inject bootstrap: jupyterapp.commands not available');
+      this.isLoading.set(false);
+      return;
+    }
+
+    const bootstrapCode = this.getMinimalBootstrap();
+    console.log('[REPL] Re-injecting bootstrap after kernel restart...');
+
+    try {
+      jupyterapp.commands.execute('console:inject', {
+        activate: false,
+        code: bootstrapCode
+      }).then(() => {
+        return jupyterapp.commands.execute('console:run-forced');
+      }).then(() => {
+        console.log('[REPL] Bootstrap re-injection completed');
+        // praxis:ready will be emitted by the bootstrap when it finishes
+      }).catch((err: any) => {
+        console.error('[REPL] Bootstrap re-injection failed:', err);
+        this.isLoading.set(false);
+        this.loadingError.set('Bootstrap re-injection failed after kernel restart');
+      });
+    } catch (e) {
+      console.error('[REPL] Bootstrap re-injection error:', e);
+      this.isLoading.set(false);
     }
   }
 

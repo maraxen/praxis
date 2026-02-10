@@ -106,21 +106,34 @@ class WebHID:
     except Exception as e:
       logger.warning(f"Failed to check existing devices: {e}")
 
-    # 2. If not found, request it (May fail if no user gesture)
+    # 2. If not found, delegate to Angular UI for user gesture
     if not target_device:
-      logger.info("Requesting new HID device (User Interaction Required)...")
+      logger.info("Requesting new HID device via UI dialog (User Interaction Required)...")
       filters = [{"vendorId": self.vid, "productId": self.pid}]
       try:
-        # requestDevice returns an array
+        import web_bridge
+        result = await web_bridge.request_user_interaction('device_connect', {
+          'api': 'hid',
+          'filters': filters,
+          'message': f'Connect HID device {self._unique_id}'
+        })
+        if not result or not result.get('success'):
+          error_msg = result.get('error', 'denied') if result else 'no response'
+          raise RuntimeError(f"Device authorization failed: {error_msg}")
+        # Re-query — the device is now authorized
+        existing_devices = await navigator.hid.getDevices()
+        for i in range(existing_devices.length):
+          d = existing_devices[i]
+          if d.vendorId == self.vid and d.productId == self.pid:
+            if self.serial_number and getattr(d, "serialNumber", "") != self.serial_number:
+              continue
+            target_device = d
+            break
+      except ImportError:
+        # web_bridge not available — fall back to direct request (will fail without gesture)
         devices = await navigator.hid.requestDevice(to_js({"filters": filters}))
         if devices.length > 0:
           target_device = devices[0]
-      except Exception as e:
-        msg = (
-          f"Failed to request HID device. Ensure this is called from a user gesture "
-          f"(e.g. button click) or the device was previously authorized. Details: {e}"
-        )
-        raise RuntimeError(msg) from e
 
     if not target_device:
       msg = "No HID device selected or found."

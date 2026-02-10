@@ -1397,8 +1397,14 @@ def bootstrap_playground(namespace=None):
                  If None, temporarily injects into __main__ (legacy behavior).
 
   """
-  sys.stdout = StdoutRedirector("STDOUT")
-  sys.stderr = StdoutRedirector("STDERR")
+  # Only redirect stdout in the dedicated python.worker.ts context (Protocol Runner).
+  # In JupyterLite, the kernel handles stdout via IPython's stream objects
+  # (publishStreamCallback). Our StdoutRedirector sends via postMessage("STDOUT", ...)
+  # which has no handler in JupyterLite's coincident worker proxy.
+  import builtins
+  if not getattr(builtins, '_PRAXIS_JUPYTERLITE', False):
+    sys.stdout = StdoutRedirector("STDOUT")
+    sys.stderr = StdoutRedirector("STDERR")
   
   target = namespace if namespace is not None else {}
 

@@ -264,6 +264,10 @@ async def praxis_main(host_root):
         js.console.warn(f'[Bootstrap] Resource import failed: {e}')
 
     # --- 9. Import web_bridge and bootstrap playground ---
+    # Flag that we're in JupyterLite so bootstrap_playground() does NOT redirect
+    # sys.stdout — JupyterLite's kernel handles stdout via IPython's stream objects.
+    builtins._PRAXIS_JUPYTERLITE = True
+
     if 'web_bridge.py' in fetched:
         try:
             import web_bridge
