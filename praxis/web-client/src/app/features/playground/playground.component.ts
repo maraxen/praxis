@@ -107,7 +107,6 @@ import { PraxisSelectComponent, SelectOption } from '@shared/components/praxis-s
                 data-testid="jupyterlite-iframe"
                 (load)="onIframeLoad()"
                 allow="cross-origin-isolated; usb; serial"
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
               ></iframe>
             }
 
