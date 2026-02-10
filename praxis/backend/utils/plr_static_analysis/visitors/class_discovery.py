@@ -30,8 +30,13 @@ LIQUID_HANDLER_BASES: frozenset[str] = frozenset(
 PLATE_READER_BASES: frozenset[str] = frozenset(
   {
     "PlateReader",
-    "ImageReader",
+  }
+)
+
+IMAGER_BASES: frozenset[str] = frozenset(
+  {
     "Imager",
+    "ImageReader",
   }
 )
 
@@ -120,6 +125,7 @@ SCARA_BASES: frozenset[str] = frozenset(
 ALL_MACHINE_FRONTEND_BASES: frozenset[str] = (
   LIQUID_HANDLER_BASES
   | PLATE_READER_BASES
+  | IMAGER_BASES
   | HEATER_SHAKER_BASES
   | SHAKER_BASES
   | TEMPERATURE_CONTROLLER_BASES
@@ -157,6 +163,12 @@ LH_BACKEND_BASES: frozenset[str] = frozenset(
 PR_BACKEND_BASES: frozenset[str] = frozenset(
   {
     "PlateReaderBackend",
+  }
+)
+
+IMAGER_BACKEND_BASES: frozenset[str] = frozenset(
+  {
+    "ImagerBackend",
     "ImageReaderBackend",
   }
 )
@@ -244,6 +256,7 @@ SCARA_BACKEND_BASES: frozenset[str] = frozenset(
 ALL_MACHINE_BACKEND_BASES: frozenset[str] = (
   LH_BACKEND_BASES
   | PR_BACKEND_BASES
+  | IMAGER_BACKEND_BASES
   | HS_BACKEND_BASES
   | SHAKER_BACKEND_BASES
   | TEMP_BACKEND_BASES
@@ -440,6 +453,8 @@ class ClassDiscoveryVisitor(BasePLRVisitor):
     # -------------------------------------------------------------------------
     if base_set_with_self & LH_BACKEND_BASES:
       return PLRClassType.LH_BACKEND
+    if base_set_with_self & IMAGER_BACKEND_BASES:
+      return PLRClassType.IMAGER_BACKEND
     if base_set_with_self & PR_BACKEND_BASES:
       return PLRClassType.PR_BACKEND
     if base_set_with_self & HS_BACKEND_BASES:
@@ -477,6 +492,8 @@ class ClassDiscoveryVisitor(BasePLRVisitor):
     # -------------------------------------------------------------------------
     if base_set_with_self & LIQUID_HANDLER_BASES:
       return PLRClassType.LIQUID_HANDLER
+    if base_set_with_self & IMAGER_BASES:
+      return PLRClassType.IMAGER
     if base_set_with_self & PLATE_READER_BASES:
       return PLRClassType.PLATE_READER
     # HeaterShaker inherits from TemperatureController + Shaker, check first
@@ -528,6 +545,8 @@ class ClassDiscoveryVisitor(BasePLRVisitor):
     if "backend" in name_lower:
       if "liquidhandler" in name_lower or "lh" in name_lower:
         return PLRClassType.LH_BACKEND
+      if "imager" in name_lower or "imagereader" in name_lower:
+        return PLRClassType.IMAGER_BACKEND
       if "platereader" in name_lower or "pr" in name_lower:
         return PLRClassType.PR_BACKEND
       if "heatershaker" in name_lower or "hs" in name_lower:

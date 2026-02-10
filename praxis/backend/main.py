@@ -298,12 +298,14 @@ async def value_error_handler(request: Request, exc: ValueError) -> Response:
 
 
 # CORS Middleware Configuration
+import os
+
+_default_cors = "http://localhost:5173,http://localhost:4200"
+_cors_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", _default_cors).split(",") if o.strip()]
+
 app.add_middleware(
   CORSMiddleware,
-  allow_origins=[
-    "http://localhost:5173",
-    "http://localhost:4200",  # TODO: ensure this is the correct URL for your frontend
-  ],
+  allow_origins=_cors_origins,
   allow_credentials=True,
   allow_methods=["*"],
   allow_headers=["*"],

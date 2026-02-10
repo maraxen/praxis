@@ -293,6 +293,7 @@ class PLRClassType(str, Enum):
   POWDER_DISPENSER = "powder_dispenser"
   INCUBATOR = "incubator"
   SCARA = "scara"
+  IMAGER = "imager"
 
   # Machine backends (hardware drivers)
   LH_BACKEND = "liquid_handler_backend"
@@ -310,6 +311,7 @@ class PLRClassType(str, Enum):
   POWDER_DISPENSER_BACKEND = "powder_dispenser_backend"
   INCUBATOR_BACKEND = "incubator_backend"
   SCARA_BACKEND = "scara_backend"
+  IMAGER_BACKEND = "imager_backend"
 
   # Infrastructure types
   DECK = "deck"
@@ -425,6 +427,7 @@ _frontend_types = frozenset(
     PLRClassType.POWDER_DISPENSER,
     PLRClassType.INCUBATOR,
     PLRClassType.SCARA,
+    PLRClassType.IMAGER,
   }
 )
 
@@ -445,6 +448,7 @@ _backend_types = frozenset(
     PLRClassType.POWDER_DISPENSER_BACKEND,
     PLRClassType.INCUBATOR_BACKEND,
     PLRClassType.SCARA_BACKEND,
+    PLRClassType.IMAGER_BACKEND,
   }
 )
 
@@ -464,6 +468,7 @@ _frontend_to_backend = {
   PLRClassType.POWDER_DISPENSER: PLRClassType.POWDER_DISPENSER_BACKEND,
   PLRClassType.INCUBATOR: PLRClassType.INCUBATOR_BACKEND,
   PLRClassType.SCARA: PLRClassType.SCARA_BACKEND,
+  PLRClassType.IMAGER: PLRClassType.IMAGER_BACKEND,
 }
 
 # Update module-level constants
@@ -488,6 +493,7 @@ BACKEND_TYPE_TO_FRONTEND_FQN: dict[PLRClassType, str] = {
   PLRClassType.POWDER_DISPENSER_BACKEND: "pylabrobot.powder_dispensing.PowderDispenser",
   PLRClassType.INCUBATOR_BACKEND: "pylabrobot.incubating.Incubator",
   PLRClassType.SCARA_BACKEND: "pylabrobot.scara.SCARA",
+  PLRClassType.IMAGER_BACKEND: "pylabrobot.plate_reading.Imager",
 }
 
 # =============================================================================

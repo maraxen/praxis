@@ -337,7 +337,7 @@ class PLRSourceParser:
       cls.is_abstract = True
 
     # Convert to DiscoveredBackend if it's a backend with channel info
-    if cls.class_type in (PLRClassType.LH_BACKEND, PLRClassType.PR_BACKEND):
+    if cls.class_type in (PLRClassType.LH_BACKEND, PLRClassType.PR_BACKEND, PLRClassType.IMAGER_BACKEND):
       return DiscoveredBackend(
         **cls.model_dump(),
         num_channels_default=extractor.num_channels_default,

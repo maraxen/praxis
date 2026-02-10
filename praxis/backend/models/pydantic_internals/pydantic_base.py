@@ -42,8 +42,9 @@ class PraxisBaseModel(BaseModel):
   )
 
   def model_post_init(self, __context: Any) -> None:
-    """Set the updated_at field to the current time after model initialization."""
-    self.updated_at = datetime.datetime.now(tz=datetime.timezone.utc)
+    """Set the updated_at field on first creation only (when not loaded from DB)."""
+    if self.updated_at is None:
+      self.updated_at = datetime.datetime.now(tz=datetime.timezone.utc)
 
   model_config = ConfigDict(
     from_attributes=True,
