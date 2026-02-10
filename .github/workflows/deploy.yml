@@ -34,7 +34,7 @@ jobs:
         run: uv sync
 
       - name: Generate assets
-        run: uv run scripts/generate_browser_db.py
+        run: uv run --with pylibftdi scripts/generate_browser_db.py
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
