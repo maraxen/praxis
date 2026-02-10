@@ -6,7 +6,19 @@
   <title>Praxis</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script>window.coi = { coepCredentialless: () => true };</script>
+  <script>
+    // Configure coi-serviceworker to use credentialless COEP (less restrictive than require-corp)
+    window.coi = { coepCredentialless: () => true };
+    // If SW is already controlling but crossOriginIsolated is false,
+    // explicitly send the credentialless message and reload once.
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller && !window.crossOriginIsolated) {
+      navigator.serviceWorker.controller.postMessage({ type: 'coepCredentialless', value: true });
+      if (!sessionStorage.getItem('coiCredentiallessSent')) {
+        sessionStorage.setItem('coiCredentiallessSent', '1');
+        window.location.reload();
+      }
+    }
+  </script>
   <script src="coi-serviceworker.js"></script>
   <!-- Import map to stub Node.js built-in modules that some libs try to import -->
   <script type="importmap">
