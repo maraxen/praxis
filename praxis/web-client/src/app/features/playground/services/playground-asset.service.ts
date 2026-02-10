@@ -3,6 +3,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AssetService } from '@features/assets/services/asset.service';
 import { Machine, Resource } from '@features/assets/models/asset.models';
+import { PLR_FRONTEND_DEFINITIONS } from '@assets/browser-data/plr-definitions';
 import { AssetWizard } from '@shared/components/asset-wizard/asset-wizard';
 import { Observable } from 'rxjs';
 
@@ -138,8 +139,27 @@ export class PlaygroundAssetService {
     const safeName = machine.name.replace(/['"\\\\/]/g, '_');
     const category = (machine as any).machine_category || 'LiquidHandler';
 
-    const frontendFqn = (machine as any).frontend_definition?.fqn || (machine as any).frontend_fqn;
-    const backendFqn = (machine as any).backend_definition?.fqn || machine.simulation_backend_name;
+    // Resolve frontend FQN: JOINed column > wizard-attached object > static definition fallback
+    let frontendFqn = (machine as any).frontend_fqn
+      || (machine as any).frontend_definition?.fqn;
+
+    if (!frontendFqn) {
+      const accId = (machine as any).frontend_definition_accession_id;
+      const cat = (machine as any).machine_category;
+      const def = PLR_FRONTEND_DEFINITIONS.find(
+        d => (accId && d.accession_id === accId) || (cat && d.machine_category === cat)
+      );
+      if (def) frontendFqn = def.fqn;
+    }
+
+    // Resolve backend FQN: JOINed column > wizard-attached object > simulation_backend_name (if FQN-shaped)
+    let backendFqn = (machine as any).backend_fqn
+      || (machine as any).backend_definition?.fqn;
+
+    if (!backendFqn) {
+      const simName = machine.simulation_backend_name;
+      if (simName && simName.includes('.')) backendFqn = simName;
+    }
 
     // Resolve deck FQN
     const deckFqn = deckConfigId || (machine as any).deck_type;
@@ -168,18 +188,21 @@ export class PlaygroundAssetService {
       lines.push(`deck = ${deckClass}()`);
     }
 
-    // Extra constructor args table
-    const FRONTEND_EXTRA_ARGS: Record<string, string> = {
-      'pylabrobot.plate_reading.PlateReader': ', size_x=0, size_y=0, size_z=0',
-      'pylabrobot.shaking.Shaker': ', size_x=0, size_y=0, size_z=0, child_location=Coordinate(0,0,0)',
-      'pylabrobot.heating_shaking.HeaterShaker': ', size_x=0, size_y=0, size_z=0, child_location=Coordinate(0,0,0)',
-      'pylabrobot.temperature_controlling.TemperatureController': ', size_x=0, size_y=0, size_z=0, child_location=Coordinate(0,0,0)',
-      'pylabrobot.thermocycling.Thermocycler': ', size_x=0, size_y=0, size_z=0, child_location=Coordinate(0,0,0)',
-      'pylabrobot.centrifuging.Centrifuge': ', size_x=0, size_y=0, size_z=0',
-      'pylabrobot.incubating.Incubator': ', size_x=0, size_y=0, size_z=0, racks=[], loading_tray_location=Coordinate(0,0,0)',
-    };
+    // Extra constructor args — match by class name suffix to avoid FQN format mismatches
+    const FRONTEND_EXTRA_ARGS: [string, string][] = [
+      ['PlateReader', ', size_x=0, size_y=0, size_z=0'],
+      ['Imager', ', size_x=0, size_y=0, size_z=0'],
+      ['Shaker', ', size_x=0, size_y=0, size_z=0, child_location=Coordinate(0,0,0)'],
+      ['HeaterShaker', ', size_x=0, size_y=0, size_z=0, child_location=Coordinate(0,0,0)'],
+      ['TemperatureController', ', size_x=0, size_y=0, size_z=0, child_location=Coordinate(0,0,0)'],
+      ['Thermocycler', ', size_x=0, size_y=0, size_z=0, child_location=Coordinate(0,0,0)'],
+      ['Centrifuge', ', size_x=0, size_y=0, size_z=0'],
+      ['Incubator', ', size_x=0, size_y=0, size_z=0, racks=[], loading_tray_location=Coordinate(0,0,0)'],
+    ];
 
-    const extraArgs = (frontendFqn && FRONTEND_EXTRA_ARGS[frontendFqn]) || '';
+    const extraArgs = frontendFqn
+      ? (FRONTEND_EXTRA_ARGS.find(([suffix]) => frontendFqn!.endsWith(`.${suffix}`))?.[1] || '')
+      : '';
     if (extraArgs.includes('Coordinate')) {
       lines.push('from pylabrobot.resources import Coordinate');
     }
@@ -191,10 +214,11 @@ export class PlaygroundAssetService {
       lines.push(`from ${frontendModule} import ${frontendClass}`);
 
       const deckArg = deckFqn ? ', deck=deck' : '';
-      const isLiquidHandler = frontendFqn === 'pylabrobot.liquid_handling.LiquidHandler';
+      const isLiquidHandler = frontendFqn.endsWith('.LiquidHandler');
 
-      if (isLiquidHandler && deckFqn) {
-        lines.push(`${varName} = ${frontendClass}(backend=backend, deck=deck)`);
+      if (isLiquidHandler) {
+        // LiquidHandler doesn't accept name= kwarg
+        lines.push(`${varName} = ${frontendClass}(backend=backend${deckArg})`);
       } else {
         lines.push(`${varName} = ${frontendClass}(name="${varName}", backend=backend${deckArg}${extraArgs})`);
       }

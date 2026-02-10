@@ -374,7 +374,12 @@ export class AsyncMachineRepository extends SqliteAsyncRepository<WithIndex<Mach
      * Find machines by status
      */
     private get joinedSelect() {
-        return `SELECT m.* FROM ${this.tableName} m`;
+        return `SELECT m.*,
+            fd.fqn AS frontend_fqn,
+            bd.fqn AS backend_fqn
+            FROM ${this.tableName} m
+            LEFT JOIN machine_frontend_definitions fd ON m.frontend_definition_accession_id = fd.accession_id
+            LEFT JOIN machine_backend_definitions bd ON m.backend_definition_accession_id = bd.accession_id`;
     }
 
     /**
@@ -443,7 +448,11 @@ export class AsyncMachineRepository extends SqliteAsyncRepository<WithIndex<Mach
             'workcell_accession_id', 'resource_counterpart_accession_id',
             'deck_child_accession_id', 'deck_child_definition_accession_id',
             'last_seen_online', 'current_protocol_run_accession_id',
-            'maintenance_enabled', 'maintenance_schedule_json'
+            'maintenance_enabled', 'maintenance_schedule_json',
+            // Definition FKs + backend metadata (persisted from wizard)
+            'frontend_definition_accession_id', 'backend_definition_accession_id',
+            'machine_definition_accession_id', 'simulation_backend_name',
+            'backend_config', 'last_maintenance_json'
         ];
 
         const machineData: Record<string, any> = {};

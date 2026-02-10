@@ -28,7 +28,7 @@ import {
 } from '@features/assets/models/asset.models';
 import { humanize } from '@core/utils/plr-display.utils';
 import { getCategoryIcon } from '@core/utils/machine-display.utils';
-import { debounceTime, distinctUntilChanged, map, startWith, switchMap } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, map, shareReplay, startWith, switchMap } from 'rxjs/operators';
 import { Observable, of, firstValueFrom, combineLatest } from 'rxjs';
 import { toObservable } from '@angular/core/rxjs-interop';
 
@@ -80,7 +80,7 @@ export class AssetWizard implements OnInit {
     category: ['', Validators.required]
   });
 
-  // Step 3: Frontend selection (for machines) or Definition (for resources)
+  // Step 3: Frontend selection (for machines — now the primary selection step)
   frontendStepFormGroup: FormGroup = this.fb.group({
     frontend: ['', Validators.required]
   });
@@ -157,57 +157,43 @@ export class AssetWizard implements OnInit {
       this.context = this.data.context;
     }
 
-    // Listen to assetType changes to update categories
+    // Listen to assetType changes
     this.typeStepFormGroup.get('assetType')?.valueChanges.subscribe(type => {
       this.categoryStepFormGroup.get('category')?.reset();
+      this.frontendStepFormGroup.reset();
       this.selectedExistingMachine = null;
       this.selectedFrontend = null;
       this.selectedBackend = null;
       this.selectedDefinition = null;
+      this.backends$ = of([]);
 
       if (type === 'MACHINE') {
-        this.categories$ = this.assetService.getMachineFacets().pipe(
-          map(facets => facets.machine_category
-            .filter(f => f.value !== 'Backend' && f.value !== 'Other')
-            .map(f => String(f.value)))
+        // Load all frontend definitions directly (replaces category-based selection)
+        this.frontends$ = this.assetService.getMachineFrontendDefinitions().pipe(
+          shareReplay(1)
         );
-
-        // Load existing machines if in playground mode
-        if (this.context === 'playground') {
-          this.existingMachines$ = this.assetService.getMachines();
-        }
+        // Category is not a step for machines — clear its validators
+        this.categoryStepFormGroup.get('category')?.clearValidators();
+        this.categoryStepFormGroup.get('category')?.updateValueAndValidity();
+        // Restore frontend validators
+        this.frontendStepFormGroup.get('frontend')?.setValidators(Validators.required);
+        this.frontendStepFormGroup.get('frontend')?.updateValueAndValidity();
       } else if (type === 'RESOURCE') {
+        // Resources still use category-based selection
         this.categories$ = this.assetService.getFacets().pipe(
-          map(facets => facets.plr_category.map(f => String(f.value)))
+          map(facets => facets.plr_category.map(f => String(f.value))),
+          shareReplay(1)
         );
+        // Frontend is not a step for resources — clear its validators
+        this.frontendStepFormGroup.get('frontend')?.clearValidators();
+        this.frontendStepFormGroup.get('frontend')?.updateValueAndValidity();
+        // Restore category validators
+        this.categoryStepFormGroup.get('category')?.setValidators(Validators.required);
+        this.categoryStepFormGroup.get('category')?.updateValueAndValidity();
       }
 
       // Clear search when type changes
       this.searchQuery.set('');
-    });
-
-    // Listen to category changes to load frontends (for machines)
-    this.categoryStepFormGroup.get('category')?.valueChanges.subscribe(category => {
-      if (this.typeStepFormGroup.get('assetType')?.value === 'MACHINE' && category) {
-        // Load frontends filtered by category
-        this.frontends$ = this.assetService.getMachineFrontendDefinitions().pipe(
-          map(frontends => frontends.filter(f => f.machine_category === category))
-        );
-      }
-    });
-
-    // Listen to frontend selection to load backends
-    this.frontendStepFormGroup.get('frontend')?.valueChanges.subscribe(frontendId => {
-      if (frontendId) {
-        this.backends$ = this.assetService.getBackendsForFrontend(frontendId);
-
-        // B4: Auto-select if only one backend exists (skip driver step)
-        firstValueFrom(this.backends$).then(backends => {
-          if (backends.length === 1 && !this.selectedBackend) {
-            this.selectBackend(backends[0]);
-          }
-        });
-      }
     });
 
     // Handle initial asset type if provided
@@ -230,8 +216,9 @@ export class AssetWizard implements OnInit {
     this.searchResults$ = combineLatest([assetType$, category$, query$]).pipe(
       switchMap(([assetType, category, query]) => {
         if (!assetType || assetType !== 'RESOURCE') return of([]);
-        return this.assetService.searchResourceDefinitions(query, category);
-      })
+        return this.assetService.searchResourceDefinitions(query, category || undefined);
+      }),
+      shareReplay(1)
     );
   }
 
@@ -254,6 +241,20 @@ export class AssetWizard implements OnInit {
     this.frontendStepFormGroup.patchValue({ frontend: frontend.accession_id });
     this.selectedBackend = null;
     this.backendStepFormGroup.reset();
+
+    // Sync category for review step and existing machines filtering
+    this.categoryStepFormGroup.patchValue({ category: frontend.machine_category });
+
+    // Load backends for this frontend
+    this.backends$ = this.assetService.getBackendsForFrontend(frontend.accession_id).pipe(shareReplay(1));
+
+    // Load existing machines filtered by this frontend's category (playground mode)
+    if (this.context === 'playground') {
+      this.existingMachines$ = this.assetService.getMachines().pipe(
+        map(machines => machines.filter(m => m.machine_category === frontend.machine_category)),
+        shareReplay(1)
+      );
+    }
 
     // Pre-fill instance name
     const uniqueSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -345,8 +346,8 @@ export class AssetWizard implements OnInit {
         // Use the new 3-tier architecture
         const machinePayload: MachineCreate = {
           name: config.name,
-          machine_category: category,
-          machine_type: category,
+          machine_category: this.selectedFrontend?.machine_category || category,
+          machine_type: this.selectedFrontend?.machine_category || category,
           description: config.description,
           // Link to frontend and backend definitions
           frontend_definition_accession_id: this.selectedFrontend?.accession_id,
@@ -354,7 +355,7 @@ export class AssetWizard implements OnInit {
           // Determine if simulated based on backend type
           is_simulation_override: this.selectedBackend?.backend_type === 'simulator',
           simulation_backend_name: this.selectedBackend?.backend_type === 'simulator'
-            ? this.getBackendDisplayName(this.selectedBackend!)
+            ? this.selectedBackend?.fqn
             : undefined,
           connection_info: config.connection_info ? { address: config.connection_info } : undefined,
           // Include backend config for hardware connections

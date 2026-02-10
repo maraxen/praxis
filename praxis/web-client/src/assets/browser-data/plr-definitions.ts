@@ -34,26 +34,26 @@ export interface PlrMachineDefinition {
 }
 
 export interface PlrFrontendDefinition {
-  accession_id: string;
-  name: string;
-  fqn: string;
-  description?: string;
-  machine_category: 'LiquidHandler' | 'PlateReader' | 'Shaker' | 'Centrifuge' | 'Incubator' | 'Other';
-  has_deck: boolean;
-  capabilities?: Record<string, unknown>;
-  capabilities_config?: any;
+    accession_id: string;
+    name: string;
+    fqn: string;
+    description?: string;
+    machine_category: 'LiquidHandler' | 'PlateReader' | 'Imager' | 'HeaterShaker' | 'Shaker' | 'TemperatureController' | 'Centrifuge' | 'Thermocycler' | 'Pump' | 'PumpArray' | 'Fan' | 'Sealer' | 'Peeler' | 'PowderDispenser' | 'Incubator' | 'Arm';
+    has_deck: boolean;
+    capabilities?: Record<string, unknown>;
+    capabilities_config?: any;
 }
 
 export interface PlrBackendDefinition {
-  accession_id: string;
-  name: string;
-  fqn: string;
-  frontend_definition_accession_id: string;
-  description?: string;
-  backend_type: 'hardware' | 'simulator';
-  connection_config?: any;
-  manufacturer?: string;
-  model?: string;
+    accession_id: string;
+    name: string;
+    fqn: string;
+    frontend_definition_accession_id: string;
+    description?: string;
+    backend_type: 'hardware' | 'simulator';
+    connection_config?: any;
+    manufacturer?: string;
+    model?: string;
 }
 
 // Fallback/Override capabilities for machines that don't expose them statically (e.g. auto-detected hardware)
@@ -206,50 +206,52 @@ export const PLR_MACHINE_DEFINITIONS: PlrMachineDefinition[] = [
 // ============================================================================
 
 export const PLR_FRONTEND_DEFINITIONS: PlrFrontendDefinition[] = [
-  { accession_id: 'fdef-lh', name: 'Liquid Handler', fqn: 'pylabrobot.liquid_handling.LiquidHandler', machine_category: 'LiquidHandler', has_deck: true },
-  { accession_id: 'fdef-pr', name: 'Plate Reader', fqn: 'pylabrobot.plate_reading.PlateReader', machine_category: 'PlateReader', has_deck: false },
-  { accession_id: 'fdef-hs', name: 'Heater Shaker', fqn: 'pylabrobot.heating_shaking.HeaterShaker', machine_category: 'Shaker', has_deck: false },
-  { accession_id: 'fdef-sh', name: 'Shaker', fqn: 'pylabrobot.shaking.Shaker', machine_category: 'Shaker', has_deck: false },
-  { accession_id: 'fdef-tc', name: 'Temperature Controller', fqn: 'pylabrobot.temperature_controlling.TemperatureController', machine_category: 'Other', has_deck: false },
-  { accession_id: 'fdef-ce', name: 'Centrifuge', fqn: 'pylabrobot.centrifuging.Centrifuge', machine_category: 'Centrifuge', has_deck: false },
-  { accession_id: 'fdef-th', name: 'Thermocycler', fqn: 'pylabrobot.thermocycling.Thermocycler', machine_category: 'Other', has_deck: false },
-  { accession_id: 'fdef-pu', name: 'Pump', fqn: 'pylabrobot.pumping.Pump', machine_category: 'Other', has_deck: false },
-  { accession_id: 'fdef-pa', name: 'Pump Array', fqn: 'pylabrobot.pumping.PumpArray', machine_category: 'Other', has_deck: false },
-  { accession_id: 'fdef-fa', name: 'Fan', fqn: 'pylabrobot.fans.Fan', machine_category: 'Other', has_deck: false },
-  { accession_id: 'fdef-se', name: 'Plate Sealer', fqn: 'pylabrobot.plate_sealing.Sealer', machine_category: 'Other', has_deck: false },
-  { accession_id: 'fdef-pee', name: 'Plate Peeler', fqn: 'pylabrobot.plate_peeling.Peeler', machine_category: 'Other', has_deck: false },
-  { accession_id: 'fdef-po', name: 'Powder Dispenser', fqn: 'pylabrobot.powder_dispensing.PowderDispenser', machine_category: 'Other', has_deck: false },
-  { accession_id: 'fdef-in', name: 'Incubator', fqn: 'pylabrobot.incubating.Incubator', machine_category: 'Incubator', has_deck: false },
-  { accession_id: 'fdef-sc', name: 'SCARA Robot', fqn: 'pylabrobot.scara.SCARA', machine_category: 'Other', has_deck: false },
+    { accession_id: 'fdef-lh', name: 'Liquid Handler', fqn: 'pylabrobot.liquid_handling.LiquidHandler', machine_category: 'LiquidHandler', has_deck: true },
+    { accession_id: 'fdef-pr', name: 'Plate Reader', fqn: 'pylabrobot.plate_reading.PlateReader', machine_category: 'PlateReader', has_deck: false },
+    { accession_id: 'fdef-img', name: 'Imager', fqn: 'pylabrobot.plate_reading.Imager', machine_category: 'Imager', has_deck: false },
+    { accession_id: 'fdef-hs', name: 'Heater Shaker', fqn: 'pylabrobot.heating_shaking.HeaterShaker', machine_category: 'HeaterShaker', has_deck: false },
+    { accession_id: 'fdef-sh', name: 'Shaker', fqn: 'pylabrobot.shaking.Shaker', machine_category: 'Shaker', has_deck: false },
+    { accession_id: 'fdef-tc', name: 'Temperature Controller', fqn: 'pylabrobot.temperature_controlling.TemperatureController', machine_category: 'TemperatureController', has_deck: false },
+    { accession_id: 'fdef-ce', name: 'Centrifuge', fqn: 'pylabrobot.centrifuging.Centrifuge', machine_category: 'Centrifuge', has_deck: false },
+    { accession_id: 'fdef-th', name: 'Thermocycler', fqn: 'pylabrobot.thermocycling.Thermocycler', machine_category: 'Thermocycler', has_deck: false },
+    { accession_id: 'fdef-pu', name: 'Pump', fqn: 'pylabrobot.pumping.Pump', machine_category: 'Pump', has_deck: false },
+    { accession_id: 'fdef-pa', name: 'Pump Array', fqn: 'pylabrobot.pumping.PumpArray', machine_category: 'PumpArray', has_deck: false },
+    { accession_id: 'fdef-fa', name: 'Fan', fqn: 'pylabrobot.fans.Fan', machine_category: 'Fan', has_deck: false },
+    { accession_id: 'fdef-se', name: 'Plate Sealer', fqn: 'pylabrobot.plate_sealing.Sealer', machine_category: 'Sealer', has_deck: false },
+    { accession_id: 'fdef-pee', name: 'Plate Peeler', fqn: 'pylabrobot.plate_peeling.Peeler', machine_category: 'Peeler', has_deck: false },
+    { accession_id: 'fdef-po', name: 'Powder Dispenser', fqn: 'pylabrobot.powder_dispensing.PowderDispenser', machine_category: 'PowderDispenser', has_deck: false },
+    { accession_id: 'fdef-in', name: 'Incubator', fqn: 'pylabrobot.incubating.Incubator', machine_category: 'Incubator', has_deck: false },
+    { accession_id: 'fdef-sc', name: 'SCARA Robot', fqn: 'pylabrobot.scara.SCARA', machine_category: 'Arm', has_deck: false },
 ];
 
 export const PLR_BACKEND_DEFINITIONS: PlrBackendDefinition[] = PLR_MACHINE_DEFINITIONS.map(m => {
-  let frontendId = 'fdef-lh';
-  if (m.frontend_fqn === 'pylabrobot.plate_reading.PlateReader') frontendId = 'fdef-pr';
-  else if (m.frontend_fqn === 'pylabrobot.heating_shaking.HeaterShaker') frontendId = 'fdef-hs';
-  else if (m.frontend_fqn === 'pylabrobot.shaking.Shaker') frontendId = 'fdef-sh';
-  else if (m.frontend_fqn === 'pylabrobot.temperature_controlling.TemperatureController') frontendId = 'fdef-tc';
-  else if (m.frontend_fqn === 'pylabrobot.centrifuging.Centrifuge') frontendId = 'fdef-ce';
-  else if (m.frontend_fqn === 'pylabrobot.thermocycling.Thermocycler') frontendId = 'fdef-th';
-  else if (m.frontend_fqn === 'pylabrobot.pumping.Pump') frontendId = 'fdef-pu';
-  else if (m.frontend_fqn === 'pylabrobot.pumping.PumpArray') frontendId = 'fdef-pa';
-  else if (m.frontend_fqn === 'pylabrobot.fans.Fan') frontendId = 'fdef-fa';
-  else if (m.frontend_fqn === 'pylabrobot.plate_sealing.Sealer') frontendId = 'fdef-se';
-  else if (m.frontend_fqn === 'pylabrobot.plate_peeling.Peeler') frontendId = 'fdef-pee';
-  else if (m.frontend_fqn === 'pylabrobot.powder_dispensing.PowderDispenser') frontendId = 'fdef-po';
-  else if (m.frontend_fqn === 'pylabrobot.incubating.Incubator') frontendId = 'fdef-in';
-  else if (m.frontend_fqn === 'pylabrobot.scara.SCARA') frontendId = 'fdef-sc';
+    let frontendId = 'fdef-lh';
+    if (m.frontend_fqn === 'pylabrobot.plate_reading.PlateReader') frontendId = 'fdef-pr';
+    else if (m.frontend_fqn === 'pylabrobot.heating_shaking.HeaterShaker') frontendId = 'fdef-hs';
+    else if (m.frontend_fqn === 'pylabrobot.shaking.Shaker') frontendId = 'fdef-sh';
+    else if (m.frontend_fqn === 'pylabrobot.temperature_controlling.TemperatureController') frontendId = 'fdef-tc';
+    else if (m.frontend_fqn === 'pylabrobot.centrifuging.Centrifuge') frontendId = 'fdef-ce';
+    else if (m.frontend_fqn === 'pylabrobot.thermocycling.Thermocycler') frontendId = 'fdef-th';
+    else if (m.frontend_fqn === 'pylabrobot.pumping.Pump') frontendId = 'fdef-pu';
+    else if (m.frontend_fqn === 'pylabrobot.pumping.PumpArray') frontendId = 'fdef-pa';
+    else if (m.frontend_fqn === 'pylabrobot.fans.Fan') frontendId = 'fdef-fa';
+    else if (m.frontend_fqn === 'pylabrobot.plate_sealing.Sealer') frontendId = 'fdef-se';
+    else if (m.frontend_fqn === 'pylabrobot.plate_peeling.Peeler') frontendId = 'fdef-pee';
+    else if (m.frontend_fqn === 'pylabrobot.powder_dispensing.PowderDispenser') frontendId = 'fdef-po';
+    else if (m.frontend_fqn === 'pylabrobot.incubating.Incubator') frontendId = 'fdef-in';
+    else if (m.frontend_fqn === 'pylabrobot.plate_reading.Imager') frontendId = 'fdef-img';
+    else if (m.frontend_fqn === 'pylabrobot.scara.SCARA') frontendId = 'fdef-sc';
 
-  return {
-    accession_id: m.accession_id.replace('mach', 'bdef').replace('sim-', 'sim-bdef-'),
-    name: m.name,
-    fqn: m.fqn,
-    frontend_definition_accession_id: frontendId,
-    description: m.description,
-    backend_type: (m.fqn.includes('Chatterbox') || m.fqn.includes('praxis.simulated')) ? 'simulator' : 'hardware',
-    manufacturer: m.vendor,
-    model: m.name
-  };
+    return {
+        accession_id: m.accession_id.replace('mach', 'bdef').replace('sim-', 'sim-bdef-'),
+        name: m.name,
+        fqn: m.fqn,
+        frontend_definition_accession_id: frontendId,
+        description: m.description,
+        backend_type: (m.fqn.includes('Chatterbox') || m.fqn.includes('praxis.simulated')) ? 'simulator' : 'hardware',
+        manufacturer: m.vendor,
+        model: m.name
+    };
 });
 
 

@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MachineWithRuntime } from '@features/workcell/models/workcell-view.models';
+import type { MachineWithRuntime } from '@features/workcell/models/workcell-view.models';
 import { MachineStatusBadgeComponent } from '../machine-status-badge/machine-status-badge.component';
 import { DeckViewComponent } from '../../deck-view/deck-view.component';
 import { PlrResource, PlrState } from '@core/models/plr.models';

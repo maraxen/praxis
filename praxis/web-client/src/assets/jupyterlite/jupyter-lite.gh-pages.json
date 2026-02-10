@@ -4,6 +4,14 @@
     "appUrl": "./lab",
     "appVersion": "0.7.1",
     "baseUrl": "/praxis/assets/jupyterlite/",
+    "settingsOverrides": {
+      "@jupyterlab/apputils-extension:announcements": {
+        "checkForUpdates": false
+      },
+      "@jupyterlite/pyodide-kernel-extension:kernel": {
+        "autoStart": true
+      }
+    },
     "defaultKernelName": "python",
     "faviconUrl": "./lab/favicon.ico",
     "federated_extensions": [

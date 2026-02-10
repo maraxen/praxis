@@ -997,6 +997,20 @@ export class RunProtocolComponent implements OnInit, HasUnsavedChanges {
 
   /** Computed deck type for the selected machine */
   selectedDeckType = computed(() => {
+    // First: check per-argument machine selections for an explicit deck choice
+    const selections = this.machineSelections();
+    for (const sel of selections) {
+      if (sel.selectedDeckType?.fqn) {
+        return sel.selectedDeckType.fqn;
+      }
+    }
+    // Also check machine's connection_info for deck_type_fqn (set by ephemeral creation)
+    for (const sel of selections) {
+      if (sel.selectedMachine?.connection_info?.['deck_type_fqn']) {
+        return sel.selectedMachine.connection_info['deck_type_fqn'] as string;
+      }
+    }
+    // Fallback: legacy single-machine path
     const machine = this.selectedMachine()?.machine;
     return this.deckCatalog.getDeckTypeForMachine(machine);
   });
@@ -1194,10 +1208,11 @@ export class RunProtocolComponent implements OnInit, HasUnsavedChanges {
       switchMap(compatData => {
         return this.assetService.getMachineDefinitions().pipe(
           map((definitions: MachineDefinition[]) => {
-            const existingIds = new Set(compatData.map(d => (d.machine as any).machine_definition_accession_id));
-
+            // Only show templates for simulation-capable definitions
+            // (those with available_simulation_backends). Physical-only
+            // definitions have no connection setup flow in this wizard.
             const templates: MachineCompatibility[] = definitions
-              .filter(def => !existingIds.has(def.accession_id))
+              .filter(def => def.available_simulation_backends?.length)
               .map(def => ({
                 machine: {
                   accession_id: `template-${def.accession_id}`,

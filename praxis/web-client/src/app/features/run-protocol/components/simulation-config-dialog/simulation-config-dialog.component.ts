@@ -1,5 +1,6 @@
 
 import { Component, Inject, ChangeDetectionStrategy } from '@angular/core';
+import { humanize } from '@core/utils/plr-display.utils';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -57,7 +58,7 @@ export interface SimulationConfigResult {
           <mat-label>Simulation Backend</mat-label>
           <mat-select formControlName="simulation_backend_name">
             @for (backend of backends; track backend) {
-              <mat-option [value]="backend">{{ backend }}</mat-option>
+              <mat-option [value]="backend">{{ humanize(backend) }}</mat-option>
             }
           </mat-select>
           <mat-hint>Choose the driver for simulated interaction</mat-hint>
@@ -84,6 +85,7 @@ export interface SimulationConfigResult {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SimulationConfigDialogComponent {
+  humanize = humanize;
   form: FormGroup;
   backends: string[] = [];
 

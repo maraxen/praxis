@@ -60,7 +60,107 @@
       </form>
     </mat-step>
 
-    <!-- Step 2: Category -->
+    <!-- Step 2A: Machine Type Selection (MACHINES ONLY) -->
+    @if (isMachine) {
+    <mat-step [stepControl]="frontendStepFormGroup" data-testid="wizard-step-frontend">
+      <form [formGroup]="frontendStepFormGroup">
+        <ng-template matStepLabel>Machine Type</ng-template>
+
+        <div class="step-content">
+          <h3><mat-icon>precision_manufacturing</mat-icon> Select Machine Type</h3>
+          <p class="step-description">Choose the type of machine to instantiate.</p>
+
+          <!-- Playground Mode: Show existing machines -->
+          @if (context === 'playground') {
+          @if (existingMachines$ | async; as machines) {
+          @if (machines.length > 0) {
+          <div class="existing-machines-section">
+            <h4 class="section-subtitle">
+              <mat-icon>inventory</mat-icon>
+              Existing Machines
+            </h4>
+            <div class="results-grid compact">
+              @for (machine of machines; track machine.accession_id) {
+              <div class="praxis-card premium result-card group compact" (click)="selectExistingMachine(machine)">
+                <div class="card-header">
+                  <div class="flex items-center gap-3 w-full">
+                    <div
+                      class="card-icon-avatar small bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-primary)]">
+                      <mat-icon>precision_manufacturing</mat-icon>
+                    </div>
+                    <div class="min-w-0 flex-grow">
+                      <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors line-clamp-2">{{
+                        machine.name }}</h3>
+                      <p class="card-subtitle line-clamp-1">{{ humanize(machine.machine_category) }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              }
+            </div>
+            <div class="separator">
+              <span>or create new</span>
+            </div>
+          </div>
+          }
+          }
+          }
+
+          <!-- Frontend Selection Grid -->
+          <div class="results-grid">
+            @for (frontend of (frontends$ | async); track frontend.accession_id) {
+            <div class="praxis-card premium result-card group"
+              [class.selected]="selectedFrontend?.accession_id === frontend.accession_id"
+              [attr.data-testid]="'frontend-card-' + frontend.accession_id" (click)="selectFrontend(frontend)">
+              <div class="card-header">
+                <div class="flex items-center gap-3 w-full">
+                  <div class="card-icon-avatar bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-primary)]">
+                    <mat-icon>{{ getCategoryIcon(frontend.machine_category || 'Other') }}</mat-icon>
+                  </div>
+                  <div class="min-w-0 flex-grow">
+                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors line-clamp-2"
+                      [title]="frontend.name">{{ frontend.name }}</h3>
+                    <p class="card-subtitle line-clamp-1" [title]="frontend.fqn">{{ frontend.fqn }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="card-content">
+                <p class="text-sm text-sys-text-secondary line-clamp-3 min-h-[40px]"
+                  [title]="frontend.description || 'Abstract ' + frontend.name + ' interface'">
+                  {{ frontend.description || 'Abstract ' + frontend.name + ' interface' }}
+                </p>
+              </div>
+              <div class="card-actions">
+                <div class="flex flex-wrap gap-2">
+                  @if (frontend.has_deck) {
+                  <span
+                    class="px-2 py-0.5 rounded bg-[var(--mat-sys-secondary-container)] text-[var(--mat-sys-secondary)] text-[10px] font-bold uppercase tracking-wider">Has
+                    Deck</span>
+                  }
+                </div>
+              </div>
+            </div>
+            }
+
+            @if ((frontends$ | async)?.length === 0) {
+            <div class="no-results" data-testid="no-results-message">
+              <mat-icon>search_off</mat-icon>
+              <p>No machine types found</p>
+            </div>
+            }
+          </div>
+        </div>
+        <div class="step-actions">
+          <button mat-button matStepperPrevious data-testid="wizard-back-button">Back</button>
+          <button mat-flat-button color="primary" matStepperNext [disabled]="frontendStepFormGroup.invalid"
+            data-testid="wizard-next-button">Next</button>
+        </div>
+      </form>
+    </mat-step>
+    }
+
+    <!-- Step 2B: Category Selection (RESOURCES ONLY) -->
+    @if (!isMachine) {
     <mat-step [stepControl]="categoryStepFormGroup" data-testid="wizard-step-category">
       <form [formGroup]="categoryStepFormGroup">
         <ng-template matStepLabel>Category</ng-template>
@@ -95,105 +195,10 @@
         </div>
       </form>
     </mat-step>
+    }
 
-    <!-- Step 3A: Frontend Selection (MACHINES ONLY) -->
+    <!-- Step 3: Driver Selection (MACHINES ONLY) -->
     @if (isMachine) {
-    <mat-step [stepControl]="frontendStepFormGroup" data-testid="wizard-step-frontend">
-      <form [formGroup]="frontendStepFormGroup">
-        <ng-template matStepLabel>Machine Type</ng-template>
-        <div class="step-content">
-          <h3><mat-icon>precision_manufacturing</mat-icon> Select Machine Type</h3>
-          <p class="step-description">Choose the abstract machine type you want to instantiate.</p>
-
-          <!-- Playground Mode: Show existing machines -->
-          @if (context === 'playground') {
-          @if (existingMachines$ | async; as machines) {
-          @if (machines.length > 0) {
-          <div class="existing-machines-section">
-            <h4 class="section-subtitle">
-              <mat-icon>inventory</mat-icon>
-              Existing Machines
-            </h4>
-            <div class="results-grid compact">
-              @for (machine of machines; track machine.accession_id) {
-              <div class="praxis-card premium result-card group compact" (click)="selectExistingMachine(machine)">
-                <div class="card-header">
-                  <div class="flex items-center gap-3 w-full">
-                    <div
-                      class="card-icon-avatar small bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-primary)]">
-                      <mat-icon>precision_manufacturing</mat-icon>
-                    </div>
-                    <div class="min-w-0 flex-grow">
-                      <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors line-clamp-1">{{
-                        machine.name }}</h3>
-                      <p class="card-subtitle line-clamp-1">{{ humanize(machine.machine_category) }}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              }
-            </div>
-            <div class="separator">
-              <span>or create new</span>
-            </div>
-          </div>
-          }
-          }
-          }
-
-          <!-- Frontend Selection Grid -->
-          <div class="results-grid">
-            @for (frontend of (frontends$ | async); track frontend.accession_id) {
-            <div class="praxis-card premium result-card group"
-              [class.selected]="selectedFrontend?.accession_id === frontend.accession_id"
-              [attr.data-testid]="'frontend-card-' + frontend.accession_id" (click)="selectFrontend(frontend)">
-              <div class="card-header">
-                <div class="flex items-center gap-3 w-full">
-                  <div class="card-icon-avatar bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-primary)]">
-                    <mat-icon>{{ getCategoryIcon(frontend.machine_category || 'Other') }}</mat-icon>
-                  </div>
-                  <div class="min-w-0 flex-grow">
-                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors line-clamp-1"
-                      [title]="frontend.name">{{ frontend.name }}</h3>
-                    <p class="card-subtitle line-clamp-1" [title]="frontend.fqn">{{ frontend.fqn }}</p>
-                  </div>
-                </div>
-              </div>
-              <div class="card-content">
-                <p class="text-sm text-sys-text-secondary line-clamp-2 min-h-[40px]"
-                  [title]="frontend.description || 'Abstract ' + frontend.name + ' interface'">
-                  {{ frontend.description || 'Abstract ' + frontend.name + ' interface' }}
-                </p>
-              </div>
-              <div class="card-actions">
-                <div class="flex flex-wrap gap-2">
-                  @if (frontend.has_deck) {
-                  <span
-                    class="px-2 py-0.5 rounded bg-[var(--mat-sys-secondary-container)] text-[var(--mat-sys-secondary)] text-[10px] font-bold uppercase tracking-wider">Has
-                    Deck</span>
-                  }
-                </div>
-              </div>
-            </div>
-            }
-
-            @if ((frontends$ | async)?.length === 0) {
-            <div class="no-results" data-testid="no-results-message">
-              <mat-icon>search_off</mat-icon>
-              <p>No machine types found for this category</p>
-            </div>
-            }
-          </div>
-        </div>
-        <div class="step-actions">
-          <button mat-button matStepperPrevious data-testid="wizard-back-button">Back</button>
-          <button mat-flat-button color="primary" matStepperNext [disabled]="frontendStepFormGroup.invalid"
-            data-testid="wizard-next-button">Next</button>
-        </div>
-      </form>
-    </mat-step>
-
-    <!-- Step 4: Backend Selection (MACHINES ONLY) -->
     <mat-step [stepControl]="backendStepFormGroup" data-testid="wizard-step-backend">
       <form [formGroup]="backendStepFormGroup">
         <ng-template matStepLabel>Driver</ng-template>
@@ -212,7 +217,7 @@
                     <mat-icon>{{ backend.backend_type === 'simulator' ? 'science' : 'cable' }}</mat-icon>
                   </div>
                   <div class="min-w-0 flex-grow">
-                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors line-clamp-1"
+                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors line-clamp-2"
                       [title]="backend.name">{{ getBackendDisplayName(backend) }}</h3>
                     <p class="card-subtitle line-clamp-1" [title]="backend.fqn">{{ backend.manufacturer || 'PyLabRobot'
                       }}</p>
@@ -220,7 +225,7 @@
                 </div>
               </div>
               <div class="card-content">
-                <p class="text-sm text-sys-text-secondary line-clamp-2 min-h-[40px]"
+                <p class="text-sm text-sys-text-secondary line-clamp-3 min-h-[40px]"
                   [title]="backend.description || (backend.backend_type === 'simulator' ? 'Simulated backend for testing' : 'Hardware driver')">
                   {{ backend.description || (backend.backend_type === 'simulator' ? 'Simulated backend for testing' :
                   'Hardware driver') }}
@@ -244,7 +249,7 @@
             <div class="no-results" data-testid="no-results-message">
               <mat-icon>search_off</mat-icon>
               <p>No drivers found for {{ selectedFrontend?.name }}</p>
-              <p class="text-xs text-sys-text-tertiary mt-2">Try selecting a different machine type</p>
+              <p class="text-xs text-sys-text-tertiary mt-2">Try selecting a different category</p>
             </div>
             }
           </div>
@@ -336,14 +341,14 @@
                     <mat-icon>inventory_2</mat-icon>
                   </div>
                   <div class="min-w-0 flex-grow">
-                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors line-clamp-1"
+                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors line-clamp-2"
                       [title]="def.name">{{ def.name }}</h3>
                     <p class="card-subtitle line-clamp-1" [title]="def.fqn">{{ def.fqn }}</p>
                   </div>
                 </div>
               </div>
               <div class="card-content">
-                <p class="text-sm text-sys-text-secondary line-clamp-2 min-h-[40px]" [title]="def.description">{{
+                <p class="text-sm text-sys-text-secondary line-clamp-3 min-h-[40px]" [title]="def.description">{{
                   def.description }}</p>
               </div>
               <div class="card-actions">
@@ -443,14 +448,14 @@
               <span class="label">Type</span>
               <span class="value">{{ typeStepFormGroup.get('assetType')?.value | titlecase }}</span>
             </div>
-            <div class="review-row">
-              <span class="label">Category</span>
-              <span class="value">{{ categoryStepFormGroup.get('category')?.value }}</span>
-            </div>
             @if (isMachine) {
             <div class="review-row">
               <span class="label">Machine Type</span>
               <span class="value">{{ selectedFrontend?.name }}</span>
+            </div>
+            <div class="review-row">
+              <span class="label">Category</span>
+              <span class="value">{{ selectedFrontend?.machine_category }}</span>
             </div>
             <div class="review-row">
               <span class="label">Driver</span>
@@ -474,6 +479,10 @@
             </div>
             }
             } @else {
+            <div class="review-row">
+              <span class="label">Category</span>
+              <span class="value">{{ categoryStepFormGroup.get('category')?.value }}</span>
+            </div>
             <div class="review-row">
               <span class="label">Definition</span>
               <span class="value">{{ selectedDefinition?.name }}</span>

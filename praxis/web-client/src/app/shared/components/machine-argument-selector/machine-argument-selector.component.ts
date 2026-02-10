@@ -5,10 +5,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { AssetService } from '../../../features/assets/services/asset.service';
 import { Machine, MachineFrontendDefinition, MachineBackendDefinition } from '../../../features/assets/models/asset.models';
 import { AssetRequirement } from '../../../features/protocols/models/protocol.models';
 import { PLRCategory, MACHINE_CATEGORIES, RESOURCE_CATEGORIES } from '../../../core/db/plr-category';
+import { DeckCatalogService } from '../../../features/run-protocol/services/deck-catalog.service';
+import { DeckDefinitionSpec } from '../../../features/run-protocol/models/deck-layout.models';
+import { DeckSelectorDialogComponent, DeckSelectorDialogData } from '../deck-selector-dialog/deck-selector-dialog.component';
 import { humanize } from '../../../core/utils/plr-display.utils';
 import { firstValueFrom } from 'rxjs';
 
@@ -22,6 +26,7 @@ export interface MachineArgumentSelection {
   frontendId: string;  // Frontend definition accession_id
   selectedMachine?: Machine;  // If user selected an existing machine
   selectedBackend?: MachineBackendDefinition;  // If user selected a backend to create new
+  selectedDeckType?: DeckDefinitionSpec;  // Selected deck layout (for LiquidHandlers)
   isValid: boolean;
 }
 
@@ -48,7 +53,8 @@ interface MachineRequirement {
     MatButtonModule,
     MatExpansionModule,
     MatProgressSpinnerModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatDialogModule
   ],
   template: `
     <div class="machine-args-container">
@@ -107,13 +113,16 @@ interface MachineRequirement {
                         <div class="option-card" 
                              [class.selected]="req.selection?.selectedMachine?.accession_id === machine.accession_id"
                              [class.disabled]="!isMachineCompatible(machine)"
+                             [matTooltip]="getMachineTooltip(machine)"
+                             matTooltipPosition="above"
+                             [matTooltipShowDelay]="400"
                              (click)="isMachineCompatible(machine) && selectMachine(req, machine)">
                           <div class="option-icon">
                             <mat-icon>precision_manufacturing</mat-icon>
                           </div>
                           <div class="option-info">
                             <span class="option-name">{{ machine.name }}</span>
-                            <span class="option-meta">{{ humanize(machine.machine_category) }}</span>
+                            <span class="option-meta">{{ getMachineBackendLabel(machine) }}</span>
                           </div>
                           @if (machine.is_simulation_override) {
                             <span class="type-badge sim">Sim</span>
@@ -144,6 +153,9 @@ interface MachineRequirement {
                         <div class="option-card backend-card" 
                              [class.selected]="req.selection?.selectedBackend?.accession_id === backend.accession_id"
                              [class.disabled]="!isBackendCompatible(backend)"
+                             [matTooltip]="backend.fqn"
+                             matTooltipPosition="above"
+                             [matTooltipShowDelay]="400"
                              (click)="isBackendCompatible(backend) && selectBackend(req, backend)">
                           <div class="option-icon" [class.sim]="backend.backend_type === 'simulator'">
                             <mat-icon>{{ backend.backend_type === 'simulator' ? 'science' : 'cable' }}</mat-icon>
@@ -491,6 +503,8 @@ interface MachineRequirement {
 })
 export class MachineArgumentSelectorComponent implements OnInit, OnChanges {
   private assetService = inject(AssetService);
+  private dialog = inject(MatDialog);
+  private deckCatalog = inject(DeckCatalogService);
 
   /** Humanize PLR identifiers for template use */
   humanize = humanize;
@@ -513,6 +527,9 @@ export class MachineArgumentSelectorComponent implements OnInit, OnChanges {
   /** Cached frontends and backends */
   private frontendsCache: MachineFrontendDefinition[] = [];
   private backendsCache: MachineBackendDefinition[] = [];
+
+  /** Session-scoped cache of ephemeral machines (backendAccessionId → Machine) */
+  private ephemeralMachineCache = new Map<string, Machine>();
   private machinesCache: Machine[] = [];
 
   async ngOnInit() {
@@ -594,9 +611,10 @@ export class MachineArgumentSelectorComponent implements OnInit, OnChanges {
         availableBackends = [...availableBackends, ...catSims];
       }
 
-      // Get existing machines matching this category
+      // Get existing machines matching this category (exclude ephemeral machines created by backend selection)
       const existingMachines = this.machinesCache.filter(m =>
-        this.machineMatchesRequirement(m, req, frontend)
+        this.machineMatchesRequirement(m, req, frontend) &&
+        !m.connection_info?.['ephemeral']
       );
 
       return {
@@ -753,6 +771,91 @@ export class MachineArgumentSelectorComponent implements OnInit, OnChanges {
     const idx = reqs.findIndex(r => r.requirement.accession_id === req.requirement.accession_id);
     if (idx < 0) return;
 
+    // Check session cache — reuse previously created ephemeral machine for this backend
+    const cacheKey = `${req.requirement.accession_id}::${backend.accession_id}`;
+    const cached = this.ephemeralMachineCache.get(cacheKey);
+    if (cached) {
+      // If this frontend has a deck with multiple options, allow re-selecting the deck
+      let deckType: DeckDefinitionSpec | undefined;
+      if (req.frontend?.has_deck && backend.fqn) {
+        const compatibleDecks = this.deckCatalog.getCompatibleDeckTypes(backend.fqn);
+        if (compatibleDecks.length > 1) {
+          const backendName = this.getBackendDisplayName(backend);
+          const dialogRef = this.dialog.open(DeckSelectorDialogComponent, {
+            data: {
+              decks: compatibleDecks,
+              frontendName: req.frontend.name || 'Machine',
+              backendName
+            } as DeckSelectorDialogData,
+            width: '500px',
+            autoFocus: false
+          });
+          const newDeck = await firstValueFrom(dialogRef.afterClosed());
+          if (newDeck) {
+            deckType = newDeck;
+          } else {
+            // Cancelled — keep existing selection
+            return;
+          }
+        } else if (compatibleDecks.length === 1) {
+          deckType = compatibleDecks[0];
+        }
+      } else {
+        deckType = cached.connection_info?.['deck_type_fqn']
+          ? this.deckCatalog.getDeckDefinition(cached.connection_info['deck_type_fqn']) ?? undefined
+          : undefined;
+      }
+
+      console.debug('[MachineArgSelector] Reusing cached ephemeral machine:', cached.name, cached.accession_id);
+      reqs[idx] = {
+        ...reqs[idx],
+        selection: {
+          argumentId: req.requirement.accession_id || '',
+          argumentName: this.getArgumentDisplayName(req.requirement),
+          parameterName: req.requirement.name,
+          frontendId: req.frontend?.accession_id || '',
+          selectedMachine: cached,
+          selectedBackend: backend,
+          selectedDeckType: deckType,
+          isValid: true
+        }
+      };
+      this.machineRequirements.set([...reqs]);
+      this.emitSelections();
+      return;
+    }
+
+    // Resolve compatible decks if this is a liquid handler with a deck
+    let selectedDeck: DeckDefinitionSpec | null = null;
+    if (req.frontend?.has_deck && backend.fqn) {
+      const compatibleDecks = this.deckCatalog.getCompatibleDeckTypes(backend.fqn);
+
+      if (compatibleDecks.length === 1) {
+        // Single compatible deck — auto-select
+        selectedDeck = compatibleDecks[0];
+        console.debug('[MachineArgSelector] Auto-selected deck:', selectedDeck.name);
+      } else if (compatibleDecks.length > 1) {
+        // Multiple decks — show dialog
+        const backendName = this.getBackendDisplayName(backend);
+        const dialogRef = this.dialog.open(DeckSelectorDialogComponent, {
+          data: {
+            decks: compatibleDecks,
+            frontendName: req.frontend.name || 'Machine',
+            backendName
+          } as DeckSelectorDialogData,
+          width: '500px',
+          autoFocus: false
+        });
+
+        selectedDeck = await firstValueFrom(dialogRef.afterClosed());
+        if (!selectedDeck) {
+          // User cancelled — abort backend selection
+          console.debug('[MachineArgSelector] Deck selection cancelled');
+          return;
+        }
+      }
+    }
+
     // Mark as loading while we create the machine
     reqs[idx] = { ...reqs[idx], isLoading: true };
     this.machineRequirements.set([...reqs]);
@@ -761,7 +864,17 @@ export class MachineArgumentSelectorComponent implements OnInit, OnChanges {
       // Create an ephemeral machine on-the-fly for this backend
       const backendName = this.getBackendDisplayName(backend);
       const category = req.frontend?.machine_category || 'Machine';
-      const machineName = `${category} (${backendName})`;
+      const uniqueSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const machineName = `${category} (${backendName}) ${uniqueSuffix}`;
+
+      const connectionInfo: Record<string, any> = {
+        backend: backend.fqn,
+        plr_backend: backend.fqn,
+        ephemeral: true
+      };
+      if (selectedDeck) {
+        connectionInfo['deck_type_fqn'] = selectedDeck.fqn;
+      }
 
       const newMachine = await firstValueFrom(
         this.assetService.createMachine({
@@ -771,22 +884,22 @@ export class MachineArgumentSelectorComponent implements OnInit, OnChanges {
           simulation_backend_name: backend.fqn,
           frontend_definition_accession_id: req.frontend?.accession_id,
           backend_definition_accession_id: backend.accession_id,
-          connection_info: {
-            backend: backend.fqn,
-            plr_backend: backend.fqn,
-            ephemeral: true  // Mark as ephemeral for cleanup
-          }
+          deck_type: selectedDeck?.fqn,
+          connection_info: connectionInfo
         })
       );
 
-      console.debug('[MachineArgSelector] Created ephemeral machine:', newMachine.name, newMachine.accession_id);
+      console.debug('[MachineArgSelector] Created ephemeral machine:', newMachine.name, newMachine.accession_id,
+        selectedDeck ? `with deck: ${selectedDeck.name}` : '(no deck)');
+
+      // Cache for session reuse
+      this.ephemeralMachineCache.set(cacheKey, newMachine);
 
       // Update the requirement with the newly created machine
       const updatedReqs = this.machineRequirements();
       updatedReqs[idx] = {
         ...updatedReqs[idx],
         isLoading: false,
-        existingMachines: [...updatedReqs[idx].existingMachines, newMachine],
         selection: {
           argumentId: req.requirement.accession_id || '',
           argumentName: this.getArgumentDisplayName(req.requirement),
@@ -794,6 +907,7 @@ export class MachineArgumentSelectorComponent implements OnInit, OnChanges {
           frontendId: req.frontend?.accession_id || '',
           selectedMachine: newMachine,
           selectedBackend: backend,
+          selectedDeckType: selectedDeck ?? undefined,
           isValid: true
         }
       };
@@ -838,5 +952,27 @@ export class MachineArgumentSelectorComponent implements OnInit, OnChanges {
   isBackendCompatible(backend: MachineBackendDefinition): boolean {
     const isSimulator = backend.backend_type === 'simulator';
     return this.simulationMode ? isSimulator : !isSimulator;
+  }
+
+  /** Get a descriptive label for the machine card showing backend info */
+  getMachineBackendLabel(machine: Machine): string {
+    const category = humanize(machine.machine_category);
+    const backendFqn = machine.backend_definition?.fqn || machine.simulation_backend_name || '';
+    const backendShort = backendFqn ? backendFqn.split('.').pop()?.replace(/Backend$/, '') : '';
+    if (backendShort) {
+      return `${category} · ${backendShort}`;
+    }
+    return category;
+  }
+
+  /** Build a detailed tooltip for machine cards on hover */
+  getMachineTooltip(machine: Machine): string {
+    const lines: string[] = [machine.name];
+    if (machine.machine_category) lines.push(`Category: ${humanize(machine.machine_category)}`);
+    if (machine.backend_definition?.fqn) lines.push(`Backend: ${machine.backend_definition.fqn}`);
+    else if (machine.simulation_backend_name) lines.push(`Backend: ${machine.simulation_backend_name}`);
+    if (machine.manufacturer) lines.push(`Manufacturer: ${machine.manufacturer}`);
+    lines.push(`ID: ${machine.accession_id}`);
+    return lines.join('\n');
   }
 }

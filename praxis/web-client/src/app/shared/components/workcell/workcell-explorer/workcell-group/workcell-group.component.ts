@@ -1,6 +1,6 @@
 import { Component, output, signal, effect, ChangeDetectionStrategy, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { WorkcellGroup, MachineWithRuntime } from '@features/workcell/models/workcell-view.models';
+import type { WorkcellGroup, MachineWithRuntime } from '@features/workcell/models/workcell-view.models';
 import { MachineTreeNodeComponent } from '../machine-tree-node/machine-tree-node.component';
 
 @Component({

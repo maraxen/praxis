@@ -114,21 +114,41 @@ async function handleInit(id: string, payload: SqliteInitRequest) {
         useMemoryFallback = true;
     } else {
         // Install opfs-sahpool VFS (SyncAccessHandle Pool)
-        // This VFS is preferred for performance and doesn't require SharedArrayBuffer
-        // proxyUri must point to our copied asset to avoid Vite's dynamic import issues
-        try {
-            const poolDirectory = payload.poolDirectory || 'praxis-data';
-            console.log(`[SqliteOpfsWorker] Installing opfs-sahpool VFS with directory: ${poolDirectory}`);
+        // This VFS uses SyncAccessHandle directly — no SharedArrayBuffer or proxy needed.
+        const poolDirectory = payload.poolDirectory || 'praxis-data';
+        const installSAHPool = async (clearOnInit: boolean) => {
+            console.log(`[SqliteOpfsWorker] Installing opfs-sahpool VFS (directory: ${poolDirectory}, clearOnInit: ${clearOnInit})`);
             poolUtil = await (sqlite3 as any).installOpfsSAHPoolVfs({
-                name: 'opfs-sahpool', // Standard name used by the library
+                name: 'opfs-sahpool',
                 directory: poolDirectory,
-                clearOnInit: false,
-                proxyUri: `${wasmPath}sqlite3-opfs-async-proxy.js`
+                clearOnInit
             });
+        };
+
+        try {
+            await installSAHPool(false);
             console.log('[SqliteOpfsWorker] opfs-sahpool VFS installed successfully');
-        } catch (err) {
-            console.warn('[SqliteOpfsWorker] Failed to install opfs-sahpool VFS, falling back to in-memory:', err);
-            useMemoryFallback = true;
+        } catch (err: any) {
+            // NoModificationAllowedError = stale SyncAccessHandles from a previous
+            // worker/tab (common during HMR dev-server reloads). Retry with
+            // clearOnInit: true to release the stale handles.
+            const isStaleHandle = err?.name === 'NoModificationAllowedError'
+                || (err?.message || '').includes('NoModificationAllowedError')
+                || (err?.message || '').includes('Access Handles cannot be created');
+
+            if (isStaleHandle) {
+                console.warn('[SqliteOpfsWorker] Stale OPFS handles detected, retrying with clearOnInit: true...');
+                try {
+                    await installSAHPool(true);
+                    console.log('[SqliteOpfsWorker] opfs-sahpool VFS installed after clearing stale handles.');
+                } catch (retryErr) {
+                    console.warn('[SqliteOpfsWorker] Retry with clearOnInit also failed, falling back to in-memory:', retryErr);
+                    useMemoryFallback = true;
+                }
+            } else {
+                console.warn('[SqliteOpfsWorker] Failed to install opfs-sahpool VFS, falling back to in-memory:', err);
+                useMemoryFallback = true;
+            }
         }
     }
 
@@ -272,12 +292,51 @@ async function handleExport(id: string) {
  * Import database from Uint8Array
  */
 async function handleImport(id: string, payload: SqliteImportRequest) {
-    if (!sqlite3 || !poolUtil) throw new Error('SQLite not initialized');
+    if (!sqlite3) throw new Error('SQLite not initialized');
 
     const { data } = payload;
     const dbName = currentDbName;  // Use currently opened database, not hardcoded path
 
-    console.log(`[SqliteOpfsWorker] Importing database to ${dbName}, size: ${data.byteLength} bytes`);
+    console.log(`[SqliteOpfsWorker] Importing database to ${dbName}, size: ${data.byteLength} bytes, mode: ${storageMode}`);
+
+    // ── Memory-fallback path ──────────────────────────────────────────
+    // When OPFS VFS failed (poolUtil is null), we deserialize the prebuilt
+    // DB bytes directly into a fresh in-memory database.
+    if (!poolUtil || storageMode === 'memory') {
+        console.log('[SqliteOpfsWorker] Using in-memory deserialization (no OPFS VFS available)');
+
+        // Close current in-memory database
+        if (db) {
+            db.close();
+            db = null;
+        }
+
+        // Allocate WASM memory, copy the DB bytes, and deserialize
+        const pData = (sqlite3 as any).wasm.alloc(data.byteLength);
+        (sqlite3 as any).wasm.heap8u().set(data, pData);
+
+        db = new sqlite3.oo1.DB(':memory:', 'c');
+        const rc = (sqlite3.capi as any).sqlite3_deserialize(
+            db.pointer!,          // db handle
+            'main',               // schema name
+            pData,                // WASM pointer to data
+            data.byteLength,      // size of data
+            data.byteLength,      // buffer capacity
+            // FREEONCLOSE: SQLite frees the buffer when DB closes
+            // RESIZEABLE: allows the DB to grow beyond initial size
+            (sqlite3.capi as any).SQLITE_DESERIALIZE_FREEONCLOSE | (sqlite3.capi as any).SQLITE_DESERIALIZE_RESIZEABLE
+        );
+        if (rc !== 0) {
+            (sqlite3 as any).wasm.dealloc(pData);
+            throw new Error(`sqlite3_deserialize failed with rc=${rc}`);
+        }
+
+        console.log(`[SqliteOpfsWorker] In-memory database deserialized successfully (${data.byteLength} bytes)`);
+        sendResponse(id, 'importResult', { success: true });
+        return;
+    }
+
+    // ── OPFS path (poolUtil available) ────────────────────────────────
     if (typeof poolUtil.getFileNames === 'function') {
         console.log('[SqliteOpfsWorker] VFS files before import:', poolUtil.getFileNames());
     }
