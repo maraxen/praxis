@@ -26,6 +26,8 @@ import {
   MachineFrontendDefinition,
   MachineBackendDefinition
 } from '@features/assets/models/asset.models';
+import { humanize } from '@core/utils/plr-display.utils';
+import { getCategoryIcon } from '@core/utils/machine-display.utils';
 import { debounceTime, distinctUntilChanged, map, startWith, switchMap } from 'rxjs/operators';
 import { Observable, of, firstValueFrom, combineLatest } from 'rxjs';
 import { toObservable } from '@angular/core/rxjs-interop';
@@ -198,6 +200,13 @@ export class AssetWizard implements OnInit {
     this.frontendStepFormGroup.get('frontend')?.valueChanges.subscribe(frontendId => {
       if (frontendId) {
         this.backends$ = this.assetService.getBackendsForFrontend(frontendId);
+
+        // B4: Auto-select if only one backend exists (skip driver step)
+        firstValueFrom(this.backends$).then(backends => {
+          if (backends.length === 1 && !this.selectedBackend) {
+            this.selectBackend(backends[0]);
+          }
+        });
       }
     });
 
@@ -230,24 +239,11 @@ export class AssetWizard implements OnInit {
     this.searchQuery.set(query);
   }
 
+  /** Humanize PLR identifiers for template use */
+  humanize = humanize;
+
   getCategoryIcon(cat: string): string {
-    const mapping: { [key: string]: string } = {
-      'LiquidHandler': 'precision_manufacturing',
-      'PlateReader': 'visibility',
-      'HeaterShaker': 'thermostat',
-      'Shaker': 'vibration',
-      'Centrifuge': 'rotate_right',
-      'Incubator': 'thermostat_auto',
-      'Plate': 'grid_view',
-      'TipRack': 'view_in_ar',
-      'Trough': 'water_drop',
-      'Reservoir': 'water_drop',
-      'Carrier': 'apps',
-      'Deck': 'dashboard',
-      'Tube': 'science',
-      'Other': 'extension'
-    };
-    return mapping[cat] || 'science';
+    return getCategoryIcon(cat);
   }
 
   /**
@@ -367,12 +363,30 @@ export class AssetWizard implements OnInit {
           deck_type: this.selectedDeckType?.fqn
         };
         createdAsset = await firstValueFrom(this.assetService.createMachine(machinePayload));
+        // Attach definition metadata for downstream code generation (playground REPL injection)
+        if (this.selectedFrontend) {
+          createdAsset.frontend_definition = { fqn: this.selectedFrontend.fqn, accession_id: this.selectedFrontend.accession_id };
+          createdAsset.frontend_definition_accession_id = this.selectedFrontend.accession_id;
+        }
+        if (this.selectedBackend) {
+          createdAsset.backend_definition = { fqn: this.selectedBackend.fqn, accession_id: this.selectedBackend.accession_id, backend_type: this.selectedBackend.backend_type };
+          createdAsset.backend_definition_accession_id = this.selectedBackend.accession_id;
+        }
+        if (this.selectedDeckType) {
+          createdAsset.deck_type = this.selectedDeckType.fqn;
+        }
       } else {
         const resourcePayload: ResourceCreate = {
           name: config.name,
           resource_definition_accession_id: this.selectedDefinition?.accession_id,
         };
         createdAsset = await firstValueFrom(this.assetService.createResource(resourcePayload));
+        // Attach definition metadata for downstream code generation (playground REPL injection)
+        if (this.selectedDefinition) {
+          createdAsset.fqn = this.selectedDefinition.fqn;
+          createdAsset.resource_definition_accession_id = this.selectedDefinition.accession_id;
+          (createdAsset as any).plr_category = this.selectedDefinition.plr_category;
+        }
       }
 
       this.dialogRef.close(createdAsset);

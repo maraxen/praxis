@@ -67,14 +67,15 @@ export class DeckCatalogService {
         }
 
         // Hamilton STARLet detection
-        if (fqn === 'pylabrobot.resources.hamilton.STARlet.STARLetDeck' ||
+        if (fqn === 'pylabrobot.resources.hamilton.STARLetDeck' ||
+            fqn === 'pylabrobot.resources.hamilton.hamilton_decks.STARLetDeck' ||
             fqn === 'STARLetDeck' ||
             fqn.includes('STARLet')) {
             return this.getHamiltonSTARLetSpec();
         }
 
         // Hamilton Vantage detection
-        if (fqn === 'pylabrobot.resources.hamilton.Vantage.VantageDeck' ||
+        if (fqn === 'pylabrobot.resources.hamilton.vantage_decks.VantageDeck' ||
             fqn === 'VantageDeck' ||
             fqn.includes('Vantage')) {
             return this.getVantageSpec();
@@ -148,6 +149,12 @@ export class DeckCatalogService {
             return 'pylabrobot.resources.opentrons.deck.OTDeck';
         }
 
+        // Tecan Freedom EVO / Fluent
+        if (category.includes('Tecan') || category.includes('EVO') || category.includes('Fluent') ||
+            model.includes('EVO') || model.includes('Fluent') || manufacturer.includes('tecan')) {
+            return 'pylabrobot.resources.tecan.tecan_decks.EVO150Deck'; // Default to most common
+        }
+
         // 3. Check connection info (fallback for simulators)
         const connectionInfo = machine.connection_info || {};
         const backend = (connectionInfo['backend'] || '').toString();
@@ -157,6 +164,9 @@ export class DeckCatalogService {
         }
         if (backend.includes('opentrons.OT2') || backend.includes('OTDeck')) {
             return 'pylabrobot.resources.opentrons.deck.OTDeck';
+        }
+        if (backend.includes('tecan') || backend.includes('EVO') || backend.includes('Fluent')) {
+            return 'pylabrobot.resources.tecan.tecan_decks.EVO150Deck';
         }
 
         return null;
@@ -178,7 +188,7 @@ export class DeckCatalogService {
 
         // Tecan EVO Deck
         if (deckFqn.includes('Tecan') || deckFqn.includes('EVO')) {
-            return []; // TODO: add Tecan carrier definitions
+            return this.getTecanCarriers();
         }
 
         // Opentrons OT-2 Deck
@@ -308,9 +318,9 @@ export class DeckCatalogService {
             railSpacing: this.HAMILTON_STAR_RAIL_SPACING,
             railPositions: railPositions,
             compatibleCarriers: [
-                'pylabrobot.resources.ml_star.plt_car_l5ac',
-                'pylabrobot.resources.ml_star.tip_car_480',
-                'pylabrobot.resources.ml_star.rgt_car_3r'
+                'pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC_A00',
+                'pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480_A00',
+                'pylabrobot.resources.hamilton.mfx_carriers.MFX_CAR_L5_base'
             ],
             dimensions: {
                 width: 1200,
@@ -340,7 +350,7 @@ export class DeckCatalogService {
         }
 
         return {
-            fqn: 'pylabrobot.resources.hamilton.STARlet.STARLetDeck',
+            fqn: 'pylabrobot.resources.hamilton.STARLetDeck',
             name: 'Hamilton STARLet Deck',
             manufacturer: 'Hamilton',
             layoutType: 'rail-based',
@@ -348,9 +358,9 @@ export class DeckCatalogService {
             railSpacing: this.HAMILTON_STAR_RAIL_SPACING,
             railPositions: railPositions,
             compatibleCarriers: [
-                'pylabrobot.resources.ml_star.plt_car_l5ac',
-                'pylabrobot.resources.ml_star.tip_car_480',
-                'pylabrobot.resources.ml_star.rgt_car_3r'
+                'pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC_A00',
+                'pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480_A00',
+                'pylabrobot.resources.hamilton.mfx_carriers.MFX_CAR_L5_base'
             ],
             dimensions: {
                 width: 800, // Smaller than STAR
@@ -373,7 +383,7 @@ export class DeckCatalogService {
         }
 
         return {
-            fqn: 'pylabrobot.resources.hamilton.Vantage.VantageDeck',
+            fqn: 'pylabrobot.resources.hamilton.vantage_decks.VantageDeck',
             name: 'Hamilton Vantage Deck',
             manufacturer: 'Hamilton',
             layoutType: 'rail-based',
@@ -381,9 +391,8 @@ export class DeckCatalogService {
             railSpacing: this.HAMILTON_STAR_RAIL_SPACING,
             railPositions: railPositions,
             compatibleCarriers: [
-                // Assume STAR carriers are somewhat compatible for simulation
-                'pylabrobot.resources.ml_star.plt_car_l5ac',
-                'pylabrobot.resources.ml_star.tip_car_480'
+                'pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC_A00',
+                'pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480_A00'
             ],
             dimensions: {
                 width: 1600, // Wider than STAR
@@ -457,7 +466,11 @@ export class DeckCatalogService {
             numRails: numRails,
             railSpacing: this.TECAN_RAIL_SPACING,
             railPositions: railPositions,
-            compatibleCarriers: [], // TODO: add Tecan carrier definitions
+            compatibleCarriers: [
+                'pylabrobot.resources.tecan.plate_carriers.MP_3Pos',
+                'pylabrobot.resources.tecan.plate_carriers.MP_4Pos',
+                'pylabrobot.resources.tecan.tip_carriers.DiTi_3Pos'
+            ],
             dimensions: {
                 width: 940,
                 height: 780,
@@ -486,7 +499,11 @@ export class DeckCatalogService {
             numRails: numRails,
             railSpacing: this.TECAN_RAIL_SPACING,
             railPositions: railPositions,
-            compatibleCarriers: [], // TODO: add Tecan carrier definitions
+            compatibleCarriers: [
+                'pylabrobot.resources.tecan.plate_carriers.MP_3Pos',
+                'pylabrobot.resources.tecan.plate_carriers.MP_4Pos',
+                'pylabrobot.resources.tecan.tip_carriers.DiTi_3Pos'
+            ],
             dimensions: {
                 width: 1315,
                 height: 780,
@@ -515,7 +532,11 @@ export class DeckCatalogService {
             numRails: numRails,
             railSpacing: this.TECAN_RAIL_SPACING,
             railPositions: railPositions,
-            compatibleCarriers: [], // TODO: add Tecan carrier definitions
+            compatibleCarriers: [
+                'pylabrobot.resources.tecan.plate_carriers.MP_3Pos',
+                'pylabrobot.resources.tecan.plate_carriers.MP_4Pos',
+                'pylabrobot.resources.tecan.tip_carriers.DiTi_3Pos'
+            ],
             dimensions: {
                 width: 1915,
                 height: 780,
@@ -811,7 +832,7 @@ export class DeckCatalogService {
     private getHamiltonCarriers(): CarrierDefinition[] {
         return [
             {
-                fqn: 'pylabrobot.resources.ml_star.plt_car_l5ac',
+                fqn: 'pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC_A00',
                 name: 'Plate Carrier L5AC',
                 type: 'plate',
                 railSpan: this.STANDARD_CARRIER_RAIL_SPAN,
@@ -820,7 +841,7 @@ export class DeckCatalogService {
                 dimensions: { width: 135.0, height: 497.0, depth: 10.0 }
             },
             {
-                fqn: 'pylabrobot.resources.ml_star.tip_car_480',
+                fqn: 'pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480_A00',
                 name: 'Tip Carrier 480',
                 type: 'tip',
                 railSpan: this.STANDARD_CARRIER_RAIL_SPAN,
@@ -829,31 +850,50 @@ export class DeckCatalogService {
                 dimensions: { width: 135.0, height: 497.0, depth: 10.0 }
             },
             {
-                fqn: 'pylabrobot.resources.ml_star.rgt_car_3r',
-                name: 'Reagent Carrier 3R',
-                type: 'trough',
-                railSpan: this.STANDARD_CARRIER_RAIL_SPAN,
-                numSlots: 3,
-                compatibleResourceTypes: ['Trough', 'Reservoir'],
-                dimensions: { width: 135.0, height: 497.0, depth: 10.0 }
-            },
-            {
-                fqn: 'pylabrobot.resources.ml_star.tube_car_24',
-                name: 'Tube Carrier 24',
-                type: 'tube',
-                railSpan: this.STANDARD_CARRIER_RAIL_SPAN,
-                numSlots: 6,
-                compatibleResourceTypes: ['TubeRack', 'Tube'],
-                dimensions: { width: 135.0, height: 497.0, depth: 10.0 }
-            },
-            {
-                fqn: 'pylabrobot.resources.ml_star.mfx_car_l5',
+                fqn: 'pylabrobot.resources.hamilton.mfx_carriers.MFX_CAR_L5_base',
                 name: 'MFX Carrier L5',
                 type: 'mfx',
                 railSpan: this.STANDARD_CARRIER_RAIL_SPAN,
                 numSlots: 5,
                 compatibleResourceTypes: ['Plate', 'TipRack', 'Trough'],
                 dimensions: { width: 135.0, height: 497.0, depth: 10.0 }
+            }
+        ];
+    }
+
+    /**
+     * Get Tecan EVO carrier definitions.
+     * Factories live in pylabrobot.resources.tecan.{plate,tip}_carriers.
+     * Tecan carriers use 25mm rail spacing; rail span ~6 (149mm width / 25mm).
+     */
+    private getTecanCarriers(): CarrierDefinition[] {
+        return [
+            {
+                fqn: 'pylabrobot.resources.tecan.plate_carriers.MP_3Pos',
+                name: 'Microplate Carrier 3-Position',
+                type: 'plate',
+                railSpan: this.STANDARD_CARRIER_RAIL_SPAN,
+                numSlots: 3,
+                compatibleResourceTypes: ['Plate', 'Microplate', 'WellPlate'],
+                dimensions: { width: 149.0, height: 316.0, depth: 62.5 }
+            },
+            {
+                fqn: 'pylabrobot.resources.tecan.plate_carriers.MP_4Pos',
+                name: 'Microplate Carrier 4-Position',
+                type: 'plate',
+                railSpan: this.STANDARD_CARRIER_RAIL_SPAN,
+                numSlots: 4,
+                compatibleResourceTypes: ['Plate', 'Microplate', 'WellPlate'],
+                dimensions: { width: 149.0, height: 380.0, depth: 62.7 }
+            },
+            {
+                fqn: 'pylabrobot.resources.tecan.tip_carriers.DiTi_3Pos',
+                name: 'DiTi Carrier 3-Position',
+                type: 'tip',
+                railSpan: this.STANDARD_CARRIER_RAIL_SPAN,
+                numSlots: 3,
+                compatibleResourceTypes: ['TipRack', 'DiTi'],
+                dimensions: { width: 149.0, height: 374.0, depth: 4.5 }
             }
         ];
     }

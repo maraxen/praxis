@@ -32,7 +32,7 @@ import { ModeService } from '@core/services/mode.service';
 import { SqliteService } from '@core/services/sqlite';
 import { AssetService } from '@features/assets/services/asset.service';
 import { Machine, Resource, MachineStatus } from '@features/assets/models/asset.models';
-import { Subscription } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { filter, first, take } from 'rxjs/operators';
 import { HardwareDiscoveryButtonComponent } from '@shared/components/hardware-discovery-button/hardware-discovery-button.component';
 
@@ -46,6 +46,7 @@ import { DirectControlComponent } from './components/direct-control/direct-contr
 import { DirectControlKernelService } from './services/direct-control-kernel.service';
 import { JupyterChannelService } from './services/jupyter-channel.service';
 import { PlaygroundJupyterliteService } from './services/playground-jupyterlite.service';
+import { PlaygroundAssetService } from './services/playground-asset.service';
 
 
 /**
@@ -637,6 +638,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   private interactionService = inject(InteractionService);
   private jupyterChannel = inject(JupyterChannelService);
   public jupyterliteService = inject(PlaygroundJupyterliteService);
+  private playgroundAssetService = inject(PlaygroundAssetService);
 
   // Serial Manager for main-thread I/O (Phase B)
   private serialManager = inject(SerialManagerService);
@@ -811,9 +813,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
       minWidth: '600px',
       maxWidth: '1000px',
       width: '80vw',
-      height: 'auto',
-      minHeight: '400px',
-      maxHeight: '90vh',
+      height: '85vh',
       data: {
         ...(preselectedType ? { preselectedType } : {}),
         context: 'playground'
@@ -830,18 +830,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
 
   /* Helper methods for Code Generation */
 
-  /**
-   * Generate a Python-safe variable name from an asset
-   */
-  private assetToVarName(asset: { name: string; accession_id: string }): string {
-    // Convert name to snake_case and add UUID prefix
-    const desc = asset.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_|_$/g, '');
-    const prefix = asset.accession_id.slice(0, 6);
-    return `${desc}_${prefix}`;
-  }
+
 
 
 
@@ -923,58 +912,13 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
-   * Generate Python code to instantiate a resource
+   * Split a fully qualified Python name into (module_path, class_name).
+   * e.g. "pylabrobot.resources.greiner.plates.Greiner_384" → ["pylabrobot.resources.greiner.plates", "Greiner_384"]
    */
-  private generateResourceCode(resource: Resource, variableName?: string): string {
-    const varName = variableName || this.assetToVarName(resource);
-    const fqn = resource.fqn || resource.plr_definition?.fqn;
-    const safeName = resource.name.replace(/['"\\]/g, '_');
-
-    if (!fqn) {
-      return `# Resource: ${safeName} (no FQN available)`;
-    }
-
-    const lines = [
-      `# Resource: ${safeName}`,
-      `from web_bridge import instantiate_resource`,
-      `${varName} = instantiate_resource("${fqn}", "${varName}")`,
-      `print(f"Created: {${varName}}")`
-    ];
-
-    return lines.join('\n');
-  }
-
-  /**
-   * Generate Python code to instantiate a machine.
-   */
-  private async generateMachineCode(machine: Machine, variableName?: string, deckConfigId?: string): Promise<string> {
-    const varName = variableName || this.assetToVarName(machine);
-    const safeName = machine.name.replace(/['"\\]/g, '_');
-
-    // Extract backend FQN
-    const backendFqn = machine.plr_definition?.fqn || machine.backend_definition?.fqn || machine.simulation_backend_name;
-    const isSimulated = !!(machine.is_simulation_override || machine.simulation_backend_name);
-    const category = (machine as any).machine_category || 'LiquidHandler';
-
-    const config = {
-      backend_fqn: backendFqn || 'pylabrobot.liquid_handling.backends.simulation.SimulatorBackend',
-      port_id: machine.connection_info?.['address'] || machine.connection_info?.['port_id'] || '',
-      is_simulated: isSimulated,
-      baudrate: machine.connection_info?.['baudrate'] || 9600
-    };
-
-    const lines = [
-      `# Machine: ${safeName}`,
-      `from web_bridge import create_configured_backend, create_machine_frontend`,
-      ``,
-      `config = ${JSON.stringify(config, null, 2)}`,
-      `backend = create_configured_backend(config)`,
-      `${varName} = create_machine_frontend("${category}", backend, name="${safeName}")`,
-      `await ${varName}.setup()`,
-      `print(f"Created: {${varName}}")`
-    ];
-
-    return lines.join('\n');
+  private splitFqn(fqn: string): [string, string] {
+    const lastDot = fqn.lastIndexOf('.');
+    if (lastDot === -1) return [fqn, fqn];
+    return [fqn.substring(0, lastDot), fqn.substring(lastDot + 1)];
   }
 
   /**
@@ -1004,8 +948,6 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
     variableName?: string,
     deckConfigId?: string
   ) {
-    const varName = variableName || this.assetToVarName(asset);
-
     // If implementing physical machine, check prior authorization
     if (type === 'machine') {
       const machine = asset as Machine;
@@ -1021,29 +963,98 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
       }
     }
 
-    // Generate appropriate Python code
+    // Generate appropriate Python code (delegated to service for consistency)
     let code: string;
     if (type === 'machine') {
-      code = await this.generateMachineCode(asset as Machine, varName, deckConfigId);
+      code = await this.playgroundAssetService.generateMachineCode(asset as Machine, variableName, deckConfigId);
     } else {
-      code = this.generateResourceCode(asset as Resource, varName);
+      code = this.playgroundAssetService.generateResourceCode(asset as Resource, variableName);
     }
 
-    // Send code via JupyterChannelService
-    try {
-      this.jupyterChannel.sendMessage({
-        type: 'praxis:execute',
-        code: code
-      });
-      this.snackBar.open(`Inserted ${varName}`, 'OK', { duration: 2000 });
-    } catch (e) {
-      console.error('Failed to send asset to REPL:', e);
-      // Fallback: copy code to clipboard
-      navigator.clipboard.writeText(code).then(() => {
-        this.snackBar.open(`Code copied to clipboard (channel send failed)`, 'OK', {
-          duration: 2000,
+    // Extract var name from generated code for snackbar (first assignment line)
+    const assignMatch = code.match(/^(\w+)\s*=/m);
+    const displayName = assignMatch?.[1] || asset.name;
+
+    // Primary: inject via jupyterapp commands (visible in REPL cells + executed)
+    const injected = await this.injectViaJupyterApp(code);
+
+    if (injected) {
+      this.snackBar.open(`Inserted ${displayName}`, 'OK', { duration: 2000 });
+    } else {
+      // Fallback: BroadcastChannel (executes in kernel but not visible as REPL cells)
+      console.warn('[Playground] console:inject failed, falling back to BroadcastChannel');
+      try {
+        this.jupyterChannel.sendMessage({
+          type: 'praxis:execute',
+          code: code,
+          label: displayName
         });
+        this.snackBar.open(`Inserted ${displayName}`, 'OK', { duration: 2000 });
+      } catch (e) {
+        console.error('[Playground] Failed to send asset to REPL:', e);
+        navigator.clipboard.writeText(code).then(() => {
+          this.snackBar.open(`Code copied to clipboard (injection failed)`, 'OK', {
+            duration: 2000,
+          });
+        });
+      }
+    }
+  }
+
+  /**
+   * Inject code into JupyterLite console via iframe's jupyterapp commands API.
+   * Uses console:inject (with path) to populate the prompt, then console:run-forced to execute.
+   */
+  private async injectViaJupyterApp(code: string): Promise<boolean> {
+    try {
+      const iframe = this.notebookFrame?.nativeElement;
+      const jupyterapp = (iframe?.contentWindow as any)?.jupyterapp;
+      if (!jupyterapp?.commands) {
+        console.warn('[Playground] jupyterapp.commands not available');
+        return false;
+      }
+
+      // Find the console widget's session path from the shell
+      let consolePath = '';
+      try {
+        // REPLite has a single console widget — find it
+        const shell = jupyterapp.shell;
+        if (shell?.currentWidget?.sessionContext?.path) {
+          consolePath = shell.currentWidget.sessionContext.path;
+        } else if (shell?.currentWidget?.console?.sessionContext?.path) {
+          consolePath = shell.currentWidget.console.sessionContext.path;
+        } else {
+          // Try iterating shell widgets
+          const widgets = shell?.widgets?.('main');
+          if (widgets) {
+            for (const w of widgets) {
+              const path = w?.sessionContext?.path || w?.console?.sessionContext?.path;
+              if (path) { consolePath = path; break; }
+            }
+          }
+        }
+      } catch { /* proceed with empty path */ }
+
+      console.log('[Playground] Console path:', consolePath || '(default)');
+      console.log('[Playground] Injecting code, length:', code.length);
+
+      // Step 1: Inject code into console prompt
+      await jupyterapp.commands.execute('console:inject', {
+        path: consolePath,
+        code: code,
+        activate: true
       });
+
+      // Step 2: Execute the injected code
+      await jupyterapp.commands.execute('console:run-forced', {
+        activate: false
+      });
+
+      console.log('[Playground] console:inject + run-forced complete');
+      return true;
+    } catch (e) {
+      console.warn('[Playground] Failed to inject via jupyterapp:', e);
+      return false;
     }
   }
 
@@ -1067,7 +1078,7 @@ export class PlaygroundComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    const varName = this.assetToVarName(asset);
+    const varName = this.playgroundAssetService.assetToVarName(asset);
     const machineId = asset.accession_id;
     const connectionInfo = asset.connection_info as Record<string, unknown> || {};
     const plrBackend = connectionInfo['plr_backend'] as string || '';

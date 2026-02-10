@@ -151,7 +151,7 @@ export class CarrierInferenceService {
                 size_z: 10,
                 children: [],
                 slot_id: slot.id,
-                fqn: asset.fqn
+                fqn: undefined  // Filled from selected inventory resource; asset.fqn is a backend module path, not PLR
             };
 
             slot.resource = resource;

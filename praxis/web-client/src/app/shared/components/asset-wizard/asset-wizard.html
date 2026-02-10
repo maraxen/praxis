@@ -11,8 +11,7 @@
           <mat-radio-group formControlName="assetType" class="type-selection">
             <!-- Machine Type Card -->
             <div class="praxis-card premium type-card group"
-              [class.selected]="typeStepFormGroup.get('assetType')?.value === 'MACHINE'"
-              data-testid="type-card-machine"
+              [class.selected]="typeStepFormGroup.get('assetType')?.value === 'MACHINE'" data-testid="type-card-machine"
               (click)="typeStepFormGroup.get('assetType')?.setValue('MACHINE')">
               <div class="card-header">
                 <div class="flex items-center gap-3 w-full">
@@ -20,7 +19,8 @@
                     <mat-icon>settings</mat-icon>
                   </div>
                   <div class="min-w-0">
-                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors">Machine</h3>
+                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors" title="Machine">
+                      Machine</h3>
                   </div>
                 </div>
               </div>
@@ -33,15 +33,15 @@
             <!-- Resource Type Card -->
             <div class="praxis-card premium type-card group"
               [class.selected]="typeStepFormGroup.get('assetType')?.value === 'RESOURCE'"
-              data-testid="type-card-resource"
-              (click)="typeStepFormGroup.get('assetType')?.setValue('RESOURCE')">
+              data-testid="type-card-resource" (click)="typeStepFormGroup.get('assetType')?.setValue('RESOURCE')">
               <div class="card-header">
                 <div class="flex items-center gap-3 w-full">
                   <div class="card-icon-avatar bg-[var(--mat-sys-secondary)] text-[var(--mat-sys-on-secondary)]">
                     <mat-icon>inventory_2</mat-icon>
                   </div>
                   <div class="min-w-0">
-                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors">Resource</h3>
+                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors" title="Resource">
+                      Resource</h3>
                   </div>
                 </div>
               </div>
@@ -74,7 +74,7 @@
                 [attr.data-testid]="'category-card-' + cat"
                 (click)="categoryStepFormGroup.get('category')?.setValue(cat)">
                 <mat-icon>{{ getCategoryIcon(cat) }}</mat-icon>
-                <span class="category-label">{{ cat }}</span>
+                <span class="category-label" [title]="cat">{{ cat }}</span>
               </div>
               }
             </div>
@@ -126,7 +126,7 @@
                     <div class="min-w-0 flex-grow">
                       <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors line-clamp-1">{{
                         machine.name }}</h3>
-                      <p class="card-subtitle line-clamp-1">{{ machine.machine_category }}</p>
+                      <p class="card-subtitle line-clamp-1">{{ humanize(machine.machine_category) }}</p>
                     </div>
                   </div>
                 </div>
@@ -146,8 +146,7 @@
             @for (frontend of (frontends$ | async); track frontend.accession_id) {
             <div class="praxis-card premium result-card group"
               [class.selected]="selectedFrontend?.accession_id === frontend.accession_id"
-              [attr.data-testid]="'frontend-card-' + frontend.accession_id"
-              (click)="selectFrontend(frontend)">
+              [attr.data-testid]="'frontend-card-' + frontend.accession_id" (click)="selectFrontend(frontend)">
               <div class="card-header">
                 <div class="flex items-center gap-3 w-full">
                   <div class="card-icon-avatar bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-primary)]">
@@ -161,8 +160,10 @@
                 </div>
               </div>
               <div class="card-content">
-                <p class="text-sm text-sys-text-secondary line-clamp-2 min-h-[40px]">{{ frontend.description ||
-                  'Abstract ' + frontend.name + ' interface' }}</p>
+                <p class="text-sm text-sys-text-secondary line-clamp-2 min-h-[40px]"
+                  [title]="frontend.description || 'Abstract ' + frontend.name + ' interface'">
+                  {{ frontend.description || 'Abstract ' + frontend.name + ' interface' }}
+                </p>
               </div>
               <div class="card-actions">
                 <div class="flex flex-wrap gap-2">
@@ -204,8 +205,7 @@
             @for (backend of (backends$ | async); track backend.accession_id) {
             <div class="praxis-card premium result-card group"
               [class.selected]="selectedBackend?.accession_id === backend.accession_id"
-              [attr.data-testid]="'backend-card-' + backend.accession_id"
-              (click)="selectBackend(backend)">
+              [attr.data-testid]="'backend-card-' + backend.accession_id" (click)="selectBackend(backend)">
               <div class="card-header">
                 <div class="flex items-center gap-3 w-full">
                   <div class="card-icon-avatar" [ngClass]="getBackendTypeBadgeClass(backend)">
@@ -220,8 +220,11 @@
                 </div>
               </div>
               <div class="card-content">
-                <p class="text-sm text-sys-text-secondary line-clamp-2 min-h-[40px]">{{ backend.description ||
-                  (backend.backend_type === 'simulator' ? 'Simulated backend for testing' : 'Hardware driver') }}</p>
+                <p class="text-sm text-sys-text-secondary line-clamp-2 min-h-[40px]"
+                  [title]="backend.description || (backend.backend_type === 'simulator' ? 'Simulated backend for testing' : 'Hardware driver')">
+                  {{ backend.description || (backend.backend_type === 'simulator' ? 'Simulated backend for testing' :
+                  'Hardware driver') }}
+                </p>
               </div>
               <div class="card-actions">
                 <div class="flex flex-wrap gap-2">
@@ -264,29 +267,30 @@
           <h3><mat-icon>dashboard</mat-icon> Select Deck Type</h3>
           <p class="text-sm text-sys-text-secondary mb-4">
             Choose the deck layout for your {{ selectedFrontend?.name }}.
-            {{ selectedBackend ? getBackendDisplayName(selectedBackend) + ' supports ' + compatibleDecks.length + ' deck types.' : '' }}
+            {{ selectedBackend ? getBackendDisplayName(selectedBackend) + ' supports ' + compatibleDecks.length + ' deck
+            types.' : '' }}
           </p>
 
           <div class="results-grid" data-testid="deck-grid">
             @for (deck of compatibleDecks; track deck.fqn) {
-            <div class="praxis-card premium result-card group"
-              [class.selected]="selectedDeckType?.fqn === deck.fqn"
-              [attr.data-testid]="'deck-card-' + deck.name"
-              (click)="selectDeck(deck)">
+            <div class="praxis-card premium result-card group" [class.selected]="selectedDeckType?.fqn === deck.fqn"
+              [attr.data-testid]="'deck-card-' + deck.name" (click)="selectDeck(deck)">
               <div class="card-header">
                 <div class="flex items-center gap-3 w-full">
                   <div class="card-icon-avatar bg-[var(--mat-sys-tertiary)] text-[var(--mat-sys-on-tertiary)]">
                     <mat-icon>dashboard</mat-icon>
                   </div>
                   <div class="min-w-0">
-                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors">{{ deck.name }}</h3>
+                    <h3 class="card-title group-hover:text-[var(--mat-sys-primary)] transition-colors">{{ deck.name }}
+                    </h3>
                     <span class="text-xs text-sys-text-secondary">{{ deck.manufacturer }}</span>
                   </div>
                 </div>
               </div>
               <div class="card-content">
                 <div class="flex flex-wrap gap-1 mt-1">
-                  <span class="chip-small">{{ deck.layoutType === 'rail-based' ? deck.numRails + ' rails' : deck.numSlots + ' slots' }}</span>
+                  <span class="chip-small">{{ deck.layoutType === 'rail-based' ? deck.numRails + ' rails' :
+                    deck.numSlots + ' slots' }}</span>
                   <span class="chip-small">{{ deck.dimensions.width }}×{{ deck.dimensions.height }}mm</span>
                 </div>
               </div>
@@ -325,8 +329,7 @@
             @for (def of results; track def.accession_id) {
             <div class="praxis-card premium result-card group"
               [class.selected]="selectedDefinition?.accession_id === def.accession_id"
-              [attr.data-testid]="'definition-card-' + def.accession_id"
-              (click)="selectDefinition(def)">
+              [attr.data-testid]="'definition-card-' + def.accession_id" (click)="selectDefinition(def)">
               <div class="card-header">
                 <div class="flex items-center gap-3 w-full">
                   <div class="card-icon-avatar bg-[var(--mat-sys-primary-container)] text-[var(--mat-sys-primary)]">
@@ -340,7 +343,8 @@
                 </div>
               </div>
               <div class="card-content">
-                <p class="text-sm text-sys-text-secondary line-clamp-2 min-h-[40px]">{{ def.description }}</p>
+                <p class="text-sm text-sys-text-secondary line-clamp-2 min-h-[40px]" [title]="def.description">{{
+                  def.description }}</p>
               </div>
               <div class="card-actions">
                 <div class="flex flex-wrap gap-2">
@@ -463,7 +467,8 @@
               <span class="value">
                 {{ selectedDeckType.name }}
                 <span class="text-xs text-sys-text-secondary ml-1">
-                  ({{ selectedDeckType.layoutType === 'rail-based' ? selectedDeckType.numRails + ' rails' : selectedDeckType.numSlots + ' slots' }})
+                  ({{ selectedDeckType.layoutType === 'rail-based' ? selectedDeckType.numRails + ' rails' :
+                  selectedDeckType.numSlots + ' slots' }})
                 </span>
               </span>
             </div>

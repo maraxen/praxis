@@ -5,21 +5,22 @@ import { WorkcellGroupComponent } from './workcell-group/workcell-group.componen
 
 @Component({
   selector: 'app-workcell-explorer',
+  standalone: true,
   imports: [CommonModule, WorkcellGroupComponent],
   template: `
-    <div class="flex flex-col h-full glass-panel border-r border-[var(--theme-border)]">
+    <div class="flex flex-col h-full explorer-container border-r border-[var(--mat-sys-outline-variant)]">
       <!-- Search Header -->
-      <div class="p-4 border-b border-[var(--theme-border)]">
+      <div class="p-4 border-b border-[var(--mat-sys-outline-variant)]">
         <div class="relative">
           <input
             type="text"
             placeholder="Search machines..."
-            class="w-full rounded-md border border-[var(--theme-border)] bg-[var(--mat-sys-surface-container)] py-2 pl-9 pr-4 text-sm text-sys-text-primary placeholder-sys-text-tertiary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            class="w-full rounded-md border border-[var(--mat-sys-outline-variant)] bg-[var(--mat-sys-surface-container)] py-2 pl-9 pr-4 text-sm text-[var(--mat-sys-on-surface)] placeholder-[var(--mat-sys-on-surface-variant)] focus:border-[var(--mat-sys-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--mat-sys-primary)]"
             [value]="searchQuery()"
             (input)="updateSearch($event)"
           />
           <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <svg class="h-4 w-4 text-sys-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg class="h-4 w-4 text-[var(--mat-sys-on-surface-variant)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
@@ -29,7 +30,7 @@ import { WorkcellGroupComponent } from './workcell-group/workcell-group.componen
       <!-- Content -->
       <div class="flex-grow overflow-y-auto p-2">
         @if (filteredGroups().length === 0) {
-          <div class="p-4 text-center text-sm text-sys-text-tertiary">
+          <div class="p-4 text-center text-sm text-[var(--mat-sys-on-surface-variant)]">
             No machines found matching "{{ searchQuery() }}"
           </div>
         } @else {
@@ -41,23 +42,12 @@ import { WorkcellGroupComponent } from './workcell-group/workcell-group.componen
           }
         }
       </div>
-
-      <!-- Footer Actions (Optional/Future) -->
-      <!-- 
-      <div class="p-4 border-t border-slate-200 dark:border-slate-800">
-        <button class="w-full flex items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
-          Add Machine
-        </button>
-      </div> 
-      -->
     </div>
   `,
   styles: [`
     :host { display: block; height: 100%; }
-    .glass-panel {
-      background: color-mix(in srgb, var(--mat-sys-surface-container-low) 85%, transparent);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+    .explorer-container {
+      background-color: var(--mat-sys-surface);
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -70,9 +60,9 @@ export class WorkcellExplorerComponent {
     return this.groupsSignal();
   }
   private groupsSignal = signal<WorkcellGroup[]>([]);
-  
+
   machineSelect = output<MachineWithRuntime>();
-  
+
   searchQuery = signal('');
 
   filteredGroups = computed(() => {
@@ -90,8 +80,8 @@ export class WorkcellExplorerComponent {
       const hasGroupMatch = groupName.includes(query);
 
       // Check if any machines match
-      const matchingMachines = group.machines.filter(m => 
-        m.name.toLowerCase().includes(query) || 
+      const matchingMachines = group.machines.filter(m =>
+        m.name.toLowerCase().includes(query) ||
         m.machine_type?.toLowerCase().includes(query)
       );
 

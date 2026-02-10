@@ -5,6 +5,7 @@ import { MachineTreeNodeComponent } from '../machine-tree-node/machine-tree-node
 
 @Component({
   selector: 'app-workcell-group',
+  standalone: true,
   imports: [CommonModule, MachineTreeNodeComponent],
   template: `
     <div class="mb-2">
@@ -12,7 +13,7 @@ import { MachineTreeNodeComponent } from '../machine-tree-node/machine-tree-node
       <button
         type="button"
         (click)="toggle()"
-        class="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm font-semibold text-sys-text-secondary hover:bg-[var(--mat-sys-surface-variant)] hover:text-sys-text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+        class="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm font-semibold text-[var(--mat-sys-on-surface-variant)] hover:bg-[var(--mat-sys-surface-variant)] hover:text-[var(--mat-sys-on-surface)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--mat-sys-primary)]"
         [attr.aria-expanded]="isExpanded()"
       >
         <div class="flex items-center gap-2">
@@ -30,14 +31,13 @@ import { MachineTreeNodeComponent } from '../machine-tree-node/machine-tree-node
           <span>{{ group.workcell?.name || 'Unassigned' }}</span>
         </div>
         
-        <span class="text-xs font-normal text-sys-text-tertiary">
+        <span class="text-xs font-normal text-[var(--mat-sys-on-surface-variant)]">
           {{ group.machines.length }}
         </span>
       </button>
 
-      <!-- Machines List -->
       @if (isExpanded()) {
-        <div class="mt-1 ml-2 space-y-1 border-l border-[var(--theme-border)] pl-2" role="group">
+        <div class="mt-1 ml-2 space-y-1 border-l border-[var(--mat-sys-outline-variant)] pl-2" role="group">
           @for (machine of group.machines; track machine.accession_id) {
             <app-machine-tree-node
               [machine]="machine"
@@ -58,7 +58,7 @@ export class WorkcellGroupComponent {
   get group(): WorkcellGroup {
     return this.groupSignal()!;
   }
-  
+
   groupSignal = signal<WorkcellGroup | null>(null);
   machineSelect = output<MachineWithRuntime>();
 

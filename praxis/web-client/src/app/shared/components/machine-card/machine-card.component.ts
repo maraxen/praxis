@@ -1,4 +1,5 @@
 import { Component, ChangeDetectionStrategy, input, output } from '@angular/core';
+import { humanize } from '@core/utils/plr-display.utils';
 
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -36,17 +37,14 @@ type MachineWithFlags = Machine & {
       [class.grayscale]="isPhysicalMode() && isSimulated()"
       (click)="onClick()"
     >
-      <!-- Machine Card Header -->
-      <div class="machine-card-header mb-3">
-        <!-- Hardware Badge acting as status indicator -->
-        <div class="status-indicator">
-          <app-hardware-badge [isSimulated]="isSimulated()" [isTemplate]="isTemplate()" />
-        </div>
+      <!-- Badge as chip overlay -->
+      <div class="absolute top-3 right-3 z-10">
+        <app-hardware-badge [isSimulated]="isSimulated()" [isTemplate]="isTemplate()" />
       </div>
 
-      <div class="card-content flex-grow">
-        <h3 class="text-lg font-bold text-sys-text-primary group-hover:text-primary transition-colors">{{ getMachine().name }}</h3>
-        <span class="text-[10px] font-bold uppercase tracking-widest text-sys-text-tertiary block mt-1">{{ getMachine().machine_category || 'Laboratory Machine' }}</span>
+      <div class="card-content flex-grow pt-2">
+        <h3 class="text-lg font-bold text-sys-text-primary group-hover:text-primary transition-colors line-clamp-2 pr-16">{{ getMachine().name }}</h3>
+        <span class="text-[10px] font-bold uppercase tracking-widest text-sys-text-tertiary block mt-1">{{ humanize(getMachine().machine_category) || 'Laboratory Machine' }}</span>
         <span class="text-xs text-sys-text-secondary block mt-0.5 opacity-60">{{ getMachine().manufacturer }} {{ getMachine().model }}</span>
       </div>
 
@@ -140,6 +138,9 @@ type MachineWithFlags = Machine & {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MachineCardComponent {
+  /** Humanize PLR identifiers for template use */
+  humanize = humanize;
+
   // Inputs can be either a straight Machine or the Compatibility wrapper
   machine = input<Machine | null>(null);
   machineCompatibility = input<MachineCompatibility | null>(null);

@@ -259,15 +259,30 @@ except Exception as e:
 
 # Execute
 async def run_wrapper():
+    # Setup machines (PLR requires setup before operations)
+    for name, val in kwargs.items():
+        if hasattr(val, 'setup') and callable(val.setup):
+            print(f"[Browser] Setting up machine: {name}")
+            await val.setup()
+
     print(f"[Browser] Calling protocol function with args: {list(kwargs.keys())}")
-    if inspect.iscoroutinefunction(protocol_func):
-        await protocol_func(**kwargs)
-    else:
-        # Check if it returns a coroutine (e.g. if it was decorated)
-        result = protocol_func(**kwargs)
-        if inspect.isawaitable(result):
-            await result
-    print("[Browser] Protocol execution complete")
+    try:
+        if inspect.iscoroutinefunction(protocol_func):
+            await protocol_func(**kwargs)
+        else:
+            # Check if it returns a coroutine (e.g. if it was decorated)
+            result = protocol_func(**kwargs)
+            if inspect.isawaitable(result):
+                await result
+        print("[Browser] Protocol execution complete")
+    finally:
+        # Teardown machines
+        for name, val in kwargs.items():
+            if hasattr(val, 'stop') and callable(val.stop):
+                try:
+                    await val.stop()
+                except Exception:
+                    pass
 
 await run_wrapper()
           `);
@@ -333,12 +348,56 @@ async function initializePyodide(id?: string) {
   // Install micropip for package management
   await pyodide.loadPackage('micropip');
 
+  // Register stub modules for native C libraries that PLR's __init__.py eagerly imports.
+  // These MUST be registered BEFORE installing the PLR wheel, because the wheel's
+  // plate_reading/__init__.py imports SynergyH1Backend → pylibftdi,
+  // liquid_handling backends import pyusb/pyserial, etc.
+  // The actual I/O is handled by web shims (WebSerial, WebUSB, WebFTDI) loaded later.
+  await pyodide.runPythonAsync(`
+import sys
+import types
+
+def _make_stub(name, attrs=None):
+    """Create a stub module with optional dummy classes/functions."""
+    mod = types.ModuleType(name)
+    mod.__file__ = f"<stub:{name}>"
+    if attrs:
+        for k, v in attrs.items():
+            setattr(mod, k, v)
+    sys.modules[name] = mod
+    return mod
+
+# pylibftdi - used by plate_reading.agilent_biotek_synergyh1_backend
+_make_stub("pylibftdi", {"FtdiError": type("FtdiError", (Exception,), {}), "Device": type("Device", (), {})})
+
+# pyusb / usb - used by various hardware backends
+_usb = _make_stub("usb", {"USBError": type("USBError", (Exception,), {})})
+_make_stub("usb.core", {"find": lambda **kw: None, "USBError": type("USBError", (Exception,), {})})
+_make_stub("usb.util", {"find_descriptor": lambda *a, **kw: None})
+_usb.core = sys.modules["usb.core"]
+_usb.util = sys.modules["usb.util"]
+
+# pyserial - serial module stub
+_make_stub("serial", {
+    "Serial": type("Serial", (), {}),
+    "SerialException": type("SerialException", (Exception,), {}),
+    "EIGHTBITS": 8, "PARITY_NONE": "N", "STOPBITS_ONE": 1
+})
+_make_stub("serial.tools", {})
+_make_stub("serial.tools.list_ports", {"comports": lambda: []})
+
+print("[Pyodide] Native library stubs registered (pylibftdi, usb, serial)")
+`);
+
   // Install basic dependencies including PLR and Jedi
-  // Note: We use a try-catch for pylabrobot as it might have complex deps
+  // Note: PLR must come from local wheel (PyPI version lacks category-specific chatterbox backends)
   try {
     const micropip = pyodide.pyimport('micropip');
-    await micropip.install(['jedi', 'pylabrobot', 'cloudpickle', 'pydantic']);
-    console.log('PyLabRobot, Jedi, and Pydantic installed successfully');
+    // Install PLR from local wheel (has chatterbox backends for all machine categories)
+    await micropip.install('assets/wheels/pylabrobot-0.1.6-py3-none-any.whl');
+    // Install remaining deps from PyPI
+    await micropip.install(['jedi', 'cloudpickle', 'pydantic']);
+    console.log('PyLabRobot (local wheel), Jedi, and Pydantic installed successfully');
   } catch (err) {
     console.error('Failed to install PyLabRobot/Jedi:', err);
   }
@@ -524,9 +583,9 @@ console
   const consoleProxy = await pyodide.runPythonAsync(consoleCode);
   pyConsole = consoleProxy;
 
-    // Verification call
-    try {
-      const checkCode = `
+  // Verification call
+  try {
+    const checkCode = `
 import builtins
 print(f"SCOPE CHECK: WebSerial in builtins: {hasattr(builtins, 'WebSerial')}")
 print(f"SCOPE CHECK: WebUSB in builtins: {hasattr(builtins, 'WebUSB')}")
@@ -549,12 +608,12 @@ try:
 except Exception as e:
     print(f"SCOPE CHECK: HID check failed: {e}")
 `.trim();
-      pyConsole.push(checkCode);
-    } catch (e) {
-      console.warn('Scope check failed:', e);
-    }
+    pyConsole.push(checkCode);
+  } catch (e) {
+    console.warn('Scope check failed:', e);
+  }
 
-  
+
 
   postMessage({ type: 'INIT_COMPLETE', id });
 }

@@ -143,7 +143,7 @@ import { PlrResource, PlrState } from '@core/models/plr.models';
       }
 
       &.running {
-        border-bottom: 3px solid var(--mat-sys-tertiary, #facc15);
+        border-bottom: 3px solid var(--theme-status-warning-border, var(--mat-sys-tertiary));
       }
 
       &.error {

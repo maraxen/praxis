@@ -1,29 +1,18 @@
 .asset-wizard-container {
   display: flex;
   flex-direction: column;
-  min-height: 650px; // Stable minimum height to prevent canvas jumps between steps
-  max-height: 90vh;
-  width: 100%; // Fill dialog surface
+  height: 100%; // Fill dialog surface — dialog controls actual height
+  width: 100%;
   margin: 0;
   overflow: hidden;
 
   ::ng-deep {
     .mat-horizontal-stepper-header-container {
-      padding: var(--spacing-sm) var(--spacing-lg) 0;
+      padding: var(--spacing-md) var(--spacing-xxl) 0; // Much more horizontal breathing room
       background: var(--mat-sys-surface-container-low);
       flex-shrink: 0;
     }
 
-    .mat-step-header {
-      border-radius: 8px;
-      margin-bottom: var(--spacing-xs);
-
-      &:hover {
-        background: var(--mat-sys-surface-container-high);
-      }
-    }
-
-    // Content container: constrain so step panels don't expand parent
     .mat-horizontal-content-container {
       padding: 0 !important;
       overflow: hidden;
@@ -31,10 +20,11 @@
       min-height: 0;
     }
 
-    // Each step panel: let Angular Material collapse inactive steps (height: 0).
-    // Only the active step gets flex column layout and fills available height.
     .mat-horizontal-stepper-content {
-      overflow: hidden !important;
+      // Collapse inactive steps
+      height: 0;
+      visibility: hidden;
+      overflow: hidden;
 
       &.mat-horizontal-stepper-content-current {
         visibility: visible !important;
@@ -42,31 +32,54 @@
         flex-direction: column;
         height: 100%;
       }
+
+      form {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 0;
+      }
     }
   }
 }
 
 .step-content {
-  padding: var(--spacing-xl);
+  padding: 0 var(--spacing-xxl); // Match header breathing room
   flex: 1;
-  animation: fadeIn 0.3s ease-out;
-  overflow-y: auto;
-  overflow-x: hidden;
-  max-width: 100%;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow-y: auto; // THIS is the scroll container
+  overflow-x: hidden;
+
+  // Scrollbar
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--theme-border);
+    border-radius: 10px;
+  }
 
   h3 {
-    margin: 0 0 var(--spacing-lg);
-    font: var(--mat-sys-title-large);
-    color: var(--mat-sys-on-surface);
+    padding: var(--spacing-lg) 0 var(--spacing-md); // Added padding back internally
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--theme-text-primary);
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
     flex-shrink: 0;
+    font-weight: 700;
+    background: transparent;
+    z-index: 5;
 
     mat-icon {
-      color: var(--mat-sys-primary);
+      color: var(--primary-color);
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
     }
   }
 }
@@ -75,19 +88,29 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--spacing-md);
-  padding: var(--spacing-lg);
-  background: var(--mat-sys-surface-container-low);
-  border-top: 1px solid var(--mat-sys-outline-variant);
+  padding: var(--spacing-md) var(--spacing-xxl); // Match step-content horizontal padding
+  background: var(--theme-surface-elevated);
+  border-top: 1px solid var(--theme-border);
   flex-shrink: 0;
+  z-index: 10;
+
+  button {
+    border-radius: 12px;
+    padding: 0 24px;
+    height: 44px; // Slightly more compact button
+    font-weight: 600;
+  }
 }
 
 // Step 1: Type Selection
 .type-selection {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: var(--spacing-md);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 360px));
+  gap: var(--spacing-lg); // Slightly smaller gap
   max-width: 800px;
-  margin: auto; // Center vertically in step-content
+  margin: 0 auto;
+  justify-content: center;
+  padding: var(--spacing-md) 0;
 
   ::ng-deep .mat-mdc-radio-button {
     display: none;
@@ -96,21 +119,27 @@
 
 .type-card {
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100%;
+  border-radius: 20px;
+  overflow: hidden;
 
   &.selected {
-    border-color: var(--mat-sys-primary);
-    background: rgba(var(--mat-sys-primary-rgb), 0.08);
+    border-color: var(--primary-color);
+    background: var(--mat-sys-primary-container);
+    box-shadow: 0 12px 40px rgba(var(--primary-color-rgb), 0.15);
   }
 
   &:hover:not(.selected) {
-    border-color: var(--mat-sys-outline);
+    border-color: var(--primary-color);
+    background: var(--theme-surface-elevated);
+    transform: translateY(-4px); // Reduced jump
+    box-shadow: var(--glass-shadow);
   }
 }
 
 .category-selection {
-  animation: slideUp 0.3s ease-out;
+  animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -122,77 +151,81 @@
     gap: var(--spacing-sm);
     width: 100%;
     box-sizing: border-box;
-    padding: 4px;
+    padding: var(--spacing-md) var(--spacing-sm);
   }
 
   .category-card {
     display: flex;
     flex-direction: row;
     align-items: center;
-    padding: 12px 16px;
-    background: var(--mat-sys-surface-container-high);
-    border: 1px solid var(--mat-sys-outline-variant);
-    border-radius: 16px;
+    padding: 16px;
+    background: var(--theme-surface);
+    border: 1px solid var(--theme-border);
+    border-radius: 20px;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    gap: 12px;
-    min-height: 72px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 16px;
+    min-height: 80px;
+    position: relative;
+    z-index: 1; // Base stack level
 
     mat-icon {
       font-size: 24px;
       height: 24px;
       width: 24px;
-      color: var(--mat-sys-primary);
-      opacity: 0.8;
-      padding: 10px;
-      background: var(--mat-sys-surface-container-highest);
+      color: var(--primary-color);
+      padding: 12px;
+      background: var(--aurora-primary);
       border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      transition: all 0.3s ease;
     }
 
     .category-label {
-      font: var(--mat-sys-label-large);
-      color: var(--mat-sys-on-surface);
+      font-size: 0.95rem;
+      color: var(--theme-text-primary);
       text-align: left;
       font-weight: 600;
       line-height: 1.2;
       flex: 1;
       min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     &:hover {
-      background: var(--mat-sys-surface-container-highest);
-      border-color: var(--mat-sys-primary);
-      transform: translateY(-2px);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      background: var(--theme-surface-elevated);
+      border-color: var(--primary-color);
+      transform: translateY(-4px);
+      box-shadow: var(--glass-shadow);
+      z-index: 10; // Rise above neighbors
 
       mat-icon {
-        opacity: 1;
-        background: var(--mat-sys-primary-container);
+        background: var(--primary-color);
+        color: white;
+        transform: rotate(5deg);
       }
     }
 
     &.selected {
-      background: rgba(var(--mat-sys-primary-rgb), 0.08) !important;
-      border-color: var(--mat-sys-primary) !important;
-      box-shadow: none;
+      background: var(--mat-sys-primary-container) !important;
+      border-color: var(--primary-color) !important;
+      box-shadow: 0 0 20px rgba(var(--primary-color-rgb), 0.2);
 
       mat-icon {
-        color: var(--mat-sys-on-primary-container) !important;
-        background: var(--mat-sys-primary) !important;
+        color: white !important;
+        background: var(--primary-color) !important;
         opacity: 1;
       }
 
       .category-label {
-        color: var(--mat-sys-on-primary-container);
+        color: var(--primary-color);
       }
     }
   }
@@ -250,18 +283,19 @@
     }
 
     &.selected {
-      background: var(--mat-sys-primary-container);
-      border-color: var(--mat-sys-primary);
-      box-shadow: none;
+      background: var(--mat-sys-primary-container) !important;
+      border-color: var(--primary-color) !important;
+      box-shadow: 0 0 20px rgba(var(--primary-color-rgb), 0.1);
 
       .card-title {
-        color: var(--mat-sys-on-primary-container);
+        color: var(--primary-color);
+        font-weight: 700;
       }
 
       .card-subtitle,
       .text-sys-text-secondary {
-        color: var(--mat-sys-on-primary-container);
-        opacity: 0.8;
+        color: var(--theme-text-secondary);
+        opacity: 0.9;
       }
     }
   }
@@ -287,33 +321,15 @@
 
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: var(--spacing-sm);
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 4px;
-  margin-top: var(--spacing-sm);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-sm);
+  margin-top: var(--spacing-md);
   width: 100%;
   box-sizing: border-box;
-
-  // Custom scrollbar
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--mat-sys-outline-variant);
-    border-radius: 10px;
-  }
 }
 
-// Existing Machines Section (Playground Mode)
+// Existing Machines (Playground)
 .existing-machines-section {
   margin-bottom: var(--spacing-lg);
   flex-shrink: 0;
@@ -349,24 +365,54 @@
   }
 }
 
-// Result cards use standard praxis-card classes from HTML
+// Result cards
 .praxis-card.result-card {
-  min-height: 130px;
+  min-height: 140px;
+  border-radius: 20px;
+  position: relative;
+  z-index: 1;
 
   &.compact {
-    min-height: 100px;
+    min-height: 110px;
   }
 
   .card-content {
-    padding: 8px 16px;
+    padding: var(--spacing-lg); // More internal padding for content
 
     p {
-      font-size: 13px;
+      font-size: 14px;
+      line-height: 1.6; // Increased line-height for readability
+      color: var(--theme-text-secondary);
     }
   }
 
   .card-header {
-    padding-bottom: 0;
+    padding: var(--spacing-xl) var(--spacing-lg) 0; // Consistent padding for header
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.25;
+    }
+  }
+
+  &:hover:not(.selected) {
+    transform: translateY(-4px);
+    box-shadow: var(--glass-shadow);
+    border-color: var(--primary-color);
+    z-index: 10;
+  }
+
+  &.selected {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px var(--mat-sys-primary-container);
+    z-index: 20;
   }
 }
 

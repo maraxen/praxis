@@ -406,7 +406,7 @@ export class SqliteOpfsService {
                         const now = new Date().toISOString();
                         const operations = uncoveredDefs.map(row => ({
                             sql: `INSERT OR IGNORE INTO resources (accession_id, asset_type, name, fqn, created_at, updated_at, properties_json, resource_definition_accession_id, status) VALUES (?, 'RESOURCE', ?, ?, ?, ?, ?, ?, ?)`,
-                            bind: [crypto.randomUUID(), row.name, `resources.default.${(row.name as string).replace(/\s+/g, '_').toLowerCase()}`, now, now, JSON.stringify({ auto_instantiated: true, source: 'seed' }), row.accession_id, 'available']
+                            bind: [crypto.randomUUID(), row.name, row.fqn, now, now, JSON.stringify({ auto_instantiated: true, source: 'seed' }), row.accession_id, 'available']
                         }));
                         return this.execBatch(operations);
                     })

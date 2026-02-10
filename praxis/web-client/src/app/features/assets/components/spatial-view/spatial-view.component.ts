@@ -12,6 +12,7 @@ import { AssetStatusChipComponent } from '../asset-status-chip/asset-status-chip
 import { Machine, Resource, Workcell } from '../../models/asset.models';
 import { ViewControlsComponent } from '@shared/components/view-controls/view-controls.component';
 import { ViewControlsConfig, ViewControlsState } from '@shared/components/view-controls/view-controls.types';
+import { getMachineDisplay, getResourceDisplay } from '@core/utils/machine-display.utils';
 
 @Component({
   selector: 'app-spatial-view',
@@ -45,7 +46,29 @@ import { ViewControlsConfig, ViewControlsState } from '@shared/components/view-c
           </div>
         }
 
-        <!-- Results Grid -->
+        @if (viewState().viewType === 'list') {
+          <!-- List View -->
+          <div class="flex flex-col gap-1">
+            @for (asset of filteredAssets(); track asset.accession_id) {
+              <div class="flex items-center gap-4 px-5 py-3 bg-[var(--mat-sys-surface)] border border-[var(--theme-border)] rounded-xl hover:bg-[var(--mat-sys-surface-container-low)] transition-all cursor-pointer group">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" [ngClass]="getIconBgClass(asset)">
+                  <mat-icon [class]="getIconTextClass(asset)" class="!text-[18px] !w-[18px] !h-[18px]">{{ getIcon(asset) }}</mat-icon>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <span class="font-semibold text-sm text-sys-text-primary truncate block">{{ asset.name }}</span>
+                </div>
+                <span class="text-xs text-sys-text-tertiary shrink-0 hidden sm:block">{{ getAssetSubtitle(asset) }}</span>
+                <app-asset-status-chip [status]="asset.status" class="shrink-0" />
+                <div class="flex items-center gap-1 text-xs text-sys-text-tertiary shrink-0 hidden md:flex">
+                  <mat-icon class="!w-3 !h-3 !text-[12px] opacity-70">location_on</mat-icon>
+                  <span class="truncate max-w-[120px]">{{ getLocationLabel(asset) }}</span>
+                </div>
+                <span class="text-[10px] text-sys-text-tertiary font-mono shrink-0 opacity-60">{{ getShortId(asset.accession_id) }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+        <!-- Card Grid View -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           @for (asset of filteredAssets(); track asset.accession_id) {
             <div class="asset-card group relative bg-[var(--mat-sys-surface)] border border-[var(--theme-border)] rounded-2xl p-5 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer">
@@ -90,6 +113,7 @@ import { ViewControlsConfig, ViewControlsState } from '@shared/components/view-c
             </div>
           }
         </div>
+        }
 
         @if (!isLoading() && filteredAssets().length === 0) {
           <div class="flex flex-col items-center justify-center h-[60vh] text-sys-text-tertiary">
@@ -376,21 +400,18 @@ export class SpatialViewComponent implements OnInit {
   }
 
   getIcon(asset: Machine | Resource): string {
-    if (this.isMachine(asset)) {
-      if (asset.machine_category?.toLowerCase().includes('liquid')) return 'water_drop';
-      return 'precision_manufacturing';
-    }
-    return 'science'; // Resource
+    if (this.isMachine(asset)) return getMachineDisplay(asset.machine_category).icon;
+    return getResourceDisplay(undefined).icon; // Resource has no category field; uses default
   }
 
   getIconBgClass(asset: Machine | Resource): string {
-    if (this.isMachine(asset)) return 'bg-blue-500/10';
-    return 'bg-orange-500/10';
+    if (this.isMachine(asset)) return getMachineDisplay(asset.machine_category).bgClass;
+    return getResourceDisplay(undefined).bgClass;
   }
 
   getIconTextClass(asset: Machine | Resource): string {
-    if (this.isMachine(asset)) return 'text-blue-500';
-    return 'text-orange-500';
+    if (this.isMachine(asset)) return getMachineDisplay(asset.machine_category).textClass;
+    return getResourceDisplay(undefined).textClass;
   }
 
   getAssetSubtitle(asset: Machine | Resource): string {

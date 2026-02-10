@@ -26,9 +26,9 @@ import { DeckSimulationDialogComponent } from '@features/run-protocol/components
     MachineFocusViewComponent
   ],
   template: `
-    <div class="flex h-full w-full overflow-hidden bg-slate-50 dark:bg-slate-900">
+    <div class="dashboard-container">
       <!-- Sidebar -->
-      <aside class="w-[280px] flex-shrink-0 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+      <aside class="sidebar">
         <div class="flex h-full flex-col">
           <div class="flex-grow p-0 overflow-hidden">
              <app-workcell-explorer 
@@ -40,8 +40,7 @@ import { DeckSimulationDialogComponent } from '@features/run-protocol/components
       </aside>
 
       <!-- Main Canvas -->
-      <main class="flex flex-col flex-grow relative overflow-hidden" 
-            (contextmenu)="onContextMenu($event)">
+      <main class="main-canvas" (contextmenu)="onContextMenu($event)">
         
         <!-- Context Menu Trigger -->
         <div style="visibility: hidden; position: fixed"
@@ -52,11 +51,11 @@ import { DeckSimulationDialogComponent } from '@features/run-protocol/components
 
         <!-- Header/Controls - Hidden in Focus Mode -->
         @if (viewMode() !== 'focus') {
-          <header class="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 dark:bg-slate-950 dark:border-slate-800">
+          <header class="dashboard-header">
             <div class="flex items-center gap-4">
-              <h1 class="text-xl font-bold text-slate-900 dark:text-white">Workcell Dashboard</h1>
+              <h1 class="header-title">Workcell Dashboard</h1>
               @if (isLoading()) {
-                <span class="text-xs text-slate-400 animate-pulse">Loading...</span>
+                <span class="loading-text animate-pulse">Loading...</span>
               }
             </div>
 
@@ -67,24 +66,20 @@ import { DeckSimulationDialogComponent } from '@features/run-protocol/components
                 Simulate
               </button>
 
-              <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
+              <div class="header-divider"></div>
 
-              <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+              <div class="view-toggle-container">
                 <button
                   (click)="setViewMode('grid')"
-                  [class.bg-white]="viewMode() === 'grid'"
-                  [class.shadow-sm]="viewMode() === 'grid'"
-                  [class.dark:bg-slate-700]="viewMode() === 'grid'"
-                  class="px-3 py-1 text-sm rounded-md transition-all"
+                  [class.active]="viewMode() === 'grid'"
+                  class="toggle-btn"
                 >
                   Grid
                 </button>
                 <button
                   (click)="setViewMode('list')"
-                  [class.bg-white]="viewMode() === 'list'"
-                  [class.shadow-sm]="viewMode() === 'list'"
-                  [class.dark:bg-slate-700]="viewMode() === 'list'"
-                  class="px-3 py-1 text-sm rounded-md transition-all"
+                  [class.active]="viewMode() === 'list'"
+                  class="toggle-btn"
                 >
                   List
                 </button>
@@ -94,10 +89,10 @@ import { DeckSimulationDialogComponent } from '@features/run-protocol/components
         }
 
         <!-- Canvas Content -->
-        <div class="flex flex-col flex-grow overflow-auto" [class.p-6]="viewMode() !== 'focus'">
+        <div class="canvas-content" [class.p-6]="viewMode() !== 'focus'">
           @if (isLoading()) {
             <div class="flex items-center justify-center h-full">
-               <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+               <div class="spinner"></div>
             </div>
           } @else {
             @switch (viewMode()) {
@@ -109,8 +104,8 @@ import { DeckSimulationDialogComponent } from '@features/run-protocol/components
                       (machineSelected)="onMachineSelected($event)">
                     </app-machine-card>
                   } @empty {
-                    <div class="col-span-full flex flex-col items-center justify-center py-20 text-slate-400">
-                      <mat-icon class="mb-4 text-slate-400 !w-16 !h-16 !text-[64px]">precision_manufacturing</mat-icon>
+                    <div class="col-span-full flex flex-col items-center justify-center py-20 empty-state">
+                      <mat-icon class="mb-4 !w-16 !h-16 !text-[64px]">precision_manufacturing</mat-icon>
                       <p>No machines found</p>
                       <button mat-flat-button color="primary" class="mt-4" (click)="openSimulationDialog()">
                         Create Simulation
@@ -127,7 +122,7 @@ import { DeckSimulationDialogComponent } from '@features/run-protocol/components
                       (machineSelected)="onMachineSelected($event)">
                     </app-machine-card-mini>
                   } @empty {
-                    <div class="flex flex-col items-center justify-center py-10 text-slate-400">
+                    <div class="flex flex-col items-center justify-center py-10 empty-state">
                        <p>No machines found</p>
                     </div>
                   }
@@ -140,7 +135,7 @@ import { DeckSimulationDialogComponent } from '@features/run-protocol/components
                     (back)="clearSelection()"
                   ></app-machine-focus-view>
                 } @else {
-                  <div class="flex flex-col items-center justify-center h-full text-slate-400 fade-in">
+                  <div class="flex flex-col items-center justify-center h-full empty-state fade-in">
                     <mat-icon class="text-6xl mb-4">select_all</mat-icon>
                     <p>Select a machine from the explorer to focus</p>
                   </div>
@@ -168,6 +163,94 @@ import { DeckSimulationDialogComponent } from '@features/run-protocol/components
     :host {
       display: block;
       height: 100%;
+    }
+    .dashboard-container {
+      display: flex;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background-color: var(--mat-sys-surface-container-low);
+    }
+    .sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--mat-sys-outline-variant);
+      background-color: var(--mat-sys-surface);
+    }
+    .main-canvas {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    .dashboard-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background-color: var(--mat-sys-surface);
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+    }
+    .header-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--mat-sys-on-surface);
+      margin: 0;
+    }
+    .loading-text {
+      font-size: 0.75rem;
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .header-divider {
+      height: 1.5rem;
+      width: 1px;
+      background-color: var(--mat-sys-outline-variant);
+      margin: 0 0.25rem;
+    }
+    .view-toggle-container {
+      display: flex;
+      align-items: center;
+      background-color: var(--mat-sys-surface-container-high);
+      padding: 0.25rem;
+      border-radius: 0.5rem;
+    }
+    .toggle-btn {
+      padding: 0.25rem 0.75rem;
+      font-size: 0.875rem;
+      border-radius: 0.375rem;
+      transition: all 0.2s;
+      color: var(--mat-sys-on-surface-variant);
+      
+      &:hover {
+        color: var(--mat-sys-on-surface);
+      }
+      
+      &.active {
+        background-color: var(--mat-sys-surface);
+        color: var(--mat-sys-primary);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+    }
+    .canvas-content {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+      overflow: auto;
+    }
+    .spinner {
+      width: 2rem;
+      height: 2rem;
+      border: 4px solid var(--mat-sys-primary);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .empty-state {
+      color: var(--mat-sys-on-surface-variant);
     }
     .fade-in {
       animation: fadeIn 0.3s ease-in;

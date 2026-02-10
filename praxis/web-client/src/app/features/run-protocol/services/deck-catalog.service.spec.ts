@@ -90,12 +90,11 @@ describe('DeckCatalogService', () => {
             expect(carriers.length).toBeGreaterThan(0);
             expect(carriers.find(c => c.type === 'plate')).toBeTruthy();
             expect(carriers.find(c => c.type === 'tip')).toBeTruthy();
-            expect(carriers.find(c => c.type === 'trough')).toBeTruthy();
         });
 
         it('should return plate carrier with correct specs', () => {
             const carriers = service.getCompatibleCarriers('Hamilton');
-            const plateCarrier = carriers.find(c => c.fqn.includes('plt_car'));
+            const plateCarrier = carriers.find(c => c.type === 'plate');
 
             expect(plateCarrier).toBeTruthy();
             expect(plateCarrier!.numSlots).toBe(5);
@@ -105,6 +104,39 @@ describe('DeckCatalogService', () => {
         it('should return empty array for unknown deck', () => {
             const carriers = service.getCompatibleCarriers('UnknownDeck');
             expect(carriers).toEqual([]);
+        });
+
+        it('should use correct PLR module paths for Hamilton carriers', () => {
+            const carriers = service.getCompatibleCarriers('HamiltonSTARDeck');
+
+            for (const carrier of carriers) {
+                // FQN must NOT reference non-existent ml_star module
+                expect(carrier.fqn).not.toContain('ml_star');
+
+                // FQN must point to real PLR hamilton submodules
+                expect(carrier.fqn).toMatch(
+                    /^pylabrobot\.resources\.hamilton\.(plate_carriers|tip_carriers|mfx_carriers)\./
+                );
+
+                // Carrier factory name must be UPPERCASE (PLR convention)
+                const factoryName = carrier.fqn.split('.').pop()!;
+                expect(factoryName).toMatch(/^[A-Z]/); // starts with uppercase
+            }
+        });
+
+        it('should return Tecan carriers for EVO decks', () => {
+            const carriers = service.getCompatibleCarriers('TecanEVO150');
+
+            expect(carriers.length).toBeGreaterThan(0);
+            expect(carriers.find(c => c.type === 'plate')).toBeTruthy();
+            expect(carriers.find(c => c.type === 'tip')).toBeTruthy();
+
+            // Tecan FQNs must point to real PLR tecan submodules
+            for (const carrier of carriers) {
+                expect(carrier.fqn).toMatch(
+                    /^pylabrobot\.resources\.tecan\.(plate_carriers|tip_carriers)\./
+                );
+            }
         });
     });
 

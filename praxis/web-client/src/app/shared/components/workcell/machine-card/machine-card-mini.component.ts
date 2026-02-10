@@ -101,7 +101,7 @@ import { MachineStatusBadgeComponent } from '../machine-status-badge/machine-sta
       }
 
       &.running {
-        border-left: 4px solid var(--mat-sys-tertiary, #facc15);
+        border-left: 4px solid var(--theme-status-warning-border, var(--mat-sys-tertiary));
       }
 
       &.error {

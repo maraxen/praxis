@@ -301,12 +301,35 @@ export class ExecutionService {
         }
       }
 
-      // If no machines found in resolved_assets, add a default simulator for STARlet
+      // Extract machine configs from input parameters (wizard passes _create_from_backend objects)
+      if (machineEntries.length === 0 && run?.input_parameters_json) {
+        try {
+          const inputParams = typeof run.input_parameters_json === 'string'
+            ? JSON.parse(run.input_parameters_json)
+            : run.input_parameters_json;
+          for (const [paramName, val] of Object.entries(inputParams || {})) {
+            if (val && typeof val === 'object' && (val as any)._create_from_backend) {
+              const cfg = val as any;
+              machineEntries.push({
+                param_name: paramName,
+                machine_type: 'LiquidHandler',
+                backend_fqn: cfg.simulation_backend_name || 'pylabrobot.liquid_handling.backends.chatterbox.LiquidHandlerChatterboxBackend',
+                is_simulated: cfg.is_simulated ?? true
+              });
+              this.addLog(`[Browser Mode] Machine from wizard: ${paramName} (backend=${cfg.simulation_backend_name})`);
+            }
+          }
+        } catch (e) {
+          console.warn('[ExecutionService] Failed to parse input_parameters_json for machines:', e);
+        }
+      }
+
+      // If no machines found anywhere, add a default simulator (ChatterBox for browser mode)
       if (machineEntries.length === 0) {
         machineEntries.push({
           param_name: 'liquid_handler',
           machine_type: 'LiquidHandler',
-          backend_fqn: 'pylabrobot.liquid_handling.backends.hamilton.STAR.STAR',
+          backend_fqn: 'pylabrobot.liquid_handling.backends.chatterbox.LiquidHandlerChatterboxBackend',
           is_simulated: true
         });
       }
@@ -314,12 +337,42 @@ export class ExecutionService {
       // Fetch protocol blob
       const blob = await firstValueFrom(this.fetchProtocolBlob(protocolId));
 
+      // Load PLR serialized definitions for resource deserialization
+      let plrJsonMap: Map<string, string> | undefined;
+      let typeFqnMap: Map<string, string> | undefined;
+      if (this.modeService.isBrowserMode()) {
+        try {
+          const repos = await firstValueFrom(this.sqliteService.getAsyncRepositories());
+          const defs = await firstValueFrom(repos.resourceDefinitions.findAll());
+          plrJsonMap = new Map<string, string>();
+          typeFqnMap = new Map<string, string>();
+          for (const def of defs) {
+            const plrJson = (def as any).plr_definition_details_json;
+            if (def.fqn && plrJson) {
+              const jsonStr = typeof plrJson === 'string' ? plrJson : JSON.stringify(plrJson);
+              plrJsonMap.set(def.fqn, jsonStr);
+            }
+            // Build type→FQN map: first definition per category wins (like playground's definition lookup)
+            const cat = ((def as any).plr_category || '').toLowerCase();
+            if (def.fqn && cat && !typeFqnMap.has(cat)) {
+              typeFqnMap.set(cat, def.fqn);
+            }
+          }
+          console.log(`[ExecutionService] Loaded ${plrJsonMap.size} PLR definitions, ${typeFqnMap.size} type→FQN mappings`);
+        } catch (e) {
+          console.warn('[ExecutionService] Failed to load PLR definitions, falling back to FQN-only:', e);
+        }
+      }
+
       // BUILD EXECUTION MANIFEST
-      const manifest = this.wizardState.buildExecutionManifest(machineEntries);
+      const manifest = this.wizardState.buildExecutionManifest(machineEntries, plrJsonMap, typeFqnMap);
 
       // Patch manifest with actual user parameter values
+      // IMPORTANT: Skip deck_resource params — their value must remain as the resource NAME
+      // (for registry lookup). The wizard passes UUIDs here which would break resolution.
       if (parameters) {
         manifest.parameters.forEach(p => {
+          if (p.is_deck_resource) return; // Don't override deck resource names with UUIDs
           if (parameters[p.name] !== undefined) {
             p.value = parameters[p.name];
           }
@@ -341,7 +394,14 @@ export class ExecutionService {
               this.addLog(output.content);
             } else if (output.type === 'stderr') {
               this.addLog(`[Error] ${output.content}`);
-              hasError = true;
+              // Only flag critical errors — not all stderr (Python logs warnings/debug to stderr)
+              const content = output.content;
+              if (content.includes('TypeError:') || content.includes('SyntaxError:') ||
+                content.includes('ImportError:') || content.includes('RuntimeError:') ||
+                content.includes('AttributeError:') || content.includes('NameError:') ||
+                content.includes('Traceback (most recent call last)')) {
+                hasError = true;
+              }
             } else if (output.type === 'result') {
               this.addLog(`[Result] ${output.content}`);
             } else if (output.type === 'well_state_update') {

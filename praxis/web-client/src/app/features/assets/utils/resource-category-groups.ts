@@ -86,7 +86,13 @@ export function shouldHideCategory(plrCategory: string | null | undefined): bool
 export function getUiGroup(plrCategory: string | null | undefined): ResourceUiGroup {
     if (!plrCategory) return 'Other';
     const normalized = toSnakeCase(plrCategory);
-    return CATEGORY_TO_UI_GROUP[normalized] ?? 'Other';
+    // Direct match
+    if (CATEGORY_TO_UI_GROUP[normalized]) return CATEGORY_TO_UI_GROUP[normalized];
+    // Suffix match: "tecan_tip_carrier" ends with "tip_carrier" → Carriers
+    for (const [key, group] of Object.entries(CATEGORY_TO_UI_GROUP)) {
+        if (normalized.endsWith(key)) return group;
+    }
+    return 'Other';
 }
 
 /**

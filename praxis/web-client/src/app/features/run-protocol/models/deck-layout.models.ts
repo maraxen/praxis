@@ -57,7 +57,7 @@ export type CarrierType = 'plate' | 'tip' | 'trough' | 'tube' | 'mfx';
 export interface DeckCarrier {
     /** Unique identifier for this carrier instance */
     id: string;
-    /** PLR fully qualified name (e.g., "pylabrobot.resources.ml_star.plt_car_l5ac") */
+    /** PLR fully qualified name (e.g., "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC_A00") */
     fqn: string;
     /** Human-readable display name */
     name: string;

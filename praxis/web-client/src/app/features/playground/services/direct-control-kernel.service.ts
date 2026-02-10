@@ -297,14 +297,17 @@ _output
         const safeName = machineName.replace(/['"\\]/g, '_');
         const safeVar = varName.replace(/[^a-zA-Z0-9_]/g, '_');
 
+        const configJson = JSON.stringify({
+            backend_fqn: backendFqn || 'pylabrobot.liquid_handling.backends.simulation.SimulatorBackend',
+            is_simulated: true
+        }).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
         const initCode = `
 # Initialize: ${safeName}
 from web_bridge import create_configured_backend, create_machine_frontend
+import json
 
-config = ${JSON.stringify({
-            backend_fqn: backendFqn || 'pylabrobot.liquid_handling.backends.simulation.SimulatorBackend',
-            is_simulated: true
-        })}
+config = json.loads('${configJson}')
 backend = create_configured_backend(config)
 ${safeVar} = create_machine_frontend("${category}", backend, name="${safeName}")
 print(f"Created: ${safeVar} ({safeName})")

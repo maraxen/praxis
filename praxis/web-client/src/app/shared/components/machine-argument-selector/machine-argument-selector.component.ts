@@ -9,6 +9,7 @@ import { AssetService } from '../../../features/assets/services/asset.service';
 import { Machine, MachineFrontendDefinition, MachineBackendDefinition } from '../../../features/assets/models/asset.models';
 import { AssetRequirement } from '../../../features/protocols/models/protocol.models';
 import { PLRCategory, MACHINE_CATEGORIES, RESOURCE_CATEGORIES } from '../../../core/db/plr-category';
+import { humanize } from '../../../core/utils/plr-display.utils';
 import { firstValueFrom } from 'rxjs';
 
 /**
@@ -80,7 +81,7 @@ interface MachineRequirement {
                   <span class="selection-summary">
                     {{ req.selection?.selectedMachine?.name || getBackendDisplayName(req.selection?.selectedBackend) }}
                     @if (req.selection?.selectedBackend?.backend_type === 'simulator') {
-                      <span class="sim-badge">Simulated</span>
+                      <mat-icon class="sim-icon" matTooltip="Simulated">science</mat-icon>
                     }
                   </span>
                 }
@@ -112,7 +113,7 @@ interface MachineRequirement {
                           </div>
                           <div class="option-info">
                             <span class="option-name">{{ machine.name }}</span>
-                            <span class="option-meta">{{ machine.machine_category }}</span>
+                            <span class="option-meta">{{ humanize(machine.machine_category) }}</span>
                           </div>
                           @if (machine.is_simulation_override) {
                             <span class="type-badge sim">Sim</span>
@@ -278,6 +279,14 @@ interface MachineRequirement {
       text-transform: uppercase;
       background: var(--mat-sys-tertiary-container);
       color: var(--mat-sys-tertiary);
+    }
+
+    .sim-icon {
+      font-size: 14px !important;
+      width: 14px !important;
+      height: 14px !important;
+      color: var(--mat-sys-tertiary);
+      opacity: 0.7;
     }
 
     .panel-content {
@@ -482,6 +491,9 @@ interface MachineRequirement {
 })
 export class MachineArgumentSelectorComponent implements OnInit, OnChanges {
   private assetService = inject(AssetService);
+
+  /** Humanize PLR identifiers for template use */
+  humanize = humanize;
 
   /** Protocol asset requirements (machine arguments) */
   @Input() requirements: AssetRequirement[] = [];

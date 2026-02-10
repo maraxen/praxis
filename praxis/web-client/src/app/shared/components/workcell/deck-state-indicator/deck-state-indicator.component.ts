@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 export type DeckStateSource = 'live' | 'simulated' | 'cached' | 'definition';
@@ -8,22 +8,10 @@ export type DeckStateSource = 'live' | 'simulated' | 'cached' | 'definition';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <span class="state-indicator" [class]="source">
-      @switch (source) {
-        @case ('live') {
-          <span class="icon">🟢</span> LIVE
-        }
-        @case ('simulated') {
-          <span class="icon">🔵</span> SIMULATED
-        }
-        @case ('cached') {
-          <span class="icon">⚪</span> OFFLINE
-        }
-        @case ('definition') {
-          <span class="icon">📐</span> STATIC
-        }
-      }
-    </span>
+    <div class="state-indicator" [class]="source">
+      <span class="status-dot" [class.pulse]="source === 'live'"></span>
+      <span class="status-label">{{ label() }}</span>
+    </div>
   `,
   styles: [`
     :host {
@@ -35,59 +23,73 @@ export type DeckStateSource = 'live' | 'simulated' | 'cached' | 'definition';
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 12px;
-      border-radius: 16px;
+      padding: 4px 10px;
+      border-radius: 12px;
       font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.5px;
       text-transform: uppercase;
-      transition: all 0.3s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       white-space: nowrap;
-      border: 1px solid transparent;
+      background: var(--mat-sys-surface-variant);
+      border: 1px solid var(--theme-border-light);
+      color: var(--theme-text-primary);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
     }
 
     .state-indicator.live {
-      background: rgba(34, 197, 94, 0.1);
-      color: #22c55e; /* Green 500 */
-      border-color: rgba(34, 197, 94, 0.3);
-      box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
-      animation: pulse-green 2s infinite;
+      border-color: var(--theme-status-success-border);
+      background: var(--theme-status-success-muted);
+      color: var(--theme-status-success);
+      .status-dot { 
+        background: var(--mat-sys-success);
+      }
+      .status-dot.pulse {
+        box-shadow: 0 0 0 0 var(--theme-status-success);
+        animation: pulse-green 2s infinite;
+      }
     }
 
     .state-indicator.simulated {
-      background: rgba(59, 130, 246, 0.1);
-      color: #3b82f6; /* Blue 500 */
-      border-color: rgba(59, 130, 246, 0.3);
+      border-color: var(--theme-status-info-border);
+      background: var(--theme-status-info-muted);
+      color: var(--theme-status-info);
+      .status-dot { background: var(--mat-sys-tertiary); }
     }
 
     .state-indicator.cached {
-      background: rgba(255, 255, 255, 0.05);
-      color: var(--theme-text-secondary, #94a3b8);
-      border-color: var(--theme-border, rgba(255, 255, 255, 0.1));
+      border-color: var(--theme-border);
+      background: var(--mat-sys-surface-variant);
+      color: var(--theme-text-secondary);
+      .status-dot { background: var(--mat-sys-on-surface-variant); }
     }
 
     .state-indicator.definition {
-      background: transparent;
-      color: var(--theme-text-tertiary, #64748b);
-      border-color: var(--theme-border-light, rgba(255, 255, 255, 0.05));
+      border-color: var(--theme-border-light);
       border-style: dashed;
-    }
-
-    .state-indicator .icon {
-      font-size: 8px; /* Scale down emoji/icon slightly */
-      line-height: 1;
-      filter: drop-shadow(0 0 2px currentColor);
+      background: transparent;
+      color: var(--theme-text-tertiary);
+      .status-dot { background: var(--mat-sys-primary-container); }
     }
 
     @keyframes pulse-green {
       0% {
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+        transform: scale(1);
+        box-shadow: 0 0 0 0 var(--theme-status-success);
       }
       70% {
-        box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+        transform: scale(1.1);
+        box-shadow: 0 0 0 6px transparent;
       }
       100% {
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+        transform: scale(1);
+        box-shadow: 0 0 0 0 transparent;
       }
     }
   `],
@@ -95,4 +97,14 @@ export type DeckStateSource = 'live' | 'simulated' | 'cached' | 'definition';
 })
 export class DeckStateIndicatorComponent {
   @Input({ required: true }) source!: DeckStateSource;
+
+  protected label = computed(() => {
+    switch (this.source) {
+      case 'live': return 'Live';
+      case 'simulated': return 'Simulated';
+      case 'cached': return 'Offline';
+      case 'definition': return 'Static';
+      default: return this.source;
+    }
+  });
 }

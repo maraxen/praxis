@@ -1288,8 +1288,8 @@ export class RunProtocolComponent implements OnInit, HasUnsavedChanges {
 
         this.compatibilityData.set(allCompat);
 
-        // Only auto-select if exactly one option and it's a real machine (not template)
-        // We want users to click templates to configure them
+        // Auto-select if exactly one compatible non-template machine exists (convenience)
+        // Users can still click other machines to change selection
         const active = allCompat.filter(d =>
           d.compatibility.is_compatible && !(d.machine as any).is_template
         );

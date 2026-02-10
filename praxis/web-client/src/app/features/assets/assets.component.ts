@@ -386,9 +386,7 @@ export class AssetsComponent implements OnInit, OnDestroy {
       minWidth: '600px',
       maxWidth: '1000px',
       width: '80vw',
-      height: 'auto',
-      minHeight: '400px',
-      maxHeight: '90vh',
+      height: '85vh',
       data: type ? { preselectedType: type.toUpperCase() } : {}
     });
 

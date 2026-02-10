@@ -134,7 +134,7 @@ describe('CarrierInferenceService', () => {
             expect(tipReq!.carrierType).toBe('tip');
 
             expect(troughReq).toBeTruthy();
-            expect(troughReq!.carrierType).toBe('trough');
+            expect(troughReq!.carrierType).toBe('mfx');
         });
 
         it('should suggest non-conflicting rail positions', () => {

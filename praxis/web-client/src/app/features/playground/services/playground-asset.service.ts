@@ -23,9 +23,7 @@ export class PlaygroundAssetService {
       minWidth: '600px',
       maxWidth: '1000px',
       width: '80vw',
-      height: 'auto',
-      minHeight: '400px',
-      maxHeight: '90vh',
+      height: '85vh',
       data: {
         ...(preselectedType ? { preselectedType } : {}),
         context: 'playground'
@@ -88,10 +86,16 @@ export class PlaygroundAssetService {
   private injectViaJupyterApp(code: string): boolean {
     try {
       const iframe = document.querySelector<HTMLIFrameElement>('iframe.notebook-frame');
-      const jupyterapp = (iframe?.contentWindow as any)?.jupyterapp;
+      console.log('[PlaygroundAsset] iframe found:', !!iframe);
+      const contentWindow = iframe?.contentWindow;
+      console.log('[PlaygroundAsset] contentWindow:', !!contentWindow);
+      const jupyterapp = (contentWindow as any)?.jupyterapp;
+      console.log('[PlaygroundAsset] jupyterapp:', !!jupyterapp);
       if (!jupyterapp?.commands) {
+        console.warn('[PlaygroundAsset] jupyterapp.commands not available');
         return false;
       }
+      console.log('[PlaygroundAsset] Calling console:inject with code length:', code.length);
       jupyterapp.commands.execute('console:inject', { code, activate: false });
       return true;
     } catch (e) {
@@ -100,68 +104,104 @@ export class PlaygroundAssetService {
     }
   }
 
-  private assetToVarName(asset: { name: string; accession_id: string }): string {
-    const desc = asset.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_|_$/g, '');
-    const prefix = asset.accession_id.slice(0, 6);
-    return `${desc}_${prefix}`;
+  public assetToVarName(asset: { name: string; accession_id?: string | null; plr_category?: string | null }): string {
+    // Build var name: {category}_{uid} where uid = name suffix from wizard
+    const nameParts = asset.name.split(/\s+/);
+    const category = (asset as any).machine_category || asset.plr_category || 'asset';
+
+    // uid: short alphanumeric suffix from wizard name (e.g. "RFRH"), else accession hash
+    const lastWord = nameParts.length > 1 ? nameParts[nameParts.length - 1].replace(/[^a-zA-Z0-9]/g, '') : '';
+    const uid = (lastWord.length >= 2 && lastWord.length <= 6 ? lastWord : (asset.accession_id || '').replace(/-/g, '').slice(0, 4)).toLowerCase();
+    const cat = category.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+
+    return `${cat}_${uid}`;
   }
 
-  private generateResourceCode(resource: Resource, variableName?: string): string {
+  public generateResourceCode(resource: Resource, variableName?: string): string {
     const varName = variableName || this.assetToVarName(resource);
-    const fqn = resource.fqn || resource.plr_definition?.fqn;
-
-    if (!fqn) {
-      return `# Resource: ${resource.name} (no FQN available)`;
-    }
-
-    const parts = fqn.split('.');
-    const className = parts[parts.length - 1];
+    const fqn = resource.fqn || resource.resource_definition_accession_id; // Simple fallback
+    const modulePath = resource.fqn ? resource.fqn.substring(0, resource.fqn.lastIndexOf('.')) : 'pylabrobot.resources';
+    const className = resource.fqn ? resource.fqn.split('.').pop() : (resource as any).plr_category || 'Resource';
 
     const lines = [
       `# Resource: ${resource.name}`,
-      `from pylabrobot.resources import ${className}`,
+      `from ${modulePath} import ${className}`,
       `${varName} = ${className}(name="${varName}")`,
-      `print(f"Created: {${varName}}")`
+      `${varName}`
     ];
 
     return lines.join('\n');
   }
 
-  private async generateMachineCode(machine: Machine, variableName?: string, deckConfigId?: string): Promise<string> {
+  public async generateMachineCode(machine: Machine, variableName?: string, deckConfigId?: string): Promise<string> {
     const varName = variableName || this.assetToVarName(machine);
+    const safeName = machine.name.replace(/['"\\\\/]/g, '_');
+    const category = (machine as any).machine_category || 'LiquidHandler';
 
-    const frontendFqn = machine.plr_definition?.frontend_fqn || machine.frontend_definition?.fqn;
-    const backendFqn = machine.plr_definition?.fqn || machine.backend_definition?.fqn || machine.simulation_backend_name;
-    const isSimulated = !!(machine.is_simulation_override || machine.simulation_backend_name);
+    const frontendFqn = (machine as any).frontend_definition?.fqn || (machine as any).frontend_fqn;
+    const backendFqn = (machine as any).backend_definition?.fqn || machine.simulation_backend_name;
 
-    if (!frontendFqn) {
-      return `# Machine: ${machine.name} (Missing Frontend FQN)`;
+    // Resolve deck FQN
+    const deckFqn = deckConfigId || (machine as any).deck_type;
+
+    const lines = [`# Machine: ${safeName}`];
+
+    // Backend setup
+    if (backendFqn) {
+      const parts = backendFqn.split('.');
+      const backendClass = parts.pop()!;
+      const backendModule = parts.join('.');
+      lines.push(`from ${backendModule} import ${backendClass}`);
+      lines.push(`backend = ${backendClass}()`);
+    } else {
+      lines.push(`# No backend definition found — using fallback`);
+      lines.push(`from pylabrobot.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend`);
+      lines.push(`backend = LiquidHandlerChatterboxBackend()`);
     }
 
-    const frontendClass = frontendFqn.split('.').pop()!;
-    const frontendModule = frontendFqn.substring(0, frontendFqn.lastIndexOf('.'));
+    // Deck setup
+    if (deckFqn) {
+      const parts = deckFqn.split('.');
+      const deckClass = parts.pop()!;
+      const deckModule = parts.join('.');
+      lines.push(`from ${deckModule} import ${deckClass}`);
+      lines.push(`deck = ${deckClass}()`);
+    }
 
-    const config = {
-      backend_fqn: backendFqn || 'pylabrobot.liquid_handling.backends.simulation.SimulatorBackend',
-      port_id: machine.connection_info?.['address'] || machine.connection_info?.['port_id'] || '',
-      is_simulated: isSimulated,
-      baudrate: machine.connection_info?.['baudrate'] || 9600
+    // Extra constructor args table
+    const FRONTEND_EXTRA_ARGS: Record<string, string> = {
+      'pylabrobot.plate_reading.PlateReader': ', size_x=0, size_y=0, size_z=0',
+      'pylabrobot.shaking.Shaker': ', size_x=0, size_y=0, size_z=0, child_location=Coordinate(0,0,0)',
+      'pylabrobot.heating_shaking.HeaterShaker': ', size_x=0, size_y=0, size_z=0, child_location=Coordinate(0,0,0)',
+      'pylabrobot.temperature_controlling.TemperatureController': ', size_x=0, size_y=0, size_z=0, child_location=Coordinate(0,0,0)',
+      'pylabrobot.thermocycling.Thermocycler': ', size_x=0, size_y=0, size_z=0, child_location=Coordinate(0,0,0)',
+      'pylabrobot.centrifuging.Centrifuge': ', size_x=0, size_y=0, size_z=0',
+      'pylabrobot.incubating.Incubator': ', size_x=0, size_y=0, size_z=0, racks=[], loading_tray_location=Coordinate(0,0,0)',
     };
 
-    const lines = [
-      `# Machine: ${machine.name}`,
-      `from web_bridge import create_configured_backend`,
-      `from ${frontendModule} import ${frontendClass}`,
-      ``,
-      `config = ${JSON.stringify(config, null, 2)}`,
-      `backend = create_configured_backend(config)`,
-      `${varName} = ${frontendClass}(backend=backend)`,
-      `await ${varName}.setup()`,
-      `print(f"Created: {${varName}}")`
-    ];
+    const extraArgs = (frontendFqn && FRONTEND_EXTRA_ARGS[frontendFqn]) || '';
+    if (extraArgs.includes('Coordinate')) {
+      lines.push('from pylabrobot.resources import Coordinate');
+    }
+
+    if (frontendFqn) {
+      const parts = frontendFqn.split('.');
+      const frontendClass = parts.pop()!;
+      const frontendModule = parts.join('.');
+      lines.push(`from ${frontendModule} import ${frontendClass}`);
+
+      const deckArg = deckFqn ? ', deck=deck' : '';
+      const isLiquidHandler = frontendFqn === 'pylabrobot.liquid_handling.LiquidHandler';
+
+      if (isLiquidHandler && deckFqn) {
+        lines.push(`${varName} = ${frontendClass}(backend=backend, deck=deck)`);
+      } else {
+        lines.push(`${varName} = ${frontendClass}(name="${varName}", backend=backend${deckArg}${extraArgs})`);
+      }
+    }
+
+    lines.push(`await ${varName}.setup()`);
+    lines.push(`${varName}`);
 
     return lines.join('\n');
   }

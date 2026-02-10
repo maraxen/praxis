@@ -97,29 +97,8 @@ export interface GuidedSetupResult {
                 }
               </div>
 
-              <div class="req-info">
-                <div class="req-header">
-                  <span class="req-name">{{ req.name }}</span>
-                  @if (isAutofilled(req.accession_id)) {
-                    <span class="autofill-badge">
-                      <mat-icon class="autofill-icon">auto_awesome</mat-icon>
-                      Auto
-                    </span>
-                  } @else if (selectedAssets()[req.accession_id]) {
-                    <!-- 'Set' badge removed as redundant with checkmark/completed style -->
-                  }
-                  @if (req.optional) {
-                    <span class="optional-badge">Optional</span>
-                  }
-                </div>
-                <span class="req-type">{{ req.type_hint_str || 'Generic Resource' }}</span>
-                @if (req.fqn) {
-                  <span class="req-fqn">{{ getShortFqn(req.fqn) }}</span>
-                }
-              </div>
-
               <div class="resource-select">
-                <label class="text-xs font-medium text-gray-500 mb-1 block">
+                <label class="text-xs font-medium text-sys-text-tertiary mb-1 block">
                   @if (i === currentIndex() && !selectedAssets()[req.accession_id]) {
                      Select Item
                   } @else {
@@ -136,14 +115,25 @@ export interface GuidedSetupResult {
                   <button mat-icon-button class="autofill-btn" (click)="autoFillAsset(req)" matTooltip="Auto-select matching item" [matTooltipShowDelay]="600">
                     <mat-icon>auto_fix_high</mat-icon>
                   </button>
-                  @if (selectedAssets()[req.accession_id]) {
-                    <button mat-icon-button class="clear-asset-btn" (click)="clearAsset(req)" matTooltip="Clear selection" [matTooltipShowDelay]="600">
-                      <mat-icon>cancel</mat-icon>
-                    </button>
+                </div>
+              </div>
+
+              <div class="req-info">
+                <div class="req-header">
+                  <span class="req-name">{{ req.name }}</span>
+                  @if (isAutofilled(req.accession_id)) {
+                    <span class="autofill-badge">
+                      <mat-icon class="autofill-icon">auto_awesome</mat-icon>
+                      Auto
+                    </span>
+                  }
+                  @if (req.optional) {
+                    <span class="optional-badge">Optional</span>
                   }
                 </div>
-                @if (!req.optional && !selectedAssets()[req.accession_id]) {
-                  <!-- <div class="text-xs text-red-500 mt-1">Required</div> -->
+                <span class="req-type">{{ req.type_hint_str || 'Generic Resource' }}</span>
+                @if (req.fqn) {
+                  <span class="req-fqn">{{ getShortFqn(req.fqn) }}</span>
                 }
               </div>
             </div>
@@ -225,14 +215,26 @@ export interface GuidedSetupResult {
     }
     .requirement-item {
       display: grid;
-      grid-template-columns: auto 1fr 240px;
-      gap: 16px;
+      --badge-col: 36px;
+      --select-col: 320px;
+      --info-col: 1fr;
+      grid-template-columns: var(--badge-col) var(--select-col) var(--info-col);
+      gap: 24px;
       align-items: center;
-      padding: 12px 16px;
-      background: var(--sys-surface-container);
-      border-radius: 12px;
-      border: 2px solid transparent;
-      transition: all 0.2s ease;
+      padding: 16px 20px;
+      background: var(--theme-surface);
+      border-radius: 20px;
+      border: 1px solid var(--theme-border);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+
+      &:hover {
+        background: var(--theme-surface-elevated);
+        border-color: var(--primary-color);
+        box-shadow: var(--glass-shadow);
+        transform: translateY(-2px);
+      }
     }
     .requirement-item.autofilled {
       border-color: var(--theme-status-success-border);
@@ -250,6 +252,9 @@ export interface GuidedSetupResult {
       display: flex;
       flex-direction: column;
       gap: 4px;
+      text-align: right;
+      align-items: flex-end;
+      min-width: 0; // Prevent overflow
     }
     .req-header {
       display: flex;
@@ -260,6 +265,10 @@ export interface GuidedSetupResult {
     .req-name {
       font-weight: 600;
       font-size: 1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
     }
     .autofill-badge, .set-badge {
       display: inline-flex;
@@ -287,16 +296,28 @@ export interface GuidedSetupResult {
     
     /* Highlight Styles mirroring ResourcePlacementStep */
     .requirement-item.current {
-      background: var(--sys-tertiary-container);
-      border-color: var(--sys-tertiary);
-      transform: scale(1.01);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      background: var(--mat-sys-primary-container);
+      border-color: var(--primary-color);
+      transform: scale(1.02);
+      box-shadow: 0 12px 40px rgba(var(--primary-color-rgb), 0.2);
+      z-index: 10;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: var(--primary-color);
+        border-radius: 4px;
+      }
     }
 
     .requirement-item.completed {
-      background: var(--sys-surface-container-low);
-      border-color: var(--sys-outline-variant);
-      opacity: 0.9;
+      background: var(--theme-surface);
+      border-color: var(--theme-border-light);
+      opacity: 0.95;
     }
     
     .requirement-item.completed.autofilled {
@@ -305,35 +326,37 @@ export interface GuidedSetupResult {
     }
 
     .requirement-item.pending {
-      opacity: 0.7;
+      opacity: 0.6;
+      filter: grayscale(0.5);
     }
 
     .order-badge {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--sys-surface-container-high);
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: var(--mat-sys-surface-container-high);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 600;
-      font-size: 0.875rem;
+      font-weight: 700;
+      font-size: 0.9rem;
       flex-shrink: 0;
-      transition: all 0.2s ease;
+      transition: all 0.3s ease;
+      color: var(--theme-text-secondary);
     }
 
     .order-badge.active {
-      background: var(--sys-tertiary);
-      color: var(--sys-on-tertiary);
+      background: var(--primary-color);
+      color: white;
+      box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.3);
     }
     
     .order-badge.completed {
-       background: var(--sys-primary);
-       color: var(--sys-on-primary);
+       background: var(--theme-status-info);
+       color: white;
     }
     
     .requirement-item.autofilled .order-badge.completed {
-        background: var(--sys-green); /* If available, or hardcode green */
         background: var(--theme-status-success);
     }
     .optional-badge {
@@ -353,6 +376,10 @@ export interface GuidedSetupResult {
       font-size: 0.75em;
       color: var(--sys-outline);
       font-family: monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
     }
     .resource-select {
       min-width: 240px;
@@ -529,6 +556,7 @@ export class GuidedSetupComponent implements OnInit {
         if (this.simulationMode && resources.length === 0 && this.requiredAssets.length > 0) {
           console.log('[GuidedSetup] Simulation mode detected with empty inventory. Generating ephemeral resources...');
           await this.generateEphemeralResources();
+          // autoSelect() is called internally by generateEphemeralResources()
         } else {
           this.autoSelect();
         }

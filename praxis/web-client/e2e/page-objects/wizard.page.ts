@@ -371,16 +371,20 @@ export class WizardPage {
 
         console.log('[Wizard] On Deck Setup step');
 
-        // Click Skip Setup if visible
+        // Click Skip Setup if visible (inside DeckSetupWizardComponent)
         const skipButton = this.deckStep.getByRole('button', { name: /Skip Setup/i }).first();
         if (await skipButton.isVisible({ timeout: 5000 }).catch(() => false)) {
             await skipButton.click();
+            console.log('[Wizard] Clicked Skip Setup');
+            // Wait for Angular to process setupSkipped callback and set deckFormGroup valid
+            await this.page.waitForTimeout(500);
         }
 
-        // Click Continue to Review if visible (some flows show this after skip)
+        // Click Continue to Review if visible (no-deck-required flow uses matStepperNext)
         const continueButton = this.deckStep.getByRole('button', { name: /Continue to Review|Continue/i }).first();
         if (await continueButton.isVisible({ timeout: 2000 }).catch(() => false)) {
             await continueButton.click();
+            console.log('[Wizard] Clicked Continue to Review');
         }
     }
 

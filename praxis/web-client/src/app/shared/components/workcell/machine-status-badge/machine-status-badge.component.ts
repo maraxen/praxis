@@ -7,10 +7,10 @@ import { MachineStatus } from '@features/assets/models/asset.models';
  * Displays a color-coded dot and an optional label.
  */
 @Component({
-    selector: 'app-machine-status-badge',
-    standalone: true,
-    imports: [CommonModule],
-    template: `
+  selector: 'app-machine-status-badge',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
     <div 
       class="status-badge" 
       [class]="badgeClasses()"
@@ -24,7 +24,7 @@ import { MachineStatus } from '@features/assets/models/asset.models';
       }
     </div>
   `,
-    styles: [`
+  styles: [`
     :host {
       display: inline-block;
     }
@@ -51,24 +51,24 @@ import { MachineStatus } from '@features/assets/models/asset.models';
 
       /* Status Colors */
       &.idle { 
-        border-color: rgba(74, 222, 128, 0.2); 
-        .status-dot { background: var(--mat-sys-success, #4ade80); }
+        border-color: var(--theme-status-success-border); 
+        .status-dot { background: var(--mat-sys-success); }
       }
       &.running { 
-        border-color: rgba(250, 204, 21, 0.2); 
-        .status-dot { background: var(--mat-sys-tertiary, #facc15); }
+        border-color: var(--theme-status-warning-border); 
+        .status-dot { background: var(--mat-sys-tertiary); }
       }
       &.error { 
-        border-color: rgba(239, 68, 68, 0.2); 
-        .status-dot { background: var(--mat-sys-error, #ef4444); }
+        border-color: var(--mat-sys-error); 
+        .status-dot { background: var(--mat-sys-error); }
       }
       &.offline { 
-        border-color: var(--theme-border);
-        .status-dot { background: var(--theme-text-tertiary, #94a3b8); }
+        border-color: var(--mat-sys-outline-variant);
+        .status-dot { background: var(--mat-sys-on-surface-variant); }
       }
       &.maintenance { 
-        border-color: rgba(59, 130, 246, 0.2); 
-        .status-dot { background: #3b82f6; }
+        border-color: var(--theme-status-info-border); 
+        .status-dot { background: var(--theme-status-info); }
       }
     }
 
@@ -79,7 +79,7 @@ import { MachineStatus } from '@features/assets/models/asset.models';
       flex-shrink: 0;
 
       &.pulse {
-        box-shadow: 0 0 0 0 var(--mat-sys-tertiary-container, rgba(250, 204, 21, 0.4));
+        box-shadow: 0 0 0 0 var(--mat-sys-tertiary-container);
         animation: pulse-animation 2s infinite;
       }
     }
@@ -94,61 +94,61 @@ import { MachineStatus } from '@features/assets/models/asset.models';
       opacity: 0.8;
 
       &.simulated {
-        background: rgba(59, 130, 246, 0.2);
-        color: #3b82f6;
+        background: var(--mat-sys-tertiary-container);
+        color: var(--mat-sys-on-tertiary-container);
       }
       &.cached {
-        background: rgba(148, 163, 184, 0.2);
-        color: #94a3b8;
+        background: var(--mat-sys-surface-variant);
+        color: var(--mat-sys-on-surface-variant);
       }
       &.definition {
-        background: rgba(168, 85, 247, 0.2);
-        color: #a855f7;
+        background: var(--mat-sys-primary-container);
+        color: var(--mat-sys-on-primary-container);
       }
     }
 
     @keyframes pulse-animation {
       0% {
-        transform: scale(0.95);
-        box-shadow: 0 0 0 0 var(--mat-sys-tertiary, rgba(250, 204, 21, 0.7));
+        transform: scale(1);
+        box-shadow: 0 0 0 0 var(--mat-sys-tertiary);
       }
       70% {
-        transform: scale(1);
-        box-shadow: 0 0 0 6px rgba(250, 204, 21, 0);
+        transform: scale(1.1);
+        box-shadow: 0 0 0 6px transparent;
       }
       100% {
-        transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(250, 204, 21, 0);
+        transform: scale(1);
+        box-shadow: 0 0 0 0 transparent;
       }
     }
   `],
-    changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MachineStatusBadgeComponent {
-    /** The current status of the machine. */
-    @Input({ required: true }) status!: MachineStatus;
+  /** The current status of the machine. */
+  @Input({ required: true }) status!: MachineStatus;
 
-    /** The source of the machine's state. */
-    @Input() stateSource: 'live' | 'simulated' | 'cached' | 'definition' = 'live';
+  /** The source of the machine's state. */
+  @Input() stateSource: 'live' | 'simulated' | 'cached' | 'definition' = 'live';
 
-    /** Whether to show the text label for the status. */
-    @Input() showLabel = true;
+  /** Whether to show the text label for the status. */
+  @Input() showLabel = true;
 
-    /** Whether to use a compact layout. */
-    @Input() compact = false;
+  /** Whether to use a compact layout. */
+  @Input() compact = false;
 
-    /** Computed classes for the badge container. */
-    protected badgeClasses = computed(() => {
-        const s = this.status;
-        return {
-            [s]: !!s,
-            'compact': this.compact
-        };
-    });
+  /** Computed classes for the badge container. */
+  protected badgeClasses = computed(() => {
+    const s = this.status;
+    return {
+      [s]: !!s,
+      'compact': this.compact
+    };
+  });
 
-    /** Human-readable label for the status. */
-    protected statusLabel = computed(() => {
-        if (!this.status) return '';
-        return this.status.charAt(0).toUpperCase() + this.status.slice(1);
-    });
+  /** Human-readable label for the status. */
+  protected statusLabel = computed(() => {
+    if (!this.status) return '';
+    return this.status.charAt(0).toUpperCase() + this.status.slice(1);
+  });
 }

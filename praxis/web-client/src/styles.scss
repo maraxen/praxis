@@ -199,6 +199,14 @@ $dark-theme: mat.define-theme((color: (theme-type: dark,
   // Gradient text
   --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, #ff8fa8 50%, var(--tertiary-color) 100%);
   --gradient-success: linear-gradient(135deg, #4ade80 0%, #10b981 100%);
+
+  // Spacing System
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
 }
 
 /* Default Theme (Dark) */
@@ -622,5 +630,61 @@ body {
     color: #ff4081 !important;
     /* High contrast pink for action */
     font-weight: 700;
+  }
+}
+
+/* Stepper Global Optimizations */
+.mat-step-header {
+  height: auto !important;
+  min-height: 72px;
+  padding: 16px 24px !important;
+  border-radius: 12px;
+  margin: 4px 8px;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: var(--theme-surface-elevated) !important;
+  }
+
+  .mat-step-label {
+    white-space: normal !important;
+    line-height: 1.3;
+    font-weight: 500;
+    max-width: 200px; // Prevent labels from becoming too wide
+    color: var(--theme-text-secondary);
+
+    &.mat-step-label-active {
+      color: var(--theme-text-primary);
+      font-weight: 700;
+    }
+
+    &.mat-step-label-selected {
+      color: var(--primary-color);
+    }
+  }
+
+  .mat-step-icon {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    &.mat-step-icon-active {
+      transform: scale(1.1);
+      box-shadow: 0 0 12px rgba(var(--primary-color-rgb), 0.3);
+    }
+  }
+}
+
+/* Material Horizontal Stepper Layout Fixes */
+.mat-horizontal-stepper-header-container {
+  padding: 0 8px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+  .mat-step-header {
+    padding: 12px !important;
+
+    .mat-step-label {
+      display: none; // Icon only on very small screens or use a tooltip approach
+    }
   }
 }

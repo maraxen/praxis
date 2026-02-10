@@ -243,7 +243,7 @@ describe('WizardStateService', () => {
     describe('deckResource computed signal', () => {
         const mockCarrier = {
             id: 'carrier_1',
-            fqn: 'pylabrobot.resources.ml_star.plt_car_l5ac',
+            fqn: 'pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC_A00',
             name: 'PLT_CAR_L5AC',
             type: 'plate' as const,
             railPosition: 7,
@@ -379,7 +379,7 @@ describe('WizardStateService', () => {
             const deck = service.deckResource();
             expect(deck.children.length).toBe(1);
             expect(deck.children[0].name).toBe(mockCarrier.name);
-            expect(deck.children[0].type).toContain('plt_car_l5ac');
+            expect(deck.children[0].type).toContain('PLT_CAR_L5AC_A00');
             expect(deck.children[0].size_x).toBe(135);
             expect(deck.children[0].size_y).toBe(497);
         });
@@ -494,6 +494,7 @@ describe('WizardStateService', () => {
                 expect(manifest.machines[0].deck).toBeTruthy();
                 expect(manifest.parameters.length).toBe(1);
                 expect(manifest.parameters[0].name).toBe('source_plate');
+                expect(manifest.parameters[0].value).toBe('source_plate'); // Fix 1: Value should match name for deck resources
                 expect(manifest.parameters[0].is_deck_resource).toBe(true);
             });
 

@@ -25,8 +25,9 @@ export class ConsumableAssignmentService {
     /**
      * Find a compatible consumable for the given requirement.
      * Uses JIT instantiation as fallback if no existing instances match.
+     * Returns both the resource ID and its PLR FQN for downstream propagation.
      */
-    async findCompatibleConsumable(requirement: AssetRequirement): Promise<string | null> {
+    async findCompatibleConsumable(requirement: AssetRequirement): Promise<{ id: string; fqn: string } | null> {
         try {
             // 1. Get all resources
             const allResources = await firstValueFrom(this.assetService.getResources());
@@ -58,8 +59,9 @@ export class ConsumableAssignmentService {
 
             const best = scored[0];
             if (best && best.totalScore > 0) {
-                console.debug(`[ConsumableAssignment] Suggested ${best.name} for ${requirement.name} (Score: ${best.totalScore.toFixed(2)})`);
-                return best.resourceId;
+                const matchedResource = typeCandidates.find(r => r.accession_id === best.resourceId);
+                console.debug(`[ConsumableAssignment] Suggested ${best.name} for ${requirement.name} (Score: ${best.totalScore.toFixed(2)}, FQN: ${matchedResource?.fqn})`);
+                return { id: best.resourceId, fqn: matchedResource?.fqn || '' };
             }
 
             return null;
@@ -74,7 +76,7 @@ export class ConsumableAssignmentService {
      * JIT fallback: Try to find a matching definition and auto-instantiate it.
      * Model C Hybrid Lifecycle — creates ephemeral resource instances on demand.
      */
-    private async jitResolveFromDefinitions(requirement: AssetRequirement): Promise<string | null> {
+    private async jitResolveFromDefinitions(requirement: AssetRequirement): Promise<{ id: string; fqn: string } | null> {
         try {
             const definitions = await firstValueFrom(this.assetService.getResourceDefinitions());
 
@@ -94,8 +96,8 @@ export class ConsumableAssignmentService {
                 this.assetService.resolveOrCreateResource(matchingDef.accession_id)
             );
 
-            console.debug(`[ConsumableAssignment] JIT-created instance "${instance.name}" for ${requirement.name}`);
-            return instance.accession_id;
+            console.debug(`[ConsumableAssignment] JIT-created instance "${instance.name}" for ${requirement.name} (FQN: ${instance.fqn || matchingDef.fqn})`);
+            return { id: instance.accession_id, fqn: instance.fqn || matchingDef.fqn || '' };
 
         } catch (e) {
             console.warn('[ConsumableAssignment] JIT resolution failed:', e);

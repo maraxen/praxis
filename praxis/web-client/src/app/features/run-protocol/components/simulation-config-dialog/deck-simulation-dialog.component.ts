@@ -33,12 +33,12 @@ import { PlrDeckData } from '@core/models/plr.models';
     DeckVisualizerComponent
   ],
   template: `
-    <div class="h-full flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
+    <div class="h-full flex flex-col overflow-hidden bg-[var(--mat-sys-surface-container-low)]">
       <!-- Header -->
-      <div class="px-6 py-4 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
+      <div class="px-6 py-4 bg-[var(--theme-surface)] border-b border-[var(--theme-border)] flex items-center justify-between shrink-0">
         <div>
-          <h2 class="text-xl font-bold text-slate-900 dark:text-white m-0">New Deck Simulation</h2>
-          <p class="text-sm text-slate-500 dark:text-slate-400 m-0">Configure detailed deck layout for simulation</p>
+          <h2 class="text-xl font-bold text-[var(--theme-text-primary)] m-0">New Deck Simulation</h2>
+          <p class="text-sm text-[var(--theme-text-secondary)] m-0">Configure detailed deck layout for simulation</p>
         </div>
         <button mat-icon-button (click)="close()">
           <mat-icon>close</mat-icon>
@@ -47,7 +47,7 @@ import { PlrDeckData } from '@core/models/plr.models';
 
       <div class="flex-grow flex overflow-hidden">
         <!-- Sidebar Controls -->
-        <div class="w-80 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shrink-0">
+        <div class="w-80 flex flex-col border-r border-[var(--theme-border)] bg-[var(--theme-surface)] shrink-0">
           <div class="p-4 space-y-6 overflow-y-auto">
             
             <!-- Configuration Form -->
@@ -73,14 +73,14 @@ import { PlrDeckData } from '@core/models/plr.models';
             <!-- Palette -->
             <div *ngIf="currentDeckConfig()" class="flex flex-col gap-4">
               <div class="flex items-center justify-between">
-                <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider m-0">
+                <h3 class="text-sm font-bold text-[var(--theme-text-secondary)] uppercase tracking-wider m-0">
                   {{ isSlotBased() ? 'Labware' : 'Carriers' }}
                 </h3>
               </div>
 
               <!-- Rail Based Tools (Hamilton) -->
               <div *ngIf="!isSlotBased()" class="flex flex-col gap-2">
-                <div class="text-xs text-slate-500 mb-2">Select a rail below, then click to add items.</div>
+                <div class="text-xs text-[var(--theme-text-tertiary)] mb-2">Select a rail below, then click to add items.</div>
                 
                 <mat-form-field appearance="outline" class="w-full text-sm">
                   <mat-label>Target Rail (1-30)</mat-label>
@@ -93,8 +93,8 @@ import { PlrDeckData } from '@core/models/plr.models';
                     class="justify-start !text-left h-auto py-2"
                     (click)="addCarrier(carrier)">
                     <div class="flex flex-col items-start gap-1">
-                      <span class="font-medium">{{carrier.name}}</span>
-                      <span class="text-xs text-slate-500">{{carrier.type}} • {{carrier.numSlots}} slots</span>
+                      <span class="font-medium text-[var(--theme-text-primary)]">{{carrier.name}}</span>
+                      <span class="text-xs text-[var(--theme-text-tertiary)]">{{carrier.type}} • {{carrier.numSlots}} slots</span>
                     </div>
                   </button>
                 </div>
@@ -102,7 +102,7 @@ import { PlrDeckData } from '@core/models/plr.models';
 
               <!-- Slot Based Tools (OT-2) -->
               <div *ngIf="isSlotBased()" class="flex flex-col gap-2">
-                 <div class="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-sm rounded-md">
+                 <div class="p-3 bg-[var(--theme-status-info-muted)] text-[var(--theme-status-info)] text-sm rounded-md border border-[var(--theme-status-info-border)]">
                     Slot-based layout editing is coming soon. For now, a standard layout is provided.
                  </div>
               </div>
@@ -112,7 +112,7 @@ import { PlrDeckData } from '@core/models/plr.models';
           </div>
           
           <!-- Actions Footer -->
-          <div class="p-4 border-t border-slate-200 dark:border-slate-800 flex gap-2 mt-auto">
+          <div class="p-4 border-t border-[var(--theme-border)] flex gap-2 mt-auto bg-[var(--theme-surface)]">
             <button mat-stroked-button class="flex-1" (click)="close()">Cancel</button>
             <button mat-flat-button color="primary" class="flex-1" 
               [disabled]="configForm.invalid || !currentDeckConfig()"
@@ -123,8 +123,8 @@ import { PlrDeckData } from '@core/models/plr.models';
         </div>
 
         <!-- Main Visualizer Area -->
-        <div class="flex-grow bg-slate-100 dark:bg-slate-900 p-4 overflow-hidden relative">
-          <div class="absolute inset-4 bg-white dark:bg-slate-950 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+        <div class="flex-grow bg-[var(--mat-sys-surface-container-low)] p-4 overflow-hidden relative">
+          <div class="absolute inset-4 bg-[var(--theme-surface)] rounded-xl shadow-[var(--glass-shadow)] border border-[var(--theme-border)] overflow-hidden flex flex-col">
             
             <div class="flex-grow overflow-hidden relative">
                <app-deck-visualizer 
@@ -132,17 +132,17 @@ import { PlrDeckData } from '@core/models/plr.models';
                />
                
                <!-- Empty State Overlay if no deck selected -->
-               <div *ngIf="!currentDeckConfig()" class="absolute inset-0 z-10 bg-white/50 dark:bg-black/50 backdrop-blur-sm flex items-center justify-center">
-                 <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 text-center max-w-sm">
-                   <mat-icon class="text-4xl text-slate-400 mb-2">grid_on</mat-icon>
-                   <h3 class="text-lg font-medium text-slate-900 dark:text-white">Select a Deck Type</h3>
-                   <p class="text-slate-500">Choose a deck platform from the sidebar to start configuring.</p>
+               <div *ngIf="!currentDeckConfig()" class="absolute inset-0 z-10 bg-[var(--theme-surface)]/50 backdrop-blur-sm flex items-center justify-center">
+                 <div class="bg-[var(--theme-surface)] p-6 rounded-xl shadow-[var(--glass-shadow)] border border-[var(--theme-border)] text-center max-w-sm">
+                   <mat-icon class="text-4xl text-[var(--theme-text-tertiary)] mb-2">grid_on</mat-icon>
+                   <h3 class="text-lg font-medium text-[var(--theme-text-primary)]">Select a Deck Type</h3>
+                   <p class="text-[var(--theme-text-secondary)]">Choose a deck platform from the sidebar to start configuring.</p>
                  </div>
                </div>
             </div>
 
             <!-- Status Bar -->
-            <div class="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 flex justify-between">
+            <div class="px-4 py-2 bg-[var(--mat-sys-surface-variant)] border-t border-[var(--theme-border)] text-xs text-[var(--theme-text-tertiary)] flex justify-between">
               <span>{{ currentDeckConfig()?.deckName || 'No Deck' }}</span>
               <span *ngIf="currentDeckConfig()">
                  {{ currentDeckConfig()?.carriers?.length || 0 }} items placed
