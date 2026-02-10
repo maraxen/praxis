@@ -54,6 +54,15 @@ jobs:
         working-directory: ./praxis/web-client
         run: bun run build:gh-pages
 
+      - name: Fix JupyterLite config for deployment
+        working-directory: ./praxis/web-client
+        run: |
+          # build:gh-pages overwrites the build-generated jupyter-lite.json with a stale copy.
+          # Restore the build-generated config (correct extension refs) and patch only baseUrl.
+          sed 's|"baseUrl": "./"|"baseUrl": "/praxis/assets/jupyterlite/"|' \
+            src/assets/jupyterlite/jupyter-lite.json > \
+            dist/web-client/browser/assets/jupyterlite/jupyter-lite.json
+
       - name: SPA Fix (404.html + .nojekyll)
         run: |
           cp ./praxis/web-client/dist/web-client/browser/index.html ./praxis/web-client/dist/web-client/browser/404.html
