@@ -5,7 +5,7 @@ import { AssetService } from '@features/assets/services/asset.service';
 import { Machine, Resource } from '@features/assets/models/asset.models';
 import { PLR_FRONTEND_DEFINITIONS } from '@assets/browser-data/plr-definitions';
 import { AssetWizard } from '@shared/components/asset-wizard/asset-wizard';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -139,9 +139,8 @@ export class PlaygroundAssetService {
     const safeName = machine.name.replace(/['"\\\\/]/g, '_');
     const category = (machine as any).machine_category || 'LiquidHandler';
 
-    // Resolve frontend FQN: JOINed column > wizard-attached object > static definition fallback
-    let frontendFqn = (machine as any).frontend_fqn
-      || (machine as any).frontend_definition?.fqn;
+    // Resolve frontend FQN: wizard-attached object > static definition fallback
+    let frontendFqn = (machine as any).frontend_definition?.fqn;
 
     if (!frontendFqn) {
       const accId = (machine as any).frontend_definition_accession_id;
@@ -152,10 +151,20 @@ export class PlaygroundAssetService {
       if (def) frontendFqn = def.fqn;
     }
 
-    // Resolve backend FQN: JOINed column > wizard-attached object > simulation_backend_name (if FQN-shaped)
-    let backendFqn = (machine as any).backend_fqn
-      || (machine as any).backend_definition?.fqn;
+    // Resolve backend FQN: wizard-attached object > DB lookup by accession_id > simulation_backend_name
+    let backendFqn = (machine as any).backend_definition?.fqn;
 
+    if (!backendFqn) {
+      // Try DB lookup by accession_id (for existing machines)
+      const backendAccId = (machine as any).backend_definition_accession_id;
+      if (backendAccId) {
+        try {
+          const allBackends = await firstValueFrom(this.assetService.getMachineBackendDefinitions());
+          const backendDef = allBackends.find((b: any) => b.accession_id === backendAccId);
+          if (backendDef) backendFqn = backendDef.fqn;
+        } catch { /* fallback below */ }
+      }
+    }
     if (!backendFqn) {
       const simName = machine.simulation_backend_name;
       if (simName && simName.includes('.')) backendFqn = simName;

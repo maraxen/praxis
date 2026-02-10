@@ -374,12 +374,7 @@ export class AsyncMachineRepository extends SqliteAsyncRepository<WithIndex<Mach
      * Find machines by status
      */
     private get joinedSelect() {
-        return `SELECT m.*,
-            fd.fqn AS frontend_fqn,
-            bd.fqn AS backend_fqn
-            FROM ${this.tableName} m
-            LEFT JOIN machine_frontend_definitions fd ON m.frontend_definition_accession_id = fd.accession_id
-            LEFT JOIN machine_backend_definitions bd ON m.backend_definition_accession_id = bd.accession_id`;
+        return `SELECT m.* FROM ${this.tableName} m`;
     }
 
     /**
