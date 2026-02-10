@@ -24,6 +24,12 @@ export class PlaygroundJupyterliteService {
   private processedInteractionIds = new Set<string>();
   private messageListener: ((event: MessageEvent) => void) | null = null;
 
+  // Auto-retry: JupyterLite's service-worker-manager unregisters all SWs on first load.
+  // The SW needs ~5-10s to re-activate, so we auto-retry with short intervals.
+  private bootstrapAttempt = 0;
+  private readonly MAX_AUTO_RETRIES = 2;
+  private readonly RETRY_TIMEOUT_MS = 15_000;
+
   constructor() {
     effect(() => {
       const theme = this.store.theme();
@@ -71,14 +77,25 @@ export class PlaygroundJupyterliteService {
 
     this.replChannel = new BroadcastChannel(channelName);
 
-    // 60s timeout with error UI
+    // Auto-retry timeout: first attempts use short timeout, then auto-retry.
+    // On first load, JupyterLite's SW manager unregisters all SWs and re-registers.
+    // The SW needs a few seconds to activate. Auto-retrying avoids a 60s manual wait.
+    if (this.loadingTimeout) {
+      clearTimeout(this.loadingTimeout);
+    }
     this.loadingTimeout = setTimeout(() => {
       if (this.isLoading()) {
-        console.warn('[REPL] Loading timeout (60s) reached');
-        this.loadingError.set('Bootstrap timeout. Check console for errors.');
-        this.isLoading.set(false);
+        if (this.bootstrapAttempt < this.MAX_AUTO_RETRIES) {
+          this.bootstrapAttempt++;
+          console.warn(`[REPL] Bootstrap timeout (${this.RETRY_TIMEOUT_MS / 1000}s), auto-retrying (attempt ${this.bootstrapAttempt}/${this.MAX_AUTO_RETRIES})...`);
+          this.reloadNotebook();
+        } else {
+          console.warn('[REPL] All auto-retries exhausted');
+          this.loadingError.set('Bootstrap timeout. Check console for errors.');
+          this.isLoading.set(false);
+        }
       }
-    }, 60000);
+    }, this.RETRY_TIMEOUT_MS);
 
     const messageHandler = async (data: any) => {
       if (!data) return;
@@ -87,10 +104,11 @@ export class PlaygroundJupyterliteService {
       console.log('[REPL] Processing message type:', type);
 
       if (type === 'praxis:ready') {
-        console.log('[REPL] Kernel fully bootstrapped and ready');
+        console.log(`[REPL] Kernel fully bootstrapped and ready (attempt ${this.bootstrapAttempt + 1})`);
         this.isLoading.set(false);
         this.loadingError.set(null);
         (window as any).__praxis_pyodide_ready = true;
+        this.bootstrapAttempt = 0; // Reset for future reloads
         if (this.loadingTimeout) {
           clearTimeout(this.loadingTimeout);
           this.loadingTimeout = undefined;
