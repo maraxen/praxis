@@ -39,7 +39,8 @@ jobs:
       - name: Build JupyterLite REPL
         run: |
           uv run jupyter lite build --config praxis/web-client/jupyterlite-config.json --output-dir praxis/web-client/src/assets/jupyterlite
-          git checkout praxis/web-client/src/assets/jupyterlite/jupyter-lite.gh-pages.json
+          git checkout praxis/web-client/src/assets/jupyterlite/jupyter-lite.gh-pages.json \
+                      praxis/web-client/src/assets/jupyterlite/praxis_bootstrap.py
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
