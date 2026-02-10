@@ -155,7 +155,27 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
   count = 0
 
   # Filter to frontend types only (exclude backends for the definition catalog)
-  frontend_machines = [m for m in machines if m.class_type in MACHINE_FRONTEND_TYPES]
+  # TODO: Refine PLRClassType classifier to handle concrete hardware natively
+  # TODO(v0.1): Revert this filter after v0.1 announcement — add protocol runner
+  #   support for concrete hardware frontends (Opentrons modules, ImageReader)
+  #   so they can be instantiated directly instead of only via abstract frontend + driver.
+  # Skip concrete hardware subclasses — they're product-specific wrappers.
+  # Users select the abstract frontend (e.g., TemperatureController) and a specific driver.
+  CONCRETE_HARDWARE_FRONTENDS = {
+      "OpentronsTemperatureModuleV2",
+      "OpentronsThermocyclerModuleV1",
+      "OpentronsThermocyclerModuleV2",
+      "ImageReader",  # dual frontend (PlateReader + Imager) — covered by both types
+  }
+  # Hamilton Pump is a Resource, not a Machine frontend
+  HAMILTON_PUMP_FQN = "pylabrobot.liquid_handling.backends.hamilton.pump.Pump"
+
+  frontend_machines = [
+      m for m in machines
+      if m.class_type in MACHINE_FRONTEND_TYPES
+      and m.name not in CONCRETE_HARDWARE_FRONTENDS
+      and m.fqn != HAMILTON_PUMP_FQN
+  ]
 
   for machine in frontend_machines:
     try:
@@ -180,6 +200,7 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
         PLRClassType.POWDER_DISPENSER: "PowderDispenser",
         PLRClassType.INCUBATOR: "Incubator",
         PLRClassType.SCARA: "Arm",
+        PLRClassType.IMAGER: "Imager",
       }
       category = category_map.get(machine.class_type, "Unknown")
 
@@ -635,6 +656,7 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
     PLRClassType.POWDER_DISPENSER_BACKEND: "PowderDispenserBackend",
     PLRClassType.INCUBATOR_BACKEND: "IncubatorBackend",
     PLRClassType.SCARA_BACKEND: "ScaraBackend",
+    PLRClassType.IMAGER_BACKEND: "ImagerBackend",
   }
 
   # Map backend types to frontend FQNs
@@ -654,16 +676,19 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
     PLRClassType.POWDER_DISPENSER_BACKEND: "pylabrobot.powder_dispensing.PowderDispenser",
     PLRClassType.INCUBATOR_BACKEND: "pylabrobot.incubating.Incubator",
     PLRClassType.SCARA_BACKEND: "pylabrobot.scara.SCARA",
+    PLRClassType.IMAGER_BACKEND: "pylabrobot.plate_reading.Imager",
   }
 
-  # First, seed machine_frontend_definitions to satisfy foreign key constraints
+  # NOTE: Frontend definitions are seeded by discover_machines_static().
+  # We use INSERT OR IGNORE here to ensure FK targets exist without overwriting
+  # the richer data from discover_machines_static().
   for backend_type, frontend_fqn in backend_frontend_fqn_map.items():
     frontend_id = generate_uuid_from_fqn(f"machine:{frontend_fqn}")
     frontend_category = backend_category_map.get(backend_type, "Unknown").replace("Backend", "")
     
     conn.execute(
       """
-            INSERT OR REPLACE INTO machine_frontend_definitions (
+            INSERT OR IGNORE INTO machine_frontend_definitions (
                 accession_id, fqn, name, description, plr_category,
                 machine_category, has_deck, manufacturer,
                 capabilities, created_at, updated_at
@@ -690,6 +715,21 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
       category = backend_category_map.get(backend.class_type, "UnknownBackend")
       frontend_fqn = backend_frontend_fqn_map.get(backend.class_type)
 
+      # Look up actual frontend accession_id from DB (inserted by discover_machines_static)
+      frontend_category = category.replace("Backend", "")
+      row = conn.execute(
+        "SELECT accession_id FROM machine_frontend_definitions WHERE machine_category = ?",
+        (frontend_category,),
+      ).fetchone()
+      if row:
+        frontend_accession_id = row[0]
+      elif frontend_fqn:
+        # Fallback: compute from FQN map (may not match if FQNs differ)
+        frontend_accession_id = generate_uuid_from_fqn(f"machine:{frontend_fqn}")
+      else:
+        print(f"  [WARN] No frontend found for backend {backend.name} (category={frontend_category})")
+        continue
+
       # Get capabilities dict
       caps_dict = backend.to_capabilities_dict() if hasattr(backend, "to_capabilities_dict") else {}
 
@@ -714,7 +754,7 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
           backend.name,
           0, # is_deprecated
           backend_type,
-          generate_uuid_from_fqn(f"machine:{frontend_fqn}"),
+          frontend_accession_id,
           safe_json_dumps({}), # connection_config
           safe_json_dumps(caps_dict), # properties_json (using capabilities for now)
           now,
@@ -762,16 +802,26 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
     ("PowderDispenser", "pylabrobot.powder_dispensing.PowderDispenser"),
     ("Incubator", "pylabrobot.incubating.Incubator"),
     ("Arm", "pylabrobot.scara.SCARA"),
+    ("Imager", "pylabrobot.plate_reading.Imager"),
   ]
 
   for short_name, frontend_fqn in frontend_types:
+    # Look up actual frontend accession_id from DB
+    row = conn.execute(
+      "SELECT accession_id FROM machine_frontend_definitions WHERE machine_category = ?",
+      (short_name,),
+    ).fetchone()
+    if not row:
+      print(f"  [backends] {short_name}: no frontend definition found, skipping")
+      continue
+    frontend_accession_id = row[0]
+
     # Check if any SIMULATOR backend exists for this frontend
-    # (Chatterbox or other simulators - not hardware backends)
     cursor = conn.execute(
       """SELECT count(*) FROM machine_backend_definitions 
          WHERE frontend_definition_accession_id = ? 
          AND backend_type = 'simulator'""",
-      (generate_uuid_from_fqn(f"machine:{frontend_fqn}"),)
+      (frontend_accession_id,)
     )
     simulator_count = cursor.fetchone()[0]
 
@@ -800,7 +850,7 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
           f"Simulated {short_name}",
           0,
           "simulator",
-          generate_uuid_from_fqn(f"machine:{frontend_fqn}"),
+          frontend_accession_id,
           safe_json_dumps({}),
           safe_json_dumps({}),
           now,
