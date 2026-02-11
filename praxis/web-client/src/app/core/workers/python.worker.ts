@@ -409,7 +409,8 @@ print("[Pyodide] Native library stubs registered (pylibftdi, usb, serial)")
     { file: 'web_serial_shim.py', name: 'WebSerial' },
     { file: 'web_usb_shim.py', name: 'WebUSB' },
     { file: 'web_ftdi_shim.py', name: 'WebFTDI' },
-    { file: 'web_hid_shim.py', name: 'WebHID' }
+    { file: 'web_hid_shim.py', name: 'WebHID' },
+    { file: 'pyodide_io_patch.py', name: 'PyodideIOPatch' }
   ];
 
   // Parallel fetch all shims + web_bridge + praxis package + sqlmodel stub
@@ -465,6 +466,19 @@ print("[Pyodide] Native library stubs registered (pylibftdi, usb, serial)")
     } else {
       console.error(`Failed to load ${shim.name} Shim: `, error);
     }
+  }
+
+  // Execute IO Patching (must happen before other code uses PLR)
+  try {
+    await pyodide.runPythonAsync(`
+try:
+    import pyodide_io_patch
+    print("Pyodide IO Patch imported successfully")
+except Exception as e:
+    print(f"Failed to import Pyodide IO Patch: {e}")
+    `);
+  } catch (err) {
+    console.error('Error running IO patch:', err);
   }
 
   // Verify files exist
