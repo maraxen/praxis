@@ -14,6 +14,7 @@ Usage:
     suggested = await service.find_compatible_consumable(requirement)
 """
 
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -84,12 +85,54 @@ class ConsumableAssignmentService:
     """
     self.db = db_session
 
+  def _validate_accession_id(self, accession_id: str | uuid.UUID | None, context: str) -> uuid.UUID:
+    """Validate that the accession ID is a valid UUID (v4 or v7).
+
+    Args:
+        accession_id: The ID to validate.
+        context: Context for logging (e.g., "workcell_id").
+
+    Returns:
+        The validated uuid.UUID object.
+
+    Raises:
+        ValueError: If the ID is missing or in an invalid format.
+
+    """
+    if not accession_id:
+      logger.error("Missing accession_id for %s", context)
+      raise ValueError(f"Missing accession_id for {context}")
+
+    if isinstance(accession_id, uuid.UUID):
+      val = accession_id
+    else:
+      try:
+        val = uuid.UUID(str(accession_id))
+      except ValueError as e:
+        logger.error(
+          "Invalid accession_id format for %s: %s",
+          context,
+          accession_id,
+          extra={"accession_id": accession_id, "context": context},
+        )
+        raise ValueError(f"Invalid accession_id format for {context}: {accession_id}") from e
+
+    # Accept v4 and v7 (Praxis uses v7 primarily, but requirement mentioned v4)
+    if val.version not in (4, 7):
+      logger.warning(
+        "Accession ID %s for %s is not UUID v4 or v7 (version=%d)",
+        accession_id,
+        context,
+        val.version,
+      )
+    return val
+
   async def find_compatible_consumable(
     self,
     requirement: AssetRequirementRead,
     workcell_id: str | None = None,
     current_time: datetime | None = None,
-  ) -> str | None:
+  ) -> str:
     """Find a compatible consumable for the given requirement.
 
     Considers:
@@ -105,21 +148,29 @@ class ConsumableAssignmentService:
         current_time: Current time for expiration checks. Defaults to now.
 
     Returns:
-        Accession ID of the best matching consumable, or None if no match.
+        Accession ID of the best matching consumable.
+
+    Raises:
+        ValueError: If no compatible consumable is found or if inputs are invalid.
 
     """
     if current_time is None:
       current_time = datetime.now(timezone.utc)
 
+    # Validate workcell_id if provided
+    if workcell_id:
+      self._validate_accession_id(workcell_id, "workcell_id")
+
     # Get all candidates of the appropriate type
     candidates = await self._get_candidate_resources(requirement, workcell_id)
 
     if not candidates:
+      msg = f"No candidate consumables found for requirement: {requirement.name}"
       logger.warning(
-        "No candidate consumables found for requirement: %s",
-        requirement.name,
+        msg,
+        extra={"requirement": requirement.name, "workcell_id": workcell_id},
       )
-      return None
+      raise ValueError(msg)
 
     # Score each candidate
     scored_candidates: list[CompatibilityScore] = []
@@ -137,11 +188,12 @@ class ConsumableAssignmentService:
         scored_candidates.append(score)
 
     if not scored_candidates:
+      msg = f"No compatible consumables found for requirement: {requirement.name}"
       logger.warning(
-        "No compatible consumables found for requirement: %s",
-        requirement.name,
+        msg,
+        extra={"requirement": requirement.name, "workcell_id": workcell_id},
       )
-      return None
+      raise ValueError(msg)
 
     # Sort by score (highest first)
     scored_candidates.sort(key=lambda x: x.total_score, reverse=True)
@@ -178,6 +230,13 @@ class ConsumableAssignmentService:
         Updated assignments dictionary with suggested consumables.
 
     """
+    if workcell_id:
+      self._validate_accession_id(workcell_id, "workcell_id")
+
+    # Validate existing assignments
+    for req_name, asset_id in existing_assignments.items():
+      self._validate_accession_id(asset_id, f"existing_assignment['{req_name}']")
+
     assignments = dict(existing_assignments)
 
     for requirement in requirements:
@@ -227,6 +286,13 @@ class ConsumableAssignmentService:
         List of candidate resource dictionaries with relevant properties.
 
     """
+    # Validate requirement accession_id
+    self._validate_accession_id(requirement.accession_id, "requirement.accession_id")
+
+    # Validate workcell_id if provided
+    if workcell_id:
+      self._validate_accession_id(workcell_id, "workcell_id")
+
     # Get currently reserved asset IDs
     reserved_ids = await self._get_reserved_asset_ids()
 
@@ -268,7 +334,7 @@ class ConsumableAssignmentService:
 
     return candidates
 
-  async def _get_reserved_asset_ids(self) -> set[str]:
+  async def _get_reserved_asset_ids(self) -> set[uuid.UUID]:
     """Get IDs of assets currently reserved."""
     stmt = select(AssetReservation.asset_accession_id).filter(
       AssetReservation.status.in_(
@@ -280,7 +346,7 @@ class ConsumableAssignmentService:
       )
     )
     result = await self.db.execute(stmt)
-    return {str(row[0]) for row in result.all()}
+    return {row[0] for row in result.all() if row[0] is not None}
 
   def _type_matches(self, required_type: str, resource_type: str) -> bool:
     """Check if resource type matches requirement."""

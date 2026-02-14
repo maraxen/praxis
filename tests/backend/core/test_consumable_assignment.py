@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 from praxis.backend.core.consumable_assignment import ConsumableAssignmentService
-from praxis.backend.utils.uuid import uuid7
+from praxis.backend.utils.uuid import uuid7, uuid4
 from praxis.backend.models.domain.protocol import (
     AssetRequirementRead, 
     AssetConstraintsModel, 
@@ -22,7 +22,15 @@ def create_mock_resource(
     properties=None
 ):
     resource = MagicMock(spec=Resource)
-    resource.accession_id = accession_id
+    # Ensure accession_id is a UUID if it's a string that looks like one, or just use as is
+    try:
+        if isinstance(accession_id, str):
+            resource.accession_id = uuid.UUID(accession_id)
+        else:
+            resource.accession_id = accession_id
+    except ValueError:
+        resource.accession_id = accession_id
+
     resource.name = name
     resource.fqn = fqn
     
@@ -38,11 +46,6 @@ def create_mock_resource(
     resource.properties_json = properties or {}
     resource.plr_state = {}
     resource.plr_definition = {}
-    
-    # Mock __getitem__ behavior for row-like access if needed, 
-    # but the service accesses attributes directly from the row object returned by alchemy
-    # Actually, SQLAlchemy result rows are tuple-like but accessed by index or attribute if it's an ORM object.
-    # Our service does: candidates = result.scalars().all() -> lists of ORMs.
     
     return resource
 
@@ -67,23 +70,22 @@ async def test_find_compatible_consumable_match(service, mock_db_session):
     )
     
     # Candidates
+    res_id = uuid7()
     candidate1 = create_mock_resource(
-        "res1", "pylabrobot.resources.corning.Cor_96_wellplate_360ul_Fb", "Plate 1",
+        res_id, "pylabrobot.resources.corning.Cor_96_wellplate_360ul_Fb", "Plate 1",
         nominal_volume_ul=360
     )
     
     # Setup Mocks
-    # _get_reserved_asset_ids returns empty list
-    service._get_reserved_asset_ids = AsyncMock(return_value=[])
+    service._get_reserved_asset_ids = AsyncMock(return_value=set())
     
-    # Execute returns candidate1
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [candidate1]
     mock_db_session.execute.return_value = mock_result
     
     result = await service.find_compatible_consumable(req)
     
-    assert result == "res1"
+    assert result == str(res_id)
 
 @pytest.mark.asyncio
 async def test_find_compatible_consumable_no_match_volume(service, mock_db_session):
@@ -98,19 +100,29 @@ async def test_find_compatible_consumable_no_match_volume(service, mock_db_sessi
     
     # Candidates: Low volume plate
     candidate1 = create_mock_resource(
-        "res1", "pylabrobot.resources.corning.Cor_96_wellplate_360ul_Fb", "Plate 1",
+        uuid7(), "pylabrobot.resources.corning.Cor_96_wellplate_360ul_Fb", "Plate 1",
         nominal_volume_ul=360
     )
     
-    service._get_reserved_asset_ids = AsyncMock(return_value=[])
+    service._get_reserved_asset_ids = AsyncMock(return_value=set())
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [candidate1]
     mock_db_session.execute.return_value = mock_result
     
-    result = await service.find_compatible_consumable(req)
+    with pytest.raises(ValueError, match="No compatible consumables found"):
+        await service.find_compatible_consumable(req)
+
+@pytest.mark.asyncio
+async def test_find_compatible_consumable_invalid_workcell_id(service):
+    req = AssetRequirementRead(
+        accession_id=uuid7(),
+        name="plate",
+        fqn="pylabrobot.resources.Plate",
+        type_hint_str="Plate"
+    )
     
-    # Should be None because vol 360 < 1000
-    assert result is None
+    with pytest.raises(ValueError, match="Invalid accession_id format for workcell_id"):
+        await service.find_compatible_consumable(req, workcell_id="not-a-uuid")
 
 @pytest.mark.asyncio
 async def test_find_compatible_consumable_expired_warning(service, mock_db_session):
@@ -124,25 +136,19 @@ async def test_find_compatible_consumable_expired_warning(service, mock_db_sessi
     
     expired_date = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
     
+    res_id = uuid7()
     candidate1 = create_mock_resource(
-        "res1", "pylabrobot.resources.Reservoir", "Expired Reservoir",
+        res_id, "pylabrobot.resources.Reservoir", "Expired Reservoir",
         properties={"expiration_date": expired_date}
     )
     
-    service._get_reserved_asset_ids = AsyncMock(return_value=[])
+    service._get_reserved_asset_ids = AsyncMock(return_value=set())
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [candidate1]
     mock_db_session.execute.return_value = mock_result
     
-    # It might still return the candidate if it's the only one, but with a low score.
-    # However, if score < threshold?
-    # ConsumableAssignmentService usually picks max score.
-    # Let's verify it picks it.
-    
     result = await service.find_compatible_consumable(req)
-    
-    assert result == "res1"
-    # To check warnings, we would look at logs, but that's harder in unit test without capturing logs.
+    assert result == str(res_id)
 
 @pytest.mark.asyncio
 async def test_find_compatible_consumable_reserved_excluded(service, mock_db_session):
@@ -153,44 +159,27 @@ async def test_find_compatible_consumable_reserved_excluded(service, mock_db_ses
         type_hint_str="Plate"
     )
     
-    candidate1 = create_mock_resource("res1", "pylabrobot.resources.Plate", "Plate 1")
+    res_id1 = uuid7()
+    candidate1 = create_mock_resource(res_id1, "pylabrobot.resources.Plate", "Plate 1")
     
     # res1 is reserved
-    service._get_reserved_asset_ids = AsyncMock(return_value=["res1"])
+    service._get_reserved_asset_ids = AsyncMock(return_value={res_id1})
     
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [candidate1]
     mock_db_session.execute.return_value = mock_result
     
-    result = await service.find_compatible_consumable(req)
+    # Should raise ValueError because no other candidates
+    with pytest.raises(ValueError, match="No candidate consumables found"):
+        await service.find_compatible_consumable(req)
     
-    # Should be None because availability score will be 0 is usually fine but filtered out?
-    # Wait, ConsumableService logic filters based on availability explicitly?
-    # Or just scores it 0?
-    # Let's check logic:
-    # "_score_candidate" -> check if in reserved_ids -> return 0.0 availability score.
-    # If total score is low, does it reject?
-    # The current implementation returns the HIGHEST score.
-    # If availability is 0, total score reduces.
-    # If there are NO other candidates, it might pick it!
-    # BUT wait, the `ConsumableAssignmentService` implementation actually filters or scores.
-    # Looking at my memory of the code: `availability_score = 0.0 if candidate_id in reserved_ids else 1.0`
-    # So it scores 0 for availability.
-    # If it's the only candidate, it will be returned.
-    # Ideally we should filter it out?
-    # Let's assume for now it returns it (maybe allowing override), but in a real scenario we'd want an available one.
-    
-    # If we have two candidates, one reserved, one free.
-    
-    candidate2 = create_mock_resource("res2", "pylabrobot.resources.Plate", "Plate 2")
-    
+    # Add a second candidate that is free
+    res_id2 = uuid7()
+    candidate2 = create_mock_resource(res_id2, "pylabrobot.resources.Plate", "Plate 2")
     mock_result.scalars.return_value.all.return_value = [candidate1, candidate2]
     
     result = await service.find_compatible_consumable(req)
-    
-    # Should pick res2 because score is higher (availability=1.0 vs 0.0)
-    assert result == "res2"
-
+    assert result == str(res_id2)
 
 class TestIsConsumable:
     """Tests for _is_consumable type detection."""
@@ -220,7 +209,6 @@ class TestIsConsumable:
         )
         assert service._is_consumable(req) == expected
 
-
 class TestTypeMatches:
     """Tests for _type_matches FQN pattern matching."""
 
@@ -240,20 +228,20 @@ class TestTypeMatches:
         """Verify FQN pattern matching logic."""
         assert service._type_matches(required, resource_fqn) == expected
 
-
 class TestCandidateScoring:
     """Tests for multi-factor candidate scoring."""
 
     @pytest.mark.asyncio
     async def test_multiple_candidates_best_score_wins(self, service, mock_db_session):
         """Verify highest scoring candidate is selected."""
-        # Create two candidates: one with better volume match
+        res_id1 = uuid7()
         candidate_good = create_mock_resource(
-            "res1", "pylabrobot.resources.Plate", "Good Plate",
+            res_id1, "pylabrobot.resources.Plate", "Good Plate",
             nominal_volume_ul=500
         )
+        res_id2 = uuid7()
         candidate_ok = create_mock_resource(
-            "res2", "pylabrobot.resources.Plate", "OK Plate",
+            res_id2, "pylabrobot.resources.Plate", "OK Plate",
             nominal_volume_ul=200
         )
         
@@ -265,11 +253,76 @@ class TestCandidateScoring:
             constraints=AssetConstraintsModel(min_volume_ul=400)
         )
         
-        service._get_reserved_asset_ids = AsyncMock(return_value=[])
+        service._get_reserved_asset_ids = AsyncMock(return_value=set())
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = [candidate_ok, candidate_good]
         mock_db_session.execute.return_value = mock_result
         
         result = await service.find_compatible_consumable(req)
-        assert result == "res1"  # Better volume match wins
+        assert result == str(res_id1)
 
+@pytest.mark.asyncio
+async def test_auto_assign_consumables_success(service, mock_db_session):
+    req1 = AssetRequirementRead(
+        accession_id=uuid7(),
+        name="plate1",
+        type_hint_str="Plate"
+    )
+    req2 = AssetRequirementRead(
+        accession_id=uuid7(),
+        name="tiprack1",
+        type_hint_str="TipRack"
+    )
+    
+    res_id1 = uuid7()
+    res_id2 = uuid7()
+    
+    cand1 = create_mock_resource(res_id1, "pylabrobot.resources.Plate", "Plate 1")
+    cand2 = create_mock_resource(res_id2, "pylabrobot.resources.TipRack", "Tips 1")
+    
+    service._get_reserved_asset_ids = AsyncMock(return_value=set())
+    
+    # Mocking _get_candidate_resources to return different things for different calls
+    # or just mock find_compatible_consumable
+    service.find_compatible_consumable = AsyncMock()
+    service.find_compatible_consumable.side_effect = [str(res_id1), str(res_id2)]
+    
+    results = await service.auto_assign_consumables([req1, req2], {})
+    
+    assert results["plate1"] == str(res_id1)
+    assert results["tiprack1"] == str(res_id2)
+
+@pytest.mark.asyncio
+async def test_auto_assign_consumables_invalid_existing(service):
+    req = AssetRequirementRead(
+        accession_id=uuid7(),
+        name="plate1",
+        type_hint_str="Plate"
+    )
+    
+    with pytest.raises(ValueError, match="Invalid accession_id format for existing_assignment"):
+        await service.auto_assign_consumables([req], {"some_req": "not-a-uuid"})
+
+@pytest.mark.asyncio
+async def test_validate_accession_id_versions(service):
+    # UUID v4 should pass
+    v4 = uuid4()
+    assert service._validate_accession_id(v4, "test") == v4
+    assert service._validate_accession_id(str(v4), "test") == v4
+    
+    # UUID v7 should pass
+    v7 = uuid7()
+    assert service._validate_accession_id(v7, "test") == v7
+    assert service._validate_accession_id(str(v7), "test") == v7
+    
+    # UUID v1 should pass but log a warning (which we don't easily check here)
+    v1 = uuid.uuid1()
+    assert service._validate_accession_id(v1, "test") == v1
+    
+    # Missing should raise
+    with pytest.raises(ValueError, match="Missing accession_id"):
+        service._validate_accession_id(None, "test")
+    
+    # Invalid format should raise
+    with pytest.raises(ValueError, match="Invalid accession_id format"):
+        service._validate_accession_id("invalid-uuid", "test")

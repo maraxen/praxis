@@ -3,6 +3,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { AppStore } from '@core/store/app.store';
 import { InteractionService } from '@core/services/interaction.service';
 import { PathUtils } from '@core/utils/path.utils';
+import { environment } from '../../../../environments/environment';
 
 
 @Injectable({
@@ -369,7 +370,7 @@ except Exception as e:
   }
 
   private calculateHostRoot(): string {
-    const baseHref = document.querySelector('base')?.getAttribute('href') || '/';
+    const baseHref = (environment as any).baseHref || document.querySelector('base')?.getAttribute('href') || '/';
     return PathUtils.normalizeBaseHref(baseHref);
   }
 }

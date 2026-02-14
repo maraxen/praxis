@@ -84,7 +84,7 @@ describe('DeckGeneratorService', () => {
         };
         const data = service.generateDeckForProtocol(protocol);
 
-        expect(data.resource.type).toBe('HamiltonSTARDeck');
+        expect(data.resource.type).toBe('pylabrobot.resources.hamilton.HamiltonSTARDeck');
         expect(data.resource.num_rails).toBe(30);
         expect(data.resource.size_x).toBe(1200);
     });

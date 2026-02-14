@@ -320,3 +320,32 @@ class TestResourceMatching:
 
     if tips_preconds:
       assert len(tips_preconds[0].candidate_assets) > 0
+
+  def test_asset_with_missing_id_raises_key_error(
+    self, resolver: PreconditionResolver, simple_graph, empty_deck_state: DeckState
+  ) -> None:
+    """Test that an asset missing 'id' and 'accession_id' raises KeyError."""
+    assets = [
+      {"name": "No ID Plate", "type": "Plate", "fqn": "pylabrobot.resources.Plate"}
+    ]
+    with pytest.raises(KeyError, match="Asset missing both 'id' and 'accession_id'"):
+      resolver.resolve(simple_graph, empty_deck_state, assets)
+
+  def test_asset_with_accession_id_match(
+    self, resolver: PreconditionResolver, simple_graph, empty_deck_state: DeckState
+  ) -> None:
+    """Test that an asset with 'accession_id' is correctly identified."""
+    assets = [
+      {"accession_id": "acc-123", "name": "Accession Plate", "type": "Plate", "fqn": "pylabrobot.resources.Plate"}
+    ]
+    result = resolver.resolve(simple_graph, empty_deck_state, assets)
+
+    # Find source precondition
+    source_preconds = [
+      p
+      for p in result.auto_satisfiable + result.needs_user_input
+      if p.resource_variable == "source"
+    ]
+
+    if source_preconds:
+      assert "acc-123" in source_preconds[0].candidate_assets

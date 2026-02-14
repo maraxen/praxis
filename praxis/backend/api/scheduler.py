@@ -26,6 +26,7 @@ from praxis.backend.models.domain.schedule import (
 )
 from praxis.backend.models.enums import AssetReservationStatusEnum, ScheduleStatusEnum
 from praxis.backend.services.scheduler import schedule_entry_service
+from praxis.backend.utils.errors import AccessionNotFoundError, PraxisError
 
 router = APIRouter()
 
@@ -292,7 +293,9 @@ async def get_uncertain_states(
   try:
     uncertain = await service.get_uncertain_states(schedule_entry_accession_id)
     return [UncertainStateChangeResponse.from_core(u).model_dump() for u in uncertain]
-  except ValueError as e:
+  except AccessionNotFoundError as e:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+  except (ValueError, PraxisError) as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
@@ -334,7 +337,9 @@ async def resolve_state(
     await db.commit()
 
     return StateResolutionLogResponse.from_orm_model(log_entry).model_dump()
-  except ValueError as e:
+  except AccessionNotFoundError as e:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+  except (ValueError, PraxisError) as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
@@ -358,7 +363,9 @@ async def resume_run(
   try:
     await service.resume_run(schedule_entry_accession_id)
     return {"status": "resumed", "schedule_entry_id": str(schedule_entry_accession_id)}
-  except ValueError as e:
+  except AccessionNotFoundError as e:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+  except (ValueError, PraxisError) as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
@@ -383,5 +390,7 @@ async def abort_run(
   try:
     await service.abort_run(schedule_entry_accession_id, reason)
     return {"status": "aborted", "schedule_entry_id": str(schedule_entry_accession_id)}
-  except ValueError as e:
+  except AccessionNotFoundError as e:
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+  except (ValueError, PraxisError) as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e

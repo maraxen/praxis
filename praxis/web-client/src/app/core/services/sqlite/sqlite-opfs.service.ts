@@ -14,6 +14,7 @@ import {
 } from '@core/workers/sqlite-opfs.types';
 
 import { assetUrl } from '@core/utils/asset-url';
+import { environment } from '../../../../environments/environment';
 import {
     OFFLINE_CAPABILITY_OVERRIDES,
     PLR_MACHINE_DEFINITIONS,
@@ -91,7 +92,11 @@ export class SqliteOpfsService {
             const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
             const shouldReset = params?.get('resetdb') === '1';
 
-            const payload: SqliteInitRequest = { dbName: this.currentDbName, poolDirectory: this.currentPoolDirectory };
+            const payload: SqliteInitRequest = {
+                dbName: this.currentDbName,
+                poolDirectory: this.currentPoolDirectory,
+                baseHref: (environment as any).baseHref
+            };
             this.sendRequest<unknown>('init', payload).pipe(
                 switchMap((result: any) => {
                     // Check for schema mismatch response

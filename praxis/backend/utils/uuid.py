@@ -34,6 +34,19 @@ def uuid4() -> uuid.UUID:
   return uuid.uuid4()
 
 
+def generate_accession_id() -> uuid.UUID:
+  """Generate a centralized accession ID.
+
+  Praxis uses UUID7 for accession IDs to ensure they are both unique and
+  lexicographically sortable by creation time.
+
+  Returns:
+      uuid.UUID: A new UUID7 instance.
+
+  """
+  return uuid7()
+
+
 def generate_name(prefix: str) -> str:
   """Generate a default name."""
   uuid_ = uuid7().hex[:8]

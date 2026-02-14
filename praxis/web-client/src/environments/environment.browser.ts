@@ -4,8 +4,11 @@
 export const environment = {
     production: false,
     browserMode: true,  // Pure browser mode - no server required
+    baseHref: '/',
     apiUrl: '/api/v1',  // Will be intercepted by BrowserModeInterceptor
     wsUrl: '',          // WebSockets disabled in browser mode
+    pyodideSnapshotVersion: 'v1.0.0',
+    defaultDeckType: 'pylabrobot.resources.hamilton.HamiltonSTARDeck',
     keycloak: {
         enabled: false,
         url: '',

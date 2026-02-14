@@ -11,6 +11,7 @@ interface PythonWorkerGlobalScope extends WorkerGlobalScope {
 declare const self: PythonWorkerGlobalScope;
 
 let pyodide: PyodideInterface;
+let currentBaseHref: string = '/';
 let pyConsole: {
   push: (code: string) => any;
   complete: (code: string) => any;
@@ -116,11 +117,11 @@ addEventListener('message', async (event) => {
   try {
     switch (type) {
       case 'INIT':
-        await initializePyodide(id);
+        await initializePyodide(id, payload as { baseHref?: string });
         break;
 
       case 'INIT_WITH_SNAPSHOT':
-        await initializeFromSnapshot(id, payload as { snapshot: ArrayBuffer });
+        await initializeFromSnapshot(id, payload as { snapshot: ArrayBuffer, baseHref?: string });
         break;
 
       case 'DUMP_SNAPSHOT':
@@ -334,11 +335,19 @@ self.handlePythonOutput = (type: string, content: string) => {
   }
 };
 
-async function initializePyodide(id?: string) {
+async function initializePyodide(id?: string, payload?: { baseHref?: string }) {
+  if (payload?.baseHref) {
+    currentBaseHref = payload.baseHref.endsWith('/') ? payload.baseHref : payload.baseHref + '/';
+  }
+
   // Load Pyodide with core files from local assets, packages from CDN
-  // Use relative path (no leading slash) to respect base href on GitHub Pages
+  // Use baseHref to ensure correct resolution on GitHub Pages
+  const origin = self.location.origin;
+  const root = currentBaseHref.endsWith('/') ? currentBaseHref : currentBaseHref + '/';
+  const fullRoot = `${origin}${root}`;
+  
   pyodide = await loadPyodide({
-    indexURL: 'assets/pyodide/',
+    indexURL: `${fullRoot}assets/pyodide/`,
     lockFileURL: 'https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide-lock.json'
   });
 
@@ -394,7 +403,7 @@ print("[Pyodide] Native library stubs registered (pylibftdi, usb, serial)")
   try {
     const micropip = pyodide.pyimport('micropip');
     // Install PLR from local wheel (has chatterbox backends for all machine categories)
-    await micropip.install('assets/wheels/pylabrobot-0.1.6-py3-none-any.whl');
+    await micropip.install(`${fullRoot}assets/wheels/pylabrobot-0.1.6-py3-none-any.whl`);
     // Install remaining deps from PyPI
     await micropip.install(['jedi', 'cloudpickle', 'pydantic']);
     console.log('PyLabRobot (local wheel), Jedi, and Pydantic installed successfully');
@@ -417,7 +426,7 @@ print("[Pyodide] Native library stubs registered (pylibftdi, usb, serial)")
     // Fetch all shims in parallel
     Promise.all(shims.map(async (shim) => {
       try {
-        const response = await fetch(`assets/shims/${shim.file}`);
+        const response = await fetch(`${fullRoot}assets/shims/${shim.file}`);
         if (response.ok) {
           return { shim, code: await response.text(), error: null };
         }
@@ -427,32 +436,32 @@ print("[Pyodide] Native library stubs registered (pylibftdi, usb, serial)")
       }
     })),
     // Fetch web_bridge
-    fetch('assets/python/web_bridge.py').then(r => r.text()),
+    fetch(`${fullRoot}assets/python/web_bridge.py`).then(r => r.text()),
     // Fetch praxis package files
-    fetch('assets/python/praxis/__init__.py').then(r => r.text()).catch(() => null),
-    fetch('assets/python/praxis/interactive.py').then(r => r.text()).catch(() => null),
+    fetch(`${fullRoot}assets/python/praxis/__init__.py`).then(r => r.text()).catch(() => null),
+    fetch(`${fullRoot}assets/python/praxis/interactive.py`).then(r => r.text()).catch(() => null),
     // Fetch sqlmodel stub (extends pydantic.BaseModel for cloudpickle compatibility)
-    fetch('assets/python/sqlmodel/__init__.py').then(r => r.text()).catch(() => null),
+    fetch(`${fullRoot}assets/python/sqlmodel/__init__.py`).then(r => r.text()).catch(() => null),
     // Fetch praxis.backend stubs for cloudpickle deserialization
     Promise.all([
-      fetch('assets/python/praxis/backend/__init__.py').then(r => r.text()).catch(() => null),
-      fetch('assets/python/praxis/backend/core/__init__.py').then(r => r.text()).catch(() => null),
-      fetch('assets/python/praxis/backend/core/decorators/__init__.py').then(r => r.text()).catch(() => null),
-      fetch('assets/python/praxis/backend/core/decorators/models.py').then(r => r.text()).catch(() => null),
-      fetch('assets/python/praxis/backend/models/__init__.py').then(r => r.text()).catch(() => null),
-      fetch('assets/python/praxis/backend/models/domain/__init__.py').then(r => r.text()).catch(() => null),
-      fetch('assets/python/praxis/backend/models/domain/protocol.py').then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/backend/__init__.py`).then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/backend/core/__init__.py`).then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/backend/core/decorators/__init__.py`).then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/backend/core/decorators/models.py`).then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/backend/models/__init__.py`).then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/backend/models/domain/__init__.py`).then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/backend/models/domain/protocol.py`).then(r => r.text()).catch(() => null),
     ]),
     // Fetch praxis.protocol stubs for cloudpickle deserialization
     Promise.all([
-      fetch('assets/python/praxis/protocol/__init__.py').then(r => r.text()).catch(() => null),
-      fetch('assets/python/praxis/protocol/protocols/__init__.py').then(r => r.text()).catch(() => null),
-      fetch('assets/python/praxis/protocol/protocols/kinetic_assay.py').then(r => r.text()).catch(() => null),
-      fetch('assets/python/praxis/protocol/protocols/plate_preparation.py').then(r => r.text()).catch(() => null),
-      fetch('assets/python/praxis/protocol/protocols/plate_reader_assay.py').then(r => r.text()).catch(() => null),
-      fetch('assets/python/praxis/protocol/protocols/selective_transfer.py').then(r => r.text()).catch(() => null),
-      fetch('assets/python/praxis/protocol/protocols/serial_dilution.py').then(r => r.text()).catch(() => null),
-      fetch('assets/python/praxis/protocol/protocols/simple_transfer.py').then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/protocol/__init__.py`).then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/protocol/protocols/__init__.py`).then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/protocol/protocols/kinetic_assay.py`).then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/protocol/protocols/plate_preparation.py`).then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/protocol/protocols/plate_reader_assay.py`).then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/protocol/protocols/selective_transfer.py`).then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/protocol/protocols/serial_dilution.py`).then(r => r.text()).catch(() => null),
+      fetch(`${fullRoot}assets/python/praxis/protocol/protocols/simple_transfer.py`).then(r => r.text()).catch(() => null),
     ])
   ]);
 
@@ -692,10 +701,14 @@ _tb if _tb and _tb.strip() != 'NoneType: None' else str(sys.exc_info()[1]) if sy
  * Initialize Pyodide from a snapshot. Much faster than fresh init.
  * Falls back to fresh init if snapshot restore fails.
  */
-async function initializeFromSnapshot(id?: string, payload?: { snapshot: ArrayBuffer }) {
+async function initializeFromSnapshot(id?: string, payload?: { snapshot: ArrayBuffer, baseHref?: string }) {
+  if (payload?.baseHref) {
+    currentBaseHref = payload.baseHref.endsWith('/') ? payload.baseHref : payload.baseHref + '/';
+  }
+
   if (!payload?.snapshot) {
     console.warn('[Worker] No snapshot provided, falling back to fresh init');
-    await initializePyodide(id);
+    await initializePyodide(id, { baseHref: currentBaseHref });
     return;
   }
 
@@ -703,8 +716,12 @@ async function initializeFromSnapshot(id?: string, payload?: { snapshot: ArrayBu
     console.log('[Worker] Restoring from snapshot...');
 
     // Load base Pyodide without packages (they're in the snapshot)
+    const origin = self.location.origin;
+    const root = currentBaseHref.endsWith('/') ? currentBaseHref : currentBaseHref + '/';
+    const fullRoot = `${origin}${root}`;
+
     pyodide = await loadPyodide({
-      indexURL: 'assets/pyodide/',
+      indexURL: `${fullRoot}assets/pyodide/`,
       lockFileURL: 'https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide-lock.json'
     });
 

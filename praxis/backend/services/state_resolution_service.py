@@ -37,6 +37,7 @@ from praxis.backend.models.enums.resolution import (
 )
 from praxis.backend.models.enums.schedule import ScheduleStatusEnum
 from praxis.backend.utils.db_decorator import handle_db_transaction
+from praxis.backend.utils.errors import AccessionNotFoundError
 
 if TYPE_CHECKING:
   from uuid import UUID
@@ -92,8 +93,8 @@ class StateResolutionService:
     # Get the schedule entry
     schedule_entry = await self._get_schedule_entry(run_id)
     if not schedule_entry:
-      msg = f"Run {run_id} not found"
-      raise ValueError(msg)
+      logger.warning("Accession lookup failed for run %s: ScheduleEntry not found", run_id)
+      raise AccessionNotFoundError("ScheduleEntry", run_id)
 
     # Check if run is in a state that allows resolution
     # Use FAILED status since there's no explicit PAUSED status
@@ -159,8 +160,8 @@ class StateResolutionService:
     """
     schedule_entry = await self._get_schedule_entry(run_id)
     if not schedule_entry:
-      msg = f"Run {run_id} not found"
-      raise ValueError(msg)
+      logger.warning("Accession lookup failed for run %s during state resolution", run_id)
+      raise AccessionNotFoundError("ScheduleEntry", run_id)
 
     # Get the uncertain states that were pending
     uncertain = self._pending_resolutions.get(run_id, [])
@@ -178,6 +179,11 @@ class StateResolutionService:
     if run_id in self._state_snapshots:
       state = self._state_snapshots[run_id]
       apply_resolution(resolution, state)
+    else:
+      logger.warning(
+        "No state snapshot found for run %s, skipping state update in diff engine",
+        run_id,
+      )
 
     # Create audit log entry
     # Generate a name from operation info
@@ -228,8 +234,8 @@ class StateResolutionService:
     """
     schedule_entry = await self._get_schedule_entry(run_id)
     if not schedule_entry:
-      msg = f"Run {run_id} not found"
-      raise ValueError(msg)
+      logger.warning("Accession lookup failed for run %s during resume", run_id)
+      raise AccessionNotFoundError("ScheduleEntry", run_id)
 
     if schedule_entry.status not in (
       ScheduleStatusEnum.FAILED,
@@ -264,8 +270,8 @@ class StateResolutionService:
     """
     schedule_entry = await self._get_schedule_entry(run_id)
     if not schedule_entry:
-      msg = f"Run {run_id} not found"
-      raise ValueError(msg)
+      logger.warning("Accession lookup failed for run %s during abort", run_id)
+      raise AccessionNotFoundError("ScheduleEntry", run_id)
 
     # Update status to CANCELLED
     schedule_entry.status = ScheduleStatusEnum.CANCELLED

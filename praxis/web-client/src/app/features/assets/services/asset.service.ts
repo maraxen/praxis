@@ -10,6 +10,7 @@ import {
 import { ModeService } from '@core/services/mode.service';
 import { PathUtils } from '@core/utils/path.utils';
 import { SqliteService } from '@core/services/sqlite';
+import { environment } from '../../../../environments/environment';
 import { ResourceDefinitionCatalog } from '@core/db/schema';
 import { inferCategory } from '../utils/category-inference';
 
@@ -143,6 +144,28 @@ export class AssetService {
     );
   }
 
+  duplicateMachine(machine: Machine): Observable<Machine> {
+    const duplicate: MachineCreate = {
+      name: `${machine.name} (Copy)`,
+      machine_category: machine.machine_category,
+      machine_type: machine.machine_type,
+      description: machine.description,
+      manufacturer: machine.manufacturer,
+      model: machine.model,
+      serial_number: machine.serial_number ? `${machine.serial_number}-COPY` : undefined,
+      connection_info: machine.connection_info,
+      is_simulation_override: machine.is_simulation_override,
+      user_configured_capabilities: machine.user_configured_capabilities,
+      simulation_backend_name: machine.simulation_backend_name,
+      frontend_definition_accession_id: machine.frontend_definition_accession_id,
+      backend_definition_accession_id: machine.backend_definition_accession_id,
+      backend_config: machine.backend_config,
+      maintenance_enabled: machine.maintenance_enabled,
+      maintenance_schedule_json: machine.maintenance_schedule_json
+    };
+    return this.createMachine(duplicate);
+  }
+
   // --- Resources ---
   getResources(): Observable<Resource[]> {
     if (this.modeService.isBrowserMode()) {
@@ -196,6 +219,30 @@ export class AssetService {
       );
     }
     return this.apiWrapper.wrap(ResourcesService.deleteApiV1ResourcesAccessionIdDelete(accessionId));
+  }
+
+  updateResource(accessionId: string, resource: Partial<ResourceCreate>): Observable<Resource> {
+    if (this.modeService.isBrowserMode()) {
+      return this.sqliteService.getAsyncRepositories().pipe(
+        switchMap(repos => repos.resources.update(accessionId, resource as any)),
+        map(r => r as unknown as Resource)
+      );
+    }
+    // Using cast for now to match generated API types which might differ slightly in naming
+    return this.apiWrapper.wrap(ResourcesService.updateApiV1ResourcesAccessionIdPut(accessionId, resource as any)).pipe(
+      map(r => r as unknown as Resource)
+    );
+  }
+
+  duplicateResource(resource: Resource): Observable<Resource> {
+    const duplicate: ResourceCreate = {
+      name: `${resource.name} (Copy)`,
+      status: ResourceStatus.AVAILABLE,
+      resource_definition_accession_id: resource.resource_definition_accession_id,
+      parent_accession_id: resource.parent_accession_id,
+      properties_json: resource.properties_json
+    };
+    return this.createResource(duplicate);
   }
 
   // --- Workcells ---
@@ -633,7 +680,7 @@ export class AssetService {
    * @returns A fully resolved URL to the asset.
    */
   resolve(assetPath: string): string {
-    const baseHref = document.querySelector('base')?.getAttribute('href') || '/';
+    const baseHref = (environment as any).baseHref || document.querySelector('base')?.getAttribute('href') || '/';
     const cleanBase = PathUtils.normalizeBaseHref(baseHref);
     // Prevent double slashes if assetPath already starts with one
     const cleanAssetPath = assetPath.startsWith('/') ? assetPath.substring(1) : assetPath;

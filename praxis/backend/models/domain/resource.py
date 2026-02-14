@@ -68,7 +68,11 @@ class ResourceDefinitionBase(PraxisBase):
 
 
 class ResourceDefinition(ResourceDefinitionBase, table=True):
-  """ResourceDefinition ORM model - catalog of resource types."""
+  """ResourceDefinition ORM model - catalog of resource types.
+
+  Cascading Deletes:
+  - Deleting a ResourceDefinition will delete all associated Resource instances.
+  """
 
   __tablename__ = "resource_definitions"
 
@@ -97,7 +101,9 @@ class ResourceDefinition(ResourceDefinitionBase, table=True):
 
   # Relationships
   resources: list["Resource"] = Relationship(
-    sa_relationship=relationship("Resource", back_populates="resource_definition")
+    sa_relationship=relationship(
+      "Resource", back_populates="resource_definition", cascade="all, delete-orphan"
+    )
   )
 
 
@@ -186,7 +192,14 @@ class ResourceBase(AssetBase):
 
 
 class Resource(ResourceBase, Asset, table=True):
-  """Resource table - represents a physical resource instance."""
+  """Resource table - represents a physical resource instance.
+
+  Cascading Deletes:
+  - Deleting a Resource will delete all its child resources (e.g., wells in a plate).
+  - Deleting a Resource will delete all associated FunctionDataOutput records,
+    which in turn deletes associated WellDataOutput records.
+  - Deleting a Resource will delete all associated AssetReservation records.
+  """
 
   __tablename__ = "resources"
 
@@ -234,7 +247,7 @@ class Resource(ResourceBase, Asset, table=True):
     )
   )
   children: list["Resource"] = Relationship(
-    sa_relationship=relationship("Resource", back_populates="parent")
+    sa_relationship=relationship("Resource", back_populates="parent", cascade="all, delete-orphan")
   )
 
   machine: Optional["Machine"] = Relationship(
@@ -251,7 +264,11 @@ class Resource(ResourceBase, Asset, table=True):
   workcell: Optional["Workcell"] = Relationship(
     sa_relationship=relationship("Workcell", back_populates="resources")
   )
-  data_outputs: list["FunctionDataOutput"] = Relationship(back_populates="resource")
+  data_outputs: list["FunctionDataOutput"] = Relationship(
+    sa_relationship=relationship(
+      "FunctionDataOutput", back_populates="resource", cascade="all, delete-orphan"
+    )
+  )
 
   # Asset reservations referencing this resource
   asset_reservations: list["AssetReservation"] = Relationship(
@@ -260,6 +277,7 @@ class Resource(ResourceBase, Asset, table=True):
       back_populates="resource",
       primaryjoin="foreign(AssetReservation.asset_accession_id) == Resource.accession_id",
       foreign_keys="[AssetReservation.asset_accession_id]",
+      cascade="all, delete-orphan",
       overlaps="machine",
     )
   )

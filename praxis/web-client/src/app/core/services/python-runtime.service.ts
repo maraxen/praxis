@@ -5,6 +5,7 @@ import { HardwareDiscoveryService } from './hardware-discovery.service';
 import { InteractionService } from './interaction.service';
 import { PyodidePoolService } from './pyodide-pool.service';
 import { PyodideSnapshotService } from './pyodide-snapshot.service';
+import { environment } from '../../../environments/environment';
 
 const WORKER_SNAPSHOT_KEY = 'pyodide-worker';
 
@@ -118,11 +119,16 @@ export class PythonRuntimeService implements ReplRuntime {
       if (snapshot) {
         console.log('[PythonRuntime] Restoring from snapshot...');
         this.didFreshInit = false;
-        await this.sendMessage('INIT_WITH_SNAPSHOT', { snapshot: snapshot.buffer });
+        await this.sendMessage('INIT_WITH_SNAPSHOT', {
+          snapshot: snapshot.buffer,
+          baseHref: (environment as any).baseHref
+        });
       } else {
         console.log('[PythonRuntime] Fresh initialization...');
         this.didFreshInit = true;
-        await this.sendMessage('INIT');
+        await this.sendMessage('INIT', {
+          baseHref: (environment as any).baseHref
+        });
       }
 
       this.isReady.set(true);

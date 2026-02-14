@@ -23,7 +23,7 @@ from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDSe
 from praxis.backend.services.protocols import ProtocolRunService
 from praxis.backend.utils.errors import AssetAcquisitionError, OrchestratorError
 from praxis.backend.utils.logging import get_logger
-from praxis.backend.utils.uuid import uuid7
+from praxis.backend.utils.uuid import uuid7, generate_accession_id
 
 logger = get_logger(__name__)
 
@@ -96,7 +96,7 @@ class ProtocolScheduler:
 
     if protocol_def_model.preconfigure_deck and protocol_def_model.deck_param_name:
       deck_asset_requirement = AssetRequirementModel(
-        accession_id=uuid7(),
+        accession_id=generate_accession_id(),
         name=protocol_def_model.deck_param_name,
         fqn="pylabrobot.resources.Deck",
         type_hint_str="pylabrobot.resources.Deck",

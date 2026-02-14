@@ -7,15 +7,17 @@ from typing import Any, TypeVar, cast
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.utils.errors import PraxisError
+
 F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
 
 def handle_db_transaction(func: F) -> F:
   """Manage database transactions in service layer methods.
 
-  This decorator wraps an async function that takes a SQLAlchemy `AsyncSession`
-  as its first argument. It ensures that the session is properly committed
-  on success and rolled back on any exception.
+  This decorator wraps an async function that may take a SQLAlchemy `AsyncSession`
+  as an argument or be a method of a class that has an `_session` or `db` attribute.
+  It ensures that the session is properly committed on success and rolled back on any exception.
 
   Args:
       func (Callable): The async function to be decorated.
@@ -50,13 +52,26 @@ def handle_db_transaction(func: F) -> F:
         db_session_arg_index = i
         break
 
-    if db_session_arg_index == -1 and "db" not in kwargs:
-      msg = "Function decorated with @handle_db_transaction must have a 'db' argument."
-      raise TypeError(
-        msg,
-      )
+    db: AsyncSession | None = None
+    if db_session_arg_index != -1:
+      db = args[db_session_arg_index]
+    elif "db" in kwargs:
+      db = kwargs["db"]
+    elif len(args) > 0:
+      # Check if self has a session (common in service classes)
+      self_obj = args[0]
+      if hasattr(self_obj, "_session") and isinstance(self_obj._session, AsyncSession):
+        db = self_obj._session
+      elif hasattr(self_obj, "db") and isinstance(self_obj.db, AsyncSession):
+        db = self_obj.db
 
-    db: AsyncSession = args[db_session_arg_index] if db_session_arg_index != -1 else kwargs["db"]
+    if db is None:
+      msg = (
+        f"Function {func.__name__} decorated with @handle_db_transaction must have a 'db' argument "
+        "or be a method of a class with an '_session' or 'db' attribute."
+      )
+      raise TypeError(msg)
+
     try:
       result = await func(*args, **kwargs)
       await db.commit()
@@ -65,7 +80,7 @@ def handle_db_transaction(func: F) -> F:
       await db.rollback()
       msg = f"Database integrity error: {e.orig}" if hasattr(e, "orig") else str(e)
       raise ValueError(msg) from e
-    except ValueError:
+    except (ValueError, PraxisError):
       await db.rollback()
       raise
     except Exception as e:

@@ -3,12 +3,18 @@
  * This is critical for GitHub Pages deployments where the app is served
  * from a subdirectory (e.g., /praxis/).
  */
+import { environment } from '../../../environments/environment';
 
 /**
  * Get the base href from the document's <base> tag.
  * Falls back to '/' if not set.
  */
 export function getBaseHref(): string {
+    // Prefer environment configuration if available
+    if ((environment as any).baseHref) {
+        return (environment as any).baseHref;
+    }
+
     if (typeof document === 'undefined') {
         return '/';
     }

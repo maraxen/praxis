@@ -9,6 +9,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.utils.errors import AccessionNotFoundError
+
 T = TypeVar("T")
 
 
@@ -64,5 +66,4 @@ async def get_accession_id_from_accession(
     raise TypeError(msg)
 
   # If we reach this point, 'obj' is None, meaning no entity was found.
-  msg = f"{entity_type_name} with accession '{accession}' not found."
-  raise ValueError(msg)
+  raise AccessionNotFoundError(entity_type_name, accession)

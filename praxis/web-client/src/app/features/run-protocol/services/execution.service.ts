@@ -9,10 +9,11 @@ import { environment } from '@env/environment';
 import { Observable, Subject, of, firstValueFrom, throwError } from 'rxjs';
 import { catchError, map, retry, switchMap, tap } from 'rxjs/operators';
 import { WebSocketSubject, webSocket } from 'rxjs/webSocket';
-import { ExecutionMessage, ExecutionState, ExecutionStatus } from '../models/execution.models';
+import { ExecutionError, ExecutionErrorType, ExecutionMessage, ExecutionState, ExecutionStatus } from '../models/execution.models';
 import { MachineCompatibility } from '../models/machine-compatibility.models';
 import { ProtocolsService } from '@api/services/ProtocolsService';
 import { calculateDiff } from '@core/utils/state-diff';
+import { assetUrl } from '@core/utils/asset-url';
 import { ApiWrapperService } from '@core/services/api-wrapper.service';
 import { ProtocolRun } from '@core/db/schema';
 
@@ -68,7 +69,9 @@ export class ExecutionService {
           }
           return of(null);
         })
-      ).subscribe();
+      ).subscribe({
+        error: err => console.warn('[ExecutionService] Heartbeat update failed:', err)
+      });
     }, 5000); // Every 5 seconds
   }
 
@@ -84,23 +87,37 @@ export class ExecutionService {
 
   /**
    * Fetch protocol blob from backend or static assets
+   * ERROR PATH: execution.service.ts:95/106 -> Network error or 404/500
    */
   fetchProtocolBlob(id: string): Observable<ArrayBuffer> {
     if (this.modeService.isBrowserMode()) {
       // Fetch from static assets in browser/offline mode
       // Use relative path (no leading slash) to respect base href on GitHub Pages
-      return this.http.get(`assets/protocols/${id}.pkl`, {
+      return this.http.get(assetUrl(`assets/protocols/${id}.pkl`), {
         responseType: 'arraybuffer'
-      });
+      }).pipe(
+        catchError(err => throwError(() => new ExecutionError(
+          ExecutionErrorType.PROTOCOL_NOT_FOUND,
+          `Failed to fetch protocol ${id} from assets`,
+          err
+        )))
+      );
     }
     // Default: Fetch from backend API
     return this.http.get(`${this.API_URL}/api/v1/protocols/definitions/${id}/code/binary`, {
       responseType: 'arraybuffer'
-    });
+    }).pipe(
+      catchError(err => throwError(() => new ExecutionError(
+        ExecutionErrorType.NETWORK_ERROR,
+        `Failed to fetch protocol ${id} from API`,
+        err
+      )))
+    );
   }
 
   /**
    * Check protocol compatibility with available machines
+   * ERROR PATH: execution.service.ts:143/151 -> DB error (Browser) or API error (Prod)
    */
   getCompatibility(protocolId: string): Observable<MachineCompatibility[]> {
     // In browser mode, return mock compatibility data
@@ -126,14 +143,28 @@ export class ExecutionService {
             matched_capabilities: [],
             warnings: []
           }
-        } as MachineCompatibility)))
+        } as MachineCompatibility))),
+        catchError(err => throwError(() => new ExecutionError(
+          ExecutionErrorType.PERSISTENCE_ERROR,
+          'Failed to load machine definitions for compatibility check',
+          err
+        )))
       );
     }
-    return this.apiWrapper.wrap(ProtocolsService.getProtocolCompatibilityApiV1ProtocolsAccessionIdCompatibilityGet(protocolId)) as Observable<MachineCompatibility[]>;
+    return (this.apiWrapper.wrap(ProtocolsService.getProtocolCompatibilityApiV1ProtocolsAccessionIdCompatibilityGet(protocolId)) as Observable<MachineCompatibility[]>).pipe(
+      catchError(err => throwError(() => new ExecutionError(
+        ExecutionErrorType.NETWORK_ERROR,
+        'Failed to check protocol compatibility via API',
+        err
+      )))
+    );
   }
 
   /**
    * Start a new protocol run
+   * ERROR PATH: execution.service.ts:181 -> Validation error
+   * ERROR PATH: execution.service.ts:200 -> Browser run start failure
+   * ERROR PATH: execution.service.ts:210 -> API start run failure
    */
   startRun(
     protocolId: string,
@@ -150,7 +181,10 @@ export class ExecutionService {
       );
 
       if (hasSimulatedConfig) {
-        return throwError(() => new Error('Cannot start physical run with simulated machine configuration'));
+        return throwError(() => new ExecutionError(
+          ExecutionErrorType.VALIDATION_ERROR,
+          'Cannot start physical run with simulated machine configuration'
+        ));
       }
     }
 
@@ -176,12 +210,18 @@ export class ExecutionService {
           logs: []
         });
         this.connectWebSocket(response.run_id);
-      })
+      }),
+      catchError(err => throwError(() => new ExecutionError(
+        ExecutionErrorType.NETWORK_ERROR,
+        'Failed to start protocol run via API',
+        err
+      )))
     );
   }
 
   /**
    * Execute protocol in browser mode using Pyodide
+   * ERROR PATH: execution.service.ts:275 -> persistence failure
    */
   private startBrowserRun(
     protocolId: string,
@@ -236,15 +276,21 @@ export class ExecutionService {
       map(() => ({ run_id: runId })),
       catchError(err => {
         console.warn('[ExecutionService] Failed to persist run:', err);
-        // Still try to run even if persistence failed? 
-        // Better to fail the start if we can't persist history.
-        return throwError(() => err);
+        return throwError(() => new ExecutionError(
+          ExecutionErrorType.PERSISTENCE_ERROR,
+          'Failed to persist protocol run to local database',
+          err
+        ));
       })
     );
   }
 
   /**
    * Execute protocol code in Pyodide worker
+   * ERROR PATH: execution.service.ts:303 -> DB update failure (Silent)
+   * ERROR PATH: execution.service.ts:312 -> Protocol load failure (IndexedDB or Assets)
+   * ERROR PATH: execution.service.ts:456/468 -> Python runtime error or critical stderr
+   * ERROR PATH: execution.service.ts:502/521 -> DB update failure (Silent)
    */
   private async executeBrowserProtocol(
     protocolId: string,
@@ -257,9 +303,12 @@ export class ExecutionService {
       this.updateRunState({ status: ExecutionStatus.RUNNING });
 
       // Update status in DB as well
+      // SILENT FAILURE FIX: Add error handling
       this.sqliteService.protocolRuns.pipe(
         switchMap(repo => repo.update(runId, { status: ExecutionStatus.RUNNING, start_time: new Date().toISOString() }))
-      ).subscribe();
+      ).subscribe({
+        error: err => console.error('[ExecutionService] Failed to update run status to RUNNING in DB:', err)
+      });
 
       this.addLog('[Browser Mode] Loading protocol...');
 
@@ -453,9 +502,12 @@ export class ExecutionService {
       this.addLog('[Browser Mode] Execution completed successfully.');
 
       // Update run status in DB
+      // SILENT FAILURE FIX: Add error handling
       this.sqliteService.protocolRuns.pipe(
         switchMap(repo => repo.update(runId, { status: ExecutionStatus.COMPLETED, end_time: new Date().toISOString() }))
-      ).subscribe();
+      ).subscribe({
+        error: err => console.error('[ExecutionService] Failed to update final run status to COMPLETED in DB:', err)
+      });
       this.stopHeartbeat();
     } catch (error) {
       console.error('[Browser Execution Error]', error);
@@ -469,9 +521,12 @@ export class ExecutionService {
       }
 
       // Update run status in DB
+      // SILENT FAILURE FIX: Add error handling
       this.sqliteService.protocolRuns.pipe(
         switchMap(repo => repo.update(runId, { status: ExecutionStatus.FAILED, end_time: new Date().toISOString() }))
-      ).subscribe();
+      ).subscribe({
+        error: err => console.error('[ExecutionService] Failed to update run status to FAILED in DB:', err)
+      });
       this.stopHeartbeat();
     }
   }
@@ -508,6 +563,7 @@ export class ExecutionService {
 
   /**
    * Connect to WebSocket for real-time updates
+   * ERROR PATH: execution.service.ts:583 -> Max retries reached
    */
   // Error stream for UI feedback
   private _errors = new Subject<Error>();
@@ -527,7 +583,11 @@ export class ExecutionService {
       catchError(error => {
         console.error('WebSocket error:', error);
         this._isConnected.set(false);
-        this._errors.next(error);
+        this._errors.next(new ExecutionError(
+          ExecutionErrorType.WEBSOCKET_ERROR,
+          'WebSocket connection failed after retries',
+          error
+        ));
         return of();
       })
     ).subscribe({
@@ -539,6 +599,7 @@ export class ExecutionService {
 
   /**
    * Handle incoming WebSocket messages
+   * ERROR PATH: execution.service.ts:646 -> Backend error message
    */
   private handleMessage(message: ExecutionMessage) {
     this.messagesSubject.next(message);
@@ -631,6 +692,7 @@ export class ExecutionService {
 
   /**
    * Stop the current run
+   * ERROR PATH: execution.service.ts:725 -> API cancellation failure
    */
   stopRun(): Observable<unknown> {
     const runId = this._currentRun()?.runId;
@@ -660,10 +722,20 @@ export class ExecutionService {
           });
         }
         this.disconnect();
-      })
+      }),
+      catchError(err => throwError(() => new ExecutionError(
+        ExecutionErrorType.NETWORK_ERROR,
+        'Failed to stop protocol run via API',
+        err
+      )))
     );
   }
 
+  /**
+   * Cancel a protocol run
+   * ERROR PATH: execution.service.ts:750 -> DB update failure
+   * ERROR PATH: execution.service.ts:760 -> API cancellation failure
+   */
   cancel(runId: string): Observable<void> {
     if (this.modeService.isBrowserMode()) {
       // Browser mode: stop Python runtime
@@ -675,39 +747,106 @@ export class ExecutionService {
 
       return this.sqliteService.protocolRuns.pipe(
         switchMap(repo => repo.update(runId, { status: ExecutionStatus.CANCELLED, end_time: new Date().toISOString() })),
-        map(() => void 0)
+        map(() => void 0),
+        catchError(err => throwError(() => new ExecutionError(
+          ExecutionErrorType.PERSISTENCE_ERROR,
+          'Failed to update run status to CANCELLED in local DB',
+          err
+        )))
       );
     }
     return this.apiWrapper.wrap(ProtocolsService.cancelProtocolRunApiV1ProtocolsRunsRunIdCancelPost(runId))
-      .pipe(map(() => undefined));
+      .pipe(
+        map(() => undefined),
+        catchError(err => throwError(() => new ExecutionError(
+          ExecutionErrorType.NETWORK_ERROR,
+          'Failed to cancel protocol run via API',
+          err
+        )))
+      );
   }
 
+  /**
+   * PROPOSED PAUSE/RESUME IMPLEMENTATION PLAN:
+   * 
+   * 1. Production Mode:
+   *    - Once the OpenAPI client is updated, replace raw HttpClient calls in pause() and resume()
+   *      with ProtocolsService methods wrapped in apiWrapper.
+   *    - The backend handles the state machine transitions (RUNNING <-> PAUSED).
+   * 
+   * 2. Browser Mode (Pyodide):
+   *    - Current implementation only updates UI/DB status, but Python execution continues.
+   *    - Real Pause Implementation:
+   *      - Utilize the Interrupt Buffer (already used for stop/cancel).
+   *      - Python-side: The PLR backend or the bootstrap code should periodically check
+   *        a "pause_flag" in a SharedArrayBuffer.
+   *      - If pause_flag is set, Python enters a busy-wait loop or uses a blocking read
+   *        on an Atomic until the flag is cleared.
+   *    - Real Resume Implementation:
+   *      - Clear the pause_flag in the SharedArrayBuffer.
+   *      - If Python was in a blocking wait, signal it to continue.
+   *    - State Management:
+   *      - Ensure function_call_logs accurately reflect the pause duration by adjusting
+   *        start/end times or adding a 'paused' interval record.
+   */
   // TODO(Jules): The pause and resume endpoints are not yet included in the
   // generated OpenAPI client. Using raw HttpClient as a temporary measure.
   // These should be updated to use the ApiWrapperService and generated client
   // once the client is updated.
+  /**
+   * Pause a protocol run
+   * ERROR PATH: execution.service.ts:784 -> DB update failure
+   * ERROR PATH: execution.service.ts:792 -> API pause failure
+   */
   pause(runId: string): Observable<void> {
     if (this.modeService.isBrowserMode()) {
       // Mock pause in browser mode for UI/E2E consistency
       this.updateRunState({ status: ExecutionStatus.PAUSED });
       return this.sqliteService.protocolRuns.pipe(
         switchMap(repo => repo.update(runId, { status: ExecutionStatus.PAUSED })),
-        map(() => void 0)
+        map(() => void 0),
+        catchError(err => throwError(() => new ExecutionError(
+          ExecutionErrorType.PERSISTENCE_ERROR,
+          'Failed to update run status to PAUSED in local DB',
+          err
+        )))
       );
     }
-    return this.http.post<void>(`${this.API_URL}/api/v1/execution/runs/${runId}/pause`, {});
+    return this.http.post<void>(`${this.API_URL}/api/v1/execution/runs/${runId}/pause`, {}).pipe(
+      catchError(err => throwError(() => new ExecutionError(
+        ExecutionErrorType.NETWORK_ERROR,
+        'Failed to pause protocol run via API',
+        err
+      )))
+    );
   }
 
+  /**
+   * Resume a protocol run
+   * ERROR PATH: execution.service.ts:812 -> DB update failure
+   * ERROR PATH: execution.service.ts:820 -> API resume failure
+   */
   resume(runId: string): Observable<void> {
     if (this.modeService.isBrowserMode()) {
       // Mock resume in browser mode
       this.updateRunState({ status: ExecutionStatus.RUNNING });
       return this.sqliteService.protocolRuns.pipe(
         switchMap(repo => repo.update(runId, { status: ExecutionStatus.RUNNING })),
-        map(() => void 0)
+        map(() => void 0),
+        catchError(err => throwError(() => new ExecutionError(
+          ExecutionErrorType.PERSISTENCE_ERROR,
+          'Failed to update run status to RUNNING in local DB',
+          err
+        )))
       );
     }
-    return this.http.post<void>(`${this.API_URL}/api/v1/execution/runs/${runId}/resume`, {});
+    return this.http.post<void>(`${this.API_URL}/api/v1/execution/runs/${runId}/resume`, {}).pipe(
+      catchError(err => throwError(() => new ExecutionError(
+        ExecutionErrorType.NETWORK_ERROR,
+        'Failed to resume protocol run via API',
+        err
+      )))
+    );
   }
 
   /**
@@ -732,6 +871,8 @@ export class ExecutionService {
 
   /**
    * Persist a function call log entry to browser SQLite.
+   * ERROR PATH: execution.service.ts:875 -> DB update failure (initial state) (Silent)
+   * ERROR PATH: execution.service.ts:919 -> DB create failure (log entry) (Silent)
    */
   private handleFunctionCallLog(runId: string, logData: {
     call_id: string;
@@ -751,9 +892,12 @@ export class ExecutionService {
     if (logData.status !== 'running') {
       // 1. Capture initial state if not already done
       if (!this.lastSavedState && logData.state_before) {
+        // SILENT FAILURE FIX: Add error handling
         this.sqliteService.protocolRuns.pipe(
           switchMap(repo => repo.update(runId, { initial_state_json: JSON.stringify(logData.state_before) as any }))
-        ).subscribe();
+        ).subscribe({
+          error: err => console.error('[ExecutionService] Failed to update initial state in DB:', err)
+        });
         this.lastSavedState = logData.state_before;
       }
 

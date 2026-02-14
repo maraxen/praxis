@@ -1,5 +1,6 @@
 // src/app/core/services/pyodide-snapshot.service.ts
 import { Injectable } from '@angular/core';
+import { environment } from '@env/environment';
 
 const SNAPSHOT_DB = 'praxis-pyodide-snapshots';
 const SNAPSHOT_STORE = 'snapshots';
@@ -95,11 +96,11 @@ export class PyodideSnapshotService {
     }
 
     getSnapshotVersion(): string {
-        // Version based on app version + shim hashes
-        // Invalidate when shims or Pyodide version changes
-        // TODO: This should be a dynamic value, but the necessary build-time information is not available.
-        // For now, we'll use a hardcoded value and rely on manual cache clearing for updates.
-        return 'v1.0.0';
+        // Version based on app version + shim hashes. 
+        // Invalidate when shims or Pyodide version changes.
+        // This value was previously hardcoded because build-time version injection
+        // was not yet integrated into the environment configuration.
+        return environment.pyodideSnapshotVersion;
     }
 
     async validateOrInvalidate(key: string = DEFAULT_KEY): Promise<boolean> {

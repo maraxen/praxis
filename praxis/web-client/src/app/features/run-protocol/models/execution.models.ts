@@ -47,3 +47,24 @@ export interface ExecutionState {
   plr_definition?: any;
 }
 
+export enum ExecutionErrorType {
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  PERSISTENCE_ERROR = 'PERSISTENCE_ERROR',
+  RUNTIME_ERROR = 'RUNTIME_ERROR',
+  PROTOCOL_NOT_FOUND = 'PROTOCOL_NOT_FOUND',
+  WEBSOCKET_ERROR = 'WEBSOCKET_ERROR',
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
+}
+
+export class ExecutionError extends Error {
+  constructor(
+    public type: ExecutionErrorType,
+    message: string,
+    public originalError?: any
+  ) {
+    super(message);
+    this.name = 'ExecutionError';
+  }
+}
+

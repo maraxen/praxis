@@ -1,6 +1,6 @@
-import { Component, ChangeDetectionStrategy, Inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, Inject, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,6 +9,9 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
 import { Resource, ResourceDefinition, ResourceStatus } from '../../models/asset.models';
 import { LocationBreadcrumbComponent } from '../location-breadcrumb/location-breadcrumb.component';
+import { AssetService } from '../../services/asset.service';
+import { AssetWizard } from '@shared/components/asset-wizard/asset-wizard';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 export interface InstancesDialogData {
   definition: ResourceDefinition;
@@ -25,8 +28,6 @@ export interface InstancesDialogData {
     MatTableModule,
     MatIconModule,
     MatButtonModule,
-    MatChipsModule,
-    MatSlideToggleModule,
     MatChipsModule,
     MatSlideToggleModule,
     FormsModule,
@@ -183,6 +184,10 @@ export interface InstancesDialogData {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ResourceInstancesDialogComponent {
+  private assetService = inject(AssetService);
+  private dialog = inject(MatDialog);
+  private snackBar = inject(MatSnackBar);
+
   showDiscarded: boolean;
   displayedColumns = ['name', 'status', 'location', 'actions'];
 
@@ -216,16 +221,53 @@ export class ResourceInstancesDialogComponent {
     return (this.data.definition as any).is_reusable ?? false;
   }
 
-  markDiscarded(_instance: Resource) {
-    // TODO: Implement status update via service
+  markDiscarded(instance: Resource) {
+    this.assetService.updateResource(instance.accession_id, {
+      status: ResourceStatus.DEPLETED
+    }).subscribe({
+      next: (updated) => {
+        instance.status = updated.status;
+        this.snackBar.open(`Resource ${instance.name} marked as discarded`, 'OK', { duration: 3000 });
+      },
+      error: (err) => {
+        console.error('Error updating resource status', err);
+        this.snackBar.open('Failed to update resource status', 'OK', { duration: 5000 });
+      }
+    });
   }
 
-  markForCleaning(_instance: Resource) {
-    // TODO: Implement cleaning workflow
+  markForCleaning(instance: Resource) {
+    // Cleaning workflow: for now, just mark it as AVAILABLE again if it was IN_USE or DEPLETED
+    this.assetService.updateResource(instance.accession_id, {
+      status: ResourceStatus.AVAILABLE
+    }).subscribe({
+      next: (updated) => {
+        instance.status = updated.status;
+        this.snackBar.open(`Resource ${instance.name} is now clean and available`, 'OK', { duration: 3000 });
+      },
+      error: (err) => {
+        console.error('Error in cleaning workflow', err);
+        this.snackBar.open('Failed to trigger cleaning workflow', 'OK', { duration: 5000 });
+      }
+    });
   }
 
   addInstance() {
-    // TODO: Open add resource dialog with pre-selected definition
-    this.dialogRef.close();
+    const dialogRef = this.dialog.open(AssetWizard, {
+      minWidth: '600px',
+      maxWidth: '1000px',
+      width: '80vw',
+      height: '85vh',
+      data: {
+        preselectedType: 'RESOURCE',
+        preselectedDefinition: this.data.definition
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.dialogRef.close(true); // Signal that an instance was added
+      }
+    });
   }
 }

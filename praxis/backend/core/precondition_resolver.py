@@ -400,7 +400,7 @@ class PreconditionResolver:
       # Check for type match
       if target_type.lower() in asset_type.lower() or target_type.lower() in asset_fqn.lower():
         match = AssetMatch(
-          asset_id=str(asset.get("id", asset.get("accession_id", "unknown"))),
+          asset_id=get_asset_identifier(asset),
           asset_name=asset.get("name", "Unknown"),
           asset_type=asset_type,
           asset_fqn=asset_fqn,
@@ -501,6 +501,26 @@ class PreconditionResolver:
 # =============================================================================
 # Convenience Functions
 # =============================================================================
+
+
+def get_asset_identifier(asset: dict[str, Any]) -> str:
+  """Get a unique identifier for an asset.
+
+  Args:
+      asset: The asset dictionary.
+
+  Returns:
+      The asset identifier (from 'id' or 'accession_id').
+
+  Raises:
+      KeyError: If neither 'id' nor 'accession_id' is present.
+  """
+  if "id" in asset:
+    return str(asset["id"])
+  if "accession_id" in asset:
+    return str(asset["accession_id"])
+
+  raise KeyError("Asset missing both 'id' and 'accession_id'")
 
 
 def resolve_protocol_preconditions(

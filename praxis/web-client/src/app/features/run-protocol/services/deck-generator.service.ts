@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { environment } from '@env/environment';
 import { ProtocolDefinition } from '@features/protocols/models/protocol.models';
 import { PlrDeckData, PlrResource } from '@core/models/plr.models';
 import { DeckCatalogService } from './deck-catalog.service';
@@ -101,50 +102,37 @@ export class DeckGeneratorService {
             };
         }
 
-        // Priority 3: Fallback to hardcoded generation (legacy)
-
-        // Detect deck type from machine or default to Hamilton STAR
+        // Priority 3: Dynamic lookup from deck catalog
         const deckType = this.detectDeckType(machine);
         const spec = this.deckCatalog.getDeckDefinition(deckType);
 
         if (!spec) {
             console.warn(`No deck definition found for ${deckType}, falling back to Hamilton STAR`);
-            return this.generateHamiltonDeck(protocol, assetMap);
+            // Previously hardcoded, now uses catalog even for fallback
+            const fallbackSpec = this.deckCatalog.getHamiltonSTARSpec();
+            return this.generateRailBasedDeck(fallbackSpec, protocol, assetMap);
         }
 
         if (spec.layoutType === 'slot-based') {
             return this.generateSlotBasedDeck(spec, protocol, assetMap);
         } else {
-            return this.generateHamiltonDeck(protocol, assetMap);
+            return this.generateRailBasedDeck(spec, protocol, assetMap);
         }
     }
 
+    /**
+     * Detects the deck type for a given machine, falling back to environment default.
+     * Hardcoded defaults were previously used here before dynamic lookup via DeckCatalogService
+     * and environment configuration were fully implemented.
+     */
     private detectDeckType(machine?: Machine): string {
-        if (!machine) return 'HamiltonSTARDeck';
-
-        // NEW: Check backend definition name/fqn first
-        const backendName = machine.backend_definition?.name?.toLowerCase() || '';
-        const backendFqn = machine.backend_definition?.fqn?.toLowerCase() || '';
-
-        if (backendName.includes('ot-2') || backendName.includes('ot2') ||
-            backendFqn.includes('opentrons.ot2')) {
-            return 'OT2Deck';
-        }
-
-        if (backendName.includes('flex') || backendFqn.includes('opentrons.flex')) {
-            return 'OT2Deck'; // or 'FlexDeck' if we have one
-        }
-
-        // Fallback to legacy detection
-        if (machine.machine_category?.includes('OT-2') ||
-            machine.machine_type?.includes('OT-2') ||
-            machine.model?.includes('OT-2')) {
-            return 'OT2Deck';
-        }
-
-        return 'HamiltonSTARDeck';
+        return this.deckCatalog.getDeckTypeForMachine(machine) || environment.defaultDeckType;
     }
 
+    /**
+     * Generates a slot-based deck layout using the provided specification.
+     * Hardcoded defaults were previously used here before dynamic lookup was implemented.
+     */
     private generateSlotBasedDeck(
         spec: any, // DeckDefinitionSpec
         protocol: ProtocolDefinition,
@@ -152,7 +140,7 @@ export class DeckGeneratorService {
     ): PlrDeckData {
         const deck: PlrResource = {
             name: "deck",
-            type: spec.fqn || "OT2Deck",
+            type: spec.fqn || environment.defaultDeckType,
             location: { x: 0, y: 0, z: 0, type: "Coordinate" },
             size_x: spec.dimensions.width,
             size_y: spec.dimensions.height,
@@ -199,20 +187,28 @@ export class DeckGeneratorService {
         return { resource: deck, state: {} };
     }
 
-    private generateHamiltonDeck(protocol: ProtocolDefinition, assetMap?: Record<string, any>): PlrDeckData {
+    /**
+     * Generates a rail-based deck layout using the provided specification.
+     * Previously, this logic was hardcoded for the Hamilton STAR deck.
+     */
+    private generateRailBasedDeck(
+        spec: any, // DeckDefinitionSpec
+        protocol: ProtocolDefinition,
+        assetMap?: Record<string, any>
+    ): PlrDeckData {
         const deck: PlrResource = {
             name: "deck",
-            type: "HamiltonSTARDeck",
+            type: spec.fqn || environment.defaultDeckType,
             location: { x: 0, y: 0, z: 0, type: "Coordinate" },
-            size_x: 1200,
-            size_y: 653.5,
-            size_z: 500,
-            num_rails: 30,
+            size_x: spec.dimensions.width,
+            size_y: spec.dimensions.height,
+            size_z: spec.dimensions.depth,
+            num_rails: spec.numRails,
             children: []
         };
 
         if (protocol && assetMap) {
-            const setup = this.carrierInference.createDeckSetup(protocol, 'HamiltonSTARDeck');
+            const setup = this.carrierInference.createDeckSetup(protocol, spec.fqn);
             const carrierMap = new Map<string, PlrResource>();
 
             setup.slotAssignments.forEach(assignment => {
@@ -222,13 +218,19 @@ export class DeckGeneratorService {
                 if (assignedAsset) {
                     let plrCarrier = carrierMap.get(assignment.carrier.id);
                     if (!plrCarrier) {
+                        // Calculate rail position dynamically from spec
+                        let x = 100 + (assignment.carrier.railPosition * 22.5); // Fallback
+                        if (spec.railPositions && spec.railPositions[assignment.carrier.railPosition] !== undefined) {
+                            x = spec.railPositions[assignment.carrier.railPosition];
+                        }
+
                         plrCarrier = {
                             name: assignment.carrier.name,
                             type: assignment.carrier.fqn.split('.').pop() || 'Carrier',
                             is_ghost: !assignedAsset.physically_placed,
                             location: {
-                                x: 100 + (assignment.carrier.railPosition * 22.5),
-                                y: 63,
+                                x: x,
+                                y: 63, // Standard Hamilton Y offset
                                 z: 0,
                                 type: "Coordinate"
                             },
@@ -261,12 +263,13 @@ export class DeckGeneratorService {
         protocol: ProtocolDefinition,
         assetMap?: Record<string, any>
     ): Promise<PlrDeckData> {
-        // 1. Base Deck (Hamilton STAR) - try to get dimensions from cache
-        const deckDims = await this.getResourceDimensions('HamiltonSTARDeck');
+        // 1. Base Deck - try to get dimensions from cache
+        const deckType = environment.defaultDeckType;
+        const deckDims = await this.getResourceDimensions(deckType);
 
         const deck: PlrResource = {
             name: "deck",
-            type: "HamiltonSTARDeck",
+            type: deckType,
             location: { x: 0, y: 0, z: 0, type: "Coordinate" },
             size_x: deckDims.size_x || 1200,
             size_y: deckDims.size_y || 653.5,

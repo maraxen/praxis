@@ -1,5 +1,12 @@
 """Custom exceptions and logging utility for Praxis backend."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+  from uuid import UUID
+
 
 class PraxisError(Exception):
   """Base exception for all custom Praxis backend errors.
@@ -204,6 +211,22 @@ class PylabRobotError(PraxisError):
     """
     super().__init__(message)
     self.original_plr_exception = original_plr_exception
+
+
+class AccessionNotFoundError(PraxisError, ValueError):
+  """Raised when an entity is not found during accession lookup."""
+
+  def __init__(self, entity_type: str, accession: str | UUID) -> None:
+    """Initialize the exception.
+
+    Args:
+        entity_type: The type of entity being looked up (e.g., "ProtocolRun")
+        accession: The accession ID that was not found
+
+    """
+    self.entity_type = entity_type
+    self.accession = accession
+    super().__init__(f"{entity_type} with accession '{accession}' not found.")
 
 
 class PyLabRobotVolumeError(PylabRobotError):

@@ -20,6 +20,7 @@ let db: Database | null = null;
 let poolUtil: any = null;
 let currentDbName: string = '/praxis.db';  // Tracks the currently opened database file
 let storageMode: StorageMode = 'opfs';     // Tracks whether using OPFS or in-memory fallback
+let currentBaseHref: string = '/';         // Tracks the base href for asset resolution
 
 /**
  * VFS requires absolute paths (leading /)
@@ -75,6 +76,12 @@ async function handleInit(id: string, payload: SqliteInitRequest) {
     const startTime = performance.now();
     const timings: Record<string, number> = {};
     const dbName = payload.dbName || VFS_DB_NAME;
+    
+    // Store baseHref for future asset resolution
+    if (payload.baseHref) {
+        currentBaseHref = payload.baseHref.endsWith('/') ? payload.baseHref : payload.baseHref + '/';
+        console.log(`[SqliteOpfsWorker] Setting baseHref to: ${currentBaseHref}`);
+    }
 
     if (db) {
         if (currentDbName === dbName) {
@@ -464,11 +471,16 @@ function sendError(id: string, message: string, stack?: string) {
  */
 function getWasmPath(): string {
     const origin = self.location.origin;
-    const path = self.location.pathname;
-
-    // Detect if we are on GitHub Pages (subdirectory /praxis/)
-    const isGhPages = path.includes('/praxis/');
-    const root = isGhPages ? '/praxis/' : '/';
+    
+    // Use the baseHref provided during initialization, or fallback to detection
+    let root = currentBaseHref;
+    
+    if (root === '/') {
+        // Fallback detection logic if baseHref wasn't provided or is default
+        const path = self.location.pathname;
+        const isGhPages = path.includes('/praxis/');
+        root = isGhPages ? '/praxis/' : '/';
+    }
 
     return `${origin}${root}assets/wasm/`;
 }

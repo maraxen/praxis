@@ -124,7 +124,11 @@ class FunctionDataOutput(FunctionDataOutputBase, table=True):
       "FunctionDataOutput", remote_side="FunctionDataOutput.accession_id"
     )
   )
-  well_outputs: list["WellDataOutput"] = Relationship(back_populates="function_data_output")
+  well_outputs: list["WellDataOutput"] = Relationship(
+    sa_relationship=relationship(
+      "WellDataOutput", back_populates="function_data_output", cascade="all, delete-orphan"
+    )
+  )
 
 
 class FunctionDataOutputCreate(FunctionDataOutputBase):

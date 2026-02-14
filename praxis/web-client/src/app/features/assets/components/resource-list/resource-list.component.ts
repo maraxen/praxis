@@ -1,5 +1,7 @@
 import { Component, ChangeDetectionStrategy, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,6 +11,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { AssetService } from '../../services/asset.service';
 import { Resource } from '../../models/asset.models';
 import { ResourceFiltersComponent, ResourceFilterState } from '../resource-filters/resource-filters.component';
+import { AssetEditDialogComponent } from '../asset-edit-dialog.component';
 
 @Component({
   selector: 'app-resource-list',
@@ -162,6 +165,9 @@ import { ResourceFiltersComponent, ResourceFilterState } from '../resource-filte
 })
 export class ResourceListComponent {
   private assetService = inject(AssetService);
+  private dialog = inject(MatDialog);
+  private snackBar = inject(MatSnackBar);
+
   resources = signal<Resource[]>([]);
   filteredResources = signal<Resource[]>([]);
 
@@ -245,12 +251,42 @@ export class ResourceListComponent {
     this.contextMenuTrigger.openMenu();
   }
 
-  editResource(_resource: Resource) {
-    // TODO: Implement resource editing
+  editResource(resource: Resource) {
+    const dialogRef = this.dialog.open(AssetEditDialogComponent, {
+      width: '500px',
+      data: {
+        asset: resource,
+        type: 'resource'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.assetService.updateResource(resource.accession_id, result).subscribe({
+          next: () => {
+            this.loadResources();
+            this.snackBar.open('Resource updated successfully', 'OK', { duration: 3000 });
+          },
+          error: (err) => {
+            console.error('Error updating resource', err);
+            this.snackBar.open('Failed to update resource', 'OK', { duration: 5000 });
+          }
+        });
+      }
+    });
   }
 
-  duplicateResource(_resource: Resource) {
-    // TODO: Implement resource duplication
+  duplicateResource(resource: Resource) {
+    this.assetService.duplicateResource(resource).subscribe({
+      next: () => {
+        this.loadResources();
+        this.snackBar.open('Resource duplicated successfully', 'OK', { duration: 3000 });
+      },
+      error: (err) => {
+        console.error('Error duplicating resource', err);
+        this.snackBar.open('Failed to duplicate resource', 'OK', { duration: 5000 });
+      }
+    });
   }
 
   deleteResource(resource: Resource) {

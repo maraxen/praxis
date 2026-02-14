@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { environment } from '../../../environments/environment';
 
 interface WarmWorkerState {
     worker: Worker;
@@ -128,7 +129,11 @@ export class PyodidePoolService {
         };
 
         // Send INIT message to start Pyodide loading
-        worker.postMessage({ type: 'INIT', id: 'pool-init' });
+        worker.postMessage({
+            type: 'INIT',
+            id: 'pool-init',
+            payload: { baseHref: (environment as any).baseHref }
+        });
     }
 
     /**

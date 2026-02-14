@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, ViewChild, Input } from '@angular/core';
+import { Component, OnInit, AfterViewInit, inject, signal, ViewChild, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatStepperModule } from '@angular/material/stepper';
@@ -54,7 +54,7 @@ import { toObservable } from '@angular/core/rxjs-interop';
   templateUrl: './asset-wizard.html',
   styleUrl: './asset-wizard.scss',
 })
-export class AssetWizard implements OnInit {
+export class AssetWizard implements OnInit, AfterViewInit {
   private fb = inject(FormBuilder);
   private assetService = inject(AssetService);
   public modeService = inject(ModeService);
@@ -196,17 +196,6 @@ export class AssetWizard implements OnInit {
       this.searchQuery.set('');
     });
 
-    // Handle initial asset type if provided
-    const preselected = this.data?.preselectedType || this.data?.initialAssetType;
-    if (preselected) {
-      const type = String(preselected).toUpperCase();
-      this.typeStepFormGroup.patchValue({ assetType: type });
-      setTimeout(() => {
-        if (this.stepper) {
-          this.stepper.selectedIndex = 1;
-        }
-      }, 0);
-    }
 
     // Resource search logic (kept for resources)
     const assetType$ = this.typeStepFormGroup.get('assetType')!.valueChanges.pipe(startWith(this.typeStepFormGroup.get('assetType')?.value || ''));
@@ -220,6 +209,34 @@ export class AssetWizard implements OnInit {
       }),
       shareReplay(1)
     );
+  }
+
+  ngAfterViewInit() {
+    // Handle initial asset type if provided
+    const preselected = this.data?.preselectedType || this.data?.initialAssetType;
+    if (preselected) {
+      const type = String(preselected).toUpperCase();
+      this.typeStepFormGroup.patchValue({ assetType: type });
+      setTimeout(() => {
+        if (this.stepper) {
+          this.stepper.selectedIndex = 1;
+        }
+      }, 0);
+    }
+
+    // Handle preselected definition (Resources only for now)
+    const preselectedDefinition = this.data?.preselectedDefinition;
+    if (preselectedDefinition) {
+      this.typeStepFormGroup.patchValue({ assetType: 'RESOURCE' });
+      const category = preselectedDefinition.plr_category || 'Other';
+      this.categoryStepFormGroup.patchValue({ category: category });
+      this.selectDefinition(preselectedDefinition);
+      setTimeout(() => {
+        if (this.stepper) {
+          this.stepper.selectedIndex = 3; // Config step for resources
+        }
+      }, 400); // Increased timeout for stability
+    }
   }
 
   searchDefinitions(query: string) {

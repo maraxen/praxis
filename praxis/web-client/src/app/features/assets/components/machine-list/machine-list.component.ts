@@ -10,6 +10,7 @@ import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AssetService } from '../../services/asset.service';
 import { Machine, MachineDefinition } from '../../models/asset.models';
@@ -17,6 +18,7 @@ import { AssetStatusChipComponent } from '../asset-status-chip/asset-status-chip
 import { LocationBreadcrumbComponent } from '../location-breadcrumb/location-breadcrumb.component';
 import { MaintenanceBadgeComponent } from '../maintenance-badge/maintenance-badge.component';
 import { MachineDetailsDialogComponent } from './machine-details-dialog.component';
+import { AssetEditDialogComponent } from '../asset-edit-dialog.component';
 import { ViewControlsComponent } from '@shared/components/view-controls/view-controls.component';
 import { ViewControlsConfig, ViewControlsState } from '@shared/components/view-controls/view-controls.types';
 import { AppStore } from '@core/store/app.store';
@@ -291,6 +293,7 @@ import { AppStore } from '@core/store/app.store';
 export class MachineListComponent implements OnInit, OnDestroy {
   private assetService = inject(AssetService);
   private dialog = inject(MatDialog);
+  private snackBar = inject(MatSnackBar);
   public store = inject(AppStore);
 
   machines = signal<Machine[]>([]);
@@ -517,18 +520,54 @@ export class MachineListComponent implements OnInit, OnDestroy {
   }
 
   viewDetails(machine: Machine) {
-    this.dialog.open(MachineDetailsDialogComponent, {
+    const dialogRef = this.dialog.open(MachineDetailsDialogComponent, {
       width: '800px', // Wider to accommodate tabs and deck view
       data: { machine }
     });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result === 'edit') {
+        this.editMachine(machine);
+      }
+    });
   }
 
-  editMachine(_machine: Machine) {
-    // TODO: Implement machine editing
+  editMachine(machine: Machine) {
+    const dialogRef = this.dialog.open(AssetEditDialogComponent, {
+      width: '500px',
+      data: {
+        asset: machine,
+        type: 'machine'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.assetService.updateMachine(machine.accession_id, result).subscribe({
+          next: () => {
+            this.loadMachines();
+            this.snackBar.open('Machine updated successfully', 'OK', { duration: 3000 });
+          },
+          error: (err) => {
+            console.error('Error updating machine', err);
+            this.snackBar.open('Failed to update machine', 'OK', { duration: 5000 });
+          }
+        });
+      }
+    });
   }
 
-  duplicateMachine(_machine: Machine) {
-    // TODO: Implement machine duplication
+  duplicateMachine(machine: Machine) {
+    this.assetService.duplicateMachine(machine).subscribe({
+      next: () => {
+        this.loadMachines();
+        this.snackBar.open('Machine duplicated successfully', 'OK', { duration: 3000 });
+      },
+      error: (err) => {
+        console.error('Error duplicating machine', err);
+        this.snackBar.open('Failed to duplicate machine', 'OK', { duration: 5000 });
+      }
+    });
   }
 
   deleteMachine(machine: Machine) {

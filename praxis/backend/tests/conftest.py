@@ -21,9 +21,9 @@ import praxis.backend.api.dependencies as dependencies_module
 # Use in-memory SQLite for these tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def db_engine():
-    """Session-scoped database engine for SQLite in-memory."""
+    """Function-scoped database engine for SQLite in-memory."""
     engine = create_async_engine(
         TEST_DATABASE_URL,
         connect_args={"check_same_thread": False},

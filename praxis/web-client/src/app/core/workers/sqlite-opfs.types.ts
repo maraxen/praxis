@@ -21,6 +21,8 @@ export interface SqliteInitRequest {
     dbName?: string;
     /** Optional directory in OPFS to use for the SAH pool. Defaults to 'praxis-data' */
     poolDirectory?: string;
+    /** The base href of the application, used for resolving WASM and other assets. */
+    baseHref?: string;
 }
 
 export interface SqliteExecRequest {

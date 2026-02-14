@@ -28,6 +28,7 @@ from praxis.backend.services.utils.query_builder import (
   apply_property_filters,
   apply_specific_id_filters,
 )
+from praxis.backend.services.utils.validation import validate_accession_ids
 from praxis.backend.utils.db import Base
 from praxis.backend.utils.db_decorator import handle_db_transaction
 from praxis.backend.utils.logging import get_logger
@@ -40,6 +41,7 @@ UUID = uuid.UUID
 class ResourceService(CRUDBase[Resource, ResourceCreate, ResourceUpdate]):
   """Service for resource-related operations."""
 
+  @validate_accession_ids
   @handle_db_transaction
   async def create(
     self,
@@ -73,6 +75,7 @@ class ResourceService(CRUDBase[Resource, ResourceCreate, ResourceUpdate]):
     )
     return resource_model
 
+  @validate_accession_ids
   async def get(
     self,
     db: AsyncSession,
@@ -172,6 +175,7 @@ class ResourceService(CRUDBase[Resource, ResourceCreate, ResourceUpdate]):
                 break
     return update_data
 
+  @validate_accession_ids
   @handle_db_transaction
   async def update(
     self,
@@ -219,6 +223,7 @@ class ResourceService(CRUDBase[Resource, ResourceCreate, ResourceUpdate]):
     )
     return db_obj
 
+  @validate_accession_ids
   @handle_db_transaction
   async def remove(
     self,
@@ -243,6 +248,7 @@ class ResourceService(CRUDBase[Resource, ResourceCreate, ResourceUpdate]):
     )
     return resource_model
 
+  @validate_accession_ids
   @handle_db_transaction
   async def update_resource_location_and_status(
     self,
