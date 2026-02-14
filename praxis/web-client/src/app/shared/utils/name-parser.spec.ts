@@ -60,4 +60,54 @@ describe('extractUniqueNameParts', () => {
         expect(result.get('ABC 2')).toBe('ABC 2');
         expect(result.get('XYZ 3')).toBe('XYZ 3');
     });
+
+    it('should handle array with empty strings', () => {
+        const names = ['', 'A', ''];
+        const result = extractUniqueNameParts(names);
+        expect(result.get('')).toBe('');
+        expect(result.get('A')).toBe('A');
+    });
+
+    it('should handle names with special characters', () => {
+        const names = ['Wrapper #1', 'Wrapper #2'];
+        const result = extractUniqueNameParts(names);
+        // Tokens: ['Wrapper', ' ', '#1'] vs ['Wrapper', ' ', '#2']
+        // Common prefix: 'Wrapper', ' '
+        expect(result.get('Wrapper #1')).toBe('#1');
+        expect(result.get('Wrapper #2')).toBe('#2');
+    });
+
+    it('should handle very long strings', () => {
+        // Note: The parser relies on delimiters (space, _, -) to split tokens.
+        // Long strings without delimiters are treated as single tokens.
+        const prefix = 'A'.repeat(100) + ' ';
+        const suffix = ' ' + 'B'.repeat(100);
+        const names = [prefix + 'Unique1' + suffix, prefix + 'Unique2' + suffix];
+        const result = extractUniqueNameParts(names);
+        expect(result.get(names[0])).toBe('Unique1');
+        expect(result.get(names[1])).toBe('Unique2');
+    });
+
+    it('should handle Unicode characters', () => {
+        const names = ['µL Tip', 'mL Tip'];
+        const result = extractUniqueNameParts(names);
+        // ' Tip' is common suffix.
+        expect(result.get('µL Tip')).toBe('µL');
+        expect(result.get('mL Tip')).toBe('mL');
+    });
+
+    it('should handle duplicate names by falling back to full name', () => {
+         const names = ['Same', 'Same'];
+         const result = extractUniqueNameParts(names);
+         expect(result.get('Same')).toBe('Same');
+    });
+
+    it('should handle mixed delimiters but similar structure', () => {
+        const names = ['A-Middle1-B', 'A_Middle2_B'];
+        const result = extractUniqueNameParts(names);
+        // Prefix A, Suffix B. Middle: -Middle1- and _Middle2_.
+        // Trimming separators -> Middle1, Middle2
+        expect(result.get('A-Middle1-B')).toBe('Middle1');
+        expect(result.get('A_Middle2_B')).toBe('Middle2');
+    });
 });
