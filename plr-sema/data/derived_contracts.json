@@ -1,4 +1,115 @@
 {
+  "backend_surface": {
+    "n_surface_absent_by_c15": 51,
+    "n_surface_candidates": 66,
+    "n_surface_rows": 15,
+    "rows": {
+      "Deck.get_all_resources": {
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": []
+      },
+      "EVOBackend.can_pick_up_tip": {
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": [
+          "channel_idx",
+          "tip"
+        ]
+      },
+      "LiquidHandlerChatterboxBackend.can_pick_up_tip": {
+        "constant_return": true,
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": [
+          "channel_idx",
+          "tip"
+        ]
+      },
+      "NimbusBackend.can_pick_up_tip": {
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": [
+          "channel_idx",
+          "tip"
+        ]
+      },
+      "OpentronsOT2Backend.can_pick_up_tip": {
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": [
+          "channel_idx",
+          "tip"
+        ]
+      },
+      "Resource.get_size_x": {
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": []
+      },
+      "Resource.get_size_y": {
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": []
+      },
+      "Resource.get_size_z": {
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": []
+      },
+      "ResourceStack.get_size_x": {
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": []
+      },
+      "ResourceStack.get_size_y": {
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": []
+      },
+      "ResourceStack.get_size_z": {
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": []
+      },
+      "STARBackend.can_pick_up_tip": {
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": [
+          "channel_idx",
+          "tip"
+        ]
+      },
+      "SerializingBackend.can_pick_up_tip": {
+        "constant_return": true,
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": [
+          "channel_idx",
+          "tip"
+        ]
+      },
+      "USB._serialize_ctrl_transfer_request": {
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": [
+          "bmRequestType",
+          "bRequest",
+          "wValue",
+          "wIndex",
+          "data_or_wLength"
+        ]
+      },
+      "VantageBackend.can_pick_up_tip": {
+        "has_var_keyword": false,
+        "has_var_positional": false,
+        "params": [
+          "channel_idx",
+          "tip"
+        ]
+      }
+    }
+  },
   "contracts": {
     "A4SBackend.__init__": {
       "gaps": [],
@@ -312381,23 +312492,23 @@
     "derive_python_version": "3.14.6",
     "plr": {
       "branch": "HEAD",
-      "dirty": true,
-      "dirty_content_id": "2ca7d1248dfd68c0312a93b490f3bd6211afc043",
+      "dirty": false,
+      "dirty_content_id": null,
       "hash": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
       "provenance_source": "git",
-      "toplevel": "/home/marielle/projects/praxis/external/pylabrobot"
+      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/external/pylabrobot"
     },
     "praxis": {
-      "branch": "coxswain-p2-pipeline",
+      "branch": "wt-20260909-172820",
       "dirty": true,
-      "dirty_content_id": "876e04ee3627217d0fa7a33ec8286bb299e19d1104a72f73dff07057959ae86a",
-      "hash": "f63b3ff825d66fc55c699761e6e94faba101eb0a",
+      "dirty_content_id": "e1527f7b8bb6a60fb21bbddb0e669afb1b39ba2d7812100a82fa76a276282c62",
+      "hash": "bd4975bc313b68857c2fe90544afc6559b37f56f",
       "provenance_source": "git",
-      "toplevel": "/home/marielle/projects/praxis"
+      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-07T21:34:43.314805+00:00",
+    "stamped_at": "2026-09-09T17:44:42.673501+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   }

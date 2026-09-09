@@ -64,6 +64,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from plr_sema.derive.predicate_ast import EnvRef, from_json as predicate_from_json, walk as predicate_walk
+
 from plr_sema.derive import (
     DroppedCall,
     Qualkey,
@@ -105,6 +107,13 @@ __all__ = [
     # #4958): the generalised conditional-guard rule and R1's
     # position-containment recognition, as a pure function T26/T27 import.
     "volume_guard_is_unconditional",
+    # 260909 (spec 260909_plr-sema-observation-increment.md §16.3, T41,
+    # backlog #5023): the derived backend surface.
+    "BackendSurfaceEntry",
+    "backend_surface_entry_to_json",
+    "collect_env_ref_method_names",
+    "build_backend_surface",
+    "probe_method_definitions",
 ]
 
 #: §10.2.5's second conjunct: the taxonomy module path that narrows the
@@ -1306,6 +1315,270 @@ def build_plr_function_index(plr_pkg_root: Path) -> FunctionIndex:
                         qualname = f"{top.name}.{member.name}"
                         out.setdefault((module, qualname, member.lineno), member)
     return out
+
+
+# ---------------------------------------------------------------------------
+# T41 (spec 260909_plr-sema-observation-increment.md §16.3) -- the derived
+# backend surface: a per-(class, method) table over `build_plr_function_index`
+# recording `params`/`has_var_keyword`/`has_var_positional`/`constant_return`.
+# ---------------------------------------------------------------------------
+
+#: JSON-safe scalar types (mirrors `bindings._constant_json`'s own
+#: restriction -- NOT imported from there, per this module's established
+#: "two independent copies of a small helper" convention, see
+#: `build_plr_class_index`'s own docstring above).
+_JSON_SCALAR_TYPES = (bool, int, float, str, type(None))
+
+
+@dataclass(frozen=True, slots=True)
+class BackendSurfaceEntry:
+    """T41: one row of the derived backend surface. ``constant_return`` is
+    only meaningful when ``has_constant_return`` is ``True`` -- the JSON
+    writer (``derive/__main__.py``) omits the ``"constant_return"`` key
+    entirely otherwise, matching this module's own additive-field/omitted-
+    key discipline (``param_defaults`` etc.): "no constant return" and "not
+    computed at all" both read back as absent via ``.get()``."""
+
+    params: tuple[str, ...]
+    has_var_keyword: bool
+    has_var_positional: bool
+    has_constant_return: bool
+    constant_return: Any = None
+
+
+def backend_surface_entry_to_json(entry: "BackendSurfaceEntry") -> dict[str, Any]:
+    """T41: the wire shape for one row -- see ``BackendSurfaceEntry``'s own
+    docstring for the ``constant_return`` omission rule."""
+    payload: dict[str, Any] = {
+        "params": list(entry.params),
+        "has_var_keyword": entry.has_var_keyword,
+        "has_var_positional": entry.has_var_positional,
+    }
+    if entry.has_constant_return:
+        payload["constant_return"] = entry.constant_return
+    return payload
+
+
+def _constant_return_shape(node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[bool, Any]:
+    """T41 (§16.3's S1 table, `constant_return`'s own normative box):
+    ``(True, value)`` iff ``node.body`` is EXACTLY one statement, that
+    statement an ``ast.Return``, and its ``value`` an ``ast.Constant`` whose
+    Python value is one of the five JSON-safe scalar types. A docstring
+    counts as a statement -- a docstring-plus-return body has ``len(body)
+    == 2`` and fails here, deliberately (the spec's own point: this is the
+    NARROWEST shape test that decides `:514`, not "the first return wins").
+    ``(False, None)`` for anything else, INCLUDING a syntactically-single
+    ``ast.Constant`` return whose value is not JSON-safe (bytes, complex,
+    ``...``) -- fail-closed, same spirit as ``bindings._constant_json``."""
+    body = node.body
+    if len(body) != 1:
+        return False, None
+    (stmt,) = body
+    if not isinstance(stmt, ast.Return) or stmt.value is None:
+        return False, None
+    if not isinstance(stmt.value, ast.Constant):
+        return False, None
+    value = stmt.value.value
+    if not isinstance(value, _JSON_SCALAR_TYPES):
+        return False, None
+    return True, value
+
+
+def _has_var_keyword(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    return node.args.kwarg is not None
+
+
+def _has_var_positional(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    return node.args.vararg is not None
+
+
+def _non_default_params_after_self(node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[str, ...]:
+    """T41 `params` column: parameter names after ``self``, excluding
+    ``*args``/``**kwargs``, that carry no default -- positional-or-keyword
+    (posonly + ordinary) params via the same ``defaults``-aligned-to-the-
+    end convention ``bindings.param_defaults_from_function`` already uses,
+    plus keyword-only params whose own ``kw_defaults`` entry is ``None``
+    (a real "no default at all" AST sentinel, not the JSON value ``null``
+    -- same distinction that function's own docstring makes).
+
+    Every caller of this function has already survived the C15 absence
+    rule (``_backend_surface_row_absent``), so it is never handed a
+    decorated definition -- meaning its first positional parameter is
+    ``self`` by PLR's own convention. Asserted, not assumed: a candidate
+    that is not truly an instance method here would silently miscount
+    every rule reading ``params``, and that failure must be loud."""
+    args = node.args
+    positional = list(args.posonlyargs) + list(args.args)
+    assert positional and positional[0].arg == "self", (
+        f"{node.name}: expected the first parameter to be 'self', got "
+        f"{positional[0].arg if positional else '<none>'} -- backend surface "
+        f"candidates are always instance methods that survived the absence rule"
+    )
+    n_defaults = len(args.defaults)
+    offset = len(positional) - n_defaults
+    non_default_positional = [a.arg for a in positional[1:offset]]  # [1:] drops self
+    non_default_kwonly = [a.arg for a, default in zip(args.kwonlyargs, args.kw_defaults) if default is None]
+    return tuple(non_default_positional + non_default_kwonly)
+
+
+def _backend_surface_row_absent(node: ast.FunctionDef | ast.AsyncFunctionDef, *, n_definitions_at_qualname: int) -> bool:
+    """T41's ABSENCE rule (C15, §16.3's normative box, D5b's shared
+    soundness gate): a row is absent when ANY of:
+
+    1. ``node.decorator_list`` is non-empty -- ``@property``, ``@x.setter``,
+       ``@staticmethod``, ``@classmethod``, ``@abstractmethod``, or any
+       other decorator all fall here;
+    2. the definition IS a property -- structurally the SAME test as (1)
+       for every shape reachable from ``build_plr_function_index`` (a bare
+       ``property(...)`` assignment is not itself a ``FunctionDef``, so it
+       never becomes a row candidate at all; a getter/setter PAIR sharing a
+       qualname is caught by (3)). Kept as its own named clause because the
+       spec's own normative box enumerates it separately and says exactly
+       this -- not because a second, independent AST test exists for it;
+    3. the same ``(module, qualname)`` is defined at more than one lineno
+       (``n_definitions_at_qualname > 1``, the caller's own count over
+       ``build_plr_function_index``).
+
+    Why this matters (not conservatism for its own sake): ``constant_return``
+    is read off the AST and R-CONST claims the value the RUNTIME call
+    returns; a non-``functools.wraps`` decorator makes those two different.
+    The abstract base's ``can_pick_up_tip`` is ``@abstractmethod``-decorated
+    (`external/pylabrobot/pylabrobot/liquid_handling/backends/backend.py:183-187`),
+    so it is absent by clause (1) -- the right answer, and asserted by name
+    in ``tests/test_derive.py``.
+    """
+    if node.decorator_list:
+        return True
+    if n_definitions_at_qualname > 1:
+        return True
+    return False
+
+
+def collect_env_ref_method_names(contracts: dict[str, Any]) -> frozenset[str]:
+    """T41's ONE closed selection rule, first half (§16.3, C16 -- second
+    half deleted at spec_version 2): every DISTINCT last path segment of an
+    ``EnvRef`` node reachable in ANY guard's regenerated ``"predicate"``
+    JSON, across the WHOLE ``contracts`` table (``derive/__main__.py``'s
+    ``build_derived_contracts_payload`` output, i.e. what
+    ``derive_contract``/``_guard_to_json`` actually shipped -- not a second,
+    independent notion of the predicate shape). Reads the table the same
+    way a downstream consumer would: ``predicate_ast.from_json`` on each
+    guard's own ``"predicate"`` key, then ``predicate_ast.walk``. This
+    function introduces no hand-typed method name and no base-class name --
+    ``contracts`` is itself derived."""
+    names: set[str] = set()
+    for entry in contracts.values():
+        for guard in entry.get("guards", ()):
+            predicate_json = guard.get("predicate")
+            if predicate_json is None:
+                continue
+            node = predicate_from_json(predicate_json)
+            for sub in predicate_walk(node):
+                if isinstance(sub, EnvRef) and sub.path:
+                    names.add(sub.path[-1])
+    return frozenset(names)
+
+
+def build_backend_surface(
+    function_index: "FunctionIndex",
+    selected_method_names: frozenset[str],
+) -> tuple[dict[str, "BackendSurfaceEntry"], int, int]:
+    """T41 (§16.3): the derived backend surface. Returns ``(rows,
+    n_surface_candidates, n_surface_absent_by_c15)`` -- ``n_surface_rows``
+    is the caller's ``len(rows)``, and ``candidates - absent == rows`` holds
+    by construction (every candidate becomes exactly one row or is counted
+    absent; no third outcome).
+
+    **Candidate selection (the ONE closed rule, spec_version 2).** A
+    ``(module, qualname, lineno)`` entry of ``function_index`` is a
+    candidate iff ``qualname`` names a CLASS method (contains a ``.`` --
+    module-level functions are never surface rows) and its last segment is
+    a member of ``selected_method_names`` (``collect_env_ref_method_names``'s
+    output). **No base-class name, no method list**: ``selected_method_names``
+    is derived from the contract table by the caller and never hand-typed
+    here; this function does not know or care what ``LiquidHandlerBackend``
+    is.
+
+    **Keying.** The bare key is ``qualname`` (already ``"ClassName.method"``,
+    exactly the "(class, method)" pair the spec names) when it is unique
+    among surviving rows; disambiguated as ``f"{qualname}@{module}:{lineno}"``
+    otherwise -- same single, uniform disambiguator ``build_contract_keys``
+    already uses for the analogous same-qualname-different-module collision,
+    chosen for the identical reason (one rule, not a two-tier one, keeps
+    this testable).
+    """
+    linenos_by_qualkey: dict[tuple[str, str], set[int]] = {}
+    for module, qualname, lineno in function_index:
+        linenos_by_qualkey.setdefault((module, qualname), set()).add(lineno)
+
+    candidates: list[tuple[str, str, int]] = []
+    for module, qualname, lineno in function_index:
+        if "." not in qualname:
+            continue
+        method_name = qualname.rsplit(".", 1)[-1]
+        if method_name in selected_method_names:
+            candidates.append((module, qualname, lineno))
+    candidates.sort()
+    n_candidates = len(candidates)
+
+    survivors: list[tuple[str, str, int, BackendSurfaceEntry]] = []
+    n_absent = 0
+    for module, qualname, lineno in candidates:
+        node = function_index[(module, qualname, lineno)]
+        n_defs = len(linenos_by_qualkey[(module, qualname)])
+        if _backend_surface_row_absent(node, n_definitions_at_qualname=n_defs):
+            n_absent += 1
+            continue
+        has_const, const_value = _constant_return_shape(node)
+        entry = BackendSurfaceEntry(
+            params=_non_default_params_after_self(node),
+            has_var_keyword=_has_var_keyword(node),
+            has_var_positional=_has_var_positional(node),
+            has_constant_return=has_const,
+            constant_return=const_value,
+        )
+        survivors.append((module, qualname, lineno, entry))
+
+    bare_key_counts: dict[str, int] = {}
+    for _module, qualname, _lineno, _entry in survivors:
+        bare_key_counts[qualname] = bare_key_counts.get(qualname, 0) + 1
+
+    rows: dict[str, BackendSurfaceEntry] = {}
+    for module, qualname, lineno, entry in survivors:
+        key = qualname if bare_key_counts[qualname] == 1 else f"{qualname}@{module}:{lineno}"
+        assert key not in rows, f"backend surface key collision building rows: {key!r}"
+        rows[key] = entry
+
+    assert n_candidates - n_absent == len(rows), (
+        f"backend surface candidate/absent/row counts do not reconcile: "
+        f"{n_candidates} - {n_absent} != {len(rows)}"
+    )
+    return rows, n_candidates, n_absent
+
+
+def probe_method_definitions(function_index: "FunctionIndex", method_name: str) -> tuple[int, int]:
+    """T41 (AC-16.2): a generic whole-tree probe -- ``(n_definitions,
+    n_constant_return)`` for every ``(module, qualname, lineno)`` entry of
+    ``function_index`` whose qualname's last segment equals ``method_name``,
+    counted BEFORE the C15 absence rule (a whole-tree fact, independent of
+    ``build_backend_surface``'s EnvRef-driven selection) and using the SAME
+    shape test (``_constant_return_shape``). ``method_name`` is a
+    caller-supplied parameter, never a literal inside this function -- the
+    ``can_pick_up_tip`` probe AC-16.2 requires is the CALLER's business
+    (``derive/__main__.py``'s regeneration diagnostic, ``tests/test_derive.py``),
+    keeping this function itself free of any hand-typed PLR method name."""
+    n_definitions = 0
+    n_constant_return = 0
+    for (module, qualname, lineno), node in function_index.items():
+        if "." not in qualname:
+            continue
+        if qualname.rsplit(".", 1)[-1] != method_name:
+            continue
+        n_definitions += 1
+        has_const, _value = _constant_return_shape(node)
+        if has_const:
+            n_constant_return += 1
+    return n_definitions, n_constant_return
 
 
 # ---------------------------------------------------------------------------

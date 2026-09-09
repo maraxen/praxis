@@ -70,10 +70,15 @@ from plr_sema.derive.predicate_ast import (
     contains_opaque,
     count_var_self,
     parse as parse_predicate,
+    to_json as predicate_to_json,
 )
 from plr_sema.derive.receiver_state import (
+    BackendSurfaceEntry,
+    backend_surface_entry_to_json,
+    build_backend_surface,
     build_plr_class_index,
     build_plr_function_index,
+    collect_env_ref_method_names,
     compute_delegate_channel_bindings,
     compute_volume_anchors,
     compute_volume_bridge,
@@ -83,6 +88,7 @@ from plr_sema.derive.receiver_state import (
     derive_receiver_states,
     for_over_comprehension_output,
     operand_pairing_idiom,
+    probe_method_definitions,
     reset_rule_candidates,
     volume_guard_is_unconditional,
 )
@@ -2954,3 +2960,261 @@ def test_substitute_recurses_into_env_ref_args() -> None:
     substituted = substitute(pred, bindings_by_name)
     assert isinstance(substituted, EnvRef)
     assert substituted.args == (Filtered(Var("items"), TRUE()),)
+
+
+# ---------------------------------------------------------------------------
+# T41 (spec 260909_plr-sema-observation-increment.md §16.3, backlog #5023):
+# the derived backend surface -- AC-16.2.
+# ---------------------------------------------------------------------------
+
+_BACKEND_SURFACE_SHAPE_SOURCE = '''
+class Backend:
+    def method_return_true(self, ops, use_channels, extra=1):
+        return True
+
+    def method_docstring_return(self, ops):
+        """A docstring counts as a statement (§16.3's own point)."""
+        return True
+
+    def method_two_statement(self, ops):
+        x = 1
+        return True
+
+    def method_return_name(self, y):
+        return y
+
+    def method_var_args(self, ops, *args, **kwargs):
+        return None
+'''
+
+_BACKEND_SURFACE_ABSENCE_SOURCE = '''
+def _some_wrapper(fn):
+    return fn
+
+
+class Backend:
+    @_some_wrapper
+    def method_decorated(self, ops):
+        return True
+
+    @property
+    def method_property(self):
+        return True
+
+    def method_duplicate(self, ops):
+        return True
+
+    def method_duplicate(self, ops, extra=1):
+        return False
+'''
+
+
+def test_ac_16_2_constant_return_shape_fixtures(tmp_path: Path) -> None:
+    """AC-16.2's four shape fixtures, one apiece: a single `return True`
+    body is admitted; a docstring-plus-return body is not; a two-statement
+    body is not; a `return <Name>` body is not. All five methods here
+    survive the absence rule (no decorator, unique lineno), so every one
+    becomes a ROW -- only `method_return_true`'s row carries a
+    `constant_return` key. `method_return_true`'s `params` column also
+    checks the non-default-after-self rule: `extra` carries a default and
+    is excluded, `ops`/`use_channels` are not."""
+    (tmp_path / "synth_backend.py").write_text(_BACKEND_SURFACE_SHAPE_SOURCE, encoding="utf-8")
+    function_index = build_plr_function_index(tmp_path)
+    selected = frozenset(
+        {
+            "method_return_true",
+            "method_docstring_return",
+            "method_two_statement",
+            "method_return_name",
+            "method_var_args",
+        }
+    )
+    rows, n_candidates, n_absent = build_backend_surface(function_index, selected)
+    assert n_candidates == 5
+    assert n_absent == 0
+    assert n_candidates - n_absent == len(rows) == 5
+
+    assert rows["Backend.method_return_true"].has_constant_return is True
+    assert rows["Backend.method_return_true"].constant_return is True
+    assert rows["Backend.method_return_true"].params == ("ops", "use_channels")
+
+    assert rows["Backend.method_docstring_return"].has_constant_return is False
+    assert rows["Backend.method_two_statement"].has_constant_return is False
+    assert rows["Backend.method_return_name"].has_constant_return is False
+
+    var_args_row = rows["Backend.method_var_args"]
+    assert var_args_row.has_var_positional is True
+    assert var_args_row.has_var_keyword is True
+    assert var_args_row.params == ("ops",)
+
+    # JSON encoding: the key is present iff has_constant_return.
+    assert backend_surface_entry_to_json(rows["Backend.method_return_true"])["constant_return"] is True
+    assert "constant_return" not in backend_surface_entry_to_json(rows["Backend.method_docstring_return"])
+
+
+def test_ac_16_2_absence_rule_fixtures(tmp_path: Path) -> None:
+    """AC-16.2's three C15 absence fixtures: a `@some_wrapper`-decorated
+    body that is otherwise a perfect `return True` yields an absent row
+    (clause 1); a `property` yields an absent row (clause 2, subsumed by
+    clause 1's decorator test as §16.3's own normative box states); and a
+    qualname defined at two linenos yields an absent row for BOTH
+    definitions (clause 3)."""
+    (tmp_path / "synth_backend.py").write_text(_BACKEND_SURFACE_ABSENCE_SOURCE, encoding="utf-8")
+    function_index = build_plr_function_index(tmp_path)
+    selected = frozenset({"method_decorated", "method_property", "method_duplicate"})
+    rows, n_candidates, n_absent = build_backend_surface(function_index, selected)
+    # 1 decorated + 1 property + 2 duplicate-lineno definitions of the same
+    # qualname = 4 candidates, all 4 absent, 0 rows.
+    assert n_candidates == 4
+    assert n_absent == 4
+    assert rows == {}
+
+
+def test_ac_16_2_can_pick_up_tip_whole_tree_probe(plr_function_index) -> None:
+    """AC-16.2: 'the whole-tree count of `can_pick_up_tip` definitions and
+    the count of those with a `constant_return`, asserted 2 at this pin
+    with the two files named' -- `probe_method_definitions` takes
+    `method_name` as a parameter (never a literal inside `receiver_state.py`
+    itself; see that function's own docstring), and this test is where the
+    literal `"can_pick_up_tip"` legitimately lives."""
+    n_definitions, n_constant_return = probe_method_definitions(plr_function_index, "can_pick_up_tip")
+    assert n_definitions == 8
+    assert n_constant_return == 2
+
+    constant_return_modules = sorted(
+        module
+        for (module, qualname, _lineno), node in plr_function_index.items()
+        if qualname.endswith(".can_pick_up_tip")
+        for has_const in [_constant_return_shape_for_test(node)]
+        if has_const
+    )
+    assert constant_return_modules == [
+        "pylabrobot.liquid_handling.backends.chatterbox",
+        "pylabrobot.liquid_handling.backends.serializing_backend",
+    ]
+
+
+def _constant_return_shape_for_test(node: ast.AST) -> bool:
+    """Local re-derivation of the shape test, kept independent of
+    `receiver_state._constant_return_shape` on purpose -- this is a
+    cross-check, not a re-import of the thing under test."""
+    body = node.body
+    if len(body) != 1:
+        return False
+    (stmt,) = body
+    return (
+        isinstance(stmt, ast.Return)
+        and stmt.value is not None
+        and isinstance(stmt.value, ast.Constant)
+        and isinstance(stmt.value.value, (bool, int, float, str, type(None)))
+    )
+
+
+def test_ac_16_2_abstract_base_can_pick_up_tip_absent_by_name(plr_function_index) -> None:
+    """AC-16.2: the abstract base's `@abstractmethod` `can_pick_up_tip`
+    (`external/pylabrobot/pylabrobot/liquid_handling/backends/backend.py:183-187`)
+    is asserted absent BY NAME -- the rule is shown biting on real PLR
+    source, not only on a synthetic fixture."""
+    rows, _n_candidates, _n_absent = build_backend_surface(plr_function_index, frozenset({"can_pick_up_tip"}))
+    assert "LiquidHandlerBackend.can_pick_up_tip" not in rows
+    # Confirmed present-but-absent, not simply never-a-candidate: the real
+    # node's decorator_list is non-empty.
+    node = next(
+        node
+        for (module, qualname, _lineno), node in plr_function_index.items()
+        if qualname == "LiquidHandlerBackend.can_pick_up_tip"
+        and module == "pylabrobot.liquid_handling.backends.backend"
+    )
+    assert node.decorator_list != []
+    # And the surface still selected other classes' definitions of the
+    # same method name.
+    assert "LiquidHandlerChatterboxBackend.can_pick_up_tip" in rows
+    assert "SerializingBackend.can_pick_up_tip" in rows
+
+
+def test_ac_16_2_no_hand_typed_base_class_name_ast_scan() -> None:
+    """§16.3's D3 box / C16: a grep-equivalent AST literal scan (docstrings
+    excluded, same mechanism `test_ac_14_2_iii_iv_no_hand_typed_volume_
+    names_ast_scan` already uses) over the three files T41 modifies finds
+    the literal string `LiquidHandlerBackend` NOWHERE -- the surface is
+    keyed on PLR's own function index, never on the base class name."""
+    scan_modules = (
+        REPO_ROOT / "plr-sema" / "src" / "plr_sema" / "derive" / "__init__.py",
+        REPO_ROOT / "plr-sema" / "src" / "plr_sema" / "derive" / "receiver_state.py",
+        REPO_ROOT / "plr-sema" / "src" / "plr_sema" / "derive" / "__main__.py",
+    )
+    offenders: list[str] = []
+    for path in scan_modules:
+        source = path.read_text(encoding="utf-8")
+        offenders.extend(_scan_volume_forbidden_literals(source, str(path), frozenset({"LiquidHandlerBackend"})))
+    assert offenders == [], f"hand-typed base-class name found: {offenders}"
+
+
+def test_ac_16_2_shipped_table_candidates_absent_rows_reconcile() -> None:
+    """The shipped, regenerated `derived_contracts.json`'s own
+    `backend_surface` block satisfies `candidates - absent == rows` -- the
+    published counts, checked against the real artifact rather than only
+    against a synthetic fixture."""
+    contracts_path = REPO_ROOT / "plr-sema" / "data" / "derived_contracts.json"
+    payload = json.loads(contracts_path.read_text(encoding="utf-8"))
+    surface = payload["backend_surface"]
+    assert surface["n_surface_candidates"] - surface["n_surface_absent_by_c15"] == surface["n_surface_rows"]
+    assert surface["n_surface_rows"] == len(surface["rows"])
+    assert surface["n_surface_candidates"] > 0
+    assert surface["n_surface_absent_by_c15"] > 0
+
+
+def test_ac_16_2_backend_surface_is_additive_fifth_top_level_key(
+    survey_records: list[SurveyRecord],
+    survey_index: dict[tuple[str, str], SurveyRecord],
+    real_stamp: SurveyStamp,
+    plr_function_index,
+) -> None:
+    """§16.3: `backend_surface` is the additive FIFTH top-level key of the
+    payload `build_derived_contracts_payload` returns, alongside the four
+    that already existed (`contracts`, `receiver_state`, `schema_version`,
+    `stamp`)."""
+    payload = build_derived_contracts_payload(
+        survey_records, survey_index, real_stamp, function_index=plr_function_index
+    )
+    assert set(payload.keys()) == {"schema_version", "stamp", "receiver_state", "contracts", "backend_surface"}
+    surface = payload["backend_surface"]
+    assert set(surface.keys()) == {"n_surface_candidates", "n_surface_absent_by_c15", "n_surface_rows", "rows"}
+    assert surface["n_surface_rows"] > 0
+
+
+def test_ac_16_2_backend_surface_degrades_when_function_index_omitted(
+    survey_records: list[SurveyRecord],
+    survey_index: dict[tuple[str, str], SurveyRecord],
+    real_stamp: SurveyStamp,
+) -> None:
+    """Degrade discipline (same convention `test_ac_14_2_bridge_absent_
+    when_volume_args_omitted` already establishes for `volume_guards`): a
+    caller that does not supply `function_index` gets `backend_surface`
+    present but empty, never a crash and never a stale/guessed table."""
+    payload = build_derived_contracts_payload(survey_records, survey_index, real_stamp)
+    assert payload["backend_surface"] == {
+        "n_surface_candidates": 0,
+        "n_surface_absent_by_c15": 0,
+        "n_surface_rows": 0,
+        "rows": {},
+    }
+
+
+def test_ac_16_2_collect_env_ref_method_names_walks_nested_predicates() -> None:
+    """`collect_env_ref_method_names` finds an `EnvRef`'s last path segment
+    regardless of how deeply it is nested inside `And`/`Cmp`/`Not` -- it
+    reads the regenerated contract table via `predicate_ast.from_json` +
+    `predicate_ast.walk`, not a hand-written partial JSON walk."""
+    nested_predicate = parse_predicate("self.head is not None and not len(self.backend.get_ids()) == 0")
+    contracts = {
+        "Some.method": {
+            "guards": [
+                {"predicate": predicate_to_json(nested_predicate)},
+                {"predicate": None},  # a guard the writer never populated -- tolerated.
+            ]
+        },
+        "Other.method": {"guards": []},
+    }
+    names = collect_env_ref_method_names(contracts)
+    assert names == frozenset({"head", "get_ids"})

@@ -63,8 +63,11 @@ from plr_sema.derive.receiver_state import (
     FunctionIndex,
     ReceiverState,
     VolumeAnchor,
+    backend_surface_entry_to_json,
+    build_backend_surface,
     build_plr_class_index,
     build_plr_function_index,
+    collect_env_ref_method_names,
     compute_channel_bridge,
     compute_tip_families,
     compute_volume_anchors,
@@ -72,6 +75,7 @@ from plr_sema.derive.receiver_state import (
     compute_volume_state_exceptions,
     derive_receiver_states,
     lid_typestate_anchor_evidence,
+    probe_method_definitions,
     receiver_state_to_json,
 )
 
@@ -280,6 +284,33 @@ def build_derived_contracts_payload(
         ):
             entry["is_volume_setter"] = True
         contracts[out_key] = entry
+    # 260909 (spec 260909_plr-sema-observation-increment.md §16.3, T41,
+    # backlog #5023): the additive FIFTH top-level key, `backend_surface`.
+    # Fail-closed to an empty block (candidates=0, absent=0, rows={}) when
+    # `function_index` was not supplied -- same discipline `param_defaults`
+    # already uses, and specifically what the `--gap-ledger`-only reuse of
+    # this function (no `function_index=` kwarg passed) degrades to. An
+    # additive top-level key participates in `contracts_sha` automatically
+    # (§16.3's own normative box), so regenerating cools the cache by
+    # design -- no separate plumbing needed for that.
+    if function_index is not None:
+        selected_method_names = collect_env_ref_method_names(contracts)
+        surface_rows, n_surface_candidates, n_surface_absent_by_c15 = build_backend_surface(
+            function_index, selected_method_names
+        )
+        backend_surface: dict[str, Any] = {
+            "n_surface_candidates": n_surface_candidates,
+            "n_surface_absent_by_c15": n_surface_absent_by_c15,
+            "n_surface_rows": len(surface_rows),
+            "rows": {key: backend_surface_entry_to_json(e) for key, e in sorted(surface_rows.items())},
+        }
+    else:
+        backend_surface = {
+            "n_surface_candidates": 0,
+            "n_surface_absent_by_c15": 0,
+            "n_surface_rows": 0,
+            "rows": {},
+        }
     return {
         "schema_version": SCHEMA_VERSION,
         "stamp": _stamp_to_dict(stamp),
@@ -288,6 +319,7 @@ def build_derived_contracts_payload(
         # closed -- degrades to today's all-`channel_guards`-free table).
         "receiver_state": {name: receiver_state_to_json(rs) for name, rs in sorted(receiver_states.items())},
         "contracts": contracts,
+        "backend_surface": backend_surface,
     }
 
 
@@ -412,6 +444,20 @@ def main(argv: list[str] | None = None) -> int:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"wrote {args.out}", file=sys.stderr)
+        # 260909 (T41, AC-16.2): "the complete measured selection published,
+        # including the whole-tree can_pick_up_tip count against the
+        # predicted 2 of 8". `probe_method_definitions` itself takes
+        # `method_name` as a parameter -- the literal "can_pick_up_tip"
+        # lives HERE, in the CLI's own reporting glue, never inside
+        # `receiver_state.py`'s selection/derivation logic.
+        n_cput_defs, n_cput_const = probe_method_definitions(function_index, "can_pick_up_tip")
+        print(
+            f"backend_surface: n_surface_candidates={payload['backend_surface']['n_surface_candidates']} "
+            f"n_surface_absent_by_c15={payload['backend_surface']['n_surface_absent_by_c15']} "
+            f"n_surface_rows={payload['backend_surface']['n_surface_rows']} "
+            f"can_pick_up_tip whole-tree: {n_cput_const}/{n_cput_defs} definitions have a constant_return",
+            file=sys.stderr,
+        )
         if receiver_states:
             for name, rs in sorted(receiver_states.items()):
                 print(
