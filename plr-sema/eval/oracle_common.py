@@ -34,7 +34,7 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping, Sequence
 
 log = logging.getLogger(__name__)
 
@@ -62,6 +62,99 @@ FINDINGS_SINK: FindingsSink | None = None
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONTRACTS = REPO_ROOT / "plr-sema" / "data" / "derived_contracts.json"
+
+
+# ---------------------------------------------------------------------------
+# The fence (spec 260909 §16.7, observation increment 7, T45, backlog
+# #5025): the ONE frame/site normalisation helper (F2a) and the ONE
+# any-frame excusal rule (F2), shared by `compare()` below (tier 1) and
+# `region_oracle.py` (tier 2b, F4's parity requirement) so the two lanes
+# never diverge on what "excused" means.
+# ---------------------------------------------------------------------------
+
+
+def normalize_plr_path(path: str) -> str:
+    """F2a's ONE normalisation helper, applied identically to BOTH sides of
+    a frame/site match: a captured ``error_frames[i]["file"]`` (a runtime
+    ``__file__``, always absolute -- ``verify.verifier._error_frames``'s own
+    docstring) and a ``PlrSite.file`` (repo-relative, e.g.
+    ``"external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py"``,
+    the shipped ``derived_contracts.json`` convention).
+
+    Resolves ``path`` (against :data:`REPO_ROOT` first when it is not
+    already absolute -- a ``PlrSite.file`` is always relative), then
+    re-roots it onto the LIVE ``pylabrobot`` package directory and
+    re-prefixes it with that package's OWN path relative to
+    :data:`REPO_ROOT` -- which is ``"external/pylabrobot/pylabrobot"``
+    whenever PLR resolves to the vendored submodule (F2a's second identity:
+    "equals the submodule-relative path the sites use ONLY when PLR
+    resolves to external/pylabrobot/"). A path that is not inside the live
+    ``pylabrobot`` package (an installed copy resolving elsewhere, or a
+    harness/test frame outside PLR entirely) normalises to its own
+    REPO_ROOT-relative form, or to its plain resolved form if it isn't
+    under REPO_ROOT either -- this function never raises, so two paths
+    that genuinely cannot be unified simply compare unequal (the "under an
+    installed copy it does not" case §16.7 names as an accepted limitation,
+    not a defect this helper is asked to paper over).
+    """
+    p = Path(path)
+    resolved = (p if p.is_absolute() else REPO_ROOT / p).resolve()
+    try:
+        import pylabrobot
+
+        pkg_root = Path(pylabrobot.__file__).resolve().parent
+        rel = resolved.relative_to(pkg_root)
+    except (ImportError, ValueError):
+        try:
+            return resolved.relative_to(REPO_ROOT).as_posix()
+        except ValueError:
+            return resolved.as_posix()
+    try:
+        prefix = pkg_root.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        prefix = pkg_root.name
+    return f"{prefix}/{rel.as_posix()}"
+
+
+def _frame_matches_site(frame: Mapping[str, Any], site: Any) -> bool:
+    """F2a's ``(file, lineno)`` identity -- both sides normalised through
+    :func:`normalize_plr_path` before comparison. ``site.lineno`` is "the
+    first line of the raising statement", which is exactly what
+    ``tb_lineno`` (and therefore this frame's own ``lineno``) reports for
+    that frame (F2a's first identity) -- compared directly, no
+    normalisation needed on the integer side.
+    """
+    return frame["lineno"] == site.lineno and (
+        normalize_plr_path(frame["file"]) == normalize_plr_path(site.file)
+    )
+
+
+def excuse_by_frame(
+    error_frames: "list[Mapping[str, Any]] | None",
+    excludes_sites: "Sequence[Any] | None",
+) -> "tuple[bool, Mapping[str, Any] | None]":
+    """F2's narrowing: a row is excused iff ANY frame in ``error_frames``
+    matches ANY site in ``excludes_sites``, with the OUTERMOST match
+    deciding when several do. ``error_frames`` is already outermost-first
+    (``verify.verifier._error_frames``'s own contract), so the first match
+    found while walking it in order IS the outermost one -- no separate
+    tie-break pass is needed. Returns ``(False, None)`` when either
+    argument is ``None``/empty or no frame matches; ``(True, frame)``
+    otherwise, where ``frame`` is the deciding (outermost) match, published
+    so a caller can report "every excused row's full frame list" (AC-16.8)
+    without re-deriving anything.
+
+    An innermost-wins rule would re-introduce exactly C5's defect one level
+    down (§16.7's own normative box) -- this function's iteration order is
+    therefore load-bearing, not incidental.
+    """
+    if not error_frames or not excludes_sites:
+        return False, None
+    for frame in error_frames:
+        for site in excludes_sites:
+            if _frame_matches_site(frame, site):
+                return True, frame
+    return False, None
 
 
 # --------------------------------------------------------------------------
@@ -401,6 +494,14 @@ class RuntimeOutcome:
     #: return, and a `result` that was never built at all (a harness-level
     #: exception below, same as `volume_tracking_observed` above).
     plr_observation: dict[str, Any] | None = None
+    #: 260909 (spec §16.7 F1, fence increment, T45, backlog #5025): the
+    #: whole `traceback.extract_tb(...)` frame list, outermost first, read
+    #: off `verify()`'s own additive `error_frames` result key -- itself
+    #: captured at BOTH of `verify()`'s `except` handlers, never re-derived
+    #: here. `None` on the same conditions as `error` itself: no exception
+    #: was raised, OR `result` was never built at all (a harness-level
+    #: exception below).
+    error_frames: list[dict[str, Any]] | None = None
 
 
 def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
@@ -445,6 +546,7 @@ def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
         element_type_singletons(element_sets),
         bool(result.get("volume_tracking_observed")),
         result.get("plr_observation"),
+        result.get("error_frames"),
     )
 
 
@@ -890,7 +992,26 @@ def run_static_calls(
 # --------------------------------------------------------------------------
 
 
-def compare(example: dict[str, Any], rt: RuntimeOutcome, st: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+def compare(
+    example: dict[str, Any],
+    rt: RuntimeOutcome,
+    st: dict[str, dict[str, Any]],
+    *,
+    excludes_sites: "Sequence[Any] | None" = None,
+) -> list[dict[str, Any]]:
+    """``excludes_sites`` (spec 260909 §16.7 F2, fence increment, T45,
+    backlog #5025): the SAME row-level ``PlrSite`` list a caller threads to
+    :func:`run_static_calls`'s own ``excludes_sites`` collector (raw
+    objects, not ``_site_key`` strings) -- ``None`` (the default)
+    reproduces T44's unnarrowed behaviour byte-identically, since
+    :func:`excuse_by_frame` returns ``(False, None)`` whenever its second
+    argument is falsy. A caller that passes the row's own collector gets
+    F2's narrowing: a ``scoped_verdict == "safe"`` + ``raised`` row is
+    excused (``unsound_scoped`` becomes ``False``) iff some frame in
+    ``rt.error_frames`` matches an excluded site, outermost match deciding
+    a tie. ``will_fail``/``ran_ok`` rows are NEVER excused -- F2's own
+    condition (1) requires ``outcome.startswith("raised")``.
+    """
     rows = []
     for i, call in enumerate(example["call_sequence"]):
         oid = f"op_{i}"
@@ -903,28 +1024,40 @@ def compare(example: dict[str, Any], rt: RuntimeOutcome, st: dict[str, dict[str,
         else:
             outcome = "not_reached"
         verdict = st[oid]["verdict"]
+        # 260909 (spec §16.7 F3): `unsound` -- this field, this predicate,
+        # this counter -- is UNMODIFIED by the fence. `exc_class` (via
+        # `outcome`'s own `f"raised:{rt.exc_class}"` string) is used only
+        # to LABEL the row, never compared against a `PlrSite` or any other
+        # fence input -- `exc_class` appears nowhere in the comparison path
+        # (§16.7's own normative box, F2).
         unsound = (verdict == "safe" and outcome.startswith("raised")) or (
             verdict == "will_fail" and outcome == "ran_ok"
         )
         # 260909 (spec §16.6, increment 7, T44, Q1): `unsound_scoped` is a
-        # SECOND, additive counter -- the `unsound` predicate above (that
-        # field, that predicate, that counter) is UNMODIFIED. Computed by
-        # the SAME predicate over `scoped_verdict` instead of `verdict`.
-        # T44 does not narrow by §16.7's frame capture (that lands in T45,
-        # `.praxia/docs/specs/260909_plr-sema-observation-increment.md`
-        # §16.7) -- this row's `unsound_scoped` is the unnarrowed
-        # predicate only. `.get(...)` tolerates a static side (e.g.
-        # `run_static`, the graph-payload path) that never publishes
-        # `scoped_verdict` -- `None` there, same as an operation whose row
-        # never threaded an `excludes_sites` collector.
+        # SECOND, additive counter, computed by the SAME predicate over
+        # `scoped_verdict` instead of `verdict`. `.get(...)` tolerates a
+        # static side (e.g. `run_static`, the graph-payload path) that
+        # never publishes `scoped_verdict` -- `None` there, same as an
+        # operation whose row never threaded an `excludes_sites` collector.
         scoped_verdict = st[oid].get("scoped_verdict")
-        unsound_scoped = (scoped_verdict == "safe" and outcome.startswith("raised")) or (
+        unsound_scoped_unnarrowed = (scoped_verdict == "safe" and outcome.startswith("raised")) or (
             scoped_verdict == "will_fail" and outcome == "ran_ok"
         )
+        # 260909 (spec §16.7 F2, T45): the fence's narrowing -- applied
+        # ONLY to the `safe`+`raised` shape F2 names; a `will_fail`+
+        # `ran_ok` row is never a candidate (F2's condition (1)).
+        excused_by_frame = False
+        matched_frame = None
+        if unsound_scoped_unnarrowed and scoped_verdict == "safe" and outcome.startswith("raised"):
+            excused_by_frame, matched_frame = excuse_by_frame(rt.error_frames, excludes_sites)
+        unsound_scoped = unsound_scoped_unnarrowed and not excused_by_frame
         rows.append({
             "index": i, "method": call["name"], "static": verdict,
             "static_findings": st[oid]["n_findings"], "runtime": outcome, "unsound": unsound,
             "scoped_verdict": scoped_verdict, "unsound_scoped": unsound_scoped,
+            "excused_by_frame": excused_by_frame,
+            "error_frames": rt.error_frames if excused_by_frame else None,
+            "matched_frame": matched_frame,
         })
     return rows
 

@@ -76,7 +76,10 @@ class TestTwoSitesSameMethodJoinMap:
         assert len(lines) == 2, f"expected two distinct lines, got {lines}"
         assert 0 not in lines
 
-        _bytecode, _findings, join_map, _static, _proved_trips = region_oracle._static_report(
+        # 260909 (spec §16.7 F4, fence increment, T45, backlog #5025):
+        # `_static_report` gained an additive 6th return value
+        # (`static_scoped`, `None` when `excludes_sites` is never passed).
+        _bytecode, _findings, join_map, _static, _static_scoped, _proved_trips = region_oracle._static_report(
             payload, contracts_payload, _PARAM_NAMES, _ir, _check_mod,
         )
 

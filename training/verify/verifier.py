@@ -50,6 +50,43 @@ class UnsupportedBackendError(ValueError):
     """backend= must name a liquid-handler chatterbox from CHATTERBOX_REGISTRY."""
 
 
+def _error_frames(exc: BaseException) -> list[dict[str, Any]]:
+    """260909 (spec §16.7 F1, fence increment, T45, backlog #5025): the
+    WHOLE ``traceback.extract_tb(...)`` frame list -- outermost first,
+    order preserved -- one dict per frame with ``file``/``lineno``/
+    ``qualname``. Walked from the RAW traceback chain (``exc.__traceback__``
+    / ``tb_next``), not :func:`traceback.extract_tb`'s own ``FrameSummary``
+    list, so ``qualname`` is ``code.co_qualname`` (the ``Class.method`` form
+    every ``PlrSite.qualname`` in ``derived_contracts.json`` uses -- verified
+    against the shipped table this row's own tests read from), never
+    ``FrameSummary.name``'s bare function name. ``tb.tb_lineno`` is used for
+    ``lineno``, not ``code.co_firstlineno`` -- the line CURRENTLY being
+    executed at that traceback entry, matching :func:`traceback.extract_tb`'s
+    own convention (F2a's first identity: this is what ``PlrSite.lineno``,
+    the first line of the raising statement, is compared against). Still
+    ~3 lines per call site -- this is the ONE fence-wide implementation
+    each ``except`` handler below calls.
+
+    C5 (WITHDRAWN spec_version 1 defect, §16.7's own normative box):
+    ``extract_tb`` -- and this walk, which reproduces its order -- returns
+    frames OUTERMOST-first. A captured-then-re-raised exception
+    (``liquid_handler.py:551-556`` catches, ``:575-576`` re-raises) has the
+    re-raise site EARLY in this list and the backend's original raise LAST,
+    the opposite of what an innermost-frame (``[-1]``) match would need.
+    """
+    frames: list[dict[str, Any]] = []
+    tb = exc.__traceback__
+    while tb is not None:
+        code = tb.tb_frame.f_code
+        frames.append({
+            "file": code.co_filename,
+            "lineno": tb.tb_lineno,
+            "qualname": getattr(code, "co_qualname", code.co_name),
+        })
+        tb = tb.tb_next
+    return frames
+
+
 async def _execute(setup: SetupHandle, call_sequence, *, strict: bool):
     """Plan + await each call; returns executed calls (possibly partial)."""
     executed: list[ExecutedCall] = []
@@ -121,6 +158,11 @@ async def verify(
     # same as `volume_tracking_observed`'s reasoning above) and stays
     # `None` if that capture window itself raises; it is never partial.
     plr_observation: dict[str, Any] | None = None
+    # 260909 (spec §16.7 F1, fence increment, T45, backlog #5025): the
+    # additive `error_frames` result key -- the WHOLE `traceback.extract_tb`
+    # frame list (see `_error_frames`'s own docstring), set at BOTH
+    # `except` handlers below, `None` when `error` stays `None`.
+    error_frames: list[dict[str, Any]] | None = None
 
     old_strictness = get_strictness()
     old_volume_tracking = _current_volume_tracking()
@@ -156,6 +198,7 @@ async def verify(
                 executed = await _execute(setup, call_sequence, strict=strict)
             except Exception as e:  # noqa: BLE001 - reported, not raised
                 error = f"{type(e).__name__}: {e}"
+                error_frames = _error_frames(e)
             finally:
                 with contextlib.suppress(Exception):
                     await setup.machine.stop()   # proper teardown, always
@@ -164,6 +207,7 @@ async def verify(
         after = setup.snapshot()
     except Exception as e:  # noqa: BLE001 - harness/deck-level failure
         error = f"{type(e).__name__}: {e}"
+        error_frames = _error_frames(e)
         if setup is not None:
             if before is None:
                 before = setup.snapshot()
@@ -184,6 +228,9 @@ async def verify(
                 # 260909 (spec §16.2.1, T40): always `None` on this path --
                 # `setup is None`, so the capture window never ran.
                 "plr_observation": plr_observation,
+                # 260909 (spec §16.7 F1, T45): populated -- this branch is
+                # itself the harness/deck-level `except`, which just set it.
+                "error_frames": error_frames,
             }
     finally:
         set_strictness(old_strictness)
@@ -225,6 +272,12 @@ async def verify(
         # 260909 (spec §16.2.1, T40): the observation record captured at
         # the ONE window above, or `None` if that window itself raised.
         "plr_observation": plr_observation,
+        # 260909 (spec §16.7 F1, T45): the whole `traceback.extract_tb`
+        # frame list, outermost first, from whichever `except` handler set
+        # `error` -- `None` when `error` is `None` (this row's own
+        # `_execute` succeeded and the harness-level `except` above was
+        # never entered either).
+        "error_frames": error_frames,
     }
 
 

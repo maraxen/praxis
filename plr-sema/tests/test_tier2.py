@@ -570,7 +570,10 @@ class TestOperationIterationJoin:
         payload = region_oracle._extract_graph_payload(
             fixture_path, cache_dir=tmp_path, runner_python=sys.executable,
         )
-        _bytecode, findings, join_map, static, _proved_trips = region_oracle._static_report(
+        # 260909 (spec §16.7 F4, fence increment, T45, backlog #5025):
+        # `_static_report` gained an additive 6th return value
+        # (`static_scoped`, `None` when `excludes_sites` is never passed).
+        _bytecode, findings, join_map, static, _static_scoped, _proved_trips = region_oracle._static_report(
             payload, contracts_payload, param_names, _ir, _check_mod,
         )
         assert findings, "expected at least one static finding"
