@@ -9,7 +9,6 @@ This module tests:
 import pytest
 
 from praxis.backend.core.tracing.executor import (
-  ProtocolTracingExecutor,
   trace_protocol_sync,
 )
 from praxis.backend.core.tracing.recorder import OperationRecorder
@@ -19,7 +18,6 @@ from praxis.backend.core.tracing.tracers import (
   TracedWell,
   TracedWellCollection,
 )
-
 
 # =============================================================================
 # Test TracedResource

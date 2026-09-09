@@ -1,0 +1,9 @@
+{
+ "cache_key": "823b17833cbe598f8366d114f4a3605b4647f4eea3fac5b69d1df0fcc88402e5",
+ "fetched_at": "2026-09-02T15:33:56.810821+00:00",
+ "input_hash": "d65577afbe8e4e661c0cd6a2fbe3ab3ce49184e43e942db8aa68192f6d39660f",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please replicate plate 2 onto plate 1 with 10 microliters.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

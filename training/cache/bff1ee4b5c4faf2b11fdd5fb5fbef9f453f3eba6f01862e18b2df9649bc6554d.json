@@ -1,0 +1,9 @@
+{
+ "cache_key": "bff1ee4b5c4faf2b11fdd5fb5fbef9f453f3eba6f01862e18b2df9649bc6554d",
+ "fetched_at": "2026-09-02T20:50:18.159171+00:00",
+ "input_hash": "bfcd84634ce477d4095621ff696e630c2ef638e2255a0cc95ed8ea050f381382",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Scan luminescence across the plate using a focal height of 5.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "aba4f1d57978daf10ed4051da166489fab15f37162f32e421a20e0b69e396c7e",
+ "fetched_at": "2026-09-02T16:59:13.233039+00:00",
+ "input_hash": "fb1847f2a62b55c19429797f2898fa42dd706340d617486206e049c90bdf9373",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure fluorescence in wells D3 and H1 with an excitation wavelength of 560 nm and a focal height of 5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

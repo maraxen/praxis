@@ -1,0 +1,9 @@
+{
+ "cache_key": "42d2b976843a31ef660fedce95a857bb973aba87c319fab36948fc917c2ef360",
+ "fetched_at": "2026-09-02T16:19:30.141398+00:00",
+ "input_hash": "427e26cc254075066d776bce09e76bc2c028c67ad6870d64af128e604ecc5bc9",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you scan absorbance at well A1 on the plate in the reader?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

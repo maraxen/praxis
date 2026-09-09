@@ -1,0 +1,76 @@
+{
+  "report_kind": "praxis-baseline-eval-report",
+  "clarify_scope_note": "clarify_expected/predicted cover OUT-OF-SURFACE (abstention) and MISSING-SLOT (derived missing_required) classes only; ambiguous-referent detection needs live kernel grounding (cue 2, F1-rev2/C-M1) and is verified at P2.9 integration, not in this static harness",
+  "mode": "local_inference",
+  "labeled_as": "LIVE LOCAL INFERENCE",
+  "base_revision": "outputs/p26d/A/checkpoint@main",
+  "model_label": "p26d arm A4 seed 0 recipe 0.1.0 [near-surface probe 0.1.6]",
+  "inputs": {
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "dtype_resolved": "torch.bfloat16",
+    "split": "eval",
+    "max_new_tokens": 128,
+    "dump_outputs": "/orcd/pool/008/so3_shared/marielle/projects/praxis/outputs/p26d/A/near_dump.json"
+  },
+  "n_examples": 24,
+  "exact_match_accuracy": {
+    "value": 0.9583333333333334,
+    "successes": 23,
+    "n": 24,
+    "wilson95": [
+      0.7976197133351083,
+      0.9926048262396404
+    ]
+  },
+  "clarify_recall": {
+    "value": 1.0,
+    "successes": 24,
+    "n": 24,
+    "wilson95": [
+      0.8620631340815442,
+      0.9999999999999999
+    ]
+  },
+  "clarify_precision": {
+    "value": 1.0,
+    "successes": 24,
+    "n": 24,
+    "wilson95": [
+      0.8620631340815442,
+      0.9999999999999999
+    ]
+  },
+  "clarify_confusion": {
+    "true_positive": 24,
+    "false_negative": 0,
+    "false_positive": 0,
+    "true_negative": 0
+  },
+  "tripwire_out_of_surface_tool_calls": 1,
+  "per_class": {
+    "out_of_surface": {
+      "n": 24,
+      "exact_match": {
+        "value": 0.9583333333333334,
+        "successes": 23,
+        "n": 24,
+        "wilson95": [
+          0.7976197133351083,
+          0.9926048262396404
+        ]
+      },
+      "clarify_expected": 24,
+      "clarify_predicted": 24
+    }
+  },
+  "exact_match_failures": [
+    {
+      "record_id": "cov-0762-sample_value_query__out-of-surface-17",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    }
+  ]
+}

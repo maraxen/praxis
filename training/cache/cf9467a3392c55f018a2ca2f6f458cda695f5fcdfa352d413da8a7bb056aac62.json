@@ -1,0 +1,9 @@
+{
+ "cache_key": "cf9467a3392c55f018a2ca2f6f458cda695f5fcdfa352d413da8a7bb056aac62",
+ "fetched_at": "2026-09-03T15:02:17.574964+00:00",
+ "input_hash": "6f06047a179111ddf8461d3ef8e4d1f21ca8f4a4f075df58acb333d5ae47157d",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please wipe the tip ends along the well edges to get rid of any excess liquid drops.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

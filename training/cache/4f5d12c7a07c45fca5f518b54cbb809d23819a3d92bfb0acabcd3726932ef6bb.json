@@ -1,0 +1,9 @@
+{
+ "cache_key": "4f5d12c7a07c45fca5f518b54cbb809d23819a3d92bfb0acabcd3726932ef6bb",
+ "fetched_at": "2026-09-02T15:24:39.616708+00:00",
+ "input_hash": "d5c9741ac788e575bdc8657508495c63bdcd1769f6a7f2cf03d8f737addeb0f1",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Bring over 200 microliters from well F7 of plate 1 into the same well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

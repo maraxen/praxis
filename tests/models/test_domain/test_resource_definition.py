@@ -8,8 +8,10 @@ from praxis.backend.models.domain.resource import (
     ResourceDefinition,
     ResourceDefinitionBase,
     ResourceDefinitionCreate,
-    ResourceDefinitionRead as ResourceDefinitionResponse,
     ResourceDefinitionUpdate,
+)
+from praxis.backend.models.domain.resource import (
+    ResourceDefinitionRead as ResourceDefinitionResponse,
 )
 
 
@@ -153,10 +155,10 @@ async def test_resource_definition_orm_non_unique_name(db_session: AsyncSession)
         fqn="test.unique.Plate2",
     )
     db_session.add(resource_def2)
-    
+
     # Should NOT raise IntegrityError
     await db_session.flush()
-    
+
     # Verify both exist
     result = await db_session.execute(
         select(ResourceDefinition).where(ResourceDefinition.name == "duplicate_plate")

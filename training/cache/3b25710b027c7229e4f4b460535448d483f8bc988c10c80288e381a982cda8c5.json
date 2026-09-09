@@ -1,0 +1,9 @@
+{
+ "cache_key": "3b25710b027c7229e4f4b460535448d483f8bc988c10c80288e381a982cda8c5",
+ "fetched_at": "2026-09-01T21:20:04.905255+00:00",
+ "input_hash": "f1183d6b6ecfd9b346fe6d4908cce5e54a552b0e49d96efc88edf6a38ba676a2",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Take a luminescence reading of the plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

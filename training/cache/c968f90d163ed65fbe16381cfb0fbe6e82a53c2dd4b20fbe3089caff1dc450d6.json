@@ -1,0 +1,9 @@
+{
+ "cache_key": "c968f90d163ed65fbe16381cfb0fbe6e82a53c2dd4b20fbe3089caff1dc450d6",
+ "fetched_at": "2026-09-02T16:36:09.020662+00:00",
+ "input_hash": "3df9025ba33fb9d5b3078adf29331ff7f2b397c461c42fec6ad7813408f50916",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Bin the tips at the C9 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

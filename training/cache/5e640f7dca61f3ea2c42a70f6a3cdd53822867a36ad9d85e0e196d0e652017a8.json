@@ -1,0 +1,9 @@
+{
+ "cache_key": "5e640f7dca61f3ea2c42a70f6a3cdd53822867a36ad9d85e0e196d0e652017a8",
+ "fetched_at": "2026-09-03T15:01:46.236889+00:00",
+ "input_hash": "6c3845e6682eb36a429b47c4150b4989ac20866fcb7e8a9a4855417e0a4aba13",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Do a quick tip touch against the inner well walls to get rid of any excess droplets.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

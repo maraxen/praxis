@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:58Z",
+ "key": "2d66c2b7c5f347678eedd0873b6a48388a0910d5b05d0c119bfac473a718d33a",
+ "prompt_sha256": "2d66c2b7c5f347678eedd0873b6a48388a0910d5b05d0c119bfac473a718d33a",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Dispense sample_volume_ul * 0.8 uL into plate dst_well\nPlease put sample_volume_ul * 0.8 uL of liquid into plate dst_well\nTransfer sample_volume_ul * 0.8 uL to plate dst_well",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

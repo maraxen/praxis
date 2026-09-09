@@ -1,0 +1,9 @@
+{
+ "cache_key": "cc02b993716fcfc9c589175e6bb23dfd13e896dc045713768ff0e289680d4146",
+ "fetched_at": "2026-09-02T20:48:04.051864+00:00",
+ "input_hash": "c08b5478f973dc9f8a0d6905e6d5b194dcf1ec5d3d5030d954d715b5bbf05bfd",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please scan luminescence on the loaded plate in wells C1, C10, D4, and H2 at a focal height of 10.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

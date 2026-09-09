@@ -1,0 +1,9 @@
+{
+ "cache_key": "32cecb03fa9fbfed1aa530f1b6ee8da52fb301c00619c2bd7959c3e908574211",
+ "fetched_at": "2026-09-03T15:03:34.772963+00:00",
+ "input_hash": "0473c36a6caf9c4532c5ea87dbce5afecfa56a411d2bd496484cfb79f709941d",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you just dump the whole plate directly into the waste?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "154d8426ed83a3d160d7e892cd81f4e5baf29649083885a68e500e916882cde5",
+ "fetched_at": "2026-09-02T16:46:29.082045+00:00",
+ "input_hash": "3a474db4247adf8084f1f8569f7b7a56324c3c63c0cfcab657f35341eb7f21bb",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you shift over to reservoir 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

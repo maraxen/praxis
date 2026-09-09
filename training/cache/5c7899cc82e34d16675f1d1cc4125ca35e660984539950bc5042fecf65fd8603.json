@@ -1,0 +1,9 @@
+{
+ "cache_key": "5c7899cc82e34d16675f1d1cc4125ca35e660984539950bc5042fecf65fd8603",
+ "fetched_at": "2026-09-03T15:02:57.293925+00:00",
+ "input_hash": "25215d1fc0abdae568b7495e2ed980b96e5eba2eb3bd935ae9a5b483bb526a7f",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and dump out all the wells of plate 2 directly into the biohazard waste.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

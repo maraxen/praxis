@@ -1,0 +1,9 @@
+{
+ "cache_key": "6edf1754322101aef8cdbd0d9b79d1c3643bf3456356066686bd60f1a300d179",
+ "fetched_at": "2026-09-02T17:10:41.814257+00:00",
+ "input_hash": "5185805d861fe26f5175e394125405f729f2a6d69660c7b88b3a126d4d016f8c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Let's get rid of the tips at the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

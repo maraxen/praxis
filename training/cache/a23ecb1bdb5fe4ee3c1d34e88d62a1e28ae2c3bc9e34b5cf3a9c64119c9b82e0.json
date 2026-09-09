@@ -1,0 +1,9 @@
+{
+ "cache_key": "a23ecb1bdb5fe4ee3c1d34e88d62a1e28ae2c3bc9e34b5cf3a9c64119c9b82e0",
+ "fetched_at": "2026-09-01T21:11:59.054770+00:00",
+ "input_hash": "45ed6802b9c5f5c00593a3348c2b91635488c49ff71e26d0173190541727c519",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Copy plate_2 onto plate_1 using a stamp transfer.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

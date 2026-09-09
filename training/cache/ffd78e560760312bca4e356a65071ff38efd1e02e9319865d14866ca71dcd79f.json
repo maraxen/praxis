@@ -1,0 +1,9 @@
+{
+ "cache_key": "ffd78e560760312bca4e356a65071ff38efd1e02e9319865d14866ca71dcd79f",
+ "fetched_at": "2026-09-02T15:11:10.982982+00:00",
+ "input_hash": "1a032701d27fc0dd451491eeb53a9daffed713bf617a9f2c63c23f9d55a989c6",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Add 50 microliters into well F6 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

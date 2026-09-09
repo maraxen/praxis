@@ -1,0 +1,9 @@
+{
+ "cache_key": "a111151df8437ed04064a9c0803e22f920a24127861cd42f6355aeca0e34f227",
+ "fetched_at": "2026-09-02T20:18:26.707987+00:00",
+ "input_hash": "3dd37de89b0c02deead660f002e5a86e3c6e9b2a99bb3f4fa95727f20f678557",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you cover scale station 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

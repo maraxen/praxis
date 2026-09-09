@@ -1,0 +1,9 @@
+{
+ "cache_key": "60b3c9015cc52685b421d42b901a042b54089a43fbe7d57cb8649f1ee667322d",
+ "fetched_at": "2026-09-02T15:08:07.909812+00:00",
+ "input_hash": "35d45f59cc656d85f61109562529e7eac654c89b0ecfb72fbb43485f78832cdf",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Pull 20 microliters into the pipette.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

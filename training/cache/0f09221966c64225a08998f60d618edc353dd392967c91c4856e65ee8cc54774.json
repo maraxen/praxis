@@ -1,0 +1,9 @@
+{
+ "cache_key": "0f09221966c64225a08998f60d618edc353dd392967c91c4856e65ee8cc54774",
+ "fetched_at": "2026-08-25T22:08:19.410070+00:00",
+ "input_hash": "62c22608dc764e31379f9e989ca2fc4a398a87763c2c3fe48e13c15823bc792f",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Dispense 20 microliters into the same well.\",\n\"clarification\": null\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

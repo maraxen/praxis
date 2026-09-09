@@ -1,0 +1,9 @@
+{
+ "cache_key": "6a0e06de698badba44cd6a7cff16f12f2058976709fad23783188bfc55aafa3f",
+ "fetched_at": "2026-09-01T21:19:40.787185+00:00",
+ "input_hash": "60cdebb2cd7e7c0267e1de4e024d4c09c22d12760e48bb77a52853aa82925482",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read fluorescence in well G5 with excitation at 560 nm, emission at 520 nm, and a focal height of 10 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

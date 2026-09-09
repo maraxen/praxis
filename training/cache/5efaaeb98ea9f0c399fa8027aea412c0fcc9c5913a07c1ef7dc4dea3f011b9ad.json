@@ -1,0 +1,9 @@
+{
+ "cache_key": "5efaaeb98ea9f0c399fa8027aea412c0fcc9c5913a07c1ef7dc4dea3f011b9ad",
+ "fetched_at": "2026-09-02T17:17:58.391561+00:00",
+ "input_hash": "45ee6f1793dc1733dfac7bdf4c7a1b1c7a35fd5b0c9689c2544bb4a398ffd9c2",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you bring the carrier to scale station 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

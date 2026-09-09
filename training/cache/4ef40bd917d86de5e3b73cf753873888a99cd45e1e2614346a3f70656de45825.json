@@ -1,0 +1,9 @@
+{
+ "cache_key": "4ef40bd917d86de5e3b73cf753873888a99cd45e1e2614346a3f70656de45825",
+ "fetched_at": "2026-09-02T15:12:06.519111+00:00",
+ "input_hash": "f2bcc7fb842b36a6b84ed474c524732843dd4a8beb5dc684cbf30885de6fd4d3",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Deliver the sample into plate 2, well D7.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

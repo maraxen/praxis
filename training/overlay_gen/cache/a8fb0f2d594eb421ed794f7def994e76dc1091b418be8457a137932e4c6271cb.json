@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:50Z",
+ "key": "a8fb0f2d594eb421ed794f7def994e76dc1091b418be8457a137932e4c6271cb",
+ "prompt_sha256": "a8fb0f2d594eb421ed794f7def994e76dc1091b418be8457a137932e4c6271cb",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Retrieve the tips located at position A1 on tip_rack_20.\nPlease grab tips from tip_rack_20 A1.\nLoad tips from position A1 of tip_rack_20.",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

@@ -1,0 +1,14 @@
+{
+  "experimental_partition_version": "1",
+  "phantom": {
+    "mix": "no such method on vendored LiquidHandler @ dd79c4c89; upstream models mixing via aspirate/dispense mix kwarg lists",
+    "blow_out": "no such method; modeled via blow_out_air_volume kwargs",
+    "touch_tip": "no such method vs vendored HEAD",
+    "dispense_to_waste": "no such method vs vendored HEAD"
+  },
+  "no_backend": {
+    "set_temperature": "vendored HeaterShaker method exists; no praxis backend wiring (defender R5)",
+    "shake": "same",
+    "stop_shaking": "same"
+  }
+}

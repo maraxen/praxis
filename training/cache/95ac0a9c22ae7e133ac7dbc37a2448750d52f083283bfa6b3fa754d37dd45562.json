@@ -1,0 +1,9 @@
+{
+ "cache_key": "95ac0a9c22ae7e133ac7dbc37a2448750d52f083283bfa6b3fa754d37dd45562",
+ "fetched_at": "2026-09-03T15:10:04.030586+00:00",
+ "input_hash": "cf68425daa911e5ec4b99db39c8f1d3d4605c753e9bf39f4b734902854301286",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Do you know what the latest score in the baseball game is?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

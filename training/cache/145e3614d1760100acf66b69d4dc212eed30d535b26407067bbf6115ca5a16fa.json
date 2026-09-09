@@ -1,0 +1,9 @@
+{
+ "cache_key": "145e3614d1760100acf66b69d4dc212eed30d535b26407067bbf6115ca5a16fa",
+ "fetched_at": "2026-09-04T00:05:35.285150+00:00",
+ "input_hash": "c5fbdbce638cd3a7ad6a9538dc17164d60645ac33fd02c2cea264a976c2a8070",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I cannot query or report on tip inventory levels. If you need to perform tip handling operations, I can run commands such as pick_up_tips, drop_tips, discard_tips, or move_resource.\", \"utterance\": \"Check the tip inventory to see if we need to load a new tip box.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

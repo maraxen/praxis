@@ -1,0 +1,9 @@
+{
+ "cache_key": "e9e4cbb64e8ff043f365532a6648c4864d01309831d75ca7090a139c6d8661b2",
+ "fetched_at": "2026-09-03T15:09:42.733884+00:00",
+ "input_hash": "9e05a56111114a39eb4a024ed9e0518d3ff061323a190f143a00de005aa91717",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you tell me a funny science joke?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

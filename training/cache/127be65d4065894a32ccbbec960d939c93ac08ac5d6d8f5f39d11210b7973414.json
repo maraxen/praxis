@@ -1,0 +1,9 @@
+{
+ "cache_key": "127be65d4065894a32ccbbec960d939c93ac08ac5d6d8f5f39d11210b7973414",
+ "fetched_at": "2026-09-02T20:24:24.867023+00:00",
+ "input_hash": "62261e7e106a2bbcbefccbc0f9c40bf3f388fa8d2d1dd3e2c176841f1aeca303",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put lid 2 on reservoir 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

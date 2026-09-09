@@ -1,0 +1,9 @@
+{
+ "cache_key": "b479c55b407e12de2d0a9a15e49171d007597f9e6da80291d7dc354a581130cc",
+ "fetched_at": "2026-08-28T18:05:07.428677+00:00",
+ "input_hash": "fce41248e4337a56a039c69d69d7b8a35266a66c159d4ed0bf3fc9f988a4bba3",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Perform a luminescence read on the plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

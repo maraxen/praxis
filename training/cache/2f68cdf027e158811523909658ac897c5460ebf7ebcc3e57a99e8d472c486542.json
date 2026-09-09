@@ -1,0 +1,9 @@
+{
+ "cache_key": "2f68cdf027e158811523909658ac897c5460ebf7ebcc3e57a99e8d472c486542",
+ "fetched_at": "2026-09-02T16:28:47.761213+00:00",
+ "input_hash": "f505168c23d3c94670d36e0412160c464963eaf8d0d3459bd59f2753bd73eacc",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Load tips onto the pipette.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

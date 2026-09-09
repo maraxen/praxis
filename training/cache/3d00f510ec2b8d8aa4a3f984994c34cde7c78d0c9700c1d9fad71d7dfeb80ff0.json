@@ -1,0 +1,9 @@
+{
+ "cache_key": "3d00f510ec2b8d8aa4a3f984994c34cde7c78d0c9700c1d9fad71d7dfeb80ff0",
+ "fetched_at": "2026-09-01T21:12:48.707452+00:00",
+ "input_hash": "9e470a4ab418ba5d489e07d7938f582c3e4cb4df5f22c3c6dc3ccde0f4ff350c",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you pick up pipette tips?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

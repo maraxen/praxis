@@ -1,0 +1,9 @@
+{
+ "cache_key": "878f037b6e87c80fe4b1cc21a230d4ebb732ccd2613a7989c8e503ff43cd71fb",
+ "fetched_at": "2026-09-02T15:08:19.649495+00:00",
+ "input_hash": "55f154de0ce604e8d935079d097cf3809e454d65d0b01caac197c8bedd8ab644",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Draw up 100 microliters from the same well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "400f47683d2907493bf4aee1dc69c86a1f772d0b746fe9c9ea7ed405479ac1a2",
+ "fetched_at": "2026-09-03T15:03:18.193315+00:00",
+ "input_hash": "1902a66cd18f22cf666a7020de6fb61f4842450b664e4cff27c9088e52ffee89",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you just dump the plate straight into the liquid waste?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

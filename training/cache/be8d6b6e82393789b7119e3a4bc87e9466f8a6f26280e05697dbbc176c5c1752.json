@@ -1,0 +1,9 @@
+{
+ "cache_key": "be8d6b6e82393789b7119e3a4bc87e9466f8a6f26280e05697dbbc176c5c1752",
+ "fetched_at": "2026-09-02T15:57:20.055899+00:00",
+ "input_hash": "402b216979e541700e33b4a63b9b69526f41a27682bb8342e187f94d4bd02686",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Drop the tips off at the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

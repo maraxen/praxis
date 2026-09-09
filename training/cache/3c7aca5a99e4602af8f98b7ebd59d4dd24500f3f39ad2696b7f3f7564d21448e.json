@@ -1,0 +1,9 @@
+{
+ "cache_key": "3c7aca5a99e4602af8f98b7ebd59d4dd24500f3f39ad2696b7f3f7564d21448e",
+ "fetched_at": "2026-09-02T15:40:46.793879+00:00",
+ "input_hash": "84603e12acde27b95e20c32d600cbc2dd18c6e6e9cc6f6becbfd16e7f1357663",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Replicate the well pattern of plate 2 onto plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

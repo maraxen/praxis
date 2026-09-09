@@ -1,0 +1,9 @@
+{
+ "cache_key": "37d6a68c28a745cf8634d9b03c6daf1322df9b9a2c5e1bca019687691fb991ea",
+ "fetched_at": "2026-09-02T20:33:43.088675+00:00",
+ "input_hash": "24133202dcd170d8ed2c62675b6a0e44e1061d0cde2c440f49b5fff891033890",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Scan the glow across the loaded plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

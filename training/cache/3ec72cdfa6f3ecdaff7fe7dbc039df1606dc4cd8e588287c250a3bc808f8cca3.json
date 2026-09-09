@@ -1,0 +1,9 @@
+{
+ "cache_key": "3ec72cdfa6f3ecdaff7fe7dbc039df1606dc4cd8e588287c250a3bc808f8cca3",
+ "fetched_at": "2026-09-03T15:00:34.427275+00:00",
+ "input_hash": "95901656e7f52dc04e89f600e88fe3583e6ce97d7d28a15110d1641a3ccd537b",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"After dispensing, please blow out whatever droplets are still left in the tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

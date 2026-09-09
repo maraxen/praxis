@@ -1,0 +1,9 @@
+{
+ "cache_key": "d48a8674854812d24fe55b6bb6b16f0caff5a69ed8adffa010571f09e6567adc",
+ "fetched_at": "2026-08-28T18:03:36.519261+00:00",
+ "input_hash": "569c1d406f77a2d9245a734e061a5d5ae567aa32548dd92dc6d210f0e7edd07c",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please move to hotel_stack_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

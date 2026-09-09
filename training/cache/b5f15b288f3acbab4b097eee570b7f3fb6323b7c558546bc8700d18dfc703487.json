@@ -1,0 +1,9 @@
+{
+ "cache_key": "b5f15b288f3acbab4b097eee570b7f3fb6323b7c558546bc8700d18dfc703487",
+ "fetched_at": "2026-09-04T00:07:33.536059+00:00",
+ "input_hash": "bf57493da54f3a574cb8b462f1964ae5b4b1d03af08f3f0c97000d1efb265fd9",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I don't have access to procurement systems or vendor websites to order consumables. If you have plates available on deck, I can help you move plates (`move_plate`), handle lids (`move_lid`), or run plate-reading protocols like `read_fluorescence` and `read_absorbance`.\", \"utterance\": \"Please go to Corning's website and reorder three cases of 96-well black clear-bottom microplates.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

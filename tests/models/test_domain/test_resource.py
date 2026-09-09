@@ -1,19 +1,22 @@
 """Unit tests for Resource model."""
 import json
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from praxis.backend.models.enums import AssetType, ResourceStatusEnum
 from praxis.backend.models.domain.resource import (
     Resource,
-    ResourceDefinition,
     ResourceBase,
     ResourceCreate,
-    ResourceRead as ResourceResponse,
+    ResourceDefinition,
     ResourceUpdate,
 )
+from praxis.backend.models.domain.resource import (
+    ResourceRead as ResourceResponse,
+)
+from praxis.backend.models.enums import AssetType, ResourceStatusEnum
 
 
 @pytest.mark.asyncio

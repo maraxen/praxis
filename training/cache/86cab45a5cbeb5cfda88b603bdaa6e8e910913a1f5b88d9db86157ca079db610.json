@@ -1,0 +1,9 @@
+{
+ "cache_key": "86cab45a5cbeb5cfda88b603bdaa6e8e910913a1f5b88d9db86157ca079db610",
+ "fetched_at": "2026-09-02T20:51:02.893110+00:00",
+ "input_hash": "008d2c5e398709665e6ccbfca3d2052b1ec473f98dc6885a9c2bdc9378b9bb36",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Return the tips to the D12 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

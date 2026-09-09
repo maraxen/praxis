@@ -1,0 +1,9 @@
+{
+ "cache_key": "9c6bf567b163fdd25106923e2a6f67bcf9b0fbe13667b8b7e998020f5b59dd92",
+ "fetched_at": "2026-09-02T15:16:37.272275+00:00",
+ "input_hash": "3a793f230f6e3f234d72177559e4cfc8ee2fd6f4e8ecb86891b5d2f68e2bf6f8",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Carry the liquid from well C8 of plate 1 into well G12 of plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

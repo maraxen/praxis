@@ -1,0 +1,9 @@
+{
+ "cache_key": "0f66f1d4bb554d733993cd143dca386d9eb238655ebf0ebb7c523d93a6f19f1b",
+ "fetched_at": "2026-09-03T15:10:30.071217+00:00",
+ "input_hash": "de8979c6d10042330416ff466301c58fe6f18e5a458cda6731966bd219a2e63d",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Do you know who won the baseball game last night?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

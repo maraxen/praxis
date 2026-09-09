@@ -1,0 +1,9 @@
+{
+ "cache_key": "e967e7fbcacbb6efa6bcda1cd8ec035d008eab6a0ef2639cff4b2bc2be0b4c57",
+ "fetched_at": "2026-09-02T16:46:29.083161+00:00",
+ "input_hash": "09846e95a0013d32933119a5cd0ed1880de2eb3bb17a7dce3ce8fe7c96268c2f",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Place down at reservoir 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

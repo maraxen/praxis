@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:38Z",
+ "key": "6352999c422ed84e26a01cd115edbbe2022da509b0dae9c3de4a9cb1a1c85773",
+ "prompt_sha256": "6352999c422ed84e26a01cd115edbbe2022da509b0dae9c3de4a9cb1a1c85773",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Pull 100, 50, and 200 uL from plate D1:F1\nPlease aspirate a total of 100+50+200 uL from the range D1:F1 on the plate\nDraw 100 uL, then 50 uL, then 200 uL from plate D1:F1",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

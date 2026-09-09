@@ -1,0 +1,9 @@
+{
+ "cache_key": "9b923cd2b2e3665a4b748bbe0430fce2ade7bf85ffdede4c74b2a1d60f6fdd1c",
+ "fetched_at": "2026-09-02T15:10:59.366542+00:00",
+ "input_hash": "cb154e9910d0c5f778e848923fdb8118cdf9f26b4323f3dd922c7e4d4b1fdfe9",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put 75 microliters into well B5 of plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

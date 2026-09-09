@@ -1,11 +1,7 @@
 """Unit tests for the PraxisBase SQLModel base class."""
 
 import uuid
-from datetime import datetime, timezone
-from typing import Optional
-
-import pytest
-from sqlmodel import Field, SQLModel, create_mock_engine
+from datetime import datetime
 
 from praxis.backend.models.domain.sqlmodel_base import PraxisBase, json_field
 
@@ -13,7 +9,7 @@ from praxis.backend.models.domain.sqlmodel_base import PraxisBase, json_field
 class MockModel(PraxisBase, table=True):
   """A mock model for testing purposes."""
 
-  description: Optional[str] = None
+  description: str | None = None
   extra_metadata: dict = json_field(default_factory=dict)
 
 

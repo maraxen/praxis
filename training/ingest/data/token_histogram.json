@@ -1,0 +1,11 @@
+{
+  "token_histogram_version": "2",
+  "n_recipes": 91,
+  "counts": {
+    "dotted": 111,
+    "ident": 218,
+    "classish": 95,
+    "prose": 31,
+    "other": 11
+  }
+}

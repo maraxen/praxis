@@ -1,0 +1,22 @@
+{
+  "arm": "A",
+  "seed": 0,
+  "recipe_version": "0.1.0",
+  "mode": "full",
+  "n_train": 984,
+  "negative_fraction": 0.6117886178861789,
+  "max_length": 1491,
+  "global_steps": 496,
+  "train_loss": 0.4223692254764178,
+  "checkpoint_sha256": "ddcd3b411f77282969a615523c73c0c99483ad60579bed5c4b422b955a567d72",
+  "n_eval": 228,
+  "exact_match_accuracy": 0.6710526315789473,
+  "clarify_recall": 0.9204545454545454,
+  "clarify_precision": 0.8526315789473684,
+  "tripwire_out_of_surface_tool_calls": 3,
+  "surface6_recovered": 4,
+  "verb_category_migrated": 11,
+  "flips_hit_to_miss": 8,
+  "probe_n": 90,
+  "probe_exact_match_accuracy": 0.8444444444444444
+}

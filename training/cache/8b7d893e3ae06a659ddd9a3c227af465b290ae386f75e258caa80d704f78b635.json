@@ -1,0 +1,9 @@
+{
+ "cache_key": "8b7d893e3ae06a659ddd9a3c227af465b290ae386f75e258caa80d704f78b635",
+ "fetched_at": "2026-09-02T15:01:41.018588+00:00",
+ "input_hash": "2ea3a138c8e91c723087b7f43b95ceb3cbce1dd5abd2f7fb29f91109cd9f0b39",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Draw up 150 microliters from well H3 of plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "e7faaa208b424301fe14966436f1ee079db245c3fa1f32b56a6d2b2eafc73ec8",
+ "fetched_at": "2026-09-03T15:02:17.576463+00:00",
+ "input_hash": "6429ce13094ca69a00ce1a0898312d0ee4a11d44c4aee8e608d9dbdae02b6223",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Touch the pipette tips against the well walls in column 1 to shed any remaining droplets.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

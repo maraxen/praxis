@@ -1,0 +1,9 @@
+{
+ "cache_key": "ab247c9ae42cdf778ee617d3f8b4ce25d98fcc7cda3db79336e69e979f61f7b7",
+ "fetched_at": "2026-09-02T15:16:37.272085+00:00",
+ "input_hash": "35e7a25c1c55d5a1677171622f0a764be581f3acf723821edf5584e796cfc310",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Carry liquid from well A3 of plate 1 over to well G2 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

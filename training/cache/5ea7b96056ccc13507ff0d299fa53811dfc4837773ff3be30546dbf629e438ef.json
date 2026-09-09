@@ -1,0 +1,9 @@
+{
+ "cache_key": "5ea7b96056ccc13507ff0d299fa53811dfc4837773ff3be30546dbf629e438ef",
+ "fetched_at": "2026-09-02T15:41:04.625088+00:00",
+ "input_hash": "0c97a48fd2efeb575acb0c5e86b52e383d317968cd44d877c13c6fcb56baaaf1",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please replicate the layout of plate 1 onto plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

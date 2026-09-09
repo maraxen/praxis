@@ -1,0 +1,9 @@
+{
+ "cache_key": "ed5b69a2ad6f232244c1a7f91638be98441a5723b10d77c014b4134160b71aa5",
+ "fetched_at": "2026-09-03T15:01:46.237466+00:00",
+ "input_hash": "6848098922d6b80b94d7d512e4d067ed7391e4ea091143ef8f846e4cebf770a4",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Touch the tips against the inside of the wells so any droplets on the tips get knocked off.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

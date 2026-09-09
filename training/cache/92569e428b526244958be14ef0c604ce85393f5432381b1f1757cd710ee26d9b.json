@@ -1,0 +1,9 @@
+{
+ "cache_key": "92569e428b526244958be14ef0c604ce85393f5432381b1f1757cd710ee26d9b",
+ "fetched_at": "2026-09-02T16:53:21.147008+00:00",
+ "input_hash": "47e0421b35b85fb98c46e5226e01274c0bbfa0a61c626bcd813e8b8735e32e87",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure absorbance at 600 nm in wells B12, C1, C4, and E7.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

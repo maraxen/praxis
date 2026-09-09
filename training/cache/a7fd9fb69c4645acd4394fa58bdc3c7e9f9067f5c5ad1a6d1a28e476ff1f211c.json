@@ -1,0 +1,9 @@
+{
+ "cache_key": "a7fd9fb69c4645acd4394fa58bdc3c7e9f9067f5c5ad1a6d1a28e476ff1f211c",
+ "fetched_at": "2026-09-03T15:02:41.293491+00:00",
+ "input_hash": "5e1a935558746f346d81d22b7530d7703867399fe4c84d7ec0feeb7a96238ecf",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you dump all the liquid in plate 1 straight into the liquid waste bin?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

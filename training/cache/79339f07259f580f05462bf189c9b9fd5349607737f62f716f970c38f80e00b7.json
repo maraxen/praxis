@@ -1,0 +1,9 @@
+{
+ "cache_key": "79339f07259f580f05462bf189c9b9fd5349607737f62f716f970c38f80e00b7",
+ "fetched_at": "2026-09-01T21:18:46.211264+00:00",
+ "input_hash": "22fb784c140b8a23b944a69e6515501747ccf013acb86c92f98ba2e83e62fecf",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Move the lid to hotel_stack_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

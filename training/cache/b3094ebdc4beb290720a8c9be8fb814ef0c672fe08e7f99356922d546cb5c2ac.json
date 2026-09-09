@@ -1,0 +1,9 @@
+{
+ "cache_key": "b3094ebdc4beb290720a8c9be8fb814ef0c672fe08e7f99356922d546cb5c2ac",
+ "fetched_at": "2026-09-02T14:53:49.353520+00:00",
+ "input_hash": "57dfb11f2e897b8dc6eac03dfcf3df8854f74e2355a0ca8f034e62913220285c",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please take up 20 microliters.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

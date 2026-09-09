@@ -1,0 +1,9 @@
+{
+ "cache_key": "6255421c26fdc13073abeca4d0ba67fc50a64c3327a1dad0a164c78ba3993d37",
+ "fetched_at": "2026-09-01T21:20:04.904925+00:00",
+ "input_hash": "d44ef33a842b44569f251395d67e2c6fbb384162bc41a3b9e3ed5ced35608a56",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure the luminescence across the entire plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

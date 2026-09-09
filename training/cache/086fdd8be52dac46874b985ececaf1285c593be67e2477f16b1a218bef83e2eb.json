@@ -1,0 +1,9 @@
+{
+ "cache_key": "086fdd8be52dac46874b985ececaf1285c593be67e2477f16b1a218bef83e2eb",
+ "fetched_at": "2026-09-03T15:04:11.185034+00:00",
+ "input_hash": "312a38cfb66fea6054b5602d713d599d87cbb8fceb7d2a73b484c59c5e267e98",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you set the heater-shaker deck module to 37 \\u00b0C for me?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

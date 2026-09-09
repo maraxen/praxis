@@ -10,11 +10,6 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums import (
-    ScheduleHistoryEventEnum,
-    ScheduleHistoryEventTriggerEnum,
-    ScheduleStatusEnum,
-)
 from praxis.backend.models.domain.protocol import (
     FunctionProtocolDefinition,
     ProtocolRun,
@@ -26,6 +21,11 @@ from praxis.backend.models.domain.protocol_source import (
 from praxis.backend.models.domain.schedule import (
     ScheduleEntry,
     ScheduleHistory,
+)
+from praxis.backend.models.enums import (
+    ScheduleHistoryEventEnum,
+    ScheduleHistoryEventTriggerEnum,
+    ScheduleStatusEnum,
 )
 from praxis.backend.utils.uuid import uuid7
 
@@ -359,7 +359,7 @@ async def test_schedule_history_orm_event_timing(
     # If this fails, it means event_start was not persisted or retrieved correctly
     if history.event_start is None:
         raise AssertionError(f"event_start is None! {history.model_dump()}")
-    
+
     assert history.event_start is not None
     assert history.event_end is None  # Not set yet
     assert history.override_duration_ms == 5000

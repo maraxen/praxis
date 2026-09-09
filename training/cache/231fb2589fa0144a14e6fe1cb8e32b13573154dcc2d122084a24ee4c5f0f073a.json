@@ -1,0 +1,9 @@
+{
+ "cache_key": "231fb2589fa0144a14e6fe1cb8e32b13573154dcc2d122084a24ee4c5f0f073a",
+ "fetched_at": "2026-09-04T00:05:24.920872+00:00",
+ "input_hash": "34de6806dd4f9389ae85848f826c24e5fbe3509beafae4ba2ef1fe95b26c653b",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I don't have the ability to track or report tip inventory counts across boxes. I can, however, execute liquid handling operations such as pick_up_tips, drop_tips, or transfer.\", \"utterance\": \"Give me an inventory count of the remaining tips across all tip boxes on the deck.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

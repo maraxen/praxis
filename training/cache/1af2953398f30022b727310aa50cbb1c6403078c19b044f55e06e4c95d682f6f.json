@@ -1,0 +1,9 @@
+{
+ "cache_key": "1af2953398f30022b727310aa50cbb1c6403078c19b044f55e06e4c95d682f6f",
+ "fetched_at": "2026-09-02T15:11:10.982885+00:00",
+ "input_hash": "42b21a23bff521b22de34f742480625c20e5dae45241dbac6086363cfdaaaf89",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Deliver 100 microliters into plate 2, C10.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

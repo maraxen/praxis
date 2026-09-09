@@ -1,0 +1,9 @@
+{
+ "cache_key": "7d1003414ba8b412cffc1c2345cbbe1f6bcd0d55b2cf5f3219f58baaabd7e33c",
+ "fetched_at": "2026-09-02T15:12:06.520981+00:00",
+ "input_hash": "7a5b4f5744fa11c163a8c79ded53059f1a5841dd2b48b4b383abdb20dea12aea",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Drop the contents into well F5 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

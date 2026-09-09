@@ -1,0 +1,9 @@
+{
+ "cache_key": "da4394fe50e73ea89cb30f47da92ba1a8169e0e9f97b4ab458e25c53ca1cb63e",
+ "fetched_at": "2026-09-02T16:34:59.463865+00:00",
+ "input_hash": "df5bde3b156b876a761edaf3e66a65ccd618f0235d5525a8507f8ca2cf17dd1b",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Bin the tips at the E2 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

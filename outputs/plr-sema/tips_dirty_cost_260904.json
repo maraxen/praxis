@@ -1,0 +1,58 @@
+{
+  "summary_flat": {
+    "tier1_n_ops": 548,
+    "tier1_n_volume_state_unknown_shipped": 194,
+    "tier1_n_turned_definite_without_rule": 0,
+    "tier1_n_still_unknown_unseeded": 194,
+    "tier1_length_mismatches": 0,
+    "tier2b_n_ops": 56,
+    "tier2b_n_volume_state_unknown_shipped": 34,
+    "tier2b_n_turned_definite_without_rule": 1,
+    "tier2b_n_still_unknown_unseeded": 33,
+    "tier2b_length_mismatches": 0
+  },
+  "tier1": {
+    "n_ops": 548,
+    "n_volume_state_unknown_shipped": 194,
+    "n_turned_definite_without_rule": 0,
+    "n_still_unknown_unseeded": 194,
+    "by_method": {
+      "aspirate": {
+        "n_volume_state_unknown_shipped": 154,
+        "n_turned_definite_without_rule": 0,
+        "n_still_unknown_unseeded": 154
+      },
+      "dispense": {
+        "n_volume_state_unknown_shipped": 40,
+        "n_turned_definite_without_rule": 0,
+        "n_still_unknown_unseeded": 40
+      }
+    },
+    "length_mismatches": []
+  },
+  "tier2b": {
+    "n_ops": 56,
+    "n_volume_state_unknown_shipped": 34,
+    "n_turned_definite_without_rule": 1,
+    "n_still_unknown_unseeded": 33,
+    "by_method": {
+      "aspirate": {
+        "n_volume_state_unknown_shipped": 26,
+        "n_turned_definite_without_rule": 0,
+        "n_still_unknown_unseeded": 26
+      },
+      "dispense": {
+        "n_volume_state_unknown_shipped": 8,
+        "n_turned_definite_without_rule": 1,
+        "n_still_unknown_unseeded": 7
+      }
+    },
+    "length_mismatches": []
+  },
+  "notes": [
+    "Expected on tier 1: the frozen corpus never seeds a well or disables a tracker (increment 5 sprint 123 close, 0 of 1523 sidecar rows mention set_volume/set_liquids/disable_volume_trackers), so every CONTAINER cell is unseeded TOP at entry regardless of tips_dirty. The tips_dirty rule only changes a TIP cell's entry interval at pick_up_tips, and only a volume guard whose cell_param resolves to a tip (the local/tip V0 pairing clause) ever pairs against one -- so the a-priori expectation is that tips_dirty costs zero (or very few) definite verdicts on tier 1, dominated instead by container cells that were never going to be definite regardless (n_still_unknown_unseeded >> n_turned_definite_without_rule).",
+    "Actual tier 1: n_volume_state_unknown_shipped=194, n_turned_definite_without_rule=0, n_still_unknown_unseeded=194.",
+    "Actual tier 2b: n_volume_state_unknown_shipped=34, n_turned_definite_without_rule=1, n_still_unknown_unseeded=33.",
+    "Soundness caveat: the no-tips-dirty variant (b) is a MEASUREMENT, not a proposal to ship. The tips_dirty rule exists because tip movement outside the tip/volume families' own modelled effects (move_resource/move_plate over a tip rack, stamp, any 96-head operation, or an unresolved-channel departure) is genuinely unmodelled -- turning the rule off would make some SAFE/WILL_FAIL verdicts unsound on programs this script does not check. No shipped file changed to produce this report."
+  ]
+}

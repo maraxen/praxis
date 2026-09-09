@@ -1,0 +1,67 @@
+{
+  "protocol_fqn": "fixtures.self_attr.self_attr_protocol",
+  "protocol_name": "self_attr_protocol",
+  "operations": [
+    {
+      "id": "op_1",
+      "line_number": 1,
+      "method_name": "aspirate",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resources": "self.plate_1[\"A1\"]",
+        "vols": "50"
+      },
+      "node_type": "static",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    }
+  ],
+  "resources": {
+    "lh": {
+      "variable_name": "lh",
+      "declared_type": "LiquidHandler",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": true,
+      "parental_chain": [],
+      "source_expression": null,
+      "items_x": null,
+      "items_y": null
+    },
+    "self.plate_1": {
+      "variable_name": "self.plate_1",
+      "declared_type": "Plate",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": false,
+      "parental_chain": [
+        "PlateCarrier",
+        "Deck"
+      ],
+      "source_expression": "deck.get_resource(\"plate\")",
+      "items_x": null,
+      "items_y": null
+    }
+  },
+  "preconditions": [],
+  "execution_order": [
+    "op_1"
+  ],
+  "machine_types": [
+    "LiquidHandler"
+  ],
+  "resource_types": [
+    "LiquidHandler",
+    "Plate"
+  ],
+  "has_loops": false,
+  "has_conditionals": false
+}

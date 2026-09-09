@@ -6,22 +6,25 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from praxis.backend.models.enums import AssetType, ResourceStatusEnum
-from praxis.backend.models.domain.asset import Asset
 from praxis.backend.models.domain.deck import (
     Deck,
-    DeckDefinition,
-    DeckPositionDefinition,
     DeckBase,
     DeckCreate,
+    DeckDefinition,
+    DeckPositionDefinition,
     DeckPositionDefinitionCreate,
-    DeckPositionDefinitionRead as DeckPositionDefinitionResponse,
-    DeckRead as DeckResponse,
     DeckUpdate,
     PositioningConfig,
 )
+from praxis.backend.models.domain.deck import (
+    DeckPositionDefinitionRead as DeckPositionDefinitionResponse,
+)
+from praxis.backend.models.domain.deck import (
+    DeckRead as DeckResponse,
+)
 from praxis.backend.models.domain.machine import Machine
 from praxis.backend.models.domain.resource import Resource, ResourceDefinition
+from praxis.backend.models.enums import AssetType, ResourceStatusEnum
 from praxis.backend.utils.uuid import uuid7
 
 

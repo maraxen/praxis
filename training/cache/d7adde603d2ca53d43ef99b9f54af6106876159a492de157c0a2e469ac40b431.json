@@ -1,0 +1,9 @@
+{
+ "cache_key": "d7adde603d2ca53d43ef99b9f54af6106876159a492de157c0a2e469ac40b431",
+ "fetched_at": "2026-09-01T21:14:12.175405+00:00",
+ "input_hash": "a80276f9548211ecbdecde7e1f6f2e09e7f6d5ac61ad1580f8ff047e58051daa",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and drop the tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

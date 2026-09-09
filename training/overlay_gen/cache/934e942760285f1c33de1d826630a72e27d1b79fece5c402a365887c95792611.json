@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:15:27Z",
+ "key": "934e942760285f1c33de1d826630a72e27d1b79fece5c402a365887c95792611",
+ "prompt_sha256": "934e942760285f1c33de1d826630a72e27d1b79fece5c402a365887c95792611",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Aspirate sample_volume_ul * 0.8 uL from plate dst_well.\nPlease draw up sample_volume_ul * 0.8 uL from plate dst_well.\nPull sample_volume_ul * 0.8 uL from plate dst_well.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

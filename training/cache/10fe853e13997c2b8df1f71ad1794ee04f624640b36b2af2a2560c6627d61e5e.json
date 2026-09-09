@@ -1,0 +1,9 @@
+{
+ "cache_key": "10fe853e13997c2b8df1f71ad1794ee04f624640b36b2af2a2560c6627d61e5e",
+ "fetched_at": "2026-09-02T16:55:03.919072+00:00",
+ "input_hash": "98300ba364fc7493426c978a178f8893129f5df162f4386dd68a01b6c8d6744c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure absorbance at 540 nm on the plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

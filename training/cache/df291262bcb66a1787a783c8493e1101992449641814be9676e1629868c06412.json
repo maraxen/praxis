@@ -1,0 +1,9 @@
+{
+ "cache_key": "df291262bcb66a1787a783c8493e1101992449641814be9676e1629868c06412",
+ "fetched_at": "2026-09-03T15:10:49.178795+00:00",
+ "input_hash": "0e2e64af7e9ff33fff65da5ea6d12432d0ce81c1f72c9bdb0f6c6bbf59bac58b",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you translate this German text into English for me?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

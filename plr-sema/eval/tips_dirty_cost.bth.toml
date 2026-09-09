@@ -1,0 +1,38 @@
+# bathos sidecar for plr-sema/eval/tips_dirty_cost.py (#4982 D2, sprint 127
+# band D). Plan: .praxia/docs/plans/260904_plr-sema-sprint127-predicates.md
+# row D item 2.
+
+[experiment]
+hypothesis = "On tier 1 the tips_dirty rule costs zero definite verdicts because every cell is unseeded TOP; on tier 2b it costs a countable, published number."
+stage_name = "calibration"
+novel = true
+
+[outcomes.pass]
+condition = "tier1_length_mismatches = 0 AND tier2b_length_mismatches = 0 AND tier1_n_turned_definite_without_rule = 0 AND tier2b_n_turned_definite_without_rule > 0"
+is_residual = false
+decision = "The hypothesis holds exactly as stated: tier 1's tips_dirty rule is a zero-cost fail-closed guard given the corpus's own shape (no seeded wells, no disabled trackers), and tier 2b's longer/looping fixtures are where the rule earns its keep (volume_retip's own AC-14.5(e) counterexample). No analyzer change follows from this measurement -- the rule stays, because the case it protects (unmodelled tip movement) is real even though this fixture set exercises only one instance of it."
+reasoning = "Both raw-finding populations diverged only where expected (zero length mismatches, i.e. the two variants produced the identical CALL/guard structure every time, confirming disabling tips_dirty changes verdicts only, never which guards fire), and the direction of the split (0 on tier 1, >0 on tier 2b) matches the structural argument in the report's own notes: tier 1's short, non-retipping call sequences never set tips_dirty before a later pickup in the SAME row, so the rule is provably inert there; tier 2b's region fixtures include the one designed counterexample (volume_retip.py) that does."
+
+[outcomes.marginal]
+condition = "(tier1_length_mismatches > 0 OR tier2b_length_mismatches > 0) AND NOT (tier1_n_turned_definite_without_rule > 0 AND tier1_n_turned_definite_without_rule > tier1_n_volume_state_unknown_shipped)"
+is_residual = false
+decision = "Investigate the length-mismatch rows/fixtures by name (recorded in the JSON report's length_mismatches list) before trusting the per-tier counts -- a mismatch means the two variants produced a different number of raw findings for that row/fixture, which the module docstring's invariant argument says should not happen; find the mechanism before citing a number from that population."
+reasoning = "A length mismatch means the pairwise finding-by-finding diff for that row/fixture was skipped (see _diff_findings), so its contribution to n_turned_definite_without_rule/n_still_unknown_unseeded is silently absent rather than wrong -- the aggregate counts undercounting, not miscounting, but that distinction needs the actual rows checked before the aggregate is cited anywhere."
+
+[outcomes.fail]
+condition = "tier1_n_turned_definite_without_rule > tier1_n_volume_state_unknown_shipped OR tier2b_n_turned_definite_without_rule > tier2b_n_volume_state_unknown_shipped"
+is_residual = true
+decision = "Stop: a per-tier 'turned definite' count exceeding the shipped 'volume_state_unknown' count it is bucketed from is a bug in the accumulator or the pairwise diff, not a real finding -- fix the script before republishing the report."
+reasoning = "By construction n_turned_definite_without_rule + n_still_unknown_unseeded == n_volume_state_unknown_shipped per tier (every SHIPPED volume_state_unknown finding is bucketed into exactly one of the two); this arithmetic invariant failing means the measurement itself is broken."
+
+[result_schema]
+tier1_n_ops = "int"
+tier1_n_volume_state_unknown_shipped = "int"
+tier1_n_turned_definite_without_rule = "int"
+tier1_n_still_unknown_unseeded = "int"
+tier1_length_mismatches = "int"
+tier2b_n_ops = "int"
+tier2b_n_volume_state_unknown_shipped = "int"
+tier2b_n_turned_definite_without_rule = "int"
+tier2b_n_still_unknown_unseeded = "int"
+tier2b_length_mismatches = "int"

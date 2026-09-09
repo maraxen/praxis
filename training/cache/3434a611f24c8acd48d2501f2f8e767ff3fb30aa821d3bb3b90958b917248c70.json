@@ -1,0 +1,9 @@
+{
+ "cache_key": "3434a611f24c8acd48d2501f2f8e767ff3fb30aa821d3bb3b90958b917248c70",
+ "fetched_at": "2026-09-02T20:33:43.088493+00:00",
+ "input_hash": "823de22e75690ea44caa0de90255eb842b16104fb0cadcad5ab89ee01812c278",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you measure the glow in wells A1, A3, E9, and H5?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

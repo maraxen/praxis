@@ -1,0 +1,9 @@
+{
+ "cache_key": "8df7a51617ef20f75963f7240a272f16e4fb1112486f1436d6a4c0abcb7ff072",
+ "fetched_at": "2026-09-03T14:59:45.800196+00:00",
+ "input_hash": "81b29c3c6abb7ac79575fcc6f30faf75580df19aff2ee162dc4be2881b02e88a",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and blow out the leftover droplets from the tips straight into the destination plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,68 @@
+{
+  "execution_order": [
+    "op_1",
+    "op_2"
+  ],
+  "has_conditionals": false,
+  "has_loops": false,
+  "machine_types": [
+    "liquid_handler"
+  ],
+  "operations": [
+    {
+      "arguments": {},
+      "condition_expr": null,
+      "creates_state": [],
+      "depends_on_params": [],
+      "false_branch": [],
+      "foreach_body": [],
+      "foreach_source": null,
+      "id": "op_1",
+      "line_number": 0,
+      "method_name": "setup",
+      "node_type": "static",
+      "preconditions": [],
+      "receiver_type": "LiquidHandler",
+      "receiver_variable": "lh",
+      "true_branch": []
+    },
+    {
+      "arguments": {
+        "use_channels": "[0]"
+      },
+      "condition_expr": null,
+      "creates_state": [],
+      "depends_on_params": [],
+      "false_branch": [],
+      "foreach_body": [],
+      "foreach_source": null,
+      "id": "op_2",
+      "line_number": 0,
+      "method_name": "aspirate",
+      "node_type": "static",
+      "preconditions": [],
+      "receiver_type": "LiquidHandler",
+      "receiver_variable": "lh",
+      "true_branch": []
+    }
+  ],
+  "preconditions": [],
+  "protocol_fqn": "fixtures.setup_then_aspirate.setup_then_aspirate",
+  "protocol_name": "setup_then_aspirate",
+  "resource_types": [
+    "LiquidHandler"
+  ],
+  "resources": {
+    "lh": {
+      "declared_type": "LiquidHandler",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": true,
+      "items_x": null,
+      "items_y": null,
+      "parental_chain": [],
+      "source_expression": null,
+      "variable_name": "lh"
+    }
+  }
+}

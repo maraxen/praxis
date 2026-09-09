@@ -1,0 +1,9 @@
+{
+ "cache_key": "72920abdc715bcbefc29a680bac5337fe1448edc384da247a358be60893b3456",
+ "fetched_at": "2026-09-01T21:20:04.904597+00:00",
+ "input_hash": "55fb43eb9a6b8c944f82917dfdc0b9252115aeded71d3fc6da46405f9f1e23d5",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the luminescence in well G12.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

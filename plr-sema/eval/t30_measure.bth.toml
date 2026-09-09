@@ -1,0 +1,47 @@
+# bathos sidecar for plr-sema/eval/t30_measure.py (sprint 127, T30b,
+# backlog #4978). Plan: .praxia/docs/plans/260904_plr-sema-sprint127-predicates.md,
+# spec: .praxia/docs/specs/260904_plr-sema-predicate-increment.md sec15.9.
+#
+# This is the GATE INSTRUMENT increment 6 stakes T31 on: it publishes the
+# five measured blocks sec15.9 requires and records GO/NO-GO against the
+# REASON-based gate (>= 1 executed real operation with zero
+# guard_predicate_unparsed and zero guard_operand_unknown findings) --
+# never a tier-formulation, which the spec's own C8 remediation rejected as
+# self-satisfying. No analyzer semantics change here, no check_ir call, no
+# verdict construction: T31 (the evaluator) does not exist yet.
+
+[experiment]
+hypothesis = "Spec 260904 sec15.9's own prediction table says pick_up_tips (223 ops in the frozen benchmark) clears the gate with residual {guard_env_dependent} alone, once alpha/beta bindings, param_defaults (D1), and O1's element-type observation are in place -- because its three deciding guards (:498, :502, :522) resolve and its remaining five guards (:514, :375, :383, :409, :321, plus the derived tier-(iii) :576) are all env-dependent. This measurement, built from T30b's own derived_contracts.json (predicate/bindings/param_defaults) and the frozen benchmark's real lowered IR calls (oracle_common.lower_row_calls, never check_ir), tests that prediction directly: for every executed pick_up_tips (and every other candidate method's) operation, classify each of its guards' residual reason under sec15.7's own mechanical rules -- including the nested-Opaque rule (sec15.7's own worked example over :409's invalid_channels) and G1's actual Term grammar (which does not recognise a zip(...) call inside an all(...)/any(...) quantifier, e.g. :514) -- and report whether >= 1 operation actually clears."
+
+stage_name = "calibration"
+novel = true
+
+[outcomes.pass]
+condition = "gate.with_o1.go == true AND 'pick_up_tips' in gate.with_o1.methods_clearing"
+is_residual = false
+decision = "The predicted candidate clears exactly as sec15.9 predicted: pick_up_tips's residual is {guard_env_dependent} alone on >= 1 executed operation. Record GO and hand the measured JSON to T31 as the evaluator's own coverage floor."
+reasoning = "This is the reason-based gate's own PASS condition (sec15.9's normative box), verified against the real derived contract table and the real benchmark rather than assumed from the spec's table."
+
+[outcomes.marginal]
+condition = "gate.with_o1.go == true AND 'pick_up_tips' not in gate.with_o1.methods_clearing"
+is_residual = false
+decision = "GO is achieved, but by a DIFFERENT method than sec15.9 predicted (pick_up_tips was 'this document's own prediction, to be falsified by the measurement and not assumed by it'). Record GO, but flag the divergence from the named candidate for the user before AC-15.5's evaluator work starts (sec15.9's own AC-15.3 instruction)."
+reasoning = "The gate is defined over reasons on ANY executed operation, not over a specific named method -- but a divergence from the document's own named candidate is exactly the kind of fact sec15.9 says must be published rather than absorbed."
+
+[outcomes.fail]
+condition = "gate.with_o1.go == false"
+is_residual = true
+decision = "NO-GO: publish the counts (block1-5) and the STRUCTURAL reason no operation clears in sec15.15 -- per this run, every pick_up_tips operation carries guard_predicate_unparsed from TWO sources sec15.9's own table did not anticipate: (1) :409's invalid_channels guard, alpha-bound with an Opaque inner filter (c not in self.head) -- sec15.7's OWN nested-Opaque rule, applied to this EXACT site in its own worked example, makes this guard_predicate_unparsed, not guard_env_dependent as sec15.9's prediction table states for pick_up_tips (an internal inconsistency between sec15.7 and sec15.9, not a T30b defect); (2) :514's `not all(self.backend.can_pick_up_tip(channel, tip) for channel, tip in zip(use_channels, tips))` -- G1's AllOf/AnyOf production requires the quantifier's `<seq>` to parse as a Term (Len/SetOf/Var/Lit/Attr/Filtered), and a `zip(...)` call is not one, so the whole predicate is Opaque under T30a's already-shipped, already-tested grammar. Bring both facts to the user before T31 starts: the gate's own named candidate does not clear even in principle, for reasons intrinsic to the shipped grammar and the spec's own reason-vocabulary rule, not to any missing T30b derivation."
+reasoning = "GO/NO-GO must never be forced past a measured NO-GO -- sec15.9's own text: 'NO-GO otherwise: publish the counts and the structural reason ... and bring the decision to the user before the evaluator lands.' The derive-side code (param_defaults, alpha/beta, O1) is kept either way: it is 'a strict information gain on the contract table' per the spec's own words, independent of the gate's outcome."
+
+[result_schema]
+n_ops_with_o1 = "int"
+n_ops_clearing_gate = "int"
+gate_go = "bool"
+methods_clearing = "list"
+d2_n_pick_up_tips_ops = "int"
+d2_n_channels_for_call_non_none = "int"
+n_alpha_whole_surface = "int"
+n_beta_whole_surface = "int"
+name_coincidence_exposure_count = "int"
+n_ops_o1_delta = "int"

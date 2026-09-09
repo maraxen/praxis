@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:54Z",
+ "key": "cb1f789ad45ff522ee00383e89ae1f5456e14cd8a1bd03dd80f6242137eb8b9d",
+ "prompt_sha256": "cb1f789ad45ff522ee00383e89ae1f5456e14cd8a1bd03dd80f6242137eb8b9d",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Grab tips from tip_rack B1\nPlease retrieve the tips located at tip_rack B1\nPick up the tips from tip_rack B1",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

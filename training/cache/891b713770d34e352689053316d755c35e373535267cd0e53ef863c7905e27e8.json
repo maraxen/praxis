@@ -1,0 +1,9 @@
+{
+ "cache_key": "891b713770d34e352689053316d755c35e373535267cd0e53ef863c7905e27e8",
+ "fetched_at": "2026-09-02T15:17:12.230888+00:00",
+ "input_hash": "5223dccd23ae679ec3ecb72db32265ee5a785398ebec5d9ffe4ba7a5459cf233",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Carry 10 microliters to well B9 of plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

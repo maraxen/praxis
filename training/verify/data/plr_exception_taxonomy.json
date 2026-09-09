@@ -1,0 +1,3058 @@
+{
+  "plr_root": "external/pylabrobot/pylabrobot",
+  "version": {
+    "git_sha": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+    "git_dirty": true,
+    "pylabrobot_version": "0.2.2"
+  },
+  "total_exception_classes": 132,
+  "classes": [
+    {
+      "name": "NotCalibratedError",
+      "module": "pylabrobot.pumps.errors",
+      "file": "external/pylabrobot/pylabrobot/pumps/errors.py",
+      "lineno": 1,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Error raised when calling a method that requires the pump to be calibrated.",
+      "category": "calibration_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/pumps/pumparray.py",
+          "lineno": 153,
+          "enclosing_function": "pump_volume",
+          "enclosing_condition": "self.calibration is None",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "CentrifugeDoorError",
+      "module": "pylabrobot.centrifuge.standard",
+      "file": "external/pylabrobot/pylabrobot/centrifuge/standard.py",
+      "lineno": 5,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "centrifuge_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/centrifuge.py",
+          "lineno": 187,
+          "enclosing_function": "load",
+          "enclosing_condition": "not self.centrifuge.door_open",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/centrifuge.py",
+          "lineno": 207,
+          "enclosing_function": "unload",
+          "enclosing_condition": "not self.centrifuge.door_open",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "_MockAborted",
+      "module": "pylabrobot.centrifuge.highres.mock_server",
+      "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+      "lineno": 92,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Raised inside a command handler to produce an ``ABORTED!`` terminator.",
+      "category": "centrifuge_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 502,
+          "enclosing_function": "_require_not_aborted",
+          "enclosing_condition": "self.state.abort_latched",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 625,
+          "enclosing_function": "_h_home",
+          "enclosing_condition": null,
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 649,
+          "enclosing_function": "_h_open",
+          "enclosing_condition": null,
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 687,
+          "enclosing_function": "_h_spin",
+          "enclosing_condition": null,
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "_MockError",
+      "module": "pylabrobot.centrifuge.highres.mock_server",
+      "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+      "lineno": 74,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Raised inside a command handler to produce an ``ERROR!`` terminator.",
+      "category": "centrifuge_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 475,
+          "enclosing_function": "_dispatch",
+          "enclosing_condition": "handler is None",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 496,
+          "enclosing_function": "_require_homed",
+          "enclosing_condition": "not self.state.homed",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 536,
+          "enclosing_function": "_h_help",
+          "enclosing_condition": "len(args) != 1",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 544,
+          "enclosing_function": "_h_help",
+          "enclosing_condition": null,
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 588,
+          "enclosing_function": "_h_logcommands",
+          "enclosing_condition": "len(args) != 1 or args[0].lower() not in ('yes', 'no')",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 596,
+          "enclosing_function": "_h_commandstat",
+          "enclosing_condition": "len(args) != 1",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 605,
+          "enclosing_function": "_h_commandstat",
+          "enclosing_condition": null,
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 631,
+          "enclosing_function": "_h_open",
+          "enclosing_condition": "not args",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 635,
+          "enclosing_function": "_h_open",
+          "enclosing_condition": null,
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 637,
+          "enclosing_function": "_h_open",
+          "enclosing_condition": "bucket not in (1, 2)",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 654,
+          "enclosing_function": "_h_spin",
+          "enclosing_condition": "len(args) != 4",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 660,
+          "enclosing_function": "_h_spin",
+          "enclosing_condition": null,
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 662,
+          "enclosing_function": "_h_spin",
+          "enclosing_condition": "not 1 <= g <= 3000",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/highres/mock_server.py",
+          "lineno": 664,
+          "enclosing_function": "_h_spin",
+          "enclosing_condition": "duration < 1",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "AntiDropControlError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 584,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Anti drop controlling out of tolerance. (VENUS only)",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 829,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "AreaAlreadyOccupiedError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 564,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "area already occupied",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 827,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "AspirationError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 452,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Aspiration error",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 815,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "BarcodeAlreadyUsedError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 729,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "The barcode read is already loaded as unique barcode ( it's not possible to load the same barcode",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 844,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "BarcodeMaskError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 712,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "The barcode read doesn't match the barcode mask defined. (VENUS only)",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 842,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "BarcodeNotUniqueError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 720,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "The barcode read is not unique. Previously loaded labware with same barcode was loaded without",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 843,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "BarcodeUnreadableError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 330,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Barcode unreadable",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 803,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "ChannelizedError",
+      "module": "pylabrobot.liquid_handling.errors",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/errors.py",
+      "lineno": 18,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Raised by operations that work on multiple channels: pick_up_tips, drop_tips, aspirate, and",
+      "category": "channel_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "ChannelsDoNotFitError",
+      "module": "pylabrobot.liquid_handling.errors",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/errors.py",
+      "lineno": 13,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Raised when channels cannot be positioned within a resource's compartments while respecting",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/channel_positioning.py",
+          "lineno": 262,
+          "enclosing_function": "_distribute_channels",
+          "enclosing_condition": "key in seen",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/channel_positioning.py",
+          "lineno": 288,
+          "enclosing_function": "_distribute_channels",
+          "enclosing_condition": "not improved",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/channel_positioning.py",
+          "lineno": 344,
+          "enclosing_function": "compute_channel_offsets",
+          "enclosing_condition": "not compartments",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/channel_positioning.py",
+          "lineno": 367,
+          "enclosing_function": "compute_channel_offsets",
+          "enclosing_condition": "comp_width <= 0",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/channel_positioning.py",
+          "lineno": 384,
+          "enclosing_function": "compute_channel_offsets",
+          "enclosing_condition": "usable < needed",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/channel_positioning.py",
+          "lineno": 431,
+          "enclosing_function": "compute_channel_offsets",
+          "enclosing_condition": "actual < required - 0.05",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "ClotDetectedError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 320,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Clot detected",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 802,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "CommandNotCompletedError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 310,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Command not completed",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 801,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "CommandSyntaxError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 293,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Command syntax error",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 799,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "CoverCloseError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 442,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Cover close error",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 814,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "DecapperError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 592,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Decapper lock error while screw / unscrew a cap by twister channels. (VENUS only)",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 830,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "DecapperHandlingError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 600,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Decapper station error while lock / unlock a cap. (VENUS only)",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 831,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "DelimiterError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 746,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Barcode contains character which is used as delimiter in result string. (VENUS only)",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 846,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "DispenseWithPressureLLDError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 392,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Dispense with  pressure LLD",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 809,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "ElementLostError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 513,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Element lost",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 821,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "ElementStillHoldingError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 503,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Element still holding",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 820,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "HardwareError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 300,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Hardware error",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 800,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "IllegalTargetPlatePositionError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 523,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Illegal target plate position",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 822,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "IllegalUserAccessError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 534,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Illegal user access",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 823,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "ImpossibleToOccupyAreaError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 574,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "impossible to occupy area",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 828,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "ImproperDispensationError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 671,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "The dispensed volume is out of tolerance (may only occur for Nano Pipettor Dispense steps).",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 838,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "IncubationError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 473,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Incubation error",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 817,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "KitLotExpiredError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 738,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Kit Lot expired. (VENUS only)",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 845,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "LoadingTrayError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 412,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Loading  Tray error",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 811,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "NoCarrierBarcodeError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 635,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Carrier barcode could not be read or is missing. (VENUS only)",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 834,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "NoCarrierError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 371,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "No carrier",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 807,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "NoChannelError",
+      "module": "pylabrobot.liquid_handling.errors",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/errors.py",
+      "lineno": 4,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Raised when no channel is available, e.g. when trying to pick up a tip with no empty channels.",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/opentrons_backend.py",
+          "lineno": 302,
+          "enclosing_function": "_get_pickup_pipette",
+          "enclosing_condition": "not pipette_id",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/opentrons_backend.py",
+          "lineno": 312,
+          "enclosing_function": "_get_drop_pipette",
+          "enclosing_condition": "not pipette_id",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/opentrons_backend.py",
+          "lineno": 322,
+          "enclosing_function": "_get_liquid_pipette",
+          "enclosing_condition": "pipette_id is None",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/opentrons_backend.py",
+          "lineno": 650,
+          "enclosing_function": "_pipette_id_for_channel",
+          "enclosing_condition": "channel < 0 or channel >= len(pipettes)",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "NoElementError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 493,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "No element",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 819,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "NoLabwareError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 682,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "The labware to be loaded was not detected by autoload module. (VENUS only)",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 839,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "NoTeachInSignalError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 402,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "No Teach  In Signal",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 810,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "NotAllowedParameterCombinationError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 432,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Not allowed  parameter combination",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 813,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "NotAspiratedError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 661,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Dispense volume exceeds the aspirated volume. (VENUS only)",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 837,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "NotCompletedError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 381,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Not completed",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 808,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "NotDetectedError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 653,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Carrier not detected at deck end position. (VENUS only)",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 836,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "PositionNotReachableError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 544,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Position not reachable",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 825,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "STARFirmwareError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 1121,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "channel_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "STARModuleError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 274,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Base class for all Hamilton backend errors, raised by a single module.",
+      "category": "channel_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "SequencedAspirationWithPressureLLDError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 422,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Sequenced aspiration with  pressure LLD",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 812,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "SlaveError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 616,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Slave error",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 832,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "StopError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 608,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Hood is open (Not from documentation, but observed)",
+      "category": "channel_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "TADMMeasurementError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 483,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "TADM measurement error",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 818,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 824,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "TecanError",
+      "module": "pylabrobot.liquid_handling.backends.tecan.errors",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/tecan/errors.py",
+      "lineno": 4,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Tecan backend errors, raised by a single module.",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/tecan/EVO_backend.py",
+          "lineno": 997,
+          "enclosing_function": "position_absolute_all_axis",
+          "enclosing_condition": "cur_x < x and cur_x < pos < x",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/tecan/EVO_backend.py",
+          "lineno": 999,
+          "enclosing_function": "position_absolute_all_axis",
+          "enclosing_condition": "cur_x > x and cur_x > pos > x",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/tecan/EVO_backend.py",
+          "lineno": 1001,
+          "enclosing_function": "position_absolute_all_axis",
+          "enclosing_condition": "abs(pos - x) < 1500",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/tecan/EVO_backend.py",
+          "lineno": 1332,
+          "enclosing_function": "set_vector_coordinate_position",
+          "enclosing_condition": "cur_x < x and cur_x < pos < x",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/tecan/EVO_backend.py",
+          "lineno": 1334,
+          "enclosing_function": "set_vector_coordinate_position",
+          "enclosing_condition": "cur_x > x and cur_x > pos > x",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/tecan/EVO_backend.py",
+          "lineno": 1336,
+          "enclosing_function": "set_vector_coordinate_position",
+          "enclosing_condition": "abs(pos - x) < 1500",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "UnexpectedLLDError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 554,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "unexpected LLD",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 826,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "UnexpectedLabwareError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 695,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "The labware contains unexpected barcode ( may only occur on a Reload Carrier step ). (VENUS only)",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 840,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "UnknownHamiltonError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 754,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Unknown error",
+      "category": "channel_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "VantageFirmwareError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.vantage_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/vantage_backend.py",
+      "lineno": 271,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "channel_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "WashFluidOrWasteError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 462,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Wash fluid or trash error",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 816,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "WrongCarrierError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 627,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Wrong carrier barcode detected. (VENUS only)",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 833,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "WrongLabwareError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 703,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "The labware to be reloaded contains wrong barcode ( may only occur on a Reload Carrier step ).",
+      "category": "channel_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 841,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "CrossContaminationError",
+      "module": "pylabrobot.resources.errors",
+      "file": "external/pylabrobot/pylabrobot/resources/errors.py",
+      "lineno": 24,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Raised when attempting to aspirate from a well with a tip that has touched a",
+      "category": "contamination_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatUnknownLocationError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 22,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised for unknown location numbers specified.",
+      "category": "location_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "NoLocationError",
+      "module": "pylabrobot.resources.errors",
+      "file": "external/pylabrobot/pylabrobot/resources/errors.py",
+      "lineno": 60,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Raised when trying to access a location that does not exist, eg. when calling",
+      "category": "location_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/resources/resource.py",
+          "lineno": 258,
+          "enclosing_function": "get_absolute_location",
+          "enclosing_condition": "self.location is None",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "BucketHasPlateError",
+      "module": "pylabrobot.centrifuge.standard",
+      "file": "external/pylabrobot/pylabrobot/centrifuge/standard.py",
+      "lineno": 17,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "occupancy_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/centrifuge.py",
+          "lineno": 199,
+          "enclosing_function": "load",
+          "enclosing_condition": "self.centrifuge.at_bucket.resource is not None",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "BucketNoPlateError",
+      "module": "pylabrobot.centrifuge.standard",
+      "file": "external/pylabrobot/pylabrobot/centrifuge/standard.py",
+      "lineno": 13,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "occupancy_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/centrifuge.py",
+          "lineno": 216,
+          "enclosing_function": "unload",
+          "enclosing_condition": "self.centrifuge.at_bucket.resource is None",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "LoaderNoPlateError",
+      "module": "pylabrobot.centrifuge.standard",
+      "file": "external/pylabrobot/pylabrobot/centrifuge/standard.py",
+      "lineno": 1,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "occupancy_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/centrifuge.py",
+          "lineno": 196,
+          "enclosing_function": "load",
+          "enclosing_condition": "self.resource is None",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/vspin_backend.py",
+          "lineno": 114,
+          "enclosing_function": "load",
+          "enclosing_condition": "r == bytes.fromhex('1105000800510500000300000079f1')",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/vspin_backend.py",
+          "lineno": 140,
+          "enclosing_function": "unload",
+          "enclosing_condition": "r == bytes.fromhex('1105000800510500000300000079f1')",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "NoFreeSiteError",
+      "module": "pylabrobot.storage.incubator",
+      "file": "external/pylabrobot/pylabrobot/storage/incubator.py",
+      "lineno": 19,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "occupancy_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/storage/incubator.py",
+          "lineno": 104,
+          "enclosing_function": "_find_available_sites_sorted",
+          "enclosing_condition": "len(available) == 0",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "NoPlateError",
+      "module": "pylabrobot.plate_reading.standard",
+      "file": "external/pylabrobot/pylabrobot/plate_reading/standard.py",
+      "lineno": 107,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "occupancy_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/imager.py",
+          "lineno": 112,
+          "enclosing_function": "get_plate",
+          "enclosing_condition": "len(self.children) == 0",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/plate_reader.py",
+          "lineno": 70,
+          "enclosing_function": "get_plate",
+          "enclosing_condition": "len(plate_children) == 0",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "NotAtBucketError",
+      "module": "pylabrobot.centrifuge.standard",
+      "file": "external/pylabrobot/pylabrobot/centrifuge/standard.py",
+      "lineno": 9,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "occupancy_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/centrifuge.py",
+          "lineno": 190,
+          "enclosing_function": "load",
+          "enclosing_condition": "self.centrifuge.at_bucket is None",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/centrifuge/centrifuge.py",
+          "lineno": 210,
+          "enclosing_function": "unload",
+          "enclosing_condition": "self.centrifuge.at_bucket is None",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "MolecularDevicesError",
+      "module": "pylabrobot.plate_reading.molecular_devices.backend",
+      "file": "external/pylabrobot/pylabrobot/plate_reading/molecular_devices/backend.py",
+      "lineno": 66,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exceptions raised by a Molecular Devices plate reader.",
+      "category": "plate_reader_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/molecular_devices/backend.py",
+          "lineno": 301,
+          "enclosing_function": "_parse_basic_errors",
+          "enclosing_condition": "not response",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/molecular_devices/backend.py",
+          "lineno": 313,
+          "enclosing_function": "_parse_basic_errors",
+          "enclosing_condition": "'FAIL' in error_code_msg",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/molecular_devices/backend.py",
+          "lineno": 317,
+          "enclosing_function": "_parse_basic_errors",
+          "enclosing_condition": "'FAIL' in error_code_msg",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/molecular_devices/backend.py",
+          "lineno": 322,
+          "enclosing_function": "_parse_basic_errors",
+          "enclosing_condition": "not any(('OK' in r for r in response))",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "MolecularDevicesFirmwareError",
+      "module": "pylabrobot.plate_reading.molecular_devices.backend",
+      "file": "external/pylabrobot/pylabrobot/plate_reading/molecular_devices/backend.py",
+      "lineno": 74,
+      "bases": [
+        "MolecularDevicesError"
+      ],
+      "docstring": "Firmware errors.",
+      "category": "plate_reader_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "MolecularDevicesHardwareError",
+      "module": "pylabrobot.plate_reading.molecular_devices.backend",
+      "file": "external/pylabrobot/pylabrobot/plate_reading/molecular_devices/backend.py",
+      "lineno": 78,
+      "bases": [
+        "MolecularDevicesError"
+      ],
+      "docstring": "Hardware errors.",
+      "category": "plate_reader_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "MolecularDevicesMotionError",
+      "module": "pylabrobot.plate_reading.molecular_devices.backend",
+      "file": "external/pylabrobot/pylabrobot/plate_reading/molecular_devices/backend.py",
+      "lineno": 82,
+      "bases": [
+        "MolecularDevicesError"
+      ],
+      "docstring": "Motion errors.",
+      "category": "plate_reader_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "MolecularDevicesNVRAMError",
+      "module": "pylabrobot.plate_reading.molecular_devices.backend",
+      "file": "external/pylabrobot/pylabrobot/plate_reading/molecular_devices/backend.py",
+      "lineno": 86,
+      "bases": [
+        "MolecularDevicesError"
+      ],
+      "docstring": "NVRAM errors.",
+      "category": "plate_reader_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "MolecularDevicesUnrecognizedCommandError",
+      "module": "pylabrobot.plate_reading.molecular_devices.backend",
+      "file": "external/pylabrobot/pylabrobot/plate_reading/molecular_devices/backend.py",
+      "lineno": 70,
+      "bases": [
+        "MolecularDevicesError"
+      ],
+      "docstring": "Unrecognized command errors sent from the computer.",
+      "category": "plate_reader_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "SparkError",
+      "module": "pylabrobot.plate_reading.tecan.spark20m.spark_reader_async",
+      "file": "external/pylabrobot/pylabrobot/plate_reading/tecan/spark20m/spark_reader_async.py",
+      "lineno": 18,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Error returned by the Spark device in a RespError packet.",
+      "category": "plate_reader_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/tecan/spark20m/spark_reader_async.py",
+          "lineno": 314,
+          "enclosing_function": "_get_response",
+          "enclosing_condition": "parsed.get('type') == 'RespError'",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/tecan/spark20m/spark_reader_async.py",
+          "lineno": 333,
+          "enclosing_function": "_get_response",
+          "enclosing_condition": "parsed.get('type') == 'RespError'",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "ResourceDefinitionIncompleteError",
+      "module": "pylabrobot.resources.errors",
+      "file": "external/pylabrobot/pylabrobot/resources/errors.py",
+      "lineno": 37,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Raised when trying to access a resource that has not been defined or is not complete.",
+      "category": "resource_definition",
+      "trigger_sites": []
+    },
+    {
+      "name": "ResourceNotFoundError",
+      "module": "pylabrobot.resources.errors",
+      "file": "external/pylabrobot/pylabrobot/resources/errors.py",
+      "lineno": 4,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "resource_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/resources/deck.py",
+          "lineno": 88,
+          "enclosing_function": "get_resource",
+          "enclosing_condition": "not self.has_resource(name)",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/resources/deck.py",
+          "lineno": 122,
+          "enclosing_function": "get_trash_area",
+          "enclosing_condition": "not self.has_resource('trash')",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/resources/resource.py",
+          "lineno": 588,
+          "enclosing_function": "get_resource",
+          "enclosing_condition": null,
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/storage/incubator.py",
+          "lineno": 74,
+          "enclosing_function": "get_site_by_plate_name",
+          "enclosing_condition": null,
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/storage/incubator.py",
+          "lineno": 122,
+          "enclosing_function": "take_in_plate",
+          "enclosing_condition": "not isinstance(plate, Plate)",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "CytomatAutomaticLiftDoorNotClosedError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 114,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatAutomaticLiftDoorNotOpenError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 110,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatBusyError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 6,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised when the device is still busy and a new command is not accepted.",
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatCommandUnknownError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 10,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised for an unknown command.",
+      "category": "storage_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/storage/cytomat/cytomat.py",
+          "lineno": 208,
+          "enclosing_function": "get_overview_register",
+          "enclosing_condition": null,
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "CytomatCommunicationWithHeatingControllersAndGasSupplyDisturbedError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 134,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatCommunicationWithMotorControllersInterruptedError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 90,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatFatalErrorOccurredDuringErrorRoutineError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 138,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatHandlerEmptyError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 38,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised when the handler is empty.",
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatHandlerOccupiedError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 34,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised when the handler is already occupied.",
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatIncorrectHandlerPositionError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 26,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised for incorrect handler start positions.",
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatIncorrectParameterError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 18,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised for incorrect parameters in telegram.",
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatLiftDoorNotConfiguredError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 54,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised when the automatic lift door is not configured.",
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatLiftDoorNotOpenError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 58,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised when the automatic lift door is not open.",
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatMemoryAccessError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 62,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised for errors while accessing internal memory.",
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatNoMtpLoadedOnHandlerShovelError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 94,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatNoMtpUnloadedFromHandlerShovelError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 98,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatOtherStepperMotorControllerError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 126,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatProcessTimeoutError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 106,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatShovelExtendedError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 30,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised when a command cannot be executed as the shovel is extended.",
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatShovelNotExtendedAutomaticUnitPositionError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 102,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatShovelNotRetractedError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 118,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatStepperMotorControllerTemperatureTooHighError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 122,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatTelegramStructureError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 14,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised for telegram structure errors.",
+      "category": "storage_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/storage/cytomat/cytomat.py",
+          "lineno": 130,
+          "enclosing_function": "_send_command",
+          "enclosing_condition": "value == '03'",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "CytomatTransferStationEmptyError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 42,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised when the transfer station is empty.",
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatTransferStationNotRotatedError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 130,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatTransferStationOccupiedError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 46,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised when the transfer station is occupied.",
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatTransferStationPositionError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 50,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised when the transfer station is not in position.",
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "CytomatUnauthorizedAccessError",
+      "module": "pylabrobot.storage.cytomat.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/cytomat/errors.py",
+      "lineno": 66,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised for incorrect password or unauthorized access.",
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "LiconicControllerBaseUnitError",
+      "module": "pylabrobot.storage.liconic.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/liconic/errors.py",
+      "lineno": 26,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "LiconicControllerCommandError",
+      "module": "pylabrobot.storage.liconic.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/liconic/errors.py",
+      "lineno": 10,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "LiconicControllerHardwareError",
+      "module": "pylabrobot.storage.liconic.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/liconic/errors.py",
+      "lineno": 18,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "LiconicControllerProgramError",
+      "module": "pylabrobot.storage.liconic.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/liconic/errors.py",
+      "lineno": 14,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "LiconicControllerRelayError",
+      "module": "pylabrobot.storage.liconic.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/liconic/errors.py",
+      "lineno": 6,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "LiconicControllerWriteProtectedError",
+      "module": "pylabrobot.storage.liconic.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/liconic/errors.py",
+      "lineno": 22,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "LiconicHandlerBarcodeReadError",
+      "module": "pylabrobot.storage.liconic.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/liconic/errors.py",
+      "lineno": 62,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "LiconicHandlerExportPlateError",
+      "module": "pylabrobot.storage.liconic.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/liconic/errors.py",
+      "lineno": 82,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "LiconicHandlerGeneralError",
+      "module": "pylabrobot.storage.liconic.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/liconic/errors.py",
+      "lineno": 86,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "LiconicHandlerImportPlateError",
+      "module": "pylabrobot.storage.liconic.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/liconic/errors.py",
+      "lineno": 78,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "LiconicHandlerPlateGetError",
+      "module": "pylabrobot.storage.liconic.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/liconic/errors.py",
+      "lineno": 74,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "LiconicHandlerPlatePlaceError",
+      "module": "pylabrobot.storage.liconic.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/liconic/errors.py",
+      "lineno": 66,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "LiconicHandlerPlateRemoveError",
+      "module": "pylabrobot.storage.liconic.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/liconic/errors.py",
+      "lineno": 58,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "LiconicHandlerPlateSetError",
+      "module": "pylabrobot.storage.liconic.errors",
+      "file": "external/pylabrobot/pylabrobot/storage/liconic/errors.py",
+      "lineno": 70,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "storage_state",
+      "trigger_sites": []
+    },
+    {
+      "name": "HamiltonNoTipError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 361,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "No tips",
+      "category": "tip_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 806,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "HasTipError",
+      "module": "pylabrobot.resources.errors",
+      "file": "external/pylabrobot/pylabrobot/resources/errors.py",
+      "lineno": 16,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Raised when a tip already exists in a location where a tip is being added.",
+      "category": "tip_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+          "lineno": 535,
+          "enclosing_function": "pick_up_tips",
+          "enclosing_condition": "self.head[channel].has_tip",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+          "lineno": 92,
+          "enclosing_function": "add_tip",
+          "enclosing_condition": "self._pending_tip is not None",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "NoTipError",
+      "module": "pylabrobot.resources.errors",
+      "file": "external/pylabrobot/pylabrobot/resources/errors.py",
+      "lineno": 20,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Raised when a tip was expected but none was found.",
+      "category": "tip_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+          "lineno": 65,
+          "enclosing_function": "get_tip",
+          "enclosing_condition": "self._tip is None",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/resources/tip_tracker.py",
+          "lineno": 105,
+          "enclosing_function": "remove_tip",
+          "enclosing_condition": "self._pending_tip is None",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "TipAlreadyFittedError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 351,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Tip already fitted",
+      "category": "tip_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 805,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "TipTooLittleVolumeError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 340,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Too little liquid",
+      "category": "tip_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 804,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "BarcodeScannerError",
+      "module": "pylabrobot.barcode_scanners.backend",
+      "file": "external/pylabrobot/pylabrobot/barcode_scanners/backend.py",
+      "lineno": 7,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Error raised by a barcode scanner backend.",
+      "category": "uncategorized",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/barcode_scanners/keyence/keyence_backend.py",
+          "lineno": 68,
+          "enclosing_function": "initialize",
+          "enclosing_condition": "response.strip() == 'MOTOROFF'",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/barcode_scanners/keyence/keyence_backend.py",
+          "lineno": 71,
+          "enclosing_function": "initialize",
+          "enclosing_condition": null,
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/barcode_scanners/keyence/keyence_backend.py",
+          "lineno": 99,
+          "enclosing_function": "scan_barcode",
+          "enclosing_condition": "data.startswith('NG')",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/barcode_scanners/keyence/keyence_backend.py",
+          "lineno": 101,
+          "enclosing_function": "scan_barcode",
+          "enclosing_condition": "data.startswith('ERR99')",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "EL406CommunicationError",
+      "module": "pylabrobot.plate_washing.biotek.el406.errors",
+      "file": "external/pylabrobot/pylabrobot/plate_washing/biotek/el406/errors.py",
+      "lineno": 10,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised for FTDI/USB communication errors with the EL406.",
+      "category": "uncategorized",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/plate_washing/biotek/el406/backend.py",
+          "lineno": 123,
+          "enclosing_function": "setup",
+          "enclosing_condition": null,
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/plate_washing/biotek/el406/communication.py",
+          "lineno": 73,
+          "enclosing_function": "_write_to_device",
+          "enclosing_condition": null,
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/plate_washing/biotek/el406/communication.py",
+          "lineno": 135,
+          "enclosing_function": "_purge_buffers",
+          "enclosing_condition": null,
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "EL406DeviceError",
+      "module": "pylabrobot.plate_washing.biotek.el406.errors",
+      "file": "external/pylabrobot/pylabrobot/plate_washing/biotek/el406/errors.py",
+      "lineno": 34,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exception raised when the EL406 device reports an error via the validity field.",
+      "category": "uncategorized",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/plate_washing/biotek/el406/communication.py",
+          "lineno": 544,
+          "enclosing_function": "_send_step_command",
+          "enclosing_condition": "poll.validity != 0",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "MettlerToledoError",
+      "module": "pylabrobot.scales.mettler_toledo_backend",
+      "file": "external/pylabrobot/pylabrobot/scales/mettler_toledo_backend.py",
+      "lineno": 15,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Exceptions raised by a Mettler Toledo scale.",
+      "category": "uncategorized",
+      "trigger_sites": []
+    },
+    {
+      "name": "PreciseFlexError",
+      "module": "pylabrobot.arms.precise_flex.precise_flex_backend",
+      "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+      "lineno": 19,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "uncategorized",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 356,
+          "enclosing_function": "get_joint_position",
+          "enclosing_condition": null,
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 372,
+          "enclosing_function": "get_cartesian_position",
+          "enclosing_condition": null,
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 397,
+          "enclosing_function": "_parse_reply_ensure_successful",
+          "enclosing_condition": "not text",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 408,
+          "enclosing_function": "_parse_reply_ensure_successful",
+          "enclosing_condition": "replycode != 0",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 529,
+          "enclosing_function": "get_base",
+          "enclosing_condition": "len(parts) != 4",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 826,
+          "enclosing_function": "get_tool_transformation_values",
+          "enclosing_condition": "len(parts) != 6",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 876,
+          "enclosing_function": "get_location_angles",
+          "enclosing_condition": "type_code != 1",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 928,
+          "enclosing_function": "get_location_xyz",
+          "enclosing_condition": "type_code != 0",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 931,
+          "enclosing_function": "get_location_xyz",
+          "enclosing_condition": "len(parts) != 8",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 972,
+          "enclosing_function": "get_location_z_clearance",
+          "enclosing_condition": "len(parts) != 3",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 1019,
+          "enclosing_function": "get_location_config",
+          "enclosing_condition": "len(parts) != 2",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 1095,
+          "enclosing_function": "dest_c",
+          "enclosing_condition": "len(parts) != 7",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 1122,
+          "enclosing_function": "dest_j",
+          "enclosing_condition": "not parts",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 1425,
+          "enclosing_function": "get_motion_profile_values",
+          "enclosing_condition": "len(parts) != 9",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 1654,
+          "enclosing_function": "get_grasp_data",
+          "enclosing_condition": "len(parts) != 3",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 1751,
+          "enclosing_function": "get_pallet_index",
+          "enclosing_condition": "len(parts) != 4",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 1803,
+          "enclosing_function": "get_pallet_origin",
+          "enclosing_condition": "len(parts) != 8",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 1863,
+          "enclosing_function": "get_pallet_x",
+          "enclosing_condition": "len(parts) != 5",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 1905,
+          "enclosing_function": "get_pallet_y",
+          "enclosing_condition": "len(parts) != 5",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 1948,
+          "enclosing_function": "get_pallet_z",
+          "enclosing_condition": "len(parts) != 5",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 2082,
+          "enclosing_function": "get_station_type",
+          "enclosing_condition": "len(parts) != 6",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 2290,
+          "enclosing_function": "pick_plate_from_stored_position",
+          "enclosing_condition": "ret_code == '0'",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 2323,
+          "enclosing_function": "_parse_xyz_response",
+          "enclosing_condition": "len(parts) != 6",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/arms/precise_flex/precise_flex_backend.py",
+          "lineno": 2342,
+          "enclosing_function": "_parse_angles_response",
+          "enclosing_condition": "len(parts) < 3",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "TiltModuleError",
+      "module": "pylabrobot.tilting.tilter_backend",
+      "file": "external/pylabrobot/pylabrobot/tilting/tilter_backend.py",
+      "lineno": 6,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Error raised by a tilt module backend.",
+      "category": "uncategorized",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/tilting/hamilton_backend.py",
+          "lineno": 69,
+          "enclosing_function": "send_command",
+          "enclosing_condition": "1 <= err_code <= 7",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "ValidationError",
+      "module": "pylabrobot.io.errors",
+      "file": "external/pylabrobot/pylabrobot/io/errors.py",
+      "lineno": 1,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "uncategorized",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/io/capture.py",
+          "lineno": 108,
+          "enclosing_function": "done",
+          "enclosing_condition": "self._command_idx < len(self.commands)",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/ftdi.py",
+          "lineno": 357,
+          "enclosing_function": "set_baudrate",
+          "enclosing_condition": "not (next_command.module == 'ftdi' and next_command.device_id == self._device_id and (next_command.action == 'set_baudrate') and (int(next_command.data) == baudrate))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/ftdi.py",
+          "lineno": 367,
+          "enclosing_function": "set_rts",
+          "enclosing_condition": "not (next_command.module == 'ftdi' and next_command.device_id == self._device_id and (next_command.action == 'set_rts') and (next_command.data == str(level)))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/ftdi.py",
+          "lineno": 377,
+          "enclosing_function": "set_dtr",
+          "enclosing_condition": "not (next_command.module == 'ftdi' and next_command.device_id == self._device_id and (next_command.action == 'set_dtr') and (next_command.data == str(level)))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/ftdi.py",
+          "lineno": 386,
+          "enclosing_function": "usb_reset",
+          "enclosing_condition": "not (next_command.module == 'ftdi' and next_command.device_id == self._device_id and (next_command.action == 'usb_reset'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/ftdi.py",
+          "lineno": 398,
+          "enclosing_function": "set_latency_timer",
+          "enclosing_condition": "not (next_command.module == 'ftdi' and next_command.device_id == self._device_id and (next_command.action == 'set_latency_timer') and (int(next_command.data) == latency))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/ftdi.py",
+          "lineno": 410,
+          "enclosing_function": "set_line_property",
+          "enclosing_condition": "not (next_command.module == 'ftdi' and next_command.device_id == self._device_id and (next_command.action == 'set_line_property') and (next_command.data == f'{bits},{stopbits},{parity}'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/ftdi.py",
+          "lineno": 422,
+          "enclosing_function": "set_flowctrl",
+          "enclosing_condition": "not (next_command.module == 'ftdi' and next_command.device_id == self._device_id and (next_command.action == 'set_flowctrl') and (int(next_command.data) == flowctrl))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/ftdi.py",
+          "lineno": 431,
+          "enclosing_function": "usb_purge_rx_buffer",
+          "enclosing_condition": "not (next_command.module == 'ftdi' and next_command.device_id == self._device_id and (next_command.action == 'usb_purge_rx_buffer'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/ftdi.py",
+          "lineno": 442,
+          "enclosing_function": "usb_purge_tx_buffer",
+          "enclosing_condition": "not (next_command.module == 'ftdi' and next_command.device_id == self._device_id and (next_command.action == 'usb_purge_tx_buffer'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/ftdi.py",
+          "lineno": 453,
+          "enclosing_function": "poll_modem_status",
+          "enclosing_condition": "not (next_command.module == 'ftdi' and next_command.device_id == self._device_id and (next_command.action == 'poll_modem_status'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/ftdi.py",
+          "lineno": 465,
+          "enclosing_function": "write",
+          "enclosing_condition": "not (next_command.module == 'ftdi' and next_command.device_id == self._device_id and (next_command.action == 'write'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/ftdi.py",
+          "lineno": 468,
+          "enclosing_function": "write",
+          "enclosing_condition": "not next_command.data == data.hex()",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/ftdi.py",
+          "lineno": 479,
+          "enclosing_function": "read",
+          "enclosing_condition": "not (next_command.module == 'ftdi' and next_command.device_id == self._device_id and (next_command.action == 'read') and (len(next_command.data) == num_bytes))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/ftdi.py",
+          "lineno": 489,
+          "enclosing_function": "readline",
+          "enclosing_condition": "not (next_command.module == 'ftdi' and next_command.device_id == self._device_id and (next_command.action == 'readline'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/hid.py",
+          "lineno": 213,
+          "enclosing_function": "setup",
+          "enclosing_condition": "not next_command.module == 'hid' and next_command.device_id == self._unique_id and (next_command.action == 'open')",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/hid.py",
+          "lineno": 222,
+          "enclosing_function": "stop",
+          "enclosing_condition": "not next_command.module == 'hid' and next_command.device_id == self._unique_id and (next_command.action == 'close')",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/hid.py",
+          "lineno": 231,
+          "enclosing_function": "write",
+          "enclosing_condition": "not next_command.module == 'hid' and next_command.device_id == self._unique_id and (next_command.action == 'write')",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/hid.py",
+          "lineno": 235,
+          "enclosing_function": "write",
+          "enclosing_condition": "not next_command.data == write_data.hex()",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/hid.py",
+          "lineno": 245,
+          "enclosing_function": "read",
+          "enclosing_condition": "not next_command.module == 'hid' and next_command.device_id == self._unique_id and (next_command.action == 'read') and (len(next_command.data) == size)",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/serial.py",
+          "lineno": 387,
+          "enclosing_function": "write",
+          "enclosing_condition": "not (next_command.module == 'serial' and next_command.device_id == self._port and (next_command.action == 'write'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/serial.py",
+          "lineno": 390,
+          "enclosing_function": "write",
+          "enclosing_condition": "next_command.data != data.decode('unicode_escape')",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/serial.py",
+          "lineno": 400,
+          "enclosing_function": "read",
+          "enclosing_condition": "not (next_command.module == 'serial' and next_command.device_id == self._port and (next_command.action == 'read') and (len(next_command.data) == num_bytes))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/serial.py",
+          "lineno": 410,
+          "enclosing_function": "readline",
+          "enclosing_condition": "not (next_command.module == 'serial' and next_command.device_id == self._port and (next_command.action == 'readline'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/serial.py",
+          "lineno": 420,
+          "enclosing_function": "send_break",
+          "enclosing_condition": "not (next_command.module == 'serial' and next_command.device_id == self._port and (next_command.action == 'send_break'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/serial.py",
+          "lineno": 422,
+          "enclosing_function": "send_break",
+          "enclosing_condition": "float(next_command.data) != duration",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/serial.py",
+          "lineno": 431,
+          "enclosing_function": "reset_input_buffer",
+          "enclosing_condition": "not (next_command.module == 'serial' and next_command.device_id == self._port and (next_command.action == 'reset_input_buffer'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/serial.py",
+          "lineno": 440,
+          "enclosing_function": "reset_output_buffer",
+          "enclosing_condition": "not (next_command.module == 'serial' and next_command.device_id == self._port and (next_command.action == 'reset_output_buffer'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/serial.py",
+          "lineno": 450,
+          "enclosing_function": "dtr",
+          "enclosing_condition": "not (next_command.module == 'serial' and next_command.device_id == self._port and (next_command.action == 'get_dtr'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/serial.py",
+          "lineno": 461,
+          "enclosing_function": "dtr",
+          "enclosing_condition": "not (next_command.module == 'serial' and next_command.device_id == self._port and (next_command.action == 'set_dtr'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/serial.py",
+          "lineno": 463,
+          "enclosing_function": "dtr",
+          "enclosing_condition": "next_command.data.lower() != str(value).lower()",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/serial.py",
+          "lineno": 473,
+          "enclosing_function": "rts",
+          "enclosing_condition": "not (next_command.module == 'serial' and next_command.device_id == self._port and (next_command.action == 'get_rts'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/serial.py",
+          "lineno": 484,
+          "enclosing_function": "rts",
+          "enclosing_condition": "not (next_command.module == 'serial' and next_command.device_id == self._port and (next_command.action == 'set_rts'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/serial.py",
+          "lineno": 486,
+          "enclosing_function": "rts",
+          "enclosing_condition": "next_command.data.lower() != str(value).lower()",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/socket.py",
+          "lineno": 352,
+          "enclosing_function": "write",
+          "enclosing_condition": "not (next_command.module == 'socket' and next_command.device_id == self._unique_id and (next_command.action == 'write'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/socket.py",
+          "lineno": 359,
+          "enclosing_function": "write",
+          "enclosing_condition": "not expected == data",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/socket.py",
+          "lineno": 369,
+          "enclosing_function": "read",
+          "enclosing_condition": "not (next_command.module == 'socket' and next_command.device_id == self._unique_id and (next_command.action == 'read'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/socket.py",
+          "lineno": 383,
+          "enclosing_function": "readline",
+          "enclosing_condition": "not (next_command.module == 'socket' and next_command.device_id == self._unique_id and (next_command.action == 'readline'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/socket.py",
+          "lineno": 402,
+          "enclosing_function": "readuntil",
+          "enclosing_condition": "not (next_command.module == 'socket' and next_command.device_id == self._unique_id and (next_command.action == 'readuntil:' + separator.hex()))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/socket.py",
+          "lineno": 417,
+          "enclosing_function": "read_exact",
+          "enclosing_condition": "not (next_command.module == 'socket' and next_command.device_id == self._unique_id and (next_command.action == 'read_exact'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/socket.py",
+          "lineno": 431,
+          "enclosing_function": "read_until_eof",
+          "enclosing_condition": "not (next_command.module == 'socket' and next_command.device_id == self._unique_id and (next_command.action == 'read_until_eof'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/usb.py",
+          "lineno": 529,
+          "enclosing_function": "write",
+          "enclosing_condition": "not (next_command.module == 'usb' and next_command.device_id == self._unique_id and (next_command.action == 'write'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/usb.py",
+          "lineno": 533,
+          "enclosing_function": "write",
+          "enclosing_condition": "not next_command.data == decoded",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/usb.py",
+          "lineno": 542,
+          "enclosing_function": "read",
+          "enclosing_condition": "not (next_command.module == 'usb' and next_command.device_id == self._unique_id and (next_command.action == 'read'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/usb.py",
+          "lineno": 563,
+          "enclosing_function": "ctrl_transfer",
+          "enclosing_condition": "not (next_command.module == 'usb' and next_command.device_id == self._unique_id and (next_command.action == 'ctrl_transfer_request'))",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/usb.py",
+          "lineno": 574,
+          "enclosing_function": "ctrl_transfer",
+          "enclosing_condition": "not next_command.data == self._serialize_ctrl_transfer_request(bmRequestType, bRequest, wValue, wIndex, data_or_wLength)",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/io/usb.py",
+          "lineno": 582,
+          "enclosing_function": "ctrl_transfer",
+          "enclosing_condition": "not (next_command.module == 'usb' and next_command.device_id == self._unique_id and (next_command.action == 'ctrl_transfer_response'))",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "BlowOutVolumeError",
+      "module": "pylabrobot.liquid_handling.liquid_handler",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+      "lineno": 91,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": null,
+      "category": "volume_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+          "lineno": 1185,
+          "enclosing_function": "dispense",
+          "enclosing_condition": "self._blow_out_air_volume is None",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+          "lineno": 1188,
+          "enclosing_function": "dispense",
+          "enclosing_condition": "requested_bav is not None and done_bav is not None and (requested_bav > done_bav)",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "LiquidLevelError",
+      "module": "pylabrobot.liquid_handling.backends.hamilton.STAR_backend",
+      "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+      "lineno": 643,
+      "bases": [
+        "STARModuleError"
+      ],
+      "docstring": "Liquid surface not detected. (VENUS only)",
+      "category": "volume_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/STAR_backend.py",
+          "lineno": 835,
+          "enclosing_function": "error_code_to_exception",
+          "enclosing_condition": null,
+          "kind": "dispatch_table"
+        }
+      ]
+    },
+    {
+      "name": "TooLittleLiquidError",
+      "module": "pylabrobot.resources.errors",
+      "file": "external/pylabrobot/pylabrobot/resources/errors.py",
+      "lineno": 8,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Raised when trying to aspirate more liquid from a container than is still present.",
+      "category": "volume_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+          "lineno": 92,
+          "enclosing_function": "remove_liquid",
+          "enclosing_condition": "volume - self.get_used_volume() > 1e-06",
+          "kind": "raise"
+        },
+        {
+          "file": "external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+          "lineno": 136,
+          "enclosing_function": "get_liquids",
+          "enclosing_condition": "top_volume - self.get_used_volume() > 1e-06",
+          "kind": "raise"
+        }
+      ]
+    },
+    {
+      "name": "TooLittleVolumeError",
+      "module": "pylabrobot.resources.errors",
+      "file": "external/pylabrobot/pylabrobot/resources/errors.py",
+      "lineno": 12,
+      "bases": [
+        "Exception"
+      ],
+      "docstring": "Raised when trying to dispense more liquid into a container than is still available.",
+      "category": "volume_state",
+      "trigger_sites": [
+        {
+          "file": "external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+          "lineno": 105,
+          "enclosing_function": "add_liquid",
+          "enclosing_condition": "volume - self.get_free_volume() > 1e-06",
+          "kind": "raise"
+        }
+      ]
+    }
+  ]
+}

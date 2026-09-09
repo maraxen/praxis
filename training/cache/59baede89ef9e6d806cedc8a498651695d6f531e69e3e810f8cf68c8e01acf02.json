@@ -1,0 +1,9 @@
+{
+ "cache_key": "59baede89ef9e6d806cedc8a498651695d6f531e69e3e810f8cf68c8e01acf02",
+ "fetched_at": "2026-08-28T18:04:51.261443+00:00",
+ "input_hash": "9b3a4a4e451f5f0c07047d54db5fa9d973b13112c9816b9a3f1e94f036cc8399",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read fluorescence in wells D3 and H1 with an excitation wavelength of 560 nm and a focal height of 5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

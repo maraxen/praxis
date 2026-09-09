@@ -1,0 +1,9 @@
+{
+ "cache_key": "258758a82cc99637128badef4d6878d0860885e7572ebd7823b23fd945c92883",
+ "fetched_at": "2026-08-28T18:02:22.008776+00:00",
+ "input_hash": "1792871f43e795d38389acee1956f19c911e28d3312c28c01eb49374acbe84df",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Drop the tips into tip_rack.E4.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

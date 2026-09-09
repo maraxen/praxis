@@ -1,0 +1,9 @@
+{
+ "cache_key": "67d28591da0e0f204e177062fcac92e2286c49df7d35e4b63c7275027c8772df",
+ "fetched_at": "2026-09-02T20:42:26.706619+00:00",
+ "input_hash": "a4ccb7f269728f85692d90663378677622fa1c7fdcad0366aa44336542b75943",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Return the tips to the B12 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "ddd6d27e0d87b5c265ee31b30a33e86945bb4315bab4fd6d509f9d4f301b0507",
+ "fetched_at": "2026-08-25T22:08:25.758542+00:00",
+ "input_hash": "8381c0442118cddb05bbe1666a6672ce520a66044a1a46dffbfc7f591bb7c2e5",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Transfer 50.0 microliters from plate_1_C7 to plate_2_E3 and plate_1_H9.\",\n\"clarification\": null\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

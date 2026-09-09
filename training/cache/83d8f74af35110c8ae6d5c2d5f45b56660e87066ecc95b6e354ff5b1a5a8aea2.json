@@ -1,0 +1,9 @@
+{
+ "cache_key": "83d8f74af35110c8ae6d5c2d5f45b56660e87066ecc95b6e354ff5b1a5a8aea2",
+ "fetched_at": "2026-09-02T14:53:49.354389+00:00",
+ "input_hash": "7e62d541c0bf4d38c960a5395317b1d3fe3f96bc5f1e0e9fd3b9ee0275967b1e",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Take up 50 microliters from the same well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

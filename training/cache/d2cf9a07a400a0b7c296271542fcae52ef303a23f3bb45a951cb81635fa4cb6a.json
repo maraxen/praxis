@@ -1,0 +1,9 @@
+{
+ "cache_key": "d2cf9a07a400a0b7c296271542fcae52ef303a23f3bb45a951cb81635fa4cb6a",
+ "fetched_at": "2026-09-01T21:19:40.788282+00:00",
+ "input_hash": "b0a8594a70a7059b63bd9aec9c5a25d7d4766de38b6bd9636cad66e5971697ba",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the fluorescence of the plate using 535 nm excitation and 590 nm emission at a 5 mm focal height.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

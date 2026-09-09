@@ -1,0 +1,21 @@
+{
+  "prediction_holds": true,
+  "n_examples": 228,
+  "successes_old": 85,
+  "successes_new": 137,
+  "accuracy_old": 0.37280701754385964,
+  "accuracy_new": 0.6008771929824561,
+  "artifact_rows_predicted": 52,
+  "flips_miss_to_hit": 52,
+  "flips_hit_to_miss": [],
+  "flips_miss_to_hit_unpredicted": [],
+  "predicted_but_still_missed": [],
+  "clarify_identical": true,
+  "tripwire_old": 2,
+  "tripwire_new": 2,
+  "tripwire_ok": true,
+  "model": "B",
+  "dump": "training/eval/outputs/260902_p26_dump_B.json",
+  "old_report": "training/eval/reports/260902_p26_dumpscore_old_B.json",
+  "prediction": "training/eval/reports/260902_p26_rescore_prediction.json"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "c7053d722fd131e541d03cbae95fd8572c8f8250757191087b1a03f637b45e41",
+ "fetched_at": "2026-09-02T20:07:23.367892+00:00",
+ "input_hash": "c4d4f577e630e21900cdf7a1a3e65ca418975c583153c4b44079fcbb5878b792",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Mount clean tips on the channels.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

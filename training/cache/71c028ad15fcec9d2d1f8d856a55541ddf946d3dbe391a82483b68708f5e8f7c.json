@@ -1,0 +1,9 @@
+{
+ "cache_key": "71c028ad15fcec9d2d1f8d856a55541ddf946d3dbe391a82483b68708f5e8f7c",
+ "fetched_at": "2026-09-02T20:31:02.916570+00:00",
+ "input_hash": "1d88a70cd9042241172c0657ad313f5f1cd59b21a423f7e171e46f774860b963",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Scan fluorescence on the loaded plate with an excitation wavelength of 535 nm, an emission wavelength of 590 nm, and a focal height of 5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

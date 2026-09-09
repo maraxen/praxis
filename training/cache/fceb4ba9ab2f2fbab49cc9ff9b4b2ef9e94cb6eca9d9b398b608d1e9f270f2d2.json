@@ -1,0 +1,9 @@
+{
+ "cache_key": "fceb4ba9ab2f2fbab49cc9ff9b4b2ef9e94cb6eca9d9b398b608d1e9f270f2d2",
+ "fetched_at": "2026-09-03T15:09:42.733842+00:00",
+ "input_hash": "c8f529c144662157c269557dd62ab3edb95c7ba4a4bc2948502f9889e12d9046",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Do you know what the weather forecast is for today?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

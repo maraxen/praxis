@@ -1,0 +1,62 @@
+# bathos sidecar for plr-sema/eval/tier2_extractor.py (tier 2a, backlog
+# #4880) AND plr-sema/eval/region_oracle.py (tier 2b, backlog #4880/T21).
+# Spec: .praxia/docs/specs/260903_plr-sema-real-programs-increment.md §12.4.4
+# ("Both halves are bathos-tracked with a sidecar ... [result_schema]
+# publishes rows, operations, bytecode_divergences_extractor,
+# bytecode_divergences_renderer, region_fixtures, region_unsound,
+# region_will_fail_fired, rows_normalised").
+#
+# Each half writes its OWN summary_flat to $BTH_RESULTS_PATH when invoked
+# directly (tier2_extractor.py's real corpus run publishes the
+# bytecode_divergences_* / rows_normalised fields; region_oracle.py's
+# fixture run publishes the region_* fields) -- this sidecar's
+# [result_schema] is the union both halves are expected to fill in over
+# time, not a per-run contract that every single invocation populates
+# completely.
+
+[experiment]
+hypothesis = "Tier 2 (spec 260903 §12.4) lifts increment 1/2's fixture-only LOOP/BRANCH soundness qualifiers off fixtures: (a) tier 2a's bytecode differential shows the extractor's real-source lowering agrees with tier 1's call-sequence lowering on the executed corpus (zero extractor-cause divergences); (b) tier 2b's region-fixture oracle EXECUTES real for/while/if source against the verifier's own chatterbox deck and shows zero rows where the static verdict contradicts the executed outcome, with at least one WILL_FAIL landing at the exact (operation, iteration) each shape's raising fixture actually raised at, and the executed iteration count of every proved-trip loop matching its proved trip."
+stage_name = "calibration"
+novel = true
+
+[outcomes.pass]
+condition = "bytecode_divergences_extractor = 0 AND region_unsound = 0 AND region_will_fail_fired >= 3 AND region_trip_mismatches = 0"
+is_residual = false
+decision = "Both tier-2 halves are sound on their respective inputs; the LOOP/BRANCH soundness qualifiers on AC-11.11/AC-11.13/AC-10.6/§10.5 rule 2 are lifted (§12.9)."
+reasoning = "No static verdict contradicted either the extractor-vs-tier-1 bytecode comparison or a real chatterbox execution, every shape (for/while/if) has at least one fixture whose static WILL_FAIL lands at the exact key the executor raised, and every proved-trip loop's real iteration count matched its proved trip."
+
+[outcomes.marginal]
+condition = "region_unsound = 0 AND (bytecode_divergences_renderer > 0 OR region_will_fail_fired < 3 OR region_trip_mismatches > 0)"
+is_residual = false
+decision = "No unsoundness, but coverage or a known-residual channel needs attention before the qualifiers are lifted: a renderer residual (tier 2a, expected/published, not gated) needs review, a shape has zero WILL_FAIL-at-raised-key evidence (AC-12.17 not yet satisfied), or a proved-trip fixture's real iteration count diverged from its proved trip for a reason other than the documented A-EARLY-EXIT exemption."
+reasoning = "Verdicts were never contradicted, but the per-shape or per-fixture coverage this tier exists to provide is incomplete."
+
+[outcomes.fail]
+condition = "region_unsound > 0 OR bytecode_divergences_extractor > 0"
+is_residual = true
+decision = "Stop: a SAFE or WILL_FAIL claim contradicts a real chatterbox execution (tier 2b), or the extractor's own lowering disagrees with tier 1's call-sequence lowering on an executed corpus row (tier 2a). File as a first-severity bug with the counterexample (operation, iteration) or divergence; no qualifier-lifting claim until fixed."
+reasoning = "Either the checker asserted something a real PLR execution disproved, or the two lowerings of one program disagree -- both are exactly the class of defect this tier exists to catch."
+
+[result_schema]
+rows = "int"
+operations = "int"
+bytecode_divergences_extractor = "int"
+bytecode_divergences_renderer = "int"
+region_fixtures = "int"
+region_unsound = "int"
+region_will_fail_fired = "int"
+rows_normalised = "int"
+# Additive, tier-2b-specific fields (region_oracle.py's own summary_flat)
+# -- not named by §12.4.4's list but needed to state AC-12.17's
+# "executed-trip agreement" and harness-health conditions above.
+region_trip_mismatches = "int"
+region_harness_errors = "int"
+region_uncovered_keys = "int"
+# Additive, volume-family-specific fields (spec 260903 §14.9/§14.13 T28,
+# increment 5, backlog #4960): a NAMED SLICE of region_fixtures/
+# region_unsound/region_will_fail_fired restricted to the `volume_*`
+# fixtures -- see region_oracle.py's own summary_flat construction for why
+# this is a slice, not a second harness total.
+volume_fixtures = "int"
+volume_unsound = "int"
+volume_will_fail_fired = "int"

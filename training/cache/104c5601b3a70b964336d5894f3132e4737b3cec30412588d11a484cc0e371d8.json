@@ -1,0 +1,9 @@
+{
+ "cache_key": "104c5601b3a70b964336d5894f3132e4737b3cec30412588d11a484cc0e371d8",
+ "fetched_at": "2026-09-03T15:03:18.193748+00:00",
+ "input_hash": "cf5e2303ef83cd4fa7cec0ce1966b42afe9753350592ff10e9e25fe6baf179cd",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and dump everything from the sample plate into the waste bin.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

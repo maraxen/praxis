@@ -1,0 +1,375 @@
+{
+  "artifact_kind": "praxis-recorded-model-outputs",
+  "base_revision": "outputs/p26/A/checkpoint@main",
+  "recorded_by": "praxis_training.baseline_eval.runner.run_local",
+  "model_label": "p26 arm A seed 0 recipe 0.1.0 sha256:376cac6e5edf9652a4899a2539bbd4980ebff8f77cc2cc363aee0d404a12ef72 [probe]",
+  "inputs": {
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "dtype_resolved": "torch.bfloat16",
+    "split": "eval",
+    "max_new_tokens": 128
+  },
+  "outputs": [
+    {
+      "record_id": "nat-0012-aspirate__none-12",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>the plate<escape>,volume_ul:25.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0013-aspirate__none-13",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>the plate<escape>,volume_ul:15.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0014-aspirate__none-14",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>the plate<escape>,volume_ul:150.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0028-aspirate__missing-slot-13",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>the well<escape>,volume_ul:150.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0077-dispense__none-12",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>the plate<escape>,volume_ul:75.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0078-dispense__none-13",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>1<escape>,volume_ul:50.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0079-dispense__none-14",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>the plate<escape>,volume_ul:10.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0092-dispense__missing-slot-12",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>plate[1]<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0093-dispense__missing-slot-13",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>plate[1]<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0094-dispense__missing-slot-14",
+      "raw_output": "I cannot deliver plates into wells. I can, however, aspirate the liquid from the well or transfer it to the destination."
+    },
+    {
+      "record_id": "nat-0143-transfer__none-13",
+      "raw_output": "<start_function_call>call:aspirate{source:<escape>D10<escape>,volume_ul:<escape>1<escape>}<end_function_call><start_function_call><eos>"
+    },
+    {
+      "record_id": "nat-0144-transfer__none-14",
+      "raw_output": "<start_function_call>call:move_resource{destination:<escape>A5<escape>,resource:<escape>2.0M<escape>,source:<escape>A6<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0158-transfer__missing-slot-13",
+      "raw_output": "<start_function_call>call:move_resource{destination:<escape>plate[2]<escape>,resource:<escape>150.0M<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0172-transfer__ambiguous-referent-12",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>the source well<escape>,volume_ul:10.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0173-transfer__ambiguous-referent-13",
+      "raw_output": "<start_function_call>call:aspirate{source:<escape>A1[\"plate\"]<escape>,volume_ul:60.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0174-transfer__ambiguous-referent-14",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>the same well<escape>,volume_ul:100.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0207-stamp__none-12",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>plate[1]<escape>,volume_ul:150.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0208-stamp__none-13",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>plate[2]<escape>,plate:<escape>plate[1]<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0209-stamp__none-14",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>plate[1]<escape>,volume_ul:10.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0222-stamp__missing-slot-12",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>plate[1]<escape>,volume_ul:<escape>2<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0223-stamp__missing-slot-13",
+      "raw_output": "I cannot perform a plate layout or replicate the well layout. I can, however, move the plate to the next well or dispense the tips into the next well."
+    },
+    {
+      "record_id": "nat-0224-stamp__missing-slot-14",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>plate[2].destination<escape>,plate:<escape>plate[1].destination<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0237-stamp__ambiguous-referent-12",
+      "raw_output": "I cannot perform a duplicate layout. I can, however, move the plate to the next well. Would you like me to do that?"
+    },
+    {
+      "record_id": "nat-0238-stamp__ambiguous-referent-13",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>the plate<escape>,volume_ul:100.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0239-stamp__ambiguous-referent-14",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>the plate<escape>,plate:<escape>1<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0272-pick_up_tips__none-12",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>the C5 spot<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0273-pick_up_tips__none-13",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>the tip rack<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0274-pick_up_tips__none-14",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>tip_from_A2<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0287-pick_up_tips__missing-slot-12",
+      "raw_output": "<start_function_call>call:pick_up_tips{}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0288-pick_up_tips__missing-slot-13",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>the pipetting head<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0289-pick_up_tips__missing-slot-14",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>the channels<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0338-drop_tips__none-13",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>H7<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0339-drop_tips__none-14",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>spot[C6]<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0352-drop_tips__missing-slot-12",
+      "raw_output": "<start_function_call>call:drop_tips{}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0353-drop_tips__missing-slot-13",
+      "raw_output": "<start_function_call>call:drop_tips{}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0354-drop_tips__missing-slot-14",
+      "raw_output": "<start_function_call>call:drop_tips{}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0367-drop_tips__ambiguous-referent-12",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>the tip rack<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0368-drop_tips__ambiguous-referent-13",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>the tip rack<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0369-drop_tips__ambiguous-referent-14",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>the tip rack<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0402-discard_tips__none-12",
+      "raw_output": "I cannot perform tip binning. I can move the tips to a new destination like the tip rack or plate."
+    },
+    {
+      "record_id": "nat-0403-discard_tips__none-13",
+      "raw_output": "<start_function_call>call:discard_tips{at:<escape>[[\"G12\", \"tip_rack\"]]<escape>,what:<escape>tips<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0404-discard_tips__none-14",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>the H2 spot<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0417-move_resource__missing-slot-12",
+      "raw_output": "I cannot move plates or transfer liquids. I can assist with liquid handling tasks such as aspirating, dispensing, transferring, or reading absorbance/fluorescence."
+    },
+    {
+      "record_id": "nat-0418-move_resource__missing-slot-13",
+      "raw_output": "<start_function_call>call:move_resource{destination:<escape>hotel stack<escape>,resource:<escape>the deck[\"hotel stack\"]<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0419-move_resource__missing-slot-14",
+      "raw_output": "<start_function_call>call:move_resource{destination:<escape>reservoir1<escape>,resource:<escape>the reservoir<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0432-discard_tips__ambiguous-referent-12",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>the tip rack<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0433-discard_tips__ambiguous-referent-13",
+      "raw_output": "<start_function_call>call:discard_tips{at:<escape>the tip rack<escape>,what:<escape>tips<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0434-discard_tips__ambiguous-referent-14",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>the tip rack<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0467-move_resource__none-12",
+      "raw_output": "I cannot move plates or stack them to the hotel. I can, however, move the deck resource to the destination."
+    },
+    {
+      "record_id": "nat-0468-move_resource__none-13",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>scale_station_1<escape>,plate:<escape>hotel<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0469-move_resource__none-14",
+      "raw_output": "<start_function_call>call:move_resource{destination:<escape>reservoir1<escape>,resource:<escape>scale station 1<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0482-move_plate__missing-slot-12",
+      "raw_output": "<start_function_call>call:move_resource{destination:<escape>reservoir1<escape>,resource:<escape>the reservoir<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0483-move_plate__missing-slot-13",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>reservoir<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0484-move_plate__missing-slot-14",
+      "raw_output": "<start_function_call>call:move_resource{destination:<escape>hotel stack<escape>,resource:<escape>the deck[\"hotel stack\"]<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0497-move_resource__ambiguous-referent-12",
+      "raw_output": "<start_function_call>call:move_resource{destination:<escape>reservoir1<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0498-move_resource__ambiguous-referent-13",
+      "raw_output": "I cannot move the plate to a station. I can, however, move the deck resource to the destination."
+    },
+    {
+      "record_id": "nat-0499-move_resource__ambiguous-referent-14",
+      "raw_output": "I cannot move a reservoir to a scale station. I can move a deck resource like a tube rack or reservoir to a new destination like the scale station."
+    },
+    {
+      "record_id": "nat-0532-move_plate__none-12",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>reservoir1<escape>,plate:<escape>2<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0533-move_plate__none-13",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>hotel stack<escape>,plate:<escape>1<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0534-move_plate__none-14",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>reservoir[1]<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0547-move_lid__missing-slot-12",
+      "raw_output": "I cannot perform scale station automation or transfer. I can assist with liquid handling tasks such as aspirate, dispense, transfer, or moving plates."
+    },
+    {
+      "record_id": "nat-0548-move_lid__missing-slot-13",
+      "raw_output": "<start_function_call>call:move_resource{destination:<escape>reservoir<escape>,resource:<escape>1.<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0549-move_lid__missing-slot-14",
+      "raw_output": "<start_function_call>call:move_resource{destination:<escape>reservoir1<escape>,resource:<escape>1<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0562-move_plate__ambiguous-referent-12",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>the plate<escape>,plate:<escape>the plate<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0563-move_plate__ambiguous-referent-13",
+      "raw_output": "I cannot perform plate shifts. I can move the plate to a new destination like a reader, hotel, or stack."
+    },
+    {
+      "record_id": "nat-0564-move_plate__ambiguous-referent-14",
+      "raw_output": "I cannot move plates or set them down on scale. I can, however, move the deck resource to a new destination like the reader or stack."
+    },
+    {
+      "record_id": "nat-0577-move_lid__none-12",
+      "raw_output": "<start_function_call>call:move_lid{destination:<escape>reservoir<escape>,lid:<escape>the lid<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0578-move_lid__none-13",
+      "raw_output": "<start_function_call>call:read_absorbance{at:[<escape>lid<escape>],wavelength_nm:2.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0579-move_lid__none-14",
+      "raw_output": "<start_function_call>call:read_absorbance{at:[<escape>hotel[1]<escape>],wavelength_nm:350.98}<end_function_call><start_function_call><eos>"
+    },
+    {
+      "record_id": "nat-0592-read_absorbance__missing-slot-12",
+      "raw_output": "<start_function_call>call:read_absorbance{at:[<escape>OD<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0593-read_absorbance__missing-slot-13",
+      "raw_output": "<start_function_call>call:read_absorbance{at:[<escape>A7<escape>],wavelength_nm:250.98}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0594-read_absorbance__missing-slot-14",
+      "raw_output": "<start_function_call>call:read_absorbance{}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0607-move_lid__ambiguous-referent-12",
+      "raw_output": "<start_function_call>call:read_absorbance{}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0608-move_lid__ambiguous-referent-13",
+      "raw_output": "<start_function_call>call:read_absorbance{}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0609-move_lid__ambiguous-referent-14",
+      "raw_output": "<start_function_call>call:read_absorbance{}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0622-read_absorbance__none-12",
+      "raw_output": "<start_function_call>call:read_absorbance{at:[<escape>405.0<escape>],wavelength_nm:405.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0623-read_absorbance__none-13",
+      "raw_output": "<start_function_call>call:read_absorbance{at:[<escape>H1<escape>,<escape>H4<escape>],wavelength_nm:450.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0624-read_absorbance__none-14",
+      "raw_output": "<start_function_call>call:read_absorbance{wavelength_nm:540.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0637-read_fluorescence__missing-slot-12",
+      "raw_output": "<start_function_call>call:read_fluorescence{excitation_nm:535.0,focal_height_mm:7.5}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0638-read_fluorescence__missing-slot-13",
+      "raw_output": "<start_function_call>call:read_fluorescence{excitation_nm:560.0,focal_height_mm:15.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0639-read_fluorescence__missing-slot-14",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:[<escape>B3<escape>,<escape>C12<escape>,<escape>E8<escape>,<escape>H5<escape>],excitation_nm:485.0,focal_height_mm:15.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0652-read_fluorescence__none-12",
+      "raw_output": "<start_function_call>call:read_luminescence{at:[<escape>plate[excitation_nm]<escape>,<escape>plate[emission_nm]<escape>,<escape>plate[focal_height_mm]<escape>],focal_height_mm:15.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0653-read_fluorescence__none-13",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:[<escape>F9<escape>,<escape>H7<escape>],emission_nm:520.0,excitation_nm:535.0,focal_height_mm:12.5}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0654-read_fluorescence__none-14",
+      "raw_output": "<start_function_call>call:read_fluorescence{emission_nm:590.0,excitation_nm:535.0,focal_height_mm:5.0}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0667-read_luminescence__missing-slot-12",
+      "raw_output": "<start_function_call>call:read_luminescence{}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0668-read_luminescence__missing-slot-13",
+      "raw_output": "<start_function_call>call:read_luminescence{}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0669-read_luminescence__missing-slot-14",
+      "raw_output": "<start_function_call>call:read_luminescence{at:[<escape>D7<escape>,<escape>F3<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0682-read_luminescence__none-12",
+      "raw_output": "<start_function_call>call:read_luminescence{focal_height_mm:7.5}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0683-read_luminescence__none-13",
+      "raw_output": "<start_function_call>call:read_luminescence{focal_height_mm:12.5}<end_function_call>"
+    },
+    {
+      "record_id": "nat-0684-read_luminescence__none-14",
+      "raw_output": "<start_function_call>call:read_luminescence{focal_height_mm:15.0}<end_function_call>"
+    }
+  ]
+}

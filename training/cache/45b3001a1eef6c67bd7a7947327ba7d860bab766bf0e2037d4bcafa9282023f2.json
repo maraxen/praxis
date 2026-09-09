@@ -1,0 +1,9 @@
+{
+ "cache_key": "45b3001a1eef6c67bd7a7947327ba7d860bab766bf0e2037d4bcafa9282023f2",
+ "fetched_at": "2026-09-02T16:41:29.071227+00:00",
+ "input_hash": "6ecccac6cce2931935414e6f1f11fe0c6e3741c9a8ae4556cc1b8cac4fa06d20",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Bring over to the hotel stack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

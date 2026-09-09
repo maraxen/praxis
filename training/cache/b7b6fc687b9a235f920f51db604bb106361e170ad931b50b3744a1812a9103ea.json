@@ -1,0 +1,9 @@
+{
+ "cache_key": "b7b6fc687b9a235f920f51db604bb106361e170ad931b50b3744a1812a9103ea",
+ "fetched_at": "2026-09-03T15:00:19.085899+00:00",
+ "input_hash": "f3b7b5be0dac727588e38fedc5771825948f9f37ad19a36a597bb3a0cbead2cd",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could we blow out the residual drops clinging to the pipette tips?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

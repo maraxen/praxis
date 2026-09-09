@@ -1,0 +1,9 @@
+{
+ "cache_key": "73feb436b6184112e7a6a3e460a995318ab5ee0817179d8b5d66451593264b37",
+ "fetched_at": "2026-09-02T16:34:41.522877+00:00",
+ "input_hash": "0fb454c2a38a7caaedc75a1d3ea5fc11280d127f1ae6d3727e954d0b5075784f",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Toss the tips back into the E7 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

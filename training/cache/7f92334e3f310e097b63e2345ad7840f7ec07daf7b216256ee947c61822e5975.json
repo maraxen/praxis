@@ -1,0 +1,9 @@
+{
+ "cache_key": "7f92334e3f310e097b63e2345ad7840f7ec07daf7b216256ee947c61822e5975",
+ "fetched_at": "2026-09-02T20:33:43.081581+00:00",
+ "input_hash": "9a5ddc30c9206f33f5b99fff7a6c0a2c6b55cd5b0a9c175023afafd95c95c4fa",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please measure the glow from the loaded plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "a8baccebea2481d5ab532951f91e373be3de420137e00d2405f14d7843fc5802",
+ "fetched_at": "2026-08-28T18:01:28.975320+00:00",
+ "input_hash": "8007deb678c5c3cbaa8dd14e836201303b098e00dd05431ff4aecf54d17067dc",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Stamp 15 microliters from plate_1 onto plate_2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

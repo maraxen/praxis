@@ -5,6 +5,7 @@ import inspect
 from typing import Any, Union, get_args, get_origin
 
 from praxis.common.type_inspection import (
+  PLR_MACHINE_FRONTEND_TYPES,
   PLR_RESOURCE_TYPES,
   extract_resource_types,
   get_element_type,
@@ -14,6 +15,7 @@ from praxis.common.type_inspection import (
 )
 
 __all__ = [
+  "PLR_MACHINE_FRONTEND_TYPES",
   "PLR_RESOURCE_TYPES",
   "extract_resource_types",
   "fqn_from_hint",

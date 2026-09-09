@@ -1,0 +1,9 @@
+{
+ "cache_key": "127f53e63d9f006724d7db2ff37f619e7d7c7a465e6826698f5ca4bc378d9375",
+ "fetched_at": "2026-09-02T16:37:24.720639+00:00",
+ "input_hash": "b8e748c4759ec7ef8fd5aff840fd8397ebe6d993f91f202d2219e81aaeff5c40",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you bring over to scale station 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

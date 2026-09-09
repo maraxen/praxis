@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:15:05Z",
+ "key": "c1b11faf9cc00b9ebefcc0562ab1535039988398a8515122fa2cafb898e48f95",
+ "prompt_sha256": "c1b11faf9cc00b9ebefcc0562ab1535039988398a8515122fa2cafb898e48f95",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Draw up 15 uL from plate A1.\nPlease aspirate 15 uL from plate A1.\nPull 15 uL out of plate A1.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

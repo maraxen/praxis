@@ -1,0 +1,9 @@
+{
+ "cache_key": "c5f56ca2117c7a42d8f65fbcd5d50da224904da2ba6a8637183e1a336a407a07",
+ "fetched_at": "2026-09-03T15:02:57.294169+00:00",
+ "input_hash": "6551454e92b042c715e73bb4d03568a11579926eb23cd45b2622ff915cf505f9",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Just dump the liquid from plate 1 straight into the waste.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

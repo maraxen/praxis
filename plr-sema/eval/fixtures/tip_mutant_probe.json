@@ -1,0 +1,42 @@
+{
+  "intent_record": {
+    "record_id": "ex_tip_mutant_probe",
+    "utterance": "pick up tips, aspirate and dispense, drop the tips, then pick up tips again from the same spots, aspirate and dispense again, and drop them once more",
+    "source": "synthetic",
+    "calls": [
+      {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1", "tip_rack.B1"]}},
+      {"name": "aspirate", "params": {"source": "reagent_trough", "volume_ul": 20}},
+      {"name": "dispense", "params": {"destination": "assay_plate.A1", "volume_ul": 20}},
+      {"name": "drop_tips", "params": {"destination": ["tip_rack.A1", "tip_rack.B1"]}},
+      {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1", "tip_rack.B1"]}},
+      {"name": "aspirate", "params": {"source": "reagent_trough", "volume_ul": 20}},
+      {"name": "dispense", "params": {"destination": "assay_plate.A2", "volume_ul": 20}},
+      {"name": "drop_tips", "params": {"destination": ["tip_rack.A1", "tip_rack.B1"]}}
+    ],
+    "expected_effects": [
+      {"effect": "aspirates", "target_ref": "reagent_trough"},
+      {"effect": "dispenses", "target_ref": "assay_plate.A1"},
+      {"effect": "dispenses", "target_ref": "assay_plate.A2"},
+      {"effect": "drops_tips", "target_ref": "tip_rack.A1"}
+    ]
+  },
+  "call_sequence": [
+    {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1", "tip_rack.B1"]}},
+    {"name": "aspirate", "params": {"source": "reagent_trough", "volume_ul": 20}},
+    {"name": "dispense", "params": {"destination": "assay_plate.A1", "volume_ul": 20}},
+    {"name": "drop_tips", "params": {"destination": ["tip_rack.A1", "tip_rack.B1"]}},
+    {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1", "tip_rack.B1"]}},
+    {"name": "aspirate", "params": {"source": "reagent_trough", "volume_ul": 20}},
+    {"name": "dispense", "params": {"destination": "assay_plate.A2", "volume_ul": 20}},
+    {"name": "drop_tips", "params": {"destination": ["tip_rack.A1", "tip_rack.B1"]}}
+  ],
+  "deck_layout": {
+    "resources": {
+      "reagent_trough": "Trough",
+      "assay_plate": "Plate"
+    },
+    "seed_volumes": {
+      "reagent_trough": 5000
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "56609f7149b06e6b15b999d4231c54f26b0adde4e981a1d170128584ff586252",
+ "fetched_at": "2026-09-02T20:27:32.436575+00:00",
+ "input_hash": "10d20e369cf46819ffe70797c448dd0fda147a49007e4cf43cea1a9a8957b00c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure fluorescence across the plate with an excitation wavelength of 535 nm and a focal height of 7.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,6 +1,6 @@
 """Tests for unified Asset SQLModel."""
 import pytest
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import Session, create_engine, select
 
 from praxis.backend.models.domain.asset import Asset, AssetCreate, AssetRead, AssetUpdate
 from praxis.backend.models.enums import AssetType
@@ -24,6 +24,7 @@ def session(engine):
 
 class ConcreteAsset(Asset, table=True):
     """Concrete subclass of Asset for testing SQLModel functionality."""
+
     __tablename__ = "concrete_assets"
 
 class TestAssetSQLModel:
@@ -35,7 +36,7 @@ class TestAssetSQLModel:
         session.add(asset)
         session.commit()
         session.refresh(asset)
-        
+
         assert asset.accession_id is not None
         assert asset.name == "test_asset"
         assert asset.asset_type == AssetType.ASSET
@@ -52,7 +53,7 @@ class TestAssetSQLModel:
         session.add(asset)
         session.commit()
         session.refresh(asset)
-        
+
         # Verify read model
         read_model = AssetRead.model_validate(asset)
         assert read_model.name == "test_asset"
@@ -76,7 +77,7 @@ class TestAssetSQLModel:
         update_data = AssetUpdate(location="Lab A")
         assert update_data.location == "Lab A"
         assert update_data.name is None  # Not provided
-        
+
         # Verify filtering out None values works when updating
         update_dict = update_data.model_dump(exclude_unset=True)
         assert "name" not in update_dict
@@ -87,21 +88,21 @@ class TestAssetSQLModel:
         asset = ConcreteAsset(name="poly_asset")
         session.add(asset)
         session.commit()
-        
+
         # Raw SQL check to verify the discriminator column
         statement = select(ConcreteAsset).where(ConcreteAsset.name == "poly_asset")
         result = session.exec(statement).first()
         assert result.asset_type == AssetType.ASSET
-        
+
     def test_json_fields_roundtrip(self, session):
         """Test that JSON fields are correctly stored and retrieved."""
         plr_def = {"model": "Opentrons", "version": 2}
         asset = ConcreteAsset(
-            name="robot", 
+            name="robot",
             plr_definition=plr_def
         )
         session.add(asset)
         session.commit()
         session.refresh(asset)
-        
+
         assert asset.plr_definition == plr_def

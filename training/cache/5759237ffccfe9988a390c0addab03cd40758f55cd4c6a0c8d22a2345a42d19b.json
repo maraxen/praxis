@@ -1,0 +1,9 @@
+{
+ "cache_key": "5759237ffccfe9988a390c0addab03cd40758f55cd4c6a0c8d22a2345a42d19b",
+ "fetched_at": "2026-09-02T16:34:41.522211+00:00",
+ "input_hash": "8ef949bd64403890154e9d9642fa8581bbf1240148f6b7cf2663d3d468d52e1d",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please toss the tips into the D5 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

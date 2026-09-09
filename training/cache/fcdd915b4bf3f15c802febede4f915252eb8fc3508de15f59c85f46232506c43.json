@@ -1,0 +1,9 @@
+{
+ "cache_key": "fcdd915b4bf3f15c802febede4f915252eb8fc3508de15f59c85f46232506c43",
+ "fetched_at": "2026-09-02T17:07:40.571685+00:00",
+ "input_hash": "b84520e9caa82b644836b3409d11e49383997f1c63219b21270bcaba9b54eda3",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and carry to hotel stack 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

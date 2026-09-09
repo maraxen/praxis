@@ -1,0 +1,9 @@
+{
+ "cache_key": "c73b685fb232e3f5f6afe00240fdee24225f44cba0065785f8e7728492a02019",
+ "fetched_at": "2026-09-02T15:12:17.407411+00:00",
+ "input_hash": "078c066c5b01041711b41f871667c5f6351a063bbfb6b7b18693a293a881b75c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Drop 50 microliters into the same well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

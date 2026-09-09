@@ -1,0 +1,9 @@
+{
+ "cache_key": "cdfe12bdcb3e1d50bc32728e72a6c7e632a4aad5da74edc07ecaaaec4ccaec80",
+ "fetched_at": "2026-09-03T15:10:04.030811+00:00",
+ "input_hash": "fda8b7053e3b6d433055d9972a1ea4246bb777e4f7e5f06d3233a107571acb54",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you translate this French paper into English for me?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

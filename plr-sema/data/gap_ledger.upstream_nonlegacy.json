@@ -1,0 +1,6195 @@
+{
+  "by_category": {
+    "harness_internal": null,
+    "postcondition_mismatch": null,
+    "precondition_state": null,
+    "shape_mismatch": null,
+    "ungroundable_reference": null,
+    "unsupported_tool": null
+  },
+  "by_category_status": "not_applicable_v1",
+  "by_reason": {
+    "no_contract_derived": 0,
+    "unresolved_delegate": 158
+  },
+  "contract_table": {
+    "disambiguated_keys": 53,
+    "distinct_bare_qualnames": 3650,
+    "total_entries": 3677
+  },
+  "dropped_receiver_calls_by_method": {},
+  "index_key_collisions": {
+    "all_records": 9,
+    "finding_bearing_records": 4
+  },
+  "schema_version": 1,
+  "stamp": {
+    "plr": {
+      "branch": "nogit",
+      "dirty": false,
+      "dirty_content_id": null,
+      "hash": "nogit",
+      "provenance_source": "nogit",
+      "toplevel": null
+    },
+    "praxis": {
+      "branch": "coxswain-p2-pipeline",
+      "dirty": true,
+      "dirty_content_id": "f47eb524515c9be488f52c859843c2c2795e85822d28b6f76573642f15553968",
+      "hash": "51446375a2eca5fab9f0cc86d17989afea8444ed",
+      "provenance_source": "git",
+      "toplevel": "/home/marielle/projects/praxis"
+    },
+    "pylabrobot_version": "0.2.2",
+    "schema_version": 1,
+    "stamped_at": "2026-09-02T03:17:40.715306+00:00",
+    "surface": "upstream_nonlegacy",
+    "surface_pin": "3a50a567fe537d3a7b8ecdc84858191ee3c19637"
+  },
+  "supported_tools": {
+    "by_reason": {
+      "no_contract_derived": 0,
+      "unresolved_delegate": 0
+    },
+    "liquid_handler_present": false,
+    "methods_attempted": 0,
+    "methods_with_dropped_receiver_call": 0,
+    "methods_with_gaps": 0,
+    "methods_with_no_recorded_gap": 0,
+    "note": "no class_name == 'LiquidHandler' record in this surface's survey index -- SUPPORTED_TOOLS' (module, qualname) mapping (D22) is structurally unresolvable here, not merely empty of gaps. Every count above is 0 because nothing was attempted, not because 0 gaps were measured."
+  },
+  "top_unresolved": {
+    "dropped_receiver": [],
+    "dropped_receiver_unfiltered": [],
+    "dropped_receiver_whole_surface": [
+      {
+        "blocks_methods": 64,
+        "call": "asyncio.sleep"
+      },
+      {
+        "blocks_methods": 36,
+        "call": "self.cr.next_command"
+      },
+      {
+        "blocks_methods": 29,
+        "call": "asyncio.get_running_loop"
+      },
+      {
+        "blocks_methods": 29,
+        "call": "time.time"
+      },
+      {
+        "blocks_methods": 23,
+        "call": "capturer.record"
+      },
+      {
+        "blocks_methods": 20,
+        "call": "time.monotonic"
+      },
+      {
+        "blocks_methods": 19,
+        "call": "super().__init__"
+      },
+      {
+        "blocks_methods": 18,
+        "call": "self.io.read"
+      },
+      {
+        "blocks_methods": 17,
+        "call": "loop.run_in_executor"
+      },
+      {
+        "blocks_methods": 16,
+        "call": "bytes.fromhex"
+      },
+      {
+        "blocks_methods": 15,
+        "call": "self._driver.send_command"
+      },
+      {
+        "blocks_methods": 15,
+        "call": "super().assign_child_resource"
+      },
+      {
+        "blocks_methods": 14,
+        "call": "self.io.write"
+      },
+      {
+        "blocks_methods": 13,
+        "call": "struct.pack"
+      },
+      {
+        "blocks_methods": 12,
+        "call": "asyncio.wait_for"
+      },
+      {
+        "blocks_methods": 11,
+        "call": "contextlib.suppress"
+      },
+      {
+        "blocks_methods": 11,
+        "call": "struct.unpack"
+      },
+      {
+        "blocks_methods": 9,
+        "call": "loop.time"
+      },
+      {
+        "blocks_methods": 9,
+        "call": "self.io.setup"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "asyncio.shield"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "data.decode"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "data.hex"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "self.driver.send_command"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "self._celigo.send_command"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "self._el406._send_step_command"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "self._el406.batch"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "self.io.reset_input_buffer"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "self.motor.send_command"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "struct.unpack_from"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "asyncio.Lock"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "asyncio.to_thread"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "datetime.now"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "plate.get_size_y"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "plate.get_size_z"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "self.io.readline"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "cmd.encode"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "command.encode"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "match.group"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "math.ceil"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "math.floor"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "next_command.data.encode"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "re.search"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "reader.u8"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "response_data.hex"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.io.stop"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.motor._terminate"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.motor.wait_until_ready"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "(await self._ensure_ready()).upper"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "asyncio.create_task"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "buf.decode"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.x_drive_increments_to_mm"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.x_drive_mm_to_increments"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.y_drive_increments_to_mm"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.y_drive_mm_to_increments"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.z_drive_increments_to_mm"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.z_drive_mm_to_increments"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "command.find"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "framed_message.hex"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "itertools.product"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "json.dumps"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "np.frombuffer"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "os.path.abspath"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "os.path.dirname"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "plate.get_item"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "plate.get_size_x"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "plate.unassign"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "r.u8"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "raw_response.decode"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "reader.u16"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "resource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "response.decode"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "result.hex"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "root.find"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "root.iter"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self._celigo.abort_controller_operation"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self._reader.read"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.device.set_string_feature_value"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.interface.send_command"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.io.set_baudrate"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.motor._set_mode"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.motor._set_parameter"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "status.upper"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "buf.extend"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "c.from_deck_frame"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "camera.capture"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "camera.set_exposure"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "cast(Resource, self.get_resource(resource.name)).unassign"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "concurrent.futures.Future"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "configuration.decode"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "ctypes.byref"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "ctypes.c_float"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "data.copy"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "destination.assign_child_resource"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "destination.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "dict.fromkeys"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "f.read"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "lib.LucamGetFormat"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "lib.LucamStreamVideoControl"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "list(self._ordering.keys()).index"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "math.sqrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "mode.lower"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "next_command.data.lower"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "packet.hex"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "plate.get_well"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "plate.lid.get_size_z"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "r.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "r.u16"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "r.u32"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "reader.f32"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "reader.i16"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "reader.u32"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_size_x"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.register_did_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "response.hex"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "response.replace"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "seen.extend"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._driver._send_command"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._tempfile.flush"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._tempfile.write"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.command_line.setup"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.dev.get_active_configuration"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.io.reset_output_buffer"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.io.set_line_property"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.io.temporary_timeout"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.io.usb_purge_rx_buffer"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.io.usb_purge_tx_buffer"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.stream.push_buffer"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.wfile.write"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.z_axis.move_to"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "shutil.which"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "str(intensity).zfill"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "super().check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "super().move_to_ticks"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "super().unassign_child_resource"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "top_left_well.get_anchor"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "usb.core.find"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "usb.util.dispose_resources"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "usb.util.find_descriptor"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "v.strftime"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "well.strip().upper"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "write_data.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'Coordinates (mm)'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'Rail'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'Resource'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'Type'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'resetDevice\\r'.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(cmd + '\\r').encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(sum(decel_command) - 170 & 255).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(tree_part + '<empty>').ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(tree_part + resource.name).ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_ACK_RE.match"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_XmlScalars({'value': el.text}).boolean"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "__version__.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_xml_local_name(element.tag).lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "address.partition"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "all_reads.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.request_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.resource.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.resource.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.Event"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.create_subprocess_exec"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.get_event_loop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.get_event_loop().time"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.get_running_loop().create_future"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.get_running_loop().time"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.run_coroutine_threadsafe"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.wrap_future"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "axis._move_relative_to_limit"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "axis.encoder_bounds"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "axis.move_to_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "axis.request_encoder_ratio"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "axis.request_encoder_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "b''.join(chunks).decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "body.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "body.rindex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "bottom_right_well.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "buf.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "buf.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "buffer.get_data"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "buffer.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "bytes(chunks).decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.isdigit"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.to_deck_frame"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.x_mm_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "camera.set_gain"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "candidates.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "capturer.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cassette.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "checksum.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child._check_naming_conflicts"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child.get_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child_cls.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "chunk.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "chunks.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cls._terms"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cmd_xml.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "color.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cols.reverse"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "columns_set.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.get_log_params"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.interpret_response"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.rfind"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command_line.run"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration.rstrip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration.rstrip(b'\\x03').decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "content.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "content.replace"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "coordinate_systems.sample_mm_to_stage_mm"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "coordinates.sample_mm_to_stage_mm"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cr.done"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cr.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ctypes.CDLL"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ctypes.POINTER"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ctypes.create_string_buffer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ctypes.util.find_library"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data.pop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data[4:].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data[offset:end].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data_copy.pop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "date_match.groups"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "datetime.date"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination_location.serialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "details.copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dev.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "device.detach_kernel_driver"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "device.is_kernel_driver_active"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "done_frame.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "executor.submit"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "expected.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f'({rails})'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f'Internal Server Error: {type(e).__name__}: {e}\\n'.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f'{address}1{command_tokens}'.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f'{command}\\n'.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f.name.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "filename.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "final_position.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "first_well.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "first_well.get_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "footprints.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "frame.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "frame.payload.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "frame.pixels"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "frame.sharpness"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "frame.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "full[:200].hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "functools.partial"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "functools.wraps"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "fut.result"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "group[0].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "group[1].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "group[2].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "grpc.insecure_channel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "head.request_y_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "head.request_z_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "head.update_location_by_reference_point"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "header.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "hid.Device"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "hid.enumerate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "holder.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "http.server.HTTPServer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "http.server.ThreadingHTTPServer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "init_response.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "inspected_z_ticks.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int(9.15 * 100 * acceleration).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int(9.15 * 100 * deceleration).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int(rpm * 4473.925).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int.from_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "io.BytesIO"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "item.block_size_mm"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "item.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "item.get_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "item.io_type.strip().lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "items.copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "k.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "klass.__name__.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "klass.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "label.capitalize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "label.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "labware.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "layout_match.end"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "len(payload).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lib.LucamCameraOpen"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lib.LucamSetFormat"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lib.LucamTakeVideo"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "libusb_package.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.endswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.partition"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.rstrip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.startswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line[len(prefix):].rpartition"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "liquid_color.strip().lstrip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ln.startswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "loaded_image.convert"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "loader.load"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "location.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "marshal.dumps"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "marshal.dumps(obj.__code__).hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "marshal.loads"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "matcher.search"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "math.isclose"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "math.isnan"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "metadata_data.copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "motion_axis._initialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "motor_response.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "msg.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "msg_data.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "msg_header.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "nest.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "next_datadef.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.array"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer(data, dtype=np.uint8).reshape"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer(data, dtype=np.uint8).reshape(self._height, self._width).copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer(image_buffer[:expected_16bit], dtype=np.uint16).reshape"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer(image_buffer[:expected_8bit], dtype=np.uint8).reshape"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer(self.data, dtype=dtype).reshape"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "obj.io.serialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "obj.serialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "object.__setattr__"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "og_resource.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "og_resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "og_resource.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "operation_data.copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "os.listdir"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "os.path.isfile"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "other.get_absolute_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "outer._on_http"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "output.io_type.strip().lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "parent.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "parent.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "part_number.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "payload.iter"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pending_cleanup.result"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_all_children"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_all_items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_lid_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "process.communicate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "process.kill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "q_match.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.groups"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.i16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.raw_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rack.get_free_sites"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "random.Random"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "random.Random(geometry.seed).sample"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "random.choice"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw.endswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw.split(b'\\x00', 1)[0].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw_response.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "re.findall"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "read_command.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reg_msg.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reply.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "report_id.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reported_stackers.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "request.details.copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "requested_rotation.serialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "res[0].replace"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.__class__.__name__.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.children[0].get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.children[0].get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_did_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_did_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_will_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_will_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.parent.unassign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.register_did_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.register_state_update_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.unassign"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp[1:-1].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp[1:].split(b' ')[0].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp_header.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response.raw_bytes.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_message.hoi.params.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_packet.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_packet.rfind"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_packet[start + 1:end].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_text.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_text.replace"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "root_msg.add_registration_option"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "root_msg.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rows.reverse"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rows_set.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.close"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.connect"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.getsockname"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "scan_future.add_done_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._board.send_command"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._celigo.galvo.request_controller_status"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._celigo.request_controller_status"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._data.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._pending_response_ids.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._pending_response_ids.clear"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._pending_response_ids.discard"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._queue.put"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._reader.readline"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._reader.readuntil"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._recognized_tags.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._rx_buffer.clear"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._rx_buffer.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._scan_lock.acquire"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._shaking_started.set"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._shaking_started.wait"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._tempfile.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._tempfile.seek"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._tempfile.tell"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._vspin.at_bucket.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._writer.drain"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._writer.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.create_stream"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.get_device"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.get_payload"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.get_region"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.set_auto_exposure"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.set_exposure"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.setup"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.stop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.trigger"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.channels.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.children.remove"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.configuration.x_increments_to_mm"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.details.copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.dev.ctrl_transfer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.dev.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.dev.set_configuration"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.execute_command"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.get_string_feature_value"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.dichroic_filter.move_to"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.driver.load"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.driver.set_plate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.driver.unload"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.environment.refresh"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.fst.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.galvo._initialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.galvo.home"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.galvo.move_both"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.galvo.voltages_for_offset"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.get_absolute_rotation().get_rotation_matrix"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.get_anchor(x=x, y=y, z=z).vector"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.get_resource('waste_block').get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.httpd.serve_forever"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_dtr"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_flowctrl"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_latency_timer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_rts"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.loading_tray.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.location.vector"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.modbus.close"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.modbus.connect"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.modbus.write_register"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.motor.request_motor_controller_firmware_version"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_absolute_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_absolute_rotation().get_rotation_matrix"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_child_identifier"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.provider.request"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.received.clear"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.received.pop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.rfile.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.sites[spot].assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.stream.timeout_pop_buffer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.tracker.register_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.websocket.send"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.x_axis._limit_move_distance_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.y_axis._limit_move_distance_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.y_axis.move_to"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.z_axis.mm_to_encoder_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "separator.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ser.send_break"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "serial.Serial"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "serial.tools.list_ports.comports"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "server_loop.call_soon_threadsafe"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "settings.to_device_payload"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "site.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "site.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "socket.socket"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "source.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "source.get_top_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "source.unassign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stack.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stack.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stack.get_top_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "startup.set_exception"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "startup.set_result"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stderr.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stdout.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str((sum(cmd.encode()) + 7) % 100).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str((sum(cmd.encode()) + 73) % 100).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str((sum(cmd.encode()) + 8) % 100).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(emission_wavelength).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(excitation_wavelength).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(focus_integer).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(int(float(integration_time_milliseconds * 50))).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(integration_time_seconds * 5).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(max_duration).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(relative_x * 100 * 0.984)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(relative_y * 100 * 0.984)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(x * 100 * 0.984)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(y * 100 * 0.984)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(self._column).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(self._row).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(sum(cmd.encode()) % 100).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(wavelength).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "string_bytes.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "struct.pack_into"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_item('A1').center"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_item('A1').get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super()._rate_to_encoder_tick_rate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().do_GET"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().end_headers"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().move_to"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "syringe.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tag.endswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tag.startswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tag[len('VoltageMag'):-1].isdigit"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "target.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "target.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "td.total_seconds"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tempfile.NamedTemporaryFile"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tempfile.gettempdir"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "threading.Thread"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "time.sleep"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "token[1:].partition"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tr.empty"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tr.fill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "transfer.plate.unassign"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "types.CellType"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "types.FunctionType"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "urllib.parse.urlsplit"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "urllib.request.Request"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "urllib.request.urlopen"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "usb.util.endpoint_direction"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "usb.util.get_string"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "value.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "value.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "value.strip().lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "values.byteswap"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "values.tobytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.finish"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.i8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.raw_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.u16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.u8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "waste_block.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "webbrowser.open"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.get_column"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.get_row"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.set_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well_a1.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well_a1.get_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well_dz_set.pop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "wells.sort"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "worker.done"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "worker.result"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "year_match.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "z_axis.encoder_bounds"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "z_axis.encoder_ticks_to_mm"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "z_axis.move_to_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "z_axis.request_encoder_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "zlib.compress"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "zlib.crc32"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "zxingcpp.read_barcodes"
+      }
+    ],
+    "dropped_receiver_whole_surface_unfiltered": [
+      {
+        "blocks_methods": 93,
+        "call": "logger.info"
+      },
+      {
+        "blocks_methods": 64,
+        "call": "asyncio.sleep"
+      },
+      {
+        "blocks_methods": 36,
+        "call": "self.cr.next_command"
+      },
+      {
+        "blocks_methods": 30,
+        "call": "logger.warning"
+      },
+      {
+        "blocks_methods": 29,
+        "call": "asyncio.get_running_loop"
+      },
+      {
+        "blocks_methods": 29,
+        "call": "time.time"
+      },
+      {
+        "blocks_methods": 27,
+        "call": "logger.debug"
+      },
+      {
+        "blocks_methods": 24,
+        "call": "logger.error"
+      },
+      {
+        "blocks_methods": 23,
+        "call": "capturer.record"
+      },
+      {
+        "blocks_methods": 23,
+        "call": "logger.log"
+      },
+      {
+        "blocks_methods": 20,
+        "call": "time.monotonic"
+      },
+      {
+        "blocks_methods": 19,
+        "call": "super().__init__"
+      },
+      {
+        "blocks_methods": 18,
+        "call": "self.io.read"
+      },
+      {
+        "blocks_methods": 17,
+        "call": "loop.run_in_executor"
+      },
+      {
+        "blocks_methods": 16,
+        "call": "bytes.fromhex"
+      },
+      {
+        "blocks_methods": 15,
+        "call": "self._driver.send_command"
+      },
+      {
+        "blocks_methods": 15,
+        "call": "super().assign_child_resource"
+      },
+      {
+        "blocks_methods": 14,
+        "call": "self.io.write"
+      },
+      {
+        "blocks_methods": 13,
+        "call": "struct.pack"
+      },
+      {
+        "blocks_methods": 12,
+        "call": "asyncio.wait_for"
+      },
+      {
+        "blocks_methods": 11,
+        "call": "contextlib.suppress"
+      },
+      {
+        "blocks_methods": 11,
+        "call": "struct.unpack"
+      },
+      {
+        "blocks_methods": 9,
+        "call": "loop.time"
+      },
+      {
+        "blocks_methods": 9,
+        "call": "self.io.setup"
+      },
+      {
+        "blocks_methods": 8,
+        "call": "data.split"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "', '.join"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "asyncio.shield"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "data.decode"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "data.hex"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "self.driver.send_command"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "' '.join"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "resp.split"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "self._celigo.send_command"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "self._el406._send_step_command"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "self._el406.batch"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "self.io.reset_input_buffer"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "self.motor.send_command"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "struct.unpack_from"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "asyncio.Lock"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "asyncio.to_thread"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "datetime.now"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "plate.get_size_y"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "plate.get_size_z"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "self.io.readline"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "cmd.encode"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "command.encode"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "match.group"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "math.ceil"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "math.floor"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "next_command.data.encode"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "re.search"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "reader.u8"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "response_data.hex"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.io.stop"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.motor._terminate"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.motor.wait_until_ready"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "''.join"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "(await self._ensure_ready()).upper"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "Writer().u16"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "asyncio.create_task"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "b''.join"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "buf.decode"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.x_drive_increments_to_mm"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.x_drive_mm_to_increments"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.y_drive_increments_to_mm"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.y_drive_mm_to_increments"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.z_drive_increments_to_mm"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.z_drive_mm_to_increments"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "candidates.append"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "command.find"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "framed_message.hex"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "itertools.product"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "json.dumps"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "logger.exception"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "np.frombuffer"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "os.path.abspath"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "os.path.dirname"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "os.path.join"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "plate.get_item"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "plate.get_size_x"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "plate.unassign"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "r.u8"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "raw_response.decode"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "reader.u16"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "res[1].split"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "resource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "response.decode"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "result.hex"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "root.find"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "root.iter"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self._celigo.abort_controller_operation"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self._reader.read"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.device.set_string_feature_value"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.interface.send_command"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.io.set_baudrate"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.motor._set_mode"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.motor._set_parameter"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "status.upper"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "value.strip"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "warnings.warn"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "wells.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Aravis.get_device_id"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Aravis.get_device_serial_nbr"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Aravis.get_n_devices"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Aravis.update_device_list"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "COMMAND_TERMINATORS.get"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Coordinate.zero"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "CoordinateSystems.from_config"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "ET.parse"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Reader(resp_header[7:]).u16"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Writer().u16(7).u8"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Writer().u16(7).u8(0).raw_bytes"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Writer().u16(7).u8(0).raw_bytes(b'\\x00' * 52).finish"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "buf.extend"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "c.from_deck_frame"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "c.split"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "c.split(chr(i) + key + chr(j))[1].split"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "camera.capture"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "camera.set_exposure"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "cast(Resource, self.get_resource(resource.name)).unassign"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "chunks.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "command.split"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "concurrent.futures.Future"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "configuration.decode"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "containers.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "ctypes.byref"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "ctypes.c_float"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "data.copy"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "destination.assign_child_resource"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "destination.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "dict.fromkeys"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "f.read"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "frames.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "items.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "kwargs.items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "lib.LucamGetFormat"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "lib.LucamStreamVideoControl"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "list(self._ordering.keys()).index"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "math.sqrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "mode.lower"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "mode_map.get"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "next_command.data.lower"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "packet.hex"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "part.strip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "payload.split"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "plate.get_well"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "plate.lid.get_size_z"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "r.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "r.u16"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "r.u32"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "rack.sites.items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "raw.strip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "reader.f32"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "reader.i16"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "reader.u32"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_size_x"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.register_did_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "response.decode('ascii', errors='ignore').strip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "response.hex"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "response.replace"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "seen.extend"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.STATUS_MESSAGES.items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._driver._send_command"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._ordering.keys"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._racks_by_number.values"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._scalars.get"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._tempfile.flush"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._tempfile.write"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.command_line.setup"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.dev.get_active_configuration"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.io.reset_output_buffer"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.io.set_line_property"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.io.temporary_timeout"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.io.usb_purge_rx_buffer"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.io.usb_purge_tx_buffer"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.stream.push_buffer"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.wfile.write"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.z_axis.move_to"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "shutil.which"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "str(intensity).zfill"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "super().check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "super().move_to_ticks"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "super().unassign_child_resource"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "top_left_well.get_anchor"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "usb.core.find"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "usb.util.dispose_resources"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "usb.util.find_descriptor"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "v.strftime"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "well.strip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "well.strip().upper"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "write_data.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'Coordinates (mm)'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'Rail'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'Resource'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'Type'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'\\n'.join"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'resetDevice\\r'.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(await self.refresh()).get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(await self.request_all_states()).items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(await self.request_nest_status()).items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(cmd + '\\r').encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(sum(decel_command) - 170 & 255).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(tree_part + '<empty>').ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(tree_part + resource.name).ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "A4SStatus.HeaterBlockStatus"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "A4SStatus.SensorStatus"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "A4SStatus.SystemStatus"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Aravis.Buffer.new_allocate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Aravis.Camera.new"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Aravis.get_device_model"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Aravis.get_device_protocol"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Aravis.get_device_vendor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "BenchCelLabwareSettings.from_dict"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "CalibrationConfig.from_xml"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "CartridgeProfile.from_raw"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "CeligoHardwareConfig.from_xml"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ET.fromstring"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ET.parse(illumination_calibration_path).getroot"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ET.parse(path).getroot"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ExtendedStatus.from_raw"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "HardwareDefaultConfig.from_xml"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "HarpPacket.unpack"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "HoiPacket.unpack"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "INTENSITY_TO_BYTE.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Image.open"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "InhecoSiLAInterface._HTTPRequest"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "InhecoSiLAInterface._SiLACommand"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "IpPacket.unpack"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "LETTERS.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "NavigationConfig.from_xml"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PILImage.open"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PlateHolder(name=f'{name}_slot_{spot + 1}', size_x=_SITE_SIZE_X, size_y=_SITE_SIZE_Y, size_z=slot_height, pedestal_size_z=0).at"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PlateHolder.__init__"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PlateLocSerialProfile.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "RES_TERM_CHAR.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Reader(data).u32"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Reader(data[:4]).u32"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Reader(header[7:]).u16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Reader(raw[:4]).f32"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Reader(response).u16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Reader(response[2:]).u32"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Reader(result[2:]).u16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Resource.__init__"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ResourceHolder.__init__"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "STATUS_MESSAGES.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "TRAVEL_RATE_TO_BYTE.keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "VSpin._StatusPositionTachometer.from_buffer_copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "VSpin.g_to_rpm"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i16(signal_wl).i16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i16(signal_wl).i16(reference_wl).u8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i16(signal_wl).i16(reference_wl).u8(int(is_reference)).u8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i16(signal_wl).i16(reference_wl).u8(int(is_reference)).u8(0).finish"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i32"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i32(int(integration_time * 1000000)).raw_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i32(int(integration_time * 1000000)).raw_bytes(well_mask).u8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i32(int(integration_time * 1000000)).raw_bytes(well_mask).u8(0).u8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i32(int(integration_time * 1000000)).raw_bytes(well_mask).u8(0).u8(0).finish"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().u16(field_index).u8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().u16(field_index).u8(0).raw_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().u16(field_index).u8(0).raw_bytes(b'\\x00' * 57).finish"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_ACK_RE.match"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_POLYNOMIAL_MONOMIALS.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_XmlScalars({'value': el.text}).boolean"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "__version__.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_xml_local_name(element.tag).lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "actual.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "address.partition"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "all_reads.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "annulus2objective.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.request_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.resource.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.resource.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.Event"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.create_subprocess_exec"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.get_event_loop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.get_event_loop().time"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.get_running_loop().create_future"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.get_running_loop().time"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.run_coroutine_threadsafe"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.wrap_future"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "axes.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "axis._move_relative_to_limit"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "axis.encoder_bounds"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "axis.magnifications.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "axis.move_to_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "axis.request_encoder_ratio"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "axis.request_encoder_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "axis_calibration.logical_filter_offsets.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "b''.join(chunks).decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "block_frames.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "blocks.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "body.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "body.rindex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "body[start_index:end_index].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "bottom_right_well.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "buf.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "buf.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "buffer.get_data"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "buffer.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "buffer.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "by_index.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "bytes(chunks).decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "bytes(chunks).decode('utf-8', errors='replace').strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.isdigit"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.to_deck_frame"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.x_mm_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "camera.set_gain"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cameras.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "candidates.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "capturer.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cassette.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "checks.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "checksum.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child._check_naming_conflicts"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child.get_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child_cls.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child_data.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "chunk.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "chunks.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cls._terms"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "clusters.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "clusters[-1].append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cmd_xml.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "coarse_z_positions.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "color.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cols.reverse"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "columns_set.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.get_log_params"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.interpret_response"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.rfind"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command_line.run"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "completed.stderr.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "completed.stdout.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration.decode('latin').strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration.decode('latin').strip().split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration.decode().strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration.decode().strip().split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration.rstrip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration.rstrip(b'\\x03').decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configured.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "connected_devices_list.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "content.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "content.replace"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "coordinate_systems.sample_mm_to_stage_mm"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "coordinates.sample_mm_to_stage_mm"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cr.done"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cr.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ctypes.CDLL"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ctypes.POINTER"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ctypes.create_string_buffer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ctypes.util.find_library"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cytation_code2imaging_mode.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "d.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data.keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data.pop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data[4:].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data[offset:end].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data_copy.pop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data_lines.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "date_match.groups"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "datetime.date"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination_location.serialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "details.copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "detected.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dev.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "device.detach_kernel_driver"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "device.is_kernel_driver_active"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "devices.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "direction.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "done_frame.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "element.text.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "element_sizes.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "error_code_msg.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "error_code_str.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "errors.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "executor.submit"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "expected.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "expected.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f'({rails})'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f'Internal Server Error: {type(e).__name__}: {e}\\n'.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f'{address}1{command_tokens}'.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f'{command}\\n'.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f.name.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "failures.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "fc.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "filename.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "files_by_name.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "final_position.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "fine_z_positions.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "first_well.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "first_well.get_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "footprints.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "footprints.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "frame.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "frame.payload.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "frame.pixels"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "frame.sharpness"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "frame.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "frame_results.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "frames_by_block.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "full[:200].hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "functools.partial"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "functools.wraps"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "fut.result"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "group[0].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "group[1].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "group[2].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "grpc.insecure_channel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "he.errors.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "head.request_y_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "head.request_z_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "head.update_location_by_reference_point"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "header.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "height_volume_data.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "hid.Device"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "hid.enumerate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "holder.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "http.server.HTTPServer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "http.server.ThreadingHTTPServer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "hvd.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "hvd.keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "images.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "indices.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "info.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "init_response.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "inspected_z_ticks.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "installed.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int(9.15 * 100 * acceleration).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int(9.15 * 100 * deceleration).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int(rpm * 4473.925).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int.from_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "io.BytesIO"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "item.block_size_mm"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "item.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "item.get_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "item.io_type.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "item.io_type.strip().lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "items.copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "items[i].append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "k.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "key.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "klass.__name__.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "klass.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "label.capitalize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "label.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "labware.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "layout_match.end"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "len(payload).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lib.LucamCameraOpen"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lib.LucamSetFormat"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lib.LucamTakeVideo"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "libusb_package.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.endswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.partition"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.rstrip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.startswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line[len(prefix):].rpartition"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "liquid_color.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "liquid_color.strip().lstrip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ln.startswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "loaded_image.convert"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "loader.load"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "location.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "log_params.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "logging.getLogger"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "m.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "marshal.dumps"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "marshal.dumps(obj.__code__).hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "marshal.loads"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "mask.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "matcher.search"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "math.isclose"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "math.isnan"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "message.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "message.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "message[:-4].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "message[:-4].split('=')[1].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "metadata_data.copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "missing.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "modules.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "motion_axis._initialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "motor_response.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "msg.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "msg_data.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "msg_header.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "msgs.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "nest.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "new_list.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "new_list[i].append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "next_command.action.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "next_command.data.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "next_datadef.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.array"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer(data, dtype=np.uint8).reshape"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer(data, dtype=np.uint8).reshape(self._height, self._width).copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer(image_buffer[:expected_16bit], dtype=np.uint16).reshape"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer(image_buffer[:expected_8bit], dtype=np.uint8).reshape"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer(self.data, dtype=dtype).reshape"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "obj.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "obj.io.serialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "obj.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "obj.serialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "object.__setattr__"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "og_resource.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "og_resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "og_resource.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "operation_data.copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ordered_items.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ordered_items.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "os.environ.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "os.listdir"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "os.path.isfile"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "other.get_absolute_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "out.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "outer._on_http"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "output.io_type.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "output.io_type.strip().lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "parent.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "parent.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "parsed_config.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "parsed_data.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "part_number.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "part_number2objective.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "payload.iter"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "payload.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pending_cleanup.result"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_all_children"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_all_items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_lid_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "port_str.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "position.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "positions.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "process.communicate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "process.kill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "q_match.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.groups"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.i16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.raw_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rack.get_free_sites"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rack.sites.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "random.Random"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "random.Random(geometry.seed).sample"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "random.choice"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "range_str.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw.endswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw.split(b'\\x00', 1)[0].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw_response.decode('ascii', errors='replace').strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw_response.decode('utf-8').strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw_response.decode('utf-8', errors='replace').strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw_response.decode('utf-8', errors='replace').strip().split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw_response.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "re.findall"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "re.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "read_command.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reg_msg.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reply.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reply.decode().strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reply.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "report_id.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reported_stackers.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "request.details.copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "requested_rotation.serialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "required.update"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "res[0].replace"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "res[0].replace('OK', '').split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.__class__.__name__.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.children[0].get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.children[0].get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_did_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_did_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_will_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_will_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.parent.unassign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.register_did_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.register_state_update_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.sites.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.unassign"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split('bb/')[-1].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split('bb/', 1)[1].strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split('bb/', 1)[1].strip().strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split('rw', 1)[-1].strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split('rw', 1)[-1].strip().strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split('vw')[-1].strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split('vw')[-1].strip().split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split(read_command.lower(), 1)[-1].strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split(read_command.lower(), 1)[-1].strip().strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split(read_command.lower(), 1)[-1].strip().strip(\"'\u201a\u201b\").split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp[1:-1].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp[1:-1].decode().split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp[1:].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp[1:].split(b' ')[0].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp_header.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp_level.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response.raw_bytes.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response.replace('Stat', '').strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_message.hoi.params.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_packet.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_packet.rfind"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_packet[start + 1:end].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_text.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_text.replace"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_text.replace(',', ' ').split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "responses.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "result.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "result_images.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "result_level.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "root_msg.add_registration_option"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "root_msg.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "row.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rows.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rows.reverse"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rows_set.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.close"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.connect"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.getsockname"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "scalars.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "scalars.keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "scan_future.add_done_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "scored_z_samples.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._axes_outside_soft_limits(target).items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._board.send_command"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._celigo.galvo.request_controller_status"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._celigo.request_controller_status"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._data.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._filter_cubes.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._filters.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._keep_alive_thread.join"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._linear_axes.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._objectives.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._objectives.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._optical_axes.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ordering.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._pending_response_ids.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._pending_response_ids.clear"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._pending_response_ids.discard"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._queue.put"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._racks_by_number.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._reader.readline"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._reader.readuntil"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._recognized_tags.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._recognized_tags.update"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._rx_buffer.clear"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._rx_buffer.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._scan_lock.acquire"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._shaking_started.set"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._shaking_started.wait"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._tempfile.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._tempfile.seek"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._tempfile.tell"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._vspin.at_bucket.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._writer.drain"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._writer.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.create_stream"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.get_device"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.get_payload"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.get_region"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.set_auto_exposure"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.set_exposure"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.setup"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.stop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.camera.trigger"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.channel.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.channels.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.children.remove"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.config.galvo_calibrations.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.configuration.x_increments_to_mm"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.details.copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.dev.ctrl_transfer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.dev.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.dev.set_configuration"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.execute_command"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.get_string_feature_value"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.dichroic_filter.move_to"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.driver.load"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.driver.set_plate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.driver.unload"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.environment.refresh"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.fst.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.galvo._initialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.galvo.home"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.galvo.move_both"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.galvo.voltages_for_offset"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.get_absolute_rotation().get_rotation_matrix"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.get_anchor(x=x, y=y, z=z).vector"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.get_resource('waste_block').get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.headers.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.headers.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.httpd.serve_forever"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_dtr"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_flowctrl"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_latency_timer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_rts"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.loading_tray.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.location.vector"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.modbus.close"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.modbus.connect"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.modbus.write_register"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.motor.request_motor_controller_firmware_version"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.nests.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_absolute_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_absolute_rotation().get_rotation_matrix"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_child_identifier"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.provider.request"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.received.clear"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.received.pop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.recently_sampled.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.rfile.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.sites[spot].assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.stream.timeout_pop_buffer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.tracker.register_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.websocket.send"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.x_axis._limit_move_distance_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.y_axis._limit_move_distance_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.y_axis.move_to"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.z_axis.mm_to_encoder_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "separator.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ser.send_break"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "serial.Serial"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "serial.tools.list_ports.comports"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "server_loop.call_soon_threadsafe"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "settings.to_device_payload"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "shlex.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "site.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "site.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "sites.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "socket.socket"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "source.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "source.get_top_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "source.unassign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stack.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stack.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stack.get_top_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "startup.set_exception"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "startup.set_result"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stderr.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stdout.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str((sum(cmd.encode()) + 7) % 100).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str((sum(cmd.encode()) + 73) % 100).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str((sum(cmd.encode()) + 8) % 100).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(emission_wavelength).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(excitation_wavelength).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(focus_integer).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(int(float(integration_time_milliseconds * 50))).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(integration_time_seconds * 5).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(max_duration).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(relative_x * 100 * 0.984)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(relative_y * 100 * 0.984)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(x * 100 * 0.984)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(y * 100 * 0.984)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(self._column).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(self._row).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(sum(cmd.encode()) % 100).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(wavelength).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "string_bytes.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "strings.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "struct.pack_into"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_item('A1').center"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_item('A1').get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "summary_.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super()._rate_to_encoder_tick_rate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().do_GET"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().end_headers"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().move_to"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "syringe.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tag.endswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tag.startswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tag[len('VoltageMag'):-1].isdigit"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "target.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "target.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "targets.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "td.total_seconds"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tempfile.NamedTemporaryFile"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tempfile.gettempdir"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "terms.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "text.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "threading.Thread"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tilt.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tilt.text.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "time.sleep"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "token[1:].partition"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tr.empty"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tr.fill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "transfer.plate.unassign"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "types.CellType"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "types.FunctionType"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "urllib.parse.urlsplit"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "urllib.request.Request"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "urllib.request.urlopen"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "usb.util.endpoint_direction"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "usb.util.get_string"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "validated.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "value.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "value.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "value.strip().lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "values.byteswap"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "values.tobytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "vars(obj).items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.finish"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.i8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.raw_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.u16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.u8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "waste_block.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "webbrowser.open"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.get_column"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.get_row"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.set_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well_a1.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well_a1.get_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well_dz_set.pop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "wells.sort"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "wl_parts.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "worker.done"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "worker.result"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "year_match.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "z_axis.encoder_bounds"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "z_axis.encoder_ticks_to_mm"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "z_axis.move_to_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "z_axis.request_encoder_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "zlib.compress"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "zlib.crc32"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "zxingcpp.read_barcodes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "{(-2, True): 1, (-2, False): 2, (0, True): 3, (0, False): 4, (2, True): 5, (2, False): 6, (4, True): 7, (4, False): 8}.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "{96: 12, 384: 24, 1536: 48}.get"
+      }
+    ],
+    "supported_tools_closure": [],
+    "whole_surface": [
+      {
+        "blocks_methods": 21,
+        "call": "send_command"
+      },
+      {
+        "blocks_methods": 16,
+        "call": "validate_payload_length"
+      },
+      {
+        "blocks_methods": 16,
+        "call": "wait_for_idle"
+      },
+      {
+        "blocks_methods": 12,
+        "call": "assign_child_resource"
+      },
+      {
+        "blocks_methods": 10,
+        "call": "set_temperature"
+      },
+      {
+        "blocks_methods": 9,
+        "call": "get_all_items"
+      },
+      {
+        "blocks_methods": 9,
+        "call": "get_resource"
+      },
+      {
+        "blocks_methods": 8,
+        "call": "dispensing_drive_increments_to_uL"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "update_location_by_reference_point"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_open"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "_callback"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "get_item"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_check"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_read_now"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_calibrate"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_carriage_speed"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_clear"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_mode"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_nvram"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_order"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_plate_position"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_pmt"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_read_stage"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_readtype"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_shake"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_strip"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_tag"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_wavelengths"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_transfer_data"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "request_encoder_ticks"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "set_sealing_time"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "squeezer_drive_increments_to_mm"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "wait_for_sealing_temperature"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "_set_filter"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "_set_flashes_per_well"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "unassign_child_resource"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "STATUS"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_home_to_encoder_index"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_measurement_in_flight"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_motor_mode"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_seal"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_wait_for_busy_cleared"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_warn_chunk_flags"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "end_headers"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "get_child_identifier"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "move_to_ticks"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "register_did_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "register_did_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "request_status"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "send_header"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "send_response"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "InstrumentSettings"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "SelfCheckResult"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "SyringeBoxInfo"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_check_reachable"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_compute_height_from_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_compute_volume_from_height"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_do"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_get_cutoff_filter_index_from_wavelength"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_make_tip_func"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_motion_profile"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_move_homing_relative_ticks"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_output"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_parse_id"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_raise_for_error"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_rate_to_encoder_tick_rate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_read_body"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_read_line"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_reported_drive_parameter"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_restore_homing_configuration"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_serialize_ctrl_transfer_request"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_set_integration_time"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "check_z_height"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "column"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "default_initialize_y_positions"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_container"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "require_drive_parameter"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "row"
+      }
+    ]
+  },
+  "totals": {
+    "methods_attempted": 1021,
+    "methods_with_dropped_receiver_call": 607,
+    "methods_with_gaps": 82,
+    "methods_with_no_recorded_gap": 939
+  },
+  "validation_looking_dropped_receiver_calls_by_method": {}
+}

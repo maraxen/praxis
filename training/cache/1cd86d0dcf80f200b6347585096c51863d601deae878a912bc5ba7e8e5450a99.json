@@ -1,0 +1,9 @@
+{
+ "cache_key": "1cd86d0dcf80f200b6347585096c51863d601deae878a912bc5ba7e8e5450a99",
+ "fetched_at": "2026-09-02T14:57:20.608124+00:00",
+ "input_hash": "46820cd0e4e064ce35189f3c65be086201ce0b0203bdc8224b12d7adf268de07",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Pick up fresh tips from the rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

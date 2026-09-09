@@ -1,0 +1,9 @@
+{
+ "cache_key": "12b9c41a8663e1b463b6d9ccfe6aca7da8fe95c66abacb1712c2a5483bfae758",
+ "fetched_at": "2026-09-02T20:28:27.852920+00:00",
+ "input_hash": "ab2b4c26191394f68279d73149634530cb60f013e8def37498453296a802b904",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Scan fluorescence on the plate using an excitation wavelength of 560 nm, an emission wavelength of 520 nm, and a focal height of 4.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

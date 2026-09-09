@@ -1,0 +1,9 @@
+{
+ "cache_key": "26d7476253d0bcfd1fb286c50d26548a6e589d3e6ef814e73f614f841e838602",
+ "fetched_at": "2026-08-28T18:00:55.329536+00:00",
+ "input_hash": "fd7c01e56e5616d4121472c25665c0e91b7c5ac33213ae2560e108a8aef3a140",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Dispense into plate 2 well D7.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

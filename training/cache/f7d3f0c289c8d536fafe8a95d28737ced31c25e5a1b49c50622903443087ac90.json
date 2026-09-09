@@ -1,0 +1,9 @@
+{
+ "cache_key": "f7d3f0c289c8d536fafe8a95d28737ced31c25e5a1b49c50622903443087ac90",
+ "fetched_at": "2026-09-02T20:18:26.706914+00:00",
+ "input_hash": "d2e6882fd402fed90deff126f54ef27dcfc45761445145dcddc0cf395d1d39ed",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and cover scale station 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

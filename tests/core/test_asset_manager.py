@@ -6,10 +6,9 @@ import pytest
 from pylabrobot.resources import Deck
 
 from praxis.backend.core.asset_manager import AssetManager
-from praxis.backend.models.enums import MachineStatusEnum
-from praxis.backend.models.enums import ResourceStatusEnum
-from praxis.backend.models.pydantic_internals.runtime import AcquireAsset
 from praxis.backend.models.domain.protocol import AssetRequirement as AssetRequirementModel
+from praxis.backend.models.enums import MachineStatusEnum, ResourceStatusEnum
+from praxis.backend.models.pydantic_internals.runtime import AcquireAsset
 from praxis.backend.utils.errors import AssetAcquisitionError, AssetReleaseError
 from praxis.backend.utils.uuid import uuid7
 

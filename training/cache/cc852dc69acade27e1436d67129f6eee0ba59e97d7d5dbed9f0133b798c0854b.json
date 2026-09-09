@@ -1,0 +1,9 @@
+{
+ "cache_key": "cc852dc69acade27e1436d67129f6eee0ba59e97d7d5dbed9f0133b798c0854b",
+ "fetched_at": "2026-09-01T21:13:13.268016+00:00",
+ "input_hash": "d914ca44e585ffa70185e0664c40ab585e0375cc22195940f41b1b31ccec7e08",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you mount tips on the pipette channels?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

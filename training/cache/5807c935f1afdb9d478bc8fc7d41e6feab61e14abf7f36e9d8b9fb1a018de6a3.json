@@ -1,0 +1,9 @@
+{
+ "cache_key": "5807c935f1afdb9d478bc8fc7d41e6feab61e14abf7f36e9d8b9fb1a018de6a3",
+ "fetched_at": "2026-09-02T14:57:20.607814+00:00",
+ "input_hash": "393d83a9fa1fb852973c0164d9dc3de1f7b175266917c62cf79f5007ead7445f",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Get tips from the rack on deck.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "e65fde54a33f252f3f2b8d4d001bb8ec2859847e60a5a56c3de9f921574653c0",
+ "fetched_at": "2026-09-01T21:14:12.175598+00:00",
+ "input_hash": "948a40c2ac31f2f57379996804c70b3eda3b1bd0a8fb2125239e8d292f733750",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Drop off the tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

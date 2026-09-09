@@ -1,0 +1,9 @@
+{
+ "cache_key": "b1771781a242539305c5e261463701714c0e512f04969d3500a0a113ae68956e",
+ "fetched_at": "2026-09-02T20:22:20.432685+00:00",
+ "input_hash": "e2103f266fa50bdb9d0cc2a25341d0bec1c909178615bf0719cebdf25a91658d",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Take lid 2 and set it on scale station 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "ba66830a5bbf684fdde03a30c3312b923811c25df829aa2a31438fd9420046da",
+ "fetched_at": "2026-09-02T16:41:29.071474+00:00",
+ "input_hash": "f014c14ce219d70095b25b28371276f6dcf80a5fb0ad97b368247f3431ddabd8",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you carry over to the hotel stack?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

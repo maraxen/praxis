@@ -1,0 +1,9 @@
+{
+ "cache_key": "ad2656c1bee9d76cfc45446c37be6f876e8a8a3cc634b36bbdaf1bf761a5d647",
+ "fetched_at": "2026-09-01T21:16:35.727266+00:00",
+ "input_hash": "df113a52a611922081ab46a05488148f36102865bf487426f483fc9a7cf8acbe",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Place the reservoir on reservoir_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

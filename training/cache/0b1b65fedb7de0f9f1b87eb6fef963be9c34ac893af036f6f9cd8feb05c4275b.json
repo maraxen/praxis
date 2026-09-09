@@ -1,0 +1,9 @@
+{
+ "cache_key": "0b1b65fedb7de0f9f1b87eb6fef963be9c34ac893af036f6f9cd8feb05c4275b",
+ "fetched_at": "2026-09-02T16:49:24.530592+00:00",
+ "input_hash": "cbce714f43f5c14311399907dcf8058d2e03d4ccbac0dc451f22be3f11efc0fc",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Cover reservoir 1 with the lid.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

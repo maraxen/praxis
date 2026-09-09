@@ -1,0 +1,9 @@
+{
+ "cache_key": "66966767fe09062638ac0afdccfc4f138736495b443893d3c979ed11fd1bcb76",
+ "fetched_at": "2026-09-02T16:49:00.372046+00:00",
+ "input_hash": "60d004fb89a9eeeb610f9a1fdad3d2812ed76b85daa858d9ec63742badb82663",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you put the lid on scale station 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

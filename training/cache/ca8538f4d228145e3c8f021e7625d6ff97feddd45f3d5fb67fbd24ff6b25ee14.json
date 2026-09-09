@@ -1,0 +1,9 @@
+{
+ "cache_key": "ca8538f4d228145e3c8f021e7625d6ff97feddd45f3d5fb67fbd24ff6b25ee14",
+ "fetched_at": "2026-09-02T20:54:21.860881+00:00",
+ "input_hash": "16928c44934bff74c3043fb7f8eec7cecdb7d1bb1fffcdcc0fe76883264c7932",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Take the tips off, please.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

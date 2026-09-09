@@ -1,0 +1,9 @@
+{
+ "cache_key": "8120465b0d039782903cb8f9f8f543ea4ba18984e4b4a93fb25c31f5106a815e",
+ "fetched_at": "2026-09-02T20:20:54.785895+00:00",
+ "input_hash": "5f934b118513dcd165473bacd9909d1f80a0eef1ebe130198e383c1474788bfc",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you set the plate down in hotel stack 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

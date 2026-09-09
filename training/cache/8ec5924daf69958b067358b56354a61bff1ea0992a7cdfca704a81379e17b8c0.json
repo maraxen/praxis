@@ -1,0 +1,9 @@
+{
+ "cache_key": "8ec5924daf69958b067358b56354a61bff1ea0992a7cdfca704a81379e17b8c0",
+ "fetched_at": "2026-09-03T15:10:30.071033+00:00",
+ "input_hash": "bdfac60e84baf0790cb50918f2ec365f2723fe3e5655b793c6a916a9c9bf33a0",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you order a large pepperoni pizza for the lab?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

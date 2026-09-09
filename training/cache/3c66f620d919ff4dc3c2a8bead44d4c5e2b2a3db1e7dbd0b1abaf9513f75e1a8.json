@@ -1,0 +1,9 @@
+{
+ "cache_key": "3c66f620d919ff4dc3c2a8bead44d4c5e2b2a3db1e7dbd0b1abaf9513f75e1a8",
+ "fetched_at": "2026-09-02T15:08:07.909603+00:00",
+ "input_hash": "a1bddf73428b608e6902229f517fa79a1136d10b51dbcc78f45737d0d745e245",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and pull 25 microliters.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

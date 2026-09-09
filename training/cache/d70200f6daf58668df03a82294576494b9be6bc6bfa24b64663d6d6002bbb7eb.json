@@ -1,0 +1,9 @@
+{
+ "cache_key": "d70200f6daf58668df03a82294576494b9be6bc6bfa24b64663d6d6002bbb7eb",
+ "fetched_at": "2026-09-01T21:19:08.653321+00:00",
+ "input_hash": "783b2acdb3d3603f9fb68513945a60946bff12a52a9e4da83c766e53abc66137",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please move the plate lid to scale_station_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

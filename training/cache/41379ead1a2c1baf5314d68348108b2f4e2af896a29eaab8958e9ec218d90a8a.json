@@ -1,0 +1,9 @@
+{
+ "cache_key": "41379ead1a2c1baf5314d68348108b2f4e2af896a29eaab8958e9ec218d90a8a",
+ "fetched_at": "2026-09-02T15:49:52.537456+00:00",
+ "input_hash": "3fe490e7b616a33faa58c6f8e4de825e356717c661429012d7c51fe4c4e98955",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Let's take the tips off now.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

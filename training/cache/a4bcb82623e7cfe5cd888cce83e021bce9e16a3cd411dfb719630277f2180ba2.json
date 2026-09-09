@@ -1,0 +1,9 @@
+{
+ "cache_key": "a4bcb82623e7cfe5cd888cce83e021bce9e16a3cd411dfb719630277f2180ba2",
+ "fetched_at": "2026-09-02T15:13:31.697322+00:00",
+ "input_hash": "77d017691139c4b99443c90105716da8a36e9122f371e9904fdb15969b2184d3",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Deliver 15 microliters into the same well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

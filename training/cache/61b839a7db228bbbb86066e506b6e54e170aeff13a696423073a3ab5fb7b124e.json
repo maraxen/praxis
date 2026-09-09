@@ -1,0 +1,9 @@
+{
+ "cache_key": "61b839a7db228bbbb86066e506b6e54e170aeff13a696423073a3ab5fb7b124e",
+ "fetched_at": "2026-09-01T21:10:18.422954+00:00",
+ "input_hash": "86b13c98071e7c0198327af0dc6b064d4e25ce034c3048f4691bf89ce31d6ad1",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer liquid from plate_1.D10 to plate_1.H5.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

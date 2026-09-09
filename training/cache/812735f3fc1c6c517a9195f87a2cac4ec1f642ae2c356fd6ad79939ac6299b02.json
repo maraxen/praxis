@@ -1,0 +1,9 @@
+{
+ "cache_key": "812735f3fc1c6c517a9195f87a2cac4ec1f642ae2c356fd6ad79939ac6299b02",
+ "fetched_at": "2026-09-02T20:16:51.036293+00:00",
+ "input_hash": "50ad609b6c22f8d4024c21c94d515b15f99f80cbd1ad7d56c0a336e64f242e7a",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Take the lid to scale station 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

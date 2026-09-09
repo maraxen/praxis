@@ -1,0 +1,9 @@
+{
+ "cache_key": "2daa832d257d11c2b25a393f30c9ed4a65fd5c0d26daef67bdc26f6e51b722ed",
+ "fetched_at": "2026-09-01T21:09:18.728330+00:00",
+ "input_hash": "9583eb4fb97ca5a32150d6da8f06510a42a6916cb13c08658e608ab255f958d6",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please dispense 25 microliters, 200 microliters, and 20 microliters into the destination well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

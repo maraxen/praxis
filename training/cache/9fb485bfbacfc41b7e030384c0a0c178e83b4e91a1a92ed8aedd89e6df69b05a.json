@@ -1,0 +1,9 @@
+{
+ "cache_key": "9fb485bfbacfc41b7e030384c0a0c178e83b4e91a1a92ed8aedd89e6df69b05a",
+ "fetched_at": "2026-08-25T22:05:30.929854+00:00",
+ "input_hash": "f9bddee0ca7d9996d15041bf111a07d8f68e99a9c074cb281c173033144f7e5d",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "\n\n{\"utterance\":\"Aspirate 50.0 microliters, 75.0 microliters, and 20.0 microliters from plate_2_C4.\",\"clarification\":null}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

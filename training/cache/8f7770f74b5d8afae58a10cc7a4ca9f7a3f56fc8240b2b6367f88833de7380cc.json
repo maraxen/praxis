@@ -1,0 +1,9 @@
+{
+ "cache_key": "8f7770f74b5d8afae58a10cc7a4ca9f7a3f56fc8240b2b6367f88833de7380cc",
+ "fetched_at": "2026-09-01T21:08:24.678333+00:00",
+ "input_hash": "cd9edfeb4cac44f5951b594bdcba18cc7c6ce7b2e399980f3b5e8becf3fddeaf",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Dispense liquid into plate_2.C2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

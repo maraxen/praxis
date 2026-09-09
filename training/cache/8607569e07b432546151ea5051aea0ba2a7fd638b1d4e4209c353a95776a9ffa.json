@@ -1,0 +1,9 @@
+{
+ "cache_key": "8607569e07b432546151ea5051aea0ba2a7fd638b1d4e4209c353a95776a9ffa",
+ "fetched_at": "2026-08-28T18:02:51.924778+00:00",
+ "input_hash": "f3115cfeaf4c2fceae94b3664b517ff9e4511949c8cb0535402d11a3ab04689e",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"Shaking the microplate is not a supported operation on this system. If you need, I can assist with moving the plate (move_plate), liquid handling (aspirate, dispense, transfer, stamp), or measuring the plate (read_absorbance, read_fluorescence, read_luminescence).\", \"utterance\": \"Set the microplate to shake at 500 rpm for five minutes.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

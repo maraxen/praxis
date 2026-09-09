@@ -1,0 +1,9 @@
+{
+ "cache_key": "6ac167468bcbc4aa2eb548d0a7153d7e5489e4b5ca6b6691500c7b7f6adf68b7",
+ "fetched_at": "2026-09-02T15:01:41.017645+00:00",
+ "input_hash": "148bd84da536cdf800d63fd30bbbe7dd6245f78c553ba734999d00a54fe99c25",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Suck up 75 microliters from plate 1, B10.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

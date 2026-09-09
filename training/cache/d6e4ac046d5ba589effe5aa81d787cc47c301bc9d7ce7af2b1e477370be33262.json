@@ -1,0 +1,9 @@
+{
+ "cache_key": "d6e4ac046d5ba589effe5aa81d787cc47c301bc9d7ce7af2b1e477370be33262",
+ "fetched_at": "2026-09-02T17:16:49.580070+00:00",
+ "input_hash": "0247933a434c3b243bf8f5126a91130d7090aea19d49e9ba0b4ea4cabdec9396",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please relocate the reservoir over to reservoir 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

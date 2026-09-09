@@ -1,0 +1,9 @@
+{
+ "cache_key": "feda3873b1ef4b07ae160f0b773b41109a50fb932a13f9316fed00a8fcdbd15e",
+ "fetched_at": "2026-09-02T17:16:49.579333+00:00",
+ "input_hash": "616b5b915824bdf7db7166ee7fdcff3a5ee126d23878cecf77de09e8852b7055",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please carry the carrier over to scale station 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

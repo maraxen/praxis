@@ -1,0 +1,11 @@
+{
+  "blocking_census_version": "1",
+  "audit_rules_version": "1",
+  "derived_under_source_sha": "936be9dfda30a1352651116e54542d4527f81d5b",
+  "census": {
+    "phantom_verb": 4,
+    "surface_adjacent": 5,
+    "receiver_drift": 0,
+    "param_misattributed": 0
+  }
+}

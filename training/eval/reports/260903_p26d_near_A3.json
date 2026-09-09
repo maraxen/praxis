@@ -1,0 +1,153 @@
+{
+  "report_kind": "praxis-baseline-eval-report",
+  "clarify_scope_note": "clarify_expected/predicted cover OUT-OF-SURFACE (abstention) and MISSING-SLOT (derived missing_required) classes only; ambiguous-referent detection needs live kernel grounding (cue 2, F1-rev2/C-M1) and is verified at P2.9 integration, not in this static harness",
+  "mode": "local_inference",
+  "labeled_as": "LIVE LOCAL INFERENCE",
+  "base_revision": "outputs/p26c/A/checkpoint@main",
+  "model_label": "p26c arm A3 seed 0 recipe 0.1.0 sha256:f8d247d16078127ee441dda83cb78698b6c6efaa67f02f07c392851bc305a494 [near-surface probe 0.1.6]",
+  "inputs": {
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "dtype_resolved": "torch.bfloat16",
+    "split": "eval",
+    "max_new_tokens": 128,
+    "dump_outputs": "/orcd/pool/008/so3_shared/marielle/projects/praxis/outputs/p26c/A/near_dump_0.1.6.json"
+  },
+  "n_examples": 24,
+  "exact_match_accuracy": {
+    "value": 0.5,
+    "successes": 12,
+    "n": 24,
+    "wilson95": [
+      0.31430073645915035,
+      0.6856992635408496
+    ]
+  },
+  "clarify_recall": {
+    "value": 0.5833333333333334,
+    "successes": 14,
+    "n": 24,
+    "wilson95": [
+      0.3883761989100608,
+      0.75530099010353
+    ]
+  },
+  "clarify_precision": {
+    "value": 1.0,
+    "successes": 14,
+    "n": 14,
+    "wilson95": [
+      0.7847450792418634,
+      0.9999999999999999
+    ]
+  },
+  "clarify_confusion": {
+    "true_positive": 14,
+    "false_negative": 10,
+    "false_positive": 0,
+    "true_negative": 0
+  },
+  "tripwire_out_of_surface_tool_calls": 12,
+  "per_class": {
+    "out_of_surface": {
+      "n": 24,
+      "exact_match": {
+        "value": 0.5,
+        "successes": 12,
+        "n": 24,
+        "wilson95": [
+          0.31430073645915035,
+          0.6856992635408496
+        ]
+      },
+      "clarify_expected": 24,
+      "clarify_predicted": 14
+    }
+  },
+  "exact_match_failures": [
+    {
+      "record_id": "cov-0701-tip_inventory__out-of-surface-16",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    },
+    {
+      "record_id": "cov-0703-tip_inventory__out-of-surface-18",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    },
+    {
+      "record_id": "cov-0704-tip_inventory__out-of-surface-19",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    },
+    {
+      "record_id": "cov-0724-consumables_ordering__out-of-surface-19",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    },
+    {
+      "record_id": "cov-0741-deck_display__out-of-surface-16",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    },
+    {
+      "record_id": "cov-0742-deck_display__out-of-surface-17",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    },
+    {
+      "record_id": "cov-0743-deck_display__out-of-surface-18",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    },
+    {
+      "record_id": "cov-0744-deck_display__out-of-surface-19",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    },
+    {
+      "record_id": "cov-0761-sample_value_query__out-of-surface-16",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    },
+    {
+      "record_id": "cov-0762-sample_value_query__out-of-surface-17",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    },
+    {
+      "record_id": "cov-0784-scheduling_logging__out-of-surface-19",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    },
+    {
+      "record_id": "cov-0802-run_status__out-of-surface-17",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    }
+  ]
+}

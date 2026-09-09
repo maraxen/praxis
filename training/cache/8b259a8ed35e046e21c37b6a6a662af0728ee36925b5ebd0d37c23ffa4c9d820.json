@@ -1,0 +1,9 @@
+{
+ "cache_key": "8b259a8ed35e046e21c37b6a6a662af0728ee36925b5ebd0d37c23ffa4c9d820",
+ "fetched_at": "2026-09-01T21:09:52.124203+00:00",
+ "input_hash": "3790aa26b2c507c4d01eda00ef9ec96deb00f0acc2d753cc23937aaac59efe85",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I don't have support for blowing out tips, but I can dispense or drop the tips for you.\", \"utterance\": \"Do a blowout on the current tips to remove any clinging droplets.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

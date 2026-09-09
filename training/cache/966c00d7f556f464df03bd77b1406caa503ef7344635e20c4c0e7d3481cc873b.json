@@ -1,0 +1,9 @@
+{
+ "cache_key": "966c00d7f556f464df03bd77b1406caa503ef7344635e20c4c0e7d3481cc873b",
+ "fetched_at": "2026-09-02T15:12:17.407037+00:00",
+ "input_hash": "8512a5293947de95ac7684d0800baca65847118b768bf2145c00e8d0fd612bc0",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please add the liquid into plate 2, well B11.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

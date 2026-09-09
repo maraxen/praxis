@@ -1,0 +1,9 @@
+{
+ "cache_key": "e9936275b9402e6091d82cdfd67ff597c64a34d84be5e6d44bc9b23a7800d85b",
+ "fetched_at": "2026-09-02T15:16:37.272136+00:00",
+ "input_hash": "fd86cb1e760d5fb8cb7ff0e1430bbbe2bb53663ab33b4155fce1182e167bfa1d",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Move liquid from plate 1, C5 into plate 1, F1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

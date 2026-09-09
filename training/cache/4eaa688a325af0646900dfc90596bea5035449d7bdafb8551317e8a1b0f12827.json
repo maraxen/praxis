@@ -1,0 +1,9 @@
+{
+ "cache_key": "4eaa688a325af0646900dfc90596bea5035449d7bdafb8551317e8a1b0f12827",
+ "fetched_at": "2026-09-02T20:07:23.367835+00:00",
+ "input_hash": "7ca911afdabbbd0c17720d89b5439b060cd0c5a06a383b4d9daf5fceeb03de0b",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Load new tips onto the pipetting head.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

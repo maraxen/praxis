@@ -1,0 +1,9 @@
+{
+ "cache_key": "e15fd2264aa13b3b8d8c7e45c762a0f48c0ab72f6967cc7743529314592652ac",
+ "fetched_at": "2026-09-01T21:09:18.726364+00:00",
+ "input_hash": "0581ed06eb0aa4284c43d5c64f69ccb1c9ef6208b4f05d46be4aae4d2f9f5c54",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Dispense the liquid into plate 1 at G6.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

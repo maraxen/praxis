@@ -1,0 +1,9 @@
+{
+ "cache_key": "6c602906525bc69255a39c0820c4695df14bfc3140b975541ae3cf83ccc6825f",
+ "fetched_at": "2026-09-03T15:05:21.459006+00:00",
+ "input_hash": "fc3bd8a6fe100a080bf7021440452ef24663fe393fdd4929804643e82f30596c",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please agitate the plate for five minutes at 500 rpm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

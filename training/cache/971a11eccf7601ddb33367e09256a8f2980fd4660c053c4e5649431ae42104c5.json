@@ -1,0 +1,9 @@
+{
+ "cache_key": "971a11eccf7601ddb33367e09256a8f2980fd4660c053c4e5649431ae42104c5",
+ "fetched_at": "2026-09-02T15:49:52.537407+00:00",
+ "input_hash": "8f69eadbdf374f8499ef830a2836be53477cf84607e4919180deb90436ec8e35",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please return the tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

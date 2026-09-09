@@ -1,0 +1,9 @@
+{
+ "cache_key": "1573542da21c5ad2eaf370b5823aae1d5673443af560d58ac4302f480b03ccf5",
+ "fetched_at": "2026-08-28T18:00:31.029506+00:00",
+ "input_hash": "3e50231a073b6850fe89970ed7995691883d5aa0484ab93ef5ff1e8827493aa3",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Aspirate 10 microliters and 75 microliters.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

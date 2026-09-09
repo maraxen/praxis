@@ -1,0 +1,9 @@
+{
+ "cache_key": "b93a53c373f085dba5e1bcb0eb9d28a6076938eb08018c37ca806aa66c6baefd",
+ "fetched_at": "2026-09-03T15:08:33.654077+00:00",
+ "input_hash": "cdf91726b45f5cf7b0eedd7b843402d662409f5e55dd6f0eebca5d2c0e2086cc",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you stop the agitation on the heater shaker?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

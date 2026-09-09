@@ -7,6 +7,7 @@ from typing import Any, Optional, Union
 from pylabrobot.resources import Carrier, Plate, Resource, TipRack
 
 from praxis.backend.utils.type_inspection import (
+    PLR_MACHINE_FRONTEND_TYPES,
     PLR_RESOURCE_TYPES,
     extract_resource_types,
     fqn_from_hint,
@@ -520,3 +521,33 @@ class TestPLRResourceTypes:
     def test_is_frozenset(self) -> None:
         """Test that PLR_RESOURCE_TYPES is immutable."""
         assert isinstance(PLR_RESOURCE_TYPES, frozenset)
+
+
+class TestPLRMachineFrontendTypes:
+    """Tests for PLR_MACHINE_FRONTEND_TYPES (backlog #4951)."""
+
+    def test_is_a_subset_of_plr_resource_types(self) -> None:
+        """PLR_MACHINE_FRONTEND_TYPES is a hand-maintained, non-derived
+        subset of PLR_RESOURCE_TYPES (see its own docstring in
+        `praxis/common/type_inspection.py`) -- this is the guard that keeps
+        the two from drifting apart when either is edited.
+        """
+        assert PLR_MACHINE_FRONTEND_TYPES <= PLR_RESOURCE_TYPES
+
+    def test_contains_liquid_handler_and_base_machine(self) -> None:
+        assert "LiquidHandler" in PLR_MACHINE_FRONTEND_TYPES
+        assert "PlateReader" in PLR_MACHINE_FRONTEND_TYPES
+        assert "Machine" in PLR_MACHINE_FRONTEND_TYPES
+
+    def test_excludes_placeable_labware(self) -> None:
+        """Machine frontends must not overlap placeable-labware types.
+
+        A machine frontend is a receiver/driver, never itself something
+        placed on a deck.
+        """
+        assert "Plate" not in PLR_MACHINE_FRONTEND_TYPES
+        assert "TipRack" not in PLR_MACHINE_FRONTEND_TYPES
+        assert "Well" not in PLR_MACHINE_FRONTEND_TYPES
+
+    def test_is_frozenset(self) -> None:
+        assert isinstance(PLR_MACHINE_FRONTEND_TYPES, frozenset)

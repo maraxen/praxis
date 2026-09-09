@@ -1,0 +1,9 @@
+{
+ "cache_key": "117e6bb9a172305980fc1788d9c1a470459729a6d74e6c201e8ad6e76c35cde6",
+ "fetched_at": "2026-09-02T15:08:07.909700+00:00",
+ "input_hash": "bc7d94e3d2d89268f2e0601285b6ff5af1d169cad2af053698e1488420b99e7b",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Suck up 20 microliters, please.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

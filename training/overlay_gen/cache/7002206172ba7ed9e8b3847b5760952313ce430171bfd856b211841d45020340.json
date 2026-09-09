@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:51Z",
+ "key": "7002206172ba7ed9e8b3847b5760952313ce430171bfd856b211841d45020340",
+ "prompt_sha256": "7002206172ba7ed9e8b3847b5760952313ce430171bfd856b211841d45020340",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Please pick up tips from source_tip_spots i:i + batch_size\nPick up tips from source_tip_spots i:i + batch_size\nCan you pick up tips from source_tip_spots i:i + batch_size",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "cbb525a8b67eaccde8f7c0eddd9a8ea09b03e65d40cf950cf4611041409ffc2a",
+ "fetched_at": "2026-09-01T21:09:18.728628+00:00",
+ "input_hash": "a96ca50245d5080649a6ee3d16e6bdb1888336023d57fcb014cb6eaa3f4a15f5",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Dispense 25 microliters, 200 microliters, and 150 microliters into the source well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "4e436d71b07555b6ea1c6abd6d776591abe55a29949aeeda2d71341cba4aac2d",
+ "fetched_at": "2026-09-02T14:55:08.237141+00:00",
+ "input_hash": "f3eb29c8f4d1e367a65d786c874fb39a14abc304c1870b768e0dc015bab82df5",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer from plate_1.D2 to plate_2.B6.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

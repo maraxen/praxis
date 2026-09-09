@@ -1,0 +1,9 @@
+{
+ "cache_key": "eada9d5ae393823a1bb048ff066b18b43252ab5e0f33726cef8fbb9c92567474",
+ "fetched_at": "2026-09-02T15:16:37.272027+00:00",
+ "input_hash": "f5a366a6f770303feba1c36e15cbc0aa38dbbd33fc8c636090e42dc631f89a78",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Bring over 10 microliters from plate 1, A6 into plate 1, B4.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

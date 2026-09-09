@@ -1,0 +1,9 @@
+{
+ "cache_key": "7f4d4821504241214d32d90b727dcea33d864490acad3efd3872d55f178b1d4b",
+ "fetched_at": "2026-09-02T20:51:02.893644+00:00",
+ "input_hash": "261409c5662d6cb0a15ce7bfef401e6b2dd25d5078faa94112ec76ff229e9cfe",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put the tips back into spot C6 on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

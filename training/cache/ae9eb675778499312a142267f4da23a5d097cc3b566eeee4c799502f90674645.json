@@ -1,0 +1,9 @@
+{
+ "cache_key": "ae9eb675778499312a142267f4da23a5d097cc3b566eeee4c799502f90674645",
+ "fetched_at": "2026-09-01T21:10:18.423071+00:00",
+ "input_hash": "a88cea248cf177c5820871525fe26d88bdd788ebf55c30eb71d5e554820f2416",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer liquid to plate_2.B7.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "1fd804b8f9bcc319ae9627d28da76c74e9f7f7fa26c7514db650247503fc5152",
+ "fetched_at": "2026-08-28T18:03:20.316236+00:00",
+ "input_hash": "82fae947c92d9e082d847cae3031930748b7e9595cb89d1ae67d6806323459b6",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I cannot control the heater shaker or stop its shaking. I can help with liquid handling tasks like transfer, aspirate, dispense, or moving deck resources and plates.\", \"utterance\": \"Can you please stop the shaking on the heater shaker?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

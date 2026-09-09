@@ -1,19 +1,22 @@
 """Unit tests for Workcell model."""
 import json
 from datetime import datetime, timezone
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from praxis.backend.models.enums.workcell import WorkcellStatusEnum
 from praxis.backend.models.domain.workcell import (
     Workcell,
     WorkcellBase,
     WorkcellCreate,
-    WorkcellRead as WorkcellResponse,
     WorkcellUpdate,
 )
+from praxis.backend.models.domain.workcell import (
+    WorkcellRead as WorkcellResponse,
+)
+from praxis.backend.models.enums.workcell import WorkcellStatusEnum
 
 
 @pytest.mark.asyncio

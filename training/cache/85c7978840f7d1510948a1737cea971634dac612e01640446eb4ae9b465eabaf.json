@@ -1,0 +1,9 @@
+{
+ "cache_key": "85c7978840f7d1510948a1737cea971634dac612e01640446eb4ae9b465eabaf",
+ "fetched_at": "2026-09-01T21:09:18.726220+00:00",
+ "input_hash": "d8b538976b28bd395a625eb0376064cb01882aad263f36be20c4f72ced6e8493",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please dispense into plate 1 well D1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

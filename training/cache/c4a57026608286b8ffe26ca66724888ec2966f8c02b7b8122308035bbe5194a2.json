@@ -1,0 +1,9 @@
+{
+ "cache_key": "c4a57026608286b8ffe26ca66724888ec2966f8c02b7b8122308035bbe5194a2",
+ "fetched_at": "2026-09-03T15:01:28.524784+00:00",
+ "input_hash": "deb2a06b57ad5c3d57b7f99dd77519cf4b29f20bc23004e85dfbf55cb8bc2906",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please tap the tip ends along the well walls to clear off any clinging droplets.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

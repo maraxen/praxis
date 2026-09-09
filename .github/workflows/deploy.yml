@@ -109,6 +109,17 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --notebook-check --base-path /praxis/
 
+      # Verified on the exact artifact that ships, for the same reason the gates
+      # above are: branding is applied by build_repl.py, so only the built tree
+      # can prove the <head> block, the <title> and the asset paths survived.
+      # This must run BEFORE the 404.html copy below, which clones the branded
+      # root index.html (same depth, so its ./assets/ prefix stays correct).
+      - name: Branding gate on the built artifact
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python web-repl/scripts/inject_branding.py --check
+          uv run python web-repl/scripts/vendor_fonts.py --check
+
       # .nojekyll is required, not cosmetic: dist/assets/shims/__init__.py starts
       # with an underscore, and Jekyll strips underscore-prefixed paths. Without
       # it the shims package silently does not ship.

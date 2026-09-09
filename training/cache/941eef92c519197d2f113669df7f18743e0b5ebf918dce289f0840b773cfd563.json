@@ -1,0 +1,9 @@
+{
+ "cache_key": "941eef92c519197d2f113669df7f18743e0b5ebf918dce289f0840b773cfd563",
+ "fetched_at": "2026-09-02T15:46:42.289662+00:00",
+ "input_hash": "23740e900389887bf2bd1e753d877d57bf910cfa7e15ab727c8c33568c4f1070",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Replicate plate 2 onto the plate with 25 microliters per well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

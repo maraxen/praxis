@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:45Z",
+ "key": "50169ca1f12a534fb77c965421db3f06ecbb8d3cd5f92d73496f778dd764cf7e",
+ "prompt_sha256": "50169ca1f12a534fb77c965421db3f06ecbb8d3cd5f92d73496f778dd764cf7e",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Dispense 20 uL to tube.\nPlease put 20 uL into the tube.\nDeliver 20 uL to the tube.",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

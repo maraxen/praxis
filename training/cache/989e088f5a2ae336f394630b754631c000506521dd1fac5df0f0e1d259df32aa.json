@@ -1,0 +1,9 @@
+{
+ "cache_key": "989e088f5a2ae336f394630b754631c000506521dd1fac5df0f0e1d259df32aa",
+ "fetched_at": "2026-09-03T15:00:34.427206+00:00",
+ "input_hash": "5c2ef708974e6ea7cfc204d1598161a429e9c974cd5d71e0495e935c13cb2ddc",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and do a blowout on the current tips to clear off any clinging droplets.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

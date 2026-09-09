@@ -1,0 +1,9 @@
+{
+ "cache_key": "b5f05deab67c48c8646da072b62d534707a3a184b6a058cb1d1028e98c49481e",
+ "fetched_at": "2026-09-02T20:29:29.117082+00:00",
+ "input_hash": "ed9e444c9326112d889a8e25096e8524aa845e0646e2de66ef1e68f3d22726c6",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please measure fluorescence in well G5 with an excitation of 560 nm, emission at 520 nm, and a focal height of 10.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "d1a97e1ba6bed3050fe5455be59ab2d95e8ca78ccaf4de17101472e189b1de5c",
+ "fetched_at": "2026-09-02T16:19:30.141584+00:00",
+ "input_hash": "75b216a4e9de95fd364e99240f2197639fff3a30fa66531ea18ab81b4a09e85e",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Scan absorbance for well A7 on the plate in the reader.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

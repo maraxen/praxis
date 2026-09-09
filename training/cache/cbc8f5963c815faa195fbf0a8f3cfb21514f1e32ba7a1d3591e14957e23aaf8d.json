@@ -1,0 +1,9 @@
+{
+ "cache_key": "cbc8f5963c815faa195fbf0a8f3cfb21514f1e32ba7a1d3591e14957e23aaf8d",
+ "fetched_at": "2026-09-03T15:09:42.733796+00:00",
+ "input_hash": "a8f0ec8e1198b8f3c6ec2cb0174da03c849fc3a2b4875bdcf29e43681a024201",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you recommend a good recipe for dinner tonight?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

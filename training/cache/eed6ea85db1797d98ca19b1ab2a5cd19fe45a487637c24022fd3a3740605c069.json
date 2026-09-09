@@ -1,0 +1,9 @@
+{
+ "cache_key": "eed6ea85db1797d98ca19b1ab2a5cd19fe45a487637c24022fd3a3740605c069",
+ "fetched_at": "2026-09-02T15:52:11.222197+00:00",
+ "input_hash": "c934dd9b97222e663dffdd953e3c48284d282605ecc16f9873476c58da033a17",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please put the tips back.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

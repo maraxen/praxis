@@ -1,0 +1,9 @@
+{
+ "cache_key": "cb8abaab8ac3eec44ebf2db59dbc015a809efe3850329f895334974ca6703ca2",
+ "fetched_at": "2026-09-02T17:25:17.739892+00:00",
+ "input_hash": "7c8cf4dfc09e5b7a6291c8a20aeac11963624f5f2ab41c2798c6fd2151c72830",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you set the lid down on scale station 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

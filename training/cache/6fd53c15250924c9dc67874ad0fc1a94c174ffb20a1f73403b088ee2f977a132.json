@@ -1,0 +1,9 @@
+{
+ "cache_key": "6fd53c15250924c9dc67874ad0fc1a94c174ffb20a1f73403b088ee2f977a132",
+ "fetched_at": "2026-09-01T21:16:35.728067+00:00",
+ "input_hash": "f61a903310f5a69587cd2e685e2b1798f481d1ba57bc894289724ffb643b8fbf",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I cannot check sports scores. I can help with deck protocols such as transferring samples, moving lids, or reading absorbance.\", \"utterance\": \"What's the latest score in the baseball game?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

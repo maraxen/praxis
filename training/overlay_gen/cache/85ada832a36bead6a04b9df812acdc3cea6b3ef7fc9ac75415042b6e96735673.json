@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:59Z",
+ "key": "85ada832a36bead6a04b9df812acdc3cea6b3ef7fc9ac75415042b6e96735673",
+ "prompt_sha256": "85ada832a36bead6a04b9df812acdc3cea6b3ef7fc9ac75415042b6e96735673",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Retrieve the tips located at tip_rack f A{i+1}\nPlease pick up tips from the position tip_rack f A{i+1}\nThe robot should pick up tips from tip_rack f A{i+1}",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

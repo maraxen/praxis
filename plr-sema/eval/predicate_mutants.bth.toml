@@ -1,0 +1,49 @@
+# bathos sidecar for plr-sema/eval/predicate_mutants.py (tier 3, p1 --
+# predicate-arity mutants, spec 260904 §15.10, backlog #4979, T32).
+#
+# Mirrors tip_mutants.py's own report shape (`MutantResult`, imported
+# directly) and tier2_extractor.bth.toml's [outcomes]/[result_schema] style
+# -- but see the [outcomes] disposition below: this class's own MEASURED
+# result at full corpus scale (260908) was 0 achieved WILL_FAIL for ALL
+# THREE mutators, 0 unsound throughout ([outcomes.marginal] below records
+# that measurement and its root cause). 260907/260909 (T36, #4979,
+# increment 6 §15.4/§15.10): `plr_sema.derive.bindings
+# .compute_reachability_clear` now derives the missing K-body fact at
+# derive time and `check/__init__.py` wires it through, so a re-measure
+# against the regenerated `derived_contracts.json`
+# (`outputs/plr-sema/predicate_mutants_260909_inc6.json`) lands in
+# [outcomes.pass] instead: (a)/(b) achieve WILL_FAIL at the raised index,
+# (c) still 0 achieved / 0 unsound as [outcomes.pass] itself requires.
+
+[experiment]
+hypothesis = "p1's three mutators (duplicate use_channels, short offsets, non-TipSpot element) each violate one of pick_up_tips's grammar-decidable guards (:502, :522, :498); each mutant is executed through the real verifier AND the static analyzer, and the static side reports WILL_FAIL at the exact raised index for (a)/(b) (the stub-defeating floor >= 1, carried by (a)/(b) together per §15.10's own box), while (c) is asserted 0 achieved / 0 unsound under the restated E-TYPE's never-exact rule -- and in NO case does the static side ever disagree with the simulator in the unsound direction."
+stage_name = "calibration"
+novel = true
+
+[outcomes.pass]
+condition = "n_unsound_a = 0 AND n_unsound_b = 0 AND n_unsound_c = 0 AND n_achieved_a_or_b >= 1 AND n_achieved_c = 0"
+is_residual = false
+decision = "The predicate evaluator's WILL_FAIL path is exercised end to end by a real, executed mutation, and the restated E-TYPE's never-exact prediction for (c) holds."
+reasoning = "0 unsound in both directions across all three mutators, and the >= 1 floor the spec's own box states is carried by (a)/(b) together is met."
+
+[outcomes.marginal]
+condition = "n_unsound_a = 0 AND n_unsound_b = 0 AND n_unsound_c = 0 AND n_achieved_a_or_b = 0 AND n_achieved_c = 0"
+is_residual = true
+decision = "MEASURED 260908 (outputs/plr-sema/predicate_mutants_260908_inc6.json): 0 unsound throughout (soundness intact), but 0 achieved WILL_FAIL for ALL THREE mutators -- the spec's predicted >= 1 floor for (a)/(b) was NOT met. Root cause, traced directly against the then-shipped evaluator: `plr_sema.check.__init__._findings_for_call` was the ONLY production caller of `predicate.evaluate_guard` and never supplied `k_reachability_clear` (always its default `None`); `guard_is_unconditional`'s clause (5) (`if not scope_entries: return bool(k_reachability_clear)`) therefore ALWAYS returned `False` for a depth-0, empty-scope_trail guard -- exactly the shape of `:498`/`:502`/`:522`. Such a guard could decide SAFE (the `fires is False` branch, which never consults `guard_is_unconditional`) but never WILL_FAIL, however it was mutated. This was a documented, in-scope-acknowledged gap of `predicate.py` itself (its own module docstring, item 2), not a T32 defect -- T32 was measurement-only, no analyzer changes -- so it was reported as a NO-GO for AC-15.10's floor rather than weakened or hidden; it was NOT the C4 false-WILL_FAIL mechanism and NOT an unsoundness regression. **FIXED 260907/260909 (T36):** `plr_sema.derive.bindings.compute_reachability_clear` now derives the fact from `K`'s AST at derive time and `check/__init__.py` reads it off the wire (`guard[\"reachability_clear\"]`); the re-measure (`outputs/plr-sema/predicate_mutants_260909_inc6.json`) lands in [outcomes.pass]. This branch is retained as the historical record of the gap T36 closed, not a live disposition."
+reasoning = "A gate that could only ever decide SAFE for these guards, never WILL_FAIL, until a real k_reachability_clear fact was threaded through check/__init__.py -- fail-closed and sound, just incomplete. T36 threaded that fact; see [outcomes.pass]."
+
+[outcomes.fail]
+condition = "n_unsound_a > 0 OR n_unsound_b > 0 OR n_unsound_c > 0 OR n_achieved_c > 0"
+is_residual = true
+decision = "Stop: either the static side contradicted a real execution (SAFE where the mutant raised, or WILL_FAIL where it ran clean), or mutant (c) achieved a WILL_FAIL it should structurally be unable to reach under the restated E-TYPE's never-exact rule -- the C4 false-positive mechanism reappearing. File as a first-severity bug with the counterexample row; no promotion claim until fixed."
+reasoning = "Either direction of unsoundness, or a fabricated decidability on (c), is exactly the class of defect this tier exists to catch."
+
+[result_schema]
+n_corpus_bases = "int"
+n_example_bases = "int"
+# Per mutator (p1a_duplicate_use_channels / p1b_short_offsets /
+# p1c_non_tipspot_element): n_total, n_ran, n_raised_as_expected,
+# n_achieved_will_fail_at_raised_index, n_unsound -- see
+# predicate_mutants.py's own `by_class` dict for the full per-mutator
+# breakdown (static_verdict_at_raising_index, unsound row lists).
+gate_passed = "bool"

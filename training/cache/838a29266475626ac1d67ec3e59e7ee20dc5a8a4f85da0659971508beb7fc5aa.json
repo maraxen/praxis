@@ -1,0 +1,9 @@
+{
+ "cache_key": "838a29266475626ac1d67ec3e59e7ee20dc5a8a4f85da0659971508beb7fc5aa",
+ "fetched_at": "2026-09-02T15:12:06.519312+00:00",
+ "input_hash": "6b1f6d69cddf7fd339b83df001e9e241b62ec533db683e7510170469f27b75cd",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Add the sample to plate 2, well G3.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

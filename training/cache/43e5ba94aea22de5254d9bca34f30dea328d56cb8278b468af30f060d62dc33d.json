@@ -1,0 +1,9 @@
+{
+ "cache_key": "43e5ba94aea22de5254d9bca34f30dea328d56cb8278b468af30f060d62dc33d",
+ "fetched_at": "2026-08-28T18:05:07.428037+00:00",
+ "input_hash": "c26d58f58acbe7bf380f75e7903ffb1aeb074d5695ed7efa0b28e48b21f2254e",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the luminescence of the loaded plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

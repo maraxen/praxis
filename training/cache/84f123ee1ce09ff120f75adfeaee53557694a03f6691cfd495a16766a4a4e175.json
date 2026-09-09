@@ -1,0 +1,9 @@
+{
+ "cache_key": "84f123ee1ce09ff120f75adfeaee53557694a03f6691cfd495a16766a4a4e175",
+ "fetched_at": "2026-09-02T16:53:21.146832+00:00",
+ "input_hash": "90e9c965634f05cf7a4175a9fa3c6998e5b38c09d4f3cdafb9563593af570742",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the OD at 600 nm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

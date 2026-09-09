@@ -1,0 +1,9 @@
+{
+ "cache_key": "6cd8ab27ccd524ad2768e7b01599637fb439184b7fb19c9659d7a7df2400e6ac",
+ "fetched_at": "2026-09-01T21:11:09.068599+00:00",
+ "input_hash": "9a196cb1f1c620c4f2dd2b9fa4a4fc0bdad9a2fba7cf0aeb5daeabcfd2953d5e",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer 50 microliters from plate_1 B6 to the source well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

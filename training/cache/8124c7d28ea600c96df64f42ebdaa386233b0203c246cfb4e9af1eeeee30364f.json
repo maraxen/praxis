@@ -1,0 +1,9 @@
+{
+ "cache_key": "8124c7d28ea600c96df64f42ebdaa386233b0203c246cfb4e9af1eeeee30364f",
+ "fetched_at": "2026-09-02T17:16:49.579849+00:00",
+ "input_hash": "8d0c1ecf68efe5f1f8376a3d365431dd8e3084f670df55dc693ea61469f37ca0",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you transport the carrier to scale station 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -23,15 +23,14 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums import FunctionCallStatusEnum
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.protocol import (
     FunctionCallLog,
-    ProtocolRun,
+    FunctionProtocolDefinition,
     ProtocolRunCreate,
     ProtocolRunStatusEnum,
-    FunctionProtocolDefinition,
 )
-from praxis.backend.models.domain.filters import SearchFilters
+from praxis.backend.models.enums import FunctionCallStatusEnum
 from praxis.backend.services.protocols import (
     log_function_call_end,
     log_function_call_start,

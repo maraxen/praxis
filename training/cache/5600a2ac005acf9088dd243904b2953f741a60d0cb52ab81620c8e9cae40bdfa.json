@@ -1,0 +1,9 @@
+{
+ "cache_key": "5600a2ac005acf9088dd243904b2953f741a60d0cb52ab81620c8e9cae40bdfa",
+ "fetched_at": "2026-09-03T15:00:01.333123+00:00",
+ "input_hash": "f2b3feac36c142ca4f20ad516d764d766ec7a61f7765ac1778d9fb192192228e",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you do a blow-out on the tips to clear the hanging droplets after that dispense?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

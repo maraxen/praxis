@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:15:27Z",
+ "key": "f849c82948cd7e4b5ee700cee1361f4ef1a437e2d17e8c8bfb5f7e9fb5b37f5a",
+ "prompt_sha256": "f849c82948cd7e4b5ee700cee1361f4ef1a437e2d17e8c8bfb5f7e9fb5b37f5a",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Dispense sample_volume_ul uL to plate dst_well.\nPlease deliver sample_volume_ul uL to plate dst_well.\nRelease sample_volume_ul uL into plate dst_well.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

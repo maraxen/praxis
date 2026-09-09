@@ -1,0 +1,9 @@
+{
+ "cache_key": "de3120af615b25fc480469e8a7e52e4be7ba7bf5d6457f2cfc5761fdde901ab8",
+ "fetched_at": "2026-09-02T15:16:37.271949+00:00",
+ "input_hash": "b0fb0af9c0d4f32a376f1f65432c8b6d7a9254675e7543ea495cb2727e610e51",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Shuttle 75 microliters from well H11 of plate 2 to well E8 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

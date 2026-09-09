@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:35Z",
+ "key": "a59bf09181a77e2081bb93a17887d3c6fe87ee6c1758f007cd47a59a57296076",
+ "prompt_sha256": "a59bf09181a77e2081bb93a17887d3c6fe87ee6c1758f007cd47a59a57296076",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Aspirate 100+50+200 uL from plate A1:C1.\nPlease draw up 100+50+200 uL from plate A1:C1.\nTake 100+50+200 uL from plate A1:C1.",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

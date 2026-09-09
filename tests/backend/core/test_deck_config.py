@@ -1,13 +1,13 @@
 
 import json
-import pytest
-from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from praxis.backend.core.deck_config import (
     DeckLayoutConfig,
-    ResourcePlacement,
-    load_deck_layout,
     build_deck_from_config,
+    load_deck_layout,
     validate_deck_layout_config,
 )
 
@@ -95,11 +95,11 @@ def test_build_deck_from_config(mock_import):
     # Verify
     assert deck == MockDeckInstance
     MockDeckClass.assert_called_with(num_channels=8)
-    
+
     # Check placement 1 (Slot)
     MockResourceInstance1.name = "plate_1" # Mock attribute usually set in init
     MockDeckInstance.assign_child_at_slot.assert_called()
-    
+
     # Check placement 2 (Position + Rotation)
     MockResourceInstance2.name = "plate_2"
     MockDeckInstance.assign_child_resource.assert_called()

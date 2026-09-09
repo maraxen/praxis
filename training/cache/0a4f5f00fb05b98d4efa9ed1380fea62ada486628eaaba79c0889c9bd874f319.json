@@ -1,0 +1,9 @@
+{
+ "cache_key": "0a4f5f00fb05b98d4efa9ed1380fea62ada486628eaaba79c0889c9bd874f319",
+ "fetched_at": "2026-09-01T21:14:12.175788+00:00",
+ "input_hash": "6b13257b5b7dba455870e35b0b581ef302e6dfafc9d0c6eff04104df34fbdd6f",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please drop the mounted tips into the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "026de40567d1afa67cf683dc61b85e738d49cbf3b390fa0039bc8150d664a7a0",
+ "fetched_at": "2026-09-02T17:22:00.386620+00:00",
+ "input_hash": "66207228b19b418fa2d30787ab54474f0a13d923a89891a5da3aa0fd3ea55626",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Place plate 2 on reservoir 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

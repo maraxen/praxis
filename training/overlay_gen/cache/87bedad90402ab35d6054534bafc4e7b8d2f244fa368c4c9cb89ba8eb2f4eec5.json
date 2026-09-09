@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:15:05Z",
+ "key": "87bedad90402ab35d6054534bafc4e7b8d2f244fa368c4c9cb89ba8eb2f4eec5",
+ "prompt_sha256": "87bedad90402ab35d6054534bafc4e7b8d2f244fa368c4c9cb89ba8eb2f4eec5",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Please dispense 20 uL into the tube.\nPipette 20 uL into tube.\nDispense a volume of 20 uL to the tube.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

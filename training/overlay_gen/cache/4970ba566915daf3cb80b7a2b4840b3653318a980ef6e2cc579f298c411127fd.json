@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:15:05Z",
+ "key": "4970ba566915daf3cb80b7a2b4840b3653318a980ef6e2cc579f298c411127fd",
+ "prompt_sha256": "4970ba566915daf3cb80b7a2b4840b3653318a980ef6e2cc579f298c411127fd",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Grab tips from tip_rack_300 A1.\nPlease get tips from tip_rack_300 A1.\nPick up tips at tip_rack_300 A1.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

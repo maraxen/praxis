@@ -1,0 +1,9 @@
+{
+ "cache_key": "0ffd035bffcbf9b39553554eac661589cac384c14ea41d7bbcf936db8e91af81",
+ "fetched_at": "2026-09-03T15:04:51.501813+00:00",
+ "input_hash": "e6021d3810db92887847a879b3a1aaabe96827c279ab38d9edead694ed797c88",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and set the heater-shaker module to 37 degrees.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

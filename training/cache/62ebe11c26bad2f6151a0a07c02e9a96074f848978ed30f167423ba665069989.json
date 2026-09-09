@@ -1,0 +1,9 @@
+{
+ "cache_key": "62ebe11c26bad2f6151a0a07c02e9a96074f848978ed30f167423ba665069989",
+ "fetched_at": "2026-09-02T16:03:48.389270+00:00",
+ "input_hash": "86a114a9ae9cd5a01cc228932d557cd7bbfb4e8aad3d6d437cd31a83e6a68cf0",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please set down at the hotel stack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

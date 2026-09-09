@@ -1,0 +1,9 @@
+{
+ "cache_key": "4906e776b3d756258203c6bb3470d1334667e7ffbe1a3a49a88d596449a72f7f",
+ "fetched_at": "2026-08-25T22:07:09.163580+00:00",
+ "input_hash": "6110b1e63c93f8a73302b2f013115419ffd9ac1afecb98ff4fd37f06a041e950",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Please aspirate 20, 150, and 15 microliters.\",\n\"clarification\": \"Which source well or container should I aspirate from?\"\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

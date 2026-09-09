@@ -1,0 +1,9 @@
+{
+ "cache_key": "7612fe6454ad805f542de283cbe62d5db352df0c68d576199b77ffb8286eefe4",
+ "fetched_at": "2026-09-01T21:19:08.653812+00:00",
+ "input_hash": "ef9a79328eeee7e1bfd5b1907698b88c8409ba39b20db4350ac7bfc675900ef8",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read absorbance at 340.0 nm in well E10.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

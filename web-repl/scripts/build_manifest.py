@@ -11,7 +11,8 @@ the manifest half of **D1**'s dev-loop escape hatch (``--dev`` writes the
 (the shell injection -- see ``inject_shell.py``) or D3 (the AST
 import-coverage test -- a later task).
 
-Manifest shape (ADR Sec 2.3, exact)::
+Manifest shape (ADR Sec 2.3, exact; P2.7a adds the flag-gated ``models``
+key -- spec ``260825_coxswain-phase-2-functiongemma-copilot-p.md`` rev2 F3)::
 
     { "praxis_git_sha": "<superproject sha, or 'dev'>",
       "wheels":  [ {"package": "...", "filename": "...", "version": "...",
@@ -19,6 +20,13 @@ Manifest shape (ADR Sec 2.3, exact)::
       "sources": [ {"path": "assets/shims/web_serial_shim.py", "sha256": "..."},
                    {"path": "assets/python/web_bridge.py",     "sha256": "..."},
                    {"path": "assets/python/praxis/interactive.py", "sha256": "..."} ] }
+
+    # ONLY under --with-models (P2.7a): wheels-shaped entries for the
+    # gitignored web-repl/vendor/models/ FunctionGemma ONNX export.
+    # Default manifests carry no "models" key whatsoever (AC-11 discipline:
+    # a default manifest stays byte-identical for identical inputs).
+    "models":  [ {"name": "functiongemma-270m-it-q4f16", "filename": "functiongemma-270m-it-onnx-q4f16/onnx/model_q4f16.onnx",
+                  "source_sha": "<hub revision>", "sha256": "...", "bytes": 0} ]
 
 **No source file is ever stamped.** The expected sha256 values live only in
 this generated file -- that property is what keeps edit->reload fast:
@@ -61,6 +69,12 @@ SOURCE_SUBDIRS = ("shims", "python")
 #: make transport.py fetch JS/CSS into the Pyodide VFS for nothing.
 COXSWAIN_ASSET_SUBDIR = "coxswain"
 COXSWAIN_ASSET_SUFFIXES = {".js", ".css"}
+
+#: P2.7a: model entries come from fetch_models.MODEL_FILE_PINS -- the SAME pin
+#: table the fetch script verifies downloads against, so the two halves cannot
+#: drift about what is expected on disk. Unlike wheels, generation VERIFIES
+#: every file's bytes against its pin (fail loud): a silently truncated 426 MB
+#: download must never earn a manifest entry.
 
 # Directory names to always skip while walking for sources -- never fetched,
 # never part of the contract, and would silently bloat/drift the manifest.
@@ -212,6 +226,53 @@ def collect_coxswain_assets(overlay_dir: Path) -> list[dict]:
     return entries
 
 
+# --- models array (flag-gated, P2.7a) -------------------------------------------
+
+
+def collect_models(web_repl_root: Path) -> list[dict]:
+    """Wheels-shaped sha256 entries for every pinned FunctionGemma model file
+    under ``web-repl/vendor/models/`` (gitignored; fetched by fetch_models.py).
+    Verifies each file against fetch_models' upstream pin table at GENERATION
+    time -- a drifted/truncated download fails loudly here instead of earning a
+    manifest entry it cannot vouch for."""
+    import fetch_models  # same directory; sys.path[0] is this script's dir
+
+    models_dir = web_repl_root / "vendor" / "models"
+    if not models_dir.is_dir():
+        raise ManifestError(
+            f"--with-models was passed but {models_dir} does not exist -- run "
+            f"scripts/fetch_models.py --models first. Refusing to write a models "
+            "array that claims files which are not on disk."
+        )
+    problems: list[str] = []
+    entries = fetch_models.model_manifest_entries()
+    by_filename = {e["filename"]: e for e in entries}
+    for repo_rel in sorted(fetch_models.MODEL_FILE_PINS):
+        filename = f"{fetch_models.MODEL_DIR_NAME}/{repo_rel}"
+        entry = by_filename[filename]
+        path = fetch_models.model_dest_dir(models_dir) / repo_rel
+        if not path.is_file():
+            problems.append(f"model file missing on disk: {path}")
+            continue
+        try:
+            fetch_models._verify_digest(path, fetch_models.MODEL_FILE_PINS[repo_rel])
+        except fetch_models.FetchError as exc:
+            problems.append(str(exc))
+            continue
+        if entry["sha256"] is None:
+            # Plain-text files are pinned upstream by git blob sha1 (the Hub's
+            # digest for non-LFS content); the browser contract needs sha256,
+            # so take it from the JUST-VERIFIED disk bytes.
+            entry["sha256"] = _sha256_file(path)
+    if problems:
+        raise ManifestError(
+            "--with-models: fetched model files fail their upstream pins:\n  "
+            + "\n  ".join(problems)
+            + "\nRe-run scripts/fetch_models.py --models to repair."
+        )
+    return [by_filename[f"{fetch_models.MODEL_DIR_NAME}/{r}"] for r in sorted(fetch_models.MODEL_FILE_PINS)]
+
+
 # --- sources array -------------------------------------------------------------
 
 
@@ -269,7 +330,8 @@ def collect_sources(overlay_dir: Path) -> list[dict]:
 
 
 def build_manifest(
-    *, web_repl_root: Path, repo_root: Path, dev: bool, with_coxswain: bool = False
+    *, web_repl_root: Path, repo_root: Path, dev: bool, with_coxswain: bool = False,
+    with_models: bool = False,
 ) -> dict:
     overlay_dir = web_repl_root / "overlay"
     wheels_dir = overlay_dir / "assets" / "wheels"
@@ -295,6 +357,9 @@ def build_manifest(
         # Key present ONLY under the flag: a default manifest is byte-identical
         # to its pre-coxswain shape for identical inputs (AC-11/RISK-14).
         manifest["coxswain_assets"] = collect_coxswain_assets(overlay_dir)
+    if with_models:
+        # P2.7a, same flag-gated discipline: absent (never empty) by default.
+        manifest["models"] = collect_models(web_repl_root)
     return manifest
 
 
@@ -375,6 +440,23 @@ def verify_manifest(manifest: dict, *, web_repl_root: Path) -> list[str]:
                 f"coxswain asset sha256 mismatch: {entry['path']} "
                 f"manifest={entry['sha256']} disk={actual_sha}"
             )
+    for entry in manifest.get("models", []):
+        path = web_repl_root / "vendor" / "models" / entry["filename"]
+        if not path.is_file():
+            problems.append(f"model missing on disk: {entry['filename']}")
+            continue
+        actual_sha = _sha256_file(path)
+        if actual_sha != entry["sha256"]:
+            problems.append(
+                f"model sha256 mismatch: {entry['filename']} "
+                f"manifest={entry['sha256']} disk={actual_sha}"
+            )
+        actual_bytes = path.stat().st_size
+        if actual_bytes != entry["bytes"]:
+            problems.append(
+                f"model size mismatch: {entry['filename']} "
+                f"manifest={entry['bytes']} disk={actual_bytes}"
+            )
     return problems
 
 
@@ -390,6 +472,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "manifest's 'coxswain_assets' key. Without this flag the generated "
         "manifest carries no coxswain entries at all (FR-12/AC-11). Must match "
         "the flag passed to build_repl.py.",
+    )
+    parser.add_argument(
+        "--with-models",
+        action="store_true",
+        help="Also sha-track web-repl/vendor/models/ under the manifest's "
+        "'models' key (wheels-shaped; P2.7a). Verifies every pinned file "
+        "against its upstream digest first and fails loud on drift. Without "
+        "this flag the manifest carries no models key at all.",
     )
     parser.add_argument(
         "--dev",
@@ -457,6 +547,7 @@ def main(argv: list[str] | None = None) -> int:
             repo_root=args.repo_root.resolve(),
             dev=args.dev,
             with_coxswain=args.with_coxswain,
+            with_models=args.with_models,
         )
         write_manifest_atomic(manifest, dest)
     except ManifestError as exc:

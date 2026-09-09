@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:15:15Z",
+ "key": "fa613c04c62c8cdee9868dbe8a1534b570680d34826af7e500ce3a14028ea707",
+ "prompt_sha256": "fa613c04c62c8cdee9868dbe8a1534b570680d34826af7e500ce3a14028ea707",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Drop tips into target_tip_spots i:i + batch_size.\nPlease eject the tips into target_tip_spots i:i + batch_size.\nDiscard tips into target_tip_spots i:i + batch_size.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

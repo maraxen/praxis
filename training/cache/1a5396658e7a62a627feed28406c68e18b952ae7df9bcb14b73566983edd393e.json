@@ -1,0 +1,9 @@
+{
+ "cache_key": "1a5396658e7a62a627feed28406c68e18b952ae7df9bcb14b73566983edd393e",
+ "fetched_at": "2026-09-02T15:12:17.407174+00:00",
+ "input_hash": "b9bb257144f9e92d2d1e2dfea886637efb7c462807610d253da38fb08255f9ab",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Drop into plate 1, well A10.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

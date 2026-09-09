@@ -1,0 +1,9 @@
+{
+ "cache_key": "2634fb7c8cec6273fafe18f0bd100c95aa91f1485ad6087b71c4db1344c7f7c6",
+ "fetched_at": "2026-09-03T15:02:41.293593+00:00",
+ "input_hash": "23e502b80b4ed540d5038bbc11842052acdbd72fc3ce7a388090ef75306b29f3",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Empty the entire plate by just dumping its contents into the waste.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

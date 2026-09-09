@@ -1,0 +1,9 @@
+{
+ "cache_key": "4c3617f006620c2134ae34b2161e39ea2bf7e32788d0daa8d6f92cffb6447da3",
+ "fetched_at": "2026-09-02T17:12:26.998285+00:00",
+ "input_hash": "c2d0cc4587757a56889c8c1dcfc8f3f37e8c9b412010db64627f98f90463c48f",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please bin the tips at the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

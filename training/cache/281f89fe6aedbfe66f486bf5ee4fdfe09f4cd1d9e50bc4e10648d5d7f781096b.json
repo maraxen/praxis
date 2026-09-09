@@ -1,0 +1,9 @@
+{
+ "cache_key": "281f89fe6aedbfe66f486bf5ee4fdfe09f4cd1d9e50bc4e10648d5d7f781096b",
+ "fetched_at": "2026-09-02T15:16:37.272231+00:00",
+ "input_hash": "a0320ddcf829ed2ad3e04c40e0a74ddbdaa5e49a83e73187ec3db5ef06606373",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Bring over the liquid from plate 1, F5 to plate 1, B3.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

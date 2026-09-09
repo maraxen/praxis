@@ -1,0 +1,9 @@
+{
+ "cache_key": "9a54890406fed92a2aac9149f5eb741098d6b89ab4254cd36427b7affaf45573",
+ "fetched_at": "2026-09-02T15:49:52.537321+00:00",
+ "input_hash": "dbd96a8e6930f7b4ce943232c49d107e61cdceaa91c984ede5d542431d26eaaa",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you eject the current tips?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

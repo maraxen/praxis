@@ -14,7 +14,6 @@ import pytest
 from praxis.backend.core.simulation.bounds_analyzer import (
   BoundsAnalyzer,
   ItemizedResourceSpec,
-  LoopBounds,
 )
 from praxis.backend.core.simulation.failure_detector import (
   BooleanStateConfig,
@@ -23,21 +22,17 @@ from praxis.backend.core.simulation.failure_detector import (
 )
 from praxis.backend.core.simulation.method_contracts import (
   METHOD_CONTRACTS,
-  MethodContract,
   get_contract,
   get_contracts_for_type,
 )
 from praxis.backend.core.simulation.pipeline import (
-  HierarchicalSimulator,
   simulate_protocol_sync,
 )
 from praxis.backend.core.simulation.state_models import (
   BooleanLiquidState,
-  DeckState,
   ExactLiquidState,
   SimulationState,
   StateLevel,
-  StateViolation,
   SymbolicLiquidState,
   TipState,
   ViolationType,
@@ -46,7 +41,6 @@ from praxis.backend.core.simulation.stateful_tracers import (
   StatefulTracedMachine,
 )
 from praxis.backend.core.tracing.recorder import OperationRecorder
-
 
 # =============================================================================
 # Test Method Contracts
@@ -944,7 +938,6 @@ class TestGraphReplayEngine:
   def test_replay_empty_graph(self) -> None:
     """Test replaying an empty graph succeeds."""
     from praxis.backend.core.simulation.graph_replay import (
-      GraphReplayEngine,
       replay_graph,
     )
 
@@ -1250,7 +1243,7 @@ class TestProtocolCache:
 
   def test_validate_cache_valid(self) -> None:
     """Test cache validation passes for valid cache."""
-    from praxis.backend.core.protocol_cache import CACHE_VERSION, ProtocolCache
+    from praxis.backend.core.protocol_cache import ProtocolCache
 
     def func() -> None:
       pass
@@ -1334,10 +1327,10 @@ class TestProtocolCache:
 
   def test_serialization_error_clear_message(self) -> None:
     """Test that serialization errors have clear messages."""
-    from praxis.backend.core.protocol_cache import ProtocolCache, SerializationError
-
     # Lambda with closure over unpickleable object
     import io
+
+    from praxis.backend.core.protocol_cache import ProtocolCache, SerializationError
 
     file_handle = io.StringIO()
 

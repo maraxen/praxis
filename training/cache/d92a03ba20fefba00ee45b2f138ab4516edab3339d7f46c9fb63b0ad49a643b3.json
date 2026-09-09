@@ -1,0 +1,9 @@
+{
+ "cache_key": "d92a03ba20fefba00ee45b2f138ab4516edab3339d7f46c9fb63b0ad49a643b3",
+ "fetched_at": "2026-09-01T21:11:59.055111+00:00",
+ "input_hash": "6a4e59f76b1ce3adda6727c76a16414642e8031ebcc28c1e4986b68f46ecdfc9",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer plate_2 across to plate_1 by stamping.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

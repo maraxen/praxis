@@ -1,0 +1,9 @@
+{
+ "cache_key": "66876bebb30f5669093000339bb408675070b909db708c7cc84feb82c568318e",
+ "fetched_at": "2026-09-04T00:13:20.810845+00:00",
+ "input_hash": "083ac371c37494d5e4b6693b9494b370d149b3c36bc7886dbef2ca6d34c46544",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I don't have liquid-level sensing or volume-tracking capabilities to check remaining well volumes. I can, however, perform liquid handling tasks such as `aspirate`, `dispense`, or `transfer` if you'd like to move a specified volume.\", \"utterance\": \"How much volume is left in well C4 of the reagent reservoir?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "0d747e3033a6f8cd351150063db297b743778909da3eb7d8529bffdc4187b115",
+ "fetched_at": "2026-09-02T15:11:10.983117+00:00",
+ "input_hash": "2779ae07a8e0b8db520a04eaf9622ebe694afd2d6ddc8dbb7a08418e1d5594a0",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Add 50 microliters to plate 1, C6.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

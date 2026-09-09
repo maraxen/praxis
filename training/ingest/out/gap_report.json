@@ -1,0 +1,881 @@
+{
+ "cells": [
+  {
+   "ambiguity_class": "ambiguous-referent",
+   "cell_id": "aspirate__ambiguous-referent",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 2,
+   "rows_by_provenance": {
+    "coverage": 1,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "aspirate"
+  },
+  {
+   "ambiguity_class": "missing-slot",
+   "cell_id": "aspirate__missing-slot",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 2,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 2,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "aspirate"
+  },
+  {
+   "ambiguity_class": "none",
+   "cell_id": "aspirate__none",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 27,
+   "rows_by_provenance": {
+    "coverage": 2,
+    "golden": 4,
+    "naturalness": 21
+   },
+   "thin": false,
+   "verb": "aspirate"
+  },
+  {
+   "ambiguity_class": "out-of-surface",
+   "cell_id": "blow_out__out-of-surface",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 3,
+   "rows_by_provenance": {
+    "coverage": 3,
+    "golden": 0,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": "blow_out"
+  },
+  {
+   "ambiguity_class": "ambiguous-referent",
+   "cell_id": "discard_tips__ambiguous-referent",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "discard_tips"
+  },
+  {
+   "ambiguity_class": "none",
+   "cell_id": "discard_tips__none",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 7,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 4,
+    "naturalness": 3
+   },
+   "thin": false,
+   "verb": "discard_tips"
+  },
+  {
+   "ambiguity_class": "ambiguous-referent",
+   "cell_id": "dispense__ambiguous-referent",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 5,
+   "rows_by_provenance": {
+    "coverage": 3,
+    "golden": 2,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": "dispense"
+  },
+  {
+   "ambiguity_class": "missing-slot",
+   "cell_id": "dispense__missing-slot",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "dispense"
+  },
+  {
+   "ambiguity_class": "none",
+   "cell_id": "dispense__none",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 29,
+   "rows_by_provenance": {
+    "coverage": 2,
+    "golden": 4,
+    "naturalness": 23
+   },
+   "thin": false,
+   "verb": "dispense"
+  },
+  {
+   "ambiguity_class": "out-of-surface",
+   "cell_id": "dispense_to_waste__out-of-surface",
+   "empty": true,
+   "examples_per_cell": 3,
+   "rows": 0,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 0,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "dispense_to_waste"
+  },
+  {
+   "ambiguity_class": "ambiguous-referent",
+   "cell_id": "drop_tips__ambiguous-referent",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "drop_tips"
+  },
+  {
+   "ambiguity_class": "missing-slot",
+   "cell_id": "drop_tips__missing-slot",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "drop_tips"
+  },
+  {
+   "ambiguity_class": "none",
+   "cell_id": "drop_tips__none",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 10,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 4,
+    "naturalness": 6
+   },
+   "thin": false,
+   "verb": "drop_tips"
+  },
+  {
+   "ambiguity_class": "out-of-surface",
+   "cell_id": "generic__out-of-surface",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 12,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 12,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": null
+  },
+  {
+   "ambiguity_class": "out-of-surface",
+   "cell_id": "mix__out-of-surface",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 3,
+   "rows_by_provenance": {
+    "coverage": 3,
+    "golden": 0,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": "mix"
+  },
+  {
+   "ambiguity_class": "ambiguous-referent",
+   "cell_id": "move_lid__ambiguous-referent",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "move_lid"
+  },
+  {
+   "ambiguity_class": "missing-slot",
+   "cell_id": "move_lid__missing-slot",
+   "empty": true,
+   "examples_per_cell": 3,
+   "rows": 0,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 0,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "move_lid"
+  },
+  {
+   "ambiguity_class": "none",
+   "cell_id": "move_lid__none",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 4,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 4,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": "move_lid"
+  },
+  {
+   "ambiguity_class": "ambiguous-referent",
+   "cell_id": "move_plate__ambiguous-referent",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "move_plate"
+  },
+  {
+   "ambiguity_class": "missing-slot",
+   "cell_id": "move_plate__missing-slot",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "move_plate"
+  },
+  {
+   "ambiguity_class": "none",
+   "cell_id": "move_plate__none",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 4,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 4,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": "move_plate"
+  },
+  {
+   "ambiguity_class": "ambiguous-referent",
+   "cell_id": "move_resource__ambiguous-referent",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "move_resource"
+  },
+  {
+   "ambiguity_class": "missing-slot",
+   "cell_id": "move_resource__missing-slot",
+   "empty": true,
+   "examples_per_cell": 3,
+   "rows": 0,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 0,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "move_resource"
+  },
+  {
+   "ambiguity_class": "none",
+   "cell_id": "move_resource__none",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 4,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 4,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": "move_resource"
+  },
+  {
+   "ambiguity_class": "ambiguous-referent",
+   "cell_id": "pick_up_tips__ambiguous-referent",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "pick_up_tips"
+  },
+  {
+   "ambiguity_class": "missing-slot",
+   "cell_id": "pick_up_tips__missing-slot",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "pick_up_tips"
+  },
+  {
+   "ambiguity_class": "none",
+   "cell_id": "pick_up_tips__none",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 31,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 4,
+    "naturalness": 27
+   },
+   "thin": false,
+   "verb": "pick_up_tips"
+  },
+  {
+   "ambiguity_class": "missing-slot",
+   "cell_id": "read_absorbance__missing-slot",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "read_absorbance"
+  },
+  {
+   "ambiguity_class": "none",
+   "cell_id": "read_absorbance__none",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 4,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 4,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": "read_absorbance"
+  },
+  {
+   "ambiguity_class": "missing-slot",
+   "cell_id": "read_fluorescence__missing-slot",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "read_fluorescence"
+  },
+  {
+   "ambiguity_class": "none",
+   "cell_id": "read_fluorescence__none",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 4,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 4,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": "read_fluorescence"
+  },
+  {
+   "ambiguity_class": "missing-slot",
+   "cell_id": "read_luminescence__missing-slot",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "read_luminescence"
+  },
+  {
+   "ambiguity_class": "none",
+   "cell_id": "read_luminescence__none",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 4,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 4,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": "read_luminescence"
+  },
+  {
+   "ambiguity_class": "out-of-surface",
+   "cell_id": "set_temperature__out-of-surface",
+   "empty": true,
+   "examples_per_cell": 3,
+   "rows": 0,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 0,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "set_temperature"
+  },
+  {
+   "ambiguity_class": "out-of-surface",
+   "cell_id": "shake__out-of-surface",
+   "empty": true,
+   "examples_per_cell": 3,
+   "rows": 0,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 0,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "shake"
+  },
+  {
+   "ambiguity_class": "ambiguous-referent",
+   "cell_id": "stamp__ambiguous-referent",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "stamp"
+  },
+  {
+   "ambiguity_class": "missing-slot",
+   "cell_id": "stamp__missing-slot",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 1,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 1,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "stamp"
+  },
+  {
+   "ambiguity_class": "none",
+   "cell_id": "stamp__none",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 4,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 4,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": "stamp"
+  },
+  {
+   "ambiguity_class": "out-of-surface",
+   "cell_id": "stop_shaking__out-of-surface",
+   "empty": true,
+   "examples_per_cell": 3,
+   "rows": 0,
+   "rows_by_provenance": {
+    "coverage": 0,
+    "golden": 0,
+    "naturalness": 0
+   },
+   "thin": true,
+   "verb": "stop_shaking"
+  },
+  {
+   "ambiguity_class": "out-of-surface",
+   "cell_id": "touch_tip__out-of-surface",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 3,
+   "rows_by_provenance": {
+    "coverage": 3,
+    "golden": 0,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": "touch_tip"
+  },
+  {
+   "ambiguity_class": "ambiguous-referent",
+   "cell_id": "transfer__ambiguous-referent",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 3,
+   "rows_by_provenance": {
+    "coverage": 1,
+    "golden": 2,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": "transfer"
+  },
+  {
+   "ambiguity_class": "missing-slot",
+   "cell_id": "transfer__missing-slot",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 3,
+   "rows_by_provenance": {
+    "coverage": 1,
+    "golden": 2,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": "transfer"
+  },
+  {
+   "ambiguity_class": "none",
+   "cell_id": "transfer__none",
+   "empty": false,
+   "examples_per_cell": 3,
+   "rows": 5,
+   "rows_by_provenance": {
+    "coverage": 1,
+    "golden": 4,
+    "naturalness": 0
+   },
+   "thin": false,
+   "verb": "transfer"
+  }
+ ],
+ "corpus_manifest_sha256": "ed15e0f893cb34c3c9a4a8766d735655a716c16de49b68ff80caad16a00335c9",
+ "gap_thresholds_version": "2",
+ "gate": {
+  "decision": "STOP",
+  "decision_rule": "PROCEED iff T2_collapsed AND T3 both pass (T1 is an invariant, not a gate). If T2's collapsed and strict readings disagree on pass/fail, the decision is CONTESTED (exit 7) — neither PROCEED nor STOP.",
+  "per_threshold": {
+   "T2_collapsed": {
+    "op": ">=",
+    "pass": false,
+    "required": 5,
+    "value": 2
+   },
+   "T2_strict": {
+    "op": ">=",
+    "pass": false,
+    "required": 5,
+    "value": 2
+   },
+   "T3_anchors": {
+    "op": ">=",
+    "pass": true,
+    "required": 25,
+    "value": 76
+   },
+   "T3_chapters": {
+    "op": ">=",
+    "pass": true,
+    "required": 8,
+    "value": 18
+   }
+  },
+  "t2_normalization_sensitive": false,
+  "thresholds": {
+   "T2_low_shape_lh_verbs_min": 5,
+   "T2_shape_floor": 3,
+   "T3_distinct_chapters_min": 8,
+   "T3_out_of_surface_anchors_min": 25
+  }
+ },
+ "ingest_version": "0.1.0",
+ "invariants": {
+  "T1": {
+   "expected": 5,
+   "expected_verbs": [
+    "move_lid",
+    "move_plate",
+    "move_resource",
+    "stamp",
+    "transfer"
+   ],
+   "holds": true,
+   "observed": 5
+  }
+ },
+ "matrix_version": "1",
+ "metrics": {
+  "T1_verbs": [
+   "move_lid",
+   "move_plate",
+   "move_resource",
+   "stamp",
+   "transfer"
+  ],
+  "T1_zero_naturalness_lh_verbs": 5,
+  "T2_low_shape_lh_verbs_collapsed": 2,
+  "T2_low_shape_lh_verbs_strict": 2,
+  "T3_chapters": 18,
+  "T3_out_of_surface_anchors": 76,
+  "empty_cells": 6,
+  "thin_cells": 23,
+  "thin_cells_note": "REPORTED, NOT GATED — see §6.4"
+ },
+ "recipe_anchor_supply": {
+  "distinct_chapters": 18,
+  "in_surface_recipes": 15,
+  "out_of_surface_recipes": 76
+ },
+ "recipes_yml_sha256": "55ae582ad4319becb9f04a87bdcba6daf8cf8ebd546ca918f2b647ce7e706548",
+ "unmapped_params": {},
+ "unmatched_cell_keys": {},
+ "verbs": [
+  {
+   "distinct_param_shapes_collapsed": 7,
+   "distinct_param_shapes_strict": 9,
+   "in_surface": true,
+   "receiver_type": "liquid_handler",
+   "rows_naturalness": 21,
+   "rows_total": 31,
+   "shapes": [
+    "aspirate(source=name)",
+    "aspirate(source=name,volume_ul=number)",
+    "aspirate(source=name,volume_ul=str)",
+    "aspirate(source=phrase,volume_ul=number)",
+    "aspirate(source=subscript,volume_ul=number)",
+    "aspirate(source=subscript,volume_ul=str)",
+    "aspirate(volume_ul=number)"
+   ],
+   "verb": "aspirate"
+  },
+  {
+   "distinct_param_shapes_collapsed": 3,
+   "distinct_param_shapes_strict": 3,
+   "in_surface": true,
+   "receiver_type": "liquid_handler",
+   "rows_naturalness": 3,
+   "rows_total": 8,
+   "shapes": [
+    "discard_tips()",
+    "discard_tips(at=phrase,what=str)",
+    "discard_tips(what=str)"
+   ],
+   "verb": "discard_tips"
+  },
+  {
+   "distinct_param_shapes_collapsed": 5,
+   "distinct_param_shapes_strict": 7,
+   "in_surface": true,
+   "receiver_type": "liquid_handler",
+   "rows_naturalness": 23,
+   "rows_total": 35,
+   "shapes": [
+    "dispense(destination=name,volume_ul=number)",
+    "dispense(destination=phrase,volume_ul=number)",
+    "dispense(destination=subscript,volume_ul=number)",
+    "dispense(destination=subscript,volume_ul=str)",
+    "dispense(volume_ul=number)"
+   ],
+   "verb": "dispense"
+  },
+  {
+   "distinct_param_shapes_collapsed": 4,
+   "distinct_param_shapes_strict": 4,
+   "in_surface": true,
+   "receiver_type": "liquid_handler",
+   "rows_naturalness": 6,
+   "rows_total": 12,
+   "shapes": [
+    "drop_tips()",
+    "drop_tips(destination=name)",
+    "drop_tips(destination=phrase)",
+    "drop_tips(destination=slice)"
+   ],
+   "verb": "drop_tips"
+  },
+  {
+   "distinct_param_shapes_collapsed": 2,
+   "distinct_param_shapes_strict": 2,
+   "in_surface": true,
+   "receiver_type": "liquid_handler",
+   "rows_naturalness": 0,
+   "rows_total": 5,
+   "shapes": [
+    "move_lid(destination=name,lid=name)",
+    "move_lid(destination=phrase,lid=phrase)"
+   ],
+   "verb": "move_lid"
+  },
+  {
+   "distinct_param_shapes_collapsed": 3,
+   "distinct_param_shapes_strict": 3,
+   "in_surface": true,
+   "receiver_type": "liquid_handler",
+   "rows_naturalness": 0,
+   "rows_total": 6,
+   "shapes": [
+    "move_plate(destination=name,plate=name)",
+    "move_plate(destination=phrase,plate=phrase)",
+    "move_plate(plate=name)"
+   ],
+   "verb": "move_plate"
+  },
+  {
+   "distinct_param_shapes_collapsed": 2,
+   "distinct_param_shapes_strict": 2,
+   "in_surface": true,
+   "receiver_type": "liquid_handler",
+   "rows_naturalness": 0,
+   "rows_total": 5,
+   "shapes": [
+    "move_resource(destination=name,resource=name)",
+    "move_resource(destination=name,resource=phrase)"
+   ],
+   "verb": "move_resource"
+  },
+  {
+   "distinct_param_shapes_collapsed": 6,
+   "distinct_param_shapes_strict": 6,
+   "in_surface": true,
+   "receiver_type": "liquid_handler",
+   "rows_naturalness": 27,
+   "rows_total": 33,
+   "shapes": [
+    "pick_up_tips()",
+    "pick_up_tips(at=list[name])",
+    "pick_up_tips(at=list[name]+multi)",
+    "pick_up_tips(at=list[phrase])",
+    "pick_up_tips(at=list[slice])",
+    "pick_up_tips(at=list[subscript])"
+   ],
+   "verb": "pick_up_tips"
+  },
+  {
+   "distinct_param_shapes_collapsed": 3,
+   "distinct_param_shapes_strict": 3,
+   "in_surface": true,
+   "receiver_type": "plate_reader",
+   "rows_naturalness": 0,
+   "rows_total": 5,
+   "shapes": [
+    "read_absorbance(at=list[str]+multi)",
+    "read_absorbance(at=list[str]+multi,wavelength_nm=number)",
+    "read_absorbance(wavelength_nm=number)"
+   ],
+   "verb": "read_absorbance"
+  },
+  {
+   "distinct_param_shapes_collapsed": 3,
+   "distinct_param_shapes_strict": 4,
+   "in_surface": true,
+   "receiver_type": "plate_reader",
+   "rows_naturalness": 0,
+   "rows_total": 5,
+   "shapes": [
+    "read_fluorescence(at=list[str]+multi,emission_nm=number,excitation_nm=number,focal_height_mm=number)",
+    "read_fluorescence(emission_nm=number,excitation_nm=number)",
+    "read_fluorescence(emission_nm=number,excitation_nm=number,focal_height_mm=number)"
+   ],
+   "verb": "read_fluorescence"
+  },
+  {
+   "distinct_param_shapes_collapsed": 3,
+   "distinct_param_shapes_strict": 4,
+   "in_surface": true,
+   "receiver_type": "plate_reader",
+   "rows_naturalness": 0,
+   "rows_total": 5,
+   "shapes": [
+    "read_luminescence()",
+    "read_luminescence(at=list[str]+multi,focal_height_mm=number)",
+    "read_luminescence(focal_height_mm=number)"
+   ],
+   "verb": "read_luminescence"
+  },
+  {
+   "distinct_param_shapes_collapsed": 3,
+   "distinct_param_shapes_strict": 3,
+   "in_surface": true,
+   "receiver_type": "liquid_handler",
+   "rows_naturalness": 0,
+   "rows_total": 6,
+   "shapes": [
+    "stamp(destination=name,source=name)",
+    "stamp(destination=name,source=name,volume_ul=number)",
+    "stamp(destination=phrase,source=name,volume_ul=number)"
+   ],
+   "verb": "stamp"
+  },
+  {
+   "distinct_param_shapes_collapsed": 6,
+   "distinct_param_shapes_strict": 8,
+   "in_surface": true,
+   "receiver_type": "liquid_handler",
+   "rows_naturalness": 0,
+   "rows_total": 11,
+   "shapes": [
+    "transfer()",
+    "transfer(destination=name,source=name,volume_ul=number)",
+    "transfer(destination=name,volume_ul=number)",
+    "transfer(destination=phrase,source=name,volume_ul=number)",
+    "transfer(destination=phrase,source=phrase,volume_ul=number)",
+    "transfer(source=name,volume_ul=number)"
+   ],
+   "verb": "transfer"
+  }
+ ]
+}

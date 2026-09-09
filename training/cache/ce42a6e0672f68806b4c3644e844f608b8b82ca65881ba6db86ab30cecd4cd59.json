@@ -1,0 +1,9 @@
+{
+ "cache_key": "ce42a6e0672f68806b4c3644e844f608b8b82ca65881ba6db86ab30cecd4cd59",
+ "fetched_at": "2026-09-01T21:19:40.786074+00:00",
+ "input_hash": "bee72fb5f18cba3a1c540254d137fbb50eeb57cede70e5c454b301c4e5c45134",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please read fluorescence across the plate with an excitation wavelength of 485 nm at a focal height of 7.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

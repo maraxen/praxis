@@ -1,0 +1,9 @@
+{
+ "cache_key": "bf6d0a4eaf1c06150f4b62fc982de6965d9d15f1df89c6e57555a62a73194dcd",
+ "fetched_at": "2026-09-01T21:11:09.068670+00:00",
+ "input_hash": "189b49f8a5aa03481f3165fb68e0e215706fda7c308024e2781b4ac6825c287d",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer 10 microliters from plate_2 E6 to the same well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

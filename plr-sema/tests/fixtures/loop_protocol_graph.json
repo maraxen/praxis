@@ -1,0 +1,258 @@
+{
+  "protocol_fqn": "test_module.multi_well_transfer",
+  "protocol_name": "multi_well_transfer",
+  "operations": [
+    {
+      "id": "op_1",
+      "line_number": 0,
+      "method_name": "pick_up_tips",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "tips"
+      },
+      "node_type": "dynamic",
+      "preconditions": [],
+      "creates_state": [
+        "tips_loaded"
+      ],
+      "depends_on_params": [
+        "tips"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_2",
+      "line_number": 0,
+      "method_name": "aspirate",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "src",
+        "volume": "volume"
+      },
+      "node_type": "dynamic",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [
+        "volume"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_3",
+      "line_number": 0,
+      "method_name": "dispense",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "dst",
+        "volume": "volume"
+      },
+      "node_type": "dynamic",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [
+        "volume"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_4",
+      "line_number": 0,
+      "method_name": "",
+      "receiver_variable": "",
+      "receiver_type": null,
+      "arguments": {},
+      "node_type": "region",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": "enumerate(zip(source_wells, dest_wells))",
+      "foreach_body": [
+        "op_2",
+        "op_3"
+      ],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_5",
+      "line_number": 0,
+      "method_name": "drop_tips",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "tips"
+      },
+      "node_type": "dynamic",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [
+        "tips"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    }
+  ],
+  "resources": {
+    "lh": {
+      "variable_name": "lh",
+      "declared_type": "LiquidHandler",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": true,
+      "parental_chain": [],
+      "source_expression": null,
+      "items_x": null,
+      "items_y": null
+    },
+    "source": {
+      "variable_name": "source",
+      "declared_type": "Plate",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": true,
+      "parental_chain": [
+        "PlateCarrier",
+        "Deck"
+      ],
+      "source_expression": null,
+      "items_x": null,
+      "items_y": null
+    },
+    "dest": {
+      "variable_name": "dest",
+      "declared_type": "Plate",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": true,
+      "parental_chain": [
+        "PlateCarrier",
+        "Deck"
+      ],
+      "source_expression": null,
+      "items_x": null,
+      "items_y": null
+    },
+    "tips": {
+      "variable_name": "tips",
+      "declared_type": "TipRack",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": true,
+      "parental_chain": [
+        "TipCarrier",
+        "Deck"
+      ],
+      "source_expression": null,
+      "items_x": null,
+      "items_y": null
+    },
+    "source_wells": {
+      "variable_name": "source_wells",
+      "declared_type": "list[Well]",
+      "element_type": "Well",
+      "is_container": true,
+      "is_parameter": false,
+      "parental_chain": [
+        "Plate",
+        "PlateCarrier",
+        "Deck"
+      ],
+      "source_expression": "source[\"A1:A8\"]",
+      "items_x": null,
+      "items_y": null
+    },
+    "dest_wells": {
+      "variable_name": "dest_wells",
+      "declared_type": "list[Well]",
+      "element_type": "Well",
+      "is_container": true,
+      "is_parameter": false,
+      "parental_chain": [
+        "Plate",
+        "PlateCarrier",
+        "Deck"
+      ],
+      "source_expression": "dest[\"A1:A8\"]",
+      "items_x": null,
+      "items_y": null
+    }
+  },
+  "preconditions": [
+    {
+      "id": "precond_1",
+      "precondition_type": "resource_on_deck",
+      "resource_variable": "lh",
+      "resource_type": "LiquidHandler",
+      "required_state": {},
+      "can_be_auto_satisfied": true,
+      "satisfied_by": null
+    },
+    {
+      "id": "precond_2",
+      "precondition_type": "resource_on_deck",
+      "resource_variable": "source",
+      "resource_type": "Plate",
+      "required_state": {},
+      "can_be_auto_satisfied": true,
+      "satisfied_by": null
+    },
+    {
+      "id": "precond_3",
+      "precondition_type": "resource_on_deck",
+      "resource_variable": "dest",
+      "resource_type": "Plate",
+      "required_state": {},
+      "can_be_auto_satisfied": true,
+      "satisfied_by": null
+    },
+    {
+      "id": "precond_4",
+      "precondition_type": "resource_on_deck",
+      "resource_variable": "tips",
+      "resource_type": "TipRack",
+      "required_state": {},
+      "can_be_auto_satisfied": true,
+      "satisfied_by": null
+    }
+  ],
+  "execution_order": [
+    "op_1",
+    "op_4",
+    "op_5"
+  ],
+  "machine_types": [
+    "liquid_handler"
+  ],
+  "resource_types": [
+    "LiquidHandler",
+    "Plate",
+    "TipRack",
+    "Well"
+  ],
+  "has_loops": true,
+  "has_conditionals": false
+}

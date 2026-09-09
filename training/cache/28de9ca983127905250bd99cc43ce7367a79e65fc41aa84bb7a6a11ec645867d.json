@@ -1,0 +1,9 @@
+{
+ "cache_key": "28de9ca983127905250bd99cc43ce7367a79e65fc41aa84bb7a6a11ec645867d",
+ "fetched_at": "2026-09-02T16:55:03.920656+00:00",
+ "input_hash": "8ec51dc09438085f78cd6efad7db219a0d1c2b80b1589371e9e90bcd7651adcd",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure absorbance at 340 nm in well E10.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

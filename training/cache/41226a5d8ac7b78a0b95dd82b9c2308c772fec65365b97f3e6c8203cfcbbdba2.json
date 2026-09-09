@@ -1,0 +1,9 @@
+{
+ "cache_key": "41226a5d8ac7b78a0b95dd82b9c2308c772fec65365b97f3e6c8203cfcbbdba2",
+ "fetched_at": "2026-09-04T00:13:06.104539+00:00",
+ "input_hash": "d14615dd8e264d96e47bf64eae49027e18c50271f7148c0add9d9d8706fdcbdc",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I don't have access to sample concentration data or analytical records. I can, however, run an assay measurement using read_absorbance or read_fluorescence on your plate if that helps.\", \"utterance\": \"Can you tell me the concentration of the DNA sample in well C4?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

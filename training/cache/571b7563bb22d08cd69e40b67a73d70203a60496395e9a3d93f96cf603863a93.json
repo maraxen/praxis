@@ -1,0 +1,9 @@
+{
+ "cache_key": "571b7563bb22d08cd69e40b67a73d70203a60496395e9a3d93f96cf603863a93",
+ "fetched_at": "2026-09-03T15:09:07.771496+00:00",
+ "input_hash": "2d901bc64897129de104296bc1a8b83f5725ec3fe19e24a073a63e64a748f4e1",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can we stop the heater shaker's shaking motion?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

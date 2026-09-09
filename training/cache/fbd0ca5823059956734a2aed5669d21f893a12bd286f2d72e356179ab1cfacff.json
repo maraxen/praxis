@@ -1,0 +1,9 @@
+{
+ "cache_key": "fbd0ca5823059956734a2aed5669d21f893a12bd286f2d72e356179ab1cfacff",
+ "fetched_at": "2026-09-01T21:20:04.905618+00:00",
+ "input_hash": "2ca578bae27f5cbd8ebf63362484c97747e1ff200c8782f43ca5baadb3a0b28e",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure luminescence on the loaded plate with a focal height of 4.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

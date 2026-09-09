@@ -1,9 +1,9 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.protocol import (
     FunctionProtocolDefinition,
-    ParameterDefinition,
     FunctionProtocolDefinitionCreate,
     FunctionProtocolDefinitionUpdate,
 )
@@ -11,7 +11,6 @@ from praxis.backend.models.domain.protocol_source import (
     FileSystemProtocolSource,
     ProtocolSourceRepository,
 )
-from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.services.protocol_definition import ProtocolDefinitionCRUDService
 
 

@@ -1,0 +1,9 @@
+{
+ "cache_key": "1a2d8b71011f9b7c6c55eb17fb3fc6dc5793531346d305e79dbae22d50c9e789",
+ "fetched_at": "2026-09-02T20:29:29.117828+00:00",
+ "input_hash": "65e9aa975c10b63b21969f666aa912bcdba158b63eb4abb7b6a7b83d1b1c76f1",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please scan fluorescence across wells C1, F12, G10, and H1 at 535 nm excitation and 590 nm emission with a 7.5 mm focal height.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

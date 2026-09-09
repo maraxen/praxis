@@ -1,0 +1,9 @@
+{
+ "cache_key": "632fc5e5db3afd057d5d9a1e0a93f8a5d0a1a651ab4e8d898d1111c2d51c5857",
+ "fetched_at": "2026-09-02T15:10:59.366185+00:00",
+ "input_hash": "a68ff1fbf82d709daa6beb92ba9a0c3fdf6e5f6b6f1e7cf8bdafeff94a770cf4",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Take up 200 microliters from the destination well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

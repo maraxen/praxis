@@ -1,0 +1,9 @@
+{
+ "cache_key": "487942240a18c60bfdbd741c0abdc665f2a298711f04795c1b7f399997208a8c",
+ "fetched_at": "2026-09-02T20:50:18.159787+00:00",
+ "input_hash": "f9bac5a43cb00a142307d950ee487510357baa563af5b0e23f4c8083136a5906",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure luminescence for the plate with the focal height set to 12.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

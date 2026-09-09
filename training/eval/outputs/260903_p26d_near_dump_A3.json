@@ -1,0 +1,111 @@
+{
+  "artifact_kind": "praxis-recorded-model-outputs",
+  "base_revision": "outputs/p26c/A/checkpoint@main",
+  "recorded_by": "praxis_training.baseline_eval.runner.run_local",
+  "model_label": "p26c arm A3 seed 0 recipe 0.1.0 sha256:f8d247d16078127ee441dda83cb78698b6c6efaa67f02f07c392851bc305a494 [near-surface probe 0.1.6]",
+  "inputs": {
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "dtype_resolved": "torch.bfloat16",
+    "split": "eval",
+    "max_new_tokens": 128
+  },
+  "outputs": [
+    {
+      "record_id": "cov-0701-tip_inventory__out-of-surface-16",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>the tip rack<escape>,destination:<escape>slot_2<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0702-tip_inventory__out-of-surface-17",
+      "raw_output": "I cannot check the tip inventory or capacity. I can help you with liquid handling tasks such as aspirating, dispensing, transferring, moving plates, or reading absorbance, fluorescence, or luminescence."
+    },
+    {
+      "record_id": "cov-0703-tip_inventory__out-of-surface-18",
+      "raw_output": "<start_function_call>call:discard_tips{at:<escape>deck_position_1<escape>,what:<escape>tip_box<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0704-tip_inventory__out-of-surface-19",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>rack[\"A\"]<escape>,<escape>[\"ret\"]<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0721-consumables_ordering__out-of-surface-16",
+      "raw_output": "I cannot perform a standard order placement or dispense. I can, however, help you move the tips to a deck resource or transfer them to a tip spot. Would you like me to move them to a deck resource?"
+    },
+    {
+      "record_id": "cov-0722-consumables_ordering__out-of-surface-17",
+      "raw_output": "I cannot run a reorder command. I can help you with liquid handling tasks like aspirating, dispensing, transferring, or moving plates and tips."
+    },
+    {
+      "record_id": "cov-0723-consumables_ordering__out-of-surface-18",
+      "raw_output": "I cannot order or track the supply chain for labware. I can, however, help you move the plates to the designated destination using move_plate or transfer. Would you like me to move the plates to the destination?"
+    },
+    {
+      "record_id": "cov-0724-consumables_ordering__out-of-surface-19",
+      "raw_output": "<start_function_call>call:discard_tips{at:<escape>the lab supply portal<escape>,what:<escape>tips<escape>,out:<escape>the lab supply portal<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0741-deck_display__out-of-surface-16",
+      "raw_output": "<start_function_call>call:move_resource{destination:<escape>the deck<escape>,resource:<escape>the deck layout<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0742-deck_display__out-of-surface-17",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>the deck<escape>,volume_ul:384}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0743-deck_display__out-of-surface-18",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>the tip racks<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0744-deck_display__out-of-surface-19",
+      "raw_output": "<start_function_call>call:pick_up_tips{}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0761-sample_value_query__out-of-surface-16",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>plate_1.A1<escape>,volume_ul:0.0}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0762-sample_value_query__out-of-surface-17",
+      "raw_output": "<start_function_call>call:read_absorbance{at:[<escape>C4<escape>],wavelength_nm:450.0}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0763-sample_value_query__out-of-surface-18",
+      "raw_output": "I cannot access or check the reservoir protein concentration. I can, however, perform liquid handling actions like aspirate, dispense, and transfer, or move the resource to the deck."
+    },
+    {
+      "record_id": "cov-0764-sample_value_query__out-of-surface-19",
+      "raw_output": "I cannot check the buffer status of the source trough. I can help you with liquid handling tasks such as aspirating, dispensing, transferring, moving plates, or reading absorbance and fluorescence."
+    },
+    {
+      "record_id": "cov-0781-scheduling_logging__out-of-surface-16",
+      "raw_output": "I'm unable to schedule plate transfers. I can help with moving the deck resource or running liquid-handling operations like aspirate, dispense, and transfer."
+    },
+    {
+      "record_id": "cov-0782-scheduling_logging__out-of-surface-17",
+      "raw_output": "I cannot set reminders or alarms. I can help with liquid handling tasks such as aspirating, dispensing, transferring, or moving plates."
+    },
+    {
+      "record_id": "cov-0783-scheduling_logging__out-of-surface-18",
+      "raw_output": "I cannot log notes or manage lab notebooks. I can assist with liquid handling tasks such as aspirating, dispensing, transferring, or moving plates and tips."
+    },
+    {
+      "record_id": "cov-0784-scheduling_logging__out-of-surface-19",
+      "raw_output": "<start_function_call>call:read_absorbance{at:[<escape>plate_1[1]<escape>,<escape>plate_1[2]<escape>],wavelength_nm:2530.0}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0801-run_status__out-of-surface-16",
+      "raw_output": "I don't have a specific time limit for running a task. I can help you move resources, read plates, or perform liquid handling operations like transfer, aspirate, or dispense."
+    },
+    {
+      "record_id": "cov-0802-run_status__out-of-surface-17",
+      "raw_output": "<start_function_call>call:read_fluorescence{}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0803-run_status__out-of-surface-18",
+      "raw_output": "I don't have a specific status update tool to monitor pipetting steps. I can help you with liquid handling actions like aspirate, dispense, or transfer, or moving plates."
+    },
+    {
+      "record_id": "cov-0804-run_status__out-of-surface-19",
+      "raw_output": "I'm unable to track or monitor the status of lab runs. I can help you with liquid handling tasks such as aspirating, dispensing, transferring, moving plates, or reading absorbance, fluorescence, or luminescence."
+    }
+  ]
+}

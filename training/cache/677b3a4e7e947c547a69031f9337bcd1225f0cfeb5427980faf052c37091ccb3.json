@@ -1,0 +1,9 @@
+{
+ "cache_key": "677b3a4e7e947c547a69031f9337bcd1225f0cfeb5427980faf052c37091ccb3",
+ "fetched_at": "2026-09-01T21:16:07.346287+00:00",
+ "input_hash": "60e864eacd30ad13fe1255579c0d26199c0d9e3e23a30b7ed973fe85ae1abcec",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please move the resource hotel_stack_1 to scale_station_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

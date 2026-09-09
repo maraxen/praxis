@@ -1,0 +1,9 @@
+{
+ "cache_key": "79198a7b5a6d54465045d13f4569543238029157acf051eed229cb865cdb02ab",
+ "fetched_at": "2026-09-03T15:09:07.771383+00:00",
+ "input_hash": "4d5732cf9128625c2ac601252e51a31717e5dc15005a393d13d3ac864878a11a",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please halt the shaking on the heater-shaker.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

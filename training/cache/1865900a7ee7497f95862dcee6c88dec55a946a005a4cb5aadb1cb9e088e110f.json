@@ -1,0 +1,9 @@
+{
+ "cache_key": "1865900a7ee7497f95862dcee6c88dec55a946a005a4cb5aadb1cb9e088e110f",
+ "fetched_at": "2026-09-02T15:24:39.616611+00:00",
+ "input_hash": "7ae9befc4799c4bebe7eba5a3f6c904c0a565cb527e45e218ecc59be8c414909",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Bring over the liquid from well F3 of plate 1 to the destination well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

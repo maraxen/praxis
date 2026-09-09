@@ -28,7 +28,6 @@ from praxis.backend.core.simulation.chatterbox_runner import (
     ChatterboxExecutionResult,
     ChatterboxProtocolRunner,
     DeckFactory,
-    DeckLayoutType,
     resolve_resource,
 )
 
@@ -357,15 +356,15 @@ if __name__ == "__main__":
         print("\n[Case 1] Synthetic Passing Protocol")
         await runner.test_passing_protocol_completes()
         print("OK")
-        
+
         print("\n[Case 2] Synthetic Failing Protocol")
         await runner.test_failing_protocol_captured()
         print("OK (Captured)")
-        
+
         print("\n[Case 3] Real Protocols Discovery")
         pairs = discover_protocol_backend_pairs()
         print(f"Discovered {len(pairs)} protocol-backend pairs.")
-        
+
         passed = 0
         failed = []
         for p in pairs:
@@ -380,7 +379,7 @@ if __name__ == "__main__":
             except AssertionError as e:
                 print("FAIL")
                 failed.append((pf.stem, backend, str(e)))
-        
+
         print(f"\nFinal Result: {passed}/{passed+len(failed)} passed")
         if failed:
             print("\nFailures:")

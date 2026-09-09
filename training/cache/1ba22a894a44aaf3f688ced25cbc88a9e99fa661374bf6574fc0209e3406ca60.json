@@ -1,0 +1,9 @@
+{
+ "cache_key": "1ba22a894a44aaf3f688ced25cbc88a9e99fa661374bf6574fc0209e3406ca60",
+ "fetched_at": "2026-09-02T16:22:20.317981+00:00",
+ "input_hash": "9e6b2d35fb67939225e36a00e252fac95ac6db83d4ff6e06334faae2c18c07de",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Get tips from the C4 and D12 spots on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

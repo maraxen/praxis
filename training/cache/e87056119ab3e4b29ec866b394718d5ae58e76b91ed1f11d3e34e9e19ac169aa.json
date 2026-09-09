@@ -1,0 +1,9 @@
+{
+ "cache_key": "e87056119ab3e4b29ec866b394718d5ae58e76b91ed1f11d3e34e9e19ac169aa",
+ "fetched_at": "2026-08-28T18:03:09.528702+00:00",
+ "input_hash": "9a23972a64df6171f373929d01814ce88f41eabc4419336a79c41e51557ed0bb",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Dispose of the tips at the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

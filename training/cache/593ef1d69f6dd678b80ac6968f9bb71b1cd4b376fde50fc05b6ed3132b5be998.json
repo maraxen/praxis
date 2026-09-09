@@ -1,0 +1,9 @@
+{
+ "cache_key": "593ef1d69f6dd678b80ac6968f9bb71b1cd4b376fde50fc05b6ed3132b5be998",
+ "fetched_at": "2026-09-02T16:59:13.233876+00:00",
+ "input_hash": "5116dd549a6a4569eb7fc436968211e9d7fc51269d113b8aa51c01d3d806eea6",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the signal from the plate at an excitation wavelength of 485 nm and a focal height of 12.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

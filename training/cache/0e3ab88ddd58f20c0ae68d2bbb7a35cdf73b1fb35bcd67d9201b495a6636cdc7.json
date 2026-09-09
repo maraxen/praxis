@@ -1,0 +1,9 @@
+{
+ "cache_key": "0e3ab88ddd58f20c0ae68d2bbb7a35cdf73b1fb35bcd67d9201b495a6636cdc7",
+ "fetched_at": "2026-09-03T15:00:19.084802+00:00",
+ "input_hash": "be1a6af59486d9c917c556539bb036b0b09e6a078947eaae013133cc6146f5ce",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you do an air blowout to purge whatever droplets are still left on the tips?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

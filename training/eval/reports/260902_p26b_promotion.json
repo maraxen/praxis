@@ -1,0 +1,150 @@
+{
+  "rule": {
+    "recall_floor": 0.7045454545454546,
+    "distinguishability_bound": 0.25385051433530553,
+    "thresholds": {
+      "T_acc": 0.8,
+      "T_clr_recall": 0.7,
+      "T_clr_prec": 0.9
+    },
+    "tie_break": "higher clarify_precision, then earlier arm letter"
+  },
+  "baseline": {
+    "n_examples": 228,
+    "exact_match_accuracy": {
+      "value": 0.19736842105263158,
+      "successes": 45,
+      "n": 228,
+      "wilson95": [
+        0.15091187393903266,
+        0.25385051433530553
+      ]
+    },
+    "clarify_recall": {
+      "value": 0.7045454545454546,
+      "successes": 62,
+      "n": 88,
+      "wilson95": [
+        0.6023061192213643,
+        0.7896791397047209
+      ]
+    },
+    "clarify_precision": {
+      "value": 0.5636363636363636,
+      "successes": 62,
+      "n": 110,
+      "wilson95": [
+        0.4703782894488754,
+        0.6526011276279463
+      ]
+    },
+    "tripwire_out_of_surface_tool_calls": 13,
+    "per_class_exact": {
+      "ambiguous_referent": 0.030303030303030304,
+      "clean_parse": 0.12149532710280374,
+      "missing_slot": 0.0,
+      "out_of_surface": 0.7045454545454546
+    },
+    "base_revision": "google/functiongemma-270m-it@39eccb091651513a5dfb56892d3714c1b5b8276c",
+    "model_label": null
+  },
+  "arms": {
+    "A": {
+      "n_examples": 228,
+      "exact_match_accuracy": {
+        "value": 0.6359649122807017,
+        "successes": 145,
+        "n": 228,
+        "wilson95": [
+          0.5717462751792375,
+          0.6956793184946106
+        ]
+      },
+      "clarify_recall": {
+        "value": 0.8636363636363636,
+        "successes": 76,
+        "n": 88,
+        "wilson95": [
+          0.776629206615786,
+          0.9202334759194766
+        ]
+      },
+      "clarify_precision": {
+        "value": 0.8351648351648352,
+        "successes": 76,
+        "n": 91,
+        "wilson95": [
+          0.7457096808411291,
+          0.8974775700278085
+        ]
+      },
+      "tripwire_out_of_surface_tool_calls": 1,
+      "per_class_exact": {
+        "ambiguous_referent": 0.5454545454545454,
+        "clean_parse": 0.5514018691588785,
+        "missing_slot": 0.5681818181818182,
+        "out_of_surface": 0.9772727272727273
+      },
+      "base_revision": "outputs/p26/A/checkpoint@main",
+      "model_label": "p26 arm A seed 0 recipe 0.1.0 sha256:376cac6e5edf9652a4899a2539bbd4980ebff8f77cc2cc363aee0d404a12ef72",
+      "eligible": true,
+      "anchors_cleared": false,
+      "sidecar_outcome": "marginal",
+      "delta_acc_vs_baseline": 0.43859649122807015,
+      "delta_recall_vs_baseline": 0.15909090909090906,
+      "delta_prec_vs_baseline": 0.2715284715284716
+    },
+    "A2": {
+      "n_examples": 228,
+      "exact_match_accuracy": {
+        "value": 0.6710526315789473,
+        "successes": 153,
+        "n": 228,
+        "wilson95": [
+          0.6076852887620642,
+          0.7287533613437446
+        ]
+      },
+      "clarify_recall": {
+        "value": 0.9204545454545454,
+        "successes": 81,
+        "n": 88,
+        "wilson95": [
+          0.8448168059940678,
+          0.9609306706873296
+        ]
+      },
+      "clarify_precision": {
+        "value": 0.8526315789473684,
+        "successes": 81,
+        "n": 95,
+        "wilson95": [
+          0.7677301103598231,
+          0.9101318113554504
+        ]
+      },
+      "tripwire_out_of_surface_tool_calls": 3,
+      "per_class_exact": {
+        "ambiguous_referent": 0.5757575757575758,
+        "clean_parse": 0.5794392523364486,
+        "missing_slot": 0.7045454545454546,
+        "out_of_surface": 0.9318181818181818
+      },
+      "base_revision": "outputs/p26b/A/checkpoint@local",
+      "model_label": "p26 arm A seed 0 recipe 0.1.0 sha256:ddcd3b411f77282969a615523c73c0c99483ad60579bed5c4b422b955a567d72",
+      "eligible": true,
+      "anchors_cleared": false,
+      "sidecar_outcome": "marginal",
+      "delta_acc_vs_baseline": 0.47368421052631576,
+      "delta_recall_vs_baseline": 0.21590909090909083,
+      "delta_prec_vs_baseline": 0.2889952153110048
+    }
+  },
+  "eligible_arms": [
+    "A",
+    "A2"
+  ],
+  "selected_arm": "A2",
+  "promoted": false,
+  "verdict": "NOT PROMOTED (selected A2)"
+}

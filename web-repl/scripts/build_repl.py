@@ -948,6 +948,31 @@ def run_inject_shell_check(*, with_coxswain: bool = False, out_dir: Path | None 
         raise BuildAssertionError(f"BUILD ASSERTION FAILED: inject_shell.py --check failed: {exc}") from exc
 
 
+def run_inject_branding(*, out_dir: Path | None = None) -> None:
+    """Apply the praxis <head> branding (theme stylesheet, favicon, <title>).
+
+    Separate from inject_shell.py on purpose: that script's --check is the D1
+    staleness gate, and a purely cosmetic regression must not be able to turn
+    an integrity gate red (nor the reverse). See inject_branding.py's docstring.
+    """
+    args = [str(SCRIPTS_DIR / "inject_branding.py")]
+    if out_dir is not None:
+        args.extend(["--dist", str(out_dir)])
+    _uv_run(args, cwd=REPO_ROOT, timeout=60)
+
+
+def run_inject_branding_check(*, out_dir: Path | None = None) -> None:
+    args = [str(SCRIPTS_DIR / "inject_branding.py"), "--check"]
+    if out_dir is not None:
+        args.extend(["--dist", str(out_dir)])
+    try:
+        _uv_run(args, cwd=REPO_ROOT, timeout=60)
+    except BuildError as exc:
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: inject_branding.py --check failed: {exc}"
+        ) from exc
+
+
 # --- step 5: final completeness assertion --------------------------------
 
 
@@ -964,6 +989,11 @@ def assert_dist_complete(out_dir: Path, *, with_coxswain: bool = False) -> None:
         out_dir / "assets" / "visualizer" / "lib.js",
         out_dir / "assets" / "visualizer" / "index.html",
         out_dir / "assets" / "visualizer-augmentations" / "index.js",
+        out_dir / "assets" / "theme" / "praxis-theme.css",
+        out_dir / "assets" / "theme" / "praxis-mark.svg",
+        out_dir / "assets" / "theme" / "praxis-favicon.svg",
+        out_dir / "assets" / "theme" / "fonts" / "RobotoFlex-Variable.woff2",
+        out_dir / "assets" / "theme" / "fonts" / "JetBrainsMono-Variable.woff2",
         out_dir / "bootstrap" / "praxis_bootstrap.py",
         out_dir / "bootstrap" / "stages.py",
         out_dir / "bootstrap" / "transport.py",
@@ -1313,6 +1343,8 @@ def main(argv: list[str] | None = None) -> int:
 
         run_inject_shell(dev=args.dev, with_coxswain=args.with_coxswain, out_dir=out_dir)
         run_inject_shell_check(with_coxswain=args.with_coxswain, out_dir=out_dir)
+        run_inject_branding(out_dir=out_dir)
+        run_inject_branding_check(out_dir=out_dir)
 
         if args.with_coxswain:
             # W4 / deviation D-C: inject the SECOND module tag into the STAGED

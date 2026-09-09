@@ -1,0 +1,9 @@
+{
+ "cache_key": "a60fe96beb9c09c6607527a9b4f2c867df24059d0fbc6c9182979913b40323ea",
+ "fetched_at": "2026-09-01T21:19:40.787456+00:00",
+ "input_hash": "95b8f2de70359ff67ef53e14a0c2b2a64c495f405a469e799918df237365a038",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure fluorescence in wells B7, G3, G5, and H7 using excitation 535 nm, emission 590 nm, and focal height 10 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

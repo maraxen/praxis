@@ -1,0 +1,243 @@
+{
+  "artifact_categories": [
+    "list_escape_format",
+    "slot_order_only",
+    "gold_slot_annotation",
+    "gold_missing_required"
+  ],
+  "reports": {
+    "baseline": {
+      "n_examples": 228,
+      "exact_match_successes": 45,
+      "n_failures": 183,
+      "by_category": {
+        "name_mismatch": 33,
+        "no_call": 56,
+        "other": 10,
+        "param_content": 71,
+        "spurious_call": 13
+      },
+      "by_class_and_category": {
+        "ambiguous_referent": {
+          "name_mismatch": 7,
+          "no_call": 14,
+          "param_content": 11
+        },
+        "clean_parse": {
+          "name_mismatch": 25,
+          "no_call": 18,
+          "other": 8,
+          "param_content": 43
+        },
+        "missing_slot": {
+          "name_mismatch": 1,
+          "no_call": 24,
+          "other": 2,
+          "param_content": 17
+        },
+        "out_of_surface": {
+          "spurious_call": 13
+        }
+      },
+      "artifact_rows": 0,
+      "artifact_adjusted_accuracy_ceiling": 0.19736842105263158,
+      "artifact_record_ids": {
+        "list_escape_format": [],
+        "slot_order_only": [],
+        "gold_slot_annotation": [],
+        "gold_missing_required": []
+      },
+      "other_rows": [
+        {
+          "record_id": "cov-0273-pick_up_tips__none-13",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "cov-0579-move_lid__none-14",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "cov-0623-read_absorbance__none-13",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "cov-0639-read_fluorescence__missing-slot-14",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "cov-0653-read_fluorescence__none-13",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "cov-0669-read_luminescence__missing-slot-14",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "golden-clean-move_lid-01",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "golden-clean-read_fluorescence-02",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "golden-clean-read_fluorescence-04",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "ovl-f05a5f93c4",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        }
+      ],
+      "source": "training/eval/reports/260902_p26_rescore_baseline.json"
+    },
+    "A": {
+      "n_examples": 228,
+      "exact_match_successes": 145,
+      "n_failures": 83,
+      "by_category": {
+        "name_mismatch": 11,
+        "no_call": 10,
+        "param_content": 60,
+        "spurious_call": 1,
+        "unknown_verb": 1
+      },
+      "by_class_and_category": {
+        "ambiguous_referent": {
+          "no_call": 1,
+          "param_content": 14
+        },
+        "clean_parse": {
+          "name_mismatch": 8,
+          "no_call": 8,
+          "param_content": 31,
+          "unknown_verb": 1
+        },
+        "missing_slot": {
+          "name_mismatch": 3,
+          "no_call": 1,
+          "param_content": 15
+        },
+        "out_of_surface": {
+          "spurious_call": 1
+        }
+      },
+      "artifact_rows": 0,
+      "artifact_adjusted_accuracy_ceiling": 0.6359649122807017,
+      "artifact_record_ids": {
+        "list_escape_format": [],
+        "slot_order_only": [],
+        "gold_slot_annotation": [],
+        "gold_missing_required": []
+      },
+      "other_rows": [],
+      "source": "training/eval/reports/260902_p26_rescore_A.json"
+    },
+    "B": {
+      "n_examples": 228,
+      "exact_match_successes": 137,
+      "n_failures": 91,
+      "by_category": {
+        "name_mismatch": 13,
+        "no_call": 9,
+        "param_content": 66,
+        "spurious_call": 2,
+        "unknown_verb": 1
+      },
+      "by_class_and_category": {
+        "ambiguous_referent": {
+          "name_mismatch": 1,
+          "no_call": 1,
+          "param_content": 15
+        },
+        "clean_parse": {
+          "name_mismatch": 8,
+          "no_call": 7,
+          "param_content": 33,
+          "unknown_verb": 1
+        },
+        "missing_slot": {
+          "name_mismatch": 4,
+          "no_call": 1,
+          "param_content": 18
+        },
+        "out_of_surface": {
+          "spurious_call": 2
+        }
+      },
+      "artifact_rows": 0,
+      "artifact_adjusted_accuracy_ceiling": 0.6008771929824561,
+      "artifact_record_ids": {
+        "list_escape_format": [],
+        "slot_order_only": [],
+        "gold_slot_annotation": [],
+        "gold_missing_required": []
+      },
+      "other_rows": [],
+      "source": "training/eval/reports/260902_p26_rescore_B.json"
+    },
+    "C": {
+      "n_examples": 228,
+      "exact_match_successes": 131,
+      "n_failures": 97,
+      "by_category": {
+        "name_mismatch": 14,
+        "no_call": 6,
+        "param_content": 73,
+        "spurious_call": 3,
+        "unknown_verb": 1
+      },
+      "by_class_and_category": {
+        "ambiguous_referent": {
+          "name_mismatch": 2,
+          "no_call": 1,
+          "param_content": 16
+        },
+        "clean_parse": {
+          "name_mismatch": 9,
+          "no_call": 4,
+          "param_content": 37,
+          "unknown_verb": 1
+        },
+        "missing_slot": {
+          "name_mismatch": 3,
+          "no_call": 1,
+          "param_content": 20
+        },
+        "out_of_surface": {
+          "spurious_call": 3
+        }
+      },
+      "artifact_rows": 0,
+      "artifact_adjusted_accuracy_ceiling": 0.5745614035087719,
+      "artifact_record_ids": {
+        "list_escape_format": [],
+        "slot_order_only": [],
+        "gold_slot_annotation": [],
+        "gold_missing_required": []
+      },
+      "other_rows": [],
+      "source": "training/eval/reports/260902_p26_rescore_C.json"
+    }
+  }
+}

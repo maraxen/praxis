@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:41Z",
+ "key": "1732a4753c6ea90de8ed2996c16727b874c72a4acdc56774a73d6b1c0d78d3c8",
+ "prompt_sha256": "1732a4753c6ea90de8ed2996c16727b874c72a4acdc56774a73d6b1c0d78d3c8",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Pick up tips from tr0 A1\nPlease pick up the tips located at tr0 A1\nGrab the tips from tr0 A1",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

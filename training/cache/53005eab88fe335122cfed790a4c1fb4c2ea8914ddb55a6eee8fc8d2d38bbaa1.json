@@ -1,0 +1,9 @@
+{
+ "cache_key": "53005eab88fe335122cfed790a4c1fb4c2ea8914ddb55a6eee8fc8d2d38bbaa1",
+ "fetched_at": "2026-09-02T20:46:48.860180+00:00",
+ "input_hash": "3de2937243adef42d5153d7df0e73b8787d828262de01a22beb8e77da3e3a44a",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the glow on the loaded plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

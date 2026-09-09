@@ -1,0 +1,11 @@
+{
+ "audit_rules_version": "1",
+ "blocking_census": {
+  "receiver_drift": 0,
+  "param_misattributed": 0,
+  "surface_adjacent": 5,
+  "phantom_verb": 4
+ },
+ "n_findings": 128,
+ "canonical_tables_fingerprint": "fd08ca0e47e11046"
+}

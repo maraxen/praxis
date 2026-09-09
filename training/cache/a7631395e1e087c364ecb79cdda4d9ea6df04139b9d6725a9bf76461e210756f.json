@@ -1,0 +1,9 @@
+{
+ "cache_key": "a7631395e1e087c364ecb79cdda4d9ea6df04139b9d6725a9bf76461e210756f",
+ "fetched_at": "2026-09-01T21:19:08.653862+00:00",
+ "input_hash": "21ac4019ff8745884a1244c8e425c5243a3de5291f90ffa9cf8dfd1899ada9f7",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Perform an absorbance read at 405.0 nm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

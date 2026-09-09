@@ -1,0 +1,9 @@
+{
+ "cache_key": "578d1aa387b329574216175cd871646acdb942ce7752c59e68af05c3146f7530",
+ "fetched_at": "2026-09-02T16:00:04.673153+00:00",
+ "input_hash": "ce2ec6134df62f3892509b167ba599e85d915bf4f68cfd908e5eb9efb8626dd7",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please transport reservoir 1 to hotel stack 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

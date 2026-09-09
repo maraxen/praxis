@@ -1,0 +1,9 @@
+{
+ "cache_key": "4feabb523ff56547fcf623e61468d885ff0680361b24f29cb58b1575f16d5e01",
+ "fetched_at": "2026-09-01T21:16:35.727507+00:00",
+ "input_hash": "9c25f8916e84ad55d8e3564b6fcd12b93a4eb298d4b0f42d051b205a850cdb93",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put the reservoir on scale_station_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "6bba3c9714e5668f0c630c3fa662f01f2df2071bf3cb62045ed629ccee158c5f",
+ "fetched_at": "2026-09-01T21:11:59.054968+00:00",
+ "input_hash": "acc79e8b1f48169184079837b4d06999340b872cd3c5b74ec0eb45ad72d8c5de",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please perform a stamp from source plate_2 to destination plate_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

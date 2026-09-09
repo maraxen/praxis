@@ -1,0 +1,9 @@
+{
+ "cache_key": "e8325e9bab65acdf24d59cc68795fe760a4857454db913007f7e355ab6f694c7",
+ "fetched_at": "2026-09-01T21:20:04.905428+00:00",
+ "input_hash": "fcbb1d0893007fdca489e3fd59f939373d1fc1a2a32b39b5f3f16b7225675f50",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure the luminescence of wells D7 and F3.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

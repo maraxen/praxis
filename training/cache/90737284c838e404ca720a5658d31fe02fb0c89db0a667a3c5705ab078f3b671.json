@@ -1,0 +1,9 @@
+{
+ "cache_key": "90737284c838e404ca720a5658d31fe02fb0c89db0a667a3c5705ab078f3b671",
+ "fetched_at": "2026-09-02T14:55:08.236421+00:00",
+ "input_hash": "2280092f050ea0fb3633d628149321fe30a011b934f7c487580c7d2846345198",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Aspirate 20 microliters from the destination well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

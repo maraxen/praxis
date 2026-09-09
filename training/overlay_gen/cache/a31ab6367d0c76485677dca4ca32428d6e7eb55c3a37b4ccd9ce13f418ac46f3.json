@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:14:52Z",
+ "key": "a31ab6367d0c76485677dca4ca32428d6e7eb55c3a37b4ccd9ce13f418ac46f3",
+ "prompt_sha256": "a31ab6367d0c76485677dca4ca32428d6e7eb55c3a37b4ccd9ce13f418ac46f3",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Draw 100 uL from plate A1.\nPlease aspirate 100 uL from plate A1.\nPull up 100 uL from plate A1.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

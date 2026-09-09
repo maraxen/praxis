@@ -1,0 +1,9 @@
+{
+ "cache_key": "14220585da4da2724638ac76df22b2d3f1881cdbf69e23b0e102c0ceb2854383",
+ "fetched_at": "2026-09-03T15:05:46.538489+00:00",
+ "input_hash": "d03a6619c738053f2a49966a6e886b3437e4f4a6e52aed90366d6f45987d24f6",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can we set the plate on the shaker for 5 minutes at 500 rpm?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

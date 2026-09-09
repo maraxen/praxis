@@ -1,0 +1,9 @@
+{
+ "cache_key": "8084a4ebd85a87c6287be8baf70abe0d1aa3598f189b71a3225cd6b816c6f418",
+ "fetched_at": "2026-09-02T16:47:35.895021+00:00",
+ "input_hash": "36e85e559b3e9549ebf7588776356458a22013cf09b10f9343d73e4d9127b7ab",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you relocate the carrier to the scale station?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

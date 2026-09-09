@@ -1,0 +1,9 @@
+{
+ "cache_key": "105fff8bdd7d26141e8e9a250386b3b94e5be9619192611dc3946adc48372939",
+ "fetched_at": "2026-08-25T22:08:02.888276+00:00",
+ "input_hash": "c51d1249e422c959692c887d6e208be065c60742c7fb8e4aa092eb6ab3fb09ad",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Please aspirate 25.0 microliters and 10.0 microliters.\",\n\"clarification\": null\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

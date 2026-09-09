@@ -1,0 +1,9 @@
+{
+ "cache_key": "f293eb0d9affac35202b7ea39c5bc5fd7cd6dd6fe963e55aa45c393bd0c38619",
+ "fetched_at": "2026-09-03T15:06:33.325612+00:00",
+ "input_hash": "77d182d8d7de424ad7952451331adf9756409565c1df584a85ef5b857fb35dc4",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and orbital shake the microplate at 500 rpm for 5 minutes.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

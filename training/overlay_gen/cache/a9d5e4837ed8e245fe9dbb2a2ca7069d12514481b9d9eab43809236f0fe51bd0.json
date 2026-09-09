@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:46Z",
+ "key": "a9d5e4837ed8e245fe9dbb2a2ca7069d12514481b9d9eab43809236f0fe51bd0",
+ "prompt_sha256": "a9d5e4837ed8e245fe9dbb2a2ca7069d12514481b9d9eab43809236f0fe51bd0",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Please discard the tips\nCan you throw away the tips?\nRemove and discard the tips",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

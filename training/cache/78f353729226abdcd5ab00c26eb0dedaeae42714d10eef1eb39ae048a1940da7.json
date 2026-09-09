@@ -1,0 +1,9 @@
+{
+ "cache_key": "78f353729226abdcd5ab00c26eb0dedaeae42714d10eef1eb39ae048a1940da7",
+ "fetched_at": "2026-09-02T16:36:09.020730+00:00",
+ "input_hash": "4bcfb1bb42e6199b19528e0bf1c0e514fed73ccd6747347b12c699bffbc9d818",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Get rid of the tips in the G12 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

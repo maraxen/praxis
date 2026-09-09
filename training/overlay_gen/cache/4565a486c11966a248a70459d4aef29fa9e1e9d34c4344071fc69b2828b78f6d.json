@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:42Z",
+ "key": "4565a486c11966a248a70459d4aef29fa9e1e9d34c4344071fc69b2828b78f6d",
+ "prompt_sha256": "4565a486c11966a248a70459d4aef29fa9e1e9d34c4344071fc69b2828b78f6d",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Please dispense 100 uL into plate A1\nDispense 100 uL to plate A1\nI need 100 uL dispensed to plate A1",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "c2e756ee6654a0393e244a9b0954d03664ef27ec2781d68e53535579ef4492fa",
+ "fetched_at": "2026-09-02T16:36:09.020786+00:00",
+ "input_hash": "c27f6ce5f2991ff03f9490bd57fc9608e2408199e18531db74cc2b63f58f277c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Toss the tips into the H2 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

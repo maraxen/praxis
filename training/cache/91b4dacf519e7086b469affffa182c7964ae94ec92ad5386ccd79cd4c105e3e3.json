@@ -1,0 +1,9 @@
+{
+ "cache_key": "91b4dacf519e7086b469affffa182c7964ae94ec92ad5386ccd79cd4c105e3e3",
+ "fetched_at": "2026-09-01T21:18:46.210386+00:00",
+ "input_hash": "073428009f996c2bc6bf8da0e2484695db669cb2b39c4445352b7a7a58db87c0",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please take an absorbance reading of the loaded plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "bf6ef4dfbf46768cd5ff45bf3997dc10e79efdeb31ded050d8ba47d5ff34d62e",
+ "fetched_at": "2026-09-03T15:10:30.071409+00:00",
+ "input_hash": "aaceba4debb1bd9ae1811b0156c38cfa0b98d5314af7be08e4309363e46684ff",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you put on some rock music over the speakers?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "2bf519ecf415f450fd4926df4fbff436adfb38a5d44c30c42657ccc4166c6e52",
+ "fetched_at": "2026-09-04T00:07:42.209786+00:00",
+ "input_hash": "0148e3ce2ca1acfbe5d9fed7aeb7ea142022d9e3ecd6df7f252a63708fcaac9d",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I cannot submit purchase requisitions or order items from lab suppliers. Once you have plates on the deck, I can help automate your workflow with operations like stamping, liquid transfers, or reading absorbance, fluorescence, and luminescence.\", \"utterance\": \"Can you submit a purchase requisition to restock our 384-well assay plates from vendor stock?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

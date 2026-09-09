@@ -1,0 +1,9 @@
+{
+ "cache_key": "e4ebda153e40f65a746c03786b56fe85fc5b994011001c400124a3539f36f001",
+ "fetched_at": "2026-08-25T22:08:34.384102+00:00",
+ "input_hash": "8effd59e772002c93aa871c2af481f3e6c7f133500b40befa9b34fd913986520",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Please transfer the liquid from plate_2_F2 to the same well.\",\n\"clarification\": \"Which specific destination well do you want to transfer to? 'The same well' is ambiguous as it could refer to the source well or a previously mentioned destination.\"\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "47710eea775f44ae5e6ce0e6bc8b716e3b4efc958dc41fad90c5a8ba17ccb6b9",
+ "fetched_at": "2026-09-04T00:15:12.354265+00:00",
+ "input_hash": "f6e2155f03cf8231af413442ff0c91f3533992ea523bb405ac399760ed14c086",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I am unable to query active protocol progress or remaining step counts. I can help queue direct actions like aspirate, dispense, or read_luminescence. Please refer to the deck control panel for protocol queue details.\", \"utterance\": \"How many steps are left in the active protocol?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

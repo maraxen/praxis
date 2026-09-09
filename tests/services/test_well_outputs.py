@@ -3,6 +3,7 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.outputs import (
     WellDataOutput,
     WellDataOutputCreate,
@@ -13,7 +14,6 @@ from praxis.backend.services.well_outputs import (
     create_well_data_outputs,
     create_well_data_outputs_from_flat_array,
 )
-from praxis.backend.models.domain.filters import SearchFilters
 from tests.factories import (
     FunctionCallLogFactory,
     FunctionDataOutputFactory,
@@ -39,11 +39,10 @@ async def test_create_well_data_output(
     protocol_run = ProtocolRunFactory()
     assert protocol_run.accession_id is not None, "ProtocolRun accession_id is None!"
     await db_session.flush()
-    
+
     function_call_log = FunctionCallLogFactory(protocol_run_obj=protocol_run)
     await db_session.flush()
-    
-    from praxis.backend.models.domain.outputs import FunctionDataOutput
+
     from praxis.backend.models.enums import DataOutputTypeEnum, SpatialContextEnum
 
     function_data_output = FunctionDataOutputFactory(

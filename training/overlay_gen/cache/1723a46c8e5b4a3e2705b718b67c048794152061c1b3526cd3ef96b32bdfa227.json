@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:44Z",
+ "key": "1723a46c8e5b4a3e2705b718b67c048794152061c1b3526cd3ef96b32bdfa227",
+ "prompt_sha256": "1723a46c8e5b4a3e2705b718b67c048794152061c1b3526cd3ef96b32bdfa227",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Pick up the tips from tr20uL 95.\nPlease grab the tips located at tr20uL 95.\nRetrieve the tips from tr20uL 95.",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

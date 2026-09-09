@@ -1,0 +1,9 @@
+{
+ "cache_key": "961e7adcb0b57c37fa8f6fc2895bac5ac079d5b700b377f2cc1fe4e428195026",
+ "fetched_at": "2026-09-02T20:42:26.706507+00:00",
+ "input_hash": "bc74fd5e1d0ded691bf526fbb86565434718700fc1b95fa58e8c4e7c42df575c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Drop the tips off at the H2 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "d235d06d7a638f9f949def8a41b1a18ac3678bf468dce8b8d7c58f28f3ffede0",
+ "fetched_at": "2026-09-02T16:16:20.949214+00:00",
+ "input_hash": "c17760beaf48ba6c59567ca75f8122395eaa7340161b2af50c41c76c9c66429b",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you measure absorbance across the plate that is loaded in the reader?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

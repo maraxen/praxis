@@ -1,0 +1,1370 @@
+{
+ "artifact": "praxis-copilot-p25-assembled-corpus",
+ "assembly_version": "0.1.6",
+ "backlog_item": 480,
+ "counts": {
+  "by_class": {
+   "ambiguous_referent": 289,
+   "clean_parse": 500,
+   "missing_slot": 340,
+   "out_of_surface": 394
+  },
+  "by_provenance": {
+   "coverage": 781,
+   "coverage_natural": 555,
+   "golden": 88,
+   "naturalness": 99
+  },
+  "by_split": {
+   "eval": 228,
+   "train": 1295
+  },
+  "by_split_and_class": {
+   "eval": {
+    "ambiguous_referent": 33,
+    "clean_parse": 107,
+    "missing_slot": 44,
+    "out_of_surface": 44
+   },
+   "train": {
+    "ambiguous_referent": 256,
+    "clean_parse": 393,
+    "missing_slot": 296,
+    "out_of_surface": 350
+   }
+  },
+  "cross_split_duplicate_utterances": 41,
+  "cross_split_duplicate_utterances_at_pin": 41,
+  "distinct_verbs": [
+   "aspirate",
+   "blow_out",
+   "discard_tips",
+   "dispense",
+   "dispense_to_waste",
+   "drop_tips",
+   "mix",
+   "move_lid",
+   "move_plate",
+   "move_resource",
+   "pick_up_tips",
+   "read_absorbance",
+   "read_fluorescence",
+   "read_luminescence",
+   "set_temperature",
+   "shake",
+   "stamp",
+   "stop_shaking",
+   "touch_tip",
+   "transfer"
+  ],
+  "duplicate_utterances_normalized": 112,
+  "eval_clarify_total": 121,
+  "strata": [
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 0,
+    "provenance": "coverage",
+    "verb": "aspirate"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "discard_tips"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 0,
+    "provenance": "coverage",
+    "verb": "dispense"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "drop_tips"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_lid"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_plate"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_resource"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 0,
+    "provenance": "coverage",
+    "verb": "pick_up_tips"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "stamp"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "transfer"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "aspirate"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "discard_tips"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "dispense"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 2,
+    "provenance": "coverage",
+    "verb": "drop_tips"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_lid"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_plate"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_resource"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "pick_up_tips"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "read_absorbance"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "read_fluorescence"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "read_luminescence"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "stamp"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 15,
+    "n_eval": 2,
+    "provenance": "coverage",
+    "verb": "transfer"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 1,
+    "provenance": "coverage",
+    "verb": "aspirate"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "dispense"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "drop_tips"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_lid"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_plate"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "move_resource"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "pick_up_tips"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "read_absorbance"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "read_fluorescence"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "read_luminescence"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 3,
+    "provenance": "coverage",
+    "verb": "stamp"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 15,
+    "n_eval": 1,
+    "provenance": "coverage",
+    "verb": "transfer"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 116,
+    "n_eval": 4,
+    "provenance": "coverage",
+    "verb": "None"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 20,
+    "n_eval": 4,
+    "provenance": "coverage",
+    "verb": "blow_out"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 20,
+    "n_eval": 4,
+    "provenance": "coverage",
+    "verb": "dispense_to_waste"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 20,
+    "n_eval": 4,
+    "provenance": "coverage",
+    "verb": "mix"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 20,
+    "n_eval": 4,
+    "provenance": "coverage",
+    "verb": "set_temperature"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 20,
+    "n_eval": 4,
+    "provenance": "coverage",
+    "verb": "shake"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 20,
+    "n_eval": 4,
+    "provenance": "coverage",
+    "verb": "stop_shaking"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 20,
+    "n_eval": 4,
+    "provenance": "coverage",
+    "verb": "touch_tip"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "aspirate"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "discard_tips"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "dispense"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "drop_tips"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "move_lid"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "move_plate"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "move_resource"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 15,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "pick_up_tips"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 10,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "stamp"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "transfer"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "aspirate"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "discard_tips"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "dispense"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 13,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "drop_tips"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "move_lid"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "move_plate"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "move_resource"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "pick_up_tips"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "read_absorbance"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "read_fluorescence"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "read_luminescence"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 8,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "stamp"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 13,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "transfer"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 14,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "aspirate"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "dispense"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "drop_tips"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "move_lid"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "move_plate"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "move_resource"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "pick_up_tips"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "read_absorbance"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "read_fluorescence"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "read_luminescence"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 12,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "stamp"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 14,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "transfer"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 15,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "None"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 16,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "blow_out"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 16,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "dispense_to_waste"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 16,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "mix"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 15,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "set_temperature"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 16,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "shake"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 16,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "stop_shaking"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 16,
+    "n_eval": 0,
+    "provenance": "coverage_natural",
+    "verb": "touch_tip"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "aspirate"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "discard_tips"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 2,
+    "n_eval": 2,
+    "provenance": "golden",
+    "verb": "dispense"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "drop_tips"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "move_lid"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "move_plate"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "move_resource"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "pick_up_tips"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "stamp"
+   },
+   {
+    "ambiguity_class": "ambiguous_referent",
+    "n": 2,
+    "n_eval": 2,
+    "provenance": "golden",
+    "verb": "transfer"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 4,
+    "n_eval": 4,
+    "provenance": "golden",
+    "verb": "aspirate"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 4,
+    "n_eval": 4,
+    "provenance": "golden",
+    "verb": "discard_tips"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 4,
+    "n_eval": 4,
+    "provenance": "golden",
+    "verb": "dispense"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 4,
+    "n_eval": 4,
+    "provenance": "golden",
+    "verb": "drop_tips"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 4,
+    "n_eval": 4,
+    "provenance": "golden",
+    "verb": "move_lid"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 4,
+    "n_eval": 4,
+    "provenance": "golden",
+    "verb": "move_plate"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 4,
+    "n_eval": 4,
+    "provenance": "golden",
+    "verb": "move_resource"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 4,
+    "n_eval": 4,
+    "provenance": "golden",
+    "verb": "pick_up_tips"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 4,
+    "n_eval": 4,
+    "provenance": "golden",
+    "verb": "read_absorbance"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 4,
+    "n_eval": 4,
+    "provenance": "golden",
+    "verb": "read_fluorescence"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 4,
+    "n_eval": 4,
+    "provenance": "golden",
+    "verb": "read_luminescence"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 4,
+    "n_eval": 4,
+    "provenance": "golden",
+    "verb": "stamp"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 4,
+    "n_eval": 4,
+    "provenance": "golden",
+    "verb": "transfer"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 2,
+    "n_eval": 2,
+    "provenance": "golden",
+    "verb": "aspirate"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "dispense"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "drop_tips"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "move_plate"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "pick_up_tips"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "read_absorbance"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "read_fluorescence"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "read_luminescence"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 1,
+    "n_eval": 1,
+    "provenance": "golden",
+    "verb": "stamp"
+   },
+   {
+    "ambiguity_class": "missing_slot",
+    "n": 2,
+    "n_eval": 2,
+    "provenance": "golden",
+    "verb": "transfer"
+   },
+   {
+    "ambiguity_class": "out_of_surface",
+    "n": 12,
+    "n_eval": 12,
+    "provenance": "golden",
+    "verb": ""
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 27,
+    "n_eval": 5,
+    "provenance": "naturalness",
+    "verb": "aspirate"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 3,
+    "n_eval": 0,
+    "provenance": "naturalness",
+    "verb": "discard_tips"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 27,
+    "n_eval": 5,
+    "provenance": "naturalness",
+    "verb": "dispense"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 6,
+    "n_eval": 1,
+    "provenance": "naturalness",
+    "verb": "drop_tips"
+   },
+   {
+    "ambiguity_class": "clean_parse",
+    "n": 36,
+    "n_eval": 7,
+    "provenance": "naturalness",
+    "verb": "pick_up_tips"
+   }
+  ],
+  "total_rows": 1523
+ },
+ "dataset_format": "FunctionGemma-native JSONL {metadata, tools[], messages[]} (research \u00a72a / mobile-actions)",
+ "eval_split_pin": {
+  "n": 228,
+  "path": "training/assemble/data/eval_split_pin.json",
+  "pinned_at_assembly_version": "0.1.3",
+  "rows_sha256": "8e023a33c2320c42a9be3cd0fc98110f3b7fae690871fff58bc9db51e22687d4"
+ },
+ "exclusions": {
+  "reason_entries": 12,
+  "reasons": {
+   "ovl-1b4d6803ac: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-1b4d6803ac"
+   ],
+   "ovl-226b047f39: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-226b047f39"
+   ],
+   "ovl-39b342e503: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-39b342e503"
+   ],
+   "ovl-5f990b60bf: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-5f990b60bf"
+   ],
+   "ovl-6666982de0: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-6666982de0"
+   ],
+   "ovl-7570c967ec: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-7570c967ec"
+   ],
+   "ovl-8d3ec9e802: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-8d3ec9e802"
+   ],
+   "ovl-a2b5a25721: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-a2b5a25721"
+   ],
+   "ovl-a91cd2ce98: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-a91cd2ce98"
+   ],
+   "ovl-ab721fd97d: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-ab721fd97d"
+   ],
+   "ovl-cc7083b0e0: dispense.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-cc7083b0e0"
+   ],
+   "ovl-fc6ca91c0c: aspirate.volume_ul multi-value [100.0, 50.0, 200.0] inexpressible in declared scalar surface (dispatcher wraps scalar->[v])": [
+    "ovl-fc6ca91c0c"
+   ]
+  },
+  "total": 12
+ },
+ "gap_fields_rule": "missing_required and unresolved_slots derived per call via coxswain.plr.slot_derivation.derive_call_gaps(name, params with sorted keys); source annotations checked as sets (missing_required) / multisets (unresolved_slots)",
+ "generator_versions": {
+  "assemble": "0.1.6",
+  "floor_gen": [
+   "0.2.1"
+  ],
+  "floor_gen_natural": [
+   "0.2.1"
+  ],
+  "overlay_gen": [
+   "d42c53f2"
+  ]
+ },
+ "inputs": {
+  "floor_corpus": {
+   "bytes": 902432,
+   "path": "training/out/corpus_p23_floor.jsonl",
+   "rows": 805,
+   "sha256": "33a69e95c9f103acc79ecd6fc13b9cf4c794c3f476b772561397e1b79a77a353"
+  },
+  "golden_pairs": {
+   "bytes": 508941,
+   "path": "training/golden/golden_pairs.jsonl",
+   "rows": 88,
+   "sha256": "cf90b1f784efa395ee416f67fa78b270572dd48576001f0d42d8b29abacff640"
+  },
+  "golden_sidecar": {
+   "bytes": 38558,
+   "path": "training/golden/golden_intent_sidecar.jsonl",
+   "rows": 88,
+   "sha256": "ab1833ee5017722517947829a2bfa1291d64aa3a4f3c84118f486a96c5495e04"
+  },
+  "natural_corpus": {
+   "bytes": 858957,
+   "path": "training/out/corpus_p23_floor_natural.jsonl",
+   "rows": 677,
+   "sha256": "46b9ba4196105839b872a0446a71455248555a2d55401a3b77ae2ecb52822c61"
+  },
+  "overlay_corpus": {
+   "bytes": 124624,
+   "path": "training/overlay_gen/out/overlay_full.jsonl",
+   "rows": 111,
+   "sha256": "9031e7de07ffd8261334bb00b6a5c17d0b8722c234ed829d4052c0870866c6d8"
+  }
+ },
+ "plr_source_sha": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+ "post_freeze_train_only_strata": [
+  {
+   "ambiguity_class": "ambiguous_referent",
+   "n": 15,
+   "provenance": "coverage",
+   "verb": "aspirate"
+  },
+  {
+   "ambiguity_class": "ambiguous_referent",
+   "n": 15,
+   "provenance": "coverage",
+   "verb": "dispense"
+  },
+  {
+   "ambiguity_class": "ambiguous_referent",
+   "n": 15,
+   "provenance": "coverage",
+   "verb": "pick_up_tips"
+  },
+  {
+   "ambiguity_class": "ambiguous_referent",
+   "n": 15,
+   "provenance": "coverage_natural",
+   "verb": "aspirate"
+  },
+  {
+   "ambiguity_class": "ambiguous_referent",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "discard_tips"
+  },
+  {
+   "ambiguity_class": "ambiguous_referent",
+   "n": 15,
+   "provenance": "coverage_natural",
+   "verb": "dispense"
+  },
+  {
+   "ambiguity_class": "ambiguous_referent",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "drop_tips"
+  },
+  {
+   "ambiguity_class": "ambiguous_referent",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "move_lid"
+  },
+  {
+   "ambiguity_class": "ambiguous_referent",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "move_plate"
+  },
+  {
+   "ambiguity_class": "ambiguous_referent",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "move_resource"
+  },
+  {
+   "ambiguity_class": "ambiguous_referent",
+   "n": 15,
+   "provenance": "coverage_natural",
+   "verb": "pick_up_tips"
+  },
+  {
+   "ambiguity_class": "ambiguous_referent",
+   "n": 10,
+   "provenance": "coverage_natural",
+   "verb": "stamp"
+  },
+  {
+   "ambiguity_class": "ambiguous_referent",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "transfer"
+  },
+  {
+   "ambiguity_class": "clean_parse",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "aspirate"
+  },
+  {
+   "ambiguity_class": "clean_parse",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "discard_tips"
+  },
+  {
+   "ambiguity_class": "clean_parse",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "dispense"
+  },
+  {
+   "ambiguity_class": "clean_parse",
+   "n": 13,
+   "provenance": "coverage_natural",
+   "verb": "drop_tips"
+  },
+  {
+   "ambiguity_class": "clean_parse",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "move_lid"
+  },
+  {
+   "ambiguity_class": "clean_parse",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "move_plate"
+  },
+  {
+   "ambiguity_class": "clean_parse",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "move_resource"
+  },
+  {
+   "ambiguity_class": "clean_parse",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "pick_up_tips"
+  },
+  {
+   "ambiguity_class": "clean_parse",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "read_absorbance"
+  },
+  {
+   "ambiguity_class": "clean_parse",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "read_fluorescence"
+  },
+  {
+   "ambiguity_class": "clean_parse",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "read_luminescence"
+  },
+  {
+   "ambiguity_class": "clean_parse",
+   "n": 8,
+   "provenance": "coverage_natural",
+   "verb": "stamp"
+  },
+  {
+   "ambiguity_class": "clean_parse",
+   "n": 13,
+   "provenance": "coverage_natural",
+   "verb": "transfer"
+  },
+  {
+   "ambiguity_class": "missing_slot",
+   "n": 14,
+   "provenance": "coverage_natural",
+   "verb": "aspirate"
+  },
+  {
+   "ambiguity_class": "missing_slot",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "dispense"
+  },
+  {
+   "ambiguity_class": "missing_slot",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "drop_tips"
+  },
+  {
+   "ambiguity_class": "missing_slot",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "move_lid"
+  },
+  {
+   "ambiguity_class": "missing_slot",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "move_plate"
+  },
+  {
+   "ambiguity_class": "missing_slot",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "move_resource"
+  },
+  {
+   "ambiguity_class": "missing_slot",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "pick_up_tips"
+  },
+  {
+   "ambiguity_class": "missing_slot",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "read_absorbance"
+  },
+  {
+   "ambiguity_class": "missing_slot",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "read_fluorescence"
+  },
+  {
+   "ambiguity_class": "missing_slot",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "read_luminescence"
+  },
+  {
+   "ambiguity_class": "missing_slot",
+   "n": 12,
+   "provenance": "coverage_natural",
+   "verb": "stamp"
+  },
+  {
+   "ambiguity_class": "missing_slot",
+   "n": 14,
+   "provenance": "coverage_natural",
+   "verb": "transfer"
+  },
+  {
+   "ambiguity_class": "out_of_surface",
+   "n": 15,
+   "provenance": "coverage_natural",
+   "verb": "None"
+  },
+  {
+   "ambiguity_class": "out_of_surface",
+   "n": 16,
+   "provenance": "coverage_natural",
+   "verb": "blow_out"
+  },
+  {
+   "ambiguity_class": "out_of_surface",
+   "n": 16,
+   "provenance": "coverage_natural",
+   "verb": "dispense_to_waste"
+  },
+  {
+   "ambiguity_class": "out_of_surface",
+   "n": 16,
+   "provenance": "coverage_natural",
+   "verb": "mix"
+  },
+  {
+   "ambiguity_class": "out_of_surface",
+   "n": 15,
+   "provenance": "coverage_natural",
+   "verb": "set_temperature"
+  },
+  {
+   "ambiguity_class": "out_of_surface",
+   "n": 16,
+   "provenance": "coverage_natural",
+   "verb": "shake"
+  },
+  {
+   "ambiguity_class": "out_of_surface",
+   "n": 16,
+   "provenance": "coverage_natural",
+   "verb": "stop_shaking"
+  },
+  {
+   "ambiguity_class": "out_of_surface",
+   "n": 16,
+   "provenance": "coverage_natural",
+   "verb": "touch_tip"
+  }
+ ],
+ "probe": {
+  "by_class": {
+   "ambiguous_referent": 21,
+   "clean_parse": 37,
+   "missing_slot": 32,
+   "out_of_surface": 32
+  },
+  "corpus": "corpus_p25_probe.jsonl",
+  "rows": 122,
+  "rule": "natural-phrasing variants whose base row is a pinned eval row; scored separately, never part of the 228",
+  "sidecar": "corpus_p25_probe_sidecar.jsonl"
+ },
+ "probe_near": {
+  "by_class": {
+   "out_of_surface": 24
+  },
+  "cells": {
+   "consumables_ordering__out-of-surface": 4,
+   "deck_display__out-of-surface": 4,
+   "run_status__out-of-surface": 4,
+   "sample_value_query__out-of-surface": 4,
+   "scheduling_logging__out-of-surface": 4,
+   "tip_inventory__out-of-surface": 4
+  },
+  "corpus": "corpus_p25_probe_near.jsonl",
+  "index_min": 16,
+  "rows": 24,
+  "rule": "0.1.6: rows of matrix cells APPENDED after the pin (matrix v3 near-surface out-of-surface cells) with example index >= index_min; scored separately, never train, never the 228",
+  "sidecar": "corpus_p25_probe_near_sidecar.jsonl"
+ },
+ "prompt_versions": [
+  "p23_nlify_v1",
+  "p23_nlify_v2_natural",
+  "p23_nlify_v2_natural_oos",
+  "p24-naturalness-v1"
+ ],
+ "scaffold": {
+  "date_timestamp_injection": false,
+  "template_file": "training/assemble/developer_scaffold_template.txt",
+  "template_sha256": "c8396f73a9d00572392b124f74c921f59fe8e9c7f73aac7c8ee14def5c608214",
+  "version": "functiongemma-native/research-s2a-developer-scaffold/no-date-injection(D6-rev2)"
+ },
+ "slice_gate_doc": ".praxia/docs/specs/260825_p25_slice_gate.md",
+ "spec_ref": ".praxia/docs/specs/260825_coxswain-phase-2-functiongemma-copilot-p.md rev2 \u00a75 P2.5 / \u00a77 AC-2.5.x",
+ "split_rule": "0.1.4 PINNED: eval == the record_ids in the eval split pin (cut at assembly 0.1.3 by: golden -> eval unconditionally; synthetic strata (provenance x ambiguity-class x verb) sorted by record_id, LAST k -> eval, k = min(n-1, floor(n*0.2)) bumped to >=1 when n>=4), content digests asserted; coverage_natural rows follow their base row (eval base -> probe set); 0.1.6: rows of appended matrix cells with example index >= 16 -> near-surface probe; every other row -> train",
+ "target": {
+  "examples_assembled": 1523,
+  "examples_requested": 1000,
+  "shortfall": 0,
+  "shortfall_reason": "Inputs are the full-scale P2.3 floor sweep (43-cell matrix v2) and the full P2.4 overlay pass over every mined source; the remaining gap to 1000 is bounded by matrix size x examples_per_cell and by the 37 unique mined canonicals, not by a pending run. Assembly merges what exists verbatim and pads nothing."
+ },
+ "task_id": "260825_copilot_pipeline_spec",
+ "teacher_model_versions": [
+  "gemini-3.7-flash-medium"
+ ],
+ "thresholds_doc": ".praxia/docs/specs/260825_p25_provisional_thresholds.md"
+}

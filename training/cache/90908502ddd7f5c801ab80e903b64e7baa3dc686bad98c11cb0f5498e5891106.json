@@ -1,0 +1,9 @@
+{
+ "cache_key": "90908502ddd7f5c801ab80e903b64e7baa3dc686bad98c11cb0f5498e5891106",
+ "fetched_at": "2026-09-02T16:53:21.146356+00:00",
+ "input_hash": "de156c6172b345cc82f87322e8d484329410d393e384541a827dd7b663bb00d4",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please measure absorbance at 540 nm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

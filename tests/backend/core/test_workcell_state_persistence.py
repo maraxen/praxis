@@ -1,9 +1,10 @@
-import json
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
+
 import pytest
 
-from praxis.backend.core.workcell import Workcell
 from praxis.backend.core.protocols.filesystem import IFileSystem
+from praxis.backend.core.workcell import Workcell
+
 
 class TestWorkcellStatePersistence:
     """Tests for workcell runtime state backup/restore via Workcell class."""
@@ -27,26 +28,26 @@ class TestWorkcellStatePersistence:
     def test_save_state_to_file_writes_json(self, workcell, mock_filesystem):
         """Test that save_state_to_file writes valid JSON to the file system."""
         # Mock serialize_all_state to return known data
-        with patch.object(workcell, 'serialize_all_state', return_value={"test": "data"}):
+        with patch.object(workcell, "serialize_all_state", return_value={"test": "data"}):
             # Setup mock file context
             mock_file = MagicMock()
             mock_filesystem.open.return_value.__enter__.return_value = mock_file
-            
+
             workcell.save_state_to_file("state.json")
-            
+
             # Verify file opened with write permission
             mock_filesystem.open.assert_called_with("state.json", "w", encoding="utf-8")
-            
+
             # Verify valid JSON was written
             # We can capture the write calls and verify it creates valid json
-            # But json.dump calls write multiple times often. 
-            # A simpler check is that json.dump was called. 
+            # But json.dump calls write multiple times often.
+            # A simpler check is that json.dump was called.
             # Since json.dump writes to the file object, we check that interaction
-            
-            # However, json.dump implementation detail might vary. 
+
+            # However, json.dump implementation detail might vary.
             # Let's trust that if we pass the mock file to json.dump, it works.
             # We verify the data passed to serialize_all_state is what we expect.
-            pass # Implicitly verified by the successful execution without error if json.dump works
+            # Implicitly verified by the successful execution without error if json.dump works
 
             # Actually, to be deeper, let's capture the write usage.
             # json.dump usually calls write repeatedly.
@@ -72,12 +73,12 @@ class TestWorkcellStatePersistence:
         # But we can verify the state holder exists and works.
         workcell.backup_num = 0
         assert workcell.backup_num == 0
-        
+
         # Simulate the logic found in StateSyncMixin
         fake_runtime_logic_next_backup = (workcell.backup_num + 1) % workcell.num_backups
         workcell.backup_num = fake_runtime_logic_next_backup
         assert workcell.backup_num == 1
-        
+
         # Loop around
         workcell.backup_num = 2
         workcell.backup_num = (workcell.backup_num + 1) % workcell.num_backups
@@ -95,18 +96,18 @@ class TestWorkcellStatePersistence:
     def test_load_state_from_file(self, workcell, mock_filesystem):
         """Test loading state calls load_all_state with parsed JSON."""
         test_data = {"resource1": {"x": 10}}
-        
+
         # Setup mock file reading
         mock_file = MagicMock()
         mock_filesystem.open.return_value.__enter__.return_value = mock_file
-        
+
         # We need to make json.load return our test_data from the mock_file
         # This is tricky with standard json.load(f) because it reads from the file object.
         # Easier to mock json.load directly
-        with patch('json.load', return_value=test_data) as mock_json_load:
-            with patch.object(workcell, 'load_all_state') as mock_load_all:
+        with patch("json.load", return_value=test_data) as mock_json_load:
+            with patch.object(workcell, "load_all_state") as mock_load_all:
                 workcell.load_state_from_file("state.json")
-                
+
                 mock_filesystem.open.assert_called_with("state.json", encoding="utf-8")
                 mock_json_load.assert_called_with(mock_file)
                 mock_load_all.assert_called_with(test_data)

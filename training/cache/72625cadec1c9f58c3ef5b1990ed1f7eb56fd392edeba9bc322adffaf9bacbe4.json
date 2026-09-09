@@ -1,0 +1,9 @@
+{
+ "cache_key": "72625cadec1c9f58c3ef5b1990ed1f7eb56fd392edeba9bc322adffaf9bacbe4",
+ "fetched_at": "2026-09-02T16:34:41.522597+00:00",
+ "input_hash": "3bad690111638245b4d8a5338660e2edb550e6668d887d52ebd302d8c216cd1e",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Throw away the tips at the E6 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

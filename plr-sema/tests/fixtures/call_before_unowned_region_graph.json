@@ -1,0 +1,126 @@
+{
+  "protocol_fqn": "fixtures.call_before_unowned_region.call_before_unowned_region",
+  "protocol_name": "call_before_unowned_region",
+  "operations": [
+    {
+      "id": "op_1",
+      "line_number": 0,
+      "method_name": "setup",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {},
+      "node_type": "static",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_2",
+      "line_number": 0,
+      "method_name": "pick_up_tips",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "use_channels": "[0]"
+      },
+      "node_type": "static",
+      "preconditions": [],
+      "creates_state": [
+        "tips_loaded"
+      ],
+      "depends_on_params": [],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_3",
+      "line_number": 0,
+      "method_name": "",
+      "receiver_variable": "",
+      "receiver_type": null,
+      "arguments": {},
+      "node_type": "region",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": "[r0, r1]",
+      "foreach_body": [
+        "op_4"
+      ],
+      "trip": 2,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_4",
+      "line_number": 0,
+      "method_name": "pick_up_tips",
+      "receiver_variable": "lh2",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "use_channels": "[0]"
+      },
+      "node_type": "static",
+      "preconditions": [],
+      "creates_state": [
+        "tips_loaded"
+      ],
+      "depends_on_params": [],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    }
+  ],
+  "resources": {
+    "lh": {
+      "variable_name": "lh",
+      "declared_type": "LiquidHandler",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": true,
+      "parental_chain": [],
+      "source_expression": null,
+      "items_x": null,
+      "items_y": null
+    },
+    "lh2": {
+      "variable_name": "lh2",
+      "declared_type": "LiquidHandler",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": true,
+      "parental_chain": [],
+      "source_expression": null,
+      "items_x": null,
+      "items_y": null
+    }
+  },
+  "preconditions": [],
+  "execution_order": [
+    "op_1",
+    "op_2",
+    "op_3"
+  ],
+  "machine_types": [
+    "liquid_handler"
+  ],
+  "resource_types": [
+    "LiquidHandler"
+  ],
+  "has_loops": true,
+  "has_conditionals": false
+}

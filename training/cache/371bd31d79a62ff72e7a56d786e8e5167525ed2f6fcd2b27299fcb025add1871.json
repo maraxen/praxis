@@ -1,0 +1,9 @@
+{
+ "cache_key": "371bd31d79a62ff72e7a56d786e8e5167525ed2f6fcd2b27299fcb025add1871",
+ "fetched_at": "2026-09-03T14:58:26.786260+00:00",
+ "input_hash": "864c4b81f3585419868cd9b55c4f9b5976f452bfc6fded03a2b4be390d757fe6",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you mix the reagent in well A1 by pipetting up and down 5 times, then transfer it over to well A2?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

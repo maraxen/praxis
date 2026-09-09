@@ -1,0 +1,9 @@
+{
+ "cache_key": "169802768e6f9b10d4e73d94e4c5014841a6449092800303c813cd7fd0d12b18",
+ "fetched_at": "2026-09-02T16:52:15.310209+00:00",
+ "input_hash": "c81877b5df212bc0446e6fce9d2776e29619ce0e902f5ec1dd0068998c7d1d43",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Scan absorbance at 340 nm on the plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

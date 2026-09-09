@@ -1,0 +1,9 @@
+{
+ "cache_key": "98076ffc0b7a5ce4934387a70d6f4bee3cfa4a4d1a507fa1a748350f0f3c947d",
+ "fetched_at": "2026-09-03T15:10:49.179034+00:00",
+ "input_hash": "39d5a84bec6d0666383b2126fc484af77eff808c77737791a16fe3388705f5eb",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"What's the tallest mountain in North America?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

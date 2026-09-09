@@ -1,0 +1,9 @@
+{
+ "cache_key": "6c201c0968f6d77514c36771ec27664043d1d05322cf12a2d72598829dff0e6e",
+ "fetched_at": "2026-09-01T21:20:04.905964+00:00",
+ "input_hash": "f2b6c057a2b7833774cfa56bc1d1eef3edfd96641d35023088504bedc8ed57dc",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the luminescence of well D11 with a focal height of 7.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "b1e754b49f8dcb593975181d9ffd84824334e7f8ce73193936230d8842cf23ee",
+ "fetched_at": "2026-09-01T21:19:40.787639+00:00",
+ "input_hash": "20332e77ca849521a59b4e5385e82a14c6c7f0d88c713bf5fbe829ab73bebaca",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read fluorescence in wells C1, F12, G10, and H1 with excitation wavelength 535 nm, emission wavelength 590 nm, and focal height 7.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

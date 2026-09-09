@@ -1,0 +1,9 @@
+{
+ "cache_key": "803b408c0c31459bace7d6031290a695e9ae249874349e061952b260fa67e823",
+ "fetched_at": "2026-09-02T16:27:47.196581+00:00",
+ "input_hash": "c3200104cba20edf97de5189e5442defa23812fc8c3e508c1e71cb81037a2d0e",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Get a tip from the C5 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

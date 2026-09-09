@@ -1,0 +1,9 @@
+{
+ "cache_key": "b9e775a00da848e17b6100e84199812457bf5e91e5e3ebca871d67b895a0a468",
+ "fetched_at": "2026-09-02T15:19:09.186880+00:00",
+ "input_hash": "13c47b8375d730f53c603dc964685ef408d61f8ca7b154a576d64ac944e967d0",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Carry 100 microliters over to well D10 of plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

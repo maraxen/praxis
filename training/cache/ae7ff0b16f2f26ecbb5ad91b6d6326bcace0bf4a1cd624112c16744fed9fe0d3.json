@@ -1,0 +1,9 @@
+{
+ "cache_key": "ae7ff0b16f2f26ecbb5ad91b6d6326bcace0bf4a1cd624112c16744fed9fe0d3",
+ "fetched_at": "2026-08-28T18:04:51.262025+00:00",
+ "input_hash": "b862de7f88951bd17a1f93c26427a28bfb87aa44303e77c493ef2648b67a3a2c",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure fluorescence on the loaded plate with 485 nm excitation and a focal height of 12.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

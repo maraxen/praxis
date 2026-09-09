@@ -1,0 +1,9 @@
+{
+ "cache_key": "67e8604201bfac8d26d6a00cf80e412954b0349ac271eee81c1e7cd2aa0290ae",
+ "fetched_at": "2026-09-03T15:03:18.194076+00:00",
+ "input_hash": "18fd08046328b952844ae86193ed663af617c99ce0c35f0eb80de2aa5244c93c",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you dump out plate 3 into the waste?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

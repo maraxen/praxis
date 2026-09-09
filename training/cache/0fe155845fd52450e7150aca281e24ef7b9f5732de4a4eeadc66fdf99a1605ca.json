@@ -1,0 +1,9 @@
+{
+ "cache_key": "0fe155845fd52450e7150aca281e24ef7b9f5732de4a4eeadc66fdf99a1605ca",
+ "fetched_at": "2026-09-02T16:16:20.948765+00:00",
+ "input_hash": "353eec250eb791401e066fe304c9829b49536f42fb852643b18f315423b6eb10",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please measure absorbance on the plate loaded in the reader.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

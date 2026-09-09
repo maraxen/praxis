@@ -1,0 +1,9 @@
+{
+ "cache_key": "0f12cbe2ac46bb83010a719e9b4603504b2bacc64f0c723d7c38c791bb24d5b6",
+ "fetched_at": "2026-08-28T18:04:38.511180+00:00",
+ "input_hash": "a85d226ae024d8f0e64ad52e29db854c37c53a085efc3239b6b8e7621520bcfd",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the absorbance at 650 nm at wells A9, D9, G5, and H1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

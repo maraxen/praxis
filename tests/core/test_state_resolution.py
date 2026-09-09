@@ -8,9 +8,13 @@ Tests for:
 - apply_resolution() function
 """
 
-import pytest
-from datetime import datetime
 
+from praxis.backend.core.simulation.state_models import (
+    BooleanLiquidState,
+    ExactLiquidState,
+    SimulationState,
+    StateLevel,
+)
 from praxis.backend.core.simulation.state_resolution import (
     OperationRecord,
     ResolutionType,
@@ -19,12 +23,6 @@ from praxis.backend.core.simulation.state_resolution import (
     UncertainStateChange,
     apply_resolution,
     identify_uncertain_states,
-)
-from praxis.backend.core.simulation.state_models import (
-    BooleanLiquidState,
-    ExactLiquidState,
-    SimulationState,
-    StateLevel,
 )
 
 

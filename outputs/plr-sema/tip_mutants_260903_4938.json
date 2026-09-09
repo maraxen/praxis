@@ -1,0 +1,38 @@
+{
+  "by_class": {
+    "m1_remove_pickup": {
+      "n_construction_skipped": 0,
+      "n_error": 0,
+      "n_raised_as_expected": 101,
+      "n_ran": 190,
+      "n_total": 190,
+      "static_verdict_at_raising_index": {
+        "none": 0,
+        "safe": 0,
+        "unknown": 17,
+        "will_fail": 84
+      },
+      "unsound_safe_where_simulator_raised": [],
+      "unsound_will_fail_where_simulator_ran_clean": []
+    },
+    "m2_duplicate_pickup": {
+      "n_construction_skipped": 0,
+      "n_error": 0,
+      "n_raised_as_expected": 190,
+      "n_ran": 190,
+      "n_total": 190,
+      "static_verdict_at_raising_index": {
+        "none": 0,
+        "safe": 0,
+        "unknown": 0,
+        "will_fail": 190
+      },
+      "unsound_safe_where_simulator_raised": [],
+      "unsound_will_fail_where_simulator_ran_clean": []
+    }
+  },
+  "gate_passed": true,
+  "hard_violations": [],
+  "n_corpus_bases": 186,
+  "n_example_bases": 4
+}

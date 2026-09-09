@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:14:40Z",
+ "key": "5cc2ef750e6b73836f30d48a15c46b4675f1fcf0878bc8eb2c11bd68da57840f",
+ "prompt_sha256": "5cc2ef750e6b73836f30d48a15c46b4675f1fcf0878bc8eb2c11bd68da57840f",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Dispense 100+50+200 uL into plate A1:C1.\nPlease eject 100+50+200 uL to plate A1:C1.\nDeliver 100+50+200 uL to plate A1:C1.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

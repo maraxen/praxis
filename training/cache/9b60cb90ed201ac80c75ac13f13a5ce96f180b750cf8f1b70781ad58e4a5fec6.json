@@ -1,0 +1,9 @@
+{
+ "cache_key": "9b60cb90ed201ac80c75ac13f13a5ce96f180b750cf8f1b70781ad58e4a5fec6",
+ "fetched_at": "2026-09-03T15:04:51.501591+00:00",
+ "input_hash": "6a99daa451bd80af9dbabc4f571a0924b352deaf5a5b9a422b5f2cffa94bf24f",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please adjust the temperature on the deck heater-shaker to 37 C.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

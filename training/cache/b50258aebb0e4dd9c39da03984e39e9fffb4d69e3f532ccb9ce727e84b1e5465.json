@@ -1,0 +1,9 @@
+{
+ "cache_key": "b50258aebb0e4dd9c39da03984e39e9fffb4d69e3f532ccb9ce727e84b1e5465",
+ "fetched_at": "2026-09-01T21:18:22.289471+00:00",
+ "input_hash": "2884155e63e7099105a6064876f9fb08f8990ad1e7c935d7ab9d35ef2db18c5a",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer lid_2 to scale_station_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

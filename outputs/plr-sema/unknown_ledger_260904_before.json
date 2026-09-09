@@ -1,0 +1,3272 @@
+{
+  "header": {
+    "task_id": "260904_sema-predicates",
+    "backlog_id": 4976,
+    "benchmark_name": "tier1-sidecar-gated-dd79c4c89",
+    "pin": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+    "git_head": "4d75b386f2d3b46f500ef804ee1ec4ba2f227019",
+    "contracts_path": "/home/marielle/projects/praxis/plr-sema/data/derived_contracts.json",
+    "contracts_sha256": "209c9dfb8cd43eeadb605d4707c0de4216437f3dd5e1f6226b0c7cbe208e73bd",
+    "corpus_paths": [
+      "training/assemble/out/corpus_p25.jsonl"
+    ],
+    "sidecar_path": "training/assemble/out/corpus_p25_sidecar.jsonl",
+    "crosscheck_paths": [
+      "training/out/corpus_p23_floor.jsonl",
+      "training/overlay_gen/out/overlay_full.jsonl"
+    ],
+    "generated_at": "2026-09-06T00:52:29.327122+00:00",
+    "oracle_replay_report_path": "outputs/plr-sema/unknown_ledger_260904_before.oracle_replay.json"
+  },
+  "baseline_comparison": {
+    "n_ops_executed_this_ledger": 544,
+    "n_ops_executed_baseline": 548,
+    "n_rows_executed_this_ledger": 343,
+    "n_rows_executed_baseline": 343,
+    "unknown_rate_baseline": 1.0,
+    "unsound_baseline": 0
+  },
+  "n_ops_executed": 544,
+  "n_ops_unknown": 544,
+  "n_findings_total": 6036,
+  "n_findings_by_reason": {
+    "guard_predicate_unparsed": 5656,
+    "volume_state_unknown": 194,
+    "unresolved_delegate": 186
+  },
+  "n_clusters": 54,
+  "clusters": [
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:375:LiquidHandler._check_args",
+      "condition": "len(missing) > 0",
+      "n_findings": 544,
+      "n_ops_blocked": 544,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "pick_up_tips": 223,
+        "aspirate": 77,
+        "dispense": 40,
+        "discard_tips": 34,
+        "drop_tips": 31,
+        "move_lid": 31,
+        "move_plate": 31,
+        "move_resource": 31,
+        "stamp": 27,
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:383:LiquidHandler._check_args",
+      "condition": "strictness == Strictness.STRICT",
+      "n_findings": 544,
+      "n_ops_blocked": 544,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "pick_up_tips": 223,
+        "aspirate": 77,
+        "dispense": 40,
+        "discard_tips": 34,
+        "drop_tips": 31,
+        "move_lid": 31,
+        "move_plate": 31,
+        "move_resource": 31,
+        "stamp": 27,
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:409:LiquidHandler._make_sure_channels_exist",
+      "condition": "not len(invalid_channels) == 0",
+      "n_findings": 384,
+      "n_ops_blocked": 384,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "pick_up_tips": 223,
+        "aspirate": 77,
+        "discard_tips": 34,
+        "drop_tips": 31,
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:321:LiquidHandler._assert_resources_exist",
+      "condition": "not resource_from_deck == resource",
+      "n_findings": 288,
+      "n_ops_blocked": 288,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "pick_up_tips": 223,
+        "discard_tips": 34,
+        "drop_tips": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 3,
+          "row_id": "corpus_p25:fafc03a4a0df4580",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 4,
+          "row_id": "corpus_p25:c95f054a1d32d548",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:498:LiquidHandler.pick_up_tips",
+      "condition": "len(not_tip_spots) > 0",
+      "n_findings": 223,
+      "n_ops_blocked": 223,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "pick_up_tips": 223
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 3,
+          "row_id": "corpus_p25:fafc03a4a0df4580",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 4,
+          "row_id": "corpus_p25:c95f054a1d32d548",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:502:LiquidHandler.pick_up_tips",
+      "condition": "len(set(use_channels)) == len(use_channels)",
+      "n_findings": 223,
+      "n_ops_blocked": 223,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "pick_up_tips": 223
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 3,
+          "row_id": "corpus_p25:fafc03a4a0df4580",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 4,
+          "row_id": "corpus_p25:c95f054a1d32d548",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:514:LiquidHandler.pick_up_tips",
+      "condition": "not all((self.backend.can_pick_up_tip(channel, tip) for channel, tip in zip(use_channels, tips)))",
+      "n_findings": 223,
+      "n_ops_blocked": 223,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "pick_up_tips": 223
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 3,
+          "row_id": "corpus_p25:fafc03a4a0df4580",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 4,
+          "row_id": "corpus_p25:c95f054a1d32d548",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:522:LiquidHandler.pick_up_tips",
+      "condition": "len(tip_spots) == len(offsets) == len(use_channels)",
+      "n_findings": 223,
+      "n_ops_blocked": 223,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "pick_up_tips": 223
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 3,
+          "row_id": "corpus_p25:fafc03a4a0df4580",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 4,
+          "row_id": "corpus_p25:c95f054a1d32d548",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:576:LiquidHandler.pick_up_tips",
+      "condition": "error is not None",
+      "n_findings": 223,
+      "n_ops_blocked": 223,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "pick_up_tips": 223
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 3,
+          "row_id": "corpus_p25:fafc03a4a0df4580",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 4,
+          "row_id": "corpus_p25:c95f054a1d32d548",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:116:_check_no_lid",
+      "condition": "lidded is resource",
+      "n_findings": 163,
+      "n_ops_blocked": 163,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "aspirate": 77,
+        "dispense": 40,
+        "stamp": 27,
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 3,
+          "row_id": "corpus_p25:fafc03a4a0df4580",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 4,
+          "row_id": "corpus_p25:c95f054a1d32d548",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:117:_check_no_lid",
+      "condition": "<unconditional>",
+      "n_findings": 163,
+      "n_ops_blocked": 163,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "aspirate": 77,
+        "dispense": 40,
+        "stamp": 27,
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 3,
+          "row_id": "corpus_p25:fafc03a4a0df4580",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 4,
+          "row_id": "corpus_p25:c95f054a1d32d548",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:875:LiquidHandler._check_containers",
+      "condition": "len(not_containers) > 0",
+      "n_findings": 136,
+      "n_ops_blocked": 136,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "aspirate": 77,
+        "dispense": 40,
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 3,
+          "row_id": "corpus_p25:fafc03a4a0df4580",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 4,
+          "row_id": "corpus_p25:c95f054a1d32d548",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "volume_state_unknown",
+      "plr_site": "external/pylabrobot/pylabrobot/resources/volume_tracker.py:105:VolumeTracker.add_liquid",
+      "condition": "volume - self.get_free_volume() > 1e-06",
+      "n_findings": 117,
+      "n_ops_blocked": 117,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "aspirate": 77,
+        "dispense": 40
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 3,
+          "row_id": "corpus_p25:fafc03a4a0df4580",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 4,
+          "row_id": "corpus_p25:c95f054a1d32d548",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1067:LiquidHandler.aspirate",
+      "condition": "error is not None",
+      "n_findings": 96,
+      "n_ops_blocked": 96,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "aspirate": 77,
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 3,
+          "row_id": "corpus_p25:fafc03a4a0df4580",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 4,
+          "row_id": "corpus_p25:c95f054a1d32d548",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:959:LiquidHandler.aspirate",
+      "condition": "len(set(use_channels)) == len(use_channels)",
+      "n_findings": 96,
+      "n_ops_blocked": 96,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "aspirate": 77,
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 3,
+          "row_id": "corpus_p25:fafc03a4a0df4580",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 4,
+          "row_id": "corpus_p25:c95f054a1d32d548",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:990:LiquidHandler.aspirate",
+      "condition": "len(p) != len(use_channels)",
+      "n_findings": 96,
+      "n_ops_blocked": 96,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "aspirate": 77,
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 3,
+          "row_id": "corpus_p25:fafc03a4a0df4580",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 4,
+          "row_id": "corpus_p25:c95f054a1d32d548",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2055:LiquidHandler.pick_up_resource",
+      "condition": "self.setup_finished and (not self._resource_pickups)",
+      "n_findings": 93,
+      "n_ops_blocked": 93,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "move_lid": 31,
+        "move_plate": 31,
+        "move_resource": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 98,
+          "row_id": "corpus_p25:c2a82883a96ff3d6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 99,
+          "row_id": "corpus_p25:b506470a5a80e3c6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 100,
+          "row_id": "corpus_p25:c710bf91d454af4c",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 101,
+          "row_id": "corpus_p25:9b1429d0831e6dfa",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 102,
+          "row_id": "corpus_p25:e1b48622d67adc72",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2070:LiquidHandler.pick_up_resource",
+      "condition": "self._resource_pickup is not None",
+      "n_findings": 93,
+      "n_ops_blocked": 93,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "move_lid": 31,
+        "move_plate": 31,
+        "move_resource": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 98,
+          "row_id": "corpus_p25:c2a82883a96ff3d6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 99,
+          "row_id": "corpus_p25:b506470a5a80e3c6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 100,
+          "row_id": "corpus_p25:c710bf91d454af4c",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 101,
+          "row_id": "corpus_p25:9b1429d0831e6dfa",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 102,
+          "row_id": "corpus_p25:e1b48622d67adc72",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2092:LiquidHandler.pick_up_resource",
+      "condition": "<unconditional>",
+      "n_findings": 93,
+      "n_ops_blocked": 93,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "move_lid": 31,
+        "move_plate": 31,
+        "move_resource": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 98,
+          "row_id": "corpus_p25:c2a82883a96ff3d6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 99,
+          "row_id": "corpus_p25:b506470a5a80e3c6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 100,
+          "row_id": "corpus_p25:c710bf91d454af4c",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 101,
+          "row_id": "corpus_p25:9b1429d0831e6dfa",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 102,
+          "row_id": "corpus_p25:e1b48622d67adc72",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2120:LiquidHandler.move_picked_up_resource",
+      "condition": "self._resource_pickup is None",
+      "n_findings": 93,
+      "n_ops_blocked": 93,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "move_lid": 31,
+        "move_plate": 31,
+        "move_resource": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 98,
+          "row_id": "corpus_p25:c2a82883a96ff3d6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 99,
+          "row_id": "corpus_p25:b506470a5a80e3c6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 100,
+          "row_id": "corpus_p25:c710bf91d454af4c",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 101,
+          "row_id": "corpus_p25:9b1429d0831e6dfa",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 102,
+          "row_id": "corpus_p25:e1b48622d67adc72",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2147:LiquidHandler.drop_resource",
+      "condition": "self._resource_pickup is None",
+      "n_findings": 93,
+      "n_ops_blocked": 93,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "move_lid": 31,
+        "move_plate": 31,
+        "move_resource": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 98,
+          "row_id": "corpus_p25:c2a82883a96ff3d6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 99,
+          "row_id": "corpus_p25:b506470a5a80e3c6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 100,
+          "row_id": "corpus_p25:c710bf91d454af4c",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 101,
+          "row_id": "corpus_p25:9b1429d0831e6dfa",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 102,
+          "row_id": "corpus_p25:e1b48622d67adc72",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2204:LiquidHandler.drop_resource",
+      "condition": "destination.direction == 'z'",
+      "n_findings": 93,
+      "n_ops_blocked": 93,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "move_lid": 31,
+        "move_plate": 31,
+        "move_resource": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 98,
+          "row_id": "corpus_p25:c2a82883a96ff3d6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 99,
+          "row_id": "corpus_p25:b506470a5a80e3c6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 100,
+          "row_id": "corpus_p25:c710bf91d454af4c",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 101,
+          "row_id": "corpus_p25:9b1429d0831e6dfa",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 102,
+          "row_id": "corpus_p25:e1b48622d67adc72",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2211:LiquidHandler.drop_resource",
+      "condition": "resource_rotation_wrt_destination % 180 != 0",
+      "n_findings": 93,
+      "n_ops_blocked": 93,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "move_lid": 31,
+        "move_plate": 31,
+        "move_resource": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 98,
+          "row_id": "corpus_p25:c2a82883a96ff3d6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 99,
+          "row_id": "corpus_p25:b506470a5a80e3c6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 100,
+          "row_id": "corpus_p25:c710bf91d454af4c",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 101,
+          "row_id": "corpus_p25:9b1429d0831e6dfa",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 102,
+          "row_id": "corpus_p25:e1b48622d67adc72",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2226:LiquidHandler.drop_resource",
+      "condition": "destination.resource is not None and destination.resource is not resource",
+      "n_findings": 93,
+      "n_ops_blocked": 93,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "move_lid": 31,
+        "move_plate": 31,
+        "move_resource": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 98,
+          "row_id": "corpus_p25:c2a82883a96ff3d6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 99,
+          "row_id": "corpus_p25:b506470a5a80e3c6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 100,
+          "row_id": "corpus_p25:c710bf91d454af4c",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 101,
+          "row_id": "corpus_p25:9b1429d0831e6dfa",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 102,
+          "row_id": "corpus_p25:e1b48622d67adc72",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2233:LiquidHandler.drop_resource",
+      "condition": "not isinstance(resource, Plate)",
+      "n_findings": 93,
+      "n_ops_blocked": 93,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "move_lid": 31,
+        "move_plate": 31,
+        "move_resource": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 98,
+          "row_id": "corpus_p25:c2a82883a96ff3d6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 99,
+          "row_id": "corpus_p25:b506470a5a80e3c6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 100,
+          "row_id": "corpus_p25:c710bf91d454af4c",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 101,
+          "row_id": "corpus_p25:9b1429d0831e6dfa",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 102,
+          "row_id": "corpus_p25:e1b48622d67adc72",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2284:LiquidHandler.drop_resource",
+      "condition": "isinstance(destination, ResourceStack) and destination.direction != 'z'",
+      "n_findings": 93,
+      "n_ops_blocked": 93,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "move_lid": 31,
+        "move_plate": 31,
+        "move_resource": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 98,
+          "row_id": "corpus_p25:c2a82883a96ff3d6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 99,
+          "row_id": "corpus_p25:b506470a5a80e3c6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 100,
+          "row_id": "corpus_p25:c710bf91d454af4c",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 101,
+          "row_id": "corpus_p25:9b1429d0831e6dfa",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 102,
+          "row_id": "corpus_p25:e1b48622d67adc72",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2290:LiquidHandler.drop_resource",
+      "condition": "not isinstance(resource, Plate)",
+      "n_findings": 93,
+      "n_ops_blocked": 93,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "move_lid": 31,
+        "move_plate": 31,
+        "move_resource": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 98,
+          "row_id": "corpus_p25:c2a82883a96ff3d6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 99,
+          "row_id": "corpus_p25:b506470a5a80e3c6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 100,
+          "row_id": "corpus_p25:c710bf91d454af4c",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 101,
+          "row_id": "corpus_p25:9b1429d0831e6dfa",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 102,
+          "row_id": "corpus_p25:e1b48622d67adc72",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "unresolved_delegate",
+      "plr_site": "<none>",
+      "condition": "_state_updated",
+      "n_findings": 186,
+      "n_ops_blocked": 93,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "move_lid": 31,
+        "move_plate": 31,
+        "move_resource": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 98,
+          "row_id": "corpus_p25:c2a82883a96ff3d6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 99,
+          "row_id": "corpus_p25:b506470a5a80e3c6",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 100,
+          "row_id": "corpus_p25:c710bf91d454af4c",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 101,
+          "row_id": "corpus_p25:9b1429d0831e6dfa",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 102,
+          "row_id": "corpus_p25:e1b48622d67adc72",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "volume_state_unknown",
+      "plr_site": "external/pylabrobot/pylabrobot/resources/volume_tracker.py:92:VolumeTracker.remove_liquid",
+      "condition": "volume - self.get_used_volume() > 1e-06",
+      "n_findings": 77,
+      "n_ops_blocked": 77,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "aspirate": 77
+      },
+      "example_ops": [
+        {
+          "row_idx": 0,
+          "row_id": "corpus_p25:ad890a28659df385",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 1,
+          "row_id": "corpus_p25:50091353f010ee5b",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 2,
+          "row_id": "corpus_p25:d4449125d7aa5645",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 3,
+          "row_id": "corpus_p25:fafc03a4a0df4580",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 4,
+          "row_id": "corpus_p25:c95f054a1d32d548",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:647:LiquidHandler.drop_tips",
+      "condition": "len(not_tip_spots) > 0",
+      "n_findings": 65,
+      "n_ops_blocked": 65,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "discard_tips": 34,
+        "drop_tips": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 68,
+          "row_id": "corpus_p25:6db2aebc990db222",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 69,
+          "row_id": "corpus_p25:423b338957e6b9b9",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 70,
+          "row_id": "corpus_p25:a09171c3d4d6a300",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 71,
+          "row_id": "corpus_p25:af118d2b22b5929e",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 72,
+          "row_id": "corpus_p25:d760d99a4649b09f",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:651:LiquidHandler.drop_tips",
+      "condition": "len(set(use_channels)) == len(use_channels)",
+      "n_findings": 65,
+      "n_ops_blocked": 65,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "discard_tips": 34,
+        "drop_tips": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 68,
+          "row_id": "corpus_p25:6db2aebc990db222",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 69,
+          "row_id": "corpus_p25:423b338957e6b9b9",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 70,
+          "row_id": "corpus_p25:a09171c3d4d6a300",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 71,
+          "row_id": "corpus_p25:af118d2b22b5929e",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 72,
+          "row_id": "corpus_p25:d760d99a4649b09f",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:657:LiquidHandler.drop_tips",
+      "condition": "tip.tracker.get_used_volume() > 0 and (not allow_nonzero_volume)",
+      "n_findings": 65,
+      "n_ops_blocked": 65,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "discard_tips": 34,
+        "drop_tips": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 68,
+          "row_id": "corpus_p25:6db2aebc990db222",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 69,
+          "row_id": "corpus_p25:423b338957e6b9b9",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 70,
+          "row_id": "corpus_p25:a09171c3d4d6a300",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 71,
+          "row_id": "corpus_p25:af118d2b22b5929e",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 72,
+          "row_id": "corpus_p25:d760d99a4649b09f",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:666:LiquidHandler.drop_tips",
+      "condition": "len(tip_spots) == len(offsets) == len(use_channels) == len(tips)",
+      "n_findings": 65,
+      "n_ops_blocked": 65,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "discard_tips": 34,
+        "drop_tips": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 68,
+          "row_id": "corpus_p25:6db2aebc990db222",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 69,
+          "row_id": "corpus_p25:423b338957e6b9b9",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 70,
+          "row_id": "corpus_p25:a09171c3d4d6a300",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 71,
+          "row_id": "corpus_p25:af118d2b22b5929e",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 72,
+          "row_id": "corpus_p25:d760d99a4649b09f",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:726:LiquidHandler.drop_tips",
+      "condition": "error is not None",
+      "n_findings": 65,
+      "n_ops_blocked": 65,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "discard_tips": 34,
+        "drop_tips": 31
+      },
+      "example_ops": [
+        {
+          "row_idx": 68,
+          "row_id": "corpus_p25:6db2aebc990db222",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 69,
+          "row_id": "corpus_p25:423b338957e6b9b9",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 70,
+          "row_id": "corpus_p25:a09171c3d4d6a300",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 71,
+          "row_id": "corpus_p25:af118d2b22b5929e",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 72,
+          "row_id": "corpus_p25:d760d99a4649b09f",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1153:LiquidHandler.dispense",
+      "condition": "len(set(use_channels)) == len(use_channels)",
+      "n_findings": 59,
+      "n_ops_blocked": 59,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "dispense": 40,
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 15,
+          "row_id": "corpus_p25:92e5e62bfbf9a655",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 16,
+          "row_id": "corpus_p25:1f67e80ed62ae5e2",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 17,
+          "row_id": "corpus_p25:ebbec03c51214b91",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 18,
+          "row_id": "corpus_p25:9df76f6c29e62970",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 19,
+          "row_id": "corpus_p25:8271205a979d0eb3",
+          "op_id": "op_2"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1185:LiquidHandler.dispense",
+      "condition": "self._blow_out_air_volume is None",
+      "n_findings": 59,
+      "n_ops_blocked": 59,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "dispense": 40,
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 15,
+          "row_id": "corpus_p25:92e5e62bfbf9a655",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 16,
+          "row_id": "corpus_p25:1f67e80ed62ae5e2",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 17,
+          "row_id": "corpus_p25:ebbec03c51214b91",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 18,
+          "row_id": "corpus_p25:9df76f6c29e62970",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 19,
+          "row_id": "corpus_p25:8271205a979d0eb3",
+          "op_id": "op_2"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1188:LiquidHandler.dispense",
+      "condition": "requested_bav is not None and done_bav is not None and (requested_bav > done_bav)",
+      "n_findings": 59,
+      "n_ops_blocked": 59,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "dispense": 40,
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 15,
+          "row_id": "corpus_p25:92e5e62bfbf9a655",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 16,
+          "row_id": "corpus_p25:1f67e80ed62ae5e2",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 17,
+          "row_id": "corpus_p25:ebbec03c51214b91",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 18,
+          "row_id": "corpus_p25:9df76f6c29e62970",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 19,
+          "row_id": "corpus_p25:8271205a979d0eb3",
+          "op_id": "op_2"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1202:LiquidHandler.dispense",
+      "condition": "len(p) != len(use_channels)",
+      "n_findings": 59,
+      "n_ops_blocked": 59,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "dispense": 40,
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 15,
+          "row_id": "corpus_p25:92e5e62bfbf9a655",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 16,
+          "row_id": "corpus_p25:1f67e80ed62ae5e2",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 17,
+          "row_id": "corpus_p25:ebbec03c51214b91",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 18,
+          "row_id": "corpus_p25:9df76f6c29e62970",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 19,
+          "row_id": "corpus_p25:8271205a979d0eb3",
+          "op_id": "op_2"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1271:LiquidHandler.dispense",
+      "condition": "error is not None",
+      "n_findings": 59,
+      "n_ops_blocked": 59,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "dispense": 40,
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 15,
+          "row_id": "corpus_p25:92e5e62bfbf9a655",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 16,
+          "row_id": "corpus_p25:1f67e80ed62ae5e2",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 17,
+          "row_id": "corpus_p25:ebbec03c51214b91",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 18,
+          "row_id": "corpus_p25:9df76f6c29e62970",
+          "op_id": "op_2"
+        },
+        {
+          "row_idx": 19,
+          "row_id": "corpus_p25:8271205a979d0eb3",
+          "op_id": "op_2"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:822:LiquidHandler.discard_tips",
+      "condition": "n == 0",
+      "n_findings": 34,
+      "n_ops_blocked": 34,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "discard_tips": 34
+      },
+      "example_ops": [
+        {
+          "row_idx": 83,
+          "row_id": "corpus_p25:b98cbb3b92a2e41c",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 84,
+          "row_id": "corpus_p25:f9d82351af198eb5",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 85,
+          "row_id": "corpus_p25:ce397a2d03e93cbc",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 86,
+          "row_id": "corpus_p25:d24aeedb357b7fc8",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 87,
+          "row_id": "corpus_p25:d86dd35cdf26a7b4",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1743:LiquidHandler.aspirate96",
+      "condition": "not (isinstance(resource, (Plate, Container)) or (isinstance(resource, list) and all((isinstance(w, Well) for w in resource))))",
+      "n_findings": 27,
+      "n_ops_blocked": 27,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "stamp": 27
+      },
+      "example_ops": [
+        {
+          "row_idx": 38,
+          "row_id": "corpus_p25:c7769b4f9f46bb8d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 39,
+          "row_id": "corpus_p25:bfb56905b52f7d1b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 40,
+          "row_id": "corpus_p25:db392f829bd7e47d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 41,
+          "row_id": "corpus_p25:2234cdc5e0b75db4",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 42,
+          "row_id": "corpus_p25:21f6cdf309b30cf9",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1770:LiquidHandler.aspirate96",
+      "condition": "<unconditional>",
+      "n_findings": 27,
+      "n_ops_blocked": 27,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "stamp": 27
+      },
+      "example_ops": [
+        {
+          "row_idx": 38,
+          "row_id": "corpus_p25:c7769b4f9f46bb8d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 39,
+          "row_id": "corpus_p25:bfb56905b52f7d1b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 40,
+          "row_id": "corpus_p25:db392f829bd7e47d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 41,
+          "row_id": "corpus_p25:2234cdc5e0b75db4",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 42,
+          "row_id": "corpus_p25:21f6cdf309b30cf9",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1778:LiquidHandler.aspirate96",
+      "condition": "not self._check_96_head_fits_in_container(container)",
+      "n_findings": 27,
+      "n_ops_blocked": 27,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "stamp": 27
+      },
+      "example_ops": [
+        {
+          "row_idx": 38,
+          "row_id": "corpus_p25:c7769b4f9f46bb8d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 39,
+          "row_id": "corpus_p25:bfb56905b52f7d1b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 40,
+          "row_id": "corpus_p25:db392f829bd7e47d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 41,
+          "row_id": "corpus_p25:2234cdc5e0b75db4",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 42,
+          "row_id": "corpus_p25:21f6cdf309b30cf9",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1804:LiquidHandler.aspirate96",
+      "condition": "well.parent != plate",
+      "n_findings": 27,
+      "n_ops_blocked": 27,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "stamp": 27
+      },
+      "example_ops": [
+        {
+          "row_idx": 38,
+          "row_id": "corpus_p25:c7769b4f9f46bb8d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 39,
+          "row_id": "corpus_p25:bfb56905b52f7d1b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 40,
+          "row_id": "corpus_p25:db392f829bd7e47d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 41,
+          "row_id": "corpus_p25:2234cdc5e0b75db4",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 42,
+          "row_id": "corpus_p25:21f6cdf309b30cf9",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1807:LiquidHandler.aspirate96",
+      "condition": "not len(containers) == 96",
+      "n_findings": 27,
+      "n_ops_blocked": 27,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "stamp": 27
+      },
+      "example_ops": [
+        {
+          "row_idx": 38,
+          "row_id": "corpus_p25:c7769b4f9f46bb8d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 39,
+          "row_id": "corpus_p25:bfb56905b52f7d1b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 40,
+          "row_id": "corpus_p25:db392f829bd7e47d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 41,
+          "row_id": "corpus_p25:2234cdc5e0b75db4",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 42,
+          "row_id": "corpus_p25:21f6cdf309b30cf9",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1893:LiquidHandler.dispense96",
+      "condition": "not (isinstance(resource, (Plate, Container)) or (isinstance(resource, list) and all((isinstance(w, Well) for w in resource))))",
+      "n_findings": 27,
+      "n_ops_blocked": 27,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "stamp": 27
+      },
+      "example_ops": [
+        {
+          "row_idx": 38,
+          "row_id": "corpus_p25:c7769b4f9f46bb8d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 39,
+          "row_id": "corpus_p25:bfb56905b52f7d1b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 40,
+          "row_id": "corpus_p25:db392f829bd7e47d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 41,
+          "row_id": "corpus_p25:2234cdc5e0b75db4",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 42,
+          "row_id": "corpus_p25:21f6cdf309b30cf9",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1920:LiquidHandler.dispense96",
+      "condition": "<unconditional>",
+      "n_findings": 27,
+      "n_ops_blocked": 27,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "stamp": 27
+      },
+      "example_ops": [
+        {
+          "row_idx": 38,
+          "row_id": "corpus_p25:c7769b4f9f46bb8d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 39,
+          "row_id": "corpus_p25:bfb56905b52f7d1b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 40,
+          "row_id": "corpus_p25:db392f829bd7e47d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 41,
+          "row_id": "corpus_p25:2234cdc5e0b75db4",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 42,
+          "row_id": "corpus_p25:21f6cdf309b30cf9",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1940:LiquidHandler.dispense96",
+      "condition": "not self._check_96_head_fits_in_container(container)",
+      "n_findings": 27,
+      "n_ops_blocked": 27,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "stamp": 27
+      },
+      "example_ops": [
+        {
+          "row_idx": 38,
+          "row_id": "corpus_p25:c7769b4f9f46bb8d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 39,
+          "row_id": "corpus_p25:bfb56905b52f7d1b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 40,
+          "row_id": "corpus_p25:db392f829bd7e47d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 41,
+          "row_id": "corpus_p25:2234cdc5e0b75db4",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 42,
+          "row_id": "corpus_p25:21f6cdf309b30cf9",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1960:LiquidHandler.dispense96",
+      "condition": "well.parent != plate",
+      "n_findings": 27,
+      "n_ops_blocked": 27,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "stamp": 27
+      },
+      "example_ops": [
+        {
+          "row_idx": 38,
+          "row_id": "corpus_p25:c7769b4f9f46bb8d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 39,
+          "row_id": "corpus_p25:bfb56905b52f7d1b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 40,
+          "row_id": "corpus_p25:db392f829bd7e47d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 41,
+          "row_id": "corpus_p25:2234cdc5e0b75db4",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 42,
+          "row_id": "corpus_p25:21f6cdf309b30cf9",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1963:LiquidHandler.dispense96",
+      "condition": "not len(containers) == 96",
+      "n_findings": 27,
+      "n_ops_blocked": 27,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "stamp": 27
+      },
+      "example_ops": [
+        {
+          "row_idx": 38,
+          "row_id": "corpus_p25:c7769b4f9f46bb8d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 39,
+          "row_id": "corpus_p25:bfb56905b52f7d1b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 40,
+          "row_id": "corpus_p25:db392f829bd7e47d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 41,
+          "row_id": "corpus_p25:2234cdc5e0b75db4",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 42,
+          "row_id": "corpus_p25:21f6cdf309b30cf9",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2030:LiquidHandler.stamp",
+      "condition": "(source.num_items_x, source.num_items_y) == (target.num_items_x, target.num_items_y)",
+      "n_findings": 27,
+      "n_ops_blocked": 27,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "stamp": 27
+      },
+      "example_ops": [
+        {
+          "row_idx": 38,
+          "row_id": "corpus_p25:c7769b4f9f46bb8d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 39,
+          "row_id": "corpus_p25:bfb56905b52f7d1b",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 40,
+          "row_id": "corpus_p25:db392f829bd7e47d",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 41,
+          "row_id": "corpus_p25:2234cdc5e0b75db4",
+          "op_id": "op_0"
+        },
+        {
+          "row_idx": 42,
+          "row_id": "corpus_p25:21f6cdf309b30cf9",
+          "op_id": "op_0"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1335:LiquidHandler.transfer",
+      "condition": "ratios is not None",
+      "n_findings": 19,
+      "n_ops_blocked": 19,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 30,
+          "row_id": "corpus_p25:4c8c1ba204e581df",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 31,
+          "row_id": "corpus_p25:e6c2b217abdbfce6",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 32,
+          "row_id": "corpus_p25:64a6d39efbfc4d76",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 33,
+          "row_id": "corpus_p25:a13a3d54281415d9",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 34,
+          "row_id": "corpus_p25:a1242b73c497a02c",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1337:LiquidHandler.transfer",
+      "condition": "source_vol is not None",
+      "n_findings": 19,
+      "n_ops_blocked": 19,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 30,
+          "row_id": "corpus_p25:4c8c1ba204e581df",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 31,
+          "row_id": "corpus_p25:e6c2b217abdbfce6",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 32,
+          "row_id": "corpus_p25:64a6d39efbfc4d76",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 33,
+          "row_id": "corpus_p25:a13a3d54281415d9",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 34,
+          "row_id": "corpus_p25:a1242b73c497a02c",
+          "op_id": "op_1"
+        }
+      ]
+    },
+    {
+      "reason": "guard_predicate_unparsed",
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1340:LiquidHandler.transfer",
+      "condition": "source_vol is None",
+      "n_findings": 19,
+      "n_ops_blocked": 19,
+      "n_ops_sole_blocker": 0,
+      "per_method": {
+        "transfer": 19
+      },
+      "example_ops": [
+        {
+          "row_idx": 30,
+          "row_id": "corpus_p25:4c8c1ba204e581df",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 31,
+          "row_id": "corpus_p25:e6c2b217abdbfce6",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 32,
+          "row_id": "corpus_p25:64a6d39efbfc4d76",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 33,
+          "row_id": "corpus_p25:a13a3d54281415d9",
+          "op_id": "op_1"
+        },
+        {
+          "row_idx": 34,
+          "row_id": "corpus_p25:a1242b73c497a02c",
+          "op_id": "op_1"
+        }
+      ]
+    }
+  ],
+  "per_op_reason_set_histogram": [
+    {
+      "reason_set": [
+        "guard_predicate_unparsed"
+      ],
+      "n_ops": 334
+    },
+    {
+      "reason_set": [
+        "guard_predicate_unparsed",
+        "volume_state_unknown"
+      ],
+      "n_ops": 117
+    },
+    {
+      "reason_set": [
+        "guard_predicate_unparsed",
+        "unresolved_delegate"
+      ],
+      "n_ops": 93
+    }
+  ],
+  "n_row_id_collisions": 12,
+  "collision_ops": [
+    {
+      "row_idx": 104,
+      "record_id": "corpus_p25:c2a82883a96ff3d6",
+      "op_id": "op_0",
+      "method": "move_resource",
+      "reason_set": [
+        "guard_predicate_unparsed",
+        "unresolved_delegate"
+      ],
+      "findings": [
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2055:LiquidHandler.pick_up_resource",
+          "detail": "self.setup_finished and (not self._resource_pickups)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2070:LiquidHandler.pick_up_resource",
+          "detail": "self._resource_pickup is not None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2092:LiquidHandler.pick_up_resource",
+          "detail": "<unconditional>"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:375:LiquidHandler._check_args",
+          "detail": "len(missing) > 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:383:LiquidHandler._check_args",
+          "detail": "strictness == Strictness.STRICT"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2120:LiquidHandler.move_picked_up_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2147:LiquidHandler.drop_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2204:LiquidHandler.drop_resource",
+          "detail": "destination.direction == 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2211:LiquidHandler.drop_resource",
+          "detail": "resource_rotation_wrt_destination % 180 != 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2226:LiquidHandler.drop_resource",
+          "detail": "destination.resource is not None and destination.resource is not resource"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2233:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2284:LiquidHandler.drop_resource",
+          "detail": "isinstance(destination, ResourceStack) and destination.direction != 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2290:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        }
+      ],
+      "verdict": "unknown"
+    },
+    {
+      "row_idx": 118,
+      "record_id": "corpus_p25:62316c63eb5255b1",
+      "op_id": "op_0",
+      "method": "move_plate",
+      "reason_set": [
+        "guard_predicate_unparsed",
+        "unresolved_delegate"
+      ],
+      "findings": [
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2055:LiquidHandler.pick_up_resource",
+          "detail": "self.setup_finished and (not self._resource_pickups)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2070:LiquidHandler.pick_up_resource",
+          "detail": "self._resource_pickup is not None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2092:LiquidHandler.pick_up_resource",
+          "detail": "<unconditional>"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:375:LiquidHandler._check_args",
+          "detail": "len(missing) > 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:383:LiquidHandler._check_args",
+          "detail": "strictness == Strictness.STRICT"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2120:LiquidHandler.move_picked_up_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2147:LiquidHandler.drop_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2204:LiquidHandler.drop_resource",
+          "detail": "destination.direction == 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2211:LiquidHandler.drop_resource",
+          "detail": "resource_rotation_wrt_destination % 180 != 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2226:LiquidHandler.drop_resource",
+          "detail": "destination.resource is not None and destination.resource is not resource"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2233:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2284:LiquidHandler.drop_resource",
+          "detail": "isinstance(destination, ResourceStack) and destination.direction != 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2290:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        }
+      ],
+      "verdict": "unknown"
+    },
+    {
+      "row_idx": 119,
+      "record_id": "corpus_p25:c7368e1ee9911427",
+      "op_id": "op_0",
+      "method": "move_plate",
+      "reason_set": [
+        "guard_predicate_unparsed",
+        "unresolved_delegate"
+      ],
+      "findings": [
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2055:LiquidHandler.pick_up_resource",
+          "detail": "self.setup_finished and (not self._resource_pickups)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2070:LiquidHandler.pick_up_resource",
+          "detail": "self._resource_pickup is not None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2092:LiquidHandler.pick_up_resource",
+          "detail": "<unconditional>"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:375:LiquidHandler._check_args",
+          "detail": "len(missing) > 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:383:LiquidHandler._check_args",
+          "detail": "strictness == Strictness.STRICT"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2120:LiquidHandler.move_picked_up_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2147:LiquidHandler.drop_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2204:LiquidHandler.drop_resource",
+          "detail": "destination.direction == 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2211:LiquidHandler.drop_resource",
+          "detail": "resource_rotation_wrt_destination % 180 != 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2226:LiquidHandler.drop_resource",
+          "detail": "destination.resource is not None and destination.resource is not resource"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2233:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2284:LiquidHandler.drop_resource",
+          "detail": "isinstance(destination, ResourceStack) and destination.direction != 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2290:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        }
+      ],
+      "verdict": "unknown"
+    },
+    {
+      "row_idx": 122,
+      "record_id": "corpus_p25:62316c63eb5255b1",
+      "op_id": "op_0",
+      "method": "move_plate",
+      "reason_set": [
+        "guard_predicate_unparsed",
+        "unresolved_delegate"
+      ],
+      "findings": [
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2055:LiquidHandler.pick_up_resource",
+          "detail": "self.setup_finished and (not self._resource_pickups)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2070:LiquidHandler.pick_up_resource",
+          "detail": "self._resource_pickup is not None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2092:LiquidHandler.pick_up_resource",
+          "detail": "<unconditional>"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:375:LiquidHandler._check_args",
+          "detail": "len(missing) > 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:383:LiquidHandler._check_args",
+          "detail": "strictness == Strictness.STRICT"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2120:LiquidHandler.move_picked_up_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2147:LiquidHandler.drop_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2204:LiquidHandler.drop_resource",
+          "detail": "destination.direction == 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2211:LiquidHandler.drop_resource",
+          "detail": "resource_rotation_wrt_destination % 180 != 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2226:LiquidHandler.drop_resource",
+          "detail": "destination.resource is not None and destination.resource is not resource"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2233:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2284:LiquidHandler.drop_resource",
+          "detail": "isinstance(destination, ResourceStack) and destination.direction != 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2290:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        }
+      ],
+      "verdict": "unknown"
+    },
+    {
+      "row_idx": 124,
+      "record_id": "corpus_p25:a1533a2f040d6ec6",
+      "op_id": "op_0",
+      "method": "move_plate",
+      "reason_set": [
+        "guard_predicate_unparsed",
+        "unresolved_delegate"
+      ],
+      "findings": [
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2055:LiquidHandler.pick_up_resource",
+          "detail": "self.setup_finished and (not self._resource_pickups)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2070:LiquidHandler.pick_up_resource",
+          "detail": "self._resource_pickup is not None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2092:LiquidHandler.pick_up_resource",
+          "detail": "<unconditional>"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:375:LiquidHandler._check_args",
+          "detail": "len(missing) > 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:383:LiquidHandler._check_args",
+          "detail": "strictness == Strictness.STRICT"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2120:LiquidHandler.move_picked_up_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2147:LiquidHandler.drop_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2204:LiquidHandler.drop_resource",
+          "detail": "destination.direction == 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2211:LiquidHandler.drop_resource",
+          "detail": "resource_rotation_wrt_destination % 180 != 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2226:LiquidHandler.drop_resource",
+          "detail": "destination.resource is not None and destination.resource is not resource"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2233:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2284:LiquidHandler.drop_resource",
+          "detail": "isinstance(destination, ResourceStack) and destination.direction != 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2290:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        }
+      ],
+      "verdict": "unknown"
+    },
+    {
+      "row_idx": 125,
+      "record_id": "corpus_p25:62316c63eb5255b1",
+      "op_id": "op_0",
+      "method": "move_plate",
+      "reason_set": [
+        "guard_predicate_unparsed",
+        "unresolved_delegate"
+      ],
+      "findings": [
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2055:LiquidHandler.pick_up_resource",
+          "detail": "self.setup_finished and (not self._resource_pickups)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2070:LiquidHandler.pick_up_resource",
+          "detail": "self._resource_pickup is not None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2092:LiquidHandler.pick_up_resource",
+          "detail": "<unconditional>"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:375:LiquidHandler._check_args",
+          "detail": "len(missing) > 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:383:LiquidHandler._check_args",
+          "detail": "strictness == Strictness.STRICT"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2120:LiquidHandler.move_picked_up_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2147:LiquidHandler.drop_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2204:LiquidHandler.drop_resource",
+          "detail": "destination.direction == 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2211:LiquidHandler.drop_resource",
+          "detail": "resource_rotation_wrt_destination % 180 != 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2226:LiquidHandler.drop_resource",
+          "detail": "destination.resource is not None and destination.resource is not resource"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2233:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2284:LiquidHandler.drop_resource",
+          "detail": "isinstance(destination, ResourceStack) and destination.direction != 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2290:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        }
+      ],
+      "verdict": "unknown"
+    },
+    {
+      "row_idx": 127,
+      "record_id": "corpus_p25:62316c63eb5255b1",
+      "op_id": "op_0",
+      "method": "move_plate",
+      "reason_set": [
+        "guard_predicate_unparsed",
+        "unresolved_delegate"
+      ],
+      "findings": [
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2055:LiquidHandler.pick_up_resource",
+          "detail": "self.setup_finished and (not self._resource_pickups)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2070:LiquidHandler.pick_up_resource",
+          "detail": "self._resource_pickup is not None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2092:LiquidHandler.pick_up_resource",
+          "detail": "<unconditional>"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:375:LiquidHandler._check_args",
+          "detail": "len(missing) > 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:383:LiquidHandler._check_args",
+          "detail": "strictness == Strictness.STRICT"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2120:LiquidHandler.move_picked_up_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2147:LiquidHandler.drop_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2204:LiquidHandler.drop_resource",
+          "detail": "destination.direction == 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2211:LiquidHandler.drop_resource",
+          "detail": "resource_rotation_wrt_destination % 180 != 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2226:LiquidHandler.drop_resource",
+          "detail": "destination.resource is not None and destination.resource is not resource"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2233:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2284:LiquidHandler.drop_resource",
+          "detail": "isinstance(destination, ResourceStack) and destination.direction != 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2290:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        }
+      ],
+      "verdict": "unknown"
+    },
+    {
+      "row_idx": 131,
+      "record_id": "corpus_p25:9657aed26cb82c42",
+      "op_id": "op_0",
+      "method": "move_lid",
+      "reason_set": [
+        "guard_predicate_unparsed",
+        "unresolved_delegate"
+      ],
+      "findings": [
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2055:LiquidHandler.pick_up_resource",
+          "detail": "self.setup_finished and (not self._resource_pickups)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2070:LiquidHandler.pick_up_resource",
+          "detail": "self._resource_pickup is not None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2092:LiquidHandler.pick_up_resource",
+          "detail": "<unconditional>"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:375:LiquidHandler._check_args",
+          "detail": "len(missing) > 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:383:LiquidHandler._check_args",
+          "detail": "strictness == Strictness.STRICT"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2120:LiquidHandler.move_picked_up_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2147:LiquidHandler.drop_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2204:LiquidHandler.drop_resource",
+          "detail": "destination.direction == 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2211:LiquidHandler.drop_resource",
+          "detail": "resource_rotation_wrt_destination % 180 != 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2226:LiquidHandler.drop_resource",
+          "detail": "destination.resource is not None and destination.resource is not resource"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2233:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2284:LiquidHandler.drop_resource",
+          "detail": "isinstance(destination, ResourceStack) and destination.direction != 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2290:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        }
+      ],
+      "verdict": "unknown"
+    },
+    {
+      "row_idx": 135,
+      "record_id": "corpus_p25:b5e4ed173d2fe4f1",
+      "op_id": "op_0",
+      "method": "move_lid",
+      "reason_set": [
+        "guard_predicate_unparsed",
+        "unresolved_delegate"
+      ],
+      "findings": [
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2055:LiquidHandler.pick_up_resource",
+          "detail": "self.setup_finished and (not self._resource_pickups)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2070:LiquidHandler.pick_up_resource",
+          "detail": "self._resource_pickup is not None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2092:LiquidHandler.pick_up_resource",
+          "detail": "<unconditional>"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:375:LiquidHandler._check_args",
+          "detail": "len(missing) > 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:383:LiquidHandler._check_args",
+          "detail": "strictness == Strictness.STRICT"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2120:LiquidHandler.move_picked_up_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2147:LiquidHandler.drop_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2204:LiquidHandler.drop_resource",
+          "detail": "destination.direction == 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2211:LiquidHandler.drop_resource",
+          "detail": "resource_rotation_wrt_destination % 180 != 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2226:LiquidHandler.drop_resource",
+          "detail": "destination.resource is not None and destination.resource is not resource"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2233:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2284:LiquidHandler.drop_resource",
+          "detail": "isinstance(destination, ResourceStack) and destination.direction != 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2290:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        }
+      ],
+      "verdict": "unknown"
+    },
+    {
+      "row_idx": 136,
+      "record_id": "corpus_p25:dcec724484b942b7",
+      "op_id": "op_0",
+      "method": "move_lid",
+      "reason_set": [
+        "guard_predicate_unparsed",
+        "unresolved_delegate"
+      ],
+      "findings": [
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2055:LiquidHandler.pick_up_resource",
+          "detail": "self.setup_finished and (not self._resource_pickups)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2070:LiquidHandler.pick_up_resource",
+          "detail": "self._resource_pickup is not None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2092:LiquidHandler.pick_up_resource",
+          "detail": "<unconditional>"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:375:LiquidHandler._check_args",
+          "detail": "len(missing) > 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:383:LiquidHandler._check_args",
+          "detail": "strictness == Strictness.STRICT"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2120:LiquidHandler.move_picked_up_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2147:LiquidHandler.drop_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2204:LiquidHandler.drop_resource",
+          "detail": "destination.direction == 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2211:LiquidHandler.drop_resource",
+          "detail": "resource_rotation_wrt_destination % 180 != 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2226:LiquidHandler.drop_resource",
+          "detail": "destination.resource is not None and destination.resource is not resource"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2233:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2284:LiquidHandler.drop_resource",
+          "detail": "isinstance(destination, ResourceStack) and destination.direction != 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2290:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        }
+      ],
+      "verdict": "unknown"
+    },
+    {
+      "row_idx": 269,
+      "record_id": "corpus_p25:29fc5f3f9c90c91d",
+      "op_id": "op_0",
+      "method": "move_resource",
+      "reason_set": [
+        "guard_predicate_unparsed",
+        "unresolved_delegate"
+      ],
+      "findings": [
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2055:LiquidHandler.pick_up_resource",
+          "detail": "self.setup_finished and (not self._resource_pickups)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2070:LiquidHandler.pick_up_resource",
+          "detail": "self._resource_pickup is not None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2092:LiquidHandler.pick_up_resource",
+          "detail": "<unconditional>"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:375:LiquidHandler._check_args",
+          "detail": "len(missing) > 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:383:LiquidHandler._check_args",
+          "detail": "strictness == Strictness.STRICT"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2120:LiquidHandler.move_picked_up_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2147:LiquidHandler.drop_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2204:LiquidHandler.drop_resource",
+          "detail": "destination.direction == 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2211:LiquidHandler.drop_resource",
+          "detail": "resource_rotation_wrt_destination % 180 != 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2226:LiquidHandler.drop_resource",
+          "detail": "destination.resource is not None and destination.resource is not resource"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2233:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2284:LiquidHandler.drop_resource",
+          "detail": "isinstance(destination, ResourceStack) and destination.direction != 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2290:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        }
+      ],
+      "verdict": "unknown"
+    },
+    {
+      "row_idx": 282,
+      "record_id": "corpus_p25:0924958c5cec46b2",
+      "op_id": "op_0",
+      "method": "move_plate",
+      "reason_set": [
+        "guard_predicate_unparsed",
+        "unresolved_delegate"
+      ],
+      "findings": [
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "unresolved_delegate",
+          "plr_site": "<none>",
+          "detail": "_state_updated"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2055:LiquidHandler.pick_up_resource",
+          "detail": "self.setup_finished and (not self._resource_pickups)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2070:LiquidHandler.pick_up_resource",
+          "detail": "self._resource_pickup is not None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2092:LiquidHandler.pick_up_resource",
+          "detail": "<unconditional>"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:375:LiquidHandler._check_args",
+          "detail": "len(missing) > 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:383:LiquidHandler._check_args",
+          "detail": "strictness == Strictness.STRICT"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2120:LiquidHandler.move_picked_up_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2147:LiquidHandler.drop_resource",
+          "detail": "self._resource_pickup is None"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2204:LiquidHandler.drop_resource",
+          "detail": "destination.direction == 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2211:LiquidHandler.drop_resource",
+          "detail": "resource_rotation_wrt_destination % 180 != 0"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2226:LiquidHandler.drop_resource",
+          "detail": "destination.resource is not None and destination.resource is not resource"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2233:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2284:LiquidHandler.drop_resource",
+          "detail": "isinstance(destination, ResourceStack) and destination.direction != 'z'"
+        },
+        {
+          "reason": "guard_predicate_unparsed",
+          "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2290:LiquidHandler.drop_resource",
+          "detail": "not isinstance(resource, Plate)"
+        }
+      ],
+      "verdict": "unknown"
+    }
+  ],
+  "consistency": {
+    "ok": true,
+    "violations": [],
+    "sum_histogram_n_ops": 544,
+    "n_ops_unknown": 544,
+    "n_ops_executed_unknown": 544,
+    "per_reason": {
+      "guard_predicate_unparsed": {
+        "max_cluster_n_ops_blocked": 544,
+        "n_ops_with_reason": 544
+      },
+      "unresolved_delegate": {
+        "max_cluster_n_ops_blocked": 93,
+        "n_ops_with_reason": 93
+      },
+      "volume_state_unknown": {
+        "max_cluster_n_ops_blocked": 117,
+        "n_ops_with_reason": 117
+      }
+    }
+  },
+  "notes": [
+    "liquid_handler.py:191 (`LiquidHandler.setup`'s own `if self.setup_finished: raise RuntimeError(...)` guard) NEVER appears in this ledger's clusters, and cannot, by construction of the current pipeline -- not because no such Finding is ever produced. derived_contracts.json's ONLY guard entry at that site belongs to the `LiquidHandler.setup` contract itself (confirmed by direct query: no other contract's `guards`/`channel_guards` list carries this site). `oracle_common.calls_from_plr_kwargs` (oracle_common.py:391-427) unconditionally prepends a `{\"method\": \"setup\", ...}` CALL as calls[0] for every row (the scaffolding's real `setup.machine.setup()` reset, training/verify/verifier.py:117-126); `check_ir` visits that CALL and evaluates its own `setup_finished` guard, producing a real Finding at the SETUP call's own pc. But `run_static_calls` (oracle_common.py:566,570) computes `setup_pcs` from `bc.sideband['origin']` and FILTERS every finding whose pre-relabel `operation_id` is a setup pc OUT of `raw_findings` *before* `_ir.relabel_findings` ever runs -- so a setup-pc finding is dropped before it could be relabelled onto any real `op_<i>`, and this ledger's own seam (installed immediately after that relabel, oracle_common.py's `FINDINGS_SINK` call site) never receives it. The planning-time probe's ':191 d1 setup' row (sprint plan \u00a70, count 38) was produced by a DIFFERENT, ephemeral script ($TMPDIR/probe/unknown_reason_probe.py) that wrapped `check_ir` directly rather than going through `run_static_calls`'s setup-pc exclusion + relabel; whatever attribution logic that probe used evidently mapped the setup CALL's own pc onto a real op id without replicating oracle_common's origin-shift (`lower_row_calls`, oracle_common.py:430-474). This ledger reuses `run_static_calls` unmodified and therefore cannot reproduce that artifact: if 38 setup-guard occurrences existed against real op ids in the properly-seamed pipeline, this ledger's clusters would show a `guard_predicate_unparsed` entry at `liquid_handler.py:191` with `n_ops_blocked` > 0 -- check this ledger's own clusters list for that site to confirm the count is exactly 0.",
+    "n_ops_executed (this ledger, distinct (row_id, op_id) pairs with >=1 real Finding seen through the FINDINGS_SINK seam) = 544 vs oracle_replay.py's own operations_executed = 548. A gap would mean some ops in an executed row's call_sequence never got a real Finding at all (e.g. a not-planned index after an earlier raise, given a synthetic 'unknown'/0-findings placeholder by run_static_calls's own per_op dict comprehension rather than by check_ir) -- such ops carry no reason to cluster and are outside this ledger's UNKNOWN-root-cause scope by construction, not an omission.",
+    "rows_executed (positionally correlated against oracle_replay's own no_call/skip-filtered rows) = 343 vs oracle_replay.py's own denominators.rows_executed = 343. (0 of these are rows_setup_error rows -- oracle_replay excludes THOSE from rows_executed/operations_executed/unknown_rate but this ledger's sink still fires for them (run_row reaches the Static section before the setup-error check); they contribute zero findings/clusters here because none of their real ops are ever lowered (calls_from_plr_kwargs only lowers PLANNED calls), so they cannot pollute the clusters -- this note exists purely so the two row counts' difference is explained rather than left as an unexplained gap.)",
+    "record_id sink/report positional cross-check: 0 mismatch(es) out of 343 rows (0 expected; content_digest collisions, when they occur, affect only method attribution for the tiny number of ops on a colliding row, never cluster membership -- clustering keys off (reason, plr_site, detail), never row_id).",
+    "oracle_replay's own oracle exit code was 0 (0 == unsound==0 and check_graph_exceptions==0); unsound=0, unknown_rate=1.0.",
+    "band B0 fix (backlog #4976, round-1 challenger C12, 260905): ClusterAccumulator.ops_blocked/sole_blocker_ops are now keyed by the POSITIONAL (row_idx, op_id) pair, never by (row_id, op_id) -- row_id is a content digest (mismatches note above) that collides across a documented ~4% of corpus rows, and deduping ops_blocked on that string silently merged two DIFFERENT ops from two DIFFERENT rows into one entry whenever they shared both a colliding row_id and an op_id. This run found n_row_id_collisions=12 such UNKNOWN-verdict ops (full per-op reason/site list in collision_ops); the pre-fix ledger undercounted n_ops_blocked by exactly this many ops on every cluster any of them belonged to (observed 260904: the `:375 LiquidHandler._check_args` cluster read 532 instead of 544, and the sole `unresolved_delegate` cluster read 81 instead of 93 -- both off by exactly n_row_id_collisions)."
+  ]
+}

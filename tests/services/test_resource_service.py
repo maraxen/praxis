@@ -3,19 +3,16 @@
 Tests cover all CRUD operations and resource-specific functionality.
 """
 import pytest
-from asyncpg.exceptions import UniqueViolationError
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums import AssetType, ResourceStatusEnum
 from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.resource import (
     Resource,
     ResourceCreate,
-    ResourceUpdate,
     ResourceDefinition,
-    ResourceDefinitionCreate,
+    ResourceUpdate,
 )
+from praxis.backend.models.enums import AssetType, ResourceStatusEnum
 from praxis.backend.services.resource import resource_service
 
 

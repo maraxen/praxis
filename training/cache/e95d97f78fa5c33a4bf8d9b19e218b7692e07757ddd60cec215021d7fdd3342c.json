@@ -1,0 +1,9 @@
+{
+ "cache_key": "e95d97f78fa5c33a4bf8d9b19e218b7692e07757ddd60cec215021d7fdd3342c",
+ "fetched_at": "2026-09-02T15:41:04.624894+00:00",
+ "input_hash": "6ab8a02a4aa48cd735ebc20a359fb0e96e4824caca759ab57c117799b04e5be5",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you replicate plate 2 onto plate 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

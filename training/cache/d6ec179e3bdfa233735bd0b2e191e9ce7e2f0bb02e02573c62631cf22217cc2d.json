@@ -1,0 +1,9 @@
+{
+ "cache_key": "d6ec179e3bdfa233735bd0b2e191e9ce7e2f0bb02e02573c62631cf22217cc2d",
+ "fetched_at": "2026-09-02T20:34:40.601921+00:00",
+ "input_hash": "19902010b90e960045808907813515b2fde4fdf87cf6e01fad6fb891ed911f78",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Scan luminescence across the entire loaded plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

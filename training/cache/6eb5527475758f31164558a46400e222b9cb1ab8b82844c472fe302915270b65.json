@@ -1,0 +1,9 @@
+{
+ "cache_key": "6eb5527475758f31164558a46400e222b9cb1ab8b82844c472fe302915270b65",
+ "fetched_at": "2026-09-02T16:32:42.119153+00:00",
+ "input_hash": "c5d78d736157d441a81e4be1889b04d8cfd55e353a75269631b22f05b88590e3",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you return the tips to the tip rack?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

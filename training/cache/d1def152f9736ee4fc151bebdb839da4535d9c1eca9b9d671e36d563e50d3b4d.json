@@ -1,0 +1,9 @@
+{
+ "cache_key": "d1def152f9736ee4fc151bebdb839da4535d9c1eca9b9d671e36d563e50d3b4d",
+ "fetched_at": "2026-09-02T20:27:32.436684+00:00",
+ "input_hash": "af6390eab6c75b90071bc6438037ea8f4b948fbfbfb498041f3ad5acb1e91961",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure fluorescence in wells B3, C12, E8, and H5 using an excitation wavelength of 485 nm at a focal height of 15 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

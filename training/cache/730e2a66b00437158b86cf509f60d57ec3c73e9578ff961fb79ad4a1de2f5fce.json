@@ -1,0 +1,9 @@
+{
+ "cache_key": "730e2a66b00437158b86cf509f60d57ec3c73e9578ff961fb79ad4a1de2f5fce",
+ "fetched_at": "2026-09-01T21:15:51.553345+00:00",
+ "input_hash": "951a6568d09b6963701c0ff2a75ff2aae9edf13ea3972e42b9e516bbbee388ec",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I cannot modify or stop the heater shaker state. I can assist with liquid transfers, dispensing, aspirating, or moving plates on the deck.\", \"utterance\": \"Disable the shaking on the heater shaker module.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

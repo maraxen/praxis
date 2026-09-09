@@ -1,0 +1,9 @@
+{
+ "cache_key": "88c04b2273ddd0987881e52896f57168ba2c4888d69279001b46d87124bf8bc2",
+ "fetched_at": "2026-09-03T15:02:41.293435+00:00",
+ "input_hash": "5dcabaeadf9fccdff6d04c76c13705fbcc1bb9dbdfda44287495a26a9d182074",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please go ahead and dump out the entire plate directly into the liquid waste.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

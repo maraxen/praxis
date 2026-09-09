@@ -1,0 +1,9 @@
+{
+ "cache_key": "3866e0cdd0f4347770b5b59bfffa01b79495cbcc0df91e97e3aacc54a7f3f33f",
+ "fetched_at": "2026-09-02T17:24:23.244154+00:00",
+ "input_hash": "935d3de3c0f743b8d9a478b79341a25b60063115bfda230dc60890f166101ccd",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please put plate 1 onto reservoir 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

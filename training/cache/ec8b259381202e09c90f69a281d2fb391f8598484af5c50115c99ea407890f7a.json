@@ -1,0 +1,9 @@
+{
+ "cache_key": "ec8b259381202e09c90f69a281d2fb391f8598484af5c50115c99ea407890f7a",
+ "fetched_at": "2026-09-02T15:08:07.910047+00:00",
+ "input_hash": "3ef13fe88bf174d2df612050a9b3426b7cfca856e63a395184b1ceab8227180c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please pull 100 microliters into the tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

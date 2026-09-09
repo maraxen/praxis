@@ -1,0 +1,9 @@
+{
+ "cache_key": "220ec8e5e139e0eeb24a2cd960b37ccc2fac72a7147db50f1803d4c1a5df6dba",
+ "fetched_at": "2026-09-01T21:19:40.785565+00:00",
+ "input_hash": "4dde120867cfe449ec64b6deb02e5d4aa723836c315c6d254dbc0c92d7450aaa",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read fluorescence at excitation 560 nm and focal height 15 mm in wells G3 and G4.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

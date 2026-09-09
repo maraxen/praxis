@@ -1,0 +1,9 @@
+{
+ "cache_key": "49b4480d0d37b3925c2403c87ad85755edcf7d12a7debc400cb167e5d2c909ac",
+ "fetched_at": "2026-09-01T21:14:33.230365+00:00",
+ "input_hash": "d51f62d6e09f74262741a43b91644e9a49fc4cd48aebdad436081a948c1a75bf",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Drop the tips back in the box.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

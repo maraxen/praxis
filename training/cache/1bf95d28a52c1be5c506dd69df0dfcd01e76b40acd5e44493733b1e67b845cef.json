@@ -1,0 +1,9 @@
+{
+ "cache_key": "1bf95d28a52c1be5c506dd69df0dfcd01e76b40acd5e44493733b1e67b845cef",
+ "fetched_at": "2026-09-02T14:57:20.607859+00:00",
+ "input_hash": "8ae5dc22dd5db93c3f7023fe45692d5f7c86b359b006d8102de953c2a8aa7e44",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Mount tips from the tip box.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

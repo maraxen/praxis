@@ -1,0 +1,9 @@
+{
+ "cache_key": "9b51143209235d9d4cdc4f3f808a425c51faafaf5bfeb157d3e51c99140881e8",
+ "fetched_at": "2026-09-01T21:09:18.725908+00:00",
+ "input_hash": "c0848fa811c3061de469ecc318625da77f37af3d2d5bf713e38e8ec08f5a8360",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Dispense liquid into well B11 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "5893fa1138ee71f9dca7ff65594add8b3ff65f7236d6bf5c64a974dc3269144d",
+ "fetched_at": "2026-09-02T15:46:42.290306+00:00",
+ "input_hash": "2fb91f075feba225d316dc266be790f20c0457c9387dd56bfd15e065898f24ef",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Replicate the layout of plate 1 onto the plate with 75 microliters per well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

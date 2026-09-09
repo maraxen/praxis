@@ -1,0 +1,9 @@
+{
+ "cache_key": "c019fd92f825e10654568989f22de3dd19722337df3f865e4970a3feda1336c4",
+ "fetched_at": "2026-09-02T16:15:15.643897+00:00",
+ "input_hash": "9a4718e983ffeb1bc87ad1925a185bee6cafa61e8503a2b27664f7db9e571796",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you read the OD of the plate currently in the reader?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

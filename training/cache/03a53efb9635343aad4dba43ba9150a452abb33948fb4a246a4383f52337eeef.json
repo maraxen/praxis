@@ -1,0 +1,9 @@
+{
+ "cache_key": "03a53efb9635343aad4dba43ba9150a452abb33948fb4a246a4383f52337eeef",
+ "fetched_at": "2026-09-01T21:16:35.726612+00:00",
+ "input_hash": "00c8a0966a80d6f4650d1890dbfa3f56bd03c931f25d77c9a3abb137f3c08406",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Move the carrier over to scale_station_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

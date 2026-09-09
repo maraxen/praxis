@@ -1,0 +1,9 @@
+{
+ "cache_key": "61a033138626504933f8928a2659808f6ae34b88624865bf464630feb02a0101",
+ "fetched_at": "2026-09-02T20:13:21.084132+00:00",
+ "input_hash": "99a3e853cd46a8b85ab1de51fd5774313a8070eccbe59746fe3d32b435c49438",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you get tips from the tip rack?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

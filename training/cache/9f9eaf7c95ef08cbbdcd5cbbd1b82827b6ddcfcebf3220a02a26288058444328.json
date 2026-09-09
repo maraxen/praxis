@@ -1,0 +1,9 @@
+{
+ "cache_key": "9f9eaf7c95ef08cbbdcd5cbbd1b82827b6ddcfcebf3220a02a26288058444328",
+ "fetched_at": "2026-09-02T17:07:40.570269+00:00",
+ "input_hash": "c9f13f2f7343f06e720542dc843bb351b48d1a76e89d6e757ad34b09b8cb2e33",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you transport over to scale station 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

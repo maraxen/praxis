@@ -1,0 +1,9 @@
+{
+ "cache_key": "71c812f82dd4eb0a85043553dc083a2ff620d44af766239e05b3fd2ccdbb0d0d",
+ "fetched_at": "2026-09-02T15:01:41.018064+00:00",
+ "input_hash": "9f746084bb9352bf8c6d191635d89e9fde9e3b871bbc21e83535f43622769e86",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Take up 75 microliters from plate 2, H7.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "0e5c803d0b9023b7503941a980b5a0dbb2c012de48ca207959d6f3e971f3f6fb",
+ "fetched_at": "2026-09-02T16:07:16.081842+00:00",
+ "input_hash": "55aca241b564325a4b4567c7ce4ccf1cd444359353592003c63567212c2f1a3c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Place down onto scale station 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

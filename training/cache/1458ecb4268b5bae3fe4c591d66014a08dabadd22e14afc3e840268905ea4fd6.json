@@ -1,0 +1,9 @@
+{
+ "cache_key": "1458ecb4268b5bae3fe4c591d66014a08dabadd22e14afc3e840268905ea4fd6",
+ "fetched_at": "2026-09-03T15:03:18.194235+00:00",
+ "input_hash": "598bdd6d0d2787d85c2fbb412221ce63f637494fcd98b450d0eb3f4aa6c581d1",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Just dump the liquid from all the wells straight into waste.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

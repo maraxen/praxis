@@ -1,0 +1,9 @@
+{
+ "cache_key": "80554dd321b2d015371ff0ed54eb107c471052efbcc691bbe69129cd16dc2e63",
+ "fetched_at": "2026-09-01T21:16:35.727205+00:00",
+ "input_hash": "4e482002d199d9ab9a30c6a88b4211c51caa4a7cabeb40a71b0942b2a4d071f8",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you transfer the carrier to scale_station_1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

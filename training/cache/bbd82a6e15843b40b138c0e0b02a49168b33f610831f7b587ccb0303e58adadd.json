@@ -1,0 +1,9 @@
+{
+ "cache_key": "bbd82a6e15843b40b138c0e0b02a49168b33f610831f7b587ccb0303e58adadd",
+ "fetched_at": "2026-09-02T16:59:13.233760+00:00",
+ "input_hash": "118d8fcb9d6e99e36d6896f60ab9a6c973ef2ab024432cd651560ec400fcb1b9",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Scan fluorescence across the plate with an excitation wavelength of 485 nm and a focal height of 15 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "6b4ce600d645cd1597889e3ebcebee375fe4fa512a7a64363cef098570d19115",
+ "fetched_at": "2026-09-02T15:01:41.018108+00:00",
+ "input_hash": "54e0707bc49105bbac06d889602bfbdcce9c0ed0a580a5ca66fcd643e7c8adde",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Suck up 20 microliters from well G8 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

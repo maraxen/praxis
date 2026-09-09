@@ -1,0 +1,9 @@
+{
+ "cache_key": "840f007acc5aa4d6cabf02c0d273d60bd5667fb2b16815baedfbe883133e9d42",
+ "fetched_at": "2026-09-01T21:11:59.055912+00:00",
+ "input_hash": "5f03ee39f61e5dc88947750456fc4a45c6305f9da78de438494877d2f8a74685",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Copy plate_1 to the plate by stamping 200 microliters per well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

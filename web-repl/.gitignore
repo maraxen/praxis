@@ -17,3 +17,15 @@
 # to check the FINAL ignored/not-ignored outcome):
 #   git check-ignore web-repl/overlay/assets/visualizer/lib.js   # must exit 1 (not ignored), on a file that exists
 !/overlay/assets/visualizer/**
+
+# FunctionGemma model binaries (P2.7a): fetched by scripts/fetch_models.py
+# --models, never committed (F3 / zero-tracked-binaries). The explicit child
+# pattern documents the contract even though /vendor/ above already covers it.
+/vendor/models/
+
+# ORT WebAssembly backend binary under the vendored transformers.js tree
+# (P2.7a): fetched by scripts/fetch_models.py --runtime into the TRACKED
+# overlay/assets/coxswain/vendor/ tree, but a compiled binary -> gitignored.
+# Its expected sha256 is pinned in that dir's VENDOR_MANIFEST.json; the JS
+# siblings of this pattern ARE tracked.
+/overlay/assets/coxswain/vendor/ort/*.wasm

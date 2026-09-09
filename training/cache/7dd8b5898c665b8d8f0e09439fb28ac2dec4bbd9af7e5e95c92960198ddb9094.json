@@ -1,0 +1,9 @@
+{
+ "cache_key": "7dd8b5898c665b8d8f0e09439fb28ac2dec4bbd9af7e5e95c92960198ddb9094",
+ "fetched_at": "2026-09-02T15:26:36.352156+00:00",
+ "input_hash": "d7ac5919192a889a6a07288aa76972268afc4660db9851f7eb4bf15dc568eed3",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Bring over the liquid from well G9 of plate 1 into the same well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

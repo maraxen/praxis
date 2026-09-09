@@ -1,0 +1,9 @@
+{
+ "cache_key": "c739e681b625362fa3679cea99b1823d7cc83db5e4a298d201ac8d2527cd37e2",
+ "fetched_at": "2026-09-01T21:09:18.726308+00:00",
+ "input_hash": "2914b53c4570501313777c84a3a1915f8e63129d946fb9c926917b7370957e16",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Dispense into well A10 on plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

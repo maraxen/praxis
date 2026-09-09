@@ -1,0 +1,9 @@
+{
+ "cache_key": "05cc87bc28c5f4fa95dee6cdf88e5caf6a678633c0ee8bdadd63e8c06440e175",
+ "fetched_at": "2026-09-03T15:08:12.294867+00:00",
+ "input_hash": "b8ce654e12b3ec52289ea1790da3f4bdd5d943d09d91cecfb8967ed7d34e2275",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and end the shaking cycle on the heater shaker.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

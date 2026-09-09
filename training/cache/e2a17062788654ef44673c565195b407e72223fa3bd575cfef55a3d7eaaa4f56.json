@@ -1,0 +1,9 @@
+{
+ "cache_key": "e2a17062788654ef44673c565195b407e72223fa3bd575cfef55a3d7eaaa4f56",
+ "fetched_at": "2026-09-02T14:57:20.607904+00:00",
+ "input_hash": "c7b5896822bdc17213abb08e6ba1a2f4918af266bcb842e6ca00bf0cc3db4295",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please fetch tips from the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

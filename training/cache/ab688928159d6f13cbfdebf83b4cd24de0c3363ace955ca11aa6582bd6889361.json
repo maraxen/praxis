@@ -1,0 +1,9 @@
+{
+ "cache_key": "ab688928159d6f13cbfdebf83b4cd24de0c3363ace955ca11aa6582bd6889361",
+ "fetched_at": "2026-09-01T21:15:51.554334+00:00",
+ "input_hash": "e49239d4671da384ea4d68743f0ec731d4e4e59973403e878f8b6bcfce926761",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I'm unable to start or stop heater shaker shaking. I can help with supported actions like move_plate, transfer, aspirate, or dispense.\", \"utterance\": \"Stop shaking on the heater-shaker.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

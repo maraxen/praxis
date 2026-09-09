@@ -1,0 +1,9 @@
+{
+ "cache_key": "34086914387575de3ed69699fb3e9afe81996b14e34f1b3062e0c320d606f5dd",
+ "fetched_at": "2026-09-02T20:34:40.601506+00:00",
+ "input_hash": "b4dfc552f3adcf46c212309dab341bc6dc39d26a517494c14840d8ba88f7be21",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Scan luminescence in well B6 of the loaded plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

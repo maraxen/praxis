@@ -1,0 +1,9 @@
+{
+ "cache_key": "c197ee1dd4ef72b7719f7a2c150f32c0d0447430d9c447bd74e2db30e3e0eb86",
+ "fetched_at": "2026-09-02T20:48:04.052539+00:00",
+ "input_hash": "5cab8c7c2f6ebb071721f6beffc75f47747eff20bd6f9a0b241a814638fb8155",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please scan luminescence of the loaded plate at a focal height of 4.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

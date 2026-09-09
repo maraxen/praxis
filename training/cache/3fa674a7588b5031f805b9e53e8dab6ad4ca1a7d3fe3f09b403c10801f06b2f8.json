@@ -1,0 +1,9 @@
+{
+ "cache_key": "3fa674a7588b5031f805b9e53e8dab6ad4ca1a7d3fe3f09b403c10801f06b2f8",
+ "fetched_at": "2026-09-02T20:34:40.600452+00:00",
+ "input_hash": "0ccbcd182f3039d1e4a8870b525f121924ee5e738ff9e1a15fd904ba3a2b22b9",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please measure luminescence in well G12 of the loaded plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "25c66237b03a2a990eddf8451e88e92d6b7ece7189e15225026e1e354f3d5c3f",
+ "fetched_at": "2026-09-01T21:16:07.345873+00:00",
+ "input_hash": "99046546c14f10c358177e8fee1d42b137d28187903230b3ca16208aae27bbf6",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer the deck resource reservoir_1 to hotel_stack_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

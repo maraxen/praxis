@@ -1,0 +1,9 @@
+{
+ "cache_key": "b51af7c8a6bd78dcc75e5728591bc5e4b66ba0066abb29b944c1ab84f9590bcf",
+ "fetched_at": "2026-09-01T21:19:08.654174+00:00",
+ "input_hash": "ff31f449f3642156cc4147fea8cdf4509e4c7e01f5591ec35529772f5f184590",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the fluorescence at well A12 with an excitation wavelength of 535.0 nm and focal height of 15.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

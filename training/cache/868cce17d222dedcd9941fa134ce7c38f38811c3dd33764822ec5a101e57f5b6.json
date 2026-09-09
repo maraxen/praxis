@@ -1,0 +1,9 @@
+{
+ "cache_key": "868cce17d222dedcd9941fa134ce7c38f38811c3dd33764822ec5a101e57f5b6",
+ "fetched_at": "2026-09-01T21:09:18.728525+00:00",
+ "input_hash": "0c1ea8006a34f5e199873d526389861d2a00b9af03e22da0f6eaa56905ee54d6",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Dispense 75 microliters, 15 microliters, and 150 microliters into the same well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

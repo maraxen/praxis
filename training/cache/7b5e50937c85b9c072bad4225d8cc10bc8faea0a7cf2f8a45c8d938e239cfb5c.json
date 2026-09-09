@@ -1,0 +1,9 @@
+{
+ "cache_key": "7b5e50937c85b9c072bad4225d8cc10bc8faea0a7cf2f8a45c8d938e239cfb5c",
+ "fetched_at": "2026-09-02T15:29:38.766967+00:00",
+ "input_hash": "72817743af1ddc2a20c04a2bd54c33d6ba5d381d232498037f131a65a8be4ce1",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Carry the liquid from well A1 of plate 1 to the destination well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

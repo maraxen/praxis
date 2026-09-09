@@ -1,0 +1,9 @@
+{
+ "cache_key": "3c70592257cfff5f5f87c72031d5a2c007d6ab43e558d7a5f1e19b21376fc399",
+ "fetched_at": "2026-09-02T15:01:41.017453+00:00",
+ "input_hash": "48eba6c46632975fc25482404a4a87b029686baae1cb99db03a9cfba32892af5",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Take up 100 microliters from well G4 on plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

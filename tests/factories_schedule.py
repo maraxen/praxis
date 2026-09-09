@@ -14,6 +14,19 @@ from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.domain.machine import Machine
+from praxis.backend.models.domain.outputs import FunctionDataOutput
+from praxis.backend.models.domain.protocol import (
+    FunctionCallLog,
+    FunctionProtocolDefinition,
+    ProtocolRun,
+)
+from praxis.backend.models.domain.protocol_source import (
+    FileSystemProtocolSource,
+    ProtocolSourceRepository,
+)
+from praxis.backend.models.domain.resource import Resource
+from praxis.backend.models.domain.schedule import AssetReservation, ScheduleEntry
 from praxis.backend.models.enums import (
     AssetReservationStatusEnum,
     AssetType,
@@ -21,21 +34,6 @@ from praxis.backend.models.enums import (
     ScheduleStatusEnum,
     SpatialContextEnum,
 )
-from praxis.backend.models.domain.machine import Machine
-from praxis.backend.models.domain.outputs import FunctionDataOutput
-from praxis.backend.models.domain.protocol import (
-  ProtocolRun,
-)
-from praxis.backend.models.domain.protocol_source import (
-        ProtocolSourceRepository,
-        FileSystemProtocolSource,
-)
-from praxis.backend.models.domain.protocol import (
-        FunctionProtocolDefinition,
-        FunctionCallLog,
-)
-from praxis.backend.models.domain.resource import Resource
-from praxis.backend.models.domain.schedule import AssetReservation, ScheduleEntry
 from praxis.backend.utils.uuid import uuid7
 
 

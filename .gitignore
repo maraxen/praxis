@@ -172,3 +172,26 @@ session-*.md
 # P1.5 repo hygiene (debt-1292)
 .benchmarks/
 tmp/
+
+# --- web-repl vendored theme assets (defensive) ------------------------------
+# The patterns above (dist/, build/, lib/, wheels/, ...) are BARE, so they match
+# at ANY depth -- ADR 260817 Sec 5.4 records this exact hazard class, where a
+# vendored subtree got silently un-tracked and shipped as a dead page. The
+# praxis theme ships committed bytes (fonts, mark, stylesheet) that MUST reach
+# dist/, so pin them explicitly against any future bare pattern.
+!web-repl/overlay/assets/theme/**
+
+# P2.6 fine-tune artifacts: checkpoints (~540 MB each) and cluster outputs stay out of git;
+# manifests + eval reports are committed under training/out/p26 and training/eval/reports.
+training/out/checkpoints/
+/outputs/
+# (root-anchored: training/eval/outputs/ holds the committed generation dumps)
+scripts/scratch/
+
+# plr-sema: content-addressed report cache (#4922, spec 260903 §13.3.3).
+# Already covered by the bare `.cache` pattern above, but pinned explicitly
+# here too since the spec is normative that this directory is never
+# $TMPDIR/a system temp dir and must not be silently emptied between runs --
+# an explicit entry documents that this is a deliberate, permanent local
+# store, not an accident the bare pattern happens to catch.
+plr-sema/.cache/

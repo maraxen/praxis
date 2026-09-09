@@ -1,0 +1,9 @@
+{
+ "cache_key": "c84db38e4065d63962e9bd6801ef2f089026f0aff012d5f9cc75cdba98e47a46",
+ "fetched_at": "2026-09-02T15:01:41.017975+00:00",
+ "input_hash": "f53ebf7c270ff685ba6f5458167da83c27a9c207184f65c368ef4e3589067228",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Draw up 50 microliters from plate 2, well H4.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

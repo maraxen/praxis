@@ -1,0 +1,9 @@
+{
+ "cache_key": "01d3bcca7394464f8b7f5c52cffc676d1a65e20e3e86b9c38ccb5424e35915bc",
+ "fetched_at": "2026-09-01T21:10:18.423528+00:00",
+ "input_hash": "ef46a2ae5e8da0e0f4110bb57992b9450057ee5e63c6bed93bcdce3df07a9cab",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer 100 microliters from plate_1.F3 to the same well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

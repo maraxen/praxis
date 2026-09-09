@@ -1,0 +1,9 @@
+{
+ "cache_key": "460badc19f1b9503936d2e7a71a1da37132f889fd0e1fa357fe21d78f6e091c4",
+ "fetched_at": "2026-09-01T21:19:40.787292+00:00",
+ "input_hash": "c0fdd73d4d68fdf15d19165b856737d267b58f16281bcc2b4aa69d99eee36c95",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the fluorescence for wells B7 and H1 at 535 nm excitation, 520 nm emission, and a focal height of 12.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

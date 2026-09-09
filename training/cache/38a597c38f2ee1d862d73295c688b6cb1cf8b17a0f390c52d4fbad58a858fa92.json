@@ -1,0 +1,9 @@
+{
+ "cache_key": "38a597c38f2ee1d862d73295c688b6cb1cf8b17a0f390c52d4fbad58a858fa92",
+ "fetched_at": "2026-09-03T15:09:42.733732+00:00",
+ "input_hash": "bf917077f516639cb01bcf7c8064d5d72e212d721d5171272923ff5c5392e462",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Got any good jokes to brighten my day?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

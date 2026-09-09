@@ -1,0 +1,6 @@
+{"allowlist": [
+  {"module": "assemble.build",
+   "imports": ["subprocess"],
+   "reason": "plr_source_sha() shells out to `git submodule status`; ingest imports only CLASS_MAP and never calls it. Reached transitively via assemble/__init__.py, which re-exports build.",
+   "proof": "test_ingest_import_purity.py::test_no_subprocess_executes"}
+]}

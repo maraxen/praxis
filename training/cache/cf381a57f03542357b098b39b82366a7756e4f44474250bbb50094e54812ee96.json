@@ -1,0 +1,9 @@
+{
+ "cache_key": "cf381a57f03542357b098b39b82366a7756e4f44474250bbb50094e54812ee96",
+ "fetched_at": "2026-09-01T21:09:52.124350+00:00",
+ "input_hash": "49bf21f96a6ad3bedab432a88945549293de8128982a31882f7963a5dfe23af1",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer liquid from plate_1.A3 into plate_2.G2 and plate_2.G10.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "706c845fd2ca1c6109ff65cda620d649cb97baa4ad43e3f95223e82c1c53a12d",
+ "fetched_at": "2026-09-01T21:18:46.210700+00:00",
+ "input_hash": "3070ae014363dd466c15d1322016e1d25c9c83b364f7162424018fa7fff2bbb0",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Perform an absorbance read on the current plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

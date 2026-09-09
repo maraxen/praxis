@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:49Z",
+ "key": "488e92c0f3d8a86ddce6bc99fca73ee664da76be4d54a98625c94eef0b995ae0",
+ "prompt_sha256": "488e92c0f3d8a86ddce6bc99fca73ee664da76be4d54a98625c94eef0b995ae0",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Dispense 100 uL into plate C1\nPlease move 100 uL to the well at plate C1\nPut 100 uL into plate C1",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "59bbb1b2724c3406df4f86f835dc5742a19adda07134f4cea09dab019997daed",
+ "fetched_at": "2026-09-01T21:11:59.054881+00:00",
+ "input_hash": "571d9edc3a4c0aaacb9de5a8928ee5b07945fd75b1ff114ac8ec285f34f9a0d3",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you stamp the contents of plate_2 to plate_1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

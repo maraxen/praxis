@@ -1,0 +1,9 @@
+{
+ "cache_key": "101bb60e20e24c5db60628be6c7c592d2ca1b38491a1fbaead5a874428f7f7b9",
+ "fetched_at": "2026-09-01T21:14:12.175313+00:00",
+ "input_hash": "28cf7d4fd725328bae5033e2a732e9610d1dc77e7ecb3a0b3a88f50ffece8de4",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Eject the tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

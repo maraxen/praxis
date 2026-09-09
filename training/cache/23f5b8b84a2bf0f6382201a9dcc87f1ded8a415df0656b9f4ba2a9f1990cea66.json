@@ -1,0 +1,9 @@
+{
+ "cache_key": "23f5b8b84a2bf0f6382201a9dcc87f1ded8a415df0656b9f4ba2a9f1990cea66",
+ "fetched_at": "2026-09-01T21:18:22.289390+00:00",
+ "input_hash": "b2a0bb66a4a0ba9c051c60a63e12b9bd658c5a6f3086a52eb59a8920cd340d10",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please transfer lid_1 to reservoir_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

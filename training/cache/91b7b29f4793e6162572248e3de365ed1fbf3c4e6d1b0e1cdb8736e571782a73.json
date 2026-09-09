@@ -1,0 +1,9 @@
+{
+ "cache_key": "91b7b29f4793e6162572248e3de365ed1fbf3c4e6d1b0e1cdb8736e571782a73",
+ "fetched_at": "2026-09-02T20:31:02.916515+00:00",
+ "input_hash": "f89fd78d7259a79c18f90dad2caa584c3bd41adfad090dd0e231c42a552efe54",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure fluorescence in wells F9 and H7 using an excitation of 535 nm, emission of 520 nm, and a focal height of 12.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

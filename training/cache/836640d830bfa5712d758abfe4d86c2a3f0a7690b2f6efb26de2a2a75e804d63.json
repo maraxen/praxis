@@ -1,0 +1,9 @@
+{
+ "cache_key": "836640d830bfa5712d758abfe4d86c2a3f0a7690b2f6efb26de2a2a75e804d63",
+ "fetched_at": "2026-08-25T22:08:14.380792+00:00",
+ "input_hash": "7c27cc259b116e5475028cf2abcbbe8957e71f29338458acc7909853ce46306c",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Dispense 50.0 microliters from plate_2_A7.\",\n\"clarification\": null\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

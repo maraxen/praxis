@@ -1,0 +1,9 @@
+{
+ "cache_key": "ae034f833dec1040cd972873436330a4a4a4c193fd18526dfd6cd576b8ae622f",
+ "fetched_at": "2026-09-03T14:59:06.832355+00:00",
+ "input_hash": "a3c47bc8f1eb02406ff9bfb040caf9b4d273480ef4a705de956f6a3289036ef8",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Give well C1 a quick mix by drawing and dispensing the liquid a couple of times, then transfer 15 uL into the assay plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

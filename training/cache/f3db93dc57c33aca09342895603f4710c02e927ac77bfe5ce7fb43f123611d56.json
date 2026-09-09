@@ -1,0 +1,9 @@
+{
+ "cache_key": "f3db93dc57c33aca09342895603f4710c02e927ac77bfe5ce7fb43f123611d56",
+ "fetched_at": "2026-09-02T15:24:39.616852+00:00",
+ "input_hash": "577bdd90297b7151340430a85ff4b1ff8624d1f0a7db70cdad2e4f4e27518709",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Carry 50 microliters from well G9 of plate 2 to the same well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

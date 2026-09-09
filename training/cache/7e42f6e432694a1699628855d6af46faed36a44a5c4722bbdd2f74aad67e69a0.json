@@ -1,0 +1,9 @@
+{
+ "cache_key": "7e42f6e432694a1699628855d6af46faed36a44a5c4722bbdd2f74aad67e69a0",
+ "fetched_at": "2026-09-02T20:25:31.802208+00:00",
+ "input_hash": "c17d80a95e1f01d9ddf38c1adfde6557a42907ce36c83769e4528ef1d20e06a4",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Scan fluorescence in wells G3 and G4 using an excitation of 560 nm and a focal height of 15 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

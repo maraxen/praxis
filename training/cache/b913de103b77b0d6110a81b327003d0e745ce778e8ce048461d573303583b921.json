@@ -1,0 +1,9 @@
+{
+ "cache_key": "b913de103b77b0d6110a81b327003d0e745ce778e8ce048461d573303583b921",
+ "fetched_at": "2026-09-02T15:01:41.017927+00:00",
+ "input_hash": "092ff8dffb8712bdc52c4ff945ff7a6d130882784387158b7da2f62daaa6345c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Take up 15 microliters out of well G7 of plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

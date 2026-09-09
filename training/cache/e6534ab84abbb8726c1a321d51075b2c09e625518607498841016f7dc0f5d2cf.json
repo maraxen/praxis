@@ -1,0 +1,9 @@
+{
+ "cache_key": "e6534ab84abbb8726c1a321d51075b2c09e625518607498841016f7dc0f5d2cf",
+ "fetched_at": "2026-08-25T22:08:31.970485+00:00",
+ "input_hash": "6fe5a003531ec82d61e8d2c46629cdfee5839004a51a8749cefe57142f9a1615",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Please transfer the liquid from plate_1_C5 to the plate.\",\n\"clarification\": \"Which specific destination well or wells should I transfer to?\"\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

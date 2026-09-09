@@ -1,0 +1,9 @@
+{
+ "cache_key": "23950c487211870d57c1cb8d8ceb1f7b57a9c144d1460a052f1bacb02738ee0c",
+ "fetched_at": "2026-09-02T20:25:31.802052+00:00",
+ "input_hash": "5e5a1e31acfc8273bcc5d1216c6d11ed54a746c0c54c0c9bf839ee87e06cccf0",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Scan fluorescence on the plate with an excitation of 535 nm and a focal height of 10 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

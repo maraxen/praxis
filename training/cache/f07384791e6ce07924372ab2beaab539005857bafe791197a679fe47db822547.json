@@ -1,0 +1,9 @@
+{
+ "cache_key": "f07384791e6ce07924372ab2beaab539005857bafe791197a679fe47db822547",
+ "fetched_at": "2026-09-02T16:19:30.141515+00:00",
+ "input_hash": "c73824d9905bf8d5f874e6a608eac122e25a26c7a1a5df028a014c8fd9057810",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please read the OD across the plate loaded in the reader.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

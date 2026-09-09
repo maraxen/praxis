@@ -1,0 +1,9 @@
+{
+ "cache_key": "74d24ddc6074c15b007f660b6b912f7640eeb84a7640ad5ac809380941fa9de1",
+ "fetched_at": "2026-09-01T21:19:08.653717+00:00",
+ "input_hash": "01f85a952ea63cd6d4cc9d48b67cba18de2547d04b74b6cc8d51a70acaa91242",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure the absorbance at 600.0 nm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "1d2180581159f8b288b47bf666f29f06ea695e4b2eba95cf3f3718d5af7971d3",
+ "fetched_at": "2026-09-02T14:53:49.354233+00:00",
+ "input_hash": "95f5cb3cbf770811e5de6edbc9d85f4d850fd06f5fce25abd8dbeb298cf3fd9a",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please aspirate 15 microliters from the source well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

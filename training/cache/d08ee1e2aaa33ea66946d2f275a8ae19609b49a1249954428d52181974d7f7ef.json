@@ -1,0 +1,9 @@
+{
+ "cache_key": "d08ee1e2aaa33ea66946d2f275a8ae19609b49a1249954428d52181974d7f7ef",
+ "fetched_at": "2026-08-25T22:08:18.543431+00:00",
+ "input_hash": "fced5f2147de2dbe35db0037e816b6d3609a3287dd23e2d626394ad69950c7cf",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Dispense 20.0 microliters into the destination well.\",\n\"clarification\": null\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

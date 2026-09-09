@@ -1,0 +1,721 @@
+{
+  "report_kind": "praxis-baseline-eval-report",
+  "clarify_scope_note": "clarify_expected/predicted cover OUT-OF-SURFACE (abstention) and MISSING-SLOT (derived missing_required) classes only; ambiguous-referent detection needs live kernel grounding (cue 2, F1-rev2/C-M1) and is verified at P2.9 integration, not in this static harness",
+  "mode": "local_inference",
+  "labeled_as": "LIVE LOCAL INFERENCE",
+  "base_revision": "outputs/p26c/A/checkpoint@local",
+  "model_label": "p26 arm A seed 0 recipe 0.1.0 sha256:f8d247d16078127ee441dda83cb78698b6c6efaa67f02f07c392851bc305a494",
+  "inputs": {
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "dtype_resolved": "torch.bfloat16",
+    "split": "all",
+    "max_new_tokens": 128,
+    "dump_outputs": "outputs/p26c/A/eval_dump.json"
+  },
+  "n_examples": 228,
+  "exact_match_accuracy": {
+    "value": 0.6710526315789473,
+    "successes": 153,
+    "n": 228,
+    "wilson95": [
+      0.6076852887620642,
+      0.7287533613437446
+    ]
+  },
+  "clarify_recall": {
+    "value": 0.8977272727272727,
+    "successes": 79,
+    "n": 88,
+    "wilson95": [
+      0.8169436387288543,
+      0.9452499202940893
+    ]
+  },
+  "clarify_precision": {
+    "value": 0.8777777777777778,
+    "successes": 79,
+    "n": 90,
+    "wilson95": [
+      0.7942788321491628,
+      0.9303573947648801
+    ]
+  },
+  "clarify_confusion": {
+    "true_positive": 79,
+    "false_negative": 9,
+    "false_positive": 11,
+    "true_negative": 129
+  },
+  "tripwire_out_of_surface_tool_calls": 3,
+  "per_class": {
+    "ambiguous_referent": {
+      "n": 33,
+      "exact_match": {
+        "value": 0.6060606060606061,
+        "successes": 20,
+        "n": 33,
+        "wilson95": [
+          0.4368612298744975,
+          0.7531486565690387
+        ]
+      },
+      "clarify_expected": 0,
+      "clarify_predicted": 4
+    },
+    "clean_parse": {
+      "n": 107,
+      "exact_match": {
+        "value": 0.5794392523364486,
+        "successes": 62,
+        "n": 107,
+        "wilson95": [
+          0.48476049267892807,
+          0.6686134798580746
+        ]
+      },
+      "clarify_expected": 0,
+      "clarify_predicted": 7
+    },
+    "missing_slot": {
+      "n": 44,
+      "exact_match": {
+        "value": 0.6818181818181818,
+        "successes": 30,
+        "n": 44,
+        "wilson95": [
+          0.5344559218708982,
+          0.7999909221014179
+        ]
+      },
+      "clarify_expected": 44,
+      "clarify_predicted": 37
+    },
+    "out_of_surface": {
+      "n": 44,
+      "exact_match": {
+        "value": 0.9318181818181818,
+        "successes": 41,
+        "n": 44,
+        "wilson95": [
+          0.8177744823809475,
+          0.9765367720533032
+        ]
+      },
+      "clarify_expected": 44,
+      "clarify_predicted": 42
+    }
+  },
+  "exact_match_failures": [
+    {
+      "record_id": "cov-0094-dispense__missing-slot-14",
+      "class": "missing_slot",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'plate_1'} != intended {'destination': 'plate_1.G6'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='plate_1', resource_type='container'),) != intended (DerivedSlot(arg_name='destination', reference='plate_1.G6', resource_type='container'),)"
+      ]
+    },
+    {
+      "record_id": "cov-0173-transfer__ambiguous-referent-13",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the destination well', 'source': 'plate_1[\"A1\"]'} != intended {'destination': 'the destination well', 'source': 'plate_1.A1'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the destination well', resource_type='container'), DerivedSlot(arg_name='source', reference='plate_1[\"A1\"]', resource_type='container')) != intended (DerivedSlot(arg_name='destination', reference='the destination well', resource_type='container'), DerivedSlot(arg_name='source', reference='plate_1.A1', resource_type='container'))"
+      ]
+    },
+    {
+      "record_id": "cov-0367-drop_tips__ambiguous-referent-12",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "params mismatch: 0: predicted {} != intended {'destination': 'the tip rack'}",
+        "0: missing_required derived ('destination',) != intended ()",
+        "0: unresolved_slots derived () != intended (DerivedSlot(arg_name='destination', reference='the tip rack', resource_type='tip_spot'),)"
+      ]
+    },
+    {
+      "record_id": "cov-0482-move_plate__missing-slot-12",
+      "class": "missing_slot",
+      "reasons": [
+        "name mismatch: 0: predicted 'move_resource' != intended 'move_plate'",
+        "0: missing_required derived ('resource',) != intended ('plate',)"
+      ]
+    },
+    {
+      "record_id": "cov-0483-move_plate__missing-slot-13",
+      "class": "missing_slot",
+      "reasons": [
+        "name mismatch: 0: predicted 'move_resource' != intended 'move_plate'",
+        "0: missing_required derived ('resource',) != intended ('plate',)"
+      ]
+    },
+    {
+      "record_id": "cov-0484-move_plate__missing-slot-14",
+      "class": "missing_slot",
+      "reasons": [
+        "name mismatch: 0: predicted 'move_resource' != intended 'move_plate'",
+        "0: missing_required derived ('resource',) != intended ('plate',)"
+      ]
+    },
+    {
+      "record_id": "cov-0547-move_lid__missing-slot-12",
+      "class": "missing_slot",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'scale_station_1', 'lid': 'the lid'} != intended {'destination': 'scale_station_1'}",
+        "0: missing_required derived () != intended ('lid',)",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='scale_station_1', resource_type='resource'), DerivedSlot(arg_name='lid', reference='the lid', resource_type='lid')) != intended (DerivedSlot(arg_name='destination', reference='scale_station_1', resource_type='resource'),)"
+      ]
+    },
+    {
+      "record_id": "cov-0548-move_lid__missing-slot-13",
+      "class": "missing_slot",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'reservoir_1', 'lid': 'the lid'} != intended {'destination': 'reservoir_1'}",
+        "0: missing_required derived () != intended ('lid',)",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='reservoir_1', resource_type='resource'), DerivedSlot(arg_name='lid', reference='the lid', resource_type='lid')) != intended (DerivedSlot(arg_name='destination', reference='reservoir_1', resource_type='resource'),)"
+      ]
+    },
+    {
+      "record_id": "cov-0549-move_lid__missing-slot-14",
+      "class": "missing_slot",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'reservoir_1', 'lid': 'the lid'} != intended {'destination': 'reservoir_1'}",
+        "0: missing_required derived () != intended ('lid',)",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='reservoir_1', resource_type='resource'), DerivedSlot(arg_name='lid', reference='the lid', resource_type='lid')) != intended (DerivedSlot(arg_name='destination', reference='reservoir_1', resource_type='resource'),)"
+      ]
+    },
+    {
+      "record_id": "cov-0609-move_lid__ambiguous-referent-14",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'scale_station_1', 'lid': 'plate_lid'} != intended {'destination': 'scale_station_1', 'lid': 'the lid'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='scale_station_1', resource_type='resource'), DerivedSlot(arg_name='lid', reference='plate_lid', resource_type='lid')) != intended (DerivedSlot(arg_name='destination', reference='scale_station_1', resource_type='resource'), DerivedSlot(arg_name='lid', reference='the lid', resource_type='lid'))"
+      ]
+    },
+    {
+      "record_id": "golden-ambig-ref-01",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the other plate', 'source': 'the first plate'} != intended {'destination': 'the other plate', 'source': 'it', 'volume_ul': 20}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the other plate', resource_type='container'), DerivedSlot(arg_name='source', reference='the first plate', resource_type='container')) != intended (DerivedSlot(arg_name='destination', reference='the other plate', resource_type='container'), DerivedSlot(arg_name='source', reference='it', resource_type='container'))"
+      ]
+    },
+    {
+      "record_id": "golden-ambig-ref-02",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the well', 'volume_ul': 80} != intended {'destination': 'there', 'volume_ul': 80}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the well', resource_type='container'),) != intended (DerivedSlot(arg_name='destination', reference='there', resource_type='container'),)"
+      ]
+    },
+    {
+      "record_id": "golden-ambig-ref-03",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'reader_station_1', 'plate': 'the plate'} != intended {'destination': 'the reader station', 'plate': 'that plate'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='reader_station_1', resource_type='resource'), DerivedSlot(arg_name='plate', reference='the plate', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='the reader station', resource_type='resource'), DerivedSlot(arg_name='plate', reference='that plate', resource_type='plate'))"
+      ]
+    },
+    {
+      "record_id": "golden-ambig-ref-06",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "params mismatch: 0: predicted {} != intended {'destination': 'where they came from'}",
+        "0: missing_required derived ('destination',) != intended ()",
+        "0: unresolved_slots derived () != intended (DerivedSlot(arg_name='destination', reference='where they came from', resource_type='tip_spot'),)"
+      ]
+    },
+    {
+      "record_id": "golden-ambig-ref-07",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the same well as the plate', 'source': 'the same well as the plate', 'volume_ul': 35.0} != intended {'destination': 'the matching plate', 'source': 'it', 'volume_ul': 35}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the same well as the plate', resource_type='plate'), DerivedSlot(arg_name='source', reference='the same well as the plate', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='the matching plate', resource_type='plate'), DerivedSlot(arg_name='source', reference='it', resource_type='plate'))"
+      ]
+    },
+    {
+      "record_id": "golden-ambig-ref-08",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the deck floor'} != intended {'destination': 'wherever it belongs', 'lid': 'the lid'}",
+        "0: missing_required derived ('lid',) != intended ()",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the deck floor', resource_type='resource'),) != intended (DerivedSlot(arg_name='destination', reference='wherever it belongs', resource_type='resource'), DerivedSlot(arg_name='lid', reference='the lid', resource_type='lid'))"
+      ]
+    },
+    {
+      "record_id": "golden-ambig-ref-09",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the plate', 'volume_ul': 45} != intended {'destination': 'the plate we just talked about', 'volume_ul': 45}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the plate', resource_type='container'),) != intended (DerivedSlot(arg_name='destination', reference='the plate we just talked about', resource_type='container'),)"
+      ]
+    },
+    {
+      "record_id": "golden-ambig-ref-10",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the_other_plate_column_2', 'source': 'column_2', 'volume_ul': 10.0} != intended {'destination': 'the other plate', 'source': 'column 2', 'volume_ul': 10}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the_other_plate_column_2', resource_type='container'), DerivedSlot(arg_name='source', reference='column_2', resource_type='container')) != intended (DerivedSlot(arg_name='destination', reference='the other plate', resource_type='container'), DerivedSlot(arg_name='source', reference='column 2', resource_type='container'))"
+      ]
+    },
+    {
+      "record_id": "golden-ambig-ref-11",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "name mismatch: 0: predicted 'drop_tips' != intended 'discard_tips'",
+        "params mismatch: 0: predicted {} != intended {'at': 'the usual spot', 'what': 'tips'}",
+        "0: missing_required derived ('destination',) != intended ()",
+        "0: unresolved_slots derived () != intended (DerivedSlot(arg_name='at', reference='the usual spot', resource_type='tip_spot'),)"
+      ]
+    },
+    {
+      "record_id": "golden-ambig-ref-12",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'storage_well', 'resource': 'the leftover tubes'} != intended {'destination': 'storage', 'resource': 'the leftover tubes'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='storage_well', resource_type='resource'), DerivedSlot(arg_name='resource', reference='the leftover tubes', resource_type='resource')) != intended (DerivedSlot(arg_name='destination', reference='storage', resource_type='resource'), DerivedSlot(arg_name='resource', reference='the leftover tubes', resource_type='resource'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-aspirate-03",
+      "class": "clean_parse",
+      "reasons": [
+        "sequence length 0 != intended 1"
+      ]
+    },
+    {
+      "record_id": "golden-clean-aspirate-04",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'source': 'tube_rack.B3', 'volume_ul': 10.0} != intended {'source': 'tube_rack_B3', 'volume_ul': 10}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='source', reference='tube_rack.B3', resource_type='container'),) != intended (DerivedSlot(arg_name='source', reference='tube_rack_B3', resource_type='container'),)"
+      ]
+    },
+    {
+      "record_id": "golden-clean-discard_tips-01",
+      "class": "clean_parse",
+      "reasons": [
+        "name mismatch: 0: predicted 'drop_tips' != intended 'discard_tips'",
+        "params mismatch: 0: predicted {} != intended {'what': 'tips'}",
+        "0: missing_required derived ('destination',) != intended ()"
+      ]
+    },
+    {
+      "record_id": "golden-clean-discard_tips-02",
+      "class": "clean_parse",
+      "reasons": [
+        "name mismatch: 0: predicted 'drop_tips' != intended 'discard_tips'",
+        "params mismatch: 0: predicted {} != intended {'what': 'tips'}",
+        "0: missing_required derived ('destination',) != intended ()"
+      ]
+    },
+    {
+      "record_id": "golden-clean-discard_tips-03",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {} != intended {'what': 'tips'}"
+      ]
+    },
+    {
+      "record_id": "golden-clean-discard_tips-04",
+      "class": "clean_parse",
+      "reasons": [
+        "name mismatch: 0: predicted 'drop_tips' != intended 'discard_tips'",
+        "params mismatch: 0: predicted {} != intended {'what': 'tips'}",
+        "0: missing_required derived ('destination',) != intended ()"
+      ]
+    },
+    {
+      "record_id": "golden-clean-dispense-01",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'plate_A1.A1', 'volume_ul': 50.0} != intended {'destination': 'destination_plate_A1', 'volume_ul': 50}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='plate_A1.A1', resource_type='container'),) != intended (DerivedSlot(arg_name='destination', reference='destination_plate_A1', resource_type='container'),)"
+      ]
+    },
+    {
+      "record_id": "golden-clean-dispense-02",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the assay plate column 1', 'volume_ul': 200} != intended {'destination': 'assay_plate_col1', 'volume_ul': 200}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the assay plate column 1', resource_type='container'),) != intended (DerivedSlot(arg_name='destination', reference='assay_plate_col1', resource_type='container'),)"
+      ]
+    },
+    {
+      "record_id": "golden-clean-dispense-03",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the waste plate', 'volume_ul': 15} != intended {'destination': 'waste_plate_A1', 'volume_ul': 15}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the waste plate', resource_type='container'),) != intended (DerivedSlot(arg_name='destination', reference='waste_plate_A1', resource_type='container'),)"
+      ]
+    },
+    {
+      "record_id": "golden-clean-dispense-04",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'microplate C6', 'volume_ul': 75.0} != intended {'destination': 'microplate_C6', 'volume_ul': 75}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='microplate C6', resource_type='container'),) != intended (DerivedSlot(arg_name='destination', reference='microplate_C6', resource_type='container'),)"
+      ]
+    },
+    {
+      "record_id": "golden-clean-drop_tips-01",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'trash_well'} != intended {'destination': 'trash'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='trash_well', resource_type='tip_spot'),) != intended (DerivedSlot(arg_name='destination', reference='trash', resource_type='tip_spot'),)"
+      ]
+    },
+    {
+      "record_id": "golden-clean-drop_tips-02",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'tip_rack_3'} != intended {'destination': 'tip_rack_3_F7'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='tip_rack_3', resource_type='tip_spot'),) != intended (DerivedSlot(arg_name='destination', reference='tip_rack_3_F7', resource_type='tip_spot'),)"
+      ]
+    },
+    {
+      "record_id": "golden-clean-drop_tips-03",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the waste bin'} != intended {'destination': 'waste_bin'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the waste bin', resource_type='tip_spot'),) != intended (DerivedSlot(arg_name='destination', reference='waste_bin', resource_type='tip_spot'),)"
+      ]
+    },
+    {
+      "record_id": "golden-clean-drop_tips-04",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'trash_slot_2'} != intended {'destination': 'disposal_rack_slot2'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='trash_slot_2', resource_type='tip_spot'),) != intended (DerivedSlot(arg_name='destination', reference='disposal_rack_slot2', resource_type='tip_spot'),)"
+      ]
+    },
+    {
+      "record_id": "golden-clean-move_lid-01",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'plate_1'} != intended {'destination': 'plate_1', 'lid': 'plate_1_lid'}",
+        "0: missing_required derived ('lid',) != intended ()",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='plate_1', resource_type='resource'),) != intended (DerivedSlot(arg_name='destination', reference='plate_1', resource_type='resource'), DerivedSlot(arg_name='lid', reference='plate_1_lid', resource_type='lid'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-move_lid-02",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'parking_stand', 'lid': 'lid'} != intended {'destination': 'parking_stand', 'lid': 'lid_3'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='parking_stand', resource_type='resource'), DerivedSlot(arg_name='lid', reference='lid', resource_type='lid')) != intended (DerivedSlot(arg_name='destination', reference='parking_stand', resource_type='resource'), DerivedSlot(arg_name='lid', reference='lid_3', resource_type='lid'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-move_lid-03",
+      "class": "clean_parse",
+      "reasons": [
+        "name mismatch: 0: predicted 'read_absorbance' != intended 'move_lid'",
+        "params mismatch: 0: predicted {} != intended {'destination': 'assay_plate', 'lid': 'assay_plate_lid'}",
+        "0: missing_required derived ('wavelength_nm',) != intended ()",
+        "0: unresolved_slots derived () != intended (DerivedSlot(arg_name='destination', reference='assay_plate', resource_type='resource'), DerivedSlot(arg_name='lid', reference='assay_plate_lid', resource_type='lid'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-move_lid-04",
+      "class": "clean_parse",
+      "reasons": [
+        "unknown/excluded tool name 'drop_lid' (not clarify-routing)",
+        "emitted call(s) but all to unknown/excluded verbs"
+      ]
+    },
+    {
+      "record_id": "golden-clean-move_plate-01",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'reader', 'plate': 'plate_2'} != intended {'destination': 'plate_reader', 'plate': 'plate_2'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='reader', resource_type='resource'), DerivedSlot(arg_name='plate', reference='plate_2', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='plate_reader', resource_type='resource'), DerivedSlot(arg_name='plate', reference='plate_2', resource_type='plate'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-move_plate-02",
+      "class": "clean_parse",
+      "reasons": [
+        "name mismatch: 0: predicted 'stamp' != intended 'move_plate'",
+        "params mismatch: 0: predicted {'destination': 'the shaker platform', 'source': 'the assay plate'} != intended {'destination': 'shaker_platform', 'plate': 'assay_plate'}",
+        "0: missing_required derived ('volume_ul',) != intended ()",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the shaker platform', resource_type='plate'), DerivedSlot(arg_name='source', reference='the assay plate', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='shaker_platform', resource_type='resource'), DerivedSlot(arg_name='plate', reference='assay_plate', resource_type='plate'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-move_plate-03",
+      "class": "clean_parse",
+      "reasons": [
+        "name mismatch: 0: predicted 'discard_tips' != intended 'move_plate'",
+        "params mismatch: 0: predicted {} != intended {'destination': 'storage_stack', 'plate': 'waste_plate'}",
+        "0: unresolved_slots derived () != intended (DerivedSlot(arg_name='destination', reference='storage_stack', resource_type='resource'), DerivedSlot(arg_name='plate', reference='waste_plate', resource_type='plate'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-move_plate-04",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'hotel_one', 'plate': 'PCR plate'} != intended {'destination': 'hotel_1', 'plate': 'pcr_plate'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='hotel_one', resource_type='resource'), DerivedSlot(arg_name='plate', reference='PCR plate', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='hotel_1', resource_type='resource'), DerivedSlot(arg_name='plate', reference='pcr_plate', resource_type='plate'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-move_resource-01",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'hotel', 'resource': 'the reagent reservoir'} != intended {'destination': 'hotel_slot3', 'resource': 'reagent_reservoir'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='hotel', resource_type='resource'), DerivedSlot(arg_name='resource', reference='the reagent reservoir', resource_type='resource')) != intended (DerivedSlot(arg_name='destination', reference='hotel_slot3', resource_type='resource'), DerivedSlot(arg_name='resource', reference='reagent_reservoir', resource_type='resource'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-move_resource-02",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'incubator slot 1', 'resource': 'tube_rack_2'} != intended {'destination': 'incubator_slot1', 'resource': 'tube_rack_2'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='incubator slot 1', resource_type='resource'), DerivedSlot(arg_name='resource', reference='tube_rack_2', resource_type='resource')) != intended (DerivedSlot(arg_name='destination', reference='incubator_slot1', resource_type='resource'), DerivedSlot(arg_name='resource', reference='tube_rack_2', resource_type='resource'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-move_resource-03",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'shelfB', 'resource': 'tip_boxes'} != intended {'destination': 'shelf_b', 'resource': 'tip_boxes'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='shelfB', resource_type='resource'), DerivedSlot(arg_name='resource', reference='tip_boxes', resource_type='resource')) != intended (DerivedSlot(arg_name='destination', reference='shelf_b', resource_type='resource'), DerivedSlot(arg_name='resource', reference='tip_boxes', resource_type='resource'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-move_resource-04",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the park', 'resource': 'reservoir_alpha'} != intended {'destination': 'park_position', 'resource': 'reservoir_alpha'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the park', resource_type='resource'), DerivedSlot(arg_name='resource', reference='reservoir_alpha', resource_type='resource')) != intended (DerivedSlot(arg_name='destination', reference='park_position', resource_type='resource'), DerivedSlot(arg_name='resource', reference='reservoir_alpha', resource_type='resource'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-pick_up_tips-01",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'at': ['tip_rack_1[\"A1\"]']} != intended {'at': ['tip_rack_1_A1']}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='at', reference='tip_rack_1[\"A1\"]', resource_type='tip_spot'),) != intended (DerivedSlot(arg_name='at', reference='tip_rack_1_A1', resource_type='tip_spot'),)"
+      ]
+    },
+    {
+      "record_id": "golden-clean-pick_up_tips-02",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'at': ['the 96 tip rack column 12']} != intended {'at': ['tip_rack_96_col12']}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='at', reference='the 96 tip rack column 12', resource_type='tip_spot'),) != intended (DerivedSlot(arg_name='at', reference='tip_rack_96_col12', resource_type='tip_spot'),)"
+      ]
+    },
+    {
+      "record_id": "golden-clean-pick_up_tips-03",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'at': ['filter_tip_box_row_D[0]']} != intended {'at': ['filter_tip_box_D1', 'filter_tip_box_D2', 'filter_tip_box_D3', 'filter_tip_box_D4']}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='at', reference='filter_tip_box_row_D[0]', resource_type='tip_spot'),) != intended (DerivedSlot(arg_name='at', reference='filter_tip_box_D1', resource_type='tip_spot'), DerivedSlot(arg_name='at', reference='filter_tip_box_D2', resource_type='tip_spot'), DerivedSlot(arg_name='at', reference='filter_tip_box_D3', resource_type='tip_spot'), DerivedSlot(arg_name='at', reference='filter_tip_box_D4', resource_type='tip_spot'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-pick_up_tips-04",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'at': ['box[\"C4\"]']} != intended {'at': ['tip_box_2_C4']}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='at', reference='box[\"C4\"]', resource_type='tip_spot'),) != intended (DerivedSlot(arg_name='at', reference='tip_box_2_C4', resource_type='tip_spot'),)"
+      ]
+    },
+    {
+      "record_id": "golden-clean-read_absorbance-02",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'at': ['A1', 'A6'], 'wavelength_nm': 450.0} != intended {'at': ['A1', 'A2', 'A3', 'A4', 'A5', 'A6'], 'wavelength_nm': 450}"
+      ]
+    },
+    {
+      "record_id": "golden-clean-read_absorbance-03",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'wavelength_nm': 595.0} != intended {'at': ['A12', 'B12', 'C12', 'D12', 'E12', 'F12', 'G12', 'H12'], 'wavelength_nm': 595}"
+      ]
+    },
+    {
+      "record_id": "golden-clean-read_fluorescence-02",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'at': ['B2', 'B6'], 'emission_nm': 488.0, 'excitation_nm': 533.0, 'focal_height_mm': 18.5} != intended {'at': ['B2', 'B3', 'B4', 'B5', 'B6'], 'emission_nm': 533, 'excitation_nm': 488, 'focal_height_mm': 18.5}"
+      ]
+    },
+    {
+      "record_id": "golden-clean-read_fluorescence-03",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'at': ['column_3'], 'emission_nm': 590.0, 'excitation_nm': 540.0, 'focal_height_mm': 15.0} != intended {'at': ['A3', 'B3', 'C3', 'D3', 'E3', 'F3', 'G3', 'H3'], 'emission_nm': 590, 'excitation_nm': 540, 'focal_height_mm': 15}"
+      ]
+    },
+    {
+      "record_id": "golden-clean-read_luminescence-03",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'at': ['C1.', 'C12.'], 'focal_height_mm': 9.0} != intended {'at': ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C10', 'C11', 'C12'], 'focal_height_mm': 9}"
+      ]
+    },
+    {
+      "record_id": "golden-clean-stamp-01",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the copy plate', 'source': 'the master plate', 'volume_ul': 40.0} != intended {'destination': 'copy_plate', 'source': 'master_plate', 'volume_ul': 40}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the copy plate', resource_type='plate'), DerivedSlot(arg_name='source', reference='the master plate', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='copy_plate', resource_type='plate'), DerivedSlot(arg_name='source', reference='master_plate', resource_type='plate'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-stamp-02",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the assay plate', 'source': 'the daughter plate', 'volume_ul': 30.0} != intended {'destination': 'assay_plate_v2', 'source': 'daughter_plate', 'volume_ul': 30}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the assay plate', resource_type='plate'), DerivedSlot(arg_name='source', reference='the daughter plate', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='assay_plate_v2', resource_type='plate'), DerivedSlot(arg_name='source', reference='daughter_plate', resource_type='plate'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-stamp-03",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'target_plate_1', 'source': 'source_plate_1', 'volume_ul': 25.0} != intended {'destination': 'target_plate', 'source': 'source_plate', 'volume_ul': 25}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='target_plate_1', resource_type='plate'), DerivedSlot(arg_name='source', reference='source_plate_1', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='target_plate', resource_type='plate'), DerivedSlot(arg_name='source', reference='source_plate', resource_type='plate'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-stamp-04",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'test_plate.60', 'source': 'test_plate.60', 'volume_ul': 60} != intended {'destination': 'test_plate', 'source': 'dilution_series', 'volume_ul': 60}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='test_plate.60', resource_type='plate'), DerivedSlot(arg_name='source', reference='test_plate.60', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='test_plate', resource_type='plate'), DerivedSlot(arg_name='source', reference='dilution_series', resource_type='plate'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-transfer-01",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'plate[\"A1\"]', 'source': 'plate[\"A1\"]', 'volume_ul': 20.0} != intended {'destination': 'plate_B_A1', 'source': 'plate_A_H12', 'volume_ul': 20}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='plate[\"A1\"]', resource_type='container'), DerivedSlot(arg_name='source', reference='plate[\"A1\"]', resource_type='container')) != intended (DerivedSlot(arg_name='destination', reference='plate_B_A1', resource_type='container'), DerivedSlot(arg_name='source', reference='plate_A_H12', resource_type='container'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-transfer-02",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the receiver plate', 'source': 'the donor plate', 'volume_ul': 30.0} != intended {'destination': 'receiver_plate', 'source': 'donor_plate', 'volume_ul': 30}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the receiver plate', resource_type='container'), DerivedSlot(arg_name='source', reference='the donor plate', resource_type='container')) != intended (DerivedSlot(arg_name='destination', reference='receiver_plate', resource_type='container'), DerivedSlot(arg_name='source', reference='donor_plate', resource_type='container'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-transfer-03",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'standards plate[A1]', 'source': 'calibrator_1[A1]', 'volume_ul': 50.0} != intended {'destination': 'standards_plate_A1', 'source': 'calibrator_1', 'volume_ul': 50}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='standards plate[A1]', resource_type='container'), DerivedSlot(arg_name='source', reference='calibrator_1[A1]', resource_type='container')) != intended (DerivedSlot(arg_name='destination', reference='standards_plate_A1', resource_type='container'), DerivedSlot(arg_name='source', reference='calibrator_1', resource_type='container'))"
+      ]
+    },
+    {
+      "record_id": "golden-clean-transfer-04",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the qPCR plate', 'source': 'sample_tube_8'} != intended {'destination': 'qpcr_plate', 'source': 'sample_tube_8', 'volume_ul': 12}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the qPCR plate', resource_type='container'), DerivedSlot(arg_name='source', reference='sample_tube_8', resource_type='container')) != intended (DerivedSlot(arg_name='destination', reference='qpcr_plate', resource_type='container'), DerivedSlot(arg_name='source', reference='sample_tube_8', resource_type='container'))"
+      ]
+    },
+    {
+      "record_id": "golden-missing-slot-02",
+      "class": "missing_slot",
+      "reasons": [
+        "sequence length 0 != intended 1"
+      ]
+    },
+    {
+      "record_id": "golden-missing-slot-03",
+      "class": "missing_slot",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the tip well', 'volume_ul': 100.0} != intended {'volume_ul': 100}",
+        "0: missing_required derived () != intended ('destination',)",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the tip well', resource_type='container'),) != intended ()"
+      ]
+    },
+    {
+      "record_id": "golden-missing-slot-04",
+      "class": "missing_slot",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'plate[\"A\"][\"H12\"]', 'source': 'plate[\"A\"][\"H12\"]', 'volume_ul': 25.0} != intended {'source': 'plate_A_H12', 'volume_ul': 25}",
+        "0: missing_required derived () != intended ('destination',)",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='plate[\"A\"][\"H12\"]', resource_type='container'), DerivedSlot(arg_name='source', reference='plate[\"A\"][\"H12\"]', resource_type='container')) != intended (DerivedSlot(arg_name='source', reference='plate_A_H12', resource_type='container'),)"
+      ]
+    },
+    {
+      "record_id": "golden-missing-slot-06",
+      "class": "missing_slot",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the copy plate', 'source': 'the master plate'} != intended {'destination': 'copy_plate', 'source': 'master_plate'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the copy plate', resource_type='plate'), DerivedSlot(arg_name='source', reference='the master plate', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='copy_plate', resource_type='plate'), DerivedSlot(arg_name='source', reference='master_plate', resource_type='plate'))"
+      ]
+    },
+    {
+      "record_id": "golden-missing-slot-07",
+      "class": "missing_slot",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'the deck_place_1', 'plate': 'plate_2'} != intended {'plate': 'plate_2'}",
+        "0: missing_required derived () != intended ('destination',)",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the deck_place_1', resource_type='resource'), DerivedSlot(arg_name='plate', reference='plate_2', resource_type='plate')) != intended (DerivedSlot(arg_name='plate', reference='plate_2', resource_type='plate'),)"
+      ]
+    },
+    {
+      "record_id": "golden-missing-slot-09",
+      "class": "missing_slot",
+      "reasons": [
+        "params mismatch: 0: predicted {'at': ['column_1']} != intended {'at': ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1']}"
+      ]
+    },
+    {
+      "record_id": "golden-missing-slot-10",
+      "class": "missing_slot",
+      "reasons": [
+        "params mismatch: 0: predicted {'emission_nm': 485.0, 'excitation_nm': 528.0, 'focal_height_mm': 528.0} != intended {'emission_nm': 528, 'excitation_nm': 485}",
+        "0: missing_required derived () != intended ('focal_height_mm',)"
+      ]
+    },
+    {
+      "record_id": "golden-out-surface-05",
+      "class": "out_of_surface",
+      "reasons": [
+        "unknown/excluded tool name 'read_sample' (not clarify-routing)",
+        "emitted call(s) but all to unknown/excluded verbs"
+      ]
+    },
+    {
+      "record_id": "golden-out-surface-10",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    },
+    {
+      "record_id": "golden-out-surface-11",
+      "class": "out_of_surface",
+      "reasons": [
+        "sequence length 1 != intended 0"
+      ]
+    },
+    {
+      "record_id": "ovl-dd18218e57",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'at': ['tip_rack[f[A{i+1]]']} != intended {'at': ['tip_rack[f\"A{i+1}\"]']}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='at', reference='tip_rack[f[A{i+1]]', resource_type='tip_spot'),) != intended (DerivedSlot(arg_name='at', reference='tip_rack[f\"A{i+1}\"]', resource_type='tip_spot'),)"
+      ]
+    },
+    {
+      "record_id": "ovl-f38dc0780c",
+      "class": "clean_parse",
+      "reasons": [
+        "name mismatch: 0: predicted 'stamp' != intended 'dispense'",
+        "params mismatch: 0: predicted {'destination': 'plate[dst_well]', 'source': 'sample_volume_ul', 'volume_ul': 'sample_volume_ul'} != intended {'destination': 'plate[dst_well]', 'volume_ul': 'sample_volume_ul'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='plate[dst_well]', resource_type='plate'), DerivedSlot(arg_name='source', reference='sample_volume_ul', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='plate[dst_well]', resource_type='container'),)"
+      ]
+    }
+  ]
+}

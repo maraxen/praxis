@@ -1,0 +1,9 @@
+{
+ "cache_key": "6ccf9c6afe85b0c95bee6ea469dfbf1f693d8ca8871a58ce13b62be473547329",
+ "fetched_at": "2026-09-02T20:18:26.704275+00:00",
+ "input_hash": "4e6432eabf9b61114601018d1e1d07d736688230960ef807f487473f9120bc25",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please cover reservoir 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

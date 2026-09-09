@@ -1,0 +1,9 @@
+{
+ "cache_key": "f5924bad04c651c19c38277b4057e71ffa1cab409c8073250f82b89781df8a5b",
+ "fetched_at": "2026-09-02T15:41:04.624974+00:00",
+ "input_hash": "8b252492f9b7aedb037698c7653848a5876c2425f893e76773178ee4a364ff06",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Duplicate the entire well map from plate 2 into plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

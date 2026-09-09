@@ -1,0 +1,9 @@
+{
+ "cache_key": "8eb4397aa97adb3143a23daf8075eaf21d13b386ff1ef7214a66e6ebaf9577eb",
+ "fetched_at": "2026-09-02T20:50:06.201984+00:00",
+ "input_hash": "a63a5b7a8d8cd478c30ae6b4acf5256f85e10bebff755da0d5e12e539e3d0794",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure luminescence in well E1 of the loaded plate at a focal height of 10.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

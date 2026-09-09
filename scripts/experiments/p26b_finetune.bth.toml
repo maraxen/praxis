@@ -1,0 +1,61 @@
+# Pre-registration sidecar for P2.6b (task 260902_p26b_surface_data, backlog 4890):
+# floor_gen surface-form data fix, arm-A recipe retrained ONCE on the frozen
+# 228-row eval split. Prereg doc:
+# .praxia/docs/preregistration/260902_p26b-floor-surface-prereg.md
+# Written BEFORE generation and training. Rule and anchors unchanged.
+
+[experiment]
+hypothesis = "Natural-phrasing training data (locations as 'well D1 of plate 1', everyday verbs) paired with canonical labels, plus the 60 repaired floor rows, teaches google/functiongemma-270m-it the surface-to-canonical mapping it lacks: on the FROZEN 228-row eval split (pin sha 8e023a33...) arm A2 recovers >= 4/6 pre-listed location-surface rows and migrates >= 11/22 verb-paraphrase rows out of the name_mismatch/no_call categories without regressing exact match (>= 0.636), clarify recall (>= 0.705) or the tripwire (<= 1); the ceiling 0.732 < T_acc 0.80 means NOT PROMOTED is expected."
+stage_name = "validation"
+novel = true
+
+[reproduction]
+reproduces_run = "76b08523-5428-4108-9b60-f1aa7dd8e593"
+tolerance_pct = 0.0
+
+# The pre-registered predictions P1-P3 all hold (P4 probe is secondary and
+# reported, not gated); promotion still decided mechanically by promotion.py.
+[outcomes.pass]
+condition = "n_eval = 228 AND surface6_recovered >= 4 AND verb_category_migrated >= 11 AND exact_match_accuracy >= 0.636 AND clarify_recall >= 0.705 AND tripwire_out_of_surface_tool_calls <= 1 AND flips_hit_to_miss <= 5"
+decision = "Data fix confirmed: report old vs new with Wilson intervals, feed A2 to promotion.py beside A; next lever is the user's call (recipe sweep / golden grammar jury item)"
+reasoning = "The mapping the model lacked was a data gap: rows requiring surface-to-canonical mapping flip while nothing else regresses"
+is_residual = false
+adversarial_check = "exact_match_accuracy >= 0.636 AND global_steps >= 300 AND n_train > 700"
+
+# Nothing regressed but the primary predictions missed: the data lane
+# changed less than pre-registered.
+[outcomes.marginal]
+condition = "n_eval = 228 AND exact_match_accuracy >= 0.636 AND clarify_recall >= 0.705 AND flips_hit_to_miss <= 5 AND (surface6_recovered < 4 OR verb_category_migrated < 11)"
+decision = "Report per-prediction; do not iterate the prompt post hoc -- a second natural-lane version is a new pre-registration"
+reasoning = "No harm, insufficient transfer: either the lane's utterances are too far from golden phrasing or one seed is too noisy to see a 6-row effect"
+is_residual = false
+
+# Regression on the frozen split (accuracy, recall, tripwire, or many
+# hit->miss flips): the natural data hurt.
+[outcomes.fail]
+condition = "n_eval <> 228 OR exact_match_accuracy < 0.636 OR clarify_recall < 0.705 OR tripwire_out_of_surface_tool_calls > 1 OR flips_hit_to_miss > 5"
+decision = "Do not promote; list every hit->miss flip by pattern; hand the data-vs-recipe call back to the user"
+reasoning = "Teaching natural surfaces moved the model off canonical rows or off abstention"
+is_residual = true
+
+[result_schema]
+arm = "str"
+seed = "int"
+recipe_version = "str"
+mode = "str"
+n_train = "int"
+negative_fraction = "float"
+max_length = "int"
+global_steps = "int"
+train_loss = "float"
+checkpoint_sha256 = "str"
+n_eval = "int"
+exact_match_accuracy = "float"
+clarify_recall = "float"
+clarify_precision = "float"
+tripwire_out_of_surface_tool_calls = "int"
+surface6_recovered = "int"
+verb_category_migrated = "int"
+flips_hit_to_miss = "int"
+probe_n = "int"
+probe_exact_match_accuracy = "float"

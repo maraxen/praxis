@@ -194,6 +194,16 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --viz-check
 
+      # Branding is a build artifact, so it is verified against the built tree
+      # rather than the sources: --check fails if the <head> block is absent,
+      # the <title> still says JupyterLite, or a <link> points at a file that
+      # is not actually on disk (a live 404 that renders as an unstyled page).
+      - name: Branding + vendored font integrity
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python web-repl/scripts/inject_branding.py --check
+          uv run python web-repl/scripts/vendor_fonts.py --check
+
       # One process per file, deliberately. These tests manipulate sys.path,
       # cache modules under synthetic names, and toggle PyLabRobot globals
       # (set_tip_tracking); sharing one interpreter invites order-dependent
@@ -207,10 +217,12 @@ jobs:
           uv run python -m pytest web-repl/tests/test_contract_covers_imports.py -q
           uv run python -m pytest web-repl/tests/test_d1_praxis_git_sha.py -q
           uv run python -m pytest web-repl/tests/test_fetch_vendored_wheels.py -q
+          uv run python -m pytest web-repl/tests/test_inject_branding.py -q
           uv run python -m pytest web-repl/tests/test_plr_contract.py -q
           uv run python -m pytest web-repl/tests/test_praxis_bootstrap_loader.py -q
           uv run python -m pytest web-repl/tests/test_rid_invariant.py -q
           uv run python -m pytest web-repl/tests/test_stamp_loader_shas.py -q
+          uv run python -m pytest web-repl/tests/test_theme_staging.py -q
           uv run python -m pytest web-repl/tests/test_transport.py -q
 
       - name: Upload diagnostics on failure

@@ -1,0 +1,9 @@
+{
+ "cache_key": "70ed6b2e63b39cbb3ffeecd4348a5eb17d742d79c635b4edbc4102020e8ae3ab",
+ "fetched_at": "2026-09-02T20:50:06.201280+00:00",
+ "input_hash": "6da4dc57ce037e6fbe788e6ffb86c9b60cea3a2a8e5e250d09fb4d2641606478",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please measure luminescence in wells D3 and E2 on the loaded plate at a focal height of 5.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

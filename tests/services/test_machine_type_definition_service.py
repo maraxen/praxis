@@ -1,4 +1,3 @@
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -62,7 +61,7 @@ async def test_discover_and_synchronize_machine_types(
         # Run sync again (update)
         mock_discovered[0].docstring = "Updated doc"
         mock_discover.return_value = mock_discovered
-        
+
         synced_update = await machine_type_definition_service.discover_and_synchronize_type_definitions()
         assert len(synced_update) == 1
         assert synced_update[0].description == "Updated doc"

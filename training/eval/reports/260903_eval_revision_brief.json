@@ -1,0 +1,1611 @@
+{
+  "report_kind": "praxis-eval-revision-brief",
+  "task_id": "260903_p26d_eval_revision_brief",
+  "n_examples": 228,
+  "checkpoints": [
+    "A",
+    "A2",
+    "A3"
+  ],
+  "today": {
+    "A": {
+      "exact_match_accuracy": {
+        "value": 0.6359649122807017,
+        "successes": 145,
+        "n": 228
+      },
+      "clarify_recall": {
+        "value": 0.8636363636363636,
+        "successes": 76,
+        "n": 88
+      },
+      "clarify_precision": {
+        "value": 0.8351648351648352,
+        "successes": 76,
+        "n": 91
+      },
+      "tripwire": 1
+    },
+    "A2": {
+      "exact_match_accuracy": {
+        "value": 0.6710526315789473,
+        "successes": 153,
+        "n": 228
+      },
+      "clarify_recall": {
+        "value": 0.9204545454545454,
+        "successes": 81,
+        "n": 88
+      },
+      "clarify_precision": {
+        "value": 0.8526315789473684,
+        "successes": 81,
+        "n": 95
+      },
+      "tripwire": 3
+    },
+    "A3": {
+      "exact_match_accuracy": {
+        "value": 0.6710526315789473,
+        "successes": 153,
+        "n": 228
+      },
+      "clarify_recall": {
+        "value": 0.8977272727272727,
+        "successes": 79,
+        "n": 88
+      },
+      "clarify_precision": {
+        "value": 0.8777777777777778,
+        "successes": 79,
+        "n": 90
+      },
+      "tripwire": 3
+    }
+  },
+  "j1_unknown_verb_abstention": {
+    "A": {
+      "today": {
+        "exact_match_accuracy": {
+          "value": 0.6359649122807017,
+          "successes": 145,
+          "n": 228
+        },
+        "clarify_recall": {
+          "value": 0.8636363636363636,
+          "successes": 76,
+          "n": 88
+        },
+        "clarify_precision": {
+          "value": 0.8351648351648352,
+          "successes": 76,
+          "n": 91
+        },
+        "tripwire": 1
+      },
+      "counterfactual": {
+        "exact_match_accuracy": {
+          "value": 0.6359649122807017,
+          "successes": 145,
+          "n": 228
+        },
+        "clarify_recall": {
+          "value": 0.8636363636363636,
+          "successes": 76,
+          "n": 88
+        },
+        "clarify_precision": {
+          "value": 0.8260869565217391,
+          "successes": 76,
+          "n": 92
+        },
+        "tripwire": 1
+      },
+      "flipped_record_ids": [],
+      "golden_out_surface_05_clears": true
+    },
+    "A2": {
+      "today": {
+        "exact_match_accuracy": {
+          "value": 0.6710526315789473,
+          "successes": 153,
+          "n": 228
+        },
+        "clarify_recall": {
+          "value": 0.9204545454545454,
+          "successes": 81,
+          "n": 88
+        },
+        "clarify_precision": {
+          "value": 0.8526315789473684,
+          "successes": 81,
+          "n": 95
+        },
+        "tripwire": 3
+      },
+      "counterfactual": {
+        "exact_match_accuracy": {
+          "value": 0.6754385964912281,
+          "successes": 154,
+          "n": 228
+        },
+        "clarify_recall": {
+          "value": 0.9318181818181818,
+          "successes": 82,
+          "n": 88
+        },
+        "clarify_precision": {
+          "value": 0.845360824742268,
+          "successes": 82,
+          "n": 97
+        },
+        "tripwire": 2
+      },
+      "flipped_record_ids": [
+        {
+          "record_id": "golden-out-surface-05",
+          "before": false,
+          "after": true
+        }
+      ],
+      "golden_out_surface_05_clears": true
+    },
+    "A3": {
+      "today": {
+        "exact_match_accuracy": {
+          "value": 0.6710526315789473,
+          "successes": 153,
+          "n": 228
+        },
+        "clarify_recall": {
+          "value": 0.8977272727272727,
+          "successes": 79,
+          "n": 88
+        },
+        "clarify_precision": {
+          "value": 0.8777777777777778,
+          "successes": 79,
+          "n": 90
+        },
+        "tripwire": 3
+      },
+      "counterfactual": {
+        "exact_match_accuracy": {
+          "value": 0.6754385964912281,
+          "successes": 154,
+          "n": 228
+        },
+        "clarify_recall": {
+          "value": 0.9090909090909091,
+          "successes": 80,
+          "n": 88
+        },
+        "clarify_precision": {
+          "value": 0.8695652173913043,
+          "successes": 80,
+          "n": 92
+        },
+        "tripwire": 2
+      },
+      "flipped_record_ids": [
+        {
+          "record_id": "golden-out-surface-05",
+          "before": false,
+          "after": true
+        }
+      ],
+      "golden_out_surface_05_clears": true
+    }
+  },
+  "j2_ambiguous_referent_vague_span": {
+    "A": {
+      "policies": {
+        "literal": {
+          "ambiguous_referent_exact_match": {
+            "successes": 18,
+            "n": 33
+          },
+          "total_exact_match_accuracy": {
+            "value": 0.6359649122807017,
+            "successes": 145,
+            "n": 228
+          },
+          "tripwire": 1
+        },
+        "normalized": {
+          "ambiguous_referent_exact_match": {
+            "successes": 18,
+            "n": 33
+          },
+          "total_exact_match_accuracy": {
+            "value": 0.6359649122807017,
+            "successes": 145,
+            "n": 228
+          },
+          "tripwire": 1
+        },
+        "any_span": {
+          "ambiguous_referent_exact_match": {
+            "successes": 30,
+            "n": 33
+          },
+          "total_exact_match_accuracy": {
+            "value": 0.6885964912280702,
+            "successes": 157,
+            "n": 228
+          },
+          "tripwire": 1
+        }
+      },
+      "moved_rows_normalized_b": [],
+      "moved_rows_any_span_c": [
+        {
+          "record_id": "cov-0172-transfer__ambiguous-referent-12",
+          "pairs": [
+            {
+              "arg_name": "source",
+              "gold_reference": "plate_2.D9",
+              "predicted_reference": "plate_2 D9"
+            }
+          ]
+        },
+        {
+          "record_id": "cov-0173-transfer__ambiguous-referent-13",
+          "pairs": [
+            {
+              "arg_name": "source",
+              "gold_reference": "plate_1.A1",
+              "predicted_reference": "plate_1[\"A1\"]"
+            }
+          ]
+        },
+        {
+          "record_id": "cov-0174-transfer__ambiguous-referent-14",
+          "pairs": [
+            {
+              "arg_name": "source",
+              "gold_reference": "plate_2.C3",
+              "predicted_reference": "plate_2 C3"
+            }
+          ]
+        },
+        {
+          "record_id": "cov-0367-drop_tips__ambiguous-referent-12",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "the tip rack",
+              "predicted_reference": "the box"
+            }
+          ]
+        },
+        {
+          "record_id": "cov-0369-drop_tips__ambiguous-referent-14",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "the tip rack",
+              "predicted_reference": "the rack"
+            }
+          ]
+        },
+        {
+          "record_id": "cov-0609-move_lid__ambiguous-referent-14",
+          "pairs": [
+            {
+              "arg_name": "lid",
+              "gold_reference": "the lid",
+              "predicted_reference": "plate.lid"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-03",
+          "pairs": [
+            {
+              "arg_name": "plate",
+              "gold_reference": "that plate",
+              "predicted_reference": "the plate"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-06",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "where they came from",
+              "predicted_reference": "the tip spot"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-07",
+          "pairs": [
+            {
+              "arg_name": "source",
+              "gold_reference": "it",
+              "predicted_reference": "the plate"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-08",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "wherever it belongs",
+              "predicted_reference": "the deck"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-09",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "the plate we just talked about",
+              "predicted_reference": "the plate"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-10",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "the other plate",
+              "predicted_reference": "the_other_plate_well"
+            },
+            {
+              "arg_name": "source",
+              "gold_reference": "column 2",
+              "predicted_reference": "column_2[\"column_2\"]"
+            }
+          ]
+        }
+      ]
+    },
+    "A2": {
+      "policies": {
+        "literal": {
+          "ambiguous_referent_exact_match": {
+            "successes": 19,
+            "n": 33
+          },
+          "total_exact_match_accuracy": {
+            "value": 0.6710526315789473,
+            "successes": 153,
+            "n": 228
+          },
+          "tripwire": 3
+        },
+        "normalized": {
+          "ambiguous_referent_exact_match": {
+            "successes": 19,
+            "n": 33
+          },
+          "total_exact_match_accuracy": {
+            "value": 0.6710526315789473,
+            "successes": 153,
+            "n": 228
+          },
+          "tripwire": 3
+        },
+        "any_span": {
+          "ambiguous_referent_exact_match": {
+            "successes": 27,
+            "n": 33
+          },
+          "total_exact_match_accuracy": {
+            "value": 0.706140350877193,
+            "successes": 161,
+            "n": 228
+          },
+          "tripwire": 3
+        }
+      },
+      "moved_rows_normalized_b": [],
+      "moved_rows_any_span_c": [
+        {
+          "record_id": "cov-0173-transfer__ambiguous-referent-13",
+          "pairs": [
+            {
+              "arg_name": "source",
+              "gold_reference": "plate_1.A1",
+              "predicted_reference": "plate_1[\"A1\"]"
+            }
+          ]
+        },
+        {
+          "record_id": "cov-0609-move_lid__ambiguous-referent-14",
+          "pairs": [
+            {
+              "arg_name": "lid",
+              "gold_reference": "the lid",
+              "predicted_reference": "the plate lid"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-02",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "there",
+              "predicted_reference": "the well"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-03",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "the reader station",
+              "predicted_reference": "reader_station_1"
+            },
+            {
+              "arg_name": "plate",
+              "gold_reference": "that plate",
+              "predicted_reference": "the plate"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-07",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "the matching plate",
+              "predicted_reference": "the same well as the plate"
+            },
+            {
+              "arg_name": "source",
+              "gold_reference": "it",
+              "predicted_reference": "the same well as the plate"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-09",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "the plate we just talked about",
+              "predicted_reference": "the plate"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-10",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "the other plate",
+              "predicted_reference": "the_other_plate.columns[2]"
+            },
+            {
+              "arg_name": "source",
+              "gold_reference": "column 2",
+              "predicted_reference": "column_2"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-12",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "storage",
+              "predicted_reference": "storage_well"
+            }
+          ]
+        }
+      ]
+    },
+    "A3": {
+      "policies": {
+        "literal": {
+          "ambiguous_referent_exact_match": {
+            "successes": 20,
+            "n": 33
+          },
+          "total_exact_match_accuracy": {
+            "value": 0.6710526315789473,
+            "successes": 153,
+            "n": 228
+          },
+          "tripwire": 3
+        },
+        "normalized": {
+          "ambiguous_referent_exact_match": {
+            "successes": 20,
+            "n": 33
+          },
+          "total_exact_match_accuracy": {
+            "value": 0.6710526315789473,
+            "successes": 153,
+            "n": 228
+          },
+          "tripwire": 3
+        },
+        "any_span": {
+          "ambiguous_referent_exact_match": {
+            "successes": 28,
+            "n": 33
+          },
+          "total_exact_match_accuracy": {
+            "value": 0.706140350877193,
+            "successes": 161,
+            "n": 228
+          },
+          "tripwire": 3
+        }
+      },
+      "moved_rows_normalized_b": [],
+      "moved_rows_any_span_c": [
+        {
+          "record_id": "cov-0173-transfer__ambiguous-referent-13",
+          "pairs": [
+            {
+              "arg_name": "source",
+              "gold_reference": "plate_1.A1",
+              "predicted_reference": "plate_1[\"A1\"]"
+            }
+          ]
+        },
+        {
+          "record_id": "cov-0609-move_lid__ambiguous-referent-14",
+          "pairs": [
+            {
+              "arg_name": "lid",
+              "gold_reference": "the lid",
+              "predicted_reference": "plate_lid"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-02",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "there",
+              "predicted_reference": "the well"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-03",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "the reader station",
+              "predicted_reference": "reader_station_1"
+            },
+            {
+              "arg_name": "plate",
+              "gold_reference": "that plate",
+              "predicted_reference": "the plate"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-07",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "the matching plate",
+              "predicted_reference": "the same well as the plate"
+            },
+            {
+              "arg_name": "source",
+              "gold_reference": "it",
+              "predicted_reference": "the same well as the plate"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-09",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "the plate we just talked about",
+              "predicted_reference": "the plate"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-10",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "the other plate",
+              "predicted_reference": "the_other_plate_column_2"
+            },
+            {
+              "arg_name": "source",
+              "gold_reference": "column 2",
+              "predicted_reference": "column_2"
+            }
+          ]
+        },
+        {
+          "record_id": "golden-ambig-ref-12",
+          "pairs": [
+            {
+              "arg_name": "destination",
+              "gold_reference": "storage",
+              "predicted_reference": "storage_well"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "j3_golden_id_grammar": {
+    "A": {
+      "golden_ref_mismatch_only_rows": {
+        "golden-ambig-ref-03": [
+          {
+            "arg_name": "plate",
+            "gold_reference": "that plate",
+            "predicted_reference": "the plate"
+          }
+        ],
+        "golden-ambig-ref-06": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "where they came from",
+            "predicted_reference": "the tip spot"
+          }
+        ],
+        "golden-ambig-ref-07": [
+          {
+            "arg_name": "source",
+            "gold_reference": "it",
+            "predicted_reference": "the plate"
+          }
+        ],
+        "golden-ambig-ref-08": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "wherever it belongs",
+            "predicted_reference": "the deck"
+          }
+        ],
+        "golden-ambig-ref-09": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "the plate we just talked about",
+            "predicted_reference": "the plate"
+          }
+        ],
+        "golden-ambig-ref-10": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "the other plate",
+            "predicted_reference": "the_other_plate_well"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "column 2",
+            "predicted_reference": "column_2[\"column_2\"]"
+          }
+        ],
+        "golden-clean-aspirate-02": [
+          {
+            "arg_name": "source",
+            "gold_reference": "source_plate_A1",
+            "predicted_reference": "source_plate_well_A1"
+          }
+        ],
+        "golden-clean-aspirate-04": [
+          {
+            "arg_name": "source",
+            "gold_reference": "tube_rack_B3",
+            "predicted_reference": "tube rack position B3"
+          }
+        ],
+        "golden-clean-dispense-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "destination_plate_A1",
+            "predicted_reference": "plate[A1]"
+          }
+        ],
+        "golden-clean-dispense-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "waste_plate_A1",
+            "predicted_reference": "the waste plate"
+          }
+        ],
+        "golden-clean-drop_tips-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "tip_rack_3_F7",
+            "predicted_reference": "the tip rack"
+          }
+        ],
+        "golden-clean-drop_tips-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "waste_bin",
+            "predicted_reference": "the waste bin"
+          }
+        ],
+        "golden-clean-drop_tips-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "disposal_rack_slot2",
+            "predicted_reference": "the disposal rack slot 2"
+          }
+        ],
+        "golden-clean-move_lid-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "plate_1",
+            "predicted_reference": "plate[1]"
+          },
+          {
+            "arg_name": "lid",
+            "gold_reference": "plate_1_lid",
+            "predicted_reference": "the lid"
+          }
+        ],
+        "golden-clean-move_lid-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "parking_stand",
+            "predicted_reference": "the parking stand"
+          },
+          {
+            "arg_name": "lid",
+            "gold_reference": "lid_3",
+            "predicted_reference": "the plate"
+          }
+        ],
+        "golden-clean-move_lid-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "bench_pad",
+            "predicted_reference": "the bench pad"
+          },
+          {
+            "arg_name": "lid",
+            "gold_reference": "plate_4_lid",
+            "predicted_reference": "plate"
+          }
+        ],
+        "golden-clean-move_plate-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "hotel_1",
+            "predicted_reference": "hotel"
+          },
+          {
+            "arg_name": "plate",
+            "gold_reference": "pcr_plate",
+            "predicted_reference": "PCR plate"
+          }
+        ],
+        "golden-clean-move_resource-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "hotel_slot3",
+            "predicted_reference": "hotel"
+          },
+          {
+            "arg_name": "resource",
+            "gold_reference": "reagent_reservoir",
+            "predicted_reference": "the reagent reservoir"
+          }
+        ],
+        "golden-clean-move_resource-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "park_position",
+            "predicted_reference": "the park"
+          },
+          {
+            "arg_name": "resource",
+            "gold_reference": "reservoir_alpha",
+            "predicted_reference": "reservoir[alpha]"
+          }
+        ],
+        "golden-clean-stamp-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "copy_plate",
+            "predicted_reference": "the copy plate"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "master_plate",
+            "predicted_reference": "the master plate"
+          }
+        ],
+        "golden-clean-stamp-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "test_plate",
+            "predicted_reference": "test plate"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "dilution_series",
+            "predicted_reference": "plate"
+          }
+        ],
+        "golden-clean-transfer-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "plate_B_A1",
+            "predicted_reference": "plateB[A1]"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "plate_A_H12",
+            "predicted_reference": "plateA[H12]"
+          }
+        ],
+        "golden-clean-transfer-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "standards_plate_A1",
+            "predicted_reference": "standards plate[A1]"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "calibrator_1",
+            "predicted_reference": "calibrator[1]"
+          }
+        ],
+        "golden-missing-slot-06": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "copy_plate",
+            "predicted_reference": "the copy plate"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "master_plate",
+            "predicted_reference": "the master plate"
+          }
+        ]
+      },
+      "golden_ref_mismatch_only_count": 24,
+      "pure_transform_rows": {},
+      "pure_transform_count": 0,
+      "counterfactual_accuracy_if_pure_transforms_were_hits": {
+        "value": 0.6359649122807017,
+        "successes": 145,
+        "n": 228
+      }
+    },
+    "A2": {
+      "golden_ref_mismatch_only_rows": {
+        "golden-ambig-ref-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "there",
+            "predicted_reference": "the well"
+          }
+        ],
+        "golden-ambig-ref-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "the reader station",
+            "predicted_reference": "reader_station_1"
+          },
+          {
+            "arg_name": "plate",
+            "gold_reference": "that plate",
+            "predicted_reference": "the plate"
+          }
+        ],
+        "golden-ambig-ref-07": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "the matching plate",
+            "predicted_reference": "the same well as the plate"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "it",
+            "predicted_reference": "the same well as the plate"
+          }
+        ],
+        "golden-ambig-ref-09": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "the plate we just talked about",
+            "predicted_reference": "the plate"
+          }
+        ],
+        "golden-ambig-ref-10": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "the other plate",
+            "predicted_reference": "the_other_plate.columns[2]"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "column 2",
+            "predicted_reference": "column_2"
+          }
+        ],
+        "golden-ambig-ref-12": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "storage",
+            "predicted_reference": "storage_well"
+          }
+        ],
+        "golden-clean-aspirate-04": [
+          {
+            "arg_name": "source",
+            "gold_reference": "tube_rack_B3",
+            "predicted_reference": "tube_rack.B3"
+          }
+        ],
+        "golden-clean-dispense-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "destination_plate_A1",
+            "predicted_reference": "plate_A1"
+          }
+        ],
+        "golden-clean-dispense-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "assay_plate_col1",
+            "predicted_reference": "the assay plate column 1"
+          }
+        ],
+        "golden-clean-dispense-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "waste_plate_A1",
+            "predicted_reference": "the waste plate"
+          }
+        ],
+        "golden-clean-dispense-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "microplate_C6",
+            "predicted_reference": "microplate C6"
+          }
+        ],
+        "golden-clean-drop_tips-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "trash",
+            "predicted_reference": "trash_well"
+          }
+        ],
+        "golden-clean-drop_tips-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "tip_rack_3_F7",
+            "predicted_reference": "tip_rack_3"
+          }
+        ],
+        "golden-clean-drop_tips-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "waste_bin",
+            "predicted_reference": "the waste bin"
+          }
+        ],
+        "golden-clean-drop_tips-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "disposal_rack_slot2",
+            "predicted_reference": "trash_slot_2"
+          }
+        ],
+        "golden-clean-move_lid-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "parking_stand",
+            "predicted_reference": "parking_stand_3"
+          },
+          {
+            "arg_name": "lid",
+            "gold_reference": "lid_3",
+            "predicted_reference": "lid3"
+          }
+        ],
+        "golden-clean-move_plate-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "plate_reader",
+            "predicted_reference": "reader"
+          }
+        ],
+        "golden-clean-move_plate-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "hotel_1",
+            "predicted_reference": "hotel_one"
+          },
+          {
+            "arg_name": "plate",
+            "gold_reference": "pcr_plate",
+            "predicted_reference": "PCR plate"
+          }
+        ],
+        "golden-clean-move_resource-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "hotel_slot3",
+            "predicted_reference": "hotel"
+          },
+          {
+            "arg_name": "resource",
+            "gold_reference": "reagent_reservoir",
+            "predicted_reference": "the reagent reservoir"
+          }
+        ],
+        "golden-clean-move_resource-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "incubator_slot1",
+            "predicted_reference": "incubator slot 1"
+          }
+        ],
+        "golden-clean-move_resource-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "shelf_b",
+            "predicted_reference": "shelfB"
+          }
+        ],
+        "golden-clean-move_resource-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "park_position",
+            "predicted_reference": "the park"
+          }
+        ],
+        "golden-clean-stamp-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "copy_plate",
+            "predicted_reference": "the copy plate"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "master_plate",
+            "predicted_reference": "the master plate"
+          }
+        ],
+        "golden-clean-stamp-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "assay_plate_v2",
+            "predicted_reference": "the assay plate"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "daughter_plate",
+            "predicted_reference": "the daughter plate"
+          }
+        ],
+        "golden-clean-stamp-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "target_plate",
+            "predicted_reference": "target_plate_1"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "source_plate",
+            "predicted_reference": "source_plate_1"
+          }
+        ],
+        "golden-clean-stamp-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "test_plate",
+            "predicted_reference": "test_plate.60"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "dilution_series",
+            "predicted_reference": "plate.60"
+          }
+        ],
+        "golden-clean-transfer-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "plate_B_A1",
+            "predicted_reference": "plate[\"A1\"]"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "plate_A_H12",
+            "predicted_reference": "plate[\"A1\"]"
+          }
+        ],
+        "golden-clean-transfer-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "receiver_plate",
+            "predicted_reference": "the receiver plate"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "donor_plate",
+            "predicted_reference": "the donor plate"
+          }
+        ],
+        "golden-clean-transfer-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "standards_plate_A1",
+            "predicted_reference": "standards plate[A1]"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "calibrator_1",
+            "predicted_reference": "calibrator[1]"
+          }
+        ],
+        "golden-missing-slot-06": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "copy_plate",
+            "predicted_reference": "the copy plate"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "master_plate",
+            "predicted_reference": "the master plate"
+          }
+        ]
+      },
+      "golden_ref_mismatch_only_count": 30,
+      "pure_transform_rows": {
+        "golden-clean-aspirate-04": [
+          {
+            "arg_name": "source",
+            "gold_reference": "tube_rack_B3",
+            "predicted_reference": "tube_rack.B3",
+            "pure_transform": true
+          }
+        ]
+      },
+      "pure_transform_count": 1,
+      "counterfactual_accuracy_if_pure_transforms_were_hits": {
+        "value": 0.6754385964912281,
+        "successes": 154,
+        "n": 228
+      }
+    },
+    "A3": {
+      "golden_ref_mismatch_only_rows": {
+        "golden-ambig-ref-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "there",
+            "predicted_reference": "the well"
+          }
+        ],
+        "golden-ambig-ref-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "the reader station",
+            "predicted_reference": "reader_station_1"
+          },
+          {
+            "arg_name": "plate",
+            "gold_reference": "that plate",
+            "predicted_reference": "the plate"
+          }
+        ],
+        "golden-ambig-ref-07": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "the matching plate",
+            "predicted_reference": "the same well as the plate"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "it",
+            "predicted_reference": "the same well as the plate"
+          }
+        ],
+        "golden-ambig-ref-09": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "the plate we just talked about",
+            "predicted_reference": "the plate"
+          }
+        ],
+        "golden-ambig-ref-10": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "the other plate",
+            "predicted_reference": "the_other_plate_column_2"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "column 2",
+            "predicted_reference": "column_2"
+          }
+        ],
+        "golden-ambig-ref-12": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "storage",
+            "predicted_reference": "storage_well"
+          }
+        ],
+        "golden-clean-aspirate-04": [
+          {
+            "arg_name": "source",
+            "gold_reference": "tube_rack_B3",
+            "predicted_reference": "tube_rack.B3"
+          }
+        ],
+        "golden-clean-dispense-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "destination_plate_A1",
+            "predicted_reference": "plate_A1.A1"
+          }
+        ],
+        "golden-clean-dispense-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "assay_plate_col1",
+            "predicted_reference": "the assay plate column 1"
+          }
+        ],
+        "golden-clean-dispense-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "waste_plate_A1",
+            "predicted_reference": "the waste plate"
+          }
+        ],
+        "golden-clean-dispense-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "microplate_C6",
+            "predicted_reference": "microplate C6"
+          }
+        ],
+        "golden-clean-drop_tips-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "trash",
+            "predicted_reference": "trash_well"
+          }
+        ],
+        "golden-clean-drop_tips-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "tip_rack_3_F7",
+            "predicted_reference": "tip_rack_3"
+          }
+        ],
+        "golden-clean-drop_tips-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "waste_bin",
+            "predicted_reference": "the waste bin"
+          }
+        ],
+        "golden-clean-drop_tips-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "disposal_rack_slot2",
+            "predicted_reference": "trash_slot_2"
+          }
+        ],
+        "golden-clean-move_lid-02": [
+          {
+            "arg_name": "lid",
+            "gold_reference": "lid_3",
+            "predicted_reference": "lid"
+          }
+        ],
+        "golden-clean-move_plate-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "plate_reader",
+            "predicted_reference": "reader"
+          }
+        ],
+        "golden-clean-move_plate-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "hotel_1",
+            "predicted_reference": "hotel_one"
+          },
+          {
+            "arg_name": "plate",
+            "gold_reference": "pcr_plate",
+            "predicted_reference": "PCR plate"
+          }
+        ],
+        "golden-clean-move_resource-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "hotel_slot3",
+            "predicted_reference": "hotel"
+          },
+          {
+            "arg_name": "resource",
+            "gold_reference": "reagent_reservoir",
+            "predicted_reference": "the reagent reservoir"
+          }
+        ],
+        "golden-clean-move_resource-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "incubator_slot1",
+            "predicted_reference": "incubator slot 1"
+          }
+        ],
+        "golden-clean-move_resource-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "shelf_b",
+            "predicted_reference": "shelfB"
+          }
+        ],
+        "golden-clean-move_resource-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "park_position",
+            "predicted_reference": "the park"
+          }
+        ],
+        "golden-clean-stamp-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "copy_plate",
+            "predicted_reference": "the copy plate"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "master_plate",
+            "predicted_reference": "the master plate"
+          }
+        ],
+        "golden-clean-stamp-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "assay_plate_v2",
+            "predicted_reference": "the assay plate"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "daughter_plate",
+            "predicted_reference": "the daughter plate"
+          }
+        ],
+        "golden-clean-stamp-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "target_plate",
+            "predicted_reference": "target_plate_1"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "source_plate",
+            "predicted_reference": "source_plate_1"
+          }
+        ],
+        "golden-clean-stamp-04": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "test_plate",
+            "predicted_reference": "test_plate.60"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "dilution_series",
+            "predicted_reference": "test_plate.60"
+          }
+        ],
+        "golden-clean-transfer-01": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "plate_B_A1",
+            "predicted_reference": "plate[\"A1\"]"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "plate_A_H12",
+            "predicted_reference": "plate[\"A1\"]"
+          }
+        ],
+        "golden-clean-transfer-02": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "receiver_plate",
+            "predicted_reference": "the receiver plate"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "donor_plate",
+            "predicted_reference": "the donor plate"
+          }
+        ],
+        "golden-clean-transfer-03": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "standards_plate_A1",
+            "predicted_reference": "standards plate[A1]"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "calibrator_1",
+            "predicted_reference": "calibrator_1[A1]"
+          }
+        ],
+        "golden-missing-slot-06": [
+          {
+            "arg_name": "destination",
+            "gold_reference": "copy_plate",
+            "predicted_reference": "the copy plate"
+          },
+          {
+            "arg_name": "source",
+            "gold_reference": "master_plate",
+            "predicted_reference": "the master plate"
+          }
+        ]
+      },
+      "golden_ref_mismatch_only_count": 30,
+      "pure_transform_rows": {
+        "golden-clean-aspirate-04": [
+          {
+            "arg_name": "source",
+            "gold_reference": "tube_rack_B3",
+            "predicted_reference": "tube_rack.B3",
+            "pure_transform": true
+          }
+        ]
+      },
+      "pure_transform_count": 1,
+      "counterfactual_accuracy_if_pure_transforms_were_hits": {
+        "value": 0.6754385964912281,
+        "successes": 154,
+        "n": 228
+      }
+    }
+  },
+  "combined": {
+    "A": {
+      "headline": {
+        "exact_match_accuracy": {
+          "value": 0.6359649122807017,
+          "successes": 145,
+          "n": 228
+        },
+        "clarify_recall": {
+          "value": 0.8636363636363636,
+          "successes": 76,
+          "n": 88
+        },
+        "clarify_precision": {
+          "value": 0.8260869565217391,
+          "successes": 76,
+          "n": 92
+        },
+        "tripwire": 1
+      },
+      "thresholds": {
+        "T_acc": 0.8,
+        "T_clr_recall": 0.7,
+        "T_clr_prec": 0.9
+      },
+      "would_promote": false
+    },
+    "A2": {
+      "headline": {
+        "exact_match_accuracy": {
+          "value": 0.6798245614035088,
+          "successes": 155,
+          "n": 228
+        },
+        "clarify_recall": {
+          "value": 0.9318181818181818,
+          "successes": 82,
+          "n": 88
+        },
+        "clarify_precision": {
+          "value": 0.845360824742268,
+          "successes": 82,
+          "n": 97
+        },
+        "tripwire": 2
+      },
+      "thresholds": {
+        "T_acc": 0.8,
+        "T_clr_recall": 0.7,
+        "T_clr_prec": 0.9
+      },
+      "would_promote": false
+    },
+    "A3": {
+      "headline": {
+        "exact_match_accuracy": {
+          "value": 0.6798245614035088,
+          "successes": 155,
+          "n": 228
+        },
+        "clarify_recall": {
+          "value": 0.9090909090909091,
+          "successes": 80,
+          "n": 88
+        },
+        "clarify_precision": {
+          "value": 0.8695652173913043,
+          "successes": 80,
+          "n": 92
+        },
+        "tripwire": 2
+      },
+      "thresholds": {
+        "T_acc": 0.8,
+        "T_clr_recall": 0.7,
+        "T_clr_prec": 0.9
+      },
+      "would_promote": false
+    }
+  },
+  "tripwire3_sanity": {
+    "A": {
+      "tripwire3_ids": [
+        "golden-out-surface-05",
+        "golden-out-surface-10",
+        "golden-out-surface-11"
+      ],
+      "present_in_failures": {
+        "golden-out-surface-05": false,
+        "golden-out-surface-10": true,
+        "golden-out-surface-11": false
+      },
+      "all_present": false
+    },
+    "A2": {
+      "tripwire3_ids": [
+        "golden-out-surface-05",
+        "golden-out-surface-10",
+        "golden-out-surface-11"
+      ],
+      "present_in_failures": {
+        "golden-out-surface-05": true,
+        "golden-out-surface-10": true,
+        "golden-out-surface-11": true
+      },
+      "all_present": true
+    },
+    "A3": {
+      "tripwire3_ids": [
+        "golden-out-surface-05",
+        "golden-out-surface-10",
+        "golden-out-surface-11"
+      ],
+      "present_in_failures": {
+        "golden-out-surface-05": true,
+        "golden-out-surface-10": true,
+        "golden-out-surface-11": true
+      },
+      "all_present": true
+    }
+  },
+  "promotion_thresholds": {
+    "T_acc": 0.8,
+    "T_clr_recall": 0.7,
+    "T_clr_prec": 0.9
+  }
+}

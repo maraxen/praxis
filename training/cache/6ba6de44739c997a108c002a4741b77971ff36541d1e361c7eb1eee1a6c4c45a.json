@@ -1,0 +1,9 @@
+{
+ "cache_key": "6ba6de44739c997a108c002a4741b77971ff36541d1e361c7eb1eee1a6c4c45a",
+ "fetched_at": "2026-09-03T15:08:33.653433+00:00",
+ "input_hash": "0a3c5ac9b1bb5d63147561884d7b76bdabbb0e24f2352076ba8819b6eda5f2af",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Turn off the shaker on the heater shaker.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

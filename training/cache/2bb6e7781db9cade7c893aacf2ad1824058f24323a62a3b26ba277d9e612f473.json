@@ -1,0 +1,9 @@
+{
+ "cache_key": "2bb6e7781db9cade7c893aacf2ad1824058f24323a62a3b26ba277d9e612f473",
+ "fetched_at": "2026-09-03T14:59:28.093269+00:00",
+ "input_hash": "a9f017df5adf0d896e2a050a690cc17987258b5c2ca0b251b74f5ae468c42760",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can we mix the master mix in well E5 by aspirating and dispensing several times, then transfer 12 uL to row C?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

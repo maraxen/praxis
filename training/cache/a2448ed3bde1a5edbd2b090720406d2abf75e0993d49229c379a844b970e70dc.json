@@ -1,0 +1,9 @@
+{
+ "cache_key": "a2448ed3bde1a5edbd2b090720406d2abf75e0993d49229c379a844b970e70dc",
+ "fetched_at": "2026-09-03T15:04:38.157318+00:00",
+ "input_hash": "b8fed5edb1c75e9408a8cc1b796756e79c49ac37ecda3b195b3151a410793949",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you warm up the heater-shaker module to 37 degrees?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

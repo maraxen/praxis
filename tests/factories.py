@@ -6,18 +6,17 @@ import uuid
 import factory
 from factory.alchemy import SQLAlchemyModelFactory
 
-from praxis.backend.models.domain.machine import Machine
-from praxis.backend.models.domain.resource import Resource, ResourceDefinition
-from praxis.backend.models.domain.workcell import Workcell
-from praxis.backend.models.enums import AssetType
 from praxis.backend.models.domain.deck import Deck, DeckDefinition
+from praxis.backend.models.domain.machine import Machine
 from praxis.backend.models.domain.outputs import FunctionDataOutput, WellDataOutput
 from praxis.backend.models.domain.protocol import (
     FunctionCallLog,
     FunctionProtocolDefinition,
     ProtocolRun,
 )
+from praxis.backend.models.domain.resource import Resource, ResourceDefinition
 from praxis.backend.models.domain.workcell import Workcell
+from praxis.backend.models.enums import AssetType
 
 _last_v7_timestamp = None
 
@@ -75,18 +74,18 @@ class MachineFactory(SQLAlchemyModelFactory):
         """Override _create to handle init=False fields."""
         workcell = kwargs.pop("workcell", None)
         workcell_accession_id = kwargs.pop("workcell_accession_id", None)
-        
+
         obj = super()._create(model_class, *args, **kwargs)
-        
+
         if workcell:
             obj.workcell = workcell
             # Also ensure the ID is synced if possible/needed
             if hasattr(workcell, "accession_id"):
                  obj.workcell_accession_id = workcell.accession_id
-        
+
         if workcell_accession_id:
             obj.workcell_accession_id = workcell_accession_id
-            
+
         return obj
 
     name = factory.Faker("word")
@@ -97,9 +96,9 @@ class MachineFactory(SQLAlchemyModelFactory):
     # Wait, factory_boy documentation says excluded fields are NOT passed to _create/constructor?
     # Actually, they are passed to _create if one overrides it? No.
     # Exclude means "don't pass to model constructor".
-    # But they are available in 'kwargs' passed to _create? 
+    # But they are available in 'kwargs' passed to _create?
     # Yes, usually.
-    
+
     workcell = factory.SubFactory(WorkcellFactory)
     workcell_accession_id = factory.SelfAttribute("workcell.accession_id")
 
@@ -156,14 +155,14 @@ class DeckFactory(SQLAlchemyModelFactory):
         # Pop Params
         kwargs.pop("deck_type_def", None)
         kwargs.pop("machine_def", None)
-        
+
         # Pop Relationship IDs/objects if init=False
         deck_type_id = kwargs.pop("deck_type_id", None)
         parent_machine_accession_id = kwargs.pop("parent_machine_accession_id", None)
         resource_definition_accession_id = kwargs.pop("resource_definition_accession_id", None)
-        
+
         obj = super()._create(model_class, *args, **kwargs)
-        
+
         # Manually set fields
         if deck_type_id:
             obj.deck_type_id = deck_type_id
@@ -171,7 +170,7 @@ class DeckFactory(SQLAlchemyModelFactory):
             obj.parent_machine_accession_id = parent_machine_accession_id
         if resource_definition_accession_id:
             obj.resource_definition_accession_id = resource_definition_accession_id
-            
+
         return obj
 
     class Params:
@@ -203,18 +202,18 @@ class ResourceFactory(SQLAlchemyModelFactory):
         """Override _create to handle init=False fields."""
         res_def = kwargs.pop("res_def", None)
         resource_definition_accession_id = kwargs.pop("resource_definition_accession_id", None)
-        
+
         obj = super()._create(model_class, *args, **kwargs)
-        
+
         if res_def:
              # Relationship name in Resource? likely resource_definition
              # But let's check Resource definition if logical.
              # Assuming standard name.
-             pass 
-        
+             pass
+
         if resource_definition_accession_id:
             obj.resource_definition_accession_id = resource_definition_accession_id
-            
+
         return obj
 
     class Params:
@@ -252,12 +251,12 @@ class ProtocolRunFactory(SQLAlchemyModelFactory):
     def _create(cls, model_class, *args, **kwargs):
         kwargs.pop("top_level_def", None)
         top_level_protocol_definition_accession_id = kwargs.pop("top_level_protocol_definition_accession_id", None)
-        
+
         obj = super()._create(model_class, *args, **kwargs)
-        
+
         if top_level_protocol_definition_accession_id:
             obj.top_level_protocol_definition_accession_id = top_level_protocol_definition_accession_id
-            
+
         return obj
 
     class Params:
@@ -282,17 +281,17 @@ class FunctionCallLogFactory(SQLAlchemyModelFactory):
     def _create(cls, model_class, *args, **kwargs):
         kwargs.pop("protocol_run_obj", None)
         kwargs.pop("executed_function_def", None)
-        
+
         protocol_run_accession_id = kwargs.pop("protocol_run_accession_id", None)
         function_protocol_definition_accession_id = kwargs.pop("function_protocol_definition_accession_id", None)
-        
+
         obj = super()._create(model_class, *args, **kwargs)
-        
+
         if protocol_run_accession_id:
             obj.protocol_run_accession_id = protocol_run_accession_id
         if function_protocol_definition_accession_id:
             obj.function_protocol_definition_accession_id = function_protocol_definition_accession_id
-            
+
         return obj
 
     class Params:
@@ -323,20 +322,20 @@ class FunctionDataOutputFactory(SQLAlchemyModelFactory):
         _function_call_log = kwargs.pop("_function_call_log", None)
         function_call_log_accession_id = kwargs.pop("function_call_log_accession_id", None)
         protocol_run_accession_id = kwargs.pop("protocol_run_accession_id", None)
-        
+
         obj = super()._create(model_class, *args, **kwargs)
-        
-        # Note: FunctionDataOutput might not have a relationship for _function_call_log 
+
+        # Note: FunctionDataOutput might not have a relationship for _function_call_log
         # or it might be named differently.
         # But if it was working before via SubFactory + exclude, then it was just used for ID generation
         # and not assigned.
         # But now we popped it.
-        
+
         if function_call_log_accession_id:
             obj.function_call_log_accession_id = function_call_log_accession_id
         if protocol_run_accession_id:
             obj.protocol_run_accession_id = protocol_run_accession_id
-            
+
         return obj
 
     class Params:
@@ -344,9 +343,9 @@ class FunctionDataOutputFactory(SQLAlchemyModelFactory):
 
     name = factory.Faker("word")
     accession_id = factory.LazyFunction(uuid7)
-    
+
     _function_call_log = factory.SubFactory(FunctionCallLogFactory)
-    
+
     function_call_log_accession_id = factory.SelfAttribute("_function_call_log.accession_id")
     protocol_run_accession_id = factory.SelfAttribute("_function_call_log.protocol_run_accession_id")
 
@@ -363,30 +362,30 @@ class WellDataOutputFactory(SQLAlchemyModelFactory):
     def _create(cls, model_class, *args, **kwargs):
         _function_data_output = kwargs.pop("_function_data_output", None)
         _plate_resource = kwargs.pop("_plate_resource", None)
-        
+
         function_data_output_accession_id = kwargs.pop("function_data_output_accession_id", None)
         plate_resource_accession_id = kwargs.pop("plate_resource_accession_id", None)
-        
+
         obj = super()._create(model_class, *args, **kwargs)
-        
+
         if function_data_output_accession_id:
             obj.function_data_output_accession_id = function_data_output_accession_id
         if plate_resource_accession_id:
             obj.plate_resource_accession_id = plate_resource_accession_id
-            
+
         return obj
 
     class Params:
         pass
 
     name = factory.Faker("word")
-    
+
     _function_data_output = factory.SubFactory(FunctionDataOutputFactory)
     _plate_resource = factory.SubFactory(ResourceFactory)
-    
+
     function_data_output_accession_id = factory.SelfAttribute("_function_data_output.accession_id")
     plate_resource_accession_id = factory.SelfAttribute("_plate_resource.accession_id")
-    
+
     well_name = "A1"
     well_row = 0
     well_column = 0

@@ -1,0 +1,21 @@
+# developer_scaffold_template.txt -- EXACT FunctionGemma developer-turn scaffold
+# (P2.5 deliverable 3, spec rev2 .praxia/docs/specs/260825_coxswain-phase-2-functiongemma-copilot-p.md D6, AC-2.5.x)
+#
+# This file is the byte-authoritative developer-turn template for EVERY row of
+# the assembled P2.5 corpus. The chat-template renderer prepends the tool
+# declarations after this content; in the JSONL dataset rows they travel in the
+# separate `tools` array, but THIS text is the `messages[0].content` byte-for-byte.
+#
+# DATE/TIMESTAMP INJECTION OMITTED -- stated explicitly per D6-rev2: the
+# google/mobile-actions preamble lines ("Current date and time given in
+# YYYY-MM-DDTHH:MM:SS format: <ts>" and "Day of week is <day>") are DELIBERATELY
+# NOT part of this template. No date, time, or timestamp appears anywhere in the
+# assembled corpus; this also keeps corpus regeneration idempotent (D9/R4).
+#
+# Provenance: research doc 260825_functiongemma-training-serving-research.md §2a,
+# official "resolve tool-selection ambiguity" guide system prompt, verbatim,
+# minus the date/time preamble. Identical to
+# praxis_training.golden_build.corpus.DEVELOPER_SCAFFOLD (P2.1 recorded decision).
+#
+# --- BEGIN VERBATIM SCAFFOLD (bytes below are the template; file ends inside it) ---
+You are a model that can do function calling with the following functions

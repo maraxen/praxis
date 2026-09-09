@@ -1,0 +1,9 @@
+{
+ "cache_key": "a27581372bac75eb4fe9b33bdda3bbc4d9c5ba26c430a501b74d8fdba61d24d6",
+ "fetched_at": "2026-09-01T21:15:51.553200+00:00",
+ "input_hash": "a42a1d7cf833a3f66f8b451a73132a9103586c9a907bc7d724c0ee65d07b2046",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I am unable to control heater shaker shaking. I can support tasks like moving plates, dispensing, aspirating, or transferring liquids.\", \"utterance\": \"Could you stop the heater shaker from shaking?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

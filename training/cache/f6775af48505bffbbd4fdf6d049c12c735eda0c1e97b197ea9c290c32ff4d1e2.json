@@ -1,0 +1,9 @@
+{
+ "cache_key": "f6775af48505bffbbd4fdf6d049c12c735eda0c1e97b197ea9c290c32ff4d1e2",
+ "fetched_at": "2026-08-28T18:04:21.177342+00:00",
+ "input_hash": "d21ecf1ce843a4da15f18b0404f81a4c077e5aed7b815af2d5594df5efe3557c",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please read the absorbance on the plate reader.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

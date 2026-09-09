@@ -1,0 +1,9 @@
+{
+ "cache_key": "074893e609d15074798daddb72b7d21289ef6d457eebe792c9e7791035589ae2",
+ "fetched_at": "2026-09-01T21:19:40.787757+00:00",
+ "input_hash": "cc090d7674a1c53b7791f6523e308039b39c2929ea5b0debbf1dc7011eb6ff77",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read fluorescence in wells A7 and D9 at 535 nm excitation and 590 nm emission with a 15 mm focal height.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

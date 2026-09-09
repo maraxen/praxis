@@ -1,0 +1,9 @@
+{
+ "cache_key": "cd4ba1a280c132450600a04e8646eb69efcda406afb67e7f1f2d35a8bdef6654",
+ "fetched_at": "2026-09-03T14:59:28.093110+00:00",
+ "input_hash": "a927c17d9ba9da4c9096218a5847e2337d437b8c40e73d73e624360f3dc7e43c",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please mix well G3 thoroughly with the pipette tips before transferring 10 uL into the PCR plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

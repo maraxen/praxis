@@ -1,0 +1,9 @@
+{
+ "cache_key": "c3c19c408beb0fe6efb7bdc94edb35da3236814a71b5ae6b2e2c3e5d9b9a0bce",
+ "fetched_at": "2026-09-02T15:01:41.018020+00:00",
+ "input_hash": "b5fbd3660d250e4c281d686278eeb911c9825637bcd614ae2db755229db66315",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Pull 25 microliters from well H7 on plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

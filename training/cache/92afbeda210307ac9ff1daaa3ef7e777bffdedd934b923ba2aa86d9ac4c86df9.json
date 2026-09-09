@@ -1,0 +1,9 @@
+{
+ "cache_key": "92afbeda210307ac9ff1daaa3ef7e777bffdedd934b923ba2aa86d9ac4c86df9",
+ "fetched_at": "2026-09-03T15:00:34.426910+00:00",
+ "input_hash": "e61a0f642047f493cea71a432ee2757eb0a6951b7e05f6d619ce04949c5dc574",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you blow out whatever extra droplets are still hanging on the tips?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

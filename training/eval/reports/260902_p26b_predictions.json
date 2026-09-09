@@ -1,0 +1,213 @@
+{
+  "predictions": {
+    "surface6_recovered": 4,
+    "surface6_recovered_ids": [
+      "cov-0092-dispense__missing-slot-12",
+      "cov-0093-dispense__missing-slot-13",
+      "cov-0172-transfer__ambiguous-referent-12",
+      "cov-0174-transfer__ambiguous-referent-14"
+    ],
+    "vague3_recovered": 1,
+    "hallucinated4_recovered": 2,
+    "verb_category_migrated": 11,
+    "verb_category_migrated_ids": [
+      "cov-0467-move_resource__none-12",
+      "cov-0498-move_resource__ambiguous-referent-13",
+      "golden-clean-dispense-02",
+      "golden-clean-dispense-04",
+      "golden-clean-move_resource-02",
+      "golden-clean-move_resource-03",
+      "golden-clean-read_fluorescence-02",
+      "golden-clean-stamp-02",
+      "golden-clean-stamp-03",
+      "golden-clean-transfer-02",
+      "ovl-f33ef17438"
+    ],
+    "verb22_now_exact": 3,
+    "verb22_old_categories": {
+      "cov-0467-move_resource__none-12": "name_mismatch",
+      "cov-0482-move_plate__missing-slot-12": "name_mismatch",
+      "cov-0483-move_plate__missing-slot-13": "name_mismatch",
+      "cov-0484-move_plate__missing-slot-14": "name_mismatch",
+      "cov-0498-move_resource__ambiguous-referent-13": "no_call",
+      "golden-clean-aspirate-03": "no_call",
+      "golden-clean-discard_tips-02": "name_mismatch",
+      "golden-clean-discard_tips-04": "name_mismatch",
+      "golden-clean-dispense-02": "no_call",
+      "golden-clean-dispense-04": "no_call",
+      "golden-clean-move_lid-03": "name_mismatch",
+      "golden-clean-move_plate-02": "no_call",
+      "golden-clean-move_plate-03": "no_call",
+      "golden-clean-move_resource-02": "no_call",
+      "golden-clean-move_resource-03": "no_call",
+      "golden-clean-read_fluorescence-02": "name_mismatch",
+      "golden-clean-stamp-02": "name_mismatch",
+      "golden-clean-stamp-03": "name_mismatch",
+      "golden-clean-transfer-02": "name_mismatch",
+      "golden-clean-transfer-04": "no_call",
+      "golden-missing-slot-02": "no_call",
+      "ovl-f33ef17438": "unknown_verb"
+    },
+    "verb22_new_categories": {
+      "cov-0467-move_resource__none-12": "PASS",
+      "cov-0482-move_plate__missing-slot-12": "name_mismatch",
+      "cov-0483-move_plate__missing-slot-13": "name_mismatch",
+      "cov-0484-move_plate__missing-slot-14": "name_mismatch",
+      "cov-0498-move_resource__ambiguous-referent-13": "PASS",
+      "golden-clean-aspirate-03": "no_call",
+      "golden-clean-discard_tips-02": "name_mismatch",
+      "golden-clean-discard_tips-04": "name_mismatch",
+      "golden-clean-dispense-02": "param_content",
+      "golden-clean-dispense-04": "param_content",
+      "golden-clean-move_lid-03": "name_mismatch",
+      "golden-clean-move_plate-02": "name_mismatch",
+      "golden-clean-move_plate-03": "name_mismatch",
+      "golden-clean-move_resource-02": "param_content",
+      "golden-clean-move_resource-03": "param_content",
+      "golden-clean-read_fluorescence-02": "param_content",
+      "golden-clean-stamp-02": "param_content",
+      "golden-clean-stamp-03": "param_content",
+      "golden-clean-transfer-02": "param_content",
+      "golden-clean-transfer-04": "no_call",
+      "golden-missing-slot-02": "no_call",
+      "ovl-f33ef17438": "PASS"
+    },
+    "discard_tips_pair_exact": 0,
+    "flips_hit_to_miss": 8,
+    "flips_hit_to_miss_ids": [
+      "cov-0608-move_lid__ambiguous-referent-13",
+      "golden-ambig-ref-02",
+      "golden-ambig-ref-11",
+      "golden-ambig-ref-12",
+      "golden-clean-drop_tips-01",
+      "golden-out-surface-05",
+      "golden-out-surface-11",
+      "ovl-f38dc0780c"
+    ],
+    "flips_miss_to_hit": 16,
+    "flips_miss_to_hit_ids": [
+      "cov-0092-dispense__missing-slot-12",
+      "cov-0093-dispense__missing-slot-13",
+      "cov-0158-transfer__missing-slot-13",
+      "cov-0172-transfer__ambiguous-referent-12",
+      "cov-0174-transfer__ambiguous-referent-14",
+      "cov-0369-drop_tips__ambiguous-referent-14",
+      "cov-0467-move_resource__none-12",
+      "cov-0498-move_resource__ambiguous-referent-13",
+      "cov-0547-move_lid__missing-slot-12",
+      "golden-ambig-ref-04",
+      "golden-clean-aspirate-02",
+      "golden-missing-slot-05",
+      "golden-missing-slot-12",
+      "ovl-c1b96d6ed1",
+      "ovl-e7609730e1",
+      "ovl-f33ef17438"
+    ],
+    "successes_old": 145,
+    "successes_new": 153,
+    "clarify_identical": false,
+    "tripwire_old": 1,
+    "tripwire_new": 3
+  },
+  "checks": {
+    "P1_surface6": {
+      "value": 4,
+      "needed": 4,
+      "of": 6,
+      "holds": true
+    },
+    "P2_verb_migration": {
+      "value": 11,
+      "needed": 11,
+      "of": 22,
+      "holds": true
+    },
+    "P2b_discard_tips_pair": {
+      "value": 0,
+      "needed": 1,
+      "of": 2,
+      "holds": false
+    },
+    "P3_no_regression": {
+      "accuracy": 0.6710526315789473,
+      "accuracy_floor": 0.6359649122807017,
+      "recall": 0.9204545454545454,
+      "recall_floor": 0.705,
+      "tripwire": 3,
+      "tripwire_max": 1,
+      "hit_to_miss": 8,
+      "hit_to_miss_max": 5,
+      "holds": false
+    },
+    "P4_probe": {
+      "old": 0.23333333333333334,
+      "new": 0.8444444444444444,
+      "delta": 0.6111111111111112,
+      "needed_delta": 0.1,
+      "n": 90,
+      "holds": true
+    }
+  },
+  "headline": {
+    "old": {
+      "exact_match_accuracy": "0.636 [0.572, 0.696] (145/228)",
+      "clarify_recall": "0.864 [0.777, 0.920] (76/88)",
+      "clarify_precision": "0.835 [0.746, 0.897] (76/91)",
+      "tripwire": 1
+    },
+    "new": {
+      "exact_match_accuracy": "0.671 [0.608, 0.729] (153/228)",
+      "clarify_recall": "0.920 [0.845, 0.961] (81/88)",
+      "clarify_precision": "0.853 [0.768, 0.910] (81/95)",
+      "tripwire": 3
+    },
+    "baseline": {
+      "exact_match_accuracy": "0.197 [0.151, 0.254] (45/228)",
+      "clarify_recall": "0.705 [0.602, 0.790] (62/88)",
+      "clarify_precision": "0.564 [0.470, 0.653] (62/110)",
+      "tripwire": 13
+    }
+  },
+  "per_class": {
+    "ambiguous_referent": {
+      "old": 18,
+      "new": 19,
+      "n": 33
+    },
+    "clean_parse": {
+      "old": 59,
+      "new": 62,
+      "n": 107
+    },
+    "missing_slot": {
+      "old": 25,
+      "new": 31,
+      "n": 44
+    },
+    "out_of_surface": {
+      "old": 43,
+      "new": 41,
+      "n": 44
+    }
+  },
+  "breakdown_new": {
+    "name_mismatch": 11,
+    "no_call": 3,
+    "param_content": 57,
+    "spurious_call": 2,
+    "unknown_verb": 2
+  },
+  "breakdown_old": {
+    "name_mismatch": 11,
+    "no_call": 10,
+    "param_content": 60,
+    "spurious_call": 1,
+    "unknown_verb": 1
+  },
+  "exploratory": {
+    "vague3_recovered": 1,
+    "hallucinated4_recovered": 2,
+    "golden_misses_old": 61,
+    "golden_misses_new": 63
+  }
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "5a5a60479d4df6eca10f9ebf1697c5f4d6b829e41aad2abaeb9a9f8394788aaa",
+ "fetched_at": "2026-09-02T16:52:15.310156+00:00",
+ "input_hash": "f54bb6a6000ab43c7710b477ce6c115cc6ef7ef7a5e4ca24181320255655a84b",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the OD of the plate at 450 nm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

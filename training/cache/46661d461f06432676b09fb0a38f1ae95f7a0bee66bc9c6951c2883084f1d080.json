@@ -1,0 +1,9 @@
+{
+ "cache_key": "46661d461f06432676b09fb0a38f1ae95f7a0bee66bc9c6951c2883084f1d080",
+ "fetched_at": "2026-09-01T21:11:59.055974+00:00",
+ "input_hash": "d3e7c0c18153d7b9f59f8beceb59123ce311f0650d0ddb9691661f5f7b68cef8",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer 20 uL from plate_1 to the plate by stamping.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

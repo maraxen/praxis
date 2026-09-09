@@ -1,0 +1,9 @@
+{
+ "cache_key": "2ecaef425868d9691ac8bf7fc6dd157f0161188cca66a4025c2a7c24eef4f1e6",
+ "fetched_at": "2026-09-02T15:01:41.018744+00:00",
+ "input_hash": "e77535930183819e0e611970b2d2133a6fdee9ab52509c9d5c3a2ffe32d33265",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Take up 20 microliters into the tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

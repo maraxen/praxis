@@ -1,0 +1,9 @@
+{
+ "cache_key": "f90c8eec66d502a6f9710ddd81e86b642f0c149c407678c9ea43b74fa543b852",
+ "fetched_at": "2026-09-02T15:10:59.366684+00:00",
+ "input_hash": "43bd28de3959ce4a16c4509a9c0319d5d3d8b68f985ee38871dd53276e6cd327",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Drop 10 microliters into well D7 of plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

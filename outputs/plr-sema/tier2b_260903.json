@@ -1,0 +1,216 @@
+{
+  "summary_flat": {
+    "rows": 11,
+    "operations": 35,
+    "bytecode_divergences_extractor": 0,
+    "bytecode_divergences_renderer": 0,
+    "region_fixtures": 11,
+    "region_unsound": 0,
+    "region_will_fail_fired": 3,
+    "rows_normalised": 0,
+    "region_trip_mismatches": 0,
+    "region_harness_errors": 0,
+    "region_uncovered_keys": 0,
+    "elapsed_seconds": 6.068813460995443
+  },
+  "per_shape_coverage": {
+    "for": true,
+    "while": true,
+    "if": true
+  },
+  "trip_mismatches": [],
+  "harness_errors": [],
+  "unsound_rows": [],
+  "fixtures": [
+    {
+      "name": "break_fixture",
+      "shape": "break",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 3,
+      "n_findings": 73
+    },
+    {
+      "name": "continue_fixture",
+      "shape": "continue",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 3,
+      "n_findings": 25
+    },
+    {
+      "name": "for_pickup_aspirate_drop_clean",
+      "shape": "for",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [
+        {
+          "region_id": "op_4",
+          "trip": 2,
+          "executed": 2
+        }
+      ],
+      "n_operations": 4,
+      "n_findings": 71
+    },
+    {
+      "name": "for_pickup_no_drop_raises",
+      "shape": "for",
+      "status": "compared",
+      "raised": "HasTipError: Channel has tip",
+      "raised_key": [
+        "pick_up_tips",
+        29,
+        2
+      ],
+      "static_verdict_at_raised": "will_fail",
+      "will_fail_at_raised": true,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [
+        {
+          "region_id": "op_2",
+          "trip": 2,
+          "executed": 2
+        }
+      ],
+      "n_operations": 2,
+      "n_findings": 25
+    },
+    {
+      "name": "if_no_pickup_raises",
+      "shape": "if",
+      "status": "compared",
+      "raised": "NoTipError: Channel 0 does not have a tip.",
+      "raised_key": [
+        "aspirate",
+        27,
+        1
+      ],
+      "static_verdict_at_raised": "will_fail",
+      "will_fail_at_raised": true,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 3,
+      "n_findings": 22
+    },
+    {
+      "name": "if_pickup_then_aspirate_merge",
+      "shape": "if",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 4,
+      "n_findings": 33
+    },
+    {
+      "name": "nested_for_if_clean",
+      "shape": "nested",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [
+        {
+          "region_id": "op_5",
+          "trip": 2,
+          "executed": 2
+        }
+      ],
+      "n_operations": 5,
+      "n_findings": 71
+    },
+    {
+      "name": "range_zero",
+      "shape": "range_zero",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [
+        {
+          "region_id": "op_2",
+          "trip": 0,
+          "executed": 0
+        }
+      ],
+      "n_operations": 2,
+      "n_findings": 1
+    },
+    {
+      "name": "straightline_clean",
+      "shape": "straightline",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 3,
+      "n_findings": 33
+    },
+    {
+      "name": "while_counter_clean",
+      "shape": "while",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 4,
+      "n_findings": 36
+    },
+    {
+      "name": "while_raises",
+      "shape": "while",
+      "status": "compared",
+      "raised": "NoTipError: Channel 0 does not have a tip.",
+      "raised_key": [
+        "aspirate",
+        33,
+        1
+      ],
+      "static_verdict_at_raised": "will_fail",
+      "will_fail_at_raised": true,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 2,
+      "n_findings": 12
+    }
+  ]
+}

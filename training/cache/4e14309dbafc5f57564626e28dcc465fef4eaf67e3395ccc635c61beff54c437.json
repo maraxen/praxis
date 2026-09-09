@@ -1,0 +1,9 @@
+{
+ "cache_key": "4e14309dbafc5f57564626e28dcc465fef4eaf67e3395ccc635c61beff54c437",
+ "fetched_at": "2026-09-01T21:19:08.653568+00:00",
+ "input_hash": "12088313c063dc7250a09150d20ceb858b4cd8f556b10dda27a8c98808f08f43",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the absorbance of the loaded plate at 600.0 nm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

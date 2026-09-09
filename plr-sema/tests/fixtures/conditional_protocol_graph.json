@@ -1,0 +1,225 @@
+{
+  "protocol_fqn": "test_module.conditional_volume",
+  "protocol_name": "conditional_volume",
+  "operations": [
+    {
+      "id": "op_1",
+      "line_number": 0,
+      "method_name": "pick_up_tips",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "tips"
+      },
+      "node_type": "dynamic",
+      "preconditions": [],
+      "creates_state": [
+        "tips_loaded"
+      ],
+      "depends_on_params": [
+        "tips"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_2",
+      "line_number": 0,
+      "method_name": "aspirate",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "plate[\"A1\"]",
+        "volume": "volume"
+      },
+      "node_type": "dynamic",
+      "preconditions": [
+        "precond_4"
+      ],
+      "creates_state": [],
+      "depends_on_params": [
+        "volume"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_3",
+      "line_number": 0,
+      "method_name": "aspirate",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "plate[\"A1\"]",
+        "volume": "volume / 2"
+      },
+      "node_type": "static",
+      "preconditions": [
+        "precond_5"
+      ],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_4",
+      "line_number": 0,
+      "method_name": "",
+      "receiver_variable": "",
+      "receiver_type": null,
+      "arguments": {},
+      "node_type": "region",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": "volume > threshold",
+      "true_branch": [
+        "op_2"
+      ],
+      "false_branch": [
+        "op_3"
+      ]
+    },
+    {
+      "id": "op_5",
+      "line_number": 0,
+      "method_name": "drop_tips",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "tips"
+      },
+      "node_type": "dynamic",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [
+        "tips"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    }
+  ],
+  "resources": {
+    "lh": {
+      "variable_name": "lh",
+      "declared_type": "LiquidHandler",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": true,
+      "parental_chain": [],
+      "source_expression": null,
+      "items_x": null,
+      "items_y": null
+    },
+    "plate": {
+      "variable_name": "plate",
+      "declared_type": "Plate",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": true,
+      "parental_chain": [
+        "PlateCarrier",
+        "Deck"
+      ],
+      "source_expression": null,
+      "items_x": null,
+      "items_y": null
+    },
+    "tips": {
+      "variable_name": "tips",
+      "declared_type": "TipRack",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": true,
+      "parental_chain": [
+        "TipCarrier",
+        "Deck"
+      ],
+      "source_expression": null,
+      "items_x": null,
+      "items_y": null
+    }
+  },
+  "preconditions": [
+    {
+      "id": "precond_1",
+      "precondition_type": "resource_on_deck",
+      "resource_variable": "lh",
+      "resource_type": "LiquidHandler",
+      "required_state": {},
+      "can_be_auto_satisfied": true,
+      "satisfied_by": null
+    },
+    {
+      "id": "precond_2",
+      "precondition_type": "resource_on_deck",
+      "resource_variable": "plate",
+      "resource_type": "Plate",
+      "required_state": {},
+      "can_be_auto_satisfied": true,
+      "satisfied_by": null
+    },
+    {
+      "id": "precond_3",
+      "precondition_type": "resource_on_deck",
+      "resource_variable": "tips",
+      "resource_type": "TipRack",
+      "required_state": {},
+      "can_be_auto_satisfied": true,
+      "satisfied_by": null
+    },
+    {
+      "id": "precond_4",
+      "precondition_type": "plate_accessible",
+      "resource_variable": "plate",
+      "resource_type": "Plate",
+      "required_state": {},
+      "can_be_auto_satisfied": true,
+      "satisfied_by": null
+    },
+    {
+      "id": "precond_5",
+      "precondition_type": "plate_accessible",
+      "resource_variable": "plate",
+      "resource_type": "Plate",
+      "required_state": {},
+      "can_be_auto_satisfied": true,
+      "satisfied_by": null
+    }
+  ],
+  "execution_order": [
+    "op_1",
+    "op_4",
+    "op_5"
+  ],
+  "machine_types": [
+    "liquid_handler"
+  ],
+  "resource_types": [
+    "LiquidHandler",
+    "Plate",
+    "TipRack"
+  ],
+  "has_loops": false,
+  "has_conditionals": true
+}

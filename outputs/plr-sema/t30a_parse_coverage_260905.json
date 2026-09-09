@@ -1,0 +1,59 @@
+{
+  "atom_kind_counts": {
+    "AllOf_AnyOf": 525,
+    "Cmp": 3504,
+    "Filtered_emptiness": 1,
+    "Is": 1003,
+    "IsInstance": 235,
+    "SetOf_uniqueness": 17,
+    "TRUE": 877,
+    "chained_Cmp": 806
+  },
+  "methodology": "T30a grammar-only measurement (spec 260904 SS15.9 block (1)), computed over the whole regenerated plr-sema/data/derived_contracts.json. atom_kind_counts tallies, over the non-Opaque population, how many guards' predicate trees contain >= 1 occurrence of each named atom kind -- independent per-kind tallies, not a mutually-exclusive partition (one guard can count toward several kinds). filtered_emptiness_count and chained_cmp_count are reporting-only heuristics keyed off the raw condition text to disambiguate shapes that parse identically (AnyOf from G3's len(Filtered(...)) rewrite vs. a direct all()/any() call; a chained ast.Compare vs. an ordinary `and`-joined pair) -- this disambiguation is NOT part of the predicate_ast grammar itself, which does not track provenance. Superseded by T30b's plr_sema.eval.t30_measure, which also builds the binding-coverage blocks (2)-(5) this grammar-only task does not.",
+  "nested_opaque_count": 925,
+  "non_opaque_count": 6295,
+  "opaque_count": 1233,
+  "top_10_unparsed_shapes": [
+    {
+      "count": 78,
+      "text": "'FAIL' in error_code_msg"
+    },
+    {
+      "count": 63,
+      "text": "time.time() > timeout_time"
+    },
+    {
+      "count": 42,
+      "text": "loop.time() - start > timeout"
+    },
+    {
+      "count": 41,
+      "text": "self._parse_scpi_response(res)['status'] != 'OK'"
+    },
+    {
+      "count": 41,
+      "text": "resp.startswith('E')"
+    },
+    {
+      "count": 41,
+      "text": "self._is_error_tail(response)"
+    },
+    {
+      "count": 39,
+      "text": "int(value, base=16) in error_map"
+    },
+    {
+      "count": 39,
+      "text": "error_code in ERROR_CODES"
+    },
+    {
+      "count": 34,
+      "text": "time.time() - start > timeout"
+    },
+    {
+      "count": 27,
+      "text": "response.startswith('ERRor')"
+    }
+  ],
+  "total_guards": 7528
+}

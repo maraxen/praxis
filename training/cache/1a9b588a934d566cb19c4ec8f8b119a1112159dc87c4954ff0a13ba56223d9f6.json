@@ -1,0 +1,9 @@
+{
+ "cache_key": "1a9b588a934d566cb19c4ec8f8b119a1112159dc87c4954ff0a13ba56223d9f6",
+ "fetched_at": "2026-09-01T21:10:18.423439+00:00",
+ "input_hash": "236d307d2ff879eb0448e9aadbb6a93106807092e24e1d40233be774754eed2c",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer 150 microliters to plate_2.D10.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "training"
+version = "0.0.1"
+description = "Coxswain phase-2 training pipeline workspace member: P2.1 golden pair set + baseline eval harness (backlog 4476), P2.2 execution-verify harness (4477), P2.3 coverage-floor generator, P2.4 naturalness overlay."
+authors = [{name = "Marielle Russo"}]
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+# F2-rev2 boundary: THIS package MAY import praxis.backend.* and coxswain.plr.*
+# (CPython context only). The reverse is forbidden: coxswain/ must never import
+# training/, and browser bundles never contain it (AST-tested in coxswain).
+#
+# MERGED dependencies for the four parallel sub-pipelines landing here
+# (P2.1 baseline_eval/golden_build via src/, P2.2 verify/, P2.3 floor_gen/,
+# P2.4 overlay_gen/): the verify harness additionally imports vendored
+# pylabrobot; everything else rides on coxswain's pydantic-only floor.
+dependencies = [
+    "coxswain",
+    "pylabrobot",
+]
+
+[project.optional-dependencies]
+# P2.1 local CPU/GPU inference lane (AC-2.1.x). NOT installed by default: the
+# gated HF repo needs an accepted-terms token (HF_TOKEN) before any download.
+# Pins follow D5 (transformers==4.57.1 per research §2b recipe).
+local = [
+    "transformers==4.57.1",
+    "torch>=2.5.0",
+    "accelerate>=1.0.0",
+]
+# P2.6 fine-tune lane (D5 recipe: TRL SFTTrainer, full-parameter). Superset of
+# `local`; pins follow research §2b (trl==0.25.1, datasets==4.4.1). Install with
+# `uv run --package training --extra train ...` -- plain `uv run` syncs torch away.
+train = [
+    "transformers==4.57.1",
+    "torch>=2.5.0",
+    "accelerate>=1.0.0",
+    "trl==0.25.1",
+    "datasets==4.4.1",
+]
+
+[tool.uv.sources]
+coxswain = { workspace = true }
+# pylabrobot needs NO local source here: the workspace root already pins it
+# to external/pylabrobot (editable), and uv applies root sources workspace-wide.
+
+# MERGED packaging for five layouts in one member:
+# - src/praxis_training/  (P2.1 golden_build + baseline_eval)
+# - verify/               (P2.2 execution-verify harness)
+# - floor_gen/            (P2.3 coverage-floor generator)
+# - overlay_gen/          (P2.4 naturalness overlay)
+# - assemble/             (P2.5 corpus assembly + slice gate, backlog 480)
+# setuptools packages.find accepts MULTIPLE `where` bases; each sub-pipeline's
+# package glob is listed explicitly so nobody's package silently drops out of
+# installs/wheel builds. DO NOT replace this block wholesale when editing your
+# own item -- extend `include` with your glob instead (see also conftest.py).
+[tool.setuptools.packages.find]
+where = ["src", "."]
+include = [
+    "praxis_training*",
+    "verify*",
+    "floor_gen*",
+    "overlay_gen*",
+    "assemble*",
+    "ingest*",
+]
+
+# Same override rationale as coxswain/pyproject.toml: the root pyproject's
+# addopts inject --cov=praxis; without --no-cov a training-only run reports
+# ~0% coverage of `praxis` and trips --cov-fail-under.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--no-cov"]
+
+# P2.2 (4477): batch execution-verify CLI over a directory of example files.
+[project.scripts]
+verify-cli = "verify.cli:main"

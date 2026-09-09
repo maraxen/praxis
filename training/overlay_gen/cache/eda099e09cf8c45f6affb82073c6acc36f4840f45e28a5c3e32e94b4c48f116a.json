@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:14:52Z",
+ "key": "eda099e09cf8c45f6affb82073c6acc36f4840f45e28a5c3e32e94b4c48f116a",
+ "prompt_sha256": "eda099e09cf8c45f6affb82073c6acc36f4840f45e28a5c3e32e94b4c48f116a",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Please load tips from tr0 A1.\nGrab tips from tr0 A1.\nPick up tips at tr0 A1.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}
