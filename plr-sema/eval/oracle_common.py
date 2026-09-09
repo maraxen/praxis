@@ -730,7 +730,11 @@ def run_static_calls(
     entry for every not-planned index (so :func:`compare`, which indexes
     ``st[f"op_{i}"]`` for every ``i`` in ``call_sequence``, never
     KeyErrors), and the caller is expected to report ``not_planned_indices``
-    separately (§11.10: "counted as ``not_planned`` in the report").
+    separately (§11.10: "counted as ``not_planned`` in the report"). Every
+    entry -- not-planned included -- additionally carries ``scoped_verdict``
+    (spec 260909 §16.6, increment 7, T44, Q1), following the SAME rule as
+    any other operation's: see this function's own ``excludes_sites``
+    paragraph below.
 
     ``volume_tracking_observed`` (spec 260903 §14.6/§14.11, volume
     increment 5, round-1 O5, T27, backlog #4959): the caller's own in-window
@@ -797,6 +801,19 @@ def run_static_calls(
     docstring). ``oracle_replay.py`` is the first caller that passes one,
     to publish ``rows_excused_by_scope`` as a pure annotation (no gate
     effect, §15.10's own normative box).
+
+    ``result[oid]["scoped_verdict"]`` (spec 260909 §16.6, increment 7,
+    T44, Q1): the per-operation counterpart of
+    ``AnalysisReport.scope_verdict`` -- the SAME ``join`` this function
+    already calls for ``verdict``, but over the sub-multiset of THAT
+    operation's own findings whose ``plr_site`` is not in the (row-level)
+    ``excludes_sites`` collector, once this call returns. ``None`` for
+    every operation whenever ``excludes_sites`` is ``None`` (this caller
+    never threaded one) or came back empty after the call (no tier-(iii)
+    guard visited this row) -- mirrors ``scope_verdict``'s own "``None``
+    whenever ``scope`` is ``None``" rule. A caller that wants a non-``None``
+    ``scoped_verdict`` must pass a (possibly empty) list, exactly as it
+    already must to get ``rows_excused_by_scope`` populated.
     """
     sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "src"))
     from plr_sema.check import check_ir
@@ -840,11 +857,28 @@ def run_static_calls(
     per_op: dict[str, list] = {f"op_{i}": [] for i in not_planned}
     for f in findings:
         per_op.setdefault(f.operation_id, []).append(f)
+    # 260909 (spec §16.6, increment 7, T44, Q1): the static side's own
+    # `scoped_verdict`, published PER OPERATION beside `verdict` -- the
+    # SAME `join` this function already calls, over the sub-multiset of
+    # each operation's own findings whose `plr_site` is not in
+    # `excludes_sites` (the ONE row-level collector this call threads to
+    # `check_ir`, `AnalysisReport.scope`'s own one-list-per-report shape,
+    # per this function's own docstring). `None` for every operation
+    # whenever `excludes_sites` is `None` (not threaded by this caller) or
+    # came back empty (no tier-(iii) guard visited this row) -- mirrors
+    # `AnalysisReport.scope_verdict`'s own "`None` whenever `scope` is
+    # `None`" rule (`plr_sema/src/plr_sema/verdict.py`).
+    scoped_sites = tuple(excludes_sites) if excludes_sites else None
     result = {
         oid: {
             "verdict": join(tuple(fs)).value,
             "n_findings": len(fs),
             "reasons": sorted({getattr(f, "reason", None) or "" for f in fs} - {""}),
+            "scoped_verdict": (
+                join(tuple(f for f in fs if f.plr_site not in scoped_sites)).value
+                if scoped_sites is not None
+                else None
+            ),
         }
         for oid, fs in per_op.items()
     }
@@ -872,9 +906,25 @@ def compare(example: dict[str, Any], rt: RuntimeOutcome, st: dict[str, dict[str,
         unsound = (verdict == "safe" and outcome.startswith("raised")) or (
             verdict == "will_fail" and outcome == "ran_ok"
         )
+        # 260909 (spec §16.6, increment 7, T44, Q1): `unsound_scoped` is a
+        # SECOND, additive counter -- the `unsound` predicate above (that
+        # field, that predicate, that counter) is UNMODIFIED. Computed by
+        # the SAME predicate over `scoped_verdict` instead of `verdict`.
+        # T44 does not narrow by §16.7's frame capture (that lands in T45,
+        # `.praxia/docs/specs/260909_plr-sema-observation-increment.md`
+        # §16.7) -- this row's `unsound_scoped` is the unnarrowed
+        # predicate only. `.get(...)` tolerates a static side (e.g.
+        # `run_static`, the graph-payload path) that never publishes
+        # `scoped_verdict` -- `None` there, same as an operation whose row
+        # never threaded an `excludes_sites` collector.
+        scoped_verdict = st[oid].get("scoped_verdict")
+        unsound_scoped = (scoped_verdict == "safe" and outcome.startswith("raised")) or (
+            scoped_verdict == "will_fail" and outcome == "ran_ok"
+        )
         rows.append({
             "index": i, "method": call["name"], "static": verdict,
             "static_findings": st[oid]["n_findings"], "runtime": outcome, "unsound": unsound,
+            "scoped_verdict": scoped_verdict, "unsound_scoped": unsound_scoped,
         })
     return rows
 

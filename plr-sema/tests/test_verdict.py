@@ -34,6 +34,7 @@ from plr_sema.verdict import (
     AnalysisReport,
     Finding,
     PlrSite,
+    SoundnessScope,
     Verdict,
     join,
 )
@@ -639,3 +640,74 @@ def test_report_round_trips_json() -> None:
     reconstructed = _report_from_dict(parsed)
 
     assert reconstructed == report
+
+
+# ---------------------------------------------------------------------------
+# test_scope_verdict_* -- spec §16.6, T44, Q1: the second, additive report
+# field
+# ---------------------------------------------------------------------------
+
+
+def _minimal_stamp() -> SurveyStamp:
+    return SurveyStamp(
+        plr=GitState(hash="a" * 40, branch="main", dirty=False),
+        praxis=GitState(hash="b" * 40, branch="main", dirty=False),
+        pylabrobot_version="0.1.0",
+        stamped_at="2026-09-09T00:00:00+00:00",
+    )
+
+
+def test_scope_verdict_defaults_none_and_schema_version_unchanged() -> None:
+    """§16.6: `scope_verdict` is `None` by default -- every report that
+    never constructs one (every pre-increment-7 report, and any report
+    whose `scope` is also `None`) is unaffected. `schema_version` stays 1
+    (the additive-field rule, main spec §Open decisions 3)."""
+    report = AnalysisReport(
+        protocol_fqn="my.package.my_protocol",
+        verdict=Verdict.UNKNOWN,
+        findings=(),
+        stamp=_minimal_stamp(),
+    )
+    assert report.scope is None
+    assert report.scope_verdict is None
+    assert report.schema_version == 1
+
+
+def test_scope_verdict_holds_a_verdict_without_disturbing_verdict() -> None:
+    """`scope_verdict` is a SECOND field beside `scope` -- it can carry a
+    real `Verdict` while `scope` is set, and `verdict` (the unscoped join)
+    is untouched by its presence."""
+    site = PlrSite(
+        file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+        lineno=576,
+        qualname="LiquidHandler.pick_up_tips",
+    )
+    report = AnalysisReport(
+        protocol_fqn="my.package.my_protocol",
+        verdict=Verdict.UNKNOWN,
+        findings=(),
+        stamp=_minimal_stamp(),
+        scope=SoundnessScope(excludes_sites=(site,)),
+        scope_verdict=Verdict.SAFE,
+    )
+    assert report.verdict is Verdict.UNKNOWN
+    assert report.scope_verdict is Verdict.SAFE
+    assert report.schema_version == 1
+
+
+def test_join_not_modified_or_overloaded_by_scope_verdict() -> None:
+    """§16.6's normative box: `join` is not modified (same one-parameter
+    signature as before this row) and not overloaded (exactly one `def
+    join` in this module) by the introduction of `scope_verdict`."""
+    import inspect
+
+    sig = inspect.signature(join)
+    assert list(sig.parameters) == ["findings"]
+
+    tree = ast.parse((SRC_ROOT / "verdict.py").read_text(), filename="verdict.py")
+    join_defs = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "join"
+    ]
+    assert len(join_defs) == 1

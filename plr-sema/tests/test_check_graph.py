@@ -20,6 +20,7 @@ lookup` below for the direct confirmation.
 
 from __future__ import annotations
 
+import ast
 import copy
 import json
 import subprocess
@@ -311,6 +312,9 @@ def _report_from_dict(d: dict) -> AnalysisReport:
         stamp=_stamp_from_dict(d["stamp"]),
         schema_version=d["schema_version"],
         scope=_scope_from_dict(d.get("scope")),
+        # 260909 (spec §16.6, increment 7, T44, Q1): additive, `None` unless
+        # `scope` produced one too.
+        scope_verdict=Verdict(d["scope_verdict"]) if d.get("scope_verdict") is not None else None,
     )
 
 
@@ -326,6 +330,90 @@ def test_full_pipeline_report_round_trips_json(report: AnalysisReport) -> None:
     payload = json.loads(json.dumps(dataclasses.asdict(report)))
     rebuilt = _report_from_dict(payload)
     assert rebuilt == report
+
+
+# ---------------------------------------------------------------------------
+# §16.6, T44, Q1 -- the scoped joined verdict (AC-16.7)
+# ---------------------------------------------------------------------------
+
+
+def test_scope_verdict_equals_join_over_the_excluded_subset(report: AnalysisReport) -> None:
+    """§16.6: `scope_verdict` is `None` iff `scope` is `None`; otherwise it
+    is exactly `join()` -- the SAME function `verdict` itself is built
+    from -- over the sub-multiset of `report.findings` whose `plr_site` is
+    not in `report.scope.excludes_sites`. Re-derived independently here
+    rather than trusting `_check`'s own computation. The fixture protocol
+    (`pick_up_tips`/`aspirate`/`dispense`/`drop_tips`) is known (§16.6) to
+    carry a tier-(iii) re-raise on every operation, so this also confirms
+    `report.scope` is actually populated on this fixture -- the assertion
+    is not vacuously true over an empty exclusion set."""
+    from plr_sema.verdict import join
+
+    assert report.scope is not None
+    assert report.scope.excludes_sites
+    expected = join(
+        tuple(f for f in report.findings if f.plr_site not in report.scope.excludes_sites)
+    )
+    assert report.scope_verdict == expected
+    # verdict itself (the UNSCOPED join) is untouched by scope_verdict's
+    # existence.
+    assert report.verdict == join(report.findings)
+
+
+def test_scope_verdict_none_when_scope_none() -> None:
+    """`scope_verdict` is `None` whenever `scope` is `None` -- exercised
+    directly (not just via the fixture, which always populates `scope`)
+    against `check_ir`'s own no-collector default."""
+    # A bytecode with zero CALL instructions visits zero guards, so
+    # `check_ir`'s own `excludes_sites` collector (never passed here, the
+    # default) never matters -- this exercises the "`_check` never passed a
+    # collector" half rather than the "collector came back empty" half,
+    # which the fixture-based test above cannot reach (it always threads
+    # one).
+    bytecode = ir.lower_graph({"operations": []}, param_names={})
+    from plr_sema.check import _check
+
+    report = _check(bytecode, "empty.protocol", {"contracts": {}, "receiver_state": {}, "stamp": _minimal_stamp_dict()})
+    assert report.scope is None
+    assert report.scope_verdict is None
+
+
+def _minimal_stamp_dict() -> dict:
+    return {
+        "plr": {"hash": "a" * 40, "branch": "main", "dirty": False},
+        "praxis": {"hash": "b" * 40, "branch": "main", "dirty": False},
+        "pylabrobot_version": "0.1.0",
+        "stamped_at": "2026-09-09T00:00:00+00:00",
+        "schema_version": 1,
+    }
+
+
+def test_check_call_site_calls_join_without_a_flag() -> None:
+    """§16.6's normative box, AST-scanned: `join` is not modified, not
+    overloaded and not called with a flag at the ONE `_check` call site
+    that computes `scope_verdict`. Every `join(...)` call inside `_check`'s
+    body takes exactly one positional argument and zero keyword arguments
+    -- there is no boolean/scope parameter threaded into `join` itself."""
+    tree = ast.parse(
+        (PLR_SEMA_ROOT / "src" / "plr_sema" / "check" / "__init__.py").read_text(),
+        filename="check/__init__.py",
+    )
+    check_fn = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name == "_check"
+    )
+    join_calls = [
+        node
+        for node in ast.walk(check_fn)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "join"
+    ]
+    # Two calls: `verdict=join(findings)` and `scope_verdict`'s own
+    # `join(tuple(...))` over the filtered sub-multiset.
+    assert len(join_calls) == 2
+    for call in join_calls:
+        assert len(call.args) == 1
+        assert not call.keywords
 
 
 # ---------------------------------------------------------------------------

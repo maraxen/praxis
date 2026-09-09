@@ -308,6 +308,16 @@ class AnalysisReport:
     # report, and any report `check_ir` is called on without threading an
     # `excludes_sites` collector -- see that function's own docstring).
     scope: "SoundnessScope | None" = None
+    # 260909 (spec §16.6, increment 7, T44, Q1): a SECOND, additive field
+    # beside `scope` -- NOT a replacement for `verdict`. Computed at the
+    # one `_check` call site by the UNCHANGED `join()` over the sub-
+    # multiset of `findings` whose `plr_site` is not in
+    # `scope.excludes_sites`; `join` itself is not modified, overloaded or
+    # called with a flag (§16.6's own AST-scan requirement). `None`
+    # whenever `scope` is `None`, so no report that never saw a tier-(iii)
+    # guard gains one and every pre-increment-7 report is bit-identical.
+    # `schema_version` stays 1 on the same additive-field rule as `scope`.
+    scope_verdict: "Verdict | None" = None
 
 
 def join(findings: tuple[Finding, ...]) -> Verdict:
