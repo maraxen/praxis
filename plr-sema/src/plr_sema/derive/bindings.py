@@ -78,6 +78,7 @@ from plr_sema.derive.predicate_ast import (
     Opaque,
     Or,
     Predicate,
+    SetLit,
     SetOf,
     TRUE,
     Term,
@@ -96,6 +97,9 @@ __all__ = [
     "compute_local_bindings_for_guard",
     "compute_all_local_bindings",
     "compute_reachability_clear",
+    "compute_caller_args",
+    "compute_caller_call_lineno",
+    "compute_caller_scope_trail",
     "substitute",
     "build_qualname_index",
     "is_plr_layer_method",
@@ -164,7 +168,7 @@ def free_var_names(node: "Predicate | Term") -> frozenset[str]:
     ``predicate``...)"."""
     if isinstance(node, Var):
         return frozenset({node.name})
-    if isinstance(node, (TRUE, Opaque, Lit)):
+    if isinstance(node, (TRUE, Opaque, Lit, SetLit)):
         return frozenset()
     if isinstance(node, Not):
         return free_var_names(node.predicate)
@@ -235,7 +239,7 @@ def substitute(node: "Predicate | Term", bindings_by_name: dict[str, dict[str, A
             inner = predicate_from_json(b["pred"])
             return Filtered(seq=Var(b["iter"]), predicate=substitute(inner, bindings_by_name))
         return node
-    if isinstance(node, (TRUE, Opaque, Lit)):
+    if isinstance(node, (TRUE, Opaque, Lit, SetLit)):
         return node
     if isinstance(node, EnvRef):
         if node.args is None:
@@ -348,7 +352,7 @@ def _opaque_text(node: "Predicate | Term") -> str:
 
 
 def _demote_term(term: "Term", is_refused) -> "Term | None":
-    if isinstance(term, (Var, Lit)):
+    if isinstance(term, (Var, Lit, SetLit)):
         return term
     if isinstance(term, EnvRef):
         if term.args is not None and len(term.path) == 2 and is_refused(term.path[1]):
@@ -827,3 +831,250 @@ def compute_reachability_clear(K: FunctionNode, guard_lineno: int) -> bool:
         if isinstance(stmt, (ast.Break, ast.Continue)):
             return False
     return True
+
+
+# ---------------------------------------------------------------------------
+# T42 (spec 260909 §16.4, increment 7): the delegate->caller argument map,
+# and the two additive caller-side facts D1's lift needs --
+# `compute_caller_args` (M1/M2's wire payload) and
+# `compute_caller_scope_trail` (D1's second precondition). Both operate on
+# `K` -- the ENTRY POINT's own AST, never a delegate's -- which is exactly
+# the boundary `param_defaults_from_function` already draws for the same
+# reason (E-CALL(depth) forbids consulting a delegate's own call-site
+# facts at all): only `derive/__init__.py::derive_contract`, which alone
+# knows which record is the entry point (depth 0) versus a delegate
+# (depth >= 1), is positioned to hand this module the right `K`.
+# ---------------------------------------------------------------------------
+
+
+def _find_delegate_call(K: FunctionNode, method_name: str) -> ast.Call | None:
+    """M1 clauses 1 & 2, combined: the UNIQUE ``self.<method_name>(...)``
+    call anywhere in ``K``'s own body (any nesting, never descending into
+    a nested ``FunctionDef``/``AsyncFunctionDef``/``Lambda``/``ClassDef``
+    -- a different scope's own call, out of reach for ``K``'s own
+    single-call-site test, mirroring ``_walk_statements``'s identical
+    scope boundary). ``None`` (fail-closed) when there are zero matches (a
+    module-level delegate called bare never matches the self-receiver
+    shape at all, so it is naturally zero here -- clause 1) or more than
+    one (clause 2: two call sites have two argument vectors and one guard
+    record; binding either would be a choice the record cannot express).
+    """
+    calls: list[ast.Call] = []
+
+    class _SelfCallFinder(ast.NodeVisitor):
+        def visit_FunctionDef(self, node: ast.AST) -> None:  # noqa: N802 -- ast.NodeVisitor's own naming convention.
+            return  # a different scope -- never descend into it.
+
+        visit_AsyncFunctionDef = visit_FunctionDef
+        visit_Lambda = visit_FunctionDef
+        visit_ClassDef = visit_FunctionDef
+
+        def visit_Call(self, node: ast.Call) -> None:  # noqa: N802
+            func = node.func
+            if (
+                isinstance(func, ast.Attribute)
+                and isinstance(func.value, ast.Name)
+                and func.value.id == "self"
+                and func.attr == method_name
+            ):
+                calls.append(node)
+            self.generic_visit(node)
+
+    finder = _SelfCallFinder()
+    for stmt in K.body:
+        finder.visit(stmt)
+    return calls[0] if len(calls) == 1 else None
+
+
+def _parse_term_from_expr(node: ast.expr) -> "Term | None":
+    """M1 clause 5's "parses as a Term" test -- reusing ``predicate_ast``'s
+    PUBLIC ``parse`` entry point exactly as ``_match_alpha`` reuses it for
+    a ``Predicate`` (this module has no private entry point into
+    ``predicate_ast``, by that function's own docstring, and this stays
+    true for Term positions too). ``node`` is unparsed back to source and
+    wrapped as ``(<text>) is not None`` -- over a literal ``None`` RHS,
+    ``predicate_ast``'s own ``_parse_one_cmp`` recognises exactly ONE
+    production, ``Is(term=<the Term the LHS parsed to>, negated=True)``,
+    and every other outcome (in particular ``Opaque``, the totality
+    boundary's own catch-all) means the raw expression did not parse as a
+    Term at all -- fail-closed, ``None``, exactly like ``_parse_term``'s
+    own refusal would give directly, without this module ever importing
+    it.
+    """
+    try:
+        text = ast.unparse(node)
+    except Exception:  # noqa: BLE001 -- best-effort text; a failure here is a term-parse failure too.
+        return None
+    parsed = parse_predicate(f"({text}) is not None")
+    if isinstance(parsed, Is) and parsed.negated:
+        return parsed.term
+    return None
+
+
+def compute_caller_call_lineno(K: FunctionNode, D: FunctionNode) -> int | None:
+    """M1 clauses 1 & 2 alone, exposed independently of the argument map
+    itself: the UNIQUE delegate call statement's own ``lineno`` in ``K``'s
+    body, or ``None`` under the identical fail-closed conditions
+    :func:`compute_caller_args` refuses on. ``derive_contract`` uses this
+    (never re-deriving the lookup a second time by hand) to key
+    ``compute_reachability_clear``/``compute_caller_scope_trail`` on the
+    SAME statement ``compute_caller_args`` itself resolved against --
+    clauses 3/4/5 (which only gate individual ARGUMENT bindings, never
+    whether there IS a call statement) play no part here, so this can
+    return a lineno even for a ``(K, D)`` pair whose own argument map ends
+    up ``{}`` (e.g. every argument fails to parse as a Term).
+    """
+    call = _find_delegate_call(K, D.name)
+    return None if call is None else call.lineno
+
+
+def compute_caller_args(K: FunctionNode, D: FunctionNode) -> dict[str, Any] | None:
+    """M1 (§16.4): the complete ``{D's own parameter name: <Term JSON>}``
+    map for the ONE ``self.<D.name>(...)`` call in ``K``'s body, or
+    ``None`` (fail-closed on the WHOLE pair) when clause 1 or 2 refuses
+    (no single self-rooted call site -- :func:`_find_delegate_call`) or
+    clause 4 refuses (call-side ``ast.Starred``/``**`` unpacking, or ``D``
+    itself declares ``*args``/``**kwargs``). Clause 3 (positional-by-index
+    against ``D``'s own ``ast.arguments``, after ``self``; keyword by
+    name) and clause 5 (an argument that does not parse as a ``Term``
+    binds only THAT parameter to nothing, never the whole map) are both
+    enforced per-argument, inside the loop below -- a clause-5 refusal
+    never reaches this function's own ``None`` return, by construction.
+
+    Clause 6 (depth == 1 only) is NOT this function's job: it has no
+    ``depth`` parameter at all, by the spec's own signature
+    (``compute_caller_args(K, D)``) -- the caller (``derive_contract``)
+    is the one place that already knows which depth a record sits at, and
+    it alone decides whether to invoke this function.
+
+    **C10's own fix, applied here rather than left to check time.** Each
+    parsed argument Term is additionally run through K's OWN alpha idiom
+    (:func:`compute_local_bindings_for_guard`, the SAME function
+    ``bindings``/``reachability_clear`` already use, called against ``K``
+    -- never ``D`` -- and POSITION-GATED AT THE CALL STATEMENT'S OWN
+    lineno, never at any guard's, which lives in ``D`` and would be
+    "meaningless in both directions" per §16.4's own normative box) before
+    it is stored -- :func:`substitute` folds a matched ALPHA binding
+    into the term (``Var(x)`` -> ``Filtered(...)``); a BETA binding is
+    left untouched by ``substitute`` itself (it binds a LENGTH fact, not a
+    term substitute -- its own docstring), a documented, sound gap
+    identical in spirit to ``check.predicate``'s own module docstring
+    point 1 for a non-beta-bound parameter: resolved via the ordinary
+    ``call.kwargs``/``param_defaults``/channel-kwarg rules at eval time,
+    exactly as if it had never been rebound.
+    """
+    call = _find_delegate_call(K, D.name)
+    if call is None:
+        return None  # clauses 1/2.
+    if any(isinstance(a, ast.Starred) for a in call.args):
+        return None  # clause 4: call-side *args unpacking.
+    if any(kw.arg is None for kw in call.keywords):
+        return None  # clause 4: call-side ** unpacking.
+    d_args = D.args
+    if d_args.vararg is not None or d_args.kwarg is not None:
+        return None  # clause 4: D itself declares *args/**kwargs.
+
+    positional = [a.arg for a in d_args.posonlyargs] + [a.arg for a in d_args.args]
+    if positional and positional[0] == "self":
+        positional = positional[1:]  # the receiver is never spelled at the call site.
+
+    def substituted(term: "Term") -> "Term":
+        k_bindings = {b["x"]: b for b in compute_local_bindings_for_guard(K, term, call.lineno)}
+        return term if not k_bindings else substitute(term, k_bindings)  # type: ignore[return-value]
+
+    result: dict[str, Any] = {}
+    for i, arg_node in enumerate(call.args):
+        if i >= len(positional):
+            continue  # more positional call args than D declares params -- ignore the overflow (defensive; not observed on real PLR code).
+        term = _parse_term_from_expr(arg_node)
+        if term is not None:
+            result[positional[i]] = predicate_to_json(substituted(term))
+    for kw in call.keywords:
+        assert kw.arg is not None  # ** already refused above.
+        term = _parse_term_from_expr(kw.value)
+        if term is not None:
+            result[kw.arg] = predicate_to_json(substituted(term))
+    return result
+
+
+_If = ast.If
+_Loop = (ast.For, ast.AsyncFor, ast.While)
+
+
+def _scope_trail_outermost_first(stmts: list[ast.stmt], target_lineno: int) -> tuple[str, ...] | None:
+    """The survey's OWN text convention (``scripts/survey_plr_preconditions.py``'s
+    ``_BodyScanner.visit_If``/``visit_For``/``visit_While``), replayed here
+    against a SINGLE target statement rather than collected for every
+    finding in a whole-body visit -- ``None`` when ``target_lineno`` is not
+    found anywhere in ``stmts`` (at any nesting, modulo the same
+    never-descend-into-a-nested-scope boundary every other walk in this
+    module draws). Outermost first; the public wrapper below reverses it
+    to match ``scope_trail``'s own nearest-first convention. A
+    ``Try``/``With``/``AsyncWith`` ancestor contributes NO entry of its own
+    (mirroring the survey scanner, which has no ``visit_Try``/``visit_With``
+    override) but is still descended into, so a target nested inside one
+    is still found.
+    """
+    for stmt in stmts:
+        if stmt.lineno == target_lineno:
+            return ()
+        if isinstance(stmt, _If):
+            try:
+                test_src = ast.unparse(stmt.test)
+            except Exception:  # noqa: BLE001 -- best-effort text, mirrors the survey's own fallback.
+                test_src = "<unparseable>"
+            found = _scope_trail_outermost_first(stmt.body, target_lineno)
+            if found is not None:
+                return (f"if {test_src}", *found)
+            if stmt.orelse:
+                found = _scope_trail_outermost_first(stmt.orelse, target_lineno)
+                if found is not None:
+                    return (f"else of: if {test_src}", *found)
+        elif isinstance(stmt, _Loop):
+            if isinstance(stmt, ast.While):
+                try:
+                    trail_entry = f"while {ast.unparse(stmt.test)}"
+                except Exception:  # noqa: BLE001
+                    trail_entry = "while <unparseable>"
+            else:
+                try:
+                    trail_entry = f"for {ast.unparse(stmt.target)} in {ast.unparse(stmt.iter)}"
+                except Exception:  # noqa: BLE001
+                    trail_entry = "for <unparseable>"
+            found = _scope_trail_outermost_first(stmt.body, target_lineno)
+            if found is not None:
+                return (trail_entry, *found)
+            found = _scope_trail_outermost_first(stmt.orelse, target_lineno)
+            if found is not None:
+                return found  # the survey pushes no entry for a loop's own `else:` either.
+        elif isinstance(stmt, ast.Try):
+            for field_name in ("body", "orelse", "finalbody"):
+                found = _scope_trail_outermost_first(getattr(stmt, field_name), target_lineno)
+                if found is not None:
+                    return found
+            for handler in stmt.handlers:
+                found = _scope_trail_outermost_first(handler.body, target_lineno)
+                if found is not None:
+                    return found
+        elif isinstance(stmt, (ast.With, ast.AsyncWith)):
+            found = _scope_trail_outermost_first(stmt.body, target_lineno)
+            if found is not None:
+                return found
+        elif isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)):
+            continue  # a different scope -- never descend into it.
+    return None
+
+
+def compute_caller_scope_trail(K: FunctionNode, call_lineno: int) -> tuple[str, ...] | None:
+    """D1's second precondition (§16.4): the nearest-first ``scope_trail``
+    of the delegate CALL STATEMENT itself, in ``K``'s own body -- the same
+    text convention ``InlinedGuard.scope_trail`` already carries (so
+    :func:`plr_sema.check.predicate._entry_satisfies_uncond` needs no
+    special-casing to consume it). ``None`` (fail-closed, distinct from
+    the valid-but-empty ``()`` -- "no enclosing scope at all") when
+    ``call_lineno`` names no statement anywhere in ``K``'s own body.
+    """
+    found = _scope_trail_outermost_first(K.body, call_lineno)
+    if found is None:
+        return None
+    return tuple(reversed(found))

@@ -34,7 +34,7 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping, Sequence
 
 log = logging.getLogger(__name__)
 
@@ -62,6 +62,99 @@ FINDINGS_SINK: FindingsSink | None = None
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONTRACTS = REPO_ROOT / "plr-sema" / "data" / "derived_contracts.json"
+
+
+# ---------------------------------------------------------------------------
+# The fence (spec 260909 §16.7, observation increment 7, T45, backlog
+# #5025): the ONE frame/site normalisation helper (F2a) and the ONE
+# any-frame excusal rule (F2), shared by `compare()` below (tier 1) and
+# `region_oracle.py` (tier 2b, F4's parity requirement) so the two lanes
+# never diverge on what "excused" means.
+# ---------------------------------------------------------------------------
+
+
+def normalize_plr_path(path: str) -> str:
+    """F2a's ONE normalisation helper, applied identically to BOTH sides of
+    a frame/site match: a captured ``error_frames[i]["file"]`` (a runtime
+    ``__file__``, always absolute -- ``verify.verifier._error_frames``'s own
+    docstring) and a ``PlrSite.file`` (repo-relative, e.g.
+    ``"external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py"``,
+    the shipped ``derived_contracts.json`` convention).
+
+    Resolves ``path`` (against :data:`REPO_ROOT` first when it is not
+    already absolute -- a ``PlrSite.file`` is always relative), then
+    re-roots it onto the LIVE ``pylabrobot`` package directory and
+    re-prefixes it with that package's OWN path relative to
+    :data:`REPO_ROOT` -- which is ``"external/pylabrobot/pylabrobot"``
+    whenever PLR resolves to the vendored submodule (F2a's second identity:
+    "equals the submodule-relative path the sites use ONLY when PLR
+    resolves to external/pylabrobot/"). A path that is not inside the live
+    ``pylabrobot`` package (an installed copy resolving elsewhere, or a
+    harness/test frame outside PLR entirely) normalises to its own
+    REPO_ROOT-relative form, or to its plain resolved form if it isn't
+    under REPO_ROOT either -- this function never raises, so two paths
+    that genuinely cannot be unified simply compare unequal (the "under an
+    installed copy it does not" case §16.7 names as an accepted limitation,
+    not a defect this helper is asked to paper over).
+    """
+    p = Path(path)
+    resolved = (p if p.is_absolute() else REPO_ROOT / p).resolve()
+    try:
+        import pylabrobot
+
+        pkg_root = Path(pylabrobot.__file__).resolve().parent
+        rel = resolved.relative_to(pkg_root)
+    except (ImportError, ValueError):
+        try:
+            return resolved.relative_to(REPO_ROOT).as_posix()
+        except ValueError:
+            return resolved.as_posix()
+    try:
+        prefix = pkg_root.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        prefix = pkg_root.name
+    return f"{prefix}/{rel.as_posix()}"
+
+
+def _frame_matches_site(frame: Mapping[str, Any], site: Any) -> bool:
+    """F2a's ``(file, lineno)`` identity -- both sides normalised through
+    :func:`normalize_plr_path` before comparison. ``site.lineno`` is "the
+    first line of the raising statement", which is exactly what
+    ``tb_lineno`` (and therefore this frame's own ``lineno``) reports for
+    that frame (F2a's first identity) -- compared directly, no
+    normalisation needed on the integer side.
+    """
+    return frame["lineno"] == site.lineno and (
+        normalize_plr_path(frame["file"]) == normalize_plr_path(site.file)
+    )
+
+
+def excuse_by_frame(
+    error_frames: "list[Mapping[str, Any]] | None",
+    excludes_sites: "Sequence[Any] | None",
+) -> "tuple[bool, Mapping[str, Any] | None]":
+    """F2's narrowing: a row is excused iff ANY frame in ``error_frames``
+    matches ANY site in ``excludes_sites``, with the OUTERMOST match
+    deciding when several do. ``error_frames`` is already outermost-first
+    (``verify.verifier._error_frames``'s own contract), so the first match
+    found while walking it in order IS the outermost one -- no separate
+    tie-break pass is needed. Returns ``(False, None)`` when either
+    argument is ``None``/empty or no frame matches; ``(True, frame)``
+    otherwise, where ``frame`` is the deciding (outermost) match, published
+    so a caller can report "every excused row's full frame list" (AC-16.8)
+    without re-deriving anything.
+
+    An innermost-wins rule would re-introduce exactly C5's defect one level
+    down (§16.7's own normative box) -- this function's iteration order is
+    therefore load-bearing, not incidental.
+    """
+    if not error_frames or not excludes_sites:
+        return False, None
+    for frame in error_frames:
+        for site in excludes_sites:
+            if _frame_matches_site(frame, site):
+                return True, frame
+    return False, None
 
 
 # --------------------------------------------------------------------------
@@ -393,6 +486,22 @@ class RuntimeOutcome:
     #: `False` when `run_runtime` never reached `verify()`'s success path
     #: (a harness-level exception -- `result` is never built in that case).
     volume_tracking_observed: bool = False
+    #: 260909 (spec §16.2.1, observation increment, T40, backlog #5023):
+    #: the four-field observation record, read off `verify()`'s own
+    #: additive `plr_observation` result key -- itself captured at ONE
+    #: window inside `verify()`, never re-derived here.  `None` on the
+    #: same two conditions `verify()` documents: the deck-build early
+    #: return, and a `result` that was never built at all (a harness-level
+    #: exception below, same as `volume_tracking_observed` above).
+    plr_observation: dict[str, Any] | None = None
+    #: 260909 (spec §16.7 F1, fence increment, T45, backlog #5025): the
+    #: whole `traceback.extract_tb(...)` frame list, outermost first, read
+    #: off `verify()`'s own additive `error_frames` result key -- itself
+    #: captured at BOTH of `verify()`'s `except` handlers, never re-derived
+    #: here. `None` on the same conditions as `error` itself: no exception
+    #: was raised, OR `result` was never built at all (a harness-level
+    #: exception below).
+    error_frames: list[dict[str, Any]] | None = None
 
 
 def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
@@ -436,6 +545,8 @@ def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
         error, exc_class, failing, planned, bool(result.get("passed")), plr_kwargs, resource_types,
         element_type_singletons(element_sets),
         bool(result.get("volume_tracking_observed")),
+        result.get("plr_observation"),
+        result.get("error_frames"),
     )
 
 
@@ -620,6 +731,113 @@ def run_static(graph: dict[str, Any], contracts_json: str) -> dict[str, dict[str
     }
 
 
+#: §16.2.1's CLOSED field list -- read here by NAME and nowhere else, so a
+#: fifth key silently added upstream (e.g. a stale/experimental `verify()`
+#: caller) can never widen `env`. The sorted key-set equality this backs
+#: is what the closed-refusal-list tests in `plr-sema/tests/test_cache.py`
+#: and `training/tests/test_verify_postconditions.py` assert against.
+OBSERVATION_KEYS = frozenset({
+    "backend_class", "num_channels", "head_channels", "deck_resource_names",
+})
+
+
+def observation_env_members(
+    plr_observation: Mapping[str, Any] | None,
+    resources: Mapping[str, Any],
+) -> frozenset[str]:
+    """§16.2.3 (spec 260909, observation increment, T40, backlog #5023):
+    the `obs:` cache-key partition built off §16.2's four-field record.
+
+    `None` (§16.2.1's fail-closed default -- the deck-build early return,
+    or any raising read inside `verify()`'s own capture window) adds
+    NOTHING: no `obs:` member enters `env` for an unobserved row. That is
+    exactly the "every rule in §16.5 declines" default the spec's
+    fail-closed box describes, and it is what keeps a caller that never
+    passes `plr_observation` (every caller before this row) byte-identical
+    to today -- the empty-`env` cache key is unchanged (AC-16.1).
+
+    `backend_class`/`num_channels`/`head_channels` are each
+    ``json.dumps(value, sort_keys=True, separators=(",", ":"))`` of the
+    field's own Python value -- `head_channels` SORTED NUMERICALLY first
+    (never string-sorted: a 16-channel head would otherwise put channel 10
+    before channel 2). `deck_resource_names` never enters `env` directly;
+    under D6 it is reduced to a per-slot ``{resource_name: bool}`` map --
+    whether each of `resources`'s own declared names is a member of the
+    observed set -- and only that map's sha256 digest becomes the fourth
+    member, `obs:deck_resources`, because the raw per-benchmark-row map
+    would make `env` unbounded (a digest of the exact object a resolution
+    rule reads is what makes it PARTITION the cache correctly; anything
+    less does not).
+
+    260909 (spec §16.1.3/§16.15 D6, observation increment, T48, backlog
+    #5026): a FIFTH member, `obs:deck_resources_verified`, threads the
+    AGGREGATE fact the `:321` site rule (`plr_sema.check.predicate
+    .D6_SITE_RULES`) actually reads -- `True` iff every name this row
+    declared as a DECK-PARENTED resource (`decl["parents"] == ("Deck",)`,
+    §11.2.2's own shape for a named `deck_layout.resources` entry --
+    excludes `"lh"`, the receiver, whose `parents` is `()`, and which
+    `_assert_resources_exist` never receives) is a member of the observed
+    `deck_resource_names`. This is the SAME `deck_map` the digest above
+    hashes -- not the raw map itself (still unbounded for the same reason
+    the digest exists), a single bounded boolean, exactly the shape
+    `backend_class`/`num_channels`/`head_channels` already use. Vacuously
+    `True` when the row declares no deck-parented resource at all (nothing
+    to falsify) -- the site rule's own `ir.Ref`-membership check
+    (`ref.slot in ctx.resources_by_slot`) is what keeps that vacuity from
+    ever firing on a row that never calls `_assert_resources_exist` at all.
+
+    The record is CLOSED (§16.2.1's refusal box): reading exactly the four
+    keys of :data:`OBSERVATION_KEYS`, BY NAME, is what keeps a fifth key
+    silently added upstream from ever widening `env` -- this function
+    simply never looks at it. (`deck_resources_verified` is a DERIVED `env`
+    member, not a fifth key of `plr_observation` itself -- `OBSERVATION_KEYS`
+    is unchanged at four.)
+    """
+    if not plr_observation:
+        return frozenset()
+    backend_class = plr_observation["backend_class"]
+    num_channels = plr_observation["num_channels"]
+    head_channels = list(plr_observation["head_channels"])
+    deck_resource_names = plr_observation["deck_resource_names"]
+    # T40's own harness-side invariant (spec §16.13's T40 row).
+    assert len(head_channels) == num_channels, (
+        "plr_observation malformed: len(head_channels)="
+        f"{len(head_channels)} != num_channels={num_channels}"
+    )
+    members = {
+        "obs:backend_class=" + json.dumps(backend_class, sort_keys=True, separators=(",", ":")),
+        "obs:num_channels=" + json.dumps(num_channels, sort_keys=True, separators=(",", ":")),
+        "obs:head_channels=" + json.dumps(sorted(head_channels), separators=(",", ":")),
+    }
+    known = set(deck_resource_names)
+    deck_map = {name: (name in known) for name in sorted(resources)}
+    digest = hashlib.sha256(
+        json.dumps(deck_map, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    members.add("obs:deck_resources=" + digest)
+    # T48 (spec §16.1.3/§16.15 D6, backlog #5026): the aggregate fact the
+    # `:321` site rule reads -- deck-parented names only ("lh"'s own
+    # `parents == ()` excludes the receiver, which is never itself passed
+    # to `_assert_resources_exist`).
+    # 260909 (T49 fixer note, pre-existing gap): `resources` is a
+    # `Mapping[str, Any]` by this function's own signature, and
+    # `region_oracle.py`'s fixture path (`LAYOUT["resources"]`, a bare
+    # `{name: type_str}` map, never a decl dict) passes a `str` value here
+    # -- `isinstance(decl, Mapping)` makes a non-decl value simply NOT
+    # deck-parented (fail-closed: no information, no membership claim)
+    # rather than an `AttributeError` on `.get`.
+    deck_parented = {
+        name for name, decl in resources.items()
+        if isinstance(decl, Mapping) and decl.get("parents") == ("Deck",)
+    }
+    deck_resources_verified = all(deck_map[name] for name in deck_parented)
+    members.add(
+        "obs:deck_resources_verified="
+        + json.dumps(deck_resources_verified, separators=(",", ":"))
+    )
+    return frozenset(members)
+
+
 def run_static_calls(
     example: dict[str, Any],
     plr_kwargs: dict[int, dict[str, Any]],
@@ -627,6 +845,7 @@ def run_static_calls(
     *,
     param_names: dict[str, tuple[str, ...]] | None = None,
     volume_tracking_observed: bool = False,
+    plr_observation: Mapping[str, Any] | None = None,
     observe_element_types: bool = False,
     resource_types: Mapping[str, str] | None = None,
     element_types: Mapping[str, str | None] | None = None,
@@ -652,7 +871,11 @@ def run_static_calls(
     entry for every not-planned index (so :func:`compare`, which indexes
     ``st[f"op_{i}"]`` for every ``i`` in ``call_sequence``, never
     KeyErrors), and the caller is expected to report ``not_planned_indices``
-    separately (§11.10: "counted as ``not_planned`` in the report").
+    separately (§11.10: "counted as ``not_planned`` in the report"). Every
+    entry -- not-planned included -- additionally carries ``scoped_verdict``
+    (spec 260909 §16.6, increment 7, T44, Q1), following the SAME rule as
+    any other operation's: see this function's own ``excludes_sites``
+    paragraph below.
 
     ``volume_tracking_observed`` (spec 260903 §14.6/§14.11, volume
     increment 5, round-1 O5, T27, backlog #4959): the caller's own in-window
@@ -663,6 +886,19 @@ def run_static_calls(
     ``__name__``, never a typed string constant. Defaulting to `False`
     reproduces every pre-T27 caller's behaviour exactly (``env=frozenset()``
     is ``check_ir``'s own default).
+
+    ``plr_observation`` (spec 260909 §16.2/§16.2.3, observation increment,
+    T40, backlog #5023): the caller's own in-window observation record
+    (:attr:`RuntimeOutcome.plr_observation`, itself read off ``verify()``'s
+    additive ``plr_observation`` result key) -- this function folds
+    :func:`observation_env_members` (built against ``resources``, the SAME
+    per-slot RESOURCE declaration map already passed to ``lower_calls``)
+    into ``env`` alongside the volume member above. Defaulting to `None`
+    reproduces every pre-T40 caller's behaviour byte-identical
+    (``observation_env_members(None, ...)`` is ``frozenset()``, so ``env``
+    is exactly what it was before this row). No resolution rule reads an
+    ``obs:`` member yet (§16.5 unlands at T43), so every finding is
+    byte-identical at this row's state regardless of what is passed here.
 
     (#4976, band B0): immediately after ``findings`` is computed below --
     already relabelled to real ``op_<i>`` ids and already stripped of every
@@ -706,6 +942,19 @@ def run_static_calls(
     docstring). ``oracle_replay.py`` is the first caller that passes one,
     to publish ``rows_excused_by_scope`` as a pure annotation (no gate
     effect, §15.10's own normative box).
+
+    ``result[oid]["scoped_verdict"]`` (spec 260909 §16.6, increment 7,
+    T44, Q1): the per-operation counterpart of
+    ``AnalysisReport.scope_verdict`` -- the SAME ``join`` this function
+    already calls for ``verdict``, but over the sub-multiset of THAT
+    operation's own findings whose ``plr_site`` is not in the (row-level)
+    ``excludes_sites`` collector, once this call returns. ``None`` for
+    every operation whenever ``excludes_sites`` is ``None`` (this caller
+    never threaded one) or came back empty after the call (no tier-(iii)
+    guard visited this row) -- mirrors ``scope_verdict``'s own "``None``
+    whenever ``scope`` is ``None``" rule. A caller that wants a non-``None``
+    ``scoped_verdict`` must pass a (possibly empty) list, exactly as it
+    already must to get ``rows_excused_by_scope`` populated.
     """
     sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "src"))
     from plr_sema.check import check_ir
@@ -728,6 +977,7 @@ def run_static_calls(
     from pylabrobot.resources.volume_tracker import does_volume_tracking
 
     env = frozenset({does_volume_tracking.__name__}) if volume_tracking_observed else frozenset()
+    env = env | observation_env_members(plr_observation, resources)
 
     bc, not_planned = _lower_row_calls_notified(example, plr_kwargs, resources, param_names, resource_types, element_types)
     raw_findings = check_ir(bc, contracts, receiver_states, env=env, excludes_sites=excludes_sites)
@@ -748,11 +998,28 @@ def run_static_calls(
     per_op: dict[str, list] = {f"op_{i}": [] for i in not_planned}
     for f in findings:
         per_op.setdefault(f.operation_id, []).append(f)
+    # 260909 (spec §16.6, increment 7, T44, Q1): the static side's own
+    # `scoped_verdict`, published PER OPERATION beside `verdict` -- the
+    # SAME `join` this function already calls, over the sub-multiset of
+    # each operation's own findings whose `plr_site` is not in
+    # `excludes_sites` (the ONE row-level collector this call threads to
+    # `check_ir`, `AnalysisReport.scope`'s own one-list-per-report shape,
+    # per this function's own docstring). `None` for every operation
+    # whenever `excludes_sites` is `None` (not threaded by this caller) or
+    # came back empty (no tier-(iii) guard visited this row) -- mirrors
+    # `AnalysisReport.scope_verdict`'s own "`None` whenever `scope` is
+    # `None`" rule (`plr_sema/src/plr_sema/verdict.py`).
+    scoped_sites = tuple(excludes_sites) if excludes_sites else None
     result = {
         oid: {
             "verdict": join(tuple(fs)).value,
             "n_findings": len(fs),
             "reasons": sorted({getattr(f, "reason", None) or "" for f in fs} - {""}),
+            "scoped_verdict": (
+                join(tuple(f for f in fs if f.plr_site not in scoped_sites)).value
+                if scoped_sites is not None
+                else None
+            ),
         }
         for oid, fs in per_op.items()
     }
@@ -764,7 +1031,26 @@ def run_static_calls(
 # --------------------------------------------------------------------------
 
 
-def compare(example: dict[str, Any], rt: RuntimeOutcome, st: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+def compare(
+    example: dict[str, Any],
+    rt: RuntimeOutcome,
+    st: dict[str, dict[str, Any]],
+    *,
+    excludes_sites: "Sequence[Any] | None" = None,
+) -> list[dict[str, Any]]:
+    """``excludes_sites`` (spec 260909 §16.7 F2, fence increment, T45,
+    backlog #5025): the SAME row-level ``PlrSite`` list a caller threads to
+    :func:`run_static_calls`'s own ``excludes_sites`` collector (raw
+    objects, not ``_site_key`` strings) -- ``None`` (the default)
+    reproduces T44's unnarrowed behaviour byte-identically, since
+    :func:`excuse_by_frame` returns ``(False, None)`` whenever its second
+    argument is falsy. A caller that passes the row's own collector gets
+    F2's narrowing: a ``scoped_verdict == "safe"`` + ``raised`` row is
+    excused (``unsound_scoped`` becomes ``False``) iff some frame in
+    ``rt.error_frames`` matches an excluded site, outermost match deciding
+    a tie. ``will_fail``/``ran_ok`` rows are NEVER excused -- F2's own
+    condition (1) requires ``outcome.startswith("raised")``.
+    """
     rows = []
     for i, call in enumerate(example["call_sequence"]):
         oid = f"op_{i}"
@@ -777,12 +1063,40 @@ def compare(example: dict[str, Any], rt: RuntimeOutcome, st: dict[str, dict[str,
         else:
             outcome = "not_reached"
         verdict = st[oid]["verdict"]
+        # 260909 (spec §16.7 F3): `unsound` -- this field, this predicate,
+        # this counter -- is UNMODIFIED by the fence. `exc_class` (via
+        # `outcome`'s own `f"raised:{rt.exc_class}"` string) is used only
+        # to LABEL the row, never compared against a `PlrSite` or any other
+        # fence input -- `exc_class` appears nowhere in the comparison path
+        # (§16.7's own normative box, F2).
         unsound = (verdict == "safe" and outcome.startswith("raised")) or (
             verdict == "will_fail" and outcome == "ran_ok"
         )
+        # 260909 (spec §16.6, increment 7, T44, Q1): `unsound_scoped` is a
+        # SECOND, additive counter, computed by the SAME predicate over
+        # `scoped_verdict` instead of `verdict`. `.get(...)` tolerates a
+        # static side (e.g. `run_static`, the graph-payload path) that
+        # never publishes `scoped_verdict` -- `None` there, same as an
+        # operation whose row never threaded an `excludes_sites` collector.
+        scoped_verdict = st[oid].get("scoped_verdict")
+        unsound_scoped_unnarrowed = (scoped_verdict == "safe" and outcome.startswith("raised")) or (
+            scoped_verdict == "will_fail" and outcome == "ran_ok"
+        )
+        # 260909 (spec §16.7 F2, T45): the fence's narrowing -- applied
+        # ONLY to the `safe`+`raised` shape F2 names; a `will_fail`+
+        # `ran_ok` row is never a candidate (F2's condition (1)).
+        excused_by_frame = False
+        matched_frame = None
+        if unsound_scoped_unnarrowed and scoped_verdict == "safe" and outcome.startswith("raised"):
+            excused_by_frame, matched_frame = excuse_by_frame(rt.error_frames, excludes_sites)
+        unsound_scoped = unsound_scoped_unnarrowed and not excused_by_frame
         rows.append({
             "index": i, "method": call["name"], "static": verdict,
             "static_findings": st[oid]["n_findings"], "runtime": outcome, "unsound": unsound,
+            "scoped_verdict": scoped_verdict, "unsound_scoped": unsound_scoped,
+            "excused_by_frame": excused_by_frame,
+            "error_frames": rt.error_frames if excused_by_frame else None,
+            "matched_frame": matched_frame,
         })
     return rows
 

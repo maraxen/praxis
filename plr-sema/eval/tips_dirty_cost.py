@@ -456,11 +456,15 @@ def _run_tier2b(acc: TierAccumulator, *, fixtures_dir: Path, contracts_json: str
             continue
 
         try:
-            bytecode, shipped, _join_map, _static, _proved = region_oracle._static_report(
+            # 260909 (spec §16.7 F4, fence increment, T45, backlog #5025):
+            # `_static_report` gained an additive 6th return value
+            # (`static_scoped`, `None` when `excludes_sites` is never
+            # passed -- this caller never does).
+            bytecode, shipped, _join_map, _static, _static_scoped, _proved = region_oracle._static_report(
                 payload, contracts_payload, param_names, ir_mod, check_mod, env=env,
             )
             with _no_tips_dirty():
-                _bc2, nodirty, _jm2, _st2, _pt2 = region_oracle._static_report(
+                _bc2, nodirty, _jm2, _st2, _st2_scoped, _pt2 = region_oracle._static_report(
                     payload, contracts_payload, param_names, ir_mod, check_mod, env=env,
                 )
         except Exception as e:

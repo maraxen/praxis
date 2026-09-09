@@ -210,6 +210,15 @@ def run_one_mutant(
         st, _not_planned = oc.run_static_calls(
             mutant, rt.plr_kwargs, contracts_json, param_names=param_names,
             volume_tracking_observed=rt.volume_tracking_observed,
+            # 260909 (spec §16.2/§16.5, increment 7, T46): the SAME
+            # `plr_observation` wiring fix `oracle_replay.py`'s own
+            # `run_row` gets this row -- `rt.plr_observation` was captured
+            # (T40) but never threaded here either, so this mutant harness
+            # measured m1/m2 against an `env` that could never let R-HEAD/
+            # R-CONST resolve `:409`/`:514`. Threading it is what makes the
+            # m1/m2 non-regression re-run below a genuine test of T43's
+            # rules against these mutant fixtures, not a no-op re-run.
+            plr_observation=rt.plr_observation,
         )
     except Exception as e:
         return MutantResult(

@@ -25,7 +25,13 @@ from pylabrobot.liquid_handling.strictness import (
 from pylabrobot.resources import set_tip_tracking, set_volume_tracking
 
 from verify.checks import Check, ExecutedCall, run_all_checks
-from verify.deck import DeckLayout, SetupHandle, build_setup, infer_layout
+from verify.deck import (
+    DeckLayout,
+    SetupHandle,
+    build_setup,
+    capture_observation,
+    infer_layout,
+)
 from verify.dispatcher import plan_call
 
 __all__ = ["LH_BACKENDS", "UnsupportedBackendError", "verify"]
@@ -42,6 +48,43 @@ DEFAULT_TOLERANCE_UL = 1e-6
 
 class UnsupportedBackendError(ValueError):
     """backend= must name a liquid-handler chatterbox from CHATTERBOX_REGISTRY."""
+
+
+def _error_frames(exc: BaseException) -> list[dict[str, Any]]:
+    """260909 (spec §16.7 F1, fence increment, T45, backlog #5025): the
+    WHOLE ``traceback.extract_tb(...)`` frame list -- outermost first,
+    order preserved -- one dict per frame with ``file``/``lineno``/
+    ``qualname``. Walked from the RAW traceback chain (``exc.__traceback__``
+    / ``tb_next``), not :func:`traceback.extract_tb`'s own ``FrameSummary``
+    list, so ``qualname`` is ``code.co_qualname`` (the ``Class.method`` form
+    every ``PlrSite.qualname`` in ``derived_contracts.json`` uses -- verified
+    against the shipped table this row's own tests read from), never
+    ``FrameSummary.name``'s bare function name. ``tb.tb_lineno`` is used for
+    ``lineno``, not ``code.co_firstlineno`` -- the line CURRENTLY being
+    executed at that traceback entry, matching :func:`traceback.extract_tb`'s
+    own convention (F2a's first identity: this is what ``PlrSite.lineno``,
+    the first line of the raising statement, is compared against). Still
+    ~3 lines per call site -- this is the ONE fence-wide implementation
+    each ``except`` handler below calls.
+
+    C5 (WITHDRAWN spec_version 1 defect, §16.7's own normative box):
+    ``extract_tb`` -- and this walk, which reproduces its order -- returns
+    frames OUTERMOST-first. A captured-then-re-raised exception
+    (``liquid_handler.py:551-556`` catches, ``:575-576`` re-raises) has the
+    re-raise site EARLY in this list and the backend's original raise LAST,
+    the opposite of what an innermost-frame (``[-1]``) match would need.
+    """
+    frames: list[dict[str, Any]] = []
+    tb = exc.__traceback__
+    while tb is not None:
+        code = tb.tb_frame.f_code
+        frames.append({
+            "file": code.co_filename,
+            "lineno": tb.tb_lineno,
+            "qualname": getattr(code, "co_qualname", code.co_name),
+        })
+        tb = tb.tb_next
+    return frames
 
 
 async def _execute(setup: SetupHandle, call_sequence, *, strict: bool):
@@ -108,6 +151,25 @@ async def verify(
     # key, default False (unobserved: the deck_build failure path below
     # never reaches the `set_volume_tracking(True)` call).
     volume_tracking_observed = False
+    # 260909 (spec §16.2.1, observation increment, T40, backlog #5023): the
+    # four-field observation record, read at ONE capture point below --
+    # after `await setup.machine.setup()`, before `_execute` -- inside a
+    # fail-closed guard.  `None` is the default (deck-build early return,
+    # same as `volume_tracking_observed`'s reasoning above) and stays
+    # `None` if that capture window itself raises; it is never partial.
+    # This function's own output shape is UNCHANGED by T48 (§16.1.3/§16.15
+    # D6, backlog #5026): `deck_resource_names` (one of the four fields
+    # below) was always part of this record; T48's own additions --
+    # `plr_sema.check.predicate.D6_SITE_RULES`'s `:321` site rule and
+    # `plr-sema/eval/oracle_common.py`'s `obs:deck_resources_verified`
+    # aggregate derived from it -- live entirely downstream of what this
+    # function already returns.
+    plr_observation: dict[str, Any] | None = None
+    # 260909 (spec §16.7 F1, fence increment, T45, backlog #5025): the
+    # additive `error_frames` result key -- the WHOLE `traceback.extract_tb`
+    # frame list (see `_error_frames`'s own docstring), set at BOTH
+    # `except` handlers below, `None` when `error` stays `None`.
+    error_frames: list[dict[str, Any]] | None = None
 
     old_strictness = get_strictness()
     old_volume_tracking = _current_volume_tracking()
@@ -130,10 +192,20 @@ async def verify(
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             await setup.machine.setup()          # chatterbox prints; captured
+            # 260909 (spec §16.2.1, T40): the ONE observation capture point
+            # -- after `machine.setup()` (the head dict is empty before
+            # it), before `_execute` (a failed operation may roll trackers
+            # back).  Fail-closed: any raising read yields `None` rather
+            # than propagating or leaving a partial record.
+            try:
+                plr_observation = capture_observation(setup)
+            except Exception:  # noqa: BLE001 - fail-closed observation window
+                plr_observation = None
             try:
                 executed = await _execute(setup, call_sequence, strict=strict)
             except Exception as e:  # noqa: BLE001 - reported, not raised
                 error = f"{type(e).__name__}: {e}"
+                error_frames = _error_frames(e)
             finally:
                 with contextlib.suppress(Exception):
                     await setup.machine.stop()   # proper teardown, always
@@ -142,6 +214,7 @@ async def verify(
         after = setup.snapshot()
     except Exception as e:  # noqa: BLE001 - harness/deck-level failure
         error = f"{type(e).__name__}: {e}"
+        error_frames = _error_frames(e)
         if setup is not None:
             if before is None:
                 before = setup.snapshot()
@@ -159,6 +232,12 @@ async def verify(
                 "record_id": intent_record.get("record_id")
                 if isinstance(intent_record, Mapping) else None,
                 "volume_tracking_observed": volume_tracking_observed,
+                # 260909 (spec §16.2.1, T40): always `None` on this path --
+                # `setup is None`, so the capture window never ran.
+                "plr_observation": plr_observation,
+                # 260909 (spec §16.7 F1, T45): populated -- this branch is
+                # itself the harness/deck-level `except`, which just set it.
+                "error_frames": error_frames,
             }
     finally:
         set_strictness(old_strictness)
@@ -197,6 +276,15 @@ async def verify(
         # reads this field to build `env`, never calling the tracking
         # callable itself from outside this function.
         "volume_tracking_observed": volume_tracking_observed,
+        # 260909 (spec §16.2.1, T40): the observation record captured at
+        # the ONE window above, or `None` if that window itself raised.
+        "plr_observation": plr_observation,
+        # 260909 (spec §16.7 F1, T45): the whole `traceback.extract_tb`
+        # frame list, outermost first, from whichever `except` handler set
+        # `error` -- `None` when `error` is `None` (this row's own
+        # `_execute` succeeded and the harness-level `except` above was
+        # never entered either).
+        "error_frames": error_frames,
     }
 
 

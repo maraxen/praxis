@@ -485,24 +485,34 @@ def test_check_graph_report_unchanged_for_shipped_fixture(contracts_json: str) -
         for f in report.findings
     )
     # Golden snapshot. Originally pre-IR (260902: 38 findings, every one
-    # `guard_predicate_unparsed`). Re-taken 260909 for the shipped
-    # derived_contracts.json after two increments moved it BY DESIGN:
+    # `guard_predicate_unparsed`). Re-taken 260909 (increment 6 close) for the
+    # shipped derived_contracts.json after two increments moved it BY DESIGN:
     # increment 5 (spec 260903 §14.5, T26) adds one `volume_state_unknown`
     # finding per bridged volume guard on the two liquid ops (op_2/op_3:
     # +4 -> 42), and increment 6 (spec 260904 §15.7, T31) replaces the
     # blanket `guard_predicate_unparsed` with the four-clause reason
-    # assignment. The one-Finding-per-guard invariant (AC-15.5(iv)) holds:
-    # 38 guard findings + 4 volume findings. The joined verdict stays
-    # `unknown` -- no joined SAFE this increment (spec 260904 §15.5).
+    # assignment. Re-taken again 260909 (increment 7 close, T40-T49): this
+    # synthetic fixture carries no `plr_observation`/`env` members, so T43's
+    # E-ENV rules and the D6 site rules never fire SAFE/WILL_FAIL here --
+    # `verdict`/`scope_verdict` both stay `unknown` and the 42-finding /
+    # 4-op shape is unchanged -- but T40-T42's machinery (the observation
+    # record, the derived backend surface, and the delegate->caller
+    # argument map) reclassifies 5 guards whose free names now resolve via
+    # `caller_args`/the backend surface from `guard_env_dependent` to
+    # `guard_operand_unknown`, verified by direct computation against the
+    # shipped `derived_contracts.json`, not asserted from a prediction. The
+    # one-Finding-per-guard invariant (AC-15.5(iv)) still holds: 38 guard
+    # findings + 4 volume findings.
     assert report.verdict.value == "unknown"
+    assert report.scope_verdict is not None and report.scope_verdict.value == "unknown"
     assert len(report.findings) == 42
     assert {t[0] for t in triples} == {"op_1", "op_2", "op_3", "op_4"}
     from collections import Counter
 
     by_reason = Counter(t[1] for t in triples)
     assert by_reason == {
-        "guard_env_dependent": 25,
-        "guard_operand_unknown": 9,
+        "guard_env_dependent": 20,
+        "guard_operand_unknown": 14,
         "guard_predicate_unparsed": 4,
         "volume_state_unknown": 4,
     }, by_reason

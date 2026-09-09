@@ -341,6 +341,52 @@ def test_hand_written_contracts_content_is_pinned() -> None:
     )
 
 
+def test_hm25_d4_spend_is_one_unit_not_an_overrun() -> None:
+    """260909 (spec 260909_plr-sema-observation-increment.md §16.5/§16.9,
+    T43, D4): the approved spend is `declared` 9 -> 10, exactly ONE further
+    unit for the §16.5 path-shape table pattern (R-HEAD/R-ATTR/R-CONST),
+    not one per rule -- and the measured count must land exactly there, not
+    merely under the ceiling (a `live <= declared` pass alone would not
+    distinguish "the tenth unit is wired" from "it was silently dropped").
+    D4 is a per-row ceiling spend, not a new registry row -- HM-25's own
+    `declared`/live count are unaffected by whether a LATER, SEPARATE
+    decision (D6, T48, backlog #5026) later adds HM-26 and moves
+    `live_rows()`/`BUDGET_CAP` on ITS OWN: this test asserts D4's spend in
+    isolation, not a frozen global count that a subsequent row's own test
+    (`test_hm26_d6_spend_is_one_new_row_not_an_overrun` below) already
+    covers."""
+    (hm25,) = (row for row in REGISTRY if row.id == "HM-25")
+    assert hm25.declared == 10, f"HM-25: declared is {hm25.declared}, expected 10 (D4's one-unit spend)"
+    live = resolve_measure(hm25.measure)
+    assert live == 10, (
+        f"HM-25: live count {live} != declared 10 -- the D4 spend must land "
+        f"exactly on the approved unit, neither short (unwired) nor over "
+        f"(an unapproved overrun this row's own STOP-and-ask contingency "
+        f"forbids)."
+    )
+
+
+def test_hm26_d6_spend_is_one_new_row_not_an_overrun() -> None:
+    """260909 (spec 260909_plr-sema-observation-increment.md §16.15 D6,
+    T48+T49, backlog #5026): the approved spend is ONE new registry row
+    (HM-26, site-keyed semantic models of named PLR function bodies),
+    taking `live_rows()` 24 -> 25 against a `BUDGET_CAP` the user raised
+    24 -> 25 in the SAME decision -- never HM-25's own cap (D4 and D6 are
+    two different, separately-approved decisions; the row above asserts
+    D4's spend in isolation). T48 wires ONE site rule (`:321`) and T49
+    adds the `:375`/`:383` pair to the SAME `D6_SITE_RULES` dict -- three
+    entries total, landing exactly on the `declared == 3` ceiling (D6's
+    own "whichever lands first adds it, the second asserts it exists"
+    rule: ONE row for both rows, never a second)."""
+    (hm26,) = (row for row in REGISTRY if row.id == "HM-26")
+    assert hm26.declared == 3, f"HM-26: declared is {hm26.declared}, expected 3 (D6's full T48+T49 spend)"
+    live = resolve_measure(hm26.measure)
+    assert live == 3, f"HM-26: live count {live} != 3 -- T48's `:321` plus T49's `:375`/`:383` pair"
+    assert live <= hm26.declared
+    assert len(live_rows()) == 25, "D6's spend must move live_rows() 24 -> 25 exactly"
+    assert BUDGET_CAP == 25, "D6's spend must move BUDGET_CAP 24 -> 25 exactly"
+
+
 def test_total_declared_within_budget() -> None:
     """Section 9.4: the 24-row budget is a cap on the COUNT of live rows,
     not a sum of `declared` values (RETIRED rows do not count -- section

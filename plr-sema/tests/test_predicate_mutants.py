@@ -49,6 +49,9 @@ class TestMutatorTable:
             "p1a_duplicate_use_channels": "AssertionError",
             "p1b_short_offsets": "AssertionError",
             "p1c_non_tipspot_element": "TypeError",
+            # 260909 (spec §16.11, increment 7, T46): p2a's own expected
+            # exception -- PLR raises ValueError at :409.
+            "p2a_channel_out_of_range": "ValueError",
         }
 
     def test_only_c_is_zero_achieved_expected(self):

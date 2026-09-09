@@ -83,3 +83,156 @@ def test_global_flags_restored_after_run():
     assert get_strictness() is Strictness.WARN  # PLR default restored
     assert does_volume_tracking() is False
     assert does_tip_tracking() is False
+
+
+# ---------------------------------------------------------------------------
+# T40 (spec 260909 §16.2, observation increment, backlog #5023): the
+# `plr_observation` additive result key -- AC-16.1.
+# ---------------------------------------------------------------------------
+
+#: §16.2.1's CLOSED field list -- a field absent from this table is not
+#: observed. Mirrors `plr-sema/eval/oracle_common.OBSERVATION_KEYS`.
+_OBSERVATION_KEYS = {"backend_class", "num_channels", "head_channels", "deck_resource_names"}
+
+
+def test_plr_observation_present_on_success():
+    seq, intent, layout = _load("clean_transfer.json")
+    r = _run(seq, intent, layout)
+    assert r["passed"], [(c["name"], c["detail"]) for c in r["checks"] if not c["passed"]]
+    obs = r["plr_observation"]
+    assert obs is not None
+    # §16.2.1's CLOSED record: exactly these four keys, no others -- fails
+    # if `plr_observation` ever grows a fifth key.
+    assert set(obs) == _OBSERVATION_KEYS
+    assert obs["backend_class"] == "LiquidHandlerChatterboxBackend"
+    assert obs["num_channels"] == 8
+    assert obs["head_channels"] == sorted(obs["head_channels"])
+    assert len(obs["head_channels"]) == obs["num_channels"]
+    # deck_resource_names: the deck's own name plus every descendant,
+    # extracted recursively -- clean_transfer.json declares source_plate/
+    # dest_plate/tip_rack among its resources.
+    assert "source_plate" in obs["deck_resource_names"]
+    assert "dest_plate" in obs["deck_resource_names"]
+    assert "tip_rack" in obs["deck_resource_names"]
+
+
+def test_plr_observation_none_on_deck_build_failure(monkeypatch):
+    """§16.2.1: `plr_observation` is `None` on the deck-build early return
+    (`setup is None`, no field is obtainable) -- the same path
+    `volume_tracking_observed` returns its own default on.
+    """
+    import verify.verifier as verifier_mod
+
+    def _raising_build_setup(*args, **kwargs):
+        raise RuntimeError("synthetic deck-build failure")
+
+    monkeypatch.setattr(verifier_mod, "build_setup", _raising_build_setup)
+
+    seq, intent, layout = _load("clean_transfer.json")
+    r = _run(seq, intent, layout)
+    assert not r["passed"]
+    assert r["plr_observation"] is None
+    assert r["state_before"] is None and r["state_after"] is None
+
+
+def test_plr_observation_none_on_raising_capture(monkeypatch):
+    """§16.2.1: the ONE capture point is fail-closed -- a raising read
+    yields `plr_observation = None` rather than propagating, and the rest
+    of the run (execution, checks) proceeds unaffected.
+    """
+    import verify.verifier as verifier_mod
+
+    def _raising_capture(setup):
+        raise RuntimeError("synthetic observation-window failure")
+
+    monkeypatch.setattr(verifier_mod, "capture_observation", _raising_capture)
+
+    seq, intent, layout = _load("clean_transfer.json")
+    r = _run(seq, intent, layout)
+    assert r["passed"], [(c["name"], c["detail"]) for c in r["checks"] if not c["passed"]]
+    assert r["plr_observation"] is None
+
+
+# ---------------------------------------------------------------------------
+# T45 (spec 260909 §16.7, fence increment, backlog #5025): the additive
+# `error_frames` result key -- AC-16.8.
+# ---------------------------------------------------------------------------
+
+
+def test_error_frames_none_on_success():
+    seq, intent, layout = _load("clean_transfer.json")
+    r = _run(seq, intent, layout)
+    assert r["passed"], [(c["name"], c["detail"]) for c in r["checks"] if not c["passed"]]
+    assert r["error"] is None
+    assert r["error_frames"] is None
+
+
+def test_error_frames_present_on_execution_failure():
+    """§16.7 F1: `error_frames` is the WHOLE `traceback.extract_tb` frame
+    list, outermost first, one dict per frame with `file`/`lineno`/
+    `qualname` -- set at the inner `except` (an operation failure)."""
+    seq, intent, layout = _load("clean_transfer.json")
+    bad = [
+        {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1", "tip_rack.B1"]}},
+        {"name": "transfer", "params": {
+            "source": "source_plate.A1",
+            "destination": "dest_plate.B1",
+            "volume_ul": 500,  # seeded only 100 uL
+        }},
+    ]
+    intent["calls"][1]["params"]["volume_ul"] = 500
+    r = _run(bad, intent, layout)
+    assert not r["passed"]
+    assert r["error"] and "TooLittleLiquid" in r["error"]
+    frames = r["error_frames"]
+    assert frames  # non-empty list, never a bare truthy sentinel
+    assert isinstance(frames, list)
+    for f in frames:
+        assert set(f) == {"file", "lineno", "qualname"}
+        assert isinstance(f["lineno"], int)
+
+
+def test_error_frames_none_on_deck_build_failure(monkeypatch):
+    """§16.2.1's `plr_observation` reasoning does NOT apply here:
+    `error_frames` is set at the OUTER (harness/deck-level) `except`
+    handler itself, so a deck-build failure -- unlike the capture-window
+    failure below -- still yields a real, non-`None` frame list."""
+    import verify.verifier as verifier_mod
+
+    def _raising_build_setup(*args, **kwargs):
+        raise RuntimeError("synthetic deck-build failure")
+
+    monkeypatch.setattr(verifier_mod, "build_setup", _raising_build_setup)
+
+    seq, intent, layout = _load("clean_transfer.json")
+    r = _run(seq, intent, layout)
+    assert not r["passed"]
+    assert r["plr_observation"] is None
+    assert r["error_frames"]
+    assert any(f["qualname"].endswith("_raising_build_setup") for f in r["error_frames"])
+
+
+def test_error_frames_outermost_first_on_reraise(monkeypatch):
+    """§16.7's own C5 case: an exception raised inside the backend, caught,
+    then re-raised at `liquid_handler.py:575-576` -- the re-raise frame
+    must appear BEFORE the backend's own original raise frame, not after
+    (`traceback.extract_tb` is outermost-first)."""
+    from pylabrobot.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend
+
+    async def _raising(self, *a, **kw):
+        raise RuntimeError("synthetic backend failure")
+
+    monkeypatch.setattr(LiquidHandlerChatterboxBackend, "pick_up_tips", _raising)
+
+    seq, intent, layout = _load("clean_transfer.json")
+    r = _run(seq[:1], intent, layout)  # just the pick_up_tips call
+    assert not r["passed"]
+    assert r["error"] and "synthetic backend failure" in r["error"]
+    frames = r["error_frames"]
+    assert frames
+    reraise_idx = next(
+        i for i, f in enumerate(frames)
+        if f["lineno"] == 576 and f["file"].endswith("liquid_handler.py")
+    )
+    backend_idx = next(i for i, f in enumerate(frames) if f["qualname"].endswith("_raising"))
+    assert reraise_idx < backend_idx  # outermost (re-raise) before innermost (backend)

@@ -40,7 +40,13 @@ _FAILURE_TAXONOMY_PATH = REPO_ROOT / "training" / "verify" / "failure_taxonomy.p
 #: 21 -> 22, still <= 24, so the cap itself is UNCHANGED: 22 live rows still
 #: fit inside the room T9 already reserved, and per §9.4 growth alone is
 #: never grounds to widen a cap without a new adversarial-round argument.
-BUDGET_CAP = 24
+#: 260909 (spec 260909_plr-sema-observation-increment.md §16.15 D6, T48,
+#: backlog #5026): raised 24 -> 25, the user's approved D6 spend -- HM-26
+#: (site-keyed semantic models of named PLR function bodies) is a NEW
+#: registry-row CLASS the prior cap conversation never priced, not organic
+#: growth inside the existing room (unlike HM-23 above), so this IS the
+#: adversarial-round argument §9.4 requires before widening.
+BUDGET_CAP = 25
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -340,9 +346,25 @@ def _measure_hm25() -> int:
     the five is deleted or renamed, which is what keeps this collective
     unit from being HM-24's silent-collapse failure mode in disguise: the
     measure moves (from 8 to 9) exactly when the `what` it tracks does.
+
+    260909 (spec 260909_plr-sema-observation-increment.md §16.5/§16.9, T43,
+    D4, backlog #5024, user-approved): PLUS a TENTH unit -- the §16.5
+    path-shape table (R-HEAD, R-ATTR, R-CONST: `self.head` /
+    `self.backend.<attr>` / `self.backend.<method>(...)`), ONE further
+    collective unit for the PATTERN ("an `EnvRef` path admitted against the
+    observation record"), not one per instance -- the identical
+    one-pattern-many-instances argument already made for the ninth unit
+    above. `declared` moves 9 -> 10, exactly ONE further unit of headroom.
+    The probe imports `plr_sema.check.predicate._resolve_env_ref` -- the
+    ONE symbol implementing all three rules -- and fails loudly
+    (ImportError/AttributeError) if it is deleted or renamed, exercising it
+    against a synthetic ctx so a signature change that keeps the name but
+    breaks the shape also goes red.
     """
     import ast
 
+    from plr_sema.check import ir as ir_mod
+    from plr_sema.check.predicate import _Ctx, _resolve_env_ref
     from plr_sema.check.tipstate import TipState, atom_truth
     from plr_sema.derive.bindings import _match_alpha, _match_beta
     from plr_sema.derive.predicate_ast import _CMP_OPS, EnvRef, Zip
@@ -366,6 +388,29 @@ def _measure_hm25() -> int:
         assert ast.In in _CMP_OPS and ast.NotIn in _CMP_OPS
         return True
 
+    def _path_shape_table_probe() -> bool:
+        """The TENTH unit's own probe (D4, §16.9): imports and exercises
+        `_resolve_env_ref` -- an unmatched shape (`("self", "other")`) must
+        still report `rule=None`, proving the function is live and not a
+        stub that always matches."""
+        assert _resolve_env_ref is not None
+        ctx = _Ctx(
+            call=ir_mod.Call(receiver=0, receiver_type="X", method="m", kwargs={}),
+            resources_by_slot={},
+            param_defaults={},
+            bindings_by_name={},
+            depth=0,
+            channel_kwarg=None,
+            channels=None,
+            env=frozenset(),
+            class_hierarchy=None,
+        )
+        node = EnvRef(("self", "other"), None)
+        value, rule = _resolve_env_ref(node, ctx)
+        assert rule is None
+        assert isinstance(value, ir_mod.Top)
+        return True
+
     shape_matchers = (
         _typestate_anchor,  # P2
         _channel_default_idiom,  # P3a
@@ -373,6 +418,7 @@ def _measure_hm25() -> int:
         _volume_anchor,  # P7
         operand_pairing_idiom,  # P8
         _predicate_amendment_group_probe,  # alpha + beta + EnvRef + Zip + membership (A-C6)
+        _path_shape_table_probe,  # R-HEAD + R-ATTR + R-CONST (D4)
     )
     # atom_truth's three productions: BoolView, NullCheck(is_none=True),
     # NullCheck(is_none=False) -- proven live by actually exercising all
@@ -384,7 +430,28 @@ def _measure_hm25() -> int:
         atom_truth(("null_check", False), TipState.HAS_TIP),
     )
     assert _predicate_amendment_group_probe()
+    assert _path_shape_table_probe()
     return len(shape_matchers) + len(productions)
+
+
+def _measure_hm26() -> int:
+    """260909 (spec 260909_plr-sema-observation-increment.md §16.1.3/§16.15
+    D6, T48, backlog #5026): NEW row -- site-keyed semantic models of named
+    PLR function BODIES, a genuinely different class from every prior row
+    on this registry (HM-24/HM-25 are patterns over how PLR is WRITTEN
+    generically; this is a hand-typed fact about ONE specific `(qualname,
+    lineno)` pair's own behaviour, not derivable from any syntactic shape).
+    `D6`'s own box (§16.15): "It is genuinely not HM-25's kind -- every
+    entry there is keyed on a *shape*, and `why_not_derived` says so in
+    those terms." T48 ships the FIRST entry (`:321`'s site rule);
+    `plr_sema.check.predicate.D6_SITE_RULES` is the live registry
+    `len()`s -- T49's `:375`/`:383` pair lands in the SAME dict, so this
+    row's measured count moves 1 -> 3 without a second row or a further
+    ceiling bump.
+    """
+    from plr_sema.check.predicate import D6_SITE_RULES
+
+    return len(D6_SITE_RULES)
 
 
 REGISTRY: tuple[HandMaintainedSurface, ...] = (
@@ -968,10 +1035,22 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "`EnvRef` (a `self`-rooted attribute chain or call, §15.2 G7), "
             "`Zip` (`zip(<e1>,...,<en>)` as an `AllOf`/`AnyOf` seq, §15.2 "
             "G8(1)), and the `in`/`not in` membership comparators (§15.2 "
-            "G8(2))."
+            "G8(2)). 260909 (spec 260909_plr-sema-observation-increment.md "
+            "§16.5/§16.9, T43, D4, user-approved): PLUS the `EnvRef` "
+            "PATH-SHAPE TABLE this increment's own `E-ENV` box concedes is "
+            "hand-maintained surface -- R-HEAD (`self.head` -> the "
+            "observation's `head_channels`, a COMPLETE `Seq`), R-ATTR "
+            "(`self.backend.<attr>` -> the observation's value for `attr`, "
+            "at this pin exactly `num_channels`), and R-CONST "
+            "(`self.backend.<method>(...)` -> the derived backend "
+            "surface's `constant_return` for `(backend_class, method)`, "
+            "independent of `args`) -- ONE further collective unit for the "
+            "PATTERN (\"an `EnvRef` path admitted against the observation "
+            "record\"), not one per instance, named inside THIS SAME entry "
+            "rather than a second row."
         ),
         metric="patterns",
-        declared=9,
+        declared=10,
         status="CAPPED",
         why_not_derived=(
             "Syntactic patterns over how PLR/its own analyzer is written "
@@ -1005,9 +1084,67 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "volume family disables for the affected class/method), never "
             "wrong -- and an unrecognised `EnvRef`/`Zip`/membership shape "
             "is simply `Opaque`, exactly today's behaviour (§15.2's own "
-            "fail-closed argument), never wrong either."
+            "fail-closed argument), never wrong either. 260909 (T43, D4): "
+            "PLR renames `self.head`/`self.backend`, R-HEAD/R-ATTR/R-CONST "
+            "stop matching and every guard reading them reverts to ½/⊤ "
+            "(never wrong); the whole-table `n_resolved_by_rule`/"
+            "`n_declined_by_rule`/`n_quantifier_decided_by_qmono` counters "
+            "(§16.10.1 block 1) move, which is what a reader inspects "
+            "rather than trusting this box's word for the reach."
         ),
         measure="plr_sema._hand_maintained:_measure_hm25",
+    ),
+    HandMaintainedSurface(
+        id="HM-26",
+        what=(
+            "Site-keyed semantic models of NAMED PLR function bodies (spec "
+            "260909_plr-sema-observation-increment.md §16.1.3/§16.15 D6, "
+            "T48/T49, backlog #5026): a hand-typed rule keyed on ONE "
+            "`(qualname, lineno)` pair, evaluating that guard's own "
+            "predicate value directly rather than resolving a sub-"
+            "expression against a derived table (HM-25's own kind). T48 "
+            "ships the `:321` rule (`LiquidHandler._assert_resources_exist`, "
+            "the deck-membership site rule plus the "
+            "`obs:deck_resources_verified` aggregate fact, §16.1.3) -- ONE "
+            "unit. T49's `(LiquidHandler._check_args, :375)`/`(:383)` pair "
+            "(D5b, §16.1.1) lands in the SAME `D6_SITE_RULES` dict when it "
+            "ships, moving the measured count to three -- this row and T49 "
+            "SHARE it, per D6's own box: whichever task lands first adds "
+            "the row, the second asserts it already exists rather than "
+            "adding a second."
+        ),
+        metric="site rules",
+        declared=3,
+        status="CAPPED",
+        why_not_derived=(
+            "Each rule is a claim about what ONE specific PLR function's "
+            "body does at derive/check time -- `_assert_resources_exist`'s "
+            "own `Resource.get_resource`/`Resource.__eq__` semantics, "
+            "`_check_args`'s own `inspect.signature`/`**kwargs` handling -- "
+            "not a syntactic pattern over how PLR is generically WRITTEN "
+            "(HM-24/HM-25's own criterion). Modelling either general "
+            "mechanism (a `for`-target binding idiom, an `inspect.signature` "
+            "comprehension family) was priced and REFUSED (§16.1.3's Q2, "
+            "§16.1.1's five-production refusal) as strictly more expensive "
+            "than naming the two sites directly, per D6's own recommendation."
+        ),
+        breaks_when=(
+            "PLR renames or restructures `_assert_resources_exist`'s "
+            "`resources` parameter, `_check_args`'s `backend_kws`/"
+            "`vars_keyword` locals, or either method's own line numbers "
+            "shift under the pinned submodule -- the keyed `(qualname, "
+            "lineno)` pair stops matching, the site rule is silently never "
+            "dispatched (`_site_rule_for` returns `None`), and the guard "
+            "reverts to the ordinary `evaluate_predicate` path -- ½ on "
+            "`:321`'s own unbindable predicate (§16.1.3's Q2), never wrong, "
+            "only less precise. `n_assert_resources_decided`/"
+            "`n_check_args_decided` (§16.10.1) are what a reader inspects "
+            "to catch the silent reversion rather than trusting this box's "
+            "word for the reach; each rule is ALSO one-directional by "
+            "construction (D-G6: never returns `T`), so a broken match "
+            "cannot manufacture a false `SAFE` either."
+        ),
+        measure="plr_sema._hand_maintained:_measure_hm26",
     ),
 )
 

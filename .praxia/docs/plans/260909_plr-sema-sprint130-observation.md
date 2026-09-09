@@ -1,7 +1,7 @@
 ---
 title: 'plr-sema sprint 130 plan: the observation record (increment 7, tier (ii)) and the first scoped joined verdict, gated on one registry decision'
 description: 'Sprint plan for 260909_sema-observation: Band A the increment 7 spec (tier (ii) observation record, derived backend surface, delegate->caller argument map, scope_verdict, site-keyed fence) drafted and taken through adversarial round 1 to reviewed-round-1 (DONE 260909); Band B foundations T40-T42; Band C E-ENV resolution + scope_verdict T43-T44 (needs D4); Band D fence + oracle + gate T45-T47; Band E CONDITIONAL on D6 -- the :321 and _check_args site rules that are the whole remaining distance to the headline. Six user decision hooks D1-D6 with the round''s recommendations; the headline (first joined SAFE within scope on a real op) is reachable this sprint iff D6 is taken.'
-status: active
+status: completed
 task_id: 260909_sema-observation
 date: '260909'
 sprint: '130'
@@ -140,4 +140,45 @@ must not contain a bare `|` (`str | None` broke the crossref lint's gate-cell co
 
 ## 9. Outcome
 
-*(filled at close)*
+**GO. The headline is reached.** D6 was taken (YES, per the round's own recommendation), all ten task
+rows T40-T49 landed, and the tier-1 replay reports `gate.go = True`: **216** `pick_up_tips` operations
+(of 223) reach `scope_verdict == SAFE`, within the spec's predicted band of 167-223, with `unsound == 0`
+and `unsound_scoped == 0` throughout. All six decision hooks were taken as recommended: D1 YES (the
+depth-1 lift, T42), D2 YES (A-DECK-OBJECT, T48, conditional on D6), D3 non-decision survived unchanged,
+D4 YES (HM-25 declared 9→10, T43), D5→D5b (the two `_check_args` site rules, T49, not the general D5a
+model), D6 YES (one new registry row, `HM-26`, `BUDGET_CAP` 24→25, T48).
+
+**Commits, in order** (branch `coxswain-p2-pipeline`, via worktree `wt-20260909-172820`):
+T40 `bd4975bc` (observation record), T41 `6a808b30` (derived backend surface), T42 `ae0bd2d7`
+(argument map + D1 lift), T43 `378bfd4c` (E-ENV resolution + D4 spend, HM-25→10), T44 `3072abdd`
+(`scope_verdict`), T45 `4e38d77c` (the fence), T46 `f39e2a11` (oracle/mutants/gate; found and fixed a
+real wiring gap — T40's `plr_observation` was never threaded into `run_static_calls`, which silently
+kept `:409`/`:514` inert until fixed here), T47 (no commit — lint registration was already complete
+from #5022), T48 `03f62243` (`:321` site rule, `HM-26` added, `BUDGET_CAP`→25), T49 `6ee63c7f` (the two
+`_check_args` site rules, D5b, **headline GO**), `5d7baa76` (closing fix: increment-7's own citation
+drift from T40-T49's line shifts, plus the missing `HM-26`/`BUDGET_CAP=25` §9.2 crossref entries),
+`4b87746e` (closing fix: `test_ir.py`'s shipped-fixture golden re-taken — 5 findings reclassified
+`guard_env_dependent`→`guard_operand_unknown`, verified by direct computation, not predicted).
+
+**Measured, not predicted, at close:** `n_findings_decided` 1,563 → 2,117 (T46's wiring fix) → 2,371
+(T48) → final (T49, `n_check_args_decided` +446); registry `live_rows()`/`BUDGET_CAP` 25/25 (`HM-24` 3,
+`HM-25` 10, `HM-26` 1); non-regression held throughout — tier-1 343/548 crosscheck 191/191, m1 199/199,
+m2 289/289, v1 67/67, tier-2b 16/0/7/3, p1 288/288·16/16·0, new p2a 288/288 achieved==attempted; spec
+lint 22 passed / 6 failed (the 6 are pre-existing increment-1..6 drift, unchanged from before this
+sprint — confirmed byte-identical failure set); full per-file suite (T46's dispatch-convention list)
+green after the two closing fixes, including `test_wire_fuzz` (12 passed, just slow at ~151s) and
+`test_ir`'s re-taken golden (33 passed).
+
+**One deviation from the plan worth recording:** Agent-tool dispatch from the primary checkout was
+blocked by a `PRAXIA_DISCIPLINE_MODE` hook demanding worktree isolation before TRIAGE/EXECUTE-phase
+dispatch, which conflicts with this repo's own `.claude/settings.json` (`bgIsolation: none`). Resolved
+by entering a linked worktree (`wt-20260909-172820`) rather than by abandoning subagent dispatch or by
+doing the implementation directly — the worktree's HEAD confirmed it branched from the live
+`coxswain-p2-pipeline` tip (T40 already landed), not from a stale `origin/main`, so no rebasing was
+needed. Every fixer ran serially rather than in the parallel bands the plan allowed (T40‖T41‖T42; E
+parallel with D) to avoid concurrent-`git commit` corruption risk in the one shared worktree checkout —
+correct, but it means the wall-clock cost was the fully serial ~1,401 LOC estimate, not the ~3-session
+parallelized one.
+
+Not yet done at the point this section was written: the PR, the code audit, and `/code-review`. See the
+session's closing report for those.

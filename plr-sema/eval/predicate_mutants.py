@@ -92,6 +92,8 @@ _EXPECTED_EXC = {
     "p1a_duplicate_use_channels": "AssertionError",
     "p1b_short_offsets": "AssertionError",
     "p1c_non_tipspot_element": "TypeError",
+    # 260909 (spec §16.11, increment 7, T46): p2a's own expected exception.
+    "p2a_channel_out_of_range": "ValueError",
 }
 
 #: §15.10's own normative box: (c) is asserted 0 achieved / 0 unsound under
@@ -138,6 +140,25 @@ _MUTATORS: dict[str, Callable[[dict[str, Any]], bool]] = {
     "p1b_short_offsets": make_p1b_short_offsets,
     "p1c_non_tipspot_element": make_p1c_non_tipspot_element,
 }
+
+
+def make_p2a_channel_out_of_range(kwargs: dict[str, Any], num_channels: int) -> bool:
+    """260909 (spec §16.11, increment 7, T46): the depth-1 `WILL_FAIL`
+    mutant class's ONE mutator. Always constructible on a planned
+    `pick_up_tips` call (no precondition on `tip_spots`'s own length --
+    `zip(use_channels, tips)` at `:507` truncates to the single mutated
+    channel, `_assert_resources_exist` at `:520` never reads
+    `use_channels`, so `:409`'s `_make_sure_channels_exist(use_channels)`
+    at `:521` is reached and fires REGARDLESS of `len(tip_spots)`, one line
+    ahead of the `:522` length-matching assert a longer/shorter
+    `use_channels` would otherwise trip first). `num_channels` is the
+    OBSERVED value (`setup.machine.backend.num_channels`, read at mutation
+    time, before `verify()`'s own capture) -- a single index exactly at
+    that value is always one past the head's valid range `[0,
+    num_channels)`, independent of the base example's own channel count.
+    """
+    kwargs["use_channels"] = [num_channels]
+    return True
 
 
 def run_one_predicate_mutant(
@@ -254,6 +275,110 @@ def run_one_predicate_mutant(
     )
 
 
+def run_one_p2a_mutant(
+    base_id: str,
+    example: dict[str, Any],
+    contracts_json: str,
+    param_names: Any,
+) -> MutantResult:
+    """260909 (spec §16.11, increment 7, T46): the p2a mutant, run the SAME
+    way `run_one_predicate_mutant` runs p1 -- with two additions this
+    class specifically needs: (1) `num_channels` is read off the LIVE
+    `setup.machine.backend` at mutation time, inside `recording_plan_call`,
+    since :func:`make_p2a_channel_out_of_range` needs the observed value
+    to construct an always-out-of-range index; (2) the static side is
+    called WITH `plr_observation=result.get("plr_observation")` -- p1's own
+    three mutators never needed it (their guards are all depth-0 `assert`/
+    `isinstance` shapes E-CALL decides without an observation), but `:409`
+    is an `EnvRef`-membership guard (R-HEAD, §16.5.1) that stays ½ without
+    one, and `WILL_FAIL` at `:409` is exactly the D1-lift result this
+    mutator exists to exercise -- omitting `plr_observation` here would
+    make this mutator report 0 achieved regardless of D1's own status.
+    """
+    verifier = oc._import_verifier()
+    real_plan_call = verifier.plan_call
+
+    target_idx: int | None = None
+    mutation_applied = False
+    plr_kwargs: dict[int, dict[str, Any]] = {}
+
+    def recording_plan_call(call, index, setup, *, strict):
+        nonlocal target_idx, mutation_applied
+        plan_result = real_plan_call(call, index, setup, strict=strict)
+        if call.get("name") == _TARGET_CALL and target_idx is None:
+            num_channels = setup.machine.backend.num_channels
+            if make_p2a_channel_out_of_range(plan_result.kwargs, num_channels):
+                target_idx = index
+                mutation_applied = True
+        if hasattr(plan_result, "kwargs"):
+            plr_kwargs[index] = {k: oc.ir_value_of(v) for k, v in plan_result.kwargs.items()}
+        return plan_result
+
+    verifier.plan_call = recording_plan_call
+    sink = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(sink):
+            result = asyncio.run(
+                verifier.verify(
+                    example["call_sequence"],
+                    example["intent_record"],
+                    layout=example.get("deck_layout"),
+                    backend=example.get("backend", "LiquidHandlerChatterboxBackend"),
+                )
+            )
+    except Exception as e:
+        verifier.plan_call = real_plan_call
+        return MutantResult(base_id, "p2a_channel_out_of_range", False, f"runtime_harness:{e}", None, False, None, None, False, False)
+    finally:
+        verifier.plan_call = real_plan_call
+
+    if not mutation_applied:
+        return MutantResult(base_id, "p2a_channel_out_of_range", False, "mutation could not be constructed", None, False, None, None, False, False)
+
+    error = result.get("error")
+    exc_class = error.split(":", 1)[0].strip() if error else None
+    raising_index = target_idx if error else None
+    raised_as_expected = exc_class == _EXPECTED_EXC["p2a_channel_out_of_range"]
+
+    try:
+        st, _not_planned = oc.run_static_calls(
+            example, plr_kwargs, contracts_json, param_names=param_names,
+            volume_tracking_observed=bool(result.get("volume_tracking_observed")),
+            plr_observation=result.get("plr_observation"),
+        )
+    except Exception as e:
+        return MutantResult(
+            base_id, "p2a_channel_out_of_range", True, f"static:{e}", exc_class, raised_as_expected, raising_index, None, False, False
+        )
+
+    static_verdict_at_index = None
+    if raising_index is not None:
+        entry = st.get(f"op_{raising_index}")
+        static_verdict_at_index = entry["verdict"] if entry is not None else None
+
+    unsound_safe = raised_as_expected and static_verdict_at_index == "safe"
+    unsound_will_fail_elsewhere = False
+    for oid, sdata in st.items():
+        idx = int(oid.split("_", 1)[1])
+        simulator_raised_here = raising_index is not None and idx == raising_index and exc_class is not None
+        if not simulator_raised_here and sdata["verdict"] == "will_fail":
+            unsound_will_fail_elsewhere = True
+            break
+
+    return MutantResult(
+        base_id,
+        "p2a_channel_out_of_range",
+        True,
+        None,
+        exc_class,
+        raised_as_expected,
+        raising_index,
+        static_verdict_at_index,
+        unsound_safe,
+        unsound_will_fail_elsewhere,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--corpus", type=Path, required=True)
@@ -287,9 +412,16 @@ def main(argv: list[str] | None = None) -> int:
                     _MUTATORS[mutant_class], _EXPECTED_EXC[mutant_class],
                 )
             )
+        # 260909 (spec §16.11, increment 7, T46): p2a, run via its own
+        # function (needs the LIVE `setup.machine.backend.num_channels` at
+        # mutation time and `plr_observation` on the static side -- see
+        # `run_one_p2a_mutant`'s own docstring for why it is not folded
+        # into the generic `_MUTATORS`/`run_one_predicate_mutant` path).
+        results.append(run_one_p2a_mutant(base_id, example, contracts_json, param_names))
 
     by_class: dict[str, list[MutantResult]] = {
         "p1a_duplicate_use_channels": [], "p1b_short_offsets": [], "p1c_non_tipspot_element": [],
+        "p2a_channel_out_of_range": [],
     }
     for r in results:
         by_class[r.mutant_class].append(r)
@@ -341,6 +473,28 @@ def main(argv: list[str] | None = None) -> int:
                     f"declarations), got {n_achieved} -- this is the C4 false-WILL_FAIL mechanism "
                     f"reappearing, not a stronger result: {verdict_counts}"
                 )
+        elif mclass == "p2a_channel_out_of_range":
+            # 260909 (spec §16.11 C23, increment 7, T46): p2a's floor is
+            # `achieved == attempted` with `attempted (n_ran) >= 200` --
+            # NOT a bare ">=1", which 1/300 would satisfy (the same defect
+            # increment 6 §15.16.3 refused one level up). `attempted` is
+            # `n_ran` per this class's own docstring ("achieved/attempted
+            # in p1's own shape"). If D1 (the depth-1 lift) is declined,
+            # this class reports 0 achieved by construction -- the row this
+            # comment is attached to is withdrawn together with AC-16.10's
+            # p2a half in that case, per the task row's own instruction,
+            # not silently left failing.
+            n_attempted = len(ran)
+            if n_attempted < 200:
+                hard_violations.append(
+                    f"{mclass}: attempted floor FAILED -- n_ran={n_attempted} < 200 "
+                    "(too few base examples reached the mutation point to trust achieved==attempted)"
+                )
+            elif n_achieved != n_attempted:
+                hard_violations.append(
+                    f"{mclass}: floor FAILED -- achieved ({n_achieved}) != attempted ({n_attempted}); "
+                    f"static verdicts at the raised index: {verdict_counts}"
+                )
         else:
             if n_achieved < 1:
                 hard_violations.append(
@@ -370,7 +524,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     log.info(
         "GATE PASSED: (a)/(b) achieve >=1 WILL_FAIL at the raised index with 0 unsound; "
-        "(c) achieves 0/0 as predicted by the restated E-TYPE."
+        "(c) achieves 0/0 as predicted by the restated E-TYPE; "
+        "p2a achieves achieved==attempted (attempted>=200) with 0 unsound."
     )
     return 0
 
