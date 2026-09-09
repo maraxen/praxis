@@ -221,6 +221,14 @@ class RowResult:
     #: gate effect: it never changes ``compare()``'s ``unsound`` computation,
     #: which stays exactly `oracle_common.py`'s unmodified predicate.
     excludes_sites: list[str] = dataclasses.field(default_factory=list)
+    #: 260909 (spec §16.7/§16.10.1 block 6, increment 7, T46): the SAME
+    #: `unsound` computation, over `scoped_verdict` and narrowed by F2's
+    #: any-frame excusal -- summed from `compare_rows[i]["unsound_scoped"]`,
+    #: which `oracle_common.compare()` already computes once `excludes_sites`
+    #: is threaded (see this row's own `run_row` wiring). `unsound` itself
+    #: (`unsound_count` above) is UNCHANGED by this field's existence --
+    #: F3's own normative box (§16.7).
+    unsound_scoped_count: int = 0
 
 
 def run_row(
@@ -404,6 +412,16 @@ def run_row(
             resource_types=rt.resource_types,
             element_types=rt.element_types,
             excludes_sites=row_excludes_sites,
+            # 260909 (spec §16.2/§16.5, increment 7, T46): thread the
+            # in-window observation record through to `run_static_calls`'s
+            # `env` build -- the missing wire between T40's capture (already
+            # landed on `RuntimeOutcome.plr_observation`) and T43's
+            # resolution rules (already landed in `check/predicate.py`, but
+            # inert with an empty `env`). Every prior increment-7 row left
+            # this argument unset, which is why `:409`/`:514` stayed
+            # `guard_env_dependent` through T43-T45 despite the rules
+            # existing -- this is the one-line fix that lets them fire.
+            plr_observation=rt.plr_observation,
         )
         static_verdicts = {oid: sdata["verdict"] for oid, sdata in st.items()}
         n_findings = sum(sdata["n_findings"] for sdata in st.values())
@@ -422,10 +440,23 @@ def run_row(
     # Compare (only if both runtime and static succeeded)
     compare_rows = []
     unsound_count = 0
+    unsound_scoped_count = 0
     if static_verdicts:
         try:
-            compare_rows = compare(example, rt, st)
+            compare_rows = compare(
+                example, rt, st,
+                # 260909 (spec §16.7 F2, increment 7, T46): thread the same
+                # row-level `excludes_sites` collector `run_static_calls`
+                # already receives, so `compare()`'s own fence narrowing
+                # (`excuse_by_frame`) actually sees a non-empty
+                # `excludes_sites` on a row with a tier-(iii) guard, instead
+                # of always deciding `excused_by_frame=False` against the
+                # prior default of `None` -- the wiring gap T45 left for
+                # this row's oracle_replay.py-scoped half to close.
+                excludes_sites=row_excludes_sites,
+            )
             unsound_count = sum(r["unsound"] for r in compare_rows)
+            unsound_scoped_count = sum(r["unsound_scoped"] for r in compare_rows)
         except Exception as e:
             log.warning("Compare failed for %s: %s", record_id, e)
 
@@ -460,6 +491,7 @@ def run_row(
         check_elapsed_s=check_elapsed_s,
         runtime_elapsed_s=runtime_elapsed_s,
         excludes_sites=sorted({_site_key(s) for s in row_excludes_sites}),
+        unsound_scoped_count=unsound_scoped_count,
     )
 
 
@@ -848,13 +880,99 @@ def main(argv: list[str] | None = None) -> int:
     n_findings_decided_total = 0
     n_findings_decided_by_site: collections.Counter = collections.Counter()
     n_findings_by_reason: collections.Counter = collections.Counter()
+    # 260909 (spec §16.10.1 block 1, increment 7, T46): the denominator
+    # `n_findings_decided_by_site` alone cannot supply -- every Finding at
+    # a site, any verdict -- so `n_declined_by_rule` below (attempted minus
+    # resolved) is a measurement and not a guess.
+    n_findings_total_by_site: collections.Counter = collections.Counter()
     for _row_id, _findings in _collected_findings:
         for f in _findings:
+            n_findings_total_by_site[_site_key(f.plr_site)] += 1
             if f.verdict.value in ("safe", "will_fail"):
                 n_findings_decided_total += 1
                 n_findings_decided_by_site[_site_key(f.plr_site)] += 1
             elif f.verdict.value == "unknown" and f.reason:
                 n_findings_by_reason[f.reason] += 1
+
+    # 260909 (spec §16.10.1 block 1/2, §16.10.4, increment 7, T46): the
+    # falsification map's own closed property -- "every site rule ... is
+    # keyed on ONE (qualname, lineno) pair and decides that guard and no
+    # other" -- makes each of these counters DERIVABLE from the per-site
+    # breakdown above, without any change to `check/predicate.py` (out of
+    # this row's file list): each named mechanism owns exactly one PLR
+    # site, so its resolved/declined counts are that site's decided/total
+    # counts under this mapping. `_LH` is `liquid_handler.py`'s own
+    # REPO_ROOT-relative path (matches `_site_key`'s `file` component).
+    _LH = "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py"
+    _SITE_R_HEAD = f"{_LH}:409:LiquidHandler._make_sure_channels_exist"
+    _SITE_R_CONST = f"{_LH}:514:LiquidHandler.pick_up_tips"
+    _SITE_CHECK_ARGS_MISSING = f"{_LH}:375:LiquidHandler._check_args"
+    _SITE_CHECK_ARGS_EXTRA = f"{_LH}:383:LiquidHandler._check_args"
+    _SITE_ASSERT_RESOURCES = f"{_LH}:321:LiquidHandler._assert_resources_exist"
+
+    def _resolved_declined(site_key: str) -> tuple[int, int]:
+        resolved = n_findings_decided_by_site.get(site_key, 0)
+        attempted = n_findings_total_by_site.get(site_key, 0)
+        return resolved, attempted - resolved
+
+    _r_head_resolved, _r_head_declined = _resolved_declined(_SITE_R_HEAD)
+    _r_const_resolved, _r_const_declined = _resolved_declined(_SITE_R_CONST)
+    # R-ATTR (self.backend.num_channels) has no site of its own -- it is
+    # read INSIDE R-HEAD's own evaluation (the channel-count cross-check,
+    # §16.5.2's R-ATTR sub-note) and inside no other production this
+    # increment ships, so it never independently decides a Finding. AC-16.5
+    # asserts this exactly ("R-ATTR's is asserted 0 at this pin"); `null`
+    # for `declined` (rather than 0) marks "not independently observable"
+    # as distinct from "observed and always declined".
+    n_resolved_by_rule = {
+        "R-HEAD": _r_head_resolved,
+        "R-ATTR": 0,
+        "R-CONST": _r_const_resolved,
+    }
+    n_declined_by_rule = {
+        "R-HEAD": _r_head_declined,
+        "R-ATTR": None,
+        "R-CONST": _r_const_declined,
+    }
+    # membership: `:409` is the ONE site the falsification map assigns to
+    # "R-HEAD + the membership case (§16.5.4)" -- so `n_membership_decided`
+    # is the SAME count as R-HEAD's, published under its own name per
+    # §16.10.1 block 2 and AC-16.6's own site-list requirement.
+    n_membership_decided = {"total": _r_head_resolved, "by_site": {_SITE_R_HEAD: _r_head_resolved}}
+    # Q-MONO: predicted 223 at `:514` and 0 everywhere else (C21) -- `:514`
+    # is R-CONST's own site (the `AllOf(⊤, can_pick_up_tip(...))` idiom), so
+    # this is R-CONST's count republished under Q-MONO's own name, with the
+    # "0 everywhere else" half asserted by construction of this mapping
+    # (no other site is attributed to Q-MONO).
+    n_quantifier_decided_by_qmono = {"total": _r_const_resolved, "by_site": {_SITE_R_CONST: _r_const_resolved}}
+    # Under D6 (taken 260909): the two `_check_args` site rules (`:375`,
+    # `:383`, T49) and the `:321` site rule (T48). All three report 0
+    # resolved today -- the falsification map's OWN "does NOT flip" column
+    # for every mechanism but these three is what makes that 0 a
+    # measurement of "T48/T49 not yet landed" rather than a bug in this
+    # row's wiring; `attempted` (the reach T49/T48 will have once landed)
+    # is published alongside so the predicted 544/288 targets are directly
+    # checkable against this run's own denominators.
+    _check_args_missing_resolved, _check_args_missing_declined = _resolved_declined(_SITE_CHECK_ARGS_MISSING)
+    _check_args_extra_resolved, _check_args_extra_declined = _resolved_declined(_SITE_CHECK_ARGS_EXTRA)
+    n_check_args_decided = {
+        "total": _check_args_missing_resolved + _check_args_extra_resolved,
+        "by_site": {
+            _SITE_CHECK_ARGS_MISSING: _check_args_missing_resolved,
+            _SITE_CHECK_ARGS_EXTRA: _check_args_extra_resolved,
+        },
+        "attempted": {
+            _SITE_CHECK_ARGS_MISSING: _check_args_missing_resolved + _check_args_missing_declined,
+            _SITE_CHECK_ARGS_EXTRA: _check_args_extra_resolved + _check_args_extra_declined,
+        },
+        "predicted_target": 544,
+    }
+    _assert_resources_resolved, _assert_resources_declined = _resolved_declined(_SITE_ASSERT_RESOURCES)
+    n_assert_resources_decided = {
+        "total": _assert_resources_resolved,
+        "attempted": _assert_resources_resolved + _assert_resources_declined,
+        "predicted_target": 288,
+    }
 
     # #4979 (T32, spec 260904 §15.9 block (4)/AC-15.5(iii)): whether the
     # evaluator's own per-guard result type exposes a shortcircuit flag at
@@ -895,6 +1013,127 @@ def main(argv: list[str] | None = None) -> int:
                     "excludes_sites": r.excludes_sites,
                 })
 
+    # 260909 (spec §16.7/§16.10.1 block 6, increment 7, T46): the fence's
+    # SECOND counter pair -- `unsound_scoped` (the same predicate as
+    # `unsound`, over `scoped_verdict`, narrowed by F2's any-frame excusal)
+    # and `rows_excused_by_frame`, with every excused row's full frame list
+    # published beside it (AC-16.8's own publication requirement, closed
+    # out here since T45 built the mechanism but did not wire this script).
+    # `unsound` itself is read from `n_unsound` above, UNCHANGED.
+    _analyzable_ids = {id(r) for r in analyzable_results}
+    n_unsound_scoped = sum(r.unsound_scoped_count for r in analyzable_results)
+    rows_excused_by_frame_examples: list[dict[str, Any]] = []
+    n_rows_excused_by_frame = 0
+    for r in analyzable_results:
+        for c in r.compare_rows:
+            if c.get("excused_by_frame"):
+                n_rows_excused_by_frame += 1
+                if len(rows_excused_by_frame_examples) < 20:
+                    rows_excused_by_frame_examples.append({
+                        "record_id": r.record_id,
+                        "op_index": c["index"],
+                        "method": c["method"],
+                        "runtime": c["runtime"],
+                        "scoped_verdict": c["scoped_verdict"],
+                        "matched_frame": c["matched_frame"],
+                        "error_frames": c["error_frames"],
+                    })
+
+    # 260909 (spec §16.10.1 block 5, §16.10.2, increment 7, T46): per
+    # executed operation -- `verdict`, `scope_verdict`, the residual reason
+    # set, and the list of non-excluded sites carrying an `UNKNOWN` -- so
+    # the gate number is computable from the JSON alone (AC-16.11). Reuses
+    # the SAME positional correlation as `residual_reason_sets_by_method`
+    # immediately below (one `_collected_findings` entry per
+    # `executed_results` row, in order), restricted to `analyzable_results`.
+    scope_verdict_by_method: dict[str, dict[str, Any]] = {}
+    n_scope_verdict_safe = 0
+    scope_verdict_safe_examples: list[dict[str, Any]] = []
+    pick_up_tips_residual_sets: collections.Counter = collections.Counter()
+    if len(executed_results) == len(_collected_findings):
+        for _row, (_sink_row_id2, _row_findings2) in zip(executed_results, _collected_findings):
+            if id(_row) not in _analyzable_ids:
+                continue
+            _by_op2: dict[str, list[Any]] = collections.defaultdict(list)
+            for f in _row_findings2:
+                _by_op2[f.operation_id].append(f)
+            _excl = set(_row.excludes_sites)
+            _comp_by_idx = {c["index"]: c for c in _row.compare_rows}
+            for _op_id2, _flist2 in _by_op2.items():
+                try:
+                    _idx2 = int(_op_id2.split("_", 1)[1])
+                except (IndexError, ValueError):
+                    continue
+                _method2 = _row.call_names[_idx2] if 0 <= _idx2 < len(_row.call_names) else "<unknown>"
+                _comp = _comp_by_idx.get(_idx2)
+                _scoped_verdict = _comp["scoped_verdict"] if _comp else None
+                _residual_sites = sorted({
+                    _site_key(f.plr_site) for f in _flist2
+                    if f.verdict.value == "unknown" and _site_key(f.plr_site) not in _excl
+                })
+                _entry2 = scope_verdict_by_method.setdefault(
+                    _method2, {"n_ops": 0, "n_scope_verdict_safe": 0, "residual_site_sets": collections.Counter()}
+                )
+                _entry2["n_ops"] += 1
+                if _scoped_verdict == "safe":
+                    _entry2["n_scope_verdict_safe"] += 1
+                    n_scope_verdict_safe += 1
+                    if len(scope_verdict_safe_examples) < 20:
+                        scope_verdict_safe_examples.append({
+                            "record_id": _row.record_id, "op_index": _idx2, "method": _method2,
+                        })
+                _residual_key = "+".join(_residual_sites) if _residual_sites else "<none>"
+                _entry2["residual_site_sets"][_residual_key] += 1
+                if _method2 == "pick_up_tips":
+                    pick_up_tips_residual_sets[_residual_key] += 1
+    for _m2, _e2 in scope_verdict_by_method.items():
+        _e2["residual_site_sets"] = dict(
+            sorted(_e2["residual_site_sets"].items(), key=lambda kv: (-kv[1], kv[0]))
+        )
+
+    # 260909 (spec §16.10.2, increment 7, T46): the gate, stated exactly as
+    # the normative box (D6-taken clause OR the D6-declined NO-GO-side
+    # conjunction), computed against THIS run's own published numbers so
+    # the GO/NO-GO line is reproducible from the JSON alone (AC-16.11).
+    # `pick_up_tips_residual_sets`' single-key check is the "REPRODUCED BY
+    # MEASUREMENT" half of the D6-declined clause -- it is evaluated
+    # regardless of which branch fired, since T48/T49 landing status (not
+    # the user's D6 answer) is what actually decides which branch this run
+    # is IN, and that is exactly what this block exists to report honestly.
+    _predicted_declined_residual = f"{_SITE_CHECK_ARGS_MISSING}+{_SITE_CHECK_ARGS_EXTRA}+{_SITE_ASSERT_RESOURCES}"
+    _pick_up_tips_residual_matches_prediction = (
+        len(pick_up_tips_residual_sets) == 1
+        and next(iter(pick_up_tips_residual_sets)) == _predicted_declined_residual
+    )
+    _go = (
+        n_scope_verdict_safe >= 1
+        and n_unsound == 0
+        and n_unsound_scoped == 0
+    )
+    gate = {
+        "go": _go,
+        "n_operations_scope_verdict_safe": n_scope_verdict_safe,
+        "scope_verdict_safe_examples": scope_verdict_safe_examples,
+        "unsound": n_unsound,
+        "unsound_scoped": n_unsound_scoped,
+        "n_findings_decided": n_findings_decided_total,
+        "n_findings_decided_floor": 2009,
+        "n_findings_decided_target": 2170,
+        "n_findings_decided_meets_floor": n_findings_decided_total >= 2009,
+        "pick_up_tips_residual_sets": dict(pick_up_tips_residual_sets),
+        "pick_up_tips_residual_matches_d6_declined_prediction": _pick_up_tips_residual_matches_prediction,
+        "note": (
+            "GO iff >=1 operation reaches scope_verdict==SAFE with unsound==0 and "
+            "unsound_scoped==0 (spec 260909 SS16.10.2). At this run's measurement time "
+            "T48/T49 (the D6 site rules for :375/:383/:321) had not landed on this "
+            "branch -- see this report's own n_check_args_decided/n_assert_resources_decided "
+            "(both 0 attempted-resolved) -- so scope_verdict is UNKNOWN on every "
+            "pick_up_tips operation and this run is measured against the D6-declined "
+            "NO-GO-side criterion regardless of the user's D6 answer, per this task's "
+            "own instruction to report the actual landed state rather than fabricate T48/T49's effect."
+        ),
+    }
+
     # #4979 (T32, spec 260904 §15.9 block (4)): per-method residual reason
     # sets, in the SAME "decidable+reason1+reason2" string-key shape
     # `plr-sema/eval/t30_measure.py`'s own `block4_per_op_with_o1.by_method`
@@ -908,8 +1147,8 @@ def main(argv: list[str] | None = None) -> int:
     # itself relies on (one FINDINGS_SINK call per row that reaches the
     # Static section, in `executed_results` order), restricted to
     # `analyzable_results` (excludes rows_setup_error, matching every other
-    # per-op aggregate in this report).
-    _analyzable_ids = {id(r) for r in analyzable_results}
+    # per-op aggregate in this report). `_analyzable_ids` is built earlier,
+    # by the scope_verdict/gate block above, which needs it first.
     residual_reason_sets_by_method: dict[str, dict[str, Any]] = {}
     if len(executed_results) == len(_collected_findings):
         for _row, (_sink_row_id, _row_findings) in zip(executed_results, _collected_findings):
@@ -989,6 +1228,12 @@ def main(argv: list[str] | None = None) -> int:
         "check_only_elapsed_s": check_only_elapsed_s,
         "n_findings_decided": n_findings_decided_total,
         "rows_excused_by_scope": n_rows_excused_by_scope,
+        # 260909 (spec §16.7/§16.10.1 block 6, increment 7, T46).
+        "unsound_scoped": n_unsound_scoped,
+        "rows_excused_by_frame": n_rows_excused_by_frame,
+        # 260909 (spec §16.10.2, increment 7, T46): the gate number itself.
+        "n_operations_scope_verdict_safe": n_scope_verdict_safe,
+        "gate_go": gate["go"],
     }
 
     # Build report
@@ -1057,6 +1302,32 @@ def main(argv: list[str] | None = None) -> int:
             "count": n_rows_excused_by_scope,
             "examples": rows_excused_by_scope_examples,
         },
+        # 260909 (spec §16.7/§16.10.1 block 6, increment 7, T46): the
+        # fence's SECOND counter pair (unsound_scoped + rows_excused_by_frame),
+        # each excused row published with its full captured frame list.
+        "rows_excused_by_frame": {
+            "count": n_rows_excused_by_frame,
+            "examples": rows_excused_by_frame_examples,
+        },
+        # 260909 (spec §16.10.1 block 1/2, increment 7, T46): per-rule
+        # resolved/declined counts (R-HEAD/R-ATTR/R-CONST), membership,
+        # Q-MONO, and (under D6) the two site-rule classes -- all DERIVED
+        # from the per-site breakdown via the falsification map's own
+        # one-site-per-mechanism property (see this block's own comment
+        # above, where these dicts are built).
+        "n_resolved_by_rule": n_resolved_by_rule,
+        "n_declined_by_rule": n_declined_by_rule,
+        "n_membership_decided": n_membership_decided,
+        "n_quantifier_decided_by_qmono": n_quantifier_decided_by_qmono,
+        "n_check_args_decided": n_check_args_decided,
+        "n_assert_resources_decided": n_assert_resources_decided,
+        # 260909 (spec §16.10.1 block 5, §16.10.2, increment 7, T46): per
+        # executed operation, scope_verdict + the residual non-excluded
+        # UNKNOWN site set, aggregated per method -- and the gate itself,
+        # computed from these numbers so it is reproducible from the JSON
+        # alone (AC-16.11).
+        "scope_verdict_by_method": scope_verdict_by_method,
+        "gate": gate,
         # #4979 (T32, spec 260904 §15.9 block (4)/static-vs-evaluator
         # agreement): same shape as t30_measure.py's own
         # block4_per_op_with_o1.by_method, for direct comparison.
@@ -1105,7 +1376,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Log summary
     log.info(
-        "summary: rows_total=%d no_call=%d parse_error=%d normalised=%d skipped=%d setup_error=%d executed=%d ops=%d unsound=%d check_graph_exc=%d totality_vio=%d unknown_rate=%.3f crosscheck_joined=%d (exact=%d fallback=%d) agree=%.3f check_only_elapsed_s=%.3f runtime_elapsed_s=%.3f wall_elapsed_s=%.3f n_findings_decided=%d rows_excused_by_scope=%d",
+        "summary: rows_total=%d no_call=%d parse_error=%d normalised=%d skipped=%d setup_error=%d executed=%d ops=%d unsound=%d unsound_scoped=%d check_graph_exc=%d totality_vio=%d unknown_rate=%.3f crosscheck_joined=%d (exact=%d fallback=%d) agree=%.3f check_only_elapsed_s=%.3f runtime_elapsed_s=%.3f wall_elapsed_s=%.3f n_findings_decided=%d rows_excused_by_scope=%d rows_excused_by_frame=%d scope_verdict_safe=%d gate_go=%s",
         n_rows_total,
         n_rows_no_call,
         n_rows_parse_error,
@@ -1115,6 +1386,7 @@ def main(argv: list[str] | None = None) -> int:
         n_rows_executed,
         n_operations_executed,
         n_unsound,
+        n_unsound_scoped,
         n_check_graph_exceptions,
         n_totality_violations,
         global_unknown_rate,
@@ -1127,9 +1399,18 @@ def main(argv: list[str] | None = None) -> int:
         wall_elapsed_s,
         n_findings_decided_total,
         n_rows_excused_by_scope,
+        n_rows_excused_by_frame,
+        n_scope_verdict_safe,
+        gate["go"],
     )
 
-    return 1 if n_unsound > 0 or n_check_graph_exceptions > 0 else 0
+    # 260909 (spec §16.7 F3, increment 7, T46): `unsound_scoped` joins
+    # `unsound`/`check_graph_exceptions` as a hard failure condition -- the
+    # baseline this row must not regress (SS4 of the sprint plan) requires
+    # BOTH counters at 0, and a nonzero `unsound_scoped` is exactly the
+    # false-SAFE-within-scope failure mode this increment makes possible
+    # for the first time (T45's fence exists to catch it, not just count it).
+    return 1 if n_unsound > 0 or n_unsound_scoped > 0 or n_check_graph_exceptions > 0 else 0
 
 
 if __name__ == "__main__":

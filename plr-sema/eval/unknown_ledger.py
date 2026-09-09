@@ -175,10 +175,30 @@ class ClusterAccumulator:
 def cluster_unknown_findings(
     row_findings: list[tuple[str, tuple[Any, ...]]],
     row_methods: list[list[str]],
+    row_scope_verdicts: "list[dict[int, str | None]] | None" = None,
 ) -> dict[str, Any]:
     """Pure clustering core (unit-tested directly in
     ``test_unknown_ledger.py`` on synthetic Findings, no oracle_replay
     invocation needed).
+
+    ``row_scope_verdicts`` (260909, spec §16.10.1 block 7, increment 7,
+    T46, D-G4): OPTIONAL, same per-row indexing as ``row_methods`` but
+    keyed by the operation's own integer index rather than a list --
+    ``row_scope_verdicts[row_idx][idx]`` is that operation's
+    ``scoped_verdict`` string (``"safe"``/``"unknown"``/``"will_fail"``) or
+    ``None``, read off ``oracle_replay``'s own report (``build_ledger``'s
+    job to supply; this function never calls ``oracle_replay`` itself).
+    ``None`` (the default) reproduces every pre-T46 caller's behaviour
+    byte-identically -- every existing test and every field this function
+    already returns is UNCHANGED; this is a strictly additive parameter
+    that unlocks one additional field in the return dict, described below.
+    THIS is the "ledger can audit the gate" wiring D-G4 asks for: a
+    ledger-clustered UNKNOWN-*verdict* operation can carry
+    ``scope_verdict == "safe"`` (AC-16.7's own two-fields-two-claims
+    fixture proves this is not a contradiction -- a report whose only
+    UNKNOWN finding sits at an excluded tier-(iii) site is exactly this
+    shape), and before this parameter existed the ledger had no way to
+    surface that.
 
     ``row_findings``: one entry per executed row, ``(row_id, findings)`` --
     ``findings`` is exactly what :data:`oracle_common.FINDINGS_SINK`
@@ -206,6 +226,13 @@ def cluster_unknown_findings(
 
     clusters: dict[tuple[str, str, str], ClusterAccumulator] = {}
     reason_set_histogram: collections.Counter = collections.Counter()
+    # 260909 (spec §16.10.1 block 7, increment 7, T46, D-G4): the SAME
+    # grouping as `reason_set_histogram`, with `scope_verdict` folded into
+    # the key -- `None` (unthreaded) collapses every group onto the
+    # existing shape, so a caller that never passes `row_scope_verdicts`
+    # gets an identical-content second histogram (harmless, not gated).
+    reason_set_and_scope_histogram: collections.Counter = collections.Counter()
+    n_ops_unknown_but_scope_verdict_safe = 0
     n_findings_by_reason: collections.Counter = collections.Counter()
     n_ops_executed = 0
     n_ops_unknown = 0
@@ -246,6 +273,21 @@ def cluster_unknown_findings(
             op_cluster_keys = {(f.reason, _site_key(f.plr_site), f.detail) for f in unknown_findings}
             sole = len(op_cluster_keys) == 1
 
+            # 260909 (spec §16.10.1 block 7, increment 7, T46, D-G4): this
+            # op's own `scoped_verdict`, read from the caller-supplied
+            # per-row map -- `None` whenever `row_scope_verdicts` is not
+            # threaded (every pre-T46 caller) or this row/op has no entry
+            # (mirrors `scoped_verdict`'s own "`None` whenever `scope` is
+            # `None`" rule throughout the rest of the pipeline).
+            scope_verdict = (
+                row_scope_verdicts[row_idx].get(idx)
+                if row_scope_verdicts is not None and row_idx < len(row_scope_verdicts)
+                else None
+            )
+            if scope_verdict == "safe":
+                n_ops_unknown_but_scope_verdict_safe += 1
+            reason_set_and_scope_histogram[(tuple(sorted({f.reason for f in unknown_findings})), scope_verdict)] += 1
+
             legacy_key = (row_id, op_id)
             occurrences = legacy_unknown_ops[legacy_key]
             if occurrences:
@@ -266,6 +308,9 @@ def cluster_unknown_findings(
                     for f in unknown_findings
                 ],
                 "verdict": verdict.value,
+                # 260909 (spec §16.10.1 block 7, increment 7, T46, D-G4):
+                # scope_verdict beside the reason set.
+                "scope_verdict": scope_verdict,
             })
 
             for f in unknown_findings:
@@ -309,6 +354,17 @@ def cluster_unknown_findings(
         {"reason_set": list(rs), "n_ops": n}
         for rs, n in sorted(reason_set_histogram.items(), key=lambda kv: (-kv[1], kv[0]))
     ]
+    # 260909 (spec §16.10.1 block 7, increment 7, T46, D-G4): the SAME
+    # histogram with `scope_verdict` folded into the key -- kept OUT of
+    # `_compute_consistency`'s own cross-checks (unchanged call below) so
+    # this additive field cannot perturb an existing invariant; it sums to
+    # the identical `n_ops_unknown` total by construction (one entry per
+    # UNKNOWN op, exactly like `histogram_list`), so a reader can verify
+    # that independently rather than being told to trust it.
+    scope_histogram_list = [
+        {"reason_set": list(rs), "scope_verdict": sv, "n_ops": n}
+        for (rs, sv), n in sorted(reason_set_and_scope_histogram.items(), key=lambda kv: (-kv[1], kv[0]))
+    ]
 
     consistency = _compute_consistency(cluster_list, histogram_list, n_ops_unknown)
     if not consistency["ok"]:
@@ -318,6 +374,13 @@ def cluster_unknown_findings(
     return {
         "clusters": cluster_list,
         "per_op_reason_set_histogram": histogram_list,
+        # 260909 (spec §16.10.1 block 7, increment 7, T46, D-G4): the
+        # ledger auditing the gate -- an UNKNOWN-verdict op (this ledger's
+        # whole population) whose scope_verdict is nonetheless "safe" is
+        # exactly the headline shape (AC-16.7's two-fields-two-claims
+        # fixture), now countable from the ledger alone.
+        "per_op_reason_set_and_scope_verdict_histogram": scope_histogram_list,
+        "n_ops_unknown_but_scope_verdict_safe": n_ops_unknown_but_scope_verdict_safe,
         "n_ops_executed": n_ops_executed,
         "n_ops_unknown": n_ops_unknown,
         "n_findings_total": n_findings_total,
@@ -486,6 +549,16 @@ def build_ledger(
         )
 
     row_methods = [r.get("calls", []) for r in static_eligible_rows]
+    # 260909 (spec §16.10.1 block 7, increment 7, T46, D-G4): per-op
+    # scope_verdict, read off oracle_replay's OWN already-published
+    # per-operation "compare" entries (populated by `compare()` from
+    # `run_static_calls`'s `scoped_verdict`, once a caller threads
+    # `excludes_sites` -- see `oracle_replay.run_row`'s own wiring) at the
+    # SAME row position `collected`/`row_methods` already correlate on.
+    row_scope_verdicts: list[dict[int, str | None]] = [
+        {c["index"]: c.get("scoped_verdict") for c in r.get("compare", [])}
+        for r in static_eligible_rows
+    ]
     row_ids_from_report = [r.get("record_id", "") for r in static_eligible_rows]
     # Sanity cross-check (not a hard assertion -- record_id collisions are a
     # documented, expected 4%-ish rate, oracle_common.content_digest's own
@@ -495,7 +568,7 @@ def build_ledger(
         1 for (sink_id, _f), rep_id in zip(collected, row_ids_from_report) if sink_id != rep_id
     )
 
-    clustered = cluster_unknown_findings(collected, row_methods)
+    clustered = cluster_unknown_findings(collected, row_methods, row_scope_verdicts)
 
     n_ops_executed_baseline = replay_report["denominators"]["operations_executed"]
     n_rows_executed_baseline = replay_report["denominators"]["rows_executed"]
@@ -588,6 +661,9 @@ def build_ledger(
         "n_clusters": clustered["n_clusters"],
         "clusters": clustered["clusters"],
         "per_op_reason_set_histogram": clustered["per_op_reason_set_histogram"],
+        # 260909 (spec §16.10.1 block 7, increment 7, T46, D-G4).
+        "per_op_reason_set_and_scope_verdict_histogram": clustered["per_op_reason_set_and_scope_verdict_histogram"],
+        "n_ops_unknown_but_scope_verdict_safe": clustered["n_ops_unknown_but_scope_verdict_safe"],
         "n_row_id_collisions": clustered["n_row_id_collisions"],
         "collision_ops": clustered["collision_ops"],
         "consistency": clustered["consistency"],

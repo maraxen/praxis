@@ -52,6 +52,24 @@ folding -- none of which the gate candidate (`pick_up_tips`) needs, and
 all of which are published as caveats in this script's own JSON output
 under `"scope_notes"` rather than silently assumed complete.
 
+**260909 (spec §16.10.1 block 8, increment 7, T46): re-run, unmodified,
+and republished.** `classify_guard_structural`/`classify_guard_for_call`
+are a STATIC AST classification, independent of whatever `env` the runtime
+observation record populates -- so increment 7's own resolution rules
+(R-HEAD/R-ATTR/R-CONST, the membership case, Q-MONO) change nothing this
+script computes; `collect_executed_population`'s call into
+`oracle_replay.main()` picks up T46's `plr_observation` wiring fix
+automatically (same code path), and `n_membership_cmp` re-measured at
+**48**, unchanged from `outputs/plr-sema/t30_measured_260908.json` -- the
+prediction instrument and the measurement instrument stay comparable, per
+D-G5. This script's OWN `"gate"` key is the increment-6-era reason-based
+GO/NO-GO (`REASON_UNPARSED`/`REASON_OPERAND` clean, §15.9's normative box)
+-- a DIFFERENT, narrower criterion than this increment's own
+`scope_verdict`-based gate (spec §16.10.2, published by `oracle_replay.py`
+under its own `"gate"` key). The two must never be conflated: this
+script's `gate.with_o1.go` answers "does the STRUCTURAL classifier see a
+clean residual", not "does `scope_verdict` reach SAFE".
+
 Usage::
 
     uv run python plr-sema/eval/t30_measure.py \\

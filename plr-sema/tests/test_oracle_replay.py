@@ -1431,6 +1431,123 @@ class TestT32AdditiveReportFields:
         assert rc == expected_rc
 
 
+class TestT46ObservationThreading:
+    """260909 (spec §16.10, increment 7, T46): `run_row`'s own wiring gap --
+    `RuntimeOutcome.plr_observation` (T40, landed) and T43's resolution
+    rules (landed in `check/predicate.py`) were never connected before this
+    row, so `:409`/`:514` stayed `guard_env_dependent` through T43-T45
+    despite both halves existing. This class is the regression test for
+    the one-line fix (`plr_observation=rt.plr_observation` threaded into
+    `run_static_calls`) plus the `compare()` `excludes_sites` wiring and
+    the derived per-rule/gate publication built on top of it."""
+
+    def _run_main(self, tmp_path, rows):
+        import oracle_replay
+
+        corpus_path = tmp_path / "corpus.jsonl"
+        corpus_path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+        report_path = tmp_path / "report.json"
+        rc = oracle_replay.main(["--corpus", str(corpus_path), "--report", str(report_path)])
+        return rc, json.loads(report_path.read_text())
+
+    def test_observation_flips_head_and_const_sites_to_decided(self, tmp_path):
+        """A clean `pick_up_tips` row, run through `main()` end-to-end:
+        `:409` (R-HEAD, `_make_sure_channels_exist`) and `:514` (R-CONST,
+        `can_pick_up_tip`) must both appear in `n_findings_decided_by_site`
+        once `plr_observation` is threaded -- pre-fix, neither site was
+        ever decided (`n_resolved_by_rule` would be all zero, exactly
+        §16.10.4's own falsification-map counter for "the observation
+        alone flips nothing without §16.5" WITH §16.5 landed but unwired)."""
+        row = _chat_row(
+            "pick_up_tips",
+            {"at": ["tip_rack.A1"]},
+            utterance="pick up a tip",
+        )
+        rc, report = self._run_main(tmp_path, [row])
+
+        by_site = report["n_findings_decided_by_site"]
+        assert any(k.endswith(":409:LiquidHandler._make_sure_channels_exist") for k in by_site), by_site
+        assert any(k.endswith(":514:LiquidHandler.pick_up_tips") for k in by_site), by_site
+        assert report["n_resolved_by_rule"]["R-HEAD"] >= 1
+        assert report["n_resolved_by_rule"]["R-CONST"] >= 1
+        assert report["n_resolved_by_rule"]["R-ATTR"] == 0
+        assert report["n_membership_decided"]["total"] >= 1
+        assert report["n_quantifier_decided_by_qmono"]["total"] >= 1
+
+    def test_gate_block_present_and_well_typed(self, tmp_path):
+        """§16.10.2's gate, computed and published, whether or not it
+        actually reaches GO on this row (AC-16.11: reproducible from the
+        JSON alone)."""
+        row = _chat_row(
+            "pick_up_tips",
+            {"at": ["tip_rack.A1"]},
+            utterance="pick up a tip",
+        )
+        rc, report = self._run_main(tmp_path, [row])
+
+        gate = report["gate"]
+        assert isinstance(gate["go"], bool)
+        assert isinstance(gate["n_operations_scope_verdict_safe"], int)
+        assert gate["unsound"] == report["summary_flat"]["unsound"]
+        assert gate["unsound_scoped"] == report["summary_flat"]["unsound_scoped"]
+        assert gate["n_findings_decided"] == report["n_findings_decided"]
+        assert gate["n_findings_decided_floor"] == 2009
+        assert gate["n_findings_decided_target"] == 2170
+        assert report["summary_flat"]["gate_go"] == gate["go"]
+        # T48/T49 (the D6 site rules) have not landed as of this row --
+        # :375/:383/:321 stay undecided, so scope_verdict cannot reach SAFE
+        # on any pick_up_tips operation yet, and the gate must say NO-GO
+        # honestly rather than fabricate their effect.
+        assert gate["go"] is False
+        assert report["n_check_args_decided"]["total"] == 0
+        assert report["n_assert_resources_decided"]["total"] == 0
+
+    def test_unsound_scoped_and_rows_excused_by_frame_present_and_zero_on_clean_row(self, tmp_path):
+        """The fence's second counter pair (§16.7 F3, T45) -- wired to
+        `compare()`'s `excludes_sites` by this row -- stays 0 on a row with
+        no unsound finding at all, and the report shape matches
+        `rows_excused_by_scope`'s own (count + examples)."""
+        row = _chat_row(
+            "pick_up_tips",
+            {"at": ["tip_rack.A1"]},
+            utterance="pick up a tip",
+        )
+        rc, report = self._run_main(tmp_path, [row])
+
+        assert report["summary_flat"]["unsound"] == 0
+        assert report["summary_flat"]["unsound_scoped"] == 0
+        assert isinstance(report["rows_excused_by_frame"], dict)
+        assert report["rows_excused_by_frame"]["count"] == 0
+        assert report["rows_excused_by_frame"]["examples"] == []
+        assert rc == 0
+
+    def test_exit_code_fails_on_nonzero_unsound_scoped(self, tmp_path, monkeypatch):
+        """§16.7 F3: `unsound_scoped` joins `unsound`/`check_graph_exceptions`
+        as a hard exit-code failure -- simulated by monkeypatching `compare`
+        to return one unsound_scoped row, since no shipped fixture actually
+        produces a false SAFE-within-scope today (the fence is there to
+        catch a defect, not to demonstrate one)."""
+        import oracle_replay
+
+        real_compare = oracle_replay.compare
+
+        def _fake_compare(example, rt, st, **kwargs):
+            rows = real_compare(example, rt, st, **kwargs)
+            if rows:
+                rows[0] = {**rows[0], "unsound_scoped": True}
+            return rows
+
+        monkeypatch.setattr(oracle_replay, "compare", _fake_compare)
+        row = _chat_row(
+            "pick_up_tips",
+            {"at": ["tip_rack.A1"]},
+            utterance="pick up a tip",
+        )
+        rc, report = self._run_main(tmp_path, [row])
+        assert report["summary_flat"]["unsound_scoped"] >= 1
+        assert rc == 1
+
+
 # ---------------------------------------------------------------------------
 # §16.7 (fence increment, T45, backlog #5025): F1's frame-list capture, F2's
 # any-frame narrowing with the outermost tie-break, F2a's ONE normalisation
