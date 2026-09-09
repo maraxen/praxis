@@ -117,6 +117,22 @@ def _guard_to_json(guard: InlinedGuard) -> dict[str, Any]:
     # already treats as fail-closed (unchanged from before this field
     # existed).
     payload["reachability_clear"] = guard.reachability_clear
+    # 260909 (spec §16.4, T42): additive `caller_args`/
+    # `caller_reachability_clear`/`caller_scope_trail`. `caller_args` is
+    # ALREADY a plain JSON-safe dict (each value is `predicate_to_json`'s
+    # own output, per `compute_caller_args`) -- no further encoding step,
+    # unlike `bindings`/`predicate` which wrap dataclasses. All three stay
+    # `None` (key still present) for a depth-0/depth->=2 guard, or for a
+    # depth-1 guard whose `(K, D)` pair M1 refused -- same "computed,
+    # found nothing" vs. "field never existed" additive-field discipline
+    # every other field on this dataclass already uses; a reader on an
+    # un-regenerated pre-T42 artifact tolerates absence via
+    # `.get("caller_args")` returning `None`, which
+    # `check.predicate.evaluate_guard`'s resolution already treats as
+    # fail-closed (unchanged from before this field existed).
+    payload["caller_args"] = guard.caller_args
+    payload["caller_reachability_clear"] = guard.caller_reachability_clear
+    payload["caller_scope_trail"] = None if guard.caller_scope_trail is None else list(guard.caller_scope_trail)
     return payload
 
 

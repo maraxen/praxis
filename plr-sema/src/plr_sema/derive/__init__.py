@@ -55,6 +55,9 @@ from plr_sema._provenance import SurveyStamp, survey_stamp
 from plr_sema.check._supported_tools import SUPPORTED_TOOLS
 from plr_sema.derive.bindings import (
     build_qualname_index,
+    compute_caller_args,
+    compute_caller_call_lineno,
+    compute_caller_scope_trail,
     compute_local_bindings_for_guard,
     compute_reachability_clear,
     demote_refused_env_refs,
@@ -500,6 +503,33 @@ class InlinedGuard:
     when no ``function_index`` was supplied to ``derive_contract``. See
     that function's own docstring for the exact three-clause test (an
     earlier ``ast.Raise`` never blocks).
+
+    ``caller_args`` (260909, T42, additive, spec 260909 §16.4 M1/M2): for a
+    ``depth == 1`` guard ONLY, the delegate's own parameter name ->
+    caller-side ``Term`` JSON map, computed against the ENTRY POINT's own
+    AST (never the delegate's) by
+    ``plr_sema.derive.bindings.compute_caller_args``. ``None`` -- fail
+    closed, the same "absent means resolve to ⊤" default every additive
+    field on this dataclass takes -- when no ``function_index`` was
+    supplied, when the guard's own depth is not 1, or when M1's six
+    conditions refuse the ``(K, D)`` pair outright. A ``depth == 0`` or
+    ``depth >= 2`` guard NEVER carries this field (M1 clause 6: "one level
+    only").
+
+    ``caller_reachability_clear``/``caller_scope_trail`` (260909, T42,
+    additive, spec §16.4 D1): the SAME facts ``reachability_clear``/
+    ``scope_trail`` carry, but computed against the entry point's own
+    delegate CALL STATEMENT rather than against the guard's own site --
+    D1's second precondition for lifting E-UNCOND(4) at ``depth == 1``.
+    ``caller_reachability_clear`` is
+    ``plr_sema.derive.bindings.compute_reachability_clear(K, call_lineno)``
+    (the SAME function ``reachability_clear`` uses, just against a
+    different lineno); ``caller_scope_trail`` is
+    ``plr_sema.derive.bindings.compute_caller_scope_trail(K, call_lineno)``.
+    Both ``None`` under the identical fail-closed conditions
+    ``caller_args`` takes above (and always together: there is no call
+    statement to key either fact on unless M1 clauses 1/2 found exactly
+    one).
     """
 
     condition: str | None
@@ -512,6 +542,9 @@ class InlinedGuard:
     depth: int  # 0 = own body, >0 = inlined from a delegate
     bindings: tuple[dict[str, Any], ...] = ()
     reachability_clear: bool = False
+    caller_args: dict[str, Any] | None = None
+    caller_reachability_clear: bool | None = None
+    caller_scope_trail: tuple[str, ...] | None = None
 
     @property
     def is_dynamic_raise(self) -> bool:
@@ -572,17 +605,50 @@ def derive_contract(
     class (``rec.class_name``). Omitting ``function_index`` refuses EVERY
     such candidate (fail-closed, identical in spirit to the ``bindings``
     default above).
+
+    260909 amendment (T42, spec 260909 §16.4): with ``function_index``
+    supplied, every ``depth == 1`` guard ADDITIONALLY gets ``caller_args``/
+    ``caller_reachability_clear``/``caller_scope_trail`` populated against
+    the ENTRY POINT's own AST (``entry_K`` below, captured once at
+    ``depth == 0`` -- ``_walk_closure`` always yields the entry point
+    first, by construction) and the delegate's own AST (the SAME ``K``
+    local variable ``bindings``/``reachability_clear`` already use at
+    ``depth == 1``, which is spec's ``D``). Computed ONCE per delegate
+    ``key`` reached at depth 1 and reused across every one of that
+    delegate's own guards (M1's ``(K, D)`` pair does not vary per-guard;
+    a depth-2+ delegate never receives this treatment at all, M1 clause
+    6, enforced here simply by never calling into it outside the
+    ``depth == 1`` branch below).
     """
     if stamp is None:
         stamp = survey_stamp()
     qualname_index = None if function_index is None else build_qualname_index(function_index)
     guards: list[InlinedGuard] = []
     gaps: list[Gap] = []
+    entry_K: ast.AST | None = None
+    caller_info_cache: dict[Qualkey, tuple[dict[str, Any] | None, bool | None, tuple[str, ...] | None]] = {}
     for rec, key, depth in _walk_closure((module, qualname), index):
         if rec is None:
             gaps.append(("no_contract_derived", key[1]))
             continue
         K = None if function_index is None else function_index.get((rec.module, rec.qualname, rec.lineno))
+        if depth == 0:
+            entry_K = K
+        caller_args: dict[str, Any] | None = None
+        caller_reachability_clear: bool | None = None
+        caller_scope_trail: tuple[str, ...] | None = None
+        if depth == 1 and entry_K is not None and K is not None:
+            if key not in caller_info_cache:
+                call_lineno = compute_caller_call_lineno(entry_K, K)
+                if call_lineno is None:
+                    caller_info_cache[key] = (None, None, None)
+                else:
+                    caller_info_cache[key] = (
+                        compute_caller_args(entry_K, K),
+                        compute_reachability_clear(entry_K, call_lineno),
+                        compute_caller_scope_trail(entry_K, call_lineno),
+                    )
+            caller_args, caller_reachability_clear, caller_scope_trail = caller_info_cache[key]
         for finding in rec.findings:
             predicate = parse_predicate(finding.condition)
             predicate = demote_refused_env_refs(
@@ -608,6 +674,9 @@ def derive_contract(
                     depth=depth,
                     bindings=bindings,
                     reachability_clear=reachability_clear,
+                    caller_args=caller_args,
+                    caller_reachability_clear=caller_reachability_clear,
+                    caller_scope_trail=caller_scope_trail,
                 )
             )
         for name in rec.delegates_to:

@@ -799,3 +799,211 @@ def test_ac_14_6_use_channels_length_mismatch_widens(contracts_json: str) -> Non
     assert pair_findings[0].verdict is Verdict.UNKNOWN
     assert pair_findings[0].reason == "volume_state_unknown"
     assert _no_volume_will_fail(report)
+
+
+# ---------------------------------------------------------------------------
+# AC-16.4 (spec 260909 §16.4, D1, T42): the depth-1 `WILL_FAIL` lift, tested
+# against a SYNTHETIC guard swapped into the real `pick_up_tips` contract's
+# `:409` slot -- the SAME `_synthetic_*_contracts_json` pattern
+# `test_ac_14_6_*` already uses above. A synthetic predicate is necessary
+# rather than the real `_make_sure_channels_exist` guard: its own emptiness
+# test bottoms out in `c not in self.head`, a MEMBERSHIP `Cmp` that G8(2)
+# evaluates 1/2 UNCONDITIONALLY until T43 lands `E-ENV`'s R-HEAD rule, so
+# the real site cannot reach `fires is True` at this pin -- exactly why
+# spec's own §16.4 box states this increment adds no WILL_FAIL population
+# at all without a synthetic exerciser. The synthetic predicate references
+# TWO of D's own parameters -- `channels` (mapped, via the REAL
+# `caller_args` this contract's own `pick_up_tips`/`_make_sure_channels_
+# exist` pair derives, to `Var("use_channels")`) and `flag` (mapped to a
+# bare `Lit(True)`, so it resolves with no dependency on `K`'s own state at
+# all) -- so perturbation 5 ("one free name resolving to Top") has a second
+# name to unmap without collapsing the whole guard to Opaque.
+# ---------------------------------------------------------------------------
+
+_T42_GUARD_PREDICATE = {
+    "node": "And",
+    "predicates": [
+        {
+            "node": "Cmp",
+            "left": {"node": "Len", "term": {"node": "Var", "name": "channels"}},
+            "op": ">",
+            "right": {"node": "Lit", "value": 0},
+        },
+        {"node": "Is", "term": {"node": "Var", "name": "flag"}, "negated": True},
+    ],
+}
+
+
+def _pick_up_tips_use_channels_graph(use_channels_literal: str) -> str:
+    return json.dumps(
+        {
+            "protocol_fqn": "test.t42_depth1_lift",
+            "operations": [
+                {
+                    "id": "op_1",
+                    "method_name": "pick_up_tips",
+                    "receiver_variable": "lh",
+                    "receiver_type": "LiquidHandler",
+                    "arguments": {"use_channels": use_channels_literal},
+                }
+            ],
+            "resources": {},
+        }
+    )
+
+
+def _t42_synthetic_contracts_json(contracts_json: str, guard_overrides: dict) -> str:
+    """Real `contracts_json`, with `LiquidHandler.pick_up_tips`'s own
+    `guards` list replaced by ONE synthetic guard -- the real `:409` site
+    (file/lineno/qualname) so the finding is still `plr_site`-addressable,
+    but a hand-built `predicate`/`caller_args` triple so the fixture is
+    deterministic and self-contained (never depends on `self.head`)."""
+    payload = json.loads(contracts_json)
+    real_contract = payload["contracts"]["LiquidHandler.pick_up_tips"]
+    (real_409,) = [g for g in real_contract["guards"] if g["site"]["lineno"] == 409]
+    guard = {
+        "condition": "len(channels) > 0 and flag is not None",
+        "predicate": _T42_GUARD_PREDICATE,
+        "scope_trail": [],
+        "raises": "ValueError",
+        "kind": "raise_guard",
+        "free_vars": ["channels", "flag"],
+        "site": real_409["site"],
+        "depth": 1,
+        "bindings": [],
+        "reachability_clear": True,
+        "caller_args": {"channels": {"node": "Var", "name": "use_channels"}, "flag": {"node": "Lit", "value": True}},
+        "caller_reachability_clear": True,
+        "caller_scope_trail": [],
+    }
+    guard.update(guard_overrides)
+    new_contract = dict(real_contract)
+    new_contract["guards"] = [guard]
+    payload["contracts"] = dict(payload["contracts"])
+    payload["contracts"]["LiquidHandler.pick_up_tips"] = new_contract
+    return json.dumps(payload)
+
+
+_T42_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=409,
+    qualname="LiquidHandler._make_sure_channels_exist",
+)
+
+
+def _t42_report(contracts_json: str, guard_overrides: dict, *, use_channels: str = "[0, 1]") -> AnalysisReport:
+    synthetic = _t42_synthetic_contracts_json(contracts_json, guard_overrides)
+    return check_graph(_pick_up_tips_use_channels_graph(use_channels), synthetic)
+
+
+def test_ac_16_4_depth1_will_fail_under_all_three_preconditions(contracts_json: str) -> None:
+    """All three D1 preconditions hold (`reachability_clear`,
+    `caller_reachability_clear` + a satisfied `caller_scope_trail`, and a
+    total map -- implied here by `fires is True`) -> `WILL_FAIL` with
+    `category == "precondition_state"`."""
+    report = _t42_report(contracts_json, {})
+    findings = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert len(findings) == 1
+    (finding,) = findings
+    assert finding.verdict is Verdict.WILL_FAIL
+    assert finding.category == "precondition_state"
+
+
+def test_ac_16_4_reachability_clear_false_blocks(contracts_json: str) -> None:
+    """Perturbation 1: the delegate's own body is not clear ->
+    `UNKNOWN`/`guard_env_dependent`, never `WILL_FAIL`."""
+    report = _t42_report(contracts_json, {"reachability_clear": False})
+    (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_4_caller_reachability_clear_false_blocks(contracts_json: str) -> None:
+    """Perturbation 2: the call site is not reached (`caller_reachability_
+    clear is False`) -> blocked."""
+    report = _t42_report(contracts_json, {"caller_reachability_clear": False})
+    (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_4_caller_reachability_clear_absent_blocks(contracts_json: str) -> None:
+    """Perturbation 3: `caller_reachability_clear` is ABSENT (=> `None` =>
+    blocked), the stub-defeating half distinguishing `is False` from
+    `is None` -- an implementation checking only the former would pass
+    perturbation 2 and fail this one."""
+    report = _t42_report(contracts_json, {"caller_reachability_clear": None})
+    (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_4_unsatisfied_caller_scope_trail_entry_blocks(contracts_json: str) -> None:
+    """Perturbation 4: an unsatisfied `caller_scope_trail` entry (an `if
+    <unhypothesised-name>()` with the default empty `env`) -> blocked."""
+    report = _t42_report(contracts_json, {"caller_scope_trail": ["if some_undeclared_flag()"]})
+    (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_4_one_free_name_resolving_to_top_blocks(contracts_json: str) -> None:
+    """Perturbation 5: `flag` loses its `caller_args` entry -> resolves to
+    Top with `origin == "env"` -> the predicate can no longer decide `T`,
+    landing at the `guard_env_dependent` catch-all (not `guard_operand_
+    unknown`, since an "env"-origin Top is precisely what AC-16.3(b) names
+    as the OTHER class)."""
+    report = _t42_report(
+        contracts_json, {"caller_args": {"channels": {"node": "Var", "name": "use_channels"}}}
+    )
+    (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_4_depth_two_still_forbidden_unconditionally(contracts_json: str) -> None:
+    """The sixth fixture: `depth == 2` stays forbidden UNCONDITIONALLY,
+    even with every other field left at its all-preconditions-satisfied
+    value and an unconditionally-true predicate (`TRUE()`, so `fires is
+    True` regardless of any resolution -- depth >= 1 already blocks every
+    name from resolving via `caller_args` except at depth == 1
+    specifically, so a depth-2 guard needs a vacuous predicate to even
+    reach `guard_is_unconditional` at all)."""
+    report = _t42_report(
+        contracts_json,
+        {"predicate": {"node": "TRUE"}, "depth": 2},
+    )
+    (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_3_b_caller_args_top_yields_operand_unknown_not_env_dependent(contracts_json: str) -> None:
+    """AC-16.3(b) / C9's origin clause, the FIRST half: a `caller_args`-
+    resolved name whose caller-side `Term` itself resolves to Top yields
+    `guard_operand_unknown` -- NOT `guard_env_dependent` (that catch-all is
+    for a name with NO `caller_args` entry at all, AC-16.3(b)'s second
+    half / `test_ac_16_4_one_free_name_resolving_to_top_blocks` above). A
+    single-free-var predicate over `channels`, mapped to `Var("use_channels")`,
+    with NEITHER `use_channels` NOR `tip_spots` (the P3a default-arity
+    fallback) supplied by the operation -- `channels_for_call` returns
+    `None`, so the recursive K-context resolution itself lands on Top, but
+    `origin` stays `"operand"` (C9: unconditional, regardless of whether
+    the resolved value is concrete or Top)."""
+    report = _t42_report(
+        contracts_json,
+        {
+            "predicate": {
+                "node": "Cmp",
+                "left": {"node": "Len", "term": {"node": "Var", "name": "channels"}},
+                "op": ">",
+                "right": {"node": "Lit", "value": 0},
+            },
+            "free_vars": ["channels"],
+            "caller_args": {"channels": {"node": "Var", "name": "use_channels"}},
+        },
+        use_channels="None",
+    )
+    (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_operand_unknown"

@@ -163,6 +163,19 @@ class _Ctx:
     class_hierarchy: "Mapping[str, frozenset[str]] | None"
     var_override: Mapping[str, ir.Value] = field(default_factory=dict)
     override_all_to_top: bool = False  # A-C13: a genuine AllOf/AnyOf's bound name(s)
+    # 260909 (spec §16.4, T42): M2's `caller_args` resolution. `caller_args`
+    # is the guard's own `{D's param name: <Term JSON>}` map (`None` unless
+    # `depth == 1` and M1 admitted the pair -- `_resolve_var` re-checks
+    # `ctx.depth == 1` itself rather than trusting an un-regenerated or
+    # hand-built fixture's `depth` field to agree with a nonzero
+    # `caller_args`, defense in depth for M1 clause 6). `entry_param_defaults`
+    # is the SAME `contract["param_defaults"]` value `param_defaults` above
+    # already carries at `depth == 0` -- unconditionally available here
+    # (never depth-gated), because M2 step (1) evaluates a caller-side Term
+    # "in K's own context", which needs K's OWN param_defaults regardless of
+    # the CURRENT guard's depth.
+    caller_args: "Mapping[str, Any] | None" = None
+    entry_param_defaults: Mapping[str, Any] = field(default_factory=dict)
 
 
 def _with_override(ctx: _Ctx, override: Mapping[str, ir.Value]) -> _Ctx:
@@ -233,6 +246,28 @@ def _resolve_var(name: str, ctx: _Ctx) -> "tuple[ir.Value, str]":
         return ir.Top(), "operand"
     if name in ctx.var_override:
         return ctx.var_override[name], "operand"
+    if ctx.depth == 1 and ctx.caller_args is not None and name in ctx.caller_args:
+        # M2 step (1), §16.4: a depth-1 free name that is a parameter of D
+        # with a `caller_args` entry resolves by evaluating the CALLER-side
+        # `Term` in K's own context -- E-CALL(5)'s parameter-rebinding
+        # clause applies in K, never in D. The substitution is a ONE-SHOT
+        # replay of the depth-0 resolution rules (`call.kwargs`/K's own
+        # `param_defaults`/the P3a `channel_kwarg` hook, the last of which
+        # is already depth-independent above) against the recorded Term,
+        # never a second name-keyed lookup into D's own `bindings_by_name`
+        # (`bindings_by_name={}` below) -- exactly the name-coincidence
+        # hazard §16.4 closes: nothing here is re-matched by name against a
+        # namespace it does not belong to. `caller_args=None` on the nested
+        # ctx is defensive (K-context resolution never re-enters M2 itself).
+        term = pa.from_json(ctx.caller_args[name])
+        caller_ctx = replace(
+            ctx,
+            depth=0,
+            param_defaults=ctx.entry_param_defaults,
+            bindings_by_name={},
+            caller_args=None,
+        )
+        return _resolve_term(term, caller_ctx), "operand"  # C9: always "operand" origin.
     if ctx.channel_kwarg is not None and name == ctx.channel_kwarg:
         if ctx.channels is not None:
             return ir.Seq(tuple(ir.Lit(c) for c in ctx.channels)), "operand"
@@ -776,13 +811,51 @@ def guard_is_unconditional(
     *,
     depth: int,
     k_reachability_clear: "bool | None",
+    caller_reachability_clear: "bool | None" = None,
+    caller_scope_trail: "list[str] | tuple[str, ...] | None" = None,
 ) -> bool:
     """E-UNCOND: may this guard emit `WILL_FAIL`? Clauses (4) and (5) are
     checked first (either can block regardless of the trail's own
     content); otherwise every entry must be satisfied by one of ways
-    (1)-(3)."""
-    if depth >= 1:
-        return False  # clause (4).
+    (1)-(3).
+
+    260909 (spec §16.4, D1, T42): clause (4) is LIFTED at `depth == 1`
+    under D1's three preconditions, `depth >= 2` untouched. Precondition
+    2 (the call site itself is reached: `caller_reachability_clear` is
+    `True` AND every `caller_scope_trail` entry satisfies ways (1)-(3),
+    the SAME `_entry_satisfies_uncond` test `scope_entries` uses -- both
+    fields absent, `None`, is fail-closed and blocks) is checked here,
+    additively, for `depth == 1` only. Precondition 1 (the delegate's own
+    body is clear, `k_reachability_clear`) and D's own enclosing scope
+    (an in-loop guard like `:321` is blocked by the SAME `scope_entries`
+    rule depth 0 already uses -- C19's own resolution: no fourth
+    precondition, the `for` entry in D's OWN trail is what carries it) are
+    NOT special-cased for `depth == 1` at all -- they fall through to the
+    IDENTICAL two-line rule below, unchanged from depth 0. Precondition 3
+    (a total argument map for the guard's free names) is implied by the
+    caller already having observed `fires is True` before this function is
+    ever invoked (§16.4's own box: "a guard firing on a ⊤ operand cannot
+    fire") -- nothing to check for it here.
+    """
+    if depth >= 2:
+        return False  # clause (4): depth >= 2 stays forbidden, unconditionally.
+    if depth == 1:
+        if not caller_reachability_clear or caller_scope_trail is None:
+            return False  # D1 precondition 2, fail-closed on None/False.
+        # `caller_scope_trail`'s entries are K's OWN statements, over K's
+        # OWN namespace -- evaluated in K's own context (M2's identical
+        # "evaluate in K, not in D" rule), never against `ctx` as-is
+        # (whose `bindings_by_name`/depth-gating both belong to D at
+        # `depth == 1`).
+        caller_ctx = replace(
+            ctx,
+            depth=0,
+            param_defaults=ctx.entry_param_defaults,
+            bindings_by_name={},
+            caller_args=None,
+        )
+        if not all(_entry_satisfies_uncond(entry, caller_ctx) for entry in caller_scope_trail):
+            return False
     if not scope_entries:
         return bool(k_reachability_clear)  # clause (5), fail-closed on None/False.
     return all(_entry_satisfies_uncond(entry, ctx) for entry in scope_entries)
@@ -859,16 +932,25 @@ def evaluate_guard(
     depth = int(guard.get("depth", 0))
     predicate = pa.from_json(guard["predicate"])
     bindings_by_name = {b["x"]: b for b in guard.get("bindings", ())}
+    entry_param_defaults = contract.get("param_defaults", {})
     ctx = _Ctx(
         call=call,
         resources_by_slot=resources_by_slot,
-        param_defaults=contract.get("param_defaults", {}) if depth == 0 else {},
+        param_defaults=entry_param_defaults if depth == 0 else {},
         bindings_by_name=bindings_by_name,
         depth=depth,
         channel_kwarg=channel_kwarg,
         channels=channels,
         env=env,
         class_hierarchy=class_hierarchy,
+        # 260909 (spec §16.4, T42): `caller_args` -- present only on a
+        # depth-1 guard whose `(K, D)` pair M1 admitted (`None` otherwise,
+        # the same additive-field default `guard.get(...)` already gives
+        # every other T42 field); `entry_param_defaults` unconditionally,
+        # since M2 step (1)'s caller-context resolution needs K's own
+        # param_defaults regardless of THIS guard's own depth.
+        caller_args=guard.get("caller_args"),
+        entry_param_defaults=entry_param_defaults,
     )
 
     scope_entries = _exclude_self_entry(guard)
@@ -882,7 +964,14 @@ def evaluate_guard(
     if fires is False:
         return _SAFE
     if fires is True:
-        if guard_is_unconditional(scope_entries, ctx, depth=depth, k_reachability_clear=k_reachability_clear):
+        if guard_is_unconditional(
+            scope_entries,
+            ctx,
+            depth=depth,
+            k_reachability_clear=k_reachability_clear,
+            caller_reachability_clear=guard.get("caller_reachability_clear"),
+            caller_scope_trail=guard.get("caller_scope_trail"),
+        ):
             return _WILL_FAIL
         return GuardResult(verdict="unknown", reason="guard_env_dependent")
     return GuardResult(verdict="unknown", reason=guard_reason(predicate, ctx))
