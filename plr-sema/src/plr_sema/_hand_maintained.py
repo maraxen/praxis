@@ -40,7 +40,13 @@ _FAILURE_TAXONOMY_PATH = REPO_ROOT / "training" / "verify" / "failure_taxonomy.p
 #: 21 -> 22, still <= 24, so the cap itself is UNCHANGED: 22 live rows still
 #: fit inside the room T9 already reserved, and per §9.4 growth alone is
 #: never grounds to widen a cap without a new adversarial-round argument.
-BUDGET_CAP = 24
+#: 260909 (spec 260909_plr-sema-observation-increment.md §16.15 D6, T48,
+#: backlog #5026): raised 24 -> 25, the user's approved D6 spend -- HM-26
+#: (site-keyed semantic models of named PLR function bodies) is a NEW
+#: registry-row CLASS the prior cap conversation never priced, not organic
+#: growth inside the existing room (unlike HM-23 above), so this IS the
+#: adversarial-round argument §9.4 requires before widening.
+BUDGET_CAP = 25
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -426,6 +432,26 @@ def _measure_hm25() -> int:
     assert _predicate_amendment_group_probe()
     assert _path_shape_table_probe()
     return len(shape_matchers) + len(productions)
+
+
+def _measure_hm26() -> int:
+    """260909 (spec 260909_plr-sema-observation-increment.md §16.1.3/§16.15
+    D6, T48, backlog #5026): NEW row -- site-keyed semantic models of named
+    PLR function BODIES, a genuinely different class from every prior row
+    on this registry (HM-24/HM-25 are patterns over how PLR is WRITTEN
+    generically; this is a hand-typed fact about ONE specific `(qualname,
+    lineno)` pair's own behaviour, not derivable from any syntactic shape).
+    `D6`'s own box (§16.15): "It is genuinely not HM-25's kind -- every
+    entry there is keyed on a *shape*, and `why_not_derived` says so in
+    those terms." T48 ships the FIRST entry (`:321`'s site rule);
+    `plr_sema.check.predicate.D6_SITE_RULES` is the live registry
+    `len()`s -- T49's `:375`/`:383` pair lands in the SAME dict, so this
+    row's measured count moves 1 -> 3 without a second row or a further
+    ceiling bump.
+    """
+    from plr_sema.check.predicate import D6_SITE_RULES
+
+    return len(D6_SITE_RULES)
 
 
 REGISTRY: tuple[HandMaintainedSurface, ...] = (
@@ -1067,6 +1093,58 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "rather than trusting this box's word for the reach."
         ),
         measure="plr_sema._hand_maintained:_measure_hm25",
+    ),
+    HandMaintainedSurface(
+        id="HM-26",
+        what=(
+            "Site-keyed semantic models of NAMED PLR function bodies (spec "
+            "260909_plr-sema-observation-increment.md §16.1.3/§16.15 D6, "
+            "T48/T49, backlog #5026): a hand-typed rule keyed on ONE "
+            "`(qualname, lineno)` pair, evaluating that guard's own "
+            "predicate value directly rather than resolving a sub-"
+            "expression against a derived table (HM-25's own kind). T48 "
+            "ships the `:321` rule (`LiquidHandler._assert_resources_exist`, "
+            "the deck-membership site rule plus the "
+            "`obs:deck_resources_verified` aggregate fact, §16.1.3) -- ONE "
+            "unit. T49's `(LiquidHandler._check_args, :375)`/`(:383)` pair "
+            "(D5b, §16.1.1) lands in the SAME `D6_SITE_RULES` dict when it "
+            "ships, moving the measured count to three -- this row and T49 "
+            "SHARE it, per D6's own box: whichever task lands first adds "
+            "the row, the second asserts it already exists rather than "
+            "adding a second."
+        ),
+        metric="site rules",
+        declared=3,
+        status="CAPPED",
+        why_not_derived=(
+            "Each rule is a claim about what ONE specific PLR function's "
+            "body does at derive/check time -- `_assert_resources_exist`'s "
+            "own `Resource.get_resource`/`Resource.__eq__` semantics, "
+            "`_check_args`'s own `inspect.signature`/`**kwargs` handling -- "
+            "not a syntactic pattern over how PLR is generically WRITTEN "
+            "(HM-24/HM-25's own criterion). Modelling either general "
+            "mechanism (a `for`-target binding idiom, an `inspect.signature` "
+            "comprehension family) was priced and REFUSED (§16.1.3's Q2, "
+            "§16.1.1's five-production refusal) as strictly more expensive "
+            "than naming the two sites directly, per D6's own recommendation."
+        ),
+        breaks_when=(
+            "PLR renames or restructures `_assert_resources_exist`'s "
+            "`resources` parameter, `_check_args`'s `backend_kws`/"
+            "`vars_keyword` locals, or either method's own line numbers "
+            "shift under the pinned submodule -- the keyed `(qualname, "
+            "lineno)` pair stops matching, the site rule is silently never "
+            "dispatched (`_site_rule_for` returns `None`), and the guard "
+            "reverts to the ordinary `evaluate_predicate` path -- ½ on "
+            "`:321`'s own unbindable predicate (§16.1.3's Q2), never wrong, "
+            "only less precise. `n_assert_resources_decided`/"
+            "`n_check_args_decided` (§16.10.1) are what a reader inspects "
+            "to catch the silent reversion rather than trusting this box's "
+            "word for the reach; each rule is ALSO one-directional by "
+            "construction (D-G6: never returns `T`), so a broken match "
+            "cannot manufacture a false `SAFE` either."
+        ),
+        measure="plr_sema._hand_maintained:_measure_hm26",
     ),
 )
 

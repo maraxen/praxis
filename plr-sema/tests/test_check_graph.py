@@ -1333,3 +1333,198 @@ def test_ac_16_6_membership_against_general_seq_stays_half_not_true(contracts_js
     (finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
     assert finding.verdict is Verdict.UNKNOWN
     assert finding.reason == "guard_env_dependent"
+
+
+# ---------------------------------------------------------------------------
+# AC-16.13 (spec 260909 §16.1.3/§16.15 D6, T48, backlog #5026): the `:321`
+# site rule (`LiquidHandler._assert_resources_exist`). This is a DIFFERENT
+# dispatch shape from R-HEAD/R-ATTR/R-CONST above -- `:321`'s own guard
+# predicate has no `EnvRef` at all (§16.1.3's Q2) and neither of its two
+# free names (`resource`/`resource_from_deck`) binds through any idiom this
+# module implements, so `plr_sema.check.predicate.D6_SITE_RULES` REPLACES
+# `evaluate_predicate` outright for the matched `(qualname, lineno)` rather
+# than resolving one sub-expression inside it.
+# ---------------------------------------------------------------------------
+
+_T48_ASSERT_RESOURCES_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=321,
+    qualname="LiquidHandler._assert_resources_exist",
+)
+
+
+def _t48_env(*, verified: bool) -> "frozenset[str]":
+    return frozenset({f"obs:deck_resources_verified={'true' if verified else 'false'}"})
+
+
+def _pick_up_tips_resources_graph(
+    tip_spots_literal: str = "[tip_rack_1]",
+    *,
+    resources: "dict[str, Any] | None" = None,
+) -> str:
+    return json.dumps(
+        {
+            "protocol_fqn": "test.t48_assert_resources",
+            "operations": [
+                {
+                    "id": "op_1",
+                    "method_name": "pick_up_tips",
+                    "receiver_variable": "lh",
+                    "receiver_type": "LiquidHandler",
+                    "arguments": {"tip_spots": tip_spots_literal, "use_channels": "[0]"},
+                }
+            ],
+            "resources": resources if resources is not None else {"tip_rack_1": {}},
+        }
+    )
+
+
+def test_ac_16_13_321_site_rule_flips_safe_under_verified_observation(contracts_json: str) -> None:
+    """The real `:321` guard, unmodified -- through T43 there is no rule
+    matching this site at all, so `evaluate_predicate` runs against
+    `resource`/`resource_from_deck` (both unbindable, §16.1.3's Q2) and
+    stays `UNKNOWN` regardless of `env` (see the no-observation test right
+    below). Once `D6_SITE_RULES` dispatches AND the harness's own aggregate
+    deck fact (`obs:deck_resources_verified`) says `True`, the SAME real
+    guard -- reached via T42's `caller_args` (`resources` -> `tip_spots`,
+    the real derived contract table's own entry) -- flips `SAFE`."""
+    report = check_graph(_pick_up_tips_resources_graph(), contracts_json, env=_t48_env(verified=True))
+    (finding,) = _site_findings(report, _T48_ASSERT_RESOURCES_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.SAFE
+
+
+def test_ac_16_13_321_no_observation_stays_env_dependent(contracts_json: str) -> None:
+    """§16.2.3's fail-closed default: with no `obs:` member in `env`, the
+    site rule declines (no `deck_resources_verified` key in the decoded
+    observation) exactly like every other §16.5 rule."""
+    report = check_graph(_pick_up_tips_resources_graph(), contracts_json)
+    (finding,) = _site_findings(report, _T48_ASSERT_RESOURCES_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_13_321_unverified_deck_declines(contracts_json: str) -> None:
+    """`obs:deck_resources_verified=false` (some row-declared deck-parented
+    name is NOT a member of the observed `deck_resource_names`) declines,
+    never falsifies -- the rule has no `T`-producing branch at all, so a
+    `False` aggregate fact and a `True` one both land in the SAME ½
+    outcome, distinguished only by which one CAN later decide `F`."""
+    report = check_graph(_pick_up_tips_resources_graph(), contracts_json, env=_t48_env(verified=False))
+    (finding,) = _site_findings(report, _T48_ASSERT_RESOURCES_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_13_321_site_rule_never_returns_true() -> None:
+    """§16.1.3 Fact 1: an absent name raises at `:318`, not `:321`, so the
+    positive branch is never established -- asserted directly against
+    `_eval_assert_resources_site_rule`'s own Kleene range, exhaustively
+    over every branch its own docstring names. The stub-defeating half:
+    a rule that always returned `None` would also pass every `check_graph`
+    test above (`UNKNOWN` either way), so branch (b) here is what proves
+    the `False`-producing path is actually implemented, not merely
+    defaulted away."""
+    from plr_sema.check.predicate import _Ctx, _eval_assert_resources_site_rule
+
+    def _ctx(*, kwargs: dict, resources_by_slot: dict, env: "frozenset[str]") -> _Ctx:
+        return _Ctx(
+            call=ir.Call(receiver=0, receiver_type="LiquidHandler", method="_assert_resources_exist", kwargs=kwargs),
+            resources_by_slot=resources_by_slot,
+            param_defaults={},
+            bindings_by_name={},
+            depth=0,
+            channel_kwarg=None,
+            channels=None,
+            env=env,
+            class_hierarchy=None,
+        )
+
+    declared = {
+        0: ir.Resource(
+            slot=0, type=None, element_type=None, is_container=False, is_parameter=True, parents=("Deck",), grid=None
+        )
+    }
+    verified_true = frozenset({"obs:deck_resources_verified=true"})
+    verified_false = frozenset({"obs:deck_resources_verified=false"})
+
+    # (a) `resources` unresolved (`ir.Top()`, no kwarg at all) -> ½, never T.
+    assert _eval_assert_resources_site_rule(_ctx(kwargs={}, resources_by_slot=declared, env=verified_true)) is None
+    # (b) a concrete Seq of declared Refs, verified True -> F, the ONE decided branch.
+    assert (
+        _eval_assert_resources_site_rule(
+            _ctx(kwargs={"resources": ir.Seq((ir.Ref(0, None),))}, resources_by_slot=declared, env=verified_true)
+        )
+        is False
+    )
+    # (c) same Seq, verified False -> ½, never T.
+    assert (
+        _eval_assert_resources_site_rule(
+            _ctx(kwargs={"resources": ir.Seq((ir.Ref(0, None),))}, resources_by_slot=declared, env=verified_false)
+        )
+        is None
+    )
+    # (d) a non-Ref element -> ½, never T.
+    assert (
+        _eval_assert_resources_site_rule(
+            _ctx(kwargs={"resources": ir.Seq((ir.Lit(1),))}, resources_by_slot=declared, env=verified_true)
+        )
+        is None
+    )
+    # (e) a Ref to an undeclared slot -> ½, never T.
+    assert (
+        _eval_assert_resources_site_rule(
+            _ctx(kwargs={"resources": ir.Seq((ir.Ref(1, None),))}, resources_by_slot=declared, env=verified_true)
+        )
+        is None
+    )
+
+
+def test_ac_16_13_a_deck_object_adversarial_duplicate_name_mismatched_geometry(contracts_json: str) -> None:
+    """AC-16.13's HAND-BUILT adversarial fixture (C18): a second
+    `pylabrobot.resources.Resource`, constructed DIRECTLY (never through
+    the kwarg-mutator API) with the SAME name as an existing deck resource
+    but a MISMATCHED geometry. PLR's own `Resource.__eq__` (name, all three
+    absolute sizes, location, category and children, §16.1.3 Fact 2) says
+    these are NOT equal despite the name match -- the exact residual
+    A-DECK-OBJECT accepts, given a NAME witness alone.
+
+    The STATIC site rule, told only that the name is verified
+    (`obs:deck_resources_verified=true` -- exactly what the harness's own
+    `deck_map` would say: it is built from `deck_resource_names`, a NAME
+    list, with no notion of geometry at all), still predicts `SAFE` -- it
+    CANNOT see this gap, by construction (§16.1.3's own normative box: "no
+    derivation establishes it at all"). Were this fed through the full
+    runtime harness (`training/verify/`, `plr-sema/eval/region_oracle.py`
+    -- both outside this row's own file list), PLR's real
+    `_assert_resources_exist` would raise on the genuine object at runtime
+    while the static side predicts `SAFE`, exactly what the tier-1 fence's
+    `unsound` counter (`plr-sema/eval/oracle_common.py`'s `compare`,
+    unmodified) exists to catch; this test proves the STATIC half of that
+    gap directly and in-process, since re-deriving the runtime harness is
+    outside this row's own file scope."""
+    from pylabrobot.resources import Resource
+
+    deck_resource = Resource("tip_rack_1", size_x=10, size_y=10, size_z=10, category="resource")
+    duplicate_resource = Resource("tip_rack_1", size_x=999, size_y=999, size_z=999, category="resource")
+    assert deck_resource.name == duplicate_resource.name
+    assert deck_resource != duplicate_resource  # A-DECK-OBJECT's own residual (§16.1.3 Fact 2).
+
+    report = check_graph(_pick_up_tips_resources_graph(), contracts_json, env=_t48_env(verified=True))
+    (finding,) = _site_findings(report, _T48_ASSERT_RESOURCES_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.SAFE
+
+
+def test_ac_16_13_a_deck_object_assumption_table_has_five_rows() -> None:
+    """AC-16.13: A-DECK-OBJECT is added to increment 1's §10.6.3
+    named-assumption table with its own breakage column, taking the table
+    from FOUR rows to FIVE -- asserted directly against the spec file
+    rather than trusted from prose."""
+    spec_path = REPO_ROOT / ".praxia" / "docs" / "specs" / "260902_plr-sema-tip-typestate-increment.md"
+    text = spec_path.read_text(encoding="utf-8")
+    start = text.index("### 10.6.3 The assumptions, named")
+    header_idx = text.index("| id | assumption", start)
+    end = text.index("\n\n", header_idx)
+    table = text[start:end]
+    rows = [line for line in table.splitlines() if line.startswith("| **A-")]
+    assert len(rows) == 5, f"expected 5 named-assumption rows, found {len(rows)}: {rows}"
+    assert any(row.startswith("| **A-DECK-OBJECT**") for row in rows), rows

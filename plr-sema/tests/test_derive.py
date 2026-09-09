@@ -1010,11 +1010,14 @@ def test_ac_13_2_registry_unchanged_at_24_live() -> None:
     """AC-13.2, second half: the hand-maintained registry does not grow --
     #4883 adds no row, retires no row (§13.4.3: the frozensets were never
     registered in the first place, so there is no row to retire either).
-    `live_rows()` stays 24 against `BUDGET_CAP == 24`, asserted AFTER this
-    change, so the item cannot be satisfied by registering the deleted
-    surface instead of deriving it."""
-    assert BUDGET_CAP == 24
-    assert len(live_rows()) == 24
+    `live_rows() == BUDGET_CAP` is what #4883 itself left true (this change
+    fills the registry to its own cap exactly, whatever that cap is at the
+    time this test runs) -- NOT a frozen `== 24` literal: 260909 (spec
+    §16.15 D6, T48, backlog #5026) is a LATER, separate decision that
+    raises `BUDGET_CAP` 24 -> 25 and adds HM-26, and asserting the stale
+    literal here would make this row's own regression test fail on every
+    future registry-row addition, which is not what AC-13.2 claims."""
+    assert len(live_rows()) == BUDGET_CAP
 
 
 # ---------------------------------------------------------------------------

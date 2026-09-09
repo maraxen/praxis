@@ -37,6 +37,23 @@ same commit as this module). Q-BIND is NOT implemented: `:409` already
 binds element-wise through `_eval_alpha_existential` below, and no `target`
 field is added to `Filtered`/`AllOf`/`AnyOf`.
 
+**260909 (spec 260909_plr-sema-observation-increment.md §16.1.3/§16.15 D6,
+T48, backlog #5026): the `:321` site rule.** A site-keyed semantic model of
+`LiquidHandler._assert_resources_exist`'s own body -- `D6_SITE_RULES` maps
+`(qualname, lineno)` to a total `_Ctx -> bool | None` function that REPLACES
+`evaluate_predicate` outright for the matched guard, dispatched in
+`evaluate_guard` before the ordinary predicate path. This is a DIFFERENT
+shape from R-HEAD/R-ATTR/R-CONST above: `:321`'s own guard predicate
+(`Not(Cmp(Var("resource_from_deck"), "==", Var("resource")))`) has no
+`EnvRef` at all (§16.1.3's Q2 -- R-DECK, the shape spec_version 1 proposed,
+does not occur in the contract table) and neither free name binds through
+any idiom this module implements, so there is nothing for a sub-expression
+resolution rule to hook. The site rule reads `resources` (K's own
+parameter, generically resolved through `_resolve_var`/M2's `caller_args`)
+and `obs:deck_resources_verified` (`plr-sema/eval/oracle_common.py`'s
+`observation_env_members`) and NEVER returns `T` (§16.1.3 Fact 1: an absent
+name raises at `:318`, not here).
+
 **Import boundary.** Same as the rest of `check/` (module docstring of
 `plr_sema.check`): no `pylabrobot`, no `libcst`, no `pydantic`, no
 filesystem access, no shelling out. This module DOES import
@@ -152,6 +169,7 @@ __all__ = [
     "evaluate_term",
     "subclass_closure_from_bases",
     "is_dynamic_raise",
+    "D6_SITE_RULES",
 ]
 
 
@@ -1073,6 +1091,88 @@ def is_dynamic_raise(guard: Mapping[str, Any]) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# D6 site rules (260909, spec §16.1.3/§16.15 D6, T48, backlog #5026):
+# hand-maintained semantic models of ONE named PLR function body each, keyed
+# on `(qualname, lineno)` -- HM-26's own "site-keyed semantic model" class.
+# `:321`'s own guard PREDICATE (`Not(Cmp(Var("resource_from_deck"), "==",
+# Var("resource")))`) is unbindable by the generic machinery (§16.1.3's Q2:
+# `resource_from_deck` is a plain `ast.Assign` of a call, which no binding
+# idiom substitutes, and `resource` is a `for`-loop target nothing binds --
+# both resolve to `(Top, "env")` under ordinary `_resolve_var`), so a site
+# rule here REPLACES `evaluate_predicate` outright for the matched guard
+# rather than resolving one `EnvRef` inside it, unlike R-HEAD/R-ATTR/R-CONST.
+# Each entry is a total function `_Ctx -> bool | None`; `evaluate_guard`
+# dispatches on `guard["site"]` below. T49's `:375`/`:383` rules land in
+# this SAME dict when they ship (§16.15's D6 box: one registry row, D6_
+# SITE_RULES is HM-26's own live measure).
+# ---------------------------------------------------------------------------
+
+
+def _eval_assert_resources_site_rule(ctx: _Ctx) -> "bool | None":
+    """T48 (spec 260909_plr-sema-observation-increment.md §16.1.3/§16.15 D6,
+    backlog #5026): the `:321` site rule, keyed on
+    `(LiquidHandler._assert_resources_exist, :321)`. Evaluates the guard's
+    predicate value to `F` (never `T` -- §16.1.3 Fact 1: an absent name
+    raises at `:318`, not here, so the positive branch is never
+    established) iff BOTH:
+
+    1. `resources` (K's own parameter -- resolved generically through
+       `_resolve_var`, which for a depth-1 guard replays M2's `caller_args`
+       substitution unchanged, §16.4/T42) resolves to a CONCRETE `ir.Seq`
+       whose every element is an `ir.Ref` carrying a RESOURCE declaration
+       (`ref.slot in ctx.resources_by_slot` -- i.e. its underlying name was
+       one `resources_from_example` actually declared, never an "absent
+       entry, no RESOURCE instruction" slot the caller silently grounded).
+    2. The harness's own aggregate deck-membership fact,
+       `obs:deck_resources_verified` (`plr-sema/eval/oracle_common.py`'s
+       `observation_env_members`), is `True` -- every one of THIS row's
+       declared deck-parented resource names is a member of the observed
+       `deck_resource_names`.
+
+    ½ (decline) otherwise: `resources` unresolved (`ir.Top()`), a
+    non-`Ref` element, a `Ref` whose slot has no RESOURCE declaration, or a
+    missing/false aggregate fact -- the SAME `"guard_env_dependent"` reason
+    every other §16.5 decline already carries (`resource`/
+    `resource_from_deck` resolve `(Top, "env")`, never `(Top, "operand")`,
+    so `guard_reason`'s clause 2 -- `guard_operand_unknown` -- never fires
+    for this site; no new `REASON_VOCABULARY` member is needed).
+    """
+    value, _origin = _resolve_var("resources", ctx)
+    if not isinstance(value, ir.Seq):
+        return None
+    for item in value.items:
+        if not isinstance(item, ir.Ref) or item.slot not in ctx.resources_by_slot:
+            return None
+    obs = _observation(ctx.env)
+    if obs.get("deck_resources_verified") is not True:
+        return None
+    return False
+
+
+#: HM-26's own live measure (`plr_sema._hand_maintained:_measure_hm26`):
+#: `len(D6_SITE_RULES)`. ONE entry today (T48's `:321`); T49 adds its
+#: `:375`/`:383` pair to this SAME dict, never a second registry row.
+D6_SITE_RULES: "dict[tuple[str, int], Any]" = {
+    ("LiquidHandler._assert_resources_exist", 321): _eval_assert_resources_site_rule,
+}
+
+
+def _site_rule_for(guard: Mapping[str, Any]) -> "Any | None":
+    """`guard["site"]` -> its `D6_SITE_RULES` entry, or `None` when the
+    guard's site is not one of the (qualname, lineno) pairs D6 covers --
+    the ordinary `evaluate_predicate` path, unchanged, for every other
+    guard in the contract table."""
+    site = guard.get("site")
+    if not isinstance(site, Mapping):
+        return None
+    qualname = site.get("qualname")
+    lineno = site.get("lineno")
+    if qualname is None or lineno is None:
+        return None
+    return D6_SITE_RULES.get((qualname, int(lineno)))
+
+
+# ---------------------------------------------------------------------------
 # The top-level per-guard decision.
 # ---------------------------------------------------------------------------
 
@@ -1163,7 +1263,8 @@ def evaluate_guard(
     if scope_excludes(scope_entries, ctx):
         return _SAFE
 
-    value = evaluate_predicate(predicate, ctx)
+    site_rule = _site_rule_for(guard)
+    value = site_rule(ctx) if site_rule is not None else evaluate_predicate(predicate, ctx)
     kind = guard.get("kind", "raise_guard")
     fires = value if kind == "raise_guard" else _kleene_not(value)
 

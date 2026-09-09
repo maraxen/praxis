@@ -769,10 +769,29 @@ def observation_env_members(
     rule reads is what makes it PARTITION the cache correctly; anything
     less does not).
 
+    260909 (spec §16.1.3/§16.15 D6, observation increment, T48, backlog
+    #5026): a FIFTH member, `obs:deck_resources_verified`, threads the
+    AGGREGATE fact the `:321` site rule (`plr_sema.check.predicate
+    .D6_SITE_RULES`) actually reads -- `True` iff every name this row
+    declared as a DECK-PARENTED resource (`decl["parents"] == ("Deck",)`,
+    §11.2.2's own shape for a named `deck_layout.resources` entry --
+    excludes `"lh"`, the receiver, whose `parents` is `()`, and which
+    `_assert_resources_exist` never receives) is a member of the observed
+    `deck_resource_names`. This is the SAME `deck_map` the digest above
+    hashes -- not the raw map itself (still unbounded for the same reason
+    the digest exists), a single bounded boolean, exactly the shape
+    `backend_class`/`num_channels`/`head_channels` already use. Vacuously
+    `True` when the row declares no deck-parented resource at all (nothing
+    to falsify) -- the site rule's own `ir.Ref`-membership check
+    (`ref.slot in ctx.resources_by_slot`) is what keeps that vacuity from
+    ever firing on a row that never calls `_assert_resources_exist` at all.
+
     The record is CLOSED (§16.2.1's refusal box): reading exactly the four
     keys of :data:`OBSERVATION_KEYS`, BY NAME, is what keeps a fifth key
     silently added upstream from ever widening `env` -- this function
-    simply never looks at it.
+    simply never looks at it. (`deck_resources_verified` is a DERIVED `env`
+    member, not a fifth key of `plr_observation` itself -- `OBSERVATION_KEYS`
+    is unchanged at four.)
     """
     if not plr_observation:
         return frozenset()
@@ -796,6 +815,16 @@ def observation_env_members(
         json.dumps(deck_map, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
     members.add("obs:deck_resources=" + digest)
+    # T48 (spec §16.1.3/§16.15 D6, backlog #5026): the aggregate fact the
+    # `:321` site rule reads -- deck-parented names only ("lh"'s own
+    # `parents == ()` excludes the receiver, which is never itself passed
+    # to `_assert_resources_exist`).
+    deck_parented = {name for name, decl in resources.items() if decl.get("parents") == ("Deck",)}
+    deck_resources_verified = all(deck_map[name] for name in deck_parented)
+    members.add(
+        "obs:deck_resources_verified="
+        + json.dumps(deck_resources_verified, separators=(",", ":"))
+    )
     return frozenset(members)
 
 

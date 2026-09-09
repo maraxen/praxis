@@ -1494,13 +1494,19 @@ class TestT46ObservationThreading:
         assert gate["n_findings_decided_floor"] == 2009
         assert gate["n_findings_decided_target"] == 2170
         assert report["summary_flat"]["gate_go"] == gate["go"]
-        # T48/T49 (the D6 site rules) have not landed as of this row --
-        # :375/:383/:321 stay undecided, so scope_verdict cannot reach SAFE
-        # on any pick_up_tips operation yet, and the gate must say NO-GO
-        # honestly rather than fabricate their effect.
+        # T49 (the D5b `_check_args` site rules) has NOT landed as of this
+        # row -- `:375`/`:383` stay undecided, so `scope_verdict` cannot
+        # reach SAFE on any pick_up_tips operation yet (AC-16.14's own
+        # "requires AC-16.13 to have landed too" conjunction is one-sided:
+        # T48 alone is not sufficient), and the gate must say NO-GO
+        # honestly rather than fabricate T49's effect. T48 (the `:321` site
+        # rule, backlog #5026) HAS landed -- this one clean `pick_up_tips`
+        # row's own `resources` (`tip_rack`) resolves cleanly and the
+        # harness's own aggregate deck fact is `True`, so `n_assert_
+        # resources_decided` moves 0 -> 1, unlike `n_check_args_decided`.
         assert gate["go"] is False
         assert report["n_check_args_decided"]["total"] == 0
-        assert report["n_assert_resources_decided"]["total"] == 0
+        assert report["n_assert_resources_decided"]["total"] == 1
 
     def test_unsound_scoped_and_rows_excused_by_frame_present_and_zero_on_clean_row(self, tmp_path):
         """The fence's second counter pair (§16.7 F3, T45) -- wired to
