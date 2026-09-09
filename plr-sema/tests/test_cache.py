@@ -17,7 +17,9 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import hashlib
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -30,6 +32,12 @@ from plr_sema.check.cache import CacheStore, canonical_key
 from plr_sema.verdict import Finding, PlrSite, Verdict
 
 PLR_SEMA_ROOT = Path(__file__).resolve().parents[1]
+
+# T40 (spec 260909 §16.2/§16.2.3, observation increment, backlog #5023):
+# `observation_env_members` lives in `plr-sema/eval/oracle_common.py`, the
+# harness package -- same sys.path pattern `test_oracle_replay.py` already
+# uses to import it from `tests/`.
+sys.path.insert(0, str(PLR_SEMA_ROOT / "eval"))
 FIXTURES = PLR_SEMA_ROOT / "tests" / "fixtures"
 CONTRACTS_JSON_PATH = PLR_SEMA_ROOT / "data" / "derived_contracts.json"
 
@@ -561,3 +569,159 @@ def test_finding_roundtrip_with_evidence(tmp_path: Path) -> None:
     store.put(key, (finding,))
     got = store.get(key)
     assert got == (finding,)
+
+
+# ---------------------------------------------------------------------------
+# T40 (spec 260909 §16.2/§16.2.3, observation increment, backlog #5023):
+# the observation record's cache-key partition -- AC-16.1. `env` gains no
+# sixth `cache_key` component (§16.2.3's own normative box, verified by
+# `test_key_changes_on_env`/`test_env_partitions_the_cache` above still
+# passing unmodified); the observation instead enters the EXISTING `env`
+# frozenset as `obs:<key>=<value>` string members, built by
+# `oracle_common.observation_env_members`.
+# ---------------------------------------------------------------------------
+
+_SAMPLE_OBSERVATION = {
+    "backend_class": "LiquidHandlerChatterboxBackend",
+    "num_channels": 8,
+    "head_channels": [0, 1, 2, 3, 4, 5, 6, 7],
+    "deck_resource_names": ["tip_rack", "source_plate", "dest_plate"],
+}
+
+
+def test_observation_env_members_none_is_empty() -> None:
+    """§16.2.1's fail-closed default: no `plr_observation` (the deck-build
+    early return, or any raising read inside `verify()`'s own capture
+    window) adds NOTHING to `env` -- a caller that never passes it is
+    byte-identical to every pre-T40 caller's empty-`env` cache key.
+    """
+    from oracle_common import observation_env_members
+
+    assert observation_env_members(None, {}) == frozenset()
+    assert observation_env_members({}, {"tip_rack": {}}) == frozenset()
+
+
+def test_observation_env_members_json_encoding_and_int_sort() -> None:
+    """§16.2.3's canonical encoding: `json.dumps(value, sort_keys=True,
+    separators=(",", ":"))` of the field's own value, `head_channels`
+    sorted NUMERICALLY (never string-sorted -- a 16-channel head would
+    otherwise put channel 10 before channel 2 under string order).
+    """
+    from oracle_common import observation_env_members
+
+    unsorted = dict(_SAMPLE_OBSERVATION, head_channels=[10, 2, 0, 1, 9, 3, 4, 5, 6, 7, 8, 11])
+    members = observation_env_members(dict(unsorted, num_channels=12), {})
+
+    assert 'obs:backend_class="LiquidHandlerChatterboxBackend"' in members
+    assert "obs:num_channels=12" in members
+    assert "obs:head_channels=[0,1,2,3,4,5,6,7,8,9,10,11]" in members
+    # never the string-sort order [0,1,10,11,2,3,...]
+    assert "obs:head_channels=[0,1,10,11,2,3,4,5,6,7,8,9]" not in members
+
+
+def test_observation_env_members_head_channels_mismatch_raises() -> None:
+    """T40's own harness-side invariant (spec §16.13's T40 row): the
+    harness asserts ``len(head_channels) == num_channels`` when reading
+    the record -- a malformed record (produced by a future caller that
+    bypasses `verify()`'s own capture) must fail loudly, not silently.
+    """
+    from oracle_common import observation_env_members
+
+    malformed = dict(_SAMPLE_OBSERVATION, num_channels=99)
+    with pytest.raises(AssertionError):
+        observation_env_members(malformed, {})
+
+
+def test_observation_env_members_deck_digest_is_injective_on_comma_and_equals() -> None:
+    """§16.2.3's withdrawn-comma-joined-encoding argument, applied to the
+    per-slot deck map: two distinct observations over resource names that
+    would collide under a naive ``,``/``=``-joined encoding (one carrying
+    a literal ``,``, the other a literal ``=``) must still produce
+    DISTINCT `obs:deck_resources` digests -- JSON's own escaping closes
+    the hazard spec_version 1's withdrawn encoding could not. AC-16.1's
+    named fixture.
+    """
+    from oracle_common import observation_env_members
+
+    resources = {"a,b": {}, "c=d": {}}
+    obs_a = dict(_SAMPLE_OBSERVATION, deck_resource_names=["a,b"])
+    obs_b = dict(_SAMPLE_OBSERVATION, deck_resource_names=["c=d"])
+
+    members_a = observation_env_members(obs_a, resources)
+    members_b = observation_env_members(obs_b, resources)
+
+    digest_a = next(m for m in members_a if m.startswith("obs:deck_resources="))
+    digest_b = next(m for m in members_b if m.startswith("obs:deck_resources="))
+    assert digest_a != digest_b
+
+    # the digest is exactly sha256 of the JSON-encoded per-slot bool map.
+    expected_map_a = {"a,b": True, "c=d": False}
+    expected_digest_a = "obs:deck_resources=" + hashlib.sha256(
+        json.dumps(expected_map_a, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    assert expected_digest_a in members_a
+
+
+def test_observation_partitions_cache_key_via_env(contracts_json: str) -> None:
+    """AC-16.1: `env` carrying `obs:` members changes `ir.cache_key`'s
+    fifth component exactly the way any other `env` member does (no sixth
+    component, `tuple(sorted(env))` unchanged) -- the SAME mechanism
+    `test_key_changes_on_env` already covers, exercised here with a REAL
+    `observation_env_members(...)` output rather than a hand-typed set.
+    """
+    from oracle_common import observation_env_members
+
+    stamp = _fake_stamp()
+    obs_env = observation_env_members(_SAMPLE_OBSERVATION, {"tip_rack": {}, "source_plate": {}})
+
+    key_empty = ir.cache_key("bc", "{}", stamp)
+    key_observed = ir.cache_key("bc", "{}", stamp, env=obs_env)
+
+    assert key_empty[4] == (), "the empty-env key must be asserted unchanged"
+    assert key_observed[4] != key_empty[4]
+    assert key_observed[:4] == key_empty[:4]
+    assert len(key_observed) == 5, "cache_key stays exactly five-tuple-shaped -- no sixth component"
+
+
+def test_observation_record_closed_refusal_list() -> None:
+    """§16.2.1's CLOSED record: exactly these four keys, no others. This
+    is the "fails if `plr_observation` grows a fifth key" test the T40
+    task row names -- against :data:`oracle_common.OBSERVATION_KEYS`,
+    the same constant `observation_env_members` and
+    `training/tests/test_verify_postconditions.py`'s own closed-list
+    assertion (against a REAL `verify()` run) both key off.
+    """
+    from oracle_common import OBSERVATION_KEYS
+
+    assert OBSERVATION_KEYS == {
+        "backend_class", "num_channels", "head_channels", "deck_resource_names",
+    }
+    assert set(_SAMPLE_OBSERVATION) == OBSERVATION_KEYS, (
+        "a fifth key on the sample fixture itself would mean this test file's "
+        "own fixture has drifted from the closed record -- fix the fixture, "
+        "not the constant"
+    )
+
+
+def test_obs_prefix_never_satisfies_e_uncond_way2() -> None:
+    """§16.2.3's reservation claim: `E-UNCOND` way (2) matches a bare
+    zero-argument callee NAME against `env` via
+    ``_HYPOTHESIS_ENTRY_RE = re.compile(r"^if (\\w+)\\(\\)$")``
+    (`plr_sema/src/plr_sema/check/predicate.py:721`). ``\\w+`` admits
+    neither ``:`` nor ``=``, so no ``obs:<key>=<value>`` member can ever
+    equal the captured group -- no observation can manufacture
+    reachability. Checked against the REAL regex, not a restatement of it.
+    """
+    from oracle_common import observation_env_members
+    from plr_sema.check.predicate import _HYPOTHESIS_ENTRY_RE
+
+    members = observation_env_members(
+        _SAMPLE_OBSERVATION, {"tip_rack": {}, "source_plate": {}, "dest_plate": {}}
+    )
+    assert members, "sanity: the fixture record must actually produce members"
+    for member in members:
+        assert member.startswith("obs:")
+        assert _HYPOTHESIS_ENTRY_RE.match(f"if {member}()") is None
+    # `does_volume_tracking` (the one existing member) is untouched: it has
+    # no `obs:` prefix and is exactly the shape way (2) is meant to match.
+    assert _HYPOTHESIS_ENTRY_RE.match("if does_volume_tracking()") is not None

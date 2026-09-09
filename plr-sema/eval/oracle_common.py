@@ -393,6 +393,14 @@ class RuntimeOutcome:
     #: `False` when `run_runtime` never reached `verify()`'s success path
     #: (a harness-level exception -- `result` is never built in that case).
     volume_tracking_observed: bool = False
+    #: 260909 (spec §16.2.1, observation increment, T40, backlog #5023):
+    #: the four-field observation record, read off `verify()`'s own
+    #: additive `plr_observation` result key -- itself captured at ONE
+    #: window inside `verify()`, never re-derived here.  `None` on the
+    #: same two conditions `verify()` documents: the deck-build early
+    #: return, and a `result` that was never built at all (a harness-level
+    #: exception below, same as `volume_tracking_observed` above).
+    plr_observation: dict[str, Any] | None = None
 
 
 def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
@@ -436,6 +444,7 @@ def run_runtime(example: dict[str, Any]) -> RuntimeOutcome:
         error, exc_class, failing, planned, bool(result.get("passed")), plr_kwargs, resource_types,
         element_type_singletons(element_sets),
         bool(result.get("volume_tracking_observed")),
+        result.get("plr_observation"),
     )
 
 
@@ -620,6 +629,74 @@ def run_static(graph: dict[str, Any], contracts_json: str) -> dict[str, dict[str
     }
 
 
+#: §16.2.1's CLOSED field list -- read here by NAME and nowhere else, so a
+#: fifth key silently added upstream (e.g. a stale/experimental `verify()`
+#: caller) can never widen `env`. The sorted key-set equality this backs
+#: is what the closed-refusal-list tests in `plr-sema/tests/test_cache.py`
+#: and `training/tests/test_verify_postconditions.py` assert against.
+OBSERVATION_KEYS = frozenset({
+    "backend_class", "num_channels", "head_channels", "deck_resource_names",
+})
+
+
+def observation_env_members(
+    plr_observation: Mapping[str, Any] | None,
+    resources: Mapping[str, Any],
+) -> frozenset[str]:
+    """§16.2.3 (spec 260909, observation increment, T40, backlog #5023):
+    the `obs:` cache-key partition built off §16.2's four-field record.
+
+    `None` (§16.2.1's fail-closed default -- the deck-build early return,
+    or any raising read inside `verify()`'s own capture window) adds
+    NOTHING: no `obs:` member enters `env` for an unobserved row. That is
+    exactly the "every rule in §16.5 declines" default the spec's
+    fail-closed box describes, and it is what keeps a caller that never
+    passes `plr_observation` (every caller before this row) byte-identical
+    to today -- the empty-`env` cache key is unchanged (AC-16.1).
+
+    `backend_class`/`num_channels`/`head_channels` are each
+    ``json.dumps(value, sort_keys=True, separators=(",", ":"))`` of the
+    field's own Python value -- `head_channels` SORTED NUMERICALLY first
+    (never string-sorted: a 16-channel head would otherwise put channel 10
+    before channel 2). `deck_resource_names` never enters `env` directly;
+    under D6 it is reduced to a per-slot ``{resource_name: bool}`` map --
+    whether each of `resources`'s own declared names is a member of the
+    observed set -- and only that map's sha256 digest becomes the fourth
+    member, `obs:deck_resources`, because the raw per-benchmark-row map
+    would make `env` unbounded (a digest of the exact object a resolution
+    rule reads is what makes it PARTITION the cache correctly; anything
+    less does not).
+
+    The record is CLOSED (§16.2.1's refusal box): reading exactly the four
+    keys of :data:`OBSERVATION_KEYS`, BY NAME, is what keeps a fifth key
+    silently added upstream from ever widening `env` -- this function
+    simply never looks at it.
+    """
+    if not plr_observation:
+        return frozenset()
+    backend_class = plr_observation["backend_class"]
+    num_channels = plr_observation["num_channels"]
+    head_channels = list(plr_observation["head_channels"])
+    deck_resource_names = plr_observation["deck_resource_names"]
+    # T40's own harness-side invariant (spec §16.13's T40 row).
+    assert len(head_channels) == num_channels, (
+        "plr_observation malformed: len(head_channels)="
+        f"{len(head_channels)} != num_channels={num_channels}"
+    )
+    members = {
+        "obs:backend_class=" + json.dumps(backend_class, sort_keys=True, separators=(",", ":")),
+        "obs:num_channels=" + json.dumps(num_channels, sort_keys=True, separators=(",", ":")),
+        "obs:head_channels=" + json.dumps(sorted(head_channels), separators=(",", ":")),
+    }
+    known = set(deck_resource_names)
+    deck_map = {name: (name in known) for name in sorted(resources)}
+    digest = hashlib.sha256(
+        json.dumps(deck_map, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    members.add("obs:deck_resources=" + digest)
+    return frozenset(members)
+
+
 def run_static_calls(
     example: dict[str, Any],
     plr_kwargs: dict[int, dict[str, Any]],
@@ -627,6 +704,7 @@ def run_static_calls(
     *,
     param_names: dict[str, tuple[str, ...]] | None = None,
     volume_tracking_observed: bool = False,
+    plr_observation: Mapping[str, Any] | None = None,
     observe_element_types: bool = False,
     resource_types: Mapping[str, str] | None = None,
     element_types: Mapping[str, str | None] | None = None,
@@ -663,6 +741,19 @@ def run_static_calls(
     ``__name__``, never a typed string constant. Defaulting to `False`
     reproduces every pre-T27 caller's behaviour exactly (``env=frozenset()``
     is ``check_ir``'s own default).
+
+    ``plr_observation`` (spec 260909 §16.2/§16.2.3, observation increment,
+    T40, backlog #5023): the caller's own in-window observation record
+    (:attr:`RuntimeOutcome.plr_observation`, itself read off ``verify()``'s
+    additive ``plr_observation`` result key) -- this function folds
+    :func:`observation_env_members` (built against ``resources``, the SAME
+    per-slot RESOURCE declaration map already passed to ``lower_calls``)
+    into ``env`` alongside the volume member above. Defaulting to `None`
+    reproduces every pre-T40 caller's behaviour byte-identical
+    (``observation_env_members(None, ...)`` is ``frozenset()``, so ``env``
+    is exactly what it was before this row). No resolution rule reads an
+    ``obs:`` member yet (§16.5 unlands at T43), so every finding is
+    byte-identical at this row's state regardless of what is passed here.
 
     (#4976, band B0): immediately after ``findings`` is computed below --
     already relabelled to real ``op_<i>`` ids and already stripped of every
@@ -728,6 +819,7 @@ def run_static_calls(
     from pylabrobot.resources.volume_tracker import does_volume_tracking
 
     env = frozenset({does_volume_tracking.__name__}) if volume_tracking_observed else frozenset()
+    env = env | observation_env_members(plr_observation, resources)
 
     bc, not_planned = _lower_row_calls_notified(example, plr_kwargs, resources, param_names, resource_types, element_types)
     raw_findings = check_ir(bc, contracts, receiver_states, env=env, excludes_sites=excludes_sites)

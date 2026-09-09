@@ -83,3 +83,71 @@ def test_global_flags_restored_after_run():
     assert get_strictness() is Strictness.WARN  # PLR default restored
     assert does_volume_tracking() is False
     assert does_tip_tracking() is False
+
+
+# ---------------------------------------------------------------------------
+# T40 (spec 260909 §16.2, observation increment, backlog #5023): the
+# `plr_observation` additive result key -- AC-16.1.
+# ---------------------------------------------------------------------------
+
+#: §16.2.1's CLOSED field list -- a field absent from this table is not
+#: observed. Mirrors `plr-sema/eval/oracle_common.OBSERVATION_KEYS`.
+_OBSERVATION_KEYS = {"backend_class", "num_channels", "head_channels", "deck_resource_names"}
+
+
+def test_plr_observation_present_on_success():
+    seq, intent, layout = _load("clean_transfer.json")
+    r = _run(seq, intent, layout)
+    assert r["passed"], [(c["name"], c["detail"]) for c in r["checks"] if not c["passed"]]
+    obs = r["plr_observation"]
+    assert obs is not None
+    # §16.2.1's CLOSED record: exactly these four keys, no others -- fails
+    # if `plr_observation` ever grows a fifth key.
+    assert set(obs) == _OBSERVATION_KEYS
+    assert obs["backend_class"] == "LiquidHandlerChatterboxBackend"
+    assert obs["num_channels"] == 8
+    assert obs["head_channels"] == sorted(obs["head_channels"])
+    assert len(obs["head_channels"]) == obs["num_channels"]
+    # deck_resource_names: the deck's own name plus every descendant,
+    # extracted recursively -- clean_transfer.json declares source_plate/
+    # dest_plate/tip_rack among its resources.
+    assert "source_plate" in obs["deck_resource_names"]
+    assert "dest_plate" in obs["deck_resource_names"]
+    assert "tip_rack" in obs["deck_resource_names"]
+
+
+def test_plr_observation_none_on_deck_build_failure(monkeypatch):
+    """§16.2.1: `plr_observation` is `None` on the deck-build early return
+    (`setup is None`, no field is obtainable) -- the same path
+    `volume_tracking_observed` returns its own default on.
+    """
+    import verify.verifier as verifier_mod
+
+    def _raising_build_setup(*args, **kwargs):
+        raise RuntimeError("synthetic deck-build failure")
+
+    monkeypatch.setattr(verifier_mod, "build_setup", _raising_build_setup)
+
+    seq, intent, layout = _load("clean_transfer.json")
+    r = _run(seq, intent, layout)
+    assert not r["passed"]
+    assert r["plr_observation"] is None
+    assert r["state_before"] is None and r["state_after"] is None
+
+
+def test_plr_observation_none_on_raising_capture(monkeypatch):
+    """§16.2.1: the ONE capture point is fail-closed -- a raising read
+    yields `plr_observation = None` rather than propagating, and the rest
+    of the run (execution, checks) proceeds unaffected.
+    """
+    import verify.verifier as verifier_mod
+
+    def _raising_capture(setup):
+        raise RuntimeError("synthetic observation-window failure")
+
+    monkeypatch.setattr(verifier_mod, "capture_observation", _raising_capture)
+
+    seq, intent, layout = _load("clean_transfer.json")
+    r = _run(seq, intent, layout)
+    assert r["passed"], [(c["name"], c["detail"]) for c in r["checks"] if not c["passed"]]
+    assert r["plr_observation"] is None

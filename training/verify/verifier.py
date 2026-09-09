@@ -25,7 +25,13 @@ from pylabrobot.liquid_handling.strictness import (
 from pylabrobot.resources import set_tip_tracking, set_volume_tracking
 
 from verify.checks import Check, ExecutedCall, run_all_checks
-from verify.deck import DeckLayout, SetupHandle, build_setup, infer_layout
+from verify.deck import (
+    DeckLayout,
+    SetupHandle,
+    build_setup,
+    capture_observation,
+    infer_layout,
+)
 from verify.dispatcher import plan_call
 
 __all__ = ["LH_BACKENDS", "UnsupportedBackendError", "verify"]
@@ -108,6 +114,13 @@ async def verify(
     # key, default False (unobserved: the deck_build failure path below
     # never reaches the `set_volume_tracking(True)` call).
     volume_tracking_observed = False
+    # 260909 (spec §16.2.1, observation increment, T40, backlog #5023): the
+    # four-field observation record, read at ONE capture point below --
+    # after `await setup.machine.setup()`, before `_execute` -- inside a
+    # fail-closed guard.  `None` is the default (deck-build early return,
+    # same as `volume_tracking_observed`'s reasoning above) and stays
+    # `None` if that capture window itself raises; it is never partial.
+    plr_observation: dict[str, Any] | None = None
 
     old_strictness = get_strictness()
     old_volume_tracking = _current_volume_tracking()
@@ -130,6 +143,15 @@ async def verify(
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             await setup.machine.setup()          # chatterbox prints; captured
+            # 260909 (spec §16.2.1, T40): the ONE observation capture point
+            # -- after `machine.setup()` (the head dict is empty before
+            # it), before `_execute` (a failed operation may roll trackers
+            # back).  Fail-closed: any raising read yields `None` rather
+            # than propagating or leaving a partial record.
+            try:
+                plr_observation = capture_observation(setup)
+            except Exception:  # noqa: BLE001 - fail-closed observation window
+                plr_observation = None
             try:
                 executed = await _execute(setup, call_sequence, strict=strict)
             except Exception as e:  # noqa: BLE001 - reported, not raised
@@ -159,6 +181,9 @@ async def verify(
                 "record_id": intent_record.get("record_id")
                 if isinstance(intent_record, Mapping) else None,
                 "volume_tracking_observed": volume_tracking_observed,
+                # 260909 (spec §16.2.1, T40): always `None` on this path --
+                # `setup is None`, so the capture window never ran.
+                "plr_observation": plr_observation,
             }
     finally:
         set_strictness(old_strictness)
@@ -197,6 +222,9 @@ async def verify(
         # reads this field to build `env`, never calling the tracking
         # callable itself from outside this function.
         "volume_tracking_observed": volume_tracking_observed,
+        # 260909 (spec §16.2.1, T40): the observation record captured at
+        # the ONE window above, or `None` if that window itself raised.
+        "plr_observation": plr_observation,
     }
 
 

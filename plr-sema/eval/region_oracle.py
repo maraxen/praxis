@@ -104,7 +104,11 @@ from typing import Any
 
 sys.path.insert(0, str(_EVAL_DIR))
 
-from oracle_common import DEFAULT_CONTRACTS, param_names_from_contracts  # noqa: E402
+from oracle_common import (  # noqa: E402
+    DEFAULT_CONTRACTS,
+    observation_env_members,
+    param_names_from_contracts,
+)
 from region_recorder import (  # noqa: E402
     DuplicateCallSiteError,
     RegionRecorder,
@@ -398,23 +402,32 @@ def _load_fixture_module(path: Path):
 
 async def _run_fixture_execution(
     protocol_fn, layout_dict: dict[str, Any], supported_tools,
-) -> tuple[list[VisitRecord], str | None, bool]:
-    """Returns ``(records, raised, volume_tracking_observed)``. 260903
-    (spec §14.6, volume increment 5, round-1 O5, T27, backlog #4959): the
-    third element is the `does_volume_tracking()` hypothesis, observed from
-    INSIDE the window `set_volume_tracking(True)` opens below -- never from
-    outside it, which is what a later process-wide observation would have
-    raced (the very non-determinism O5 found: the OLD `finally` below
-    restored strictness only, so the tracking flags leaked and a
-    process-wide read after the first fixture returned `True` regardless of
-    which env this fixture's OWN static side should get). The `finally` now
-    restores the tracking flags it sets, closing that leak.
+) -> tuple[list[VisitRecord], str | None, bool, dict[str, Any] | None]:
+    """Returns ``(records, raised, volume_tracking_observed,
+    plr_observation)``. 260903 (spec §14.6, volume increment 5, round-1
+    O5, T27, backlog #4959): the third element is the
+    `does_volume_tracking()` hypothesis, observed from INSIDE the window
+    `set_volume_tracking(True)` opens below -- never from outside it,
+    which is what a later process-wide observation would have raced (the
+    very non-determinism O5 found: the OLD `finally` below restored
+    strictness only, so the tracking flags leaked and a process-wide read
+    after the first fixture returned `True` regardless of which env this
+    fixture's OWN static side should get). The `finally` now restores the
+    tracking flags it sets, closing that leak.
+
+    260909 (spec §16.2.1, observation increment, T40, backlog #5023): the
+    fourth element is the §16.2 four-field observation record, captured at
+    the SAME ONE window `training/verify/verifier.py` uses -- after
+    ``await setup.machine.setup()``, before real execution begins (here,
+    before `recorder.install()`/the protocol call) -- via the SAME
+    `verify.deck.capture_observation` helper, inside an identical
+    fail-closed guard. `None` on any raising read; never partial.
     """
     from pylabrobot.liquid_handling.strictness import Strictness, get_strictness, set_strictness
     from pylabrobot.resources import set_tip_tracking, set_volume_tracking
     from pylabrobot.resources.tip_tracker import does_tip_tracking
     from pylabrobot.resources.volume_tracker import does_volume_tracking
-    from verify.deck import DeckLayout, build_setup
+    from verify.deck import DeckLayout, build_setup, capture_observation
 
     layout = DeckLayout(**layout_dict) if layout_dict else DeckLayout()
     setup = build_setup("LiquidHandlerChatterboxBackend", layout)
@@ -425,6 +438,7 @@ async def _run_fixture_execution(
     recorder = RegionRecorder(setup.machine, supported_tools)
     raised: str | None = None
     volume_tracking_observed = False
+    plr_observation: dict[str, Any] | None = None
     buf = io.StringIO()
     try:
         set_strictness(Strictness.STRICT)
@@ -435,6 +449,12 @@ async def _run_fixture_execution(
         volume_tracking_observed = does_volume_tracking()
         with contextlib.redirect_stdout(buf):
             await setup.machine.setup()
+            # 260909 (spec §16.2.1, T40): the ONE observation capture
+            # point -- after `machine.setup()`, before real execution.
+            try:
+                plr_observation = capture_observation(setup)
+            except Exception:  # noqa: BLE001 - fail-closed observation window
+                plr_observation = None
             recorder.install()
             try:
                 import inspect
@@ -458,7 +478,7 @@ async def _run_fixture_execution(
         set_volume_tracking(old_volume_tracking)
         set_tip_tracking(old_tip_tracking)
 
-    return recorder.records, raised, volume_tracking_observed
+    return recorder.records, raised, volume_tracking_observed, plr_observation
 
 
 # ---------------------------------------------------------------------------
@@ -556,7 +576,7 @@ def run_fixture(
     protocol_fn = module.protocol
 
     try:
-        records, raised, volume_tracking_observed = asyncio.run(
+        records, raised, volume_tracking_observed, plr_observation = asyncio.run(
             _run_fixture_execution(protocol_fn, layout_dict, supported_tools)
         )
     except Exception as e:  # pragma: no cover - defensive, a harness-level failure
@@ -573,6 +593,12 @@ def run_fixture(
     from pylabrobot.resources.volume_tracker import does_volume_tracking
 
     env = frozenset({does_volume_tracking.__name__}) if volume_tracking_observed else frozenset()
+    # 260909 (spec §16.2.3, observation increment, T40, backlog #5023):
+    # folded in alongside the volume member, from the SAME fixture's own
+    # `LAYOUT["resources"]` declaration -- this harness's own per-slot
+    # RESOURCE map (the `oracle_common.resources_from_example` counterpart
+    # for a graph-payload fixture rather than a call-sequence example).
+    env = env | observation_env_members(plr_observation, layout_dict.get("resources") or {})
 
     try:
         bytecode, findings, join_map, static, proved_trips = _static_report(
