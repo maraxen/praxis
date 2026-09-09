@@ -4,8 +4,8 @@ description: 'Challenger pass (praxia:spec-challenger, Opus) on the increment 7 
 status: final
 task_id: 260909_sema-observation
 date: '260909'
-sprint: '128'
-backlog_ids: ''
+sprint: '130'
+backlog_ids: '5022'
 ---
 > Persisted verbatim by the orchestrator from the challenger agent's final report (no write tool).
 > Target: `.praxia/docs/specs/260909_plr-sema-observation-increment.md` at commit `7893168a`
