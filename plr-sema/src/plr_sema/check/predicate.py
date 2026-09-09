@@ -54,6 +54,33 @@ and `obs:deck_resources_verified` (`plr-sema/eval/oracle_common.py`'s
 `observation_env_members`) and NEVER returns `T` (§16.1.3 Fact 1: an absent
 name raises at `:318`, not here).
 
+**260909 (spec 260909_plr-sema-observation-increment.md §16.1.1/§16.15 D6,
+T49, backlog #5026): the `:375`/`:383` site rules (D5b).** Two more
+`D6_SITE_RULES` entries, the SAME dict and the SAME dispatch shape as
+`:321` above -- each REPLACES `evaluate_predicate` outright for its own
+matched guard. `:375`'s own guard predicate is `Cmp(Len(Var("missing")),
+">", Lit(0))`; the rule decides it `F` (never `T`) when the observed
+`backend_class`'s `(class, method)` row in §16.3's surface has a `params`
+list that is a SUBSET of the caller-side `default` set -- both read off
+`ctx.caller_args` (`"method"`, an `EnvRef` whose LAST path segment is the
+runtime method name `m`, and `"default"`, a G9 `SetLit` now that one is a
+parseable `Term`) rather than through `_resolve_var`'s ordinary E-CALL
+steps, because `missing`/`vars_keyword` are LOCALS of `_check_args`, not
+its parameters, and are therefore never bound by M1/M2 at all. `:383`'s own
+guard predicate (`strictness == Strictness.STRICT`) is never evaluated:
+its own scope trail's second entry (`"if len(extra) > 0 and
+len(vars_keyword) == 0"`) is unsatisfiable whenever `has_var_keyword` is
+`True` (the recorded `vars_keyword` set is then non-empty by construction,
+so `len(vars_keyword) == 0` is `F`, the `And` is `F` regardless of
+`len(extra)`), which makes the whole nested raise unreachable REGARDLESS OF
+`strictness` -- so the site rule returns `F` directly for the SAME reason
+E-SCOPE would, without ever resolving `strictness` (§16.1.1's own box:
+"`strictness` decides nothing... whatever `env` carries"). Both rules
+decline (`None`) when §16.3's absence rule removed the `(backend_class, m)`
+row (C15's soundness precondition, shared with `:321`) -- an
+AST-derived `params`/`has_var_keyword` for a decorated or multiply-defined
+method does not describe the runtime object `inspect.signature` sees.
+
 **Import boundary.** Same as the rest of `check/` (module docstring of
 `plr_sema.check`): no `pylabrobot`, no `libcst`, no `pydantic`, no
 filesystem access, no shelling out. This module DOES import
@@ -440,6 +467,14 @@ def _resolve_term(term: "pa.Term", ctx: _Ctx) -> ir.Value:
     if isinstance(term, pa.Len):
         n = _resolve_len(term.term, ctx)
         return ir.Top() if n is None else ir.Lit(n)
+    if isinstance(term, pa.SetLit):
+        # G9 (T49): a set DISPLAY is a concrete, fully-known value by
+        # construction -- every element is an `ast.Constant` (§16.1.1's
+        # site rules read it directly off `ctx.caller_args` rather than
+        # through this generic path, but this branch keeps `_resolve_term`
+        # total and correct for any OTHER caller, e.g. a synthetic fixture
+        # that places a `SetLit` as an ordinary Cmp operand).
+        return ir.Seq(tuple(ir.Lit(v) for v in term.values))
     if isinstance(term, (pa.SetOf, pa.Attr, pa.Filtered, pa.Zip)):
         # SetOf/Filtered are only ever meaningful through the G3/G4 special
         # cases below (which never call `_resolve_term` on them directly);
@@ -1149,11 +1184,156 @@ def _eval_assert_resources_site_rule(ctx: _Ctx) -> "bool | None":
     return False
 
 
+def _check_args_method_name(ctx: _Ctx) -> "str | None":
+    """T49: `m`, the runtime backend method name, read from THIS guard's
+    own `ctx.caller_args["method"]` entry -- the caller-side expression at
+    `self._check_args(self.backend.<m>, ...)`
+    (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:541-546`),
+    an `EnvRef` whose LAST path segment is `m` (§16.3's own selection rule
+    reads the identical "last segment of an EnvRef path" fact, just from a
+    different JSON location). Never resolved as a VALUE through
+    `_resolve_var`/`_resolve_term` -- `method` denotes a PLR method, not an
+    `ir.Value` this analyzer models -- so this reads the raw JSON directly.
+    `None` on anything else: no `caller_args`, no `"method"` entry, or an
+    entry that is not an `EnvRef`, or an `EnvRef` with an empty path."""
+    caller_args = ctx.caller_args
+    if not caller_args:
+        return None
+    method_json = caller_args.get("method")
+    if not isinstance(method_json, Mapping) or method_json.get("node") != "EnvRef":
+        return None
+    path = method_json.get("path")
+    if not isinstance(path, (list, tuple)) or not path:
+        return None
+    return str(path[-1])
+
+
+def _check_args_default_set(ctx: _Ctx) -> "frozenset[str] | None":
+    """T49: the caller-side `default` set, read from THIS guard's own
+    `ctx.caller_args["default"]` entry -- G9's `SetLit` production, now
+    that `default={"ops", "use_channels"}`
+    (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:541-546`)
+    parses as a `Term` at all. `None` when the entry is absent (an
+    un-regenerated table, or a call-site `default=` expression that is not
+    a plain `ast.Set` of constants -- M1 clause 5's ordinary partial-
+    admission refusal) or is not a `SetLit`, or carries a non-`str`
+    element (defensive; `_parse_set_lit` never emits one, but this
+    function does not trust the wire without checking)."""
+    caller_args = ctx.caller_args
+    if not caller_args:
+        return None
+    default_json = caller_args.get("default")
+    if not isinstance(default_json, Mapping) or default_json.get("node") != "SetLit":
+        return None
+    values = default_json.get("values")
+    if not isinstance(values, list) or not all(isinstance(v, str) for v in values):
+        return None
+    return frozenset(values)
+
+
+def _check_args_surface_row(ctx: _Ctx) -> "Mapping[str, Any] | None":
+    """T49: the §16.3 backend-surface row for `(observed backend_class, m)`
+    -- `None` (decline) whenever `backend_class` is unobserved, `m` cannot
+    be read (`_check_args_method_name`), or the row is absent (either the
+    pair was never a surface candidate, or §16.3's C15 absence rule removed
+    it -- both cases are indistinguishable here BY DESIGN, and both mean
+    the same thing to a caller: the surface does not vouch for this
+    `(class, method)` pair, so decline rather than guess)."""
+    obs = _observation(ctx.env)
+    backend_class = obs.get("backend_class")
+    if backend_class is None:
+        return None
+    method = _check_args_method_name(ctx)
+    if method is None:
+        return None
+    return ctx.backend_surface.get(f"{backend_class}.{method}")
+
+
+def _eval_check_args_missing_site_rule(ctx: _Ctx) -> "bool | None":
+    """T49 (spec 260909_plr-sema-observation-increment.md §16.1.1/§16.15
+    D6, backlog #5026): the `:375` site rule, keyed on
+    `(LiquidHandler._check_args, :375)`. `:375`'s own guard predicate is
+    `Cmp(Len(Var("missing")), ">", Lit(0))`; `missing` is a LOCAL of
+    `_check_args` (`non_default - backend_kws`, `:373`), never one of its
+    parameters, so it is unreachable through M1/M2's caller_args machinery
+    at all -- this rule decides the guard's OWN predicate value directly,
+    the same replacement shape `:321`'s rule above uses.
+
+    Evaluates `F` (never `T` -- the arithmetic only ever proves the
+    MINUEND empty, never the SUBTRAHEND non-empty, §16.1.1's own pin
+    derivation) iff the observed `backend_class`'s `(class, method)` row
+    in §16.3's surface (`m` read from `ctx.caller_args["method"]`) has a
+    `params` list that is a SUBSET of the caller-side `default` set (read
+    from `ctx.caller_args["default"]`, G9's `SetLit`) -- `params(backend_
+    class, m) ⊆ default` implies `non_default ⊆ default_args`, so
+    `missing = non_default - backend_kws ⊆ default - backend_kws = ∅`
+    whatever `backend_kws` is (§16.1.1's own step-by-step).
+
+    ½ (decline) otherwise: no surface row (absent candidate or C15's
+    absence rule), a row with no `params` list, or no `default` caller-arg
+    -- the SAME `"guard_env_dependent"` reason every other §16.5 decline
+    carries (`missing` resolves `(Top, "env")` under ordinary
+    `_resolve_var`, never `(Top, "operand")`)."""
+    row = _check_args_surface_row(ctx)
+    if row is None:
+        return None
+    params = row.get("params")
+    if not isinstance(params, list) or not all(isinstance(p, str) for p in params):
+        return None
+    default_set = _check_args_default_set(ctx)
+    if default_set is None:
+        return None
+    if set(params) <= default_set:
+        return False
+    return None
+
+
+def _eval_check_args_strict_site_rule(ctx: _Ctx) -> "bool | None":
+    """T49 (spec 260909_plr-sema-observation-increment.md §16.1.1/§16.15
+    D6, backlog #5026): the `:383` site rule, keyed on
+    `(LiquidHandler._check_args, :383)`. `:383`'s own guard predicate is
+    `Cmp(Var("strictness"), "==", Attr(Var("Strictness"), "STRICT"))`, and
+    this rule NEVER evaluates it -- `strictness`'s caller-side expression
+    is `get_strictness()`, a non-`self`-rooted call that is not a `Term`
+    under G1, so it carries no `caller_args` entry and `Strictness.STRICT`
+    is a module-level `Attr`, not an `EnvRef` under G7 either (§16.1.1's
+    own box: deciding `:383` from the predicate "is impossible whatever
+    `env` carries").
+
+    The real discharge route is the recorded `scope_trail`'s second entry
+    (after E-UNCOND(6) excludes the self-entry), `"if len(extra) > 0 and
+    len(vars_keyword) == 0"`: when `has_var_keyword` is `True`, the
+    recorded `vars_keyword` set is non-empty by construction, so
+    `len(vars_keyword) == 0` is `F`, the `And` is `F` REGARDLESS of
+    `len(extra)`, and the nested raise is unreachable regardless of
+    `strictness`'s own value. `vars_keyword` is -- like `missing` above --
+    a LOCAL of `_check_args`, never one of its parameters, so E-SCOPE's
+    own fresh `pa.parse` + `evaluate_predicate` replay of that trail
+    entry (`_scope_entry_value`) cannot resolve it either; this rule
+    returns the trail's own conclusion (`F`) directly, at the WHOLE-GUARD
+    level, rather than teaching `_resolve_var` a THIRD name-keyed special
+    case for one local that only ever appears in one function.
+
+    Evaluates `F` (never `T`) iff the observed `backend_class`'s `(class,
+    method)` row in §16.3's surface has `has_var_keyword` exactly `True`.
+    ½ (decline) otherwise: no surface row, or `has_var_keyword` absent/
+    `False`."""
+    row = _check_args_surface_row(ctx)
+    if row is None:
+        return None
+    if row.get("has_var_keyword") is not True:
+        return None
+    return False
+
+
 #: HM-26's own live measure (`plr_sema._hand_maintained:_measure_hm26`):
-#: `len(D6_SITE_RULES)`. ONE entry today (T48's `:321`); T49 adds its
-#: `:375`/`:383` pair to this SAME dict, never a second registry row.
+#: `len(D6_SITE_RULES)`. T48's `:321` plus T49's `:375`/`:383` pair --
+#: three entries, the SAME registry row (§16.15's D6 box: "whichever lands
+#: first adds it, the second asserts it already exists").
 D6_SITE_RULES: "dict[tuple[str, int], Any]" = {
     ("LiquidHandler._assert_resources_exist", 321): _eval_assert_resources_site_rule,
+    ("LiquidHandler._check_args", 375): _eval_check_args_missing_site_rule,
+    ("LiquidHandler._check_args", 383): _eval_check_args_strict_site_rule,
 }
 
 

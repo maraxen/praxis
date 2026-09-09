@@ -78,6 +78,7 @@ from plr_sema.derive.predicate_ast import (
     Opaque,
     Or,
     Predicate,
+    SetLit,
     SetOf,
     TRUE,
     Term,
@@ -167,7 +168,7 @@ def free_var_names(node: "Predicate | Term") -> frozenset[str]:
     ``predicate``...)"."""
     if isinstance(node, Var):
         return frozenset({node.name})
-    if isinstance(node, (TRUE, Opaque, Lit)):
+    if isinstance(node, (TRUE, Opaque, Lit, SetLit)):
         return frozenset()
     if isinstance(node, Not):
         return free_var_names(node.predicate)
@@ -238,7 +239,7 @@ def substitute(node: "Predicate | Term", bindings_by_name: dict[str, dict[str, A
             inner = predicate_from_json(b["pred"])
             return Filtered(seq=Var(b["iter"]), predicate=substitute(inner, bindings_by_name))
         return node
-    if isinstance(node, (TRUE, Opaque, Lit)):
+    if isinstance(node, (TRUE, Opaque, Lit, SetLit)):
         return node
     if isinstance(node, EnvRef):
         if node.args is None:
@@ -351,7 +352,7 @@ def _opaque_text(node: "Predicate | Term") -> str:
 
 
 def _demote_term(term: "Term", is_refused) -> "Term | None":
-    if isinstance(term, (Var, Lit)):
+    if isinstance(term, (Var, Lit, SetLit)):
         return term
     if isinstance(term, EnvRef):
         if term.args is not None and len(term.path) == 2 and is_refused(term.path[1]):

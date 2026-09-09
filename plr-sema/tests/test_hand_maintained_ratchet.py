@@ -368,20 +368,20 @@ def test_hm25_d4_spend_is_one_unit_not_an_overrun() -> None:
 
 def test_hm26_d6_spend_is_one_new_row_not_an_overrun() -> None:
     """260909 (spec 260909_plr-sema-observation-increment.md §16.15 D6,
-    T48, backlog #5026): the approved spend is ONE new registry row (HM-26,
-    site-keyed semantic models of named PLR function bodies), taking
-    `live_rows()` 24 -> 25 against a `BUDGET_CAP` the user raised 24 -> 25
-    in the SAME decision -- never HM-25's own cap (D4 and D6 are two
-    different, separately-approved decisions; the row above asserts D4's
-    spend in isolation). T48 alone wires ONE site rule
-    (`:321`, `plr_sema.check.predicate.D6_SITE_RULES`), so HM-26's measured
-    count is 1 here, under its `declared == 3` ceiling (T49's `:375`/`:383`
-    pair is what moves it to 3, in the SAME row, per D6's own "whichever
-    lands first adds it, the second asserts it exists" rule)."""
+    T48+T49, backlog #5026): the approved spend is ONE new registry row
+    (HM-26, site-keyed semantic models of named PLR function bodies),
+    taking `live_rows()` 24 -> 25 against a `BUDGET_CAP` the user raised
+    24 -> 25 in the SAME decision -- never HM-25's own cap (D4 and D6 are
+    two different, separately-approved decisions; the row above asserts
+    D4's spend in isolation). T48 wires ONE site rule (`:321`) and T49
+    adds the `:375`/`:383` pair to the SAME `D6_SITE_RULES` dict -- three
+    entries total, landing exactly on the `declared == 3` ceiling (D6's
+    own "whichever lands first adds it, the second asserts it exists"
+    rule: ONE row for both rows, never a second)."""
     (hm26,) = (row for row in REGISTRY if row.id == "HM-26")
     assert hm26.declared == 3, f"HM-26: declared is {hm26.declared}, expected 3 (D6's full T48+T49 spend)"
     live = resolve_measure(hm26.measure)
-    assert live == 1, f"HM-26: live count {live} != 1 -- T48 alone should wire exactly the `:321` site rule"
+    assert live == 3, f"HM-26: live count {live} != 3 -- T48's `:321` plus T49's `:375`/`:383` pair"
     assert live <= hm26.declared
     assert len(live_rows()) == 25, "D6's spend must move live_rows() 24 -> 25 exactly"
     assert BUDGET_CAP == 25, "D6's spend must move BUDGET_CAP 24 -> 25 exactly"

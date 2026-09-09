@@ -1528,3 +1528,208 @@ def test_ac_16_13_a_deck_object_assumption_table_has_five_rows() -> None:
     rows = [line for line in table.splitlines() if line.startswith("| **A-")]
     assert len(rows) == 5, f"expected 5 named-assumption rows, found {len(rows)}: {rows}"
     assert any(row.startswith("| **A-DECK-OBJECT**") for row in rows), rows
+
+
+# ---------------------------------------------------------------------------
+# AC-16.14 (spec 260909 §16.1.1/§16.15 D6, T49, backlog #5026): the
+# `:375`/`:383` site rules (D5b). SAME `D6_SITE_RULES` dict, SAME dispatch
+# shape as `:321` above -- each REPLACES `evaluate_predicate` outright for
+# its own matched guard. Unlike `:321`, both read `ctx.caller_args`
+# directly (`"method"`'s `EnvRef` last path segment, `"default"`'s G9
+# `SetLit`) rather than through `_resolve_var`'s ordinary E-CALL steps,
+# because `missing`/`vars_keyword` are LOCALS of `_check_args`, never its
+# parameters.
+# ---------------------------------------------------------------------------
+
+_T49_MISSING_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=375,
+    qualname="LiquidHandler._check_args",
+)
+_T49_STRICT_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=383,
+    qualname="LiquidHandler._check_args",
+)
+
+
+def test_ac_16_14_375_383_site_rules_flip_safe_under_observation(contracts_json: str) -> None:
+    """The real `:375`/`:383` guards, unmodified -- through T48 there is no
+    rule matching either site at all, so both stay `UNKNOWN` regardless of
+    `env` (see the no-observation test right below). Once `D6_SITE_RULES`
+    dispatches AND the observed `backend_class` (chatterbox, the pin) has a
+    `pick_up_tips` row in §16.3's surface -- reached via T42's `caller_args`
+    (`method` -> `self.backend.pick_up_tips`, `default` -> G9's `SetLit`,
+    the real derived contract table's own entries) -- both flip `SAFE`."""
+    report = check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), contracts_json, env=_t43_obs_env())
+    (missing_finding,) = _site_findings(report, _T49_MISSING_SITE, operation_id="op_1")
+    assert missing_finding.verdict is Verdict.SAFE
+    (strict_finding,) = _site_findings(report, _T49_STRICT_SITE, operation_id="op_1")
+    assert strict_finding.verdict is Verdict.SAFE
+
+
+def test_ac_16_14_no_observation_stays_env_dependent(contracts_json: str) -> None:
+    """§16.2.3's fail-closed default: with no `obs:` member in `env`, both
+    sites decline (no `backend_class` in the decoded observation, so
+    `_check_args_surface_row` cannot even look up a row) exactly like every
+    other §16.5/D6 rule."""
+    report = check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), contracts_json)
+    (missing_finding,) = _site_findings(report, _T49_MISSING_SITE, operation_id="op_1")
+    assert missing_finding.verdict is Verdict.UNKNOWN
+    assert missing_finding.reason == "guard_env_dependent"
+    (strict_finding,) = _site_findings(report, _T49_STRICT_SITE, operation_id="op_1")
+    assert strict_finding.verdict is Verdict.UNKNOWN
+    assert strict_finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_14_unobserved_backend_class_declines(contracts_json: str) -> None:
+    """A `backend_class` with no row in the derived surface -- the SAME
+    decline clause R-CONST's own AC-16.5 test exercises (§16.5.3) --
+    declines to ½, never fabricates a value for an unobserved/unknown
+    backend/method pair. This is also the observable proxy for C15's
+    absence rule: a decorated or multiply-defined `(class, method)` is
+    likewise simply ABSENT from the surface, which this function cannot
+    distinguish from "never a candidate at all" -- and is not meant to,
+    §16.3's own selection box makes both cases the identical decline."""
+    env = _t43_obs_env(backend_class="SomeUnknownBackend")
+    report = check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), contracts_json, env=env)
+    (missing_finding,) = _site_findings(report, _T49_MISSING_SITE, operation_id="op_1")
+    assert missing_finding.verdict is Verdict.UNKNOWN
+    (strict_finding,) = _site_findings(report, _T49_STRICT_SITE, operation_id="op_1")
+    assert strict_finding.verdict is Verdict.UNKNOWN
+
+
+def _t49_ctx(*, caller_args: "dict[str, Any] | None", env: "frozenset[str]", backend_surface: "dict[str, Any]") -> "Any":
+    from plr_sema.check.predicate import _Ctx
+
+    return _Ctx(
+        call=ir.Call(receiver=0, receiver_type="LiquidHandler", method="_check_args", kwargs={}),
+        resources_by_slot={},
+        param_defaults={},
+        bindings_by_name={},
+        depth=1,
+        channel_kwarg=None,
+        channels=None,
+        env=env,
+        class_hierarchy=None,
+        caller_args=caller_args,
+        backend_surface=backend_surface,
+    )
+
+
+_T49_METHOD_ENVREF = {"node": "EnvRef", "path": ["self", "backend", "pick_up_tips"], "args": None}
+_T49_DEFAULT_SETLIT = {"node": "SetLit", "values": ["ops", "use_channels"]}
+_T49_SURFACE = {
+    "LiquidHandlerChatterboxBackend.pick_up_tips": {
+        "params": ["ops", "use_channels"],
+        "has_var_keyword": True,
+        "has_var_positional": False,
+    }
+}
+_T49_ENV = frozenset({'obs:backend_class="LiquidHandlerChatterboxBackend"'})
+
+
+def test_ac_16_14_missing_site_rule_never_returns_true() -> None:
+    """§16.1.1's own arithmetic: the rule only ever proves the MINUEND
+    (`missing`) empty, never the SUBTRAHEND non-empty -- asserted directly
+    against `_eval_check_args_missing_site_rule`'s own Kleene range,
+    exhaustively over every branch its own docstring names. The
+    stub-defeating half: a rule that always returned `None` would also
+    pass the `check_graph` no-observation test above, so branch (b) here
+    is what proves the `False`-producing path is actually implemented."""
+    from plr_sema.check.predicate import _eval_check_args_missing_site_rule
+
+    # (a) no caller_args at all -> decline, never T.
+    ctx = _t49_ctx(caller_args=None, env=_T49_ENV, backend_surface=_T49_SURFACE)
+    assert _eval_check_args_missing_site_rule(ctx) is None
+    # (b) method + default present, params subset of default -> F, the ONE decided branch.
+    ctx = _t49_ctx(
+        caller_args={"method": _T49_METHOD_ENVREF, "default": _T49_DEFAULT_SETLIT},
+        env=_T49_ENV,
+        backend_surface=_T49_SURFACE,
+    )
+    assert _eval_check_args_missing_site_rule(ctx) is False
+    # (c) no backend_class observed -> decline, never T.
+    ctx = _t49_ctx(
+        caller_args={"method": _T49_METHOD_ENVREF, "default": _T49_DEFAULT_SETLIT},
+        env=frozenset(),
+        backend_surface=_T49_SURFACE,
+    )
+    assert _eval_check_args_missing_site_rule(ctx) is None
+    # (d) no surface row for this (class, method) -> decline, never T.
+    ctx = _t49_ctx(
+        caller_args={"method": _T49_METHOD_ENVREF, "default": _T49_DEFAULT_SETLIT},
+        env=_T49_ENV,
+        backend_surface={},
+    )
+    assert _eval_check_args_missing_site_rule(ctx) is None
+    # (e) no "default" caller-arg -> decline, never T.
+    ctx = _t49_ctx(caller_args={"method": _T49_METHOD_ENVREF}, env=_T49_ENV, backend_surface=_T49_SURFACE)
+    assert _eval_check_args_missing_site_rule(ctx) is None
+    # (f) params NOT a subset of default -> decline, never T (the surface
+    # row's own params exceed what the caller declared as default).
+    surface_superset = {
+        "LiquidHandlerChatterboxBackend.pick_up_tips": {
+            "params": ["ops", "use_channels", "extra_required_param"],
+            "has_var_keyword": True,
+            "has_var_positional": False,
+        }
+    }
+    ctx = _t49_ctx(
+        caller_args={"method": _T49_METHOD_ENVREF, "default": _T49_DEFAULT_SETLIT},
+        env=_T49_ENV,
+        backend_surface=surface_superset,
+    )
+    assert _eval_check_args_missing_site_rule(ctx) is None
+
+
+def test_ac_16_14_strict_site_rule_never_returns_true() -> None:
+    """The SAME Kleene-range proof for `:383`: the rule decides `F` iff
+    `has_var_keyword` is exactly `True` on the observed surface row, and
+    NEVER resolves `strictness` at all (§16.1.1's own box) -- so a
+    `has_var_keyword=False` row declines exactly like a missing one, never
+    falsifying to `T` in either case."""
+    from plr_sema.check.predicate import _eval_check_args_strict_site_rule
+
+    # (a) no caller_args at all -> decline, never T.
+    ctx = _t49_ctx(caller_args=None, env=_T49_ENV, backend_surface=_T49_SURFACE)
+    assert _eval_check_args_strict_site_rule(ctx) is None
+    # (b) has_var_keyword True -> F, the ONE decided branch.
+    ctx = _t49_ctx(caller_args={"method": _T49_METHOD_ENVREF}, env=_T49_ENV, backend_surface=_T49_SURFACE)
+    assert _eval_check_args_strict_site_rule(ctx) is False
+    # (c) no backend_class observed -> decline, never T.
+    ctx = _t49_ctx(caller_args={"method": _T49_METHOD_ENVREF}, env=frozenset(), backend_surface=_T49_SURFACE)
+    assert _eval_check_args_strict_site_rule(ctx) is None
+    # (d) no surface row -> decline, never T.
+    ctx = _t49_ctx(caller_args={"method": _T49_METHOD_ENVREF}, env=_T49_ENV, backend_surface={})
+    assert _eval_check_args_strict_site_rule(ctx) is None
+    # (e) has_var_keyword False -> decline, never T.
+    surface_no_var_keyword = {
+        "LiquidHandlerChatterboxBackend.pick_up_tips": {
+            "params": ["ops", "use_channels"],
+            "has_var_keyword": False,
+            "has_var_positional": False,
+        }
+    }
+    ctx = _t49_ctx(
+        caller_args={"method": _T49_METHOD_ENVREF}, env=_T49_ENV, backend_surface=surface_no_var_keyword
+    )
+    assert _eval_check_args_strict_site_rule(ctx) is None
+
+
+def test_ac_16_14_set_lit_parses_and_round_trips() -> None:
+    """G9's own narrow shape test (T49): an `ast.Set` display of
+    `ast.Constant`s parses to `SetLit`, round-trips through `to_json`/
+    `from_json`, and a display containing ANY non-`Constant` element fails
+    the WHOLE display's parse (no partial `SetLit`) -- collapsing the
+    enclosing `Cmp` to `Opaque`, the ordinary Term-parse-failure path."""
+    from plr_sema.derive.predicate_ast import Cmp, Opaque, SetLit, from_json, parse, to_json
+
+    parsed = parse('x == {"a", "b", "a"}')
+    assert isinstance(parsed, Cmp)
+    assert isinstance(parsed.right, SetLit)
+    assert parsed.right.values == ("a", "b")  # deduplicated, first-occurrence order.
+    assert from_json(to_json(parsed)) == parsed
+
+    mixed = parse("x == {1, f()}")
+    assert isinstance(mixed, Opaque)  # one non-Constant element -> the WHOLE display fails to parse.

@@ -1465,17 +1465,39 @@ def collect_env_ref_method_names(contracts: dict[str, Any]) -> frozenset[str]:
     way a downstream consumer would: ``predicate_ast.from_json`` on each
     guard's own ``"predicate"`` key, then ``predicate_ast.walk``. This
     function introduces no hand-typed method name and no base-class name --
-    ``contracts`` is itself derived."""
+    ``contracts`` is itself derived.
+
+    **260909 (T49, spec 260909_plr-sema-observation-increment.md §16.1.1/
+    §16.3): ALSO scans ``"caller_args"``.** D5b's two site rules read the
+    delegate's own runtime "method" identity (`m`) from an `EnvRef` stored
+    in a guard's `caller_args` map (T42, an additive field on the SAME
+    guard record), never from the guard's own `predicate` -- `_check_args`'s
+    `:375`/`:383` predicates reference `missing`/`vars_keyword`/`strictness`,
+    never the method itself. Without this half, `LiquidHandlerChatterboxBackend
+    .pick_up_tips` (and every other backend's `pick_up_tips`) would never
+    become a `n_surface_candidates` row at all -- `pick_up_tips` occurs
+    NOWHERE as an `EnvRef` path segment in any guard's own `"predicate"` JSON
+    at this pin (measured 0 before this half existed), so D5b's own
+    arithmetic (§16.1.1) would be permanently unreachable without it. Every
+    `caller_args` VALUE is a `Term` JSON (never a `Predicate`), so this reuses
+    the SAME `predicate_ast.from_json`/`predicate_ast.walk` pair -- both are
+    total over the whole `Predicate | Term` union, `SetLit` included (G9)."""
     names: set[str] = set()
     for entry in contracts.values():
         for guard in entry.get("guards", ()):
             predicate_json = guard.get("predicate")
-            if predicate_json is None:
-                continue
-            node = predicate_from_json(predicate_json)
-            for sub in predicate_walk(node):
-                if isinstance(sub, EnvRef) and sub.path:
-                    names.add(sub.path[-1])
+            if predicate_json is not None:
+                node = predicate_from_json(predicate_json)
+                for sub in predicate_walk(node):
+                    if isinstance(sub, EnvRef) and sub.path:
+                        names.add(sub.path[-1])
+            caller_args_json = guard.get("caller_args")
+            if caller_args_json:
+                for term_json in caller_args_json.values():
+                    term = predicate_from_json(term_json)
+                    for sub in predicate_walk(term):
+                        if isinstance(sub, EnvRef) and sub.path:
+                            names.add(sub.path[-1])
     return frozenset(names)
 
 

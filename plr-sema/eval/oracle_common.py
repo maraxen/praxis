@@ -819,7 +819,17 @@ def observation_env_members(
     # `:321` site rule reads -- deck-parented names only ("lh"'s own
     # `parents == ()` excludes the receiver, which is never itself passed
     # to `_assert_resources_exist`).
-    deck_parented = {name for name, decl in resources.items() if decl.get("parents") == ("Deck",)}
+    # 260909 (T49 fixer note, pre-existing gap): `resources` is a
+    # `Mapping[str, Any]` by this function's own signature, and
+    # `region_oracle.py`'s fixture path (`LAYOUT["resources"]`, a bare
+    # `{name: type_str}` map, never a decl dict) passes a `str` value here
+    # -- `isinstance(decl, Mapping)` makes a non-decl value simply NOT
+    # deck-parented (fail-closed: no information, no membership claim)
+    # rather than an `AttributeError` on `.get`.
+    deck_parented = {
+        name for name, decl in resources.items()
+        if isinstance(decl, Mapping) and decl.get("parents") == ("Deck",)
+    }
     deck_resources_verified = all(deck_map[name] for name in deck_parented)
     members.add(
         "obs:deck_resources_verified="

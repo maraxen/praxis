@@ -1122,15 +1122,28 @@ def main(argv: list[str] | None = None) -> int:
         "n_findings_decided_meets_floor": n_findings_decided_total >= 2009,
         "pick_up_tips_residual_sets": dict(pick_up_tips_residual_sets),
         "pick_up_tips_residual_matches_d6_declined_prediction": _pick_up_tips_residual_matches_prediction,
+        # 260909 (T49): the note is now COMPUTED from this run's own `_go`
+        # value rather than a hardcoded claim about T48/T49's landing
+        # status -- both are landed as of this row, and a future run's own
+        # measured GO/NO-GO is what this field must describe, not a frozen
+        # snapshot of one past measurement. See `n_check_args_decided`/
+        # `n_assert_resources_decided` for the per-site resolved/attempted
+        # counts either way.
         "note": (
             "GO iff >=1 operation reaches scope_verdict==SAFE with unsound==0 and "
-            "unsound_scoped==0 (spec 260909 SS16.10.2). At this run's measurement time "
-            "T48/T49 (the D6 site rules for :375/:383/:321) had not landed on this "
-            "branch -- see this report's own n_check_args_decided/n_assert_resources_decided "
-            "(both 0 attempted-resolved) -- so scope_verdict is UNKNOWN on every "
-            "pick_up_tips operation and this run is measured against the D6-declined "
-            "NO-GO-side criterion regardless of the user's D6 answer, per this task's "
-            "own instruction to report the actual landed state rather than fabricate T48/T49's effect."
+            "unsound_scoped==0 (spec 260909 SS16.10.2). "
+            + (
+                f"GO: {n_scope_verdict_safe} operation(s) reached scope_verdict==SAFE "
+                "under the landed D6 site rules (:375/:383/:321) plus R-HEAD/R-CONST -- "
+                "see n_check_args_decided/n_assert_resources_decided for the per-site "
+                "resolved/attempted counts."
+                if _go
+                else
+                "NO-GO: scope_verdict did not reach SAFE on any operation in this run -- "
+                "see n_check_args_decided/n_assert_resources_decided (per-site "
+                "resolved/attempted counts) and pick_up_tips_residual_sets (the "
+                "per-operation residual diagnosis) for why."
+            )
         ),
     }
 

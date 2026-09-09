@@ -3226,6 +3226,35 @@ def test_ac_16_2_collect_env_ref_method_names_walks_nested_predicates() -> None:
     assert names == frozenset({"head", "get_ids"})
 
 
+def test_ac_16_2_collect_env_ref_method_names_also_walks_caller_args() -> None:
+    """T49 (spec 260909 §16.1.1/§16.3): `collect_env_ref_method_names` ALSO
+    scans each guard's `caller_args` map -- D5b's site rules read the
+    delegate's runtime `method` identity from THERE, never from the
+    guard's own `predicate` (`_check_args`'s `:375`/`:383` predicates
+    reference `missing`/`vars_keyword`/`strictness`, never the method
+    itself). Without this half, `pick_up_tips` would never become a
+    surface candidate at all -- it occurs NOWHERE as an `EnvRef` path
+    segment in any guard's own `"predicate"` JSON at this pin (measured 0
+    before this half existed)."""
+    contracts = {
+        "LiquidHandler._check_args": {
+            "guards": [
+                {
+                    "predicate": {"node": "Cmp", "left": {"node": "Var", "name": "missing"}, "op": ">", "right": {"node": "Lit", "value": 0}},
+                    "caller_args": {
+                        "method": {"node": "EnvRef", "path": ["self", "backend", "pick_up_tips"], "args": None},
+                        "default": {"node": "SetLit", "values": ["ops", "use_channels"]},
+                    },
+                },
+                {"predicate": None, "caller_args": None},  # an un-mapped guard -- tolerated.
+                {"predicate": None},  # a guard with no caller_args key at all -- tolerated.
+            ]
+        },
+    }
+    names = collect_env_ref_method_names(contracts)
+    assert names == frozenset({"pick_up_tips"})
+
+
 # ---------------------------------------------------------------------------
 # T42 (260909, spec 260909_plr-sema-observation-increment.md §16.4,
 # increment 7): the delegate->caller argument map, `compute_caller_args`'s
@@ -3496,6 +3525,23 @@ def test_real_compute_caller_args_check_args_strictness_not_parseable(plr_functi
     assert "strictness" not in result
     assert "method" in result
     assert "backend_kwargs" in result
+
+
+def test_real_compute_caller_args_check_args_default_setlit_parses(plr_function_index) -> None:
+    """T49 (spec 260909_plr-sema-observation-increment.md §16.1.1, G9): the
+    real call site's `default={"ops", "use_channels"}`
+    (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:541-546`)
+    now parses as a `Term` -- an `ast.Set` display of `ast.Constant`s, G9's
+    ONE further production -- so `"default"` binds in `caller_args` even
+    though it never did before this production existed. This is the exact
+    fact D5b's `:375`/`:383` site rules read."""
+    k_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
+    d_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler._check_args")
+    K = plr_function_index[(*k_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == k_key))]
+    D = plr_function_index[(*d_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == d_key))]
+    result = compute_caller_args(K, D)
+    assert result is not None
+    assert result["default"] == {"node": "SetLit", "values": ["ops", "use_channels"]}
 
 
 # ---- derive_contract wiring: depth == 1 populated, depth >= 2 never is ----

@@ -1494,18 +1494,23 @@ class TestT46ObservationThreading:
         assert gate["n_findings_decided_floor"] == 2009
         assert gate["n_findings_decided_target"] == 2170
         assert report["summary_flat"]["gate_go"] == gate["go"]
-        # T49 (the D5b `_check_args` site rules) has NOT landed as of this
-        # row -- `:375`/`:383` stay undecided, so `scope_verdict` cannot
-        # reach SAFE on any pick_up_tips operation yet (AC-16.14's own
-        # "requires AC-16.13 to have landed too" conjunction is one-sided:
-        # T48 alone is not sufficient), and the gate must say NO-GO
-        # honestly rather than fabricate T49's effect. T48 (the `:321` site
-        # rule, backlog #5026) HAS landed -- this one clean `pick_up_tips`
-        # row's own `resources` (`tip_rack`) resolves cleanly and the
-        # harness's own aggregate deck fact is `True`, so `n_assert_
-        # resources_decided` moves 0 -> 1, unlike `n_check_args_decided`.
-        assert gate["go"] is False
-        assert report["n_check_args_decided"]["total"] == 0
+        # T49 (the D5b `_check_args` site rules, backlog #5026) has now
+        # LANDED alongside T48's `:321` rule -- on this ONE clean
+        # `pick_up_tips` row, `backend_class` observes as chatterbox, whose
+        # `pick_up_tips` row in §16.3's surface has `params` a subset of
+        # the caller-side `default` and `has_var_keyword` True, so BOTH
+        # `:375` and `:383` decide `SAFE` (`n_check_args_decided.total`
+        # moves 0 -> 2, one per site); combined with T48's `:321` (`n_
+        # assert_resources_decided` 0 -> 1, this row's own `resources`
+        # `tip_rack` resolves cleanly and the harness's own aggregate deck
+        # fact is `True`) and T43's already-landed `:409`/`:514`, every
+        # non-excluded site on this operation is `SAFE`, so `scope_verdict`
+        # itself reaches `SAFE` and the gate says GO -- AC-16.14's own
+        # "requires AC-16.13 to have landed too" conjunction is now
+        # satisfied on BOTH halves.
+        assert gate["go"] is True
+        assert gate["n_operations_scope_verdict_safe"] == 1
+        assert report["n_check_args_decided"]["total"] == 2
         assert report["n_assert_resources_decided"]["total"] == 1
 
     def test_unsound_scoped_and_rows_excused_by_frame_present_and_zero_on_clean_row(self, tmp_path):
