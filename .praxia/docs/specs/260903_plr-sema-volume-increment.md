@@ -938,7 +938,7 @@ Q2's own instinct (a split rather than a ceiling bump) satisfied by a split that
   derive-side P10 *would* have added one, with a silent failure mode, to a registry at zero headroom.
 
 **`REASON_VOCABULARY` (HM-14): 8 → 10 of cap 12** (`plr-sema/src/plr_sema/verdict.py:129-154`; the row
-is `CAPPED` at declared 12, `_hand_maintained.py:650-654`, so live 10 ≤ 12 and **no `declared` edit is
+is `CAPPED` at declared 12, `_hand_maintained.py:691-695`, so live 10 ≤ 12 and **no `declared` edit is
 needed**). `volume_state_unknown` (the cell's interval, or the capacity, is `TOP`) and
 `volume_tracking_unasserted` (the atom evaluated `T` but the guard is conditional, §14.6). Neither
 member is added by increment 4 — increment 4's round-1 Q6 observed that shipping a vocabulary member

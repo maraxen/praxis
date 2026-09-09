@@ -7,10 +7,35 @@ verdict against ONE concrete `ir.Call`: E-CALL (operand resolution),
 E-TYPE (`IsInstance` against a `RESOURCE`'s declared type), E-SCOPE (an
 unsatisfied enclosing scope makes `SAFE` true regardless of the guard's own
 predicate), E-VERDICT (predicate truth -> `Finding`), E-UNCOND (the six
-clauses gating `WILL_FAIL`), E-ENV (`EnvRef`/`Zip`/membership all decide
-nothing this increment), and §15.7's reason-assignment procedure. Wiring
-the result into a `Finding` and into `check_ir`'s walk is T31-2
+clauses gating `WILL_FAIL`), E-ENV, and §15.7's reason-assignment procedure.
+Wiring the result into a `Finding` and into `check_ir`'s walk is T31-2
 (`plr_sema.check.__init__`), not this module's job.
+
+**260909 (spec 260909_plr-sema-observation-increment.md §16.5, T43,
+backlog #5024): `E-ENV` resolution.** Increment 6 made every `EnvRef` ½ in
+predicate position and ⊤ in term position, unconditionally, with no lookup
+table. This increment SUPERSEDES that exactly and only for the three
+admitted path shapes `_resolve_env_ref` below implements -- R-HEAD
+(`self.head`), R-ATTR (`self.backend.<attr>`) and R-CONST
+(`self.backend.<method>(...)`, independent of `args` by construction) --
+against the observation record's `obs:<key>=<value>` members of `env`
+(§16.2.3) and, for R-CONST, the derived backend surface's `constant_return`
+column (§16.3, threaded in as `ctx.backend_surface`, keyed
+`f"{backend_class}.{method}"`). **Every path not matching one of the three
+stays ½/⊤, which is `E-ENV` unchanged.** The membership case is reopened
+ONLY for a `Cmp` whose right operand is SYNTACTICALLY an R-HEAD-shaped
+`EnvRef` (§16.5.4) -- a general `ir.Seq` (from `call.kwargs`, a
+`param_defaults` entry, or an alpha/beta binding) stays a LOWER BOUND and
+never decides a `not in` to `T`; `ir.Seq` itself gains no field. Q-MONO
+(§16.5.5) is the one quantifier clause: `AllOf`/`AnyOf` over a ⊤ seq takes
+a decided value only when the body is definite in the direction the empty
+sequence also satisfies (`AllOf` + `T` body -> `T`; `AnyOf` + `F` body ->
+`F`); the other two cells stay ½ BY RULE, which AMENDS increment 6's flat
+"never vacuously T" sentence (G8(1)/A-C3 --
+`.praxia/docs/specs/260904_plr-sema-predicate-increment.md`, amended in the
+same commit as this module). Q-BIND is NOT implemented: `:409` already
+binds element-wise through `_eval_alpha_existential` below, and no `target`
+field is added to `Filtered`/`AllOf`/`AnyOf`.
 
 **Import boundary.** Same as the rest of `check/` (module docstring of
 `plr_sema.check`): no `pylabrobot`, no `libcst`, no `pydantic`, no
@@ -111,6 +136,7 @@ guessed).**
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field, replace
 from typing import Any, Mapping
@@ -176,6 +202,16 @@ class _Ctx:
     # the CURRENT guard's depth.
     caller_args: "Mapping[str, Any] | None" = None
     entry_param_defaults: Mapping[str, Any] = field(default_factory=dict)
+    # 260909 (spec §16.3/§16.5, T41/T43): R-CONST's own lookup table --
+    # `{f"{backend_class}.{method}": {"constant_return": ..., ...}}`, the
+    # additive `contract["backend_surface"]["rows"]` sub-object
+    # `derive/__main__.py` attaches ONLY to a contract entry whose own
+    # guards carry a `self.backend.<method>(...)` EnvRef (§16.3's derived
+    # surface, keyed exactly as `build_backend_surface` keys it). `{}` on
+    # every other contract entry and on any un-regenerated table --
+    # R-CONST simply never finds a row and declines to ⊤, the same
+    # fail-closed default every other additive field in this module uses.
+    backend_surface: Mapping[str, Any] = field(default_factory=dict)
 
 
 def _with_override(ctx: _Ctx, override: Mapping[str, ir.Value]) -> _Ctx:
@@ -186,6 +222,93 @@ def _with_override(ctx: _Ctx, override: Mapping[str, ir.Value]) -> _Ctx:
 
 def _with_all_to_top(ctx: _Ctx) -> _Ctx:
     return replace(ctx, var_override={}, override_all_to_top=True)
+
+
+# ---------------------------------------------------------------------------
+# E-ENV (260909, spec §16.5, T43): the observation record's own `obs:`
+# members of `env`, and the ONE path-shape table dispatching R-HEAD/
+# R-ATTR/R-CONST over them -- `_resolve_env_ref` is the symbol
+# `_hand_maintained._measure_hm25` imports for HM-25's tenth unit (D4):
+# ONE further ceiling unit for the PATTERN ("an EnvRef path admitted
+# against the observation record"), not one per instance (§16.9's own
+# argument -- R-DECK's withdrawal does not reduce the ask and neither would
+# dropping R-ATTR).
+# ---------------------------------------------------------------------------
+
+_OBS_PREFIX = "obs:"
+
+
+def _observation(env: "frozenset[str]") -> "dict[str, Any]":
+    """§16.2.3's `obs:<key>=<value>` members of `env`, JSON-decoded into a
+    plain dict. `{}` whenever no observation reached this guard at all --
+    every §16.5 rule declines on that, which is `E-ENV`'s fail-closed
+    default unchanged (§16.2.3's own normative box, restated for T43: with
+    no `obs:` member in `env`, every rule below declines). A member whose
+    value fails to parse as JSON is skipped rather than raised on -- this
+    module never raises on a malformed `env` string, matching every other
+    total function here."""
+    obs: dict[str, Any] = {}
+    for member in env:
+        if not member.startswith(_OBS_PREFIX):
+            continue
+        key, sep, raw = member[len(_OBS_PREFIX) :].partition("=")
+        if not sep:
+            continue
+        try:
+            obs[key] = json.loads(raw)
+        except ValueError:
+            continue
+    return obs
+
+
+def _resolve_env_ref(node: "pa.EnvRef", ctx: _Ctx) -> "tuple[ir.Value, str | None]":
+    """Returns `(value, rule)`. `rule` is `"R-HEAD"` / `"R-ATTR"` /
+    `"R-CONST"` when the node's `path`/`args` SHAPE matched one of §16.5's
+    three admitted shapes -- whether or not the observation went on to let
+    it RESOLVE (`value` is `ir.Top()` on a declined resolution: an absent
+    or partial observation, or, for R-CONST, a `(backend_class, method)`
+    §16.3's absence rule removed or that never had a `constant_return`).
+    `rule` is `None` when no shape matched at all -- `E-ENV` unchanged, the
+    caller's own ⊤/½ fallback. A caller publishing `n_resolved_by_rule`/
+    `n_declined_by_rule` (§16.10.1 block 1) keys off `rule` plus
+    `isinstance(value, ir.Top)`.
+
+    **R-HEAD** (§16.5.1): `EnvRef(("self", "head"), None)` -> the COMPLETE
+    `Seq` of the observation's `head_channels`, ascending, iff BOTH
+    `head_channels` and `backend_class` are present (a partial observation
+    is refused wholesale, same rule §16.2.1's ONE-capture-point box states).
+    **R-ATTR** (§16.5.2): `EnvRef(("self", "backend", a), None)` -> `Lit(v)`
+    iff `a` is a field of §16.2's record -- at this pin exactly
+    `num_channels` -- and the observation carries it; every other `a`
+    declines. **R-CONST** (§16.5.3): `EnvRef(("self", "backend", m), args)`
+    with `args is not None` -> `Lit(v)` iff `ctx.backend_surface` has a row
+    keyed `f"{backend_class}.{m}"` carrying a `constant_return` -- read
+    independently of `args`, which is not even inspected here (the whole of
+    the argument-independence soundness argument, §16.5.3's own box). The
+    MRO is not walked: the lookup is the exact key or nothing.
+    """
+    obs = _observation(ctx.env)
+    if node.path == ("self", "head") and node.args is None:
+        if "head_channels" not in obs or "backend_class" not in obs:
+            return ir.Top(), "R-HEAD"
+        channels = obs["head_channels"]
+        if not isinstance(channels, list) or not all(isinstance(c, int) for c in channels):
+            return ir.Top(), "R-HEAD"
+        return ir.Seq(tuple(ir.Lit(c) for c in sorted(channels))), "R-HEAD"
+    if len(node.path) == 3 and node.path[0] == "self" and node.path[1] == "backend":
+        member = node.path[2]
+        if node.args is None:
+            if member != "num_channels" or "num_channels" not in obs:
+                return ir.Top(), "R-ATTR"
+            return ir.Lit(obs["num_channels"]), "R-ATTR"
+        backend_class = obs.get("backend_class")
+        if backend_class is None:
+            return ir.Top(), "R-CONST"
+        row = ctx.backend_surface.get(f"{backend_class}.{member}")
+        if row is None or "constant_return" not in row:
+            return ir.Top(), "R-CONST"
+        return ir.Lit(row["constant_return"]), "R-CONST"
+    return ir.Top(), None
 
 
 # ---------------------------------------------------------------------------
@@ -309,7 +432,8 @@ def _resolve_term(term: "pa.Term", ctx: _Ctx) -> ir.Value:
         # meaningful context -- fail-closed to ⊤.
         return ir.Top()
     if isinstance(term, pa.EnvRef):
-        return ir.Top()  # E-ENV: ⊤ in term position, unconditionally.
+        value, _rule = _resolve_env_ref(term, ctx)  # §16.5: ⊤ on decline/no-match, unchanged.
+        return value
     raise TypeError(f"_resolve_term: unrecognized term {type(term)!r}")
 
 
@@ -552,9 +676,45 @@ def _maybe_setof_uniqueness(node: "pa.Cmp", ctx: _Ctx) -> "tuple[bool | None, bo
 
 
 # ---------------------------------------------------------------------------
-# Cmp -- the full dispatch, in order: G3, G4, membership (always ½), the
-# Len-vs-Len integer comparison (excluded from G5's fold), then G5's
-# unconditional ½ for everything else.
+# 260909 (spec §16.5.4, T43): the membership deciding case, reopened under
+# all three of its reopening conditions -- (i) a complete-Seq Term exists
+# (R-HEAD produces one; `_parse_term` still has no `ast.List`/`ast.Tuple`
+# branch, so an `EnvRef` resolution is the ONLY complete `Seq` reachable by
+# a membership `Cmp` anywhere in the contract table); (ii) an `ir.Seq` is a
+# LOWER BOUND except where this box says otherwise -- the rule is stated at
+# the `Cmp` NODE (checking the right operand's own SYNTAX, an R-HEAD-shaped
+# `EnvRef`), never at the resolved VALUE, so a `Var` resolving to a general
+# `ir.Seq` (from `call.kwargs`, a `param_defaults` entry, or an alpha/beta
+# binding) can never decide a `not in` to `T` -- `ir.Seq` gains no field;
+# (iii) the population is measured (§16.10.1 block 2's `n_membership_
+# decided`, T46's job, not this function's).
+# ---------------------------------------------------------------------------
+
+
+def _maybe_membership_head(node: "pa.Cmp", ctx: _Ctx) -> "bool | None":
+    """`Cmp(t, "in"/"not in", S)` decides ONLY when `S` -- `node.right` --
+    is SYNTACTICALLY an R-HEAD-shaped `EnvRef` (`("self", "head")`, `args
+    is None`) and `t` resolves to a `Lit`. Returns `None` (falls through to
+    G8(2)'s unconditional ½) whenever the shape does not match at all, the
+    observation is absent/partial (R-HEAD itself declines, so `S` does not
+    resolve to a concrete `Seq`), or `t` is ⊤. No other comparator gains a
+    case here and `_CMP_OPS` is unchanged (§16.5.4's own closing sentence)."""
+    if not (isinstance(node.right, pa.EnvRef) and node.right.path == ("self", "head") and node.right.args is None):
+        return None
+    seq = _resolve_term(node.right, ctx)
+    if not isinstance(seq, ir.Seq):
+        return None  # R-HEAD declined -- ½, exactly increment 6's own G8(2).
+    left = _resolve_term(node.left, ctx)
+    if not isinstance(left, ir.Lit):
+        return None
+    is_member = any(isinstance(item, ir.Lit) and item.v == left.v for item in seq.items)
+    return (not is_member) if node.op == "not in" else is_member
+
+
+# ---------------------------------------------------------------------------
+# Cmp -- the full dispatch, in order: G3, G4, membership (the R-HEAD
+# reopening above, else ½), the Len-vs-Len integer comparison (excluded
+# from G5's fold), then G5's unconditional ½ for everything else.
 # ---------------------------------------------------------------------------
 
 _NUMERIC_OPS = {
@@ -575,7 +735,10 @@ def _eval_cmp(node: "pa.Cmp", ctx: _Ctx) -> "bool | None":
     if special is not None:
         return special[0]
     if node.op in pa.MEMBERSHIP_OPS:
-        return None  # G8(2): every membership Cmp is ½, unconditionally.
+        decided = _maybe_membership_head(node, ctx)
+        if decided is not None:
+            return decided
+        return None  # G8(2) unchanged: every other membership Cmp is ½.
     # G5's own carve-out: "operands are numeric and are NOT Len/SetOf
     # terms folds to ½" -- read the other way, an operand that IS a `Len`
     # escapes the fold. At least one side being `Len` is enough; the other
@@ -609,8 +772,12 @@ def _eval_is(node: "pa.Is", ctx: _Ctx) -> "bool | None":
 # ---------------------------------------------------------------------------
 # Quantifiers -- AllOf/AnyOf. `Zip` resolution (⊤ unless every item is a
 # concrete Seq; length = min over items when it is); the comprehension-
-# bound-name-is-always-⊤ rule (A-C13); the vacuous-quantification-over-⊤-
-# is-½-never-vacuously-T rule (A-C3).
+# bound-name-is-always-⊤ rule (A-C13); the vacuous-quantification-over-⊤ is
+# ½ WHEN THE BODY IS NOT DEFINITE, and never vacuously T -- a ⊤ seq with a
+# ½ or oppositely-signed body cannot decide (G8(1)/A-C3, AMENDED 260909 by
+# Q-MONO, §16.5.5, T43; see the amended text in
+# `.praxia/docs/specs/260904_plr-sema-predicate-increment.md`, changed in
+# this same commit).
 # ---------------------------------------------------------------------------
 
 
@@ -629,10 +796,33 @@ def _resolve_seq_length(term: "pa.Term", ctx: _Ctx) -> "int | None":
     return None
 
 
+def _eval_qmono(node: "pa.AllOf | pa.AnyOf", ctx: _Ctx, *, kind: str) -> "bool | None":
+    """Q-MONO (§16.5.5, T43) -- E-INV's second named instance (R-CONST is
+    the first): a definite body decides over a ⊤ seq, in exactly the two
+    cells the EMPTY sequence also satisfies. `all(...)` over an empty
+    sequence is `True` and `any(...)` over an empty sequence is `False`, so
+    an unknown length cannot falsify either -- `AllOf` with a `T` body is
+    `T`, `AnyOf` with an `F` body is `F`. The other two cells (`AllOf` with
+    an `F` body, `AnyOf` with a `T` body) are exactly the ones the empty
+    sequence FALSIFIES, so an unknown length must not decide them -- they
+    stay ½ BY RULE, not by falling through: `AllOf(⊤, F)` and `AnyOf(⊤, T)`
+    are both asserted ½ (AC-16.6), never `F`/`T`. Argument-independence is
+    identical to R-CONST's own: `p` is evaluated with every comprehension-
+    bound name at ⊤ (A-C13) BEFORE this function ever sees whether `seq`
+    itself resolved, so the same one evaluation this module already made
+    for the resolved-seq path is reused here without a second call."""
+    p = evaluate_predicate(node.predicate, _with_all_to_top(ctx))
+    if kind == "all" and p is True:
+        return True
+    if kind == "any" and p is False:
+        return False
+    return None  # the two vacuity cells, and any ½ body: stay ½.
+
+
 def _eval_allof_anyof(node: "pa.AllOf | pa.AnyOf", ctx: _Ctx, *, kind: str) -> "bool | None":
     n = _resolve_seq_length(node.seq, ctx)
     if n is None:
-        return None  # ⊤ seq -> ½, never vacuously T (A-C3).
+        return _eval_qmono(node, ctx, kind=kind)  # ⊤ seq: Q-MONO, else ½ (A-C3, amended).
     if n == 0:
         return kind == "all"  # a genuinely resolved, empty concrete seq: ordinary vacuous truth.
     # A-C13: every comprehension-bound name is ⊤, unconditionally, and
@@ -689,7 +879,16 @@ def evaluate_predicate(node: "pa.Predicate", ctx: Any) -> "bool | None":
     if isinstance(node, pa.AnyOf):
         return _eval_allof_anyof(node, ctx, kind="any")
     if isinstance(node, pa.EnvRef):
-        return None  # E-ENV: ½ in predicate position, unconditionally.
+        # §16.5.1: R-HEAD stays ½ in predicate position UNCONDITIONALLY --
+        # a dict is not a truth value and no guard at this pin uses it as
+        # one -- checked by SHAPE, before any resolution attempt, so an
+        # observed-but-empty head does not accidentally read as falsy here.
+        if node.path == ("self", "head") and node.args is None:
+            return None
+        value, _rule = _resolve_env_ref(node, ctx)
+        if isinstance(value, ir.Lit):
+            return bool(value.v)  # R-ATTR/R-CONST: the Kleene truth of the resolved Lit.
+        return None  # declined, or an unadmitted EnvRef shape -- E-ENV's ½ unchanged.
     raise TypeError(f"evaluate_predicate: unrecognized node {type(node)!r}")
 
 
@@ -951,6 +1150,13 @@ def evaluate_guard(
         # param_defaults regardless of THIS guard's own depth.
         caller_args=guard.get("caller_args"),
         entry_param_defaults=entry_param_defaults,
+        # 260909 (spec §16.3/§16.5, T41/T43): R-CONST's own lookup table --
+        # additive, present only on a contract entry `derive/__main__.py`
+        # attached one to (§16.3's derived surface, filtered to the
+        # qualnames that actually carry a `self.backend.<method>(...)`
+        # EnvRef); `{}` degrades R-CONST to an unconditional decline, the
+        # same fail-closed default `param_defaults` etc. already use.
+        backend_surface=contract.get("backend_surface", {}).get("rows", {}),
     )
 
     scope_entries = _exclude_self_entry(guard)

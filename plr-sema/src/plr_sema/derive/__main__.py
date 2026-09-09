@@ -58,7 +58,10 @@ from plr_sema.derive import (
     scan_dropped_receiver_calls,
 )
 from plr_sema.derive.bindings import param_defaults_from_function
+from plr_sema.derive.predicate_ast import EnvRef
+from plr_sema.derive.predicate_ast import from_json as predicate_from_json
 from plr_sema.derive.predicate_ast import to_json as predicate_to_json
+from plr_sema.derive.predicate_ast import walk as predicate_walk
 from plr_sema.derive.receiver_state import (
     FunctionIndex,
     ReceiverState,
@@ -320,6 +323,37 @@ def build_derived_contracts_payload(
             "n_surface_rows": len(surface_rows),
             "rows": {key: backend_surface_entry_to_json(e) for key, e in sorted(surface_rows.items())},
         }
+        # 260909 (spec 260909_plr-sema-observation-increment.md §16.5, T43,
+        # backlog #5024): R-CONST's own lookup table -- `check/predicate.py`
+        # never touches PLR source and never sees the top-level `contracts`
+        # payload directly (only ONE contract entry at a time, via
+        # `evaluate_guard`'s own `contract` parameter), so the rows R-CONST
+        # needs are attached HERE, as an additive `entry["backend_surface"]`
+        # sub-object, on every contract entry whose OWN guards carry a
+        # `self.backend.<method>(...)` EnvRef (a CALL -- `args is not None`;
+        # `self.backend.<attr>` reads, R-ATTR's shape, need no PLR-derived
+        # lookup at all, only the observation). Filtered rather than
+        # attached unconditionally to every entry: only 10 of 4,770 entries
+        # carry this shape at this pin, and duplicating the (small) `rows`
+        # table onto every one of the rest would be pure JSON bloat for a
+        # fact no guard there reads. The SAME `rows` dict object is shared
+        # across every entry that gets it -- no per-entry recomputation.
+        for entry in contracts.values():
+            for guard in entry.get("guards", ()):
+                predicate_json = guard.get("predicate")
+                if predicate_json is None:
+                    continue
+                node = predicate_from_json(predicate_json)
+                if any(
+                    isinstance(sub, EnvRef)
+                    and sub.args is not None
+                    and len(sub.path) >= 2
+                    and sub.path[0] == "self"
+                    and sub.path[1] == "backend"
+                    for sub in predicate_walk(node)
+                ):
+                    entry["backend_surface"] = {"rows": backend_surface["rows"]}
+                    break
     else:
         backend_surface = {
             "n_surface_candidates": 0,

@@ -341,6 +341,29 @@ def test_hand_written_contracts_content_is_pinned() -> None:
     )
 
 
+def test_hm25_d4_spend_is_one_unit_not_an_overrun() -> None:
+    """260909 (spec 260909_plr-sema-observation-increment.md §16.5/§16.9,
+    T43, D4): the approved spend is `declared` 9 -> 10, exactly ONE further
+    unit for the §16.5 path-shape table pattern (R-HEAD/R-ATTR/R-CONST),
+    not one per rule -- and the measured count must land exactly there, not
+    merely under the ceiling (a `live <= declared` pass alone would not
+    distinguish "the tenth unit is wired" from "it was silently dropped").
+    `live_rows()`/`BUDGET_CAP` are UNCHANGED at 24 -- D4 is a per-row
+    ceiling spend, not a new registry row (that is D6, a different
+    decision, filed separately)."""
+    (hm25,) = (row for row in REGISTRY if row.id == "HM-25")
+    assert hm25.declared == 10, f"HM-25: declared is {hm25.declared}, expected 10 (D4's one-unit spend)"
+    live = resolve_measure(hm25.measure)
+    assert live == 10, (
+        f"HM-25: live count {live} != declared 10 -- the D4 spend must land "
+        f"exactly on the approved unit, neither short (unwired) nor over "
+        f"(an unapproved overrun this row's own STOP-and-ask contingency "
+        f"forbids)."
+    )
+    assert len(live_rows()) == 24, "D4 alone must not move live_rows() -- that is D6's cost, not D4's"
+    assert BUDGET_CAP == 24, "D4 alone must not move BUDGET_CAP -- that is D6's cost, not D4's"
+
+
 def test_total_declared_within_budget() -> None:
     """Section 9.4: the 24-row budget is a cap on the COUNT of live rows,
     not a sum of `declared` values (RETIRED rows do not count -- section

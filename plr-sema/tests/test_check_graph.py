@@ -1007,3 +1007,241 @@ def test_ac_16_3_b_caller_args_top_yields_operand_unknown_not_env_dependent(cont
     (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
     assert finding.verdict is Verdict.UNKNOWN
     assert finding.reason == "guard_operand_unknown"
+
+
+# ---------------------------------------------------------------------------
+# AC-16.5/AC-16.6 (spec 260909 §16.5, T43): `E-ENV` resolution -- R-HEAD,
+# R-ATTR, R-CONST, the reopened membership case, and Q-MONO. The `:409`/
+# `:514` tests below exercise the REAL, un-modified `pick_up_tips` contract
+# end to end -- exactly the site the T42 comment above (`_T42_GUARD_PREDICATE`'s
+# own docstring) names as unreachable until this row lands.
+# ---------------------------------------------------------------------------
+
+_T43_HEAD_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=409,
+    qualname="LiquidHandler._make_sure_channels_exist",
+)
+_T43_CONST_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=514,
+    qualname="LiquidHandler.pick_up_tips",
+)
+
+
+def _t43_obs_env(*, backend_class: str = "LiquidHandlerChatterboxBackend", num_channels: int = 8, head_channels=(0, 1, 2, 3, 4, 5, 6, 7)) -> "frozenset[str]":
+    return frozenset(
+        {
+            f'obs:backend_class="{backend_class}"',
+            f"obs:num_channels={num_channels}",
+            f"obs:head_channels={list(head_channels)}".replace(" ", ""),
+        }
+    )
+
+
+def test_ac_16_5_16_6_head_and_const_sites_flip_safe_under_observation(contracts_json: str) -> None:
+    """The real `:409`/`:514` guards, unmodified -- both `UNKNOWN` before
+    T43 (the T42 comment's own claim), both `SAFE` once R-HEAD/§16.5.4's
+    membership reopening (`:409`) and R-CONST/Q-MONO (`:514`) resolve the
+    observation. `:409` is reached through the shipped `len(Filtered) == 0`
+    alpha idiom end to end -- no hand-built quantifier node (AC-16.6's
+    stub-defeating half)."""
+    report = check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), contracts_json, env=_t43_obs_env())
+    (head_finding,) = _site_findings(report, _T43_HEAD_SITE, operation_id="op_1")
+    assert head_finding.verdict is Verdict.SAFE
+    (const_finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert const_finding.verdict is Verdict.SAFE
+
+
+def test_ac_16_5_no_observation_stays_env_dependent(contracts_json: str) -> None:
+    """§16.2.3's fail-closed default, restated for T43: with no `obs:`
+    member in `env`, both sites stay exactly where increment 6 left them."""
+    report = check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), contracts_json)
+    (head_finding,) = _site_findings(report, _T43_HEAD_SITE, operation_id="op_1")
+    assert head_finding.verdict is Verdict.UNKNOWN
+    assert head_finding.reason == "guard_env_dependent"
+    (const_finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert const_finding.verdict is Verdict.UNKNOWN
+
+
+def test_ac_16_5_partial_observation_declines(contracts_json: str) -> None:
+    """R-HEAD's own decline clause (§16.5.1): `backend_class` present but
+    `head_channels` absent still declines to ⊤ -- a partial observation is
+    refused wholesale, not read as \"no information about this one field\"."""
+    partial_env = frozenset({'obs:backend_class="LiquidHandlerChatterboxBackend"'})
+    report = check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), contracts_json, env=partial_env)
+    (head_finding,) = _site_findings(report, _T43_HEAD_SITE, operation_id="op_1")
+    assert head_finding.verdict is Verdict.UNKNOWN
+    assert head_finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_5_16_6_channel_outside_head_will_fail_at_head_site_const_site_unaffected(contracts_json: str) -> None:
+    """The false-positive direction, checked positively: a requested
+    channel NOT in `head_channels` makes `:409`'s membership existential
+    find a genuine invalid channel -> `WILL_FAIL`, never a silently-passing
+    `SAFE` (the `ir.Seq`-is-a-lower-bound rule made checkable the OTHER
+    way). `:514` is unaffected -- R-CONST's argument-independence means the
+    channel choice never enters its own resolution at all."""
+    env = _t43_obs_env(head_channels=(0, 1, 2, 3))
+    report = check_graph(_pick_up_tips_use_channels_graph("[5]"), contracts_json, env=env)
+    (head_finding,) = _site_findings(report, _T43_HEAD_SITE, operation_id="op_1")
+    assert head_finding.verdict is Verdict.WILL_FAIL
+    (const_finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert const_finding.verdict is Verdict.SAFE
+
+
+def test_ac_16_5_const_declines_for_unobserved_backend_class(contracts_json: str) -> None:
+    """R-CONST's own decline clause (§16.5.3): a `backend_class` with no
+    row in the derived surface (or no `constant_return` on its row) means
+    the lookup `f\"{backend_class}.{method}\"` misses and R-CONST declines
+    to ⊤ -- never fabricates a value for an unobserved/unknown backend."""
+    env = _t43_obs_env(backend_class="SomeUnknownBackend")
+    report = check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), contracts_json, env=env)
+    (const_finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert const_finding.verdict is Verdict.UNKNOWN
+
+
+# ---------------------------------------------------------------------------
+# R-ATTR and Q-MONO, exercised via a SYNTHETIC guard swapped into the real
+# `:514` site slot (same `_t42_synthetic_contracts_json` pattern) -- R-ATTR
+# decides nothing on the real corpus (§16.5.2's own box; `n_resolved_by_rule`
+# for it is asserted 0 there) and Q-MONO's two VACUITY cells need a body
+# that never depends on any real operand to isolate them from R-CONST.
+# ---------------------------------------------------------------------------
+
+
+def _t43_synthetic_predicate_report(contracts_json: str, predicate: dict, *, env: "frozenset[str]" = frozenset()) -> AnalysisReport:
+    payload = json.loads(contracts_json)
+    real_contract = payload["contracts"]["LiquidHandler.pick_up_tips"]
+    (real_514,) = [g for g in real_contract["guards"] if g["site"]["lineno"] == 514]
+    guard = {
+        "condition": "synthetic T43 probe",
+        "predicate": predicate,
+        "scope_trail": [],
+        "raises": "RuntimeError",
+        "kind": "raise_guard",
+        "free_vars": [],
+        "site": real_514["site"],
+        "depth": 0,
+        "bindings": [],
+        "reachability_clear": True,
+    }
+    new_contract = dict(real_contract)
+    new_contract["guards"] = [guard]
+    payload["contracts"] = dict(payload["contracts"])
+    payload["contracts"]["LiquidHandler.pick_up_tips"] = new_contract
+    synthetic = json.dumps(payload)
+    return check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), synthetic, env=env)
+
+
+def test_ac_16_5_r_attr_resolves_num_channels_positive_and_negative(contracts_json: str) -> None:
+    """R-ATTR (§16.5.2): `self.backend.num_channels` resolves to the
+    observation's `Lit`, whose Kleene truth decides the guard; any OTHER
+    attribute name stays ⊤ regardless of the observation (\"every other `a`
+    resolves ⊤\")."""
+    num_channels_predicate = {"node": "EnvRef", "path": ["self", "backend", "num_channels"], "args": None}
+    report_truthy = _t43_synthetic_predicate_report(contracts_json, num_channels_predicate, env=_t43_obs_env(num_channels=8))
+    (finding,) = _site_findings(report_truthy, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.WILL_FAIL  # 8 is truthy -> the guard fires.
+
+    report_falsy = _t43_synthetic_predicate_report(contracts_json, num_channels_predicate, env=_t43_obs_env(num_channels=0))
+    (finding,) = _site_findings(report_falsy, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.SAFE  # 0 is falsy -> the guard does not fire.
+
+    other_attr_predicate = {"node": "EnvRef", "path": ["self", "backend", "some_other_attr"], "args": None}
+    report_other = _t43_synthetic_predicate_report(contracts_json, other_attr_predicate, env=_t43_obs_env())
+    (finding,) = _site_findings(report_other, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+
+
+_UNRESOLVED_SEQ = {"node": "Var", "name": "some_unresolved_local"}
+_DEFINITE_FALSE_BODY = {"node": "Is", "term": {"node": "Lit", "value": None}, "negated": True}
+_DEFINITE_TRUE_BODY = {"node": "Is", "term": {"node": "Lit", "value": None}, "negated": False}
+
+
+def test_ac_16_6_qmono_vacuity_cells_stay_half(contracts_json: str) -> None:
+    """Q-MONO's two VACUITY cells (§16.5.5): `AllOf(⊤, F)` and `AnyOf(⊤,
+    T)` are the two cells the empty sequence FALSIFIES, so an unknown
+    length must not decide them -- asserted ½ (`UNKNOWN`/`guard_env_
+    dependent`), never `F`/`T`, the stub-defeating half distinguishing Q-
+    MONO from a blanket \"a ⊤ seq with a definite body always decides\" bug."""
+    allof_f = {"node": "AllOf", "seq": _UNRESOLVED_SEQ, "predicate": _DEFINITE_FALSE_BODY}
+    report = _t43_synthetic_predicate_report(contracts_json, allof_f)
+    (finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+    anyof_t = {"node": "AnyOf", "seq": _UNRESOLVED_SEQ, "predicate": _DEFINITE_TRUE_BODY}
+    report = _t43_synthetic_predicate_report(contracts_json, anyof_t)
+    (finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_6_qmono_decided_cells(contracts_json: str) -> None:
+    """Q-MONO's two DECIDED cells, both directions: `AllOf(⊤, T)` (the real
+    `:514` shape, covered end to end above) and, here, `AnyOf(⊤, F)` --
+    both are the cells the empty sequence ALSO satisfies, so an unknown
+    length cannot falsify them."""
+    anyof_f = {"node": "AnyOf", "seq": _UNRESOLVED_SEQ, "predicate": _DEFINITE_FALSE_BODY}
+    report = _t43_synthetic_predicate_report(contracts_json, anyof_f)
+    (finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.SAFE  # AnyOf + F body decides False -> guard never fires.
+
+    allof_t = {"node": "AllOf", "seq": _UNRESOLVED_SEQ, "predicate": _DEFINITE_TRUE_BODY}
+    report = _t43_synthetic_predicate_report(contracts_json, allof_t)
+    (finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.WILL_FAIL  # AllOf + T body decides True -> the guard fires.
+
+
+def test_ac_16_6_membership_against_general_seq_stays_half_not_true(contracts_json: str) -> None:
+    """The `ir.Seq`-is-a-lower-bound rule (§16.5.4(ii)), made checkable the
+    OTHER way: a `not in` against a `Var` resolving to an ORDINARY `ir.Seq`
+    (not an R-HEAD-shaped `EnvRef`) is ½, asserted NOT `T` -- a general
+    `Seq` never decides a membership `Cmp` to `T`, even when the value is
+    concretely absent from it."""
+    predicate = {
+        "node": "Cmp",
+        "left": {"node": "Lit", "value": 99},
+        "op": "not in",
+        "right": {"node": "Var", "name": "some_kwarg_seq"},
+    }
+    payload = json.loads(contracts_json)
+    real_contract = payload["contracts"]["LiquidHandler.pick_up_tips"]
+    (real_514,) = [g for g in real_contract["guards"] if g["site"]["lineno"] == 514]
+    guard = {
+        "condition": "synthetic T43 membership probe",
+        "predicate": predicate,
+        "scope_trail": [],
+        "raises": "RuntimeError",
+        "kind": "raise_guard",
+        "free_vars": ["some_kwarg_seq"],
+        "site": real_514["site"],
+        "depth": 0,
+        "bindings": [],
+        "reachability_clear": True,
+    }
+    new_contract = dict(real_contract)
+    new_contract["guards"] = [guard]
+    payload["contracts"] = dict(payload["contracts"])
+    payload["contracts"]["LiquidHandler.pick_up_tips"] = new_contract
+    synthetic = json.dumps(payload)
+    graph = json.dumps(
+        {
+            "protocol_fqn": "test.t43_membership_probe",
+            "operations": [
+                {
+                    "id": "op_1",
+                    "method_name": "pick_up_tips",
+                    "receiver_variable": "lh",
+                    "receiver_type": "LiquidHandler",
+                    "arguments": {"some_kwarg_seq": "[1, 2, 3]"},
+                }
+            ],
+            "resources": {},
+        }
+    )
+    report = check_graph(graph, synthetic, env=_t43_obs_env())
+    (finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"

@@ -340,9 +340,25 @@ def _measure_hm25() -> int:
     the five is deleted or renamed, which is what keeps this collective
     unit from being HM-24's silent-collapse failure mode in disguise: the
     measure moves (from 8 to 9) exactly when the `what` it tracks does.
+
+    260909 (spec 260909_plr-sema-observation-increment.md §16.5/§16.9, T43,
+    D4, backlog #5024, user-approved): PLUS a TENTH unit -- the §16.5
+    path-shape table (R-HEAD, R-ATTR, R-CONST: `self.head` /
+    `self.backend.<attr>` / `self.backend.<method>(...)`), ONE further
+    collective unit for the PATTERN ("an `EnvRef` path admitted against the
+    observation record"), not one per instance -- the identical
+    one-pattern-many-instances argument already made for the ninth unit
+    above. `declared` moves 9 -> 10, exactly ONE further unit of headroom.
+    The probe imports `plr_sema.check.predicate._resolve_env_ref` -- the
+    ONE symbol implementing all three rules -- and fails loudly
+    (ImportError/AttributeError) if it is deleted or renamed, exercising it
+    against a synthetic ctx so a signature change that keeps the name but
+    breaks the shape also goes red.
     """
     import ast
 
+    from plr_sema.check import ir as ir_mod
+    from plr_sema.check.predicate import _Ctx, _resolve_env_ref
     from plr_sema.check.tipstate import TipState, atom_truth
     from plr_sema.derive.bindings import _match_alpha, _match_beta
     from plr_sema.derive.predicate_ast import _CMP_OPS, EnvRef, Zip
@@ -366,6 +382,29 @@ def _measure_hm25() -> int:
         assert ast.In in _CMP_OPS and ast.NotIn in _CMP_OPS
         return True
 
+    def _path_shape_table_probe() -> bool:
+        """The TENTH unit's own probe (D4, §16.9): imports and exercises
+        `_resolve_env_ref` -- an unmatched shape (`("self", "other")`) must
+        still report `rule=None`, proving the function is live and not a
+        stub that always matches."""
+        assert _resolve_env_ref is not None
+        ctx = _Ctx(
+            call=ir_mod.Call(receiver=0, receiver_type="X", method="m", kwargs={}),
+            resources_by_slot={},
+            param_defaults={},
+            bindings_by_name={},
+            depth=0,
+            channel_kwarg=None,
+            channels=None,
+            env=frozenset(),
+            class_hierarchy=None,
+        )
+        node = EnvRef(("self", "other"), None)
+        value, rule = _resolve_env_ref(node, ctx)
+        assert rule is None
+        assert isinstance(value, ir_mod.Top)
+        return True
+
     shape_matchers = (
         _typestate_anchor,  # P2
         _channel_default_idiom,  # P3a
@@ -373,6 +412,7 @@ def _measure_hm25() -> int:
         _volume_anchor,  # P7
         operand_pairing_idiom,  # P8
         _predicate_amendment_group_probe,  # alpha + beta + EnvRef + Zip + membership (A-C6)
+        _path_shape_table_probe,  # R-HEAD + R-ATTR + R-CONST (D4)
     )
     # atom_truth's three productions: BoolView, NullCheck(is_none=True),
     # NullCheck(is_none=False) -- proven live by actually exercising all
@@ -384,6 +424,7 @@ def _measure_hm25() -> int:
         atom_truth(("null_check", False), TipState.HAS_TIP),
     )
     assert _predicate_amendment_group_probe()
+    assert _path_shape_table_probe()
     return len(shape_matchers) + len(productions)
 
 
@@ -968,10 +1009,22 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "`EnvRef` (a `self`-rooted attribute chain or call, §15.2 G7), "
             "`Zip` (`zip(<e1>,...,<en>)` as an `AllOf`/`AnyOf` seq, §15.2 "
             "G8(1)), and the `in`/`not in` membership comparators (§15.2 "
-            "G8(2))."
+            "G8(2)). 260909 (spec 260909_plr-sema-observation-increment.md "
+            "§16.5/§16.9, T43, D4, user-approved): PLUS the `EnvRef` "
+            "PATH-SHAPE TABLE this increment's own `E-ENV` box concedes is "
+            "hand-maintained surface -- R-HEAD (`self.head` -> the "
+            "observation's `head_channels`, a COMPLETE `Seq`), R-ATTR "
+            "(`self.backend.<attr>` -> the observation's value for `attr`, "
+            "at this pin exactly `num_channels`), and R-CONST "
+            "(`self.backend.<method>(...)` -> the derived backend "
+            "surface's `constant_return` for `(backend_class, method)`, "
+            "independent of `args`) -- ONE further collective unit for the "
+            "PATTERN (\"an `EnvRef` path admitted against the observation "
+            "record\"), not one per instance, named inside THIS SAME entry "
+            "rather than a second row."
         ),
         metric="patterns",
-        declared=9,
+        declared=10,
         status="CAPPED",
         why_not_derived=(
             "Syntactic patterns over how PLR/its own analyzer is written "
@@ -1005,7 +1058,13 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "volume family disables for the affected class/method), never "
             "wrong -- and an unrecognised `EnvRef`/`Zip`/membership shape "
             "is simply `Opaque`, exactly today's behaviour (§15.2's own "
-            "fail-closed argument), never wrong either."
+            "fail-closed argument), never wrong either. 260909 (T43, D4): "
+            "PLR renames `self.head`/`self.backend`, R-HEAD/R-ATTR/R-CONST "
+            "stop matching and every guard reading them reverts to ½/⊤ "
+            "(never wrong); the whole-table `n_resolved_by_rule`/"
+            "`n_declined_by_rule`/`n_quantifier_decided_by_qmono` counters "
+            "(§16.10.1 block 1) move, which is what a reader inspects "
+            "rather than trusting this box's word for the reach."
         ),
         measure="plr_sema._hand_maintained:_measure_hm25",
     ),
