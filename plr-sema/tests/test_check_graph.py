@@ -1599,7 +1599,13 @@ def test_ac_16_14_unobserved_backend_class_declines(contracts_json: str) -> None
     assert strict_finding.verdict is Verdict.UNKNOWN
 
 
-def _t49_ctx(*, caller_args: "dict[str, Any] | None", env: "frozenset[str]", backend_surface: "dict[str, Any]") -> "Any":
+def _t49_ctx(
+    *,
+    caller_args: "dict[str, Any] | None",
+    env: "frozenset[str]",
+    backend_surface: "dict[str, Any]",
+    caller_args_sites: "tuple[dict[str, Any], ...] | None" = None,
+) -> "Any":
     from plr_sema.check.predicate import _Ctx
 
     return _Ctx(
@@ -1614,6 +1620,11 @@ def _t49_ctx(*, caller_args: "dict[str, Any] | None", env: "frozenset[str]", bac
         class_hierarchy=None,
         caller_args=caller_args,
         backend_surface=backend_surface,
+        # 260909 (T54, spec 260909_plr-sema-move-family-increment.md
+        # S17.5.1, M3): additive, `None` by default so every pre-T54 call
+        # site of this helper (the T49 Kleene-range fixtures above)
+        # reproduces its exact original ctx unchanged.
+        caller_args_sites=caller_args_sites,
     )
 
 
@@ -1715,6 +1726,66 @@ def test_ac_16_14_strict_site_rule_never_returns_true() -> None:
         caller_args={"method": _T49_METHOD_ENVREF}, env=_T49_ENV, backend_surface=surface_no_var_keyword
     )
     assert _eval_check_args_strict_site_rule(ctx) is None
+
+
+# ---------------------------------------------------------------------------
+# AC-17.5 (spec 260909_plr-sema-move-family-increment.md S17.5.1, T54, M3):
+# the whole-closure conjunctive fold, exercised directly against
+# `_eval_check_args_missing_site_rule`/`_eval_check_args_strict_site_rule`
+# with a hand-built `caller_args_sites` list -- unlike the T49 fixtures
+# above, which range over the (implicit) single-site fallback.
+# ---------------------------------------------------------------------------
+
+
+def test_ac_17_5_fixture_i_one_deciding_one_declining_site_folds_to_half_not_f() -> None:
+    """AC-17.5 fixture (i): a multi-site delegate where ONE site would
+    decide `F` and the OTHER declines is asserted ½ -- NOT `F`. This is
+    the conjunctive fold's own soundness argument made checkable: the
+    admitted set is a superset of what actually executes, so `F` is
+    required at EVERY site, never merely a majority of them. The positive
+    control (both sites decide `F`) folds to `F`, proving the ½ above
+    comes from the declining site and not from some other defect."""
+    from plr_sema.check.predicate import _eval_check_args_missing_site_rule
+
+    deciding_site = {
+        "lineno": 10,
+        "caller_qualname": "Foo.B",
+        "args": {"method": _T49_METHOD_ENVREF, "default": _T49_DEFAULT_SETLIT},
+    }
+    declining_site = {
+        "lineno": 20,
+        "caller_qualname": "Foo.C",
+        "args": {"method": _T49_METHOD_ENVREF},  # no "default" -- this site declines.
+    }
+    mixed_ctx = _t49_ctx(
+        caller_args=None, env=_T49_ENV, backend_surface=_T49_SURFACE,
+        caller_args_sites=(deciding_site, declining_site),
+    )
+    assert _eval_check_args_missing_site_rule(mixed_ctx) is None  # ½, not F.
+
+    both_decide_ctx = _t49_ctx(
+        caller_args=None, env=_T49_ENV, backend_surface=_T49_SURFACE,
+        caller_args_sites=(deciding_site, deciding_site),
+    )
+    assert _eval_check_args_missing_site_rule(both_decide_ctx) is False  # the positive control.
+
+
+def test_ac_17_5_caller_args_sites_takes_precedence_over_caller_args_when_both_present() -> None:
+    """`caller_args_sites` is read WHEN PRESENT, falling back to
+    `caller_args` only otherwise (C13's own concession, made checkable):
+    a ctx carrying a declining `caller_args_sites` decides ½ even though
+    its OWN (unused) `caller_args` would have decided `F` on its own --
+    proving the list, not the scalar fallback, is what actually decided."""
+    from plr_sema.check.predicate import _eval_check_args_missing_site_rule
+
+    declining_site = {"lineno": 20, "caller_qualname": "Foo.C", "args": {"method": _T49_METHOD_ENVREF}}
+    ctx = _t49_ctx(
+        caller_args={"method": _T49_METHOD_ENVREF, "default": _T49_DEFAULT_SETLIT},  # would decide F alone.
+        env=_T49_ENV,
+        backend_surface=_T49_SURFACE,
+        caller_args_sites=(declining_site,),
+    )
+    assert _eval_check_args_missing_site_rule(ctx) is None
 
 
 def test_ac_16_14_set_lit_parses_and_round_trips() -> None:

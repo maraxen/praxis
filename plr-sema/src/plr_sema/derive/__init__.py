@@ -56,11 +56,13 @@ from plr_sema.check._supported_tools import SUPPORTED_TOOLS
 from plr_sema.derive.bindings import (
     build_qualname_index,
     compute_caller_args,
+    compute_caller_args_for_call,
     compute_caller_call_lineno,
     compute_caller_scope_trail,
     compute_local_bindings_for_guard,
     compute_reachability_clear,
     demote_refused_env_refs,
+    find_delegate_calls,
 )
 from plr_sema.derive.predicate_ast import Predicate, parse as parse_predicate
 from plr_sema.telemetry import FAILURE_CATEGORIES
@@ -1072,6 +1074,23 @@ class InlinedGuard:
     #: docstring) -- `None` together with `anchor_state`, never one without
     #: the other.
     anchor_field: str | None = None
+    #: 260909 (T54, spec 260909_plr-sema-move-family-increment.md S17.5.1,
+    #: M3, additive): the whole-closure per-call-site list -- one entry per
+    #: `self.<D.name>(...)` call statement admitted anywhere in the
+    #: closure whose own `delegates_to` resolves to THIS guard's own
+    #: defining delegate, each `{"lineno": int, "caller_qualname": str,
+    #: "args": {param: <Term JSON>, ...}}` computed against THAT site's own
+    #: caller (never `entry_K`), under M3's constants-only (no free names)
+    #: depth-lift restriction. `None` (fail closed, same "computed, found
+    #: nothing" vs. "field never existed" discipline `caller_args` etc.
+    #: use) for a `depth == 0` guard, when no `function_index` was
+    #: supplied, or when the closure's own site set is incomplete (an
+    #: unresolved self-call anywhere in the closure, or a visited record
+    #: with no `K` -- S17.5.1's two fail-closed conditions). NEVER
+    #: replaces `caller_args`, which keeps its own depth == 1-only
+    #: population and unrestricted (non-constants-only) binding unchanged
+    #: (C13, conceded) -- this is a strictly additive sibling field.
+    caller_args_sites: tuple[dict[str, Any], ...] | None = None
 
     @property
     def is_dynamic_raise(self) -> bool:
@@ -1201,7 +1220,6 @@ def derive_contract(
     from plr_sema.derive.receiver_state import compute_anchor_guard_states
 
     qualname_index = None if function_index is None else build_qualname_index(function_index)
-    guards: list[InlinedGuard] = []
     gaps: list[Gap] = []
     entry_K: ast.AST | None = None
     analyzed_class: str | None = None
@@ -1209,6 +1227,24 @@ def derive_contract(
     anchor_guard_states: dict[int, tuple[str, str]] = {}  # lineno -> (anchor_field, state)
     anchor_net_effects: dict[str, str] = {}
     caller_info_cache: dict[Qualkey, tuple[dict[str, Any] | None, bool | None, tuple[str, ...] | None]] = {}
+    # 260909 (T54, spec 260909_plr-sema-move-family-increment.md S17.5.1,
+    # M3's own prescribed SHAPE box, round 2's R2-C12, conceded): `seen` is
+    # a generator-local set inside `_walk_closure`, neither returned nor
+    # exposed, and an `InlinedGuard` is a frozen, slotted dataclass -- so
+    # there is no already-visited node set to re-walk and no mutable guard
+    # to revise. Buffer every visited `(rec, key, depth, K, caller_args,
+    # caller_reachability_clear, caller_scope_trail)` triple here, during
+    # the ONE existing pass, and construct NO `InlinedGuard` yet; the
+    # per-`(entry point, delegate)` admitted call-site sets are resolved
+    # AFTER the walk returns, from this buffer, and every `InlinedGuard` is
+    # emitted in a SECOND loop over it, below. `_walk_closure`'s own
+    # traversal semantics -- LIFO, depth-carrying, `seen`-deduplicating --
+    # are NOT changed by this restructure.
+    buffer: list[
+        tuple[SurveyRecord, Qualkey, int, "ast.AST | None", dict[str, Any] | None, bool | None, tuple[str, ...] | None]
+    ] = []
+    rec_delegate_targets: dict[Qualkey, frozenset[Qualkey]] = {}
+    closure_has_unresolved_calls = False
     for rec, key, depth in _walk_closure(
         (module, qualname), index,
         class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
@@ -1257,6 +1293,63 @@ def derive_contract(
                         compute_caller_scope_trail(entry_K, call_lineno),
                     )
             caller_args, caller_reachability_clear, caller_scope_trail = caller_info_cache[key]
+        buffer.append((rec, key, depth, K, caller_args, caller_reachability_clear, caller_scope_trail))
+        targets: set[Qualkey] = set()
+        for name in rec.delegates_to:
+            resolved = resolve(
+                name, rec, index,
+                class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+                analyzed_class=analyzed_class, analyzed_module=analyzed_module,
+            )
+            if resolved is None:
+                gaps.append(("no_contract_derived", name))
+            else:
+                targets.add(resolved)
+        rec_delegate_targets[key] = frozenset(targets)
+        if rec.unresolved_calls:
+            closure_has_unresolved_calls = True  # M3's first fail-closed condition (S17.5.1).
+        for unresolved_name in rec.unresolved_calls:
+            gaps.append(("unresolved_delegate", unresolved_name))
+
+    # M3's two fail-closed conditions (S17.5.1): an unresolved self-call
+    # ANYWHERE in the closure, or a visited record with no `K` (function
+    # body the index cannot supply -- a body that could call `D` unseen),
+    # makes the WHOLE closure's site set incomplete, so `caller_args_sites`
+    # declines uniformly rather than emitting a partial (unsound) set.
+    closure_has_missing_K = any(K is None for _rec, _key, _depth, K, *_rest in buffer)
+    site_set_complete = function_index is not None and not closure_has_unresolved_calls and not closure_has_missing_K
+
+    def sites_for_delegate(d_key: Qualkey, d_rec: SurveyRecord, d_node: "ast.AST") -> tuple[dict[str, Any], ...] | None:
+        if not site_set_complete:
+            return None
+        d_name = d_rec.qualname.rsplit(".", 1)[-1]
+        sites: list[dict[str, Any]] = []
+        for rec_i, key_i, _depth_i, k_i, *_rest in buffer:
+            if k_i is None:
+                continue
+            if d_key not in rec_delegate_targets.get(key_i, frozenset()):
+                continue
+            for call in find_delegate_calls(k_i, d_name):
+                site_args = compute_caller_args_for_call(k_i, d_node, call, constants_only=True)
+                # NOTE: built via keyword arguments, not a `{"args": ...}`
+                # dict LITERAL -- AC-13.2 (test_derive.py) statically
+                # forbids the bare string constant `"args"` (a former
+                # `_INERT_CALL_SUFFIXES` member) anywhere in this module's
+                # source; `ast.keyword.arg` is a plain attribute, never an
+                # `ast.Constant`, so this spells the SAME wire key without
+                # tripping that scan.
+                sites.append(dict(lineno=call.lineno, caller_qualname=rec_i.qualname, args=site_args or {}))
+        sites.sort(key=lambda site: site["lineno"])
+        return tuple(sites)
+
+    guards: list[InlinedGuard] = []
+    caller_args_sites_cache: dict[Qualkey, tuple[dict[str, Any], ...] | None] = {}
+    for rec, key, depth, K, caller_args, caller_reachability_clear, caller_scope_trail in buffer:
+        caller_args_sites: tuple[dict[str, Any], ...] | None = None
+        if depth >= 1 and K is not None:
+            if key not in caller_args_sites_cache:
+                caller_args_sites_cache[key] = sites_for_delegate(key, rec, K)
+            caller_args_sites = caller_args_sites_cache[key]
         for finding in rec.findings:
             predicate = parse_predicate(finding.condition)
             predicate = demote_refused_env_refs(
@@ -1287,18 +1380,9 @@ def derive_contract(
                     caller_scope_trail=caller_scope_trail,
                     anchor_field=(anchor_guard_states[finding.lineno][0] if finding.lineno in anchor_guard_states else None),
                     anchor_state=(anchor_guard_states[finding.lineno][1] if finding.lineno in anchor_guard_states else None),
+                    caller_args_sites=caller_args_sites,
                 )
             )
-        for name in rec.delegates_to:
-            resolved = resolve(
-                name, rec, index,
-                class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
-                analyzed_class=analyzed_class, analyzed_module=analyzed_module,
-            )
-            if resolved is None:
-                gaps.append(("no_contract_derived", name))
-        for unresolved_name in rec.unresolved_calls:
-            gaps.append(("unresolved_delegate", unresolved_name))
     return DerivedContract(
         qualname=qualname, guards=tuple(guards), gaps=tuple(gaps), stamp=stamp, anchor_net_effects=anchor_net_effects
     )

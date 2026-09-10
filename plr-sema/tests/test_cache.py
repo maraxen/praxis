@@ -742,3 +742,93 @@ def test_obs_prefix_never_satisfies_e_uncond_way2() -> None:
     # `does_volume_tracking` (the one existing member) is untouched: it has
     # no `obs:` prefix and is exactly the shape way (2) is meant to match.
     assert _HYPOTHESIS_ENTRY_RE.match("if does_volume_tracking()") is not None
+
+
+# ---------------------------------------------------------------------------
+# AC-17.5 (spec 260909_plr-sema-move-family-increment.md S17.5.1, T54, M3):
+# the `caller_args_sites` wire round trip. `caller_args_sites` participates
+# in `contracts_sha` automatically (an additive top-level-guard field, same
+# as `caller_args`/`bindings`/`reachability_clear` before it), so no
+# separate cache-key plumbing is needed for that half -- these two tests
+# check the two things that ARE new: the per-site data survives a JSON
+# round trip, and a table carrying only the OLD `caller_args` key still
+# decides `:375` exactly as before T54.
+# ---------------------------------------------------------------------------
+
+
+def test_t54_caller_args_sites_round_trip_preserves_linenos(contracts_json: str) -> None:
+    """The real, unmodified `LiquidHandler.move_resource` contract entry's
+    `:375` guard carries `caller_args_sites` with all THREE admitted
+    `_check_args` call-site linenos (`:2079`, `:2345`, `:2364`), and a
+    plain `json.dumps`/`json.loads` round trip preserves every one of
+    them, plus each site's own `caller_qualname` string -- the wire shape
+    is ordinary JSON, no custom encoding step."""
+    payload = json.loads(contracts_json)
+    entry = payload["contracts"]["LiquidHandler.move_resource"]
+    (guard_375,) = [g for g in entry["guards"] if g["site"]["lineno"] == 375]
+    sites = guard_375["caller_args_sites"]
+    assert sites is not None
+    linenos = sorted(s["lineno"] for s in sites)
+    assert linenos == [2079, 2345, 2364]
+    round_tripped = json.loads(json.dumps(sites))
+    assert sorted(s["lineno"] for s in round_tripped) == linenos
+    assert all(isinstance(s["caller_qualname"], str) and s["caller_qualname"] for s in round_tripped)
+
+
+_T54_PICK_UP_TIPS_GRAPH = json.dumps(
+    {
+        "protocol_fqn": "test.t54_fallback",
+        "operations": [
+            {
+                "id": "op_1",
+                "method_name": "pick_up_tips",
+                "receiver_variable": "lh",
+                "receiver_type": "LiquidHandler",
+                "arguments": {"use_channels": "[0, 1]"},
+            }
+        ],
+        "resources": {},
+    }
+)
+
+
+def _t54_obs_env() -> "frozenset[str]":
+    return frozenset(
+        {
+            'obs:backend_class="LiquidHandlerChatterboxBackend"',
+            "obs:num_channels=8",
+            "obs:head_channels=[0,1,2,3,4,5,6,7]",
+        }
+    )
+
+
+def test_t54_pre_t54_table_missing_caller_args_sites_still_decides_pick_up_tips_375(contracts_json: str) -> None:
+    """AC-17.5's wire round trip, second half: with `LiquidHandler.pick_up_
+    tips`'s own `:375` guard's `caller_args_sites` forced back to `None`
+    (simulating a pre-T54 table, or a closure whose own site set S17.5.1's
+    fail-closed conditions declined), `check_graph` still decides `:375`
+    `SAFE` -- `_eval_check_args_missing_site_rule` falls back to the
+    unchanged `caller_args` field exactly as it did before T54."""
+    from plr_sema.verdict import Verdict
+
+    payload = json.loads(contracts_json)
+    entry = payload["contracts"]["LiquidHandler.pick_up_tips"]
+    (guard_375,) = [g for g in entry["guards"] if g["site"]["lineno"] == 375]
+    assert guard_375["caller_args_sites"] is not None  # sanity: T54 populates it today.
+    assert guard_375["caller_args"] is not None  # sanity: the OLD field is still there too.
+    stripped_guard = dict(guard_375)
+    stripped_guard["caller_args_sites"] = None
+    new_entry = dict(entry)
+    new_entry["guards"] = [stripped_guard if g["site"]["lineno"] == 375 else g for g in entry["guards"]]
+    payload["contracts"] = dict(payload["contracts"])
+    payload["contracts"]["LiquidHandler.pick_up_tips"] = new_entry
+    synthetic = json.dumps(payload)
+
+    report = check_graph(_T54_PICK_UP_TIPS_GRAPH, synthetic, env=_t54_obs_env())
+    findings = [
+        f
+        for f in report.findings
+        if f.plr_site.lineno == 375 and f.plr_site.qualname == "LiquidHandler._check_args" and f.operation_id == "op_1"
+    ]
+    assert len(findings) == 1
+    assert findings[0].verdict is Verdict.SAFE

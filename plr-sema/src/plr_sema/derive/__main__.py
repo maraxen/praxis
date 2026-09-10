@@ -143,6 +143,20 @@ def _guard_to_json(guard: InlinedGuard) -> dict[str, Any]:
     payload["caller_args"] = guard.caller_args
     payload["caller_reachability_clear"] = guard.caller_reachability_clear
     payload["caller_scope_trail"] = None if guard.caller_scope_trail is None else list(guard.caller_scope_trail)
+    # 260909 (spec 260909_plr-sema-move-family-increment.md S17.5.1, T54,
+    # M3): additive `caller_args_sites` -- the whole-closure per-call-site
+    # list, BESIDE the unchanged `caller_args` (never replacing it, C13's
+    # own concession). Already a plain JSON-safe list of dicts (each
+    # `"args"` value is `predicate_to_json`'s own output, per
+    # `compute_caller_args_for_call`) -- no further encoding step. `None`
+    # (key still present) for a depth-0 guard, or when the closure's own
+    # site-set is incomplete (an unresolved self-call anywhere in the
+    # closure, or a visited record with no `K` -- the two fail-closed
+    # conditions), same "computed, found nothing" vs. "field never
+    # existed" additive-field discipline every other field here uses.
+    payload["caller_args_sites"] = (
+        None if guard.caller_args_sites is None else [dict(s) for s in guard.caller_args_sites]
+    )
     # 260909 (spec §17.4.3, T52, P6): additive `anchor_state`/`anchor_field`
     # -- this guard's own intra-operation pre-state on its entry point's
     # singleton typestate anchor, and WHICH anchor field it is about (see
@@ -393,9 +407,23 @@ def build_derived_contracts_payload(
         # and the distinction §17.1.4 makes. Without this half, `aspirate`,
         # `dispense`, `drop_tips` at depth 1 with `caller_args` populated would
         # never receive the surface, and `:375`/`:383` would stay ½ on them.
+        def _terms_carry_backend_envref(term_jsons: "Any") -> bool:
+            for term_json in term_jsons:
+                term = predicate_from_json(term_json)
+                if any(
+                    isinstance(sub, EnvRef)
+                    and len(sub.path) >= 2
+                    and sub.path[0] == "self"
+                    and sub.path[1] == "backend"
+                    for sub in predicate_walk(term)
+                ):
+                    return True
+            return False
+
         n_entries_with_backend_surface = 0
         for entry in contracts.values():
             for guard in entry.get("guards", ()):
+                attach = False
                 # Check predicate (with args is not None -- R-CONST's need)
                 predicate_json = guard.get("predicate")
                 if predicate_json is not None:
@@ -408,28 +436,30 @@ def build_derived_contracts_payload(
                         and sub.path[1] == "backend"
                         for sub in predicate_walk(node)
                     ):
-                        entry["backend_surface"] = {"rows": backend_surface["rows"]}
-                        n_entries_with_backend_surface += 1
-                        break
+                        attach = True
                 # Check caller_args (with or without args -- D5b's need)
-                caller_args_json = guard.get("caller_args")
-                if caller_args_json:
-                    for term_json in caller_args_json.values():
-                        term = predicate_from_json(term_json)
-                        if any(
-                            isinstance(sub, EnvRef)
-                            and len(sub.path) >= 2
-                            and sub.path[0] == "self"
-                            and sub.path[1] == "backend"
-                            for sub in predicate_walk(term)
-                        ):
-                            entry["backend_surface"] = {"rows": backend_surface["rows"]}
-                            n_entries_with_backend_surface += 1
-                            break
-                    else:
-                        # Continue to next guard if no backend EnvRef found in caller_args
-                        continue
-                    # Break outer loop if found in caller_args
+                if not attach:
+                    caller_args_json = guard.get("caller_args")
+                    if caller_args_json and _terms_carry_backend_envref(caller_args_json.values()):
+                        attach = True
+                # 260909 (T54, spec 260909_plr-sema-move-family-increment.md
+                # S17.1.4, round 2's R2-C1): ALSO scan `caller_args_sites` --
+                # the defender's extension to R2-C1, not optional. A
+                # move-family guard's `_check_args` sits at depth 2/3 and
+                # carries no `caller_args` at all, so without this arm no
+                # move-family entry is attached and M3's selection fix buys
+                # nothing.
+                if not attach:
+                    caller_args_sites = guard.get("caller_args_sites")
+                    if caller_args_sites:
+                        for site in caller_args_sites:
+                            site_args = site.get("args") if isinstance(site, dict) else None
+                            if site_args and _terms_carry_backend_envref(site_args.values()):
+                                attach = True
+                                break
+                if attach:
+                    entry["backend_surface"] = {"rows": backend_surface["rows"]}
+                    n_entries_with_backend_surface += 1
                     break
         backend_surface["n_entries_with_backend_surface"] = n_entries_with_backend_surface
     else:

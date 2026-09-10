@@ -98,6 +98,8 @@ __all__ = [
     "compute_all_local_bindings",
     "compute_reachability_clear",
     "compute_caller_args",
+    "compute_caller_args_for_call",
+    "find_delegate_calls",
     "compute_caller_call_lineno",
     "compute_caller_scope_trail",
     "substitute",
@@ -847,17 +849,18 @@ def compute_reachability_clear(K: FunctionNode, guard_lineno: int) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _find_delegate_call(K: FunctionNode, method_name: str) -> ast.Call | None:
-    """M1 clauses 1 & 2, combined: the UNIQUE ``self.<method_name>(...)``
-    call anywhere in ``K``'s own body (any nesting, never descending into
-    a nested ``FunctionDef``/``AsyncFunctionDef``/``Lambda``/``ClassDef``
-    -- a different scope's own call, out of reach for ``K``'s own
-    single-call-site test, mirroring ``_walk_statements``'s identical
-    scope boundary). ``None`` (fail-closed) when there are zero matches (a
-    module-level delegate called bare never matches the self-receiver
-    shape at all, so it is naturally zero here -- clause 1) or more than
-    one (clause 2: two call sites have two argument vectors and one guard
-    record; binding either would be a choice the record cannot express).
+def find_delegate_calls(K: FunctionNode, method_name: str) -> list[ast.Call]:
+    """Every ``self.<method_name>(...)`` call anywhere in ``K``'s own body
+    (any nesting, never descending into a nested ``FunctionDef``/
+    ``AsyncFunctionDef``/``Lambda``/``ClassDef`` -- a different scope's own
+    call, mirroring ``_walk_statements``'s identical scope boundary), in
+    SOURCE ORDER. This is M1 clauses 1/2's own shared scan, generalized:
+    M1 itself (``_find_delegate_call`` below) still singularizes the
+    result via ``calls[0] if len(calls) == 1 else None``, unchanged. M3
+    (spec 260909_plr-sema-move-family-increment.md S17.5.1(a), T54) is
+    the first caller that wants the whole list -- the admitted call-site
+    set is collected over EVERY visited record in a closure, not reduced
+    to "exactly one or none" the way a single ``(K, D)`` pair's map is.
     """
     calls: list[ast.Call] = []
 
@@ -883,6 +886,20 @@ def _find_delegate_call(K: FunctionNode, method_name: str) -> ast.Call | None:
     finder = _SelfCallFinder()
     for stmt in K.body:
         finder.visit(stmt)
+    return calls
+
+
+def _find_delegate_call(K: FunctionNode, method_name: str) -> ast.Call | None:
+    """M1 clauses 1 & 2, combined: the UNIQUE ``self.<method_name>(...)``
+    call anywhere in ``K``'s own body. ``None`` (fail-closed) when there
+    are zero matches (a module-level delegate called bare never matches
+    the self-receiver shape at all, so it is naturally zero here -- clause
+    1) or more than one (clause 2: two call sites have two argument
+    vectors and one guard record; binding either would be a choice the
+    record cannot express). A thin singularizing wrapper over
+    :func:`find_delegate_calls` -- unchanged behaviour, T54.
+    """
+    calls = find_delegate_calls(K, method_name)
     return calls[0] if len(calls) == 1 else None
 
 
@@ -966,6 +983,39 @@ def compute_caller_args(K: FunctionNode, D: FunctionNode) -> dict[str, Any] | No
     call = _find_delegate_call(K, D.name)
     if call is None:
         return None  # clauses 1/2.
+    return compute_caller_args_for_call(K, D, call)
+
+
+def compute_caller_args_for_call(
+    K: FunctionNode, D: FunctionNode, call: ast.Call, *, constants_only: bool = False
+) -> dict[str, Any] | None:
+    """The M1 per-argument binding logic (clauses 3/4/5, plus C10's alpha
+    fold), applied to ONE caller-supplied call statement rather than
+    re-discovering it via :func:`_find_delegate_call` -- the primitive
+    :func:`compute_caller_args` is now a thin clause-1/2 wrapper around
+    (``call = _find_delegate_call(K, D.name); return None if call is None
+    else compute_caller_args_for_call(K, D, call)``, unchanged behaviour).
+
+    M3 (spec 260909_plr-sema-move-family-increment.md S17.5.1, T54) is
+    this function's second caller, over the WHOLE closure's own multi-site
+    list rather than one singularized call -- clause 4 (call-side
+    ``ast.Starred``/``**`` unpacking, or ``D`` itself declaring
+    ``*args``/``**kwargs``) is enforced IDENTICALLY, per site: this
+    function is never told "M3 relaxes clause 4" because it does not --
+    M3 relaxes clauses 1/2 (by calling this per admitted site instead of
+    once via the singularized ``_find_delegate_call``) and clause 6 (via
+    ``constants_only`` below); clause 4 is untouched, exactly per the
+    spec's own accounting.
+
+    ``constants_only`` (M3, S17.5.1(b)): when ``True``, a parsed argument
+    Term binds its parameter iff :func:`free_var_names` of the term is
+    EMPTY -- a constant, a ``SetLit`` of constants, or a self-rooted
+    ``EnvRef`` with no free-named args. Every other argument is simply
+    SKIPPED (never a whole-map refusal -- clause 5's own per-argument
+    discipline, unchanged). ``False`` (the default) reproduces the
+    original, unrestricted M1 binding exactly -- depth == 1's own
+    ``caller_args`` keeps calling this with the default.
+    """
     if any(isinstance(a, ast.Starred) for a in call.args):
         return None  # clause 4: call-side *args unpacking.
     if any(kw.arg is None for kw in call.keywords):
@@ -982,18 +1032,27 @@ def compute_caller_args(K: FunctionNode, D: FunctionNode) -> dict[str, Any] | No
         k_bindings = {b["x"]: b for b in compute_local_bindings_for_guard(K, term, call.lineno)}
         return term if not k_bindings else substitute(term, k_bindings)  # type: ignore[return-value]
 
+    def maybe_bind(term: "Term") -> Any | None:
+        if constants_only and free_var_names(term):
+            return None  # M3 S17.5.1(b): a free-named argument binds nothing at d >= 2.
+        return predicate_to_json(substituted(term))
+
     result: dict[str, Any] = {}
     for i, arg_node in enumerate(call.args):
         if i >= len(positional):
             continue  # more positional call args than D declares params -- ignore the overflow (defensive; not observed on real PLR code).
         term = _parse_term_from_expr(arg_node)
         if term is not None:
-            result[positional[i]] = predicate_to_json(substituted(term))
+            bound = maybe_bind(term)
+            if bound is not None:
+                result[positional[i]] = bound
     for kw in call.keywords:
         assert kw.arg is not None  # ** already refused above.
         term = _parse_term_from_expr(kw.value)
         if term is not None:
-            result[kw.arg] = predicate_to_json(substituted(term))
+            bound = maybe_bind(term)
+            if bound is not None:
+                result[kw.arg] = bound
     return result
 
 

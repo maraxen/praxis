@@ -120,7 +120,7 @@ The per-operation finding list for one `move_resource` operation confirms it fin
 > (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2085-2092`). `is_dynamic_raise`
 > returns true on the `<dynamic:` prefix and nothing else
 > (`plr-sema/src/plr_sema/check/predicate.py:1121-1125`), `evaluate_guard` short-circuits it to
-> `tier_iii` (`plr-sema/src/plr_sema/check/predicate.py:1441-1442`), and the site is folded into
+> `tier_iii` (`plr-sema/src/plr_sema/check/predicate.py:1514-1515`), and the site is folded into
 > `excludes_sites` (`plr-sema/src/plr_sema/check/__init__.py:967-975`). **This is why `:2092` appears
 > in the ledger's fifteen-finding list and NOT in the replay's thirteen-entry residual site set**, and
 > the two documents agree exactly. The consequence is normative for §17.8: the unscoped `verdict` on a
@@ -386,7 +386,7 @@ skipped. So:
 
 | entry point | where `_check_args`'s guards are inlined | which M1 fence refuses | ops |
 |---|---|---|---|
-| `move_resource` | **depth 2**, via `pick_up_resource` | clause 6 (`depth == 1` only) — and, independently, clauses 1–2, since `move_resource`'s own body carries TWO call sites and `_find_delegate_call` returns `None` on anything but one (`plr-sema/src/plr_sema/derive/bindings.py:884-886`) | 31 |
+| `move_resource` | **depth 2**, via `pick_up_resource` | clause 6 (`depth == 1` only) — and, independently, clauses 1–2, since `move_resource`'s own body carries TWO call sites and `_find_delegate_call` returns `None` on anything but one (`plr-sema/src/plr_sema/derive/bindings.py:892-903`) | 31 |
 | `move_lid`, `move_plate` | **depth 3**, via `move_resource` then `pick_up_resource` | clause 6 | 62 |
 | `transfer`, `discard_tips`, `stamp` | depth 2, via `aspirate`/`dispense`, `drop_tips`, `aspirate96`/`dispense96` | clause 6 | 80 |
 | `aspirate`, `dispense`, `drop_tips` | **depth 1, one call site — `caller_args` IS populated** | **neither**; the refusal is downstream | 148 |
@@ -977,7 +977,7 @@ and `grid` — and no exactness among them (`plr-sema/src/plr_sema/check/ir.py:1
 >
 > - **No fifth `EnvRef` path shape and no new `Is`-position rule.** `EnvRef(("self","_resource_pickup"))`
 >   never reaches `_resolve_env_ref` on this path, so §17.7's accounting is not short by one and the
->   benchmark-wide broadening of `_eval_is` (`plr-sema/src/plr_sema/check/predicate.py:851-856`) that
+>   benchmark-wide broadening of `_eval_is` (`plr-sema/src/plr_sema/check/predicate.py:862-867`) that
 >   C6 feared is neither proposed nor needed.
 > - **`_finding_for_atom`'s ½ branch must carry `guard_env_dependent` for this anchor**, not the tip
 >   family's `channel_state_unknown` (§17.6's table). That is the ONE line of that function this
@@ -1279,10 +1279,12 @@ and a `None` payload is always legal.
 >
 > **The wire-shape change, named on the PRODUCER side (round 1's C13, conceded).** spec_version 1
 > specified only the consumer's tolerance. All three shipped consumers call `.get(...)` on a `Mapping`
-> — `caller_args.get("method")` (`plr-sema/src/plr_sema/check/predicate.py:1240-1249`),
-> `caller_args.get("default")` (`plr-sema/src/plr_sema/check/predicate.py:1222-1231`), and
+> — `caller_args.get("method")`, now `args.get("method")` post-T54's per-site factoring
+> (`plr-sema/src/plr_sema/check/predicate.py:1257`),
+> `caller_args.get("default")`, now `args.get("default")` the same way
+> (`plr-sema/src/plr_sema/check/predicate.py:1279`), and
 > `_Ctx.caller_args = guard.get("caller_args")`
-> (`plr-sema/src/plr_sema/check/predicate.py:1425-1432`) — and a list has no `.get`, so **re-typing the
+> (`plr-sema/src/plr_sema/check/predicate.py:1483`) — and a list has no `.get`, so **re-typing the
 > existing key breaks all three**. The list is therefore a **NEW wire field, `caller_args_sites`**,
 > beside the existing `caller_args`, which keeps its shape and its `depth == 1`-only population
 > unchanged. Both site rules read `caller_args_sites` when present and fall back to `caller_args`
@@ -1569,7 +1571,7 @@ mechanisms it excluded for costing a row.
 >     exclusions are invisible today: `excludes_sites` collects tier-(iii) sites only
 >     (`plr-sema/src/plr_sema/check/__init__.py:932-949`), while `scope_excludes` returns `_SAFE`
 >     directly (`plr-sema/src/plr_sema/check/predicate.py:1442-1444`) and leaves no trace. The counter
->     needs one additive boolean on `GuardResult` (`plr-sema/src/plr_sema/check/predicate.py:1401-1407`)
+>     needs one additive boolean on `GuardResult` (`plr-sema/src/plr_sema/check/predicate.py:1474-1483`)
 >     and a per-site tally in the ledger. **This is round 1's C12 remedy and it applies to the four
 >     mechanisms TAKEN, not only to the one refused**: the amended truthiness clause, R-ARM and any name
 >     M3 newly binds are all live inside `_scope_entry_value`
@@ -1932,7 +1934,7 @@ with `region_unsound` 0.
   normative:** `:2070`, `:2120` and `:2147` are asserted to be decided through the new
   `evaluate_anchor_call`'s `consumed`-index replacement, consumed by the shipped protocol
   (`plr-sema/src/plr_sema/check/__init__.py:451-453`), and a grep asserts **no new `EnvRef` path shape
-  and no change to `_eval_is`** (`plr-sema/src/plr_sema/check/predicate.py:851-856`) — an
+  and no change to `_eval_is`** (`plr-sema/src/plr_sema/check/predicate.py:862-867`) — an
   implementation that routes the typestate through the predicate evaluator fails this. **Four further
   route assertions, each one of §17.4.0's closed decisions made checkable (round 2's R2-C3).** (a) A
   `move_*` fixture whose `channels` is `None` still decides all three guards, which is the

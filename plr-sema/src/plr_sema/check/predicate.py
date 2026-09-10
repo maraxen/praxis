@@ -276,6 +276,17 @@ class _Ctx:
     # R-CONST simply never finds a row and declines to ⊤, the same
     # fail-closed default every other additive field in this module uses.
     backend_surface: Mapping[str, Any] = field(default_factory=dict)
+    # 260909 (spec 260909_plr-sema-move-family-increment.md S17.5.1, T54,
+    # M3): the whole-closure per-call-site list, additive BESIDE
+    # `caller_args` (never replacing it -- C13, conceded). Each entry is
+    # `{"lineno": int, "caller_qualname": str, "args": {param: <Term
+    # JSON>, ...}}`. `None` (the default, same fail-closed-by-omission
+    # discipline `caller_args` uses) on a depth-0 guard, an un-regenerated
+    # pre-T54 table, or when the closure's own site set was incomplete.
+    # `:375`/`:383` (below) read this when present and FALL BACK to
+    # `caller_args` otherwise, so a table carrying only the old field
+    # keeps deciding exactly as before T54.
+    caller_args_sites: "tuple[Mapping[str, Any], ...] | None" = None
 
 
 def _with_override(ctx: _Ctx, override: Mapping[str, ir.Value]) -> _Ctx:
@@ -1225,22 +1236,25 @@ def _eval_assert_resources_site_rule(ctx: _Ctx) -> "bool | None":
     return False
 
 
-def _check_args_method_name(ctx: _Ctx) -> "str | None":
-    """T49: `m`, the runtime backend method name, read from THIS guard's
-    own `ctx.caller_args["method"]` entry -- the caller-side expression at
-    `self._check_args(self.backend.<m>, ...)`
-    (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:541-546`),
+def _method_name_from_args(args: "Mapping[str, Any] | None") -> "str | None":
+    """T49/T54: `m`, the runtime backend method name, read from ONE
+    per-site (or the depth-1 `caller_args`) `{"method": <Term JSON>}`
+    entry -- the caller-side expression at `self._check_args(self.backend.
+    <m>, ...)` (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:541-546`),
     an `EnvRef` whose LAST path segment is `m` (§16.3's own selection rule
     reads the identical "last segment of an EnvRef path" fact, just from a
     different JSON location). Never resolved as a VALUE through
     `_resolve_var`/`_resolve_term` -- `method` denotes a PLR method, not an
     `ir.Value` this analyzer models -- so this reads the raw JSON directly.
-    `None` on anything else: no `caller_args`, no `"method"` entry, or an
-    entry that is not an `EnvRef`, or an `EnvRef` with an empty path."""
-    caller_args = ctx.caller_args
-    if not caller_args:
+    `None` on anything else: no `args`, no `"method"` entry, or an entry
+    that is not an `EnvRef`, or an `EnvRef` with an empty path. Factored
+    out of the old ctx-wide `_check_args_method_name` (T54, M3, §17.5.1):
+    a move-family fold reads a DIFFERENT `method` per site (`:2345`'s is
+    `pick_up_resource`, `:2364`'s is `drop_resource`), so this can no
+    longer be a single ctx-wide value."""
+    if not args:
         return None
-    method_json = caller_args.get("method")
+    method_json = args.get("method")
     if not isinstance(method_json, Mapping) or method_json.get("node") != "EnvRef":
         return None
     path = method_json.get("path")
@@ -1249,21 +1263,20 @@ def _check_args_method_name(ctx: _Ctx) -> "str | None":
     return str(path[-1])
 
 
-def _check_args_default_set(ctx: _Ctx) -> "frozenset[str] | None":
-    """T49: the caller-side `default` set, read from THIS guard's own
-    `ctx.caller_args["default"]` entry -- G9's `SetLit` production, now
-    that `default={"ops", "use_channels"}`
-    (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:541-546`)
-    parses as a `Term` at all. `None` when the entry is absent (an
+def _default_set_from_args(args: "Mapping[str, Any] | None") -> "frozenset[str] | None":
+    """T49/T54: the caller-side `default` set, read from ONE per-site (or
+    the depth-1 `caller_args`) `{"default": <Term JSON>}` entry -- G9's
+    `SetLit` production. `None` when the entry is absent (an
     un-regenerated table, or a call-site `default=` expression that is not
     a plain `ast.Set` of constants -- M1 clause 5's ordinary partial-
     admission refusal) or is not a `SetLit`, or carries a non-`str`
     element (defensive; `_parse_set_lit` never emits one, but this
-    function does not trust the wire without checking)."""
-    caller_args = ctx.caller_args
-    if not caller_args:
+    function does not trust the wire without checking). Factored out of
+    the old ctx-wide `_check_args_default_set` (T54, M3, §17.5.1), for the
+    same per-site reason `_method_name_from_args` was."""
+    if not args:
         return None
-    default_json = caller_args.get("default")
+    default_json = args.get("default")
     if not isinstance(default_json, Mapping) or default_json.get("node") != "SetLit":
         return None
     values = default_json.get("values")
@@ -1272,27 +1285,72 @@ def _check_args_default_set(ctx: _Ctx) -> "frozenset[str] | None":
     return frozenset(values)
 
 
-def _check_args_surface_row(ctx: _Ctx) -> "Mapping[str, Any] | None":
-    """T49: the §16.3 backend-surface row for `(observed backend_class, m)`
-    -- `None` (decline) whenever `backend_class` is unobserved, `m` cannot
-    be read (`_check_args_method_name`), or the row is absent (either the
-    pair was never a surface candidate, or §16.3's C15 absence rule removed
-    it -- both cases are indistinguishable here BY DESIGN, and both mean
-    the same thing to a caller: the surface does not vouch for this
-    `(class, method)` pair, so decline rather than guess)."""
+def _check_args_surface_row_for_method(ctx: _Ctx, method: "str | None") -> "Mapping[str, Any] | None":
+    """T49/T54: the §16.3 backend-surface row for `(observed backend_class,
+    method)` -- `None` (decline) whenever `backend_class` is unobserved,
+    `method` is `None`, or the row is absent (either the pair was never a
+    surface candidate, or §16.3's C15 absence rule removed it -- both
+    cases are indistinguishable here BY DESIGN, and both mean the same
+    thing to a caller: the surface does not vouch for this `(class,
+    method)` pair, so decline rather than guess). Factored out of the old
+    ctx-wide `_check_args_surface_row` (T54, M3, §17.5.1) to take `method`
+    as a parameter -- each site's own `method` may differ."""
     obs = _observation(ctx.env)
     backend_class = obs.get("backend_class")
     if backend_class is None:
         return None
-    method = _check_args_method_name(ctx)
     if method is None:
         return None
     return ctx.backend_surface.get(f"{backend_class}.{method}")
 
 
+def _check_args_sites(ctx: _Ctx) -> "list[Mapping[str, Any] | None]":
+    """T54 (M3, §17.5.1): the list of per-site `args` maps a `:375`/`:383`
+    fold ranges over -- `ctx.caller_args_sites` when present (one entry
+    per admitted call site in the whole closure, S17.5.1(a)), falling
+    back to a SINGLE-entry list built from `ctx.caller_args` otherwise (a
+    pre-T54 table, or a closure whose site set S17.5.1's two fail-closed
+    conditions made incomplete) -- so a table carrying only the old field
+    still decides `:375` for `pick_up_tips` exactly as before T54. `[]`
+    when neither is present (an ordinary decline, unchanged)."""
+    sites = ctx.caller_args_sites
+    if sites:
+        return [s.get("args") if isinstance(s, Mapping) else None for s in sites]
+    if ctx.caller_args is not None:
+        return [ctx.caller_args]
+    return []
+
+
+def _fold_conjunctive_never_true(values: "list[bool | None]") -> "bool | None":
+    """T54 (M3, §17.5.1): the whole-closure conjunctive fold -- `F` iff
+    EVERY site's own rule yields `F`, ½ (decline) if any site declines.
+    Never returns `True`, even defensively, for a site value that (should
+    one ever occur) is not `False`: M3 binds names and licenses NO new
+    `WILL_FAIL` path anywhere (§17.5.1's own closing normative box), and
+    both `:375`/`:383` are proven, by their own docstrings, to never
+    produce `True` at a single site either -- this is the general fold
+    they both reduce to, and it is intentionally incapable of deciding
+    `True` regardless of what a future site rule might return.
+
+    **Why conjunctive-over-a-superset is sound (§17.5.1's own argument,
+    made checkable here).** The admitted site set is a SUPERSET of the
+    call sites actually executed during one real operation -- some sites
+    lie on paths that operation does not take. Requiring `F` at every
+    admitted site is therefore a STRONGER demand than requiring it only
+    where the guard actually executes: ranging over more sites can only
+    make the fold decline MORE often, never decide MORE often. A single
+    site with `[]` (no sites at all) is treated as decline, matching an
+    ordinary "nothing to read" outcome."""
+    if not values:
+        return None
+    if any(v is not False for v in values):
+        return None
+    return False
+
+
 def _eval_check_args_missing_site_rule(ctx: _Ctx) -> "bool | None":
-    """T49 (spec 260909_plr-sema-observation-increment.md §16.1.1/§16.15
-    D6, backlog #5026): the `:375` site rule, keyed on
+    """T49/T54 (spec 260909_plr-sema-move-family-increment.md §17.5.1, M3,
+    backlog #5026): the `:375` site rule, keyed on
     `(LiquidHandler._check_args, :375)`. `:375`'s own guard predicate is
     `Cmp(Len(Var("missing")), ">", Lit(0))`; `missing` is a LOCAL of
     `_check_args` (`non_default - backend_kws`, `:373`), never one of its
@@ -1300,46 +1358,50 @@ def _eval_check_args_missing_site_rule(ctx: _Ctx) -> "bool | None":
     at all -- this rule decides the guard's OWN predicate value directly,
     the same replacement shape `:321`'s rule above uses.
 
-    Evaluates `F` (never `T` -- the arithmetic only ever proves the
-    MINUEND empty, never the SUBTRAHEND non-empty, §16.1.1's own pin
-    derivation) iff the observed `backend_class`'s `(class, method)` row
-    in §16.3's surface (`m` read from `ctx.caller_args["method"]`) has a
-    `params` list that is a SUBSET of the caller-side `default` set (read
-    from `ctx.caller_args["default"]`, G9's `SetLit`) -- `params(backend_
-    class, m) ⊆ default` implies `non_default ⊆ default_args`, so
-    `missing = non_default - backend_kws ⊆ default - backend_kws = ∅`
-    whatever `backend_kws` is (§16.1.1's own step-by-step).
+    Evaluates ONE site (`_eval_missing_for_one_site`, below) to `F` (never
+    `T` -- the arithmetic only ever proves the MINUEND empty, never the
+    SUBTRAHEND non-empty, §16.1.1's own pin derivation) iff the observed
+    `backend_class`'s `(class, method)` row in §16.3's surface (`m` read
+    from THAT site's own `"method"`) has a `params` list that is a SUBSET
+    of THAT site's own caller-side `default` set (G9's `SetLit`) --
+    `params(backend_class, m) ⊆ default` implies `non_default ⊆
+    default_args`, so `missing = non_default - backend_kws ⊆ default -
+    backend_kws = ∅` whatever `backend_kws` is (§16.1.1's own step-by-
+    step). **T54 (M3, §17.5.1) folds this CONJUNCTIVELY over every
+    admitted call site** (`_check_args_sites`/`_fold_conjunctive_never_
+    true`): `F` iff every site decides `F`, ½ if any site declines --
+    still never `T`."""
 
-    ½ (decline) otherwise: no surface row (absent candidate or C15's
-    absence rule), a row with no `params` list, or no `default` caller-arg
-    -- the SAME `"guard_env_dependent"` reason every other §16.5 decline
-    carries (`missing` resolves `(Top, "env")` under ordinary
-    `_resolve_var`, never `(Top, "operand")`)."""
-    row = _check_args_surface_row(ctx)
-    if row is None:
+    def _eval_missing_for_one_site(args: "Mapping[str, Any] | None") -> "bool | None":
+        method = _method_name_from_args(args)
+        row = _check_args_surface_row_for_method(ctx, method)
+        if row is None:
+            return None
+        params = row.get("params")
+        if not isinstance(params, list) or not all(isinstance(p, str) for p in params):
+            return None
+        default_set = _default_set_from_args(args)
+        if default_set is None:
+            return None
+        if set(params) <= default_set:
+            return False
         return None
-    params = row.get("params")
-    if not isinstance(params, list) or not all(isinstance(p, str) for p in params):
-        return None
-    default_set = _check_args_default_set(ctx)
-    if default_set is None:
-        return None
-    if set(params) <= default_set:
-        return False
-    return None
+
+    sites = _check_args_sites(ctx)
+    return _fold_conjunctive_never_true([_eval_missing_for_one_site(a) for a in sites])
 
 
 def _eval_check_args_strict_site_rule(ctx: _Ctx) -> "bool | None":
-    """T49 (spec 260909_plr-sema-observation-increment.md §16.1.1/§16.15
-    D6, backlog #5026): the `:383` site rule, keyed on
+    """T49/T54 (spec 260909_plr-sema-move-family-increment.md §17.5.1, M3,
+    backlog #5026): the `:383` site rule, keyed on
     `(LiquidHandler._check_args, :383)`. `:383`'s own guard predicate is
     `Cmp(Var("strictness"), "==", Attr(Var("Strictness"), "STRICT"))`, and
     this rule NEVER evaluates it -- `strictness`'s caller-side expression
     is `get_strictness()`, a non-`self`-rooted call that is not a `Term`
-    under G1, so it carries no `caller_args` entry and `Strictness.STRICT`
-    is a module-level `Attr`, not an `EnvRef` under G7 either (§16.1.1's
-    own box: deciding `:383` from the predicate "is impossible whatever
-    `env` carries").
+    under G1, so it carries no `caller_args`/`caller_args_sites` entry and
+    `Strictness.STRICT` is a module-level `Attr`, not an `EnvRef` under G7
+    either (§16.1.1's own box: deciding `:383` from the predicate "is
+    impossible whatever `env` carries").
 
     The real discharge route is the recorded `scope_trail`'s second entry
     (after E-UNCOND(6) excludes the self-entry), `"if len(extra) > 0 and
@@ -1355,16 +1417,27 @@ def _eval_check_args_strict_site_rule(ctx: _Ctx) -> "bool | None":
     level, rather than teaching `_resolve_var` a THIRD name-keyed special
     case for one local that only ever appears in one function.
 
-    Evaluates `F` (never `T`) iff the observed `backend_class`'s `(class,
-    method)` row in §16.3's surface has `has_var_keyword` exactly `True`.
-    ½ (decline) otherwise: no surface row, or `has_var_keyword` absent/
-    `False`."""
-    row = _check_args_surface_row(ctx)
-    if row is None:
-        return None
-    if row.get("has_var_keyword") is not True:
-        return None
-    return False
+    Evaluates ONE site to `F` (never `T`) iff the observed `backend_
+    class`'s `(class, method)` row in §16.3's surface (`m` read from THAT
+    site's own `"method"`) has `has_var_keyword` exactly `True`. ½
+    (decline) otherwise: no surface row, or `has_var_keyword` absent/
+    `False`. **T54 (M3, §17.5.1) folds this CONJUNCTIVELY over every
+    admitted call site**, same as `:375` above -- on the move family this
+    stays ½ on all 93, because `LiquidHandlerChatterboxBackend.pick_up_
+    resource`/`.drop_resource` both carry `has_var_keyword: False`
+    (§17.5.2's own refusal, made checkable here)."""
+
+    def _eval_strict_for_one_site(args: "Mapping[str, Any] | None") -> "bool | None":
+        method = _method_name_from_args(args)
+        row = _check_args_surface_row_for_method(ctx, method)
+        if row is None:
+            return None
+        if row.get("has_var_keyword") is not True:
+            return None
+        return False
+
+    sites = _check_args_sites(ctx)
+    return _fold_conjunctive_never_true([_eval_strict_for_one_site(a) for a in sites])
 
 
 #: HM-26's own live measure (`plr_sema._hand_maintained:_measure_hm26`):
@@ -1478,6 +1551,12 @@ def evaluate_guard(
         # EnvRef); `{}` degrades R-CONST to an unconditional decline, the
         # same fail-closed default `param_defaults` etc. already use.
         backend_surface=contract.get("backend_surface", {}).get("rows", {}),
+        # 260909 (spec 260909_plr-sema-move-family-increment.md S17.5.1,
+        # T54, M3): additive `caller_args_sites` -- present only when the
+        # guard's own defining delegate's whole-closure site set was
+        # complete (S17.5.1's two fail-closed conditions); `None`
+        # otherwise, same fail-closed default `caller_args` uses.
+        caller_args_sites=tuple(guard["caller_args_sites"]) if guard.get("caller_args_sites") else None,
     )
 
     scope_entries = _exclude_self_entry(guard)

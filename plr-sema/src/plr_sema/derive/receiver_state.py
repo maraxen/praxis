@@ -1970,7 +1970,21 @@ def collect_env_ref_method_names(contracts: dict[str, Any]) -> frozenset[str]:
     arithmetic (§16.1.1) would be permanently unreachable without it. Every
     `caller_args` VALUE is a `Term` JSON (never a `Predicate`), so this reuses
     the SAME `predicate_ast.from_json`/`predicate_ast.walk` pair -- both are
-    total over the whole `Predicate | Term` union, `SetLit` included (G9)."""
+    total over the whole `Predicate | Term` union, `SetLit` included (G9).
+
+    **260909 (T54, spec 260909_plr-sema-move-family-increment.md S17.1.4,
+    round 2's R2-C1): ALSO scans EVERY per-site `args` map of M3's new
+    `"caller_args_sites"` field.** A move-family guard sits at depth >= 2
+    and never carries a populated `"caller_args"` (M1 clause 6, unrelaxed
+    for the single-entry-point-relative field), so without this THIRD scan
+    a method name that only ever appears at depth >= 2 -- `drop_resource`,
+    reached only through `move_resource`'s own two `_check_args` calls --
+    never becomes a `n_surface_candidates` row at all, and the selection
+    half of round 2's R2-C1 stays unrepaired regardless of what the
+    attachment filter does. Every value in every per-site `args` map is a
+    `Term` JSON exactly as `caller_args`'s values are (M3's own
+    `compute_caller_args_for_call`), so the walk below is total over them
+    by construction and needs no new parser."""
     names: set[str] = set()
     for entry in contracts.values():
         for guard in entry.get("guards", ()):
@@ -1987,6 +2001,17 @@ def collect_env_ref_method_names(contracts: dict[str, Any]) -> frozenset[str]:
                     for sub in predicate_walk(term):
                         if isinstance(sub, EnvRef) and sub.path:
                             names.add(sub.path[-1])
+            caller_args_sites = guard.get("caller_args_sites")
+            if caller_args_sites:
+                for site in caller_args_sites:
+                    site_args = site.get("args") if isinstance(site, dict) else None
+                    if not site_args:
+                        continue
+                    for term_json in site_args.values():
+                        term = predicate_from_json(term_json)
+                        for sub in predicate_walk(term):
+                            if isinstance(sub, EnvRef) and sub.path:
+                                names.add(sub.path[-1])
     return frozenset(names)
 
 
