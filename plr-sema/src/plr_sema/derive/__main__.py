@@ -338,21 +338,52 @@ def build_derived_contracts_payload(
         # table onto every one of the rest would be pure JSON bloat for a
         # fact no guard there reads. The SAME `rows` dict object is shared
         # across every entry that gets it -- no per-entry recomputation.
+        #
+        # 260909 (T53, spec 260909_plr-sema-move-family-increment.md §17.1.4,
+        # M-SURF): ALSO scans each guard's `caller_args` map, by the SAME rule
+        # as `collect_env_ref_method_names` in `receiver_state.py`. D5b's site
+        # rules read the delegate's runtime `method` identity from `caller_args`,
+        # not from the guard's own `predicate` -- `_check_args` guards carry
+        # `missing`/`has_var_keyword`/`strictness`, never the method itself.
+        # The `caller_args` arm requires NO `args is not None` check (stores
+        # method identity as a reference, not a call), matching D5b's shape
+        # and the distinction §17.1.4 makes. Without this half, `aspirate`,
+        # `dispense`, `drop_tips` at depth 1 with `caller_args` populated would
+        # never receive the surface, and `:375`/`:383` would stay ½ on them.
         for entry in contracts.values():
             for guard in entry.get("guards", ()):
+                # Check predicate (with args is not None -- R-CONST's need)
                 predicate_json = guard.get("predicate")
-                if predicate_json is None:
-                    continue
-                node = predicate_from_json(predicate_json)
-                if any(
-                    isinstance(sub, EnvRef)
-                    and sub.args is not None
-                    and len(sub.path) >= 2
-                    and sub.path[0] == "self"
-                    and sub.path[1] == "backend"
-                    for sub in predicate_walk(node)
-                ):
-                    entry["backend_surface"] = {"rows": backend_surface["rows"]}
+                if predicate_json is not None:
+                    node = predicate_from_json(predicate_json)
+                    if any(
+                        isinstance(sub, EnvRef)
+                        and sub.args is not None
+                        and len(sub.path) >= 2
+                        and sub.path[0] == "self"
+                        and sub.path[1] == "backend"
+                        for sub in predicate_walk(node)
+                    ):
+                        entry["backend_surface"] = {"rows": backend_surface["rows"]}
+                        break
+                # Check caller_args (with or without args -- D5b's need)
+                caller_args_json = guard.get("caller_args")
+                if caller_args_json:
+                    for term_json in caller_args_json.values():
+                        term = predicate_from_json(term_json)
+                        if any(
+                            isinstance(sub, EnvRef)
+                            and len(sub.path) >= 2
+                            and sub.path[0] == "self"
+                            and sub.path[1] == "backend"
+                            for sub in predicate_walk(term)
+                        ):
+                            entry["backend_surface"] = {"rows": backend_surface["rows"]}
+                            break
+                    else:
+                        # Continue to next guard if no backend EnvRef found in caller_args
+                        continue
+                    # Break outer loop if found in caller_args
                     break
     else:
         backend_surface = {

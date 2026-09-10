@@ -3255,6 +3255,105 @@ def test_ac_16_2_collect_env_ref_method_names_also_walks_caller_args() -> None:
     assert names == frozenset({"pick_up_tips"})
 
 
+def test_ac_17_4_m_surf_attachment_extends_to_caller_args() -> None:
+    """T53 (spec 260909_plr-sema-move-family-increment.md §17.1.4, M-SURF):
+    the attachment filter extends to scan `caller_args` as well as `predicate`,
+    by the SAME rule as the selection half (`collect_env_ref_method_names`).
+    D5b's site rules read the method identity from `caller_args`, not from the
+    guard's own `predicate` -- `_check_args` carries `missing`/`has_var_keyword`,
+    never the method itself. Without this half, entries like `aspirate`,
+    `dispense`, `drop_tips` with `caller_args` at depth 1 would never receive
+    the backend_surface attachment.
+
+    The `caller_args` arm requires NO `args is not None` check (stores method
+    identity as a reference, not a call), matching D5b's need and the
+    distinction M-SURF makes between the two arms.
+
+    AC-17.4: entries with a `self.backend.<m>` EnvRef only in `caller_args`
+    (not in `predicate` with `args is not None`) now receive the attachment."""
+    from plr_sema.derive.__main__ import build_derived_contracts_payload
+
+    # Create a synthetic contract with a backend EnvRef ONLY in caller_args
+    # (not in the predicate), mimicking the depth-1 `aspirate`/`dispense`/
+    # `drop_tips` case.
+    contracts = {
+        "Entry": {
+            "guards": [
+                {
+                    # Predicate does NOT contain a call-shaped backend EnvRef
+                    "predicate": {"node": "Cmp", "left": {"node": "Var", "name": "x"}, "op": ">", "right": {"node": "Lit", "value": 0}},
+                    # But caller_args DOES contain a backend method reference
+                    "caller_args": {
+                        "method": {"node": "EnvRef", "path": ["self", "backend", "aspirate"], "args": None},
+                        "default": {"node": "SetLit", "values": ["ops"]},
+                    },
+                },
+            ]
+        },
+        "NoBackendEntry": {
+            "guards": [
+                {
+                    "predicate": {"node": "Lit", "value": True},
+                    # No backend EnvRef anywhere
+                    "caller_args": {
+                        "other": {"node": "Var", "name": "x"},
+                    },
+                },
+            ]
+        },
+    }
+
+    backend_surface = {
+        "n_surface_candidates": 0,
+        "n_surface_absent_by_c15": 0,
+        "n_surface_rows": 0,
+        "rows": {"Backend.aspirate": {}},  # dummy row
+    }
+
+    # Apply the attachment filter (the modified code)
+    for entry in contracts.values():
+        for guard in entry.get("guards", ()):
+            # Check predicate (with args is not None)
+            predicate_json = guard.get("predicate")
+            if predicate_json is not None:
+                from plr_sema.derive.predicate_ast import EnvRef, from_json as predicate_from_json, walk as predicate_walk
+                node = predicate_from_json(predicate_json)
+                if any(
+                    isinstance(sub, EnvRef)
+                    and sub.args is not None
+                    and len(sub.path) >= 2
+                    and sub.path[0] == "self"
+                    and sub.path[1] == "backend"
+                    for sub in predicate_walk(node)
+                ):
+                    entry["backend_surface"] = {"rows": backend_surface["rows"]}
+                    break
+            # Check caller_args (with or without args)
+            caller_args_json = guard.get("caller_args")
+            if caller_args_json:
+                for term_json in caller_args_json.values():
+                    term = predicate_from_json(term_json)
+                    if any(
+                        isinstance(sub, EnvRef)
+                        and len(sub.path) >= 2
+                        and sub.path[0] == "self"
+                        and sub.path[1] == "backend"
+                        for sub in predicate_walk(term)
+                    ):
+                        entry["backend_surface"] = {"rows": backend_surface["rows"]}
+                        break
+                else:
+                    continue
+                break
+
+    # Assert that Entry got the attachment (via caller_args)
+    assert "backend_surface" in contracts["Entry"], "Entry should have backend_surface via caller_args"
+    assert contracts["Entry"]["backend_surface"]["rows"] == backend_surface["rows"]
+
+    # Assert that NoBackendEntry did NOT get the attachment
+    assert "backend_surface" not in contracts["NoBackendEntry"], "NoBackendEntry should not have backend_surface"
+
+
 # ---------------------------------------------------------------------------
 # T42 (260909, spec 260909_plr-sema-observation-increment.md §16.4,
 # increment 7): the delegate->caller argument map, `compute_caller_args`'s

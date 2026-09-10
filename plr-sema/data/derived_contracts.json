@@ -102476,6 +102476,666 @@
       ]
     },
     "LiquidHandler.aspirate": {
+      "backend_surface": {
+        "rows": {
+          "Deck.get_all_resources": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "EVOBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "EVOBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "EVOBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "EVOBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "EVOBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "EVOBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "ExperimentalSCARA.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "ItemizedResource.column": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "column"
+            ]
+          },
+          "ItemizedResource.get_all_items": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ItemizedResource.row": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "row"
+            ]
+          },
+          "LiquidHandler.aspirate96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.dispense96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "tip_rack"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "NimbusBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "NimbusBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "NimbusBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "NimbusBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "OpentronsOT2Backend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "OpentronsOT2Backend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Simulator.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "PowderDispenserChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "dispense_parameters"
+            ]
+          },
+          "PreciseFlexBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "Resource.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "STARBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "STARBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "STARBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "SerializingBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "SerializingBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "SerializingBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "SerializingBackend.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "SerializingBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "USB._serialize_ctrl_transfer_request": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "bmRequestType",
+              "bRequest",
+              "wValue",
+              "wIndex",
+              "data_or_wLength"
+            ]
+          },
+          "VantageBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "VantageBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "VantageBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "VantageBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "VantageBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "VantageBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          }
+        }
+      },
       "channel_guards": [
         {
           "condition": "self._tip is None",
@@ -102992,6 +103652,666 @@
       ]
     },
     "LiquidHandler.aspirate96": {
+      "backend_surface": {
+        "rows": {
+          "Deck.get_all_resources": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "EVOBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "EVOBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "EVOBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "EVOBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "EVOBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "EVOBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "ExperimentalSCARA.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "ItemizedResource.column": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "column"
+            ]
+          },
+          "ItemizedResource.get_all_items": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ItemizedResource.row": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "row"
+            ]
+          },
+          "LiquidHandler.aspirate96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.dispense96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "tip_rack"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "NimbusBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "NimbusBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "NimbusBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "NimbusBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "OpentronsOT2Backend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "OpentronsOT2Backend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Simulator.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "PowderDispenserChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "dispense_parameters"
+            ]
+          },
+          "PreciseFlexBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "Resource.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "STARBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "STARBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "STARBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "SerializingBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "SerializingBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "SerializingBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "SerializingBackend.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "SerializingBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "USB._serialize_ctrl_transfer_request": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "bmRequestType",
+              "bRequest",
+              "wValue",
+              "wIndex",
+              "data_or_wLength"
+            ]
+          },
+          "VantageBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "VantageBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "VantageBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "VantageBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "VantageBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "VantageBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          }
+        }
+      },
       "gaps": [],
       "guards": [
         {
@@ -105935,6 +107255,666 @@
       ]
     },
     "LiquidHandler.dispense": {
+      "backend_surface": {
+        "rows": {
+          "Deck.get_all_resources": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "EVOBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "EVOBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "EVOBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "EVOBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "EVOBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "EVOBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "ExperimentalSCARA.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "ItemizedResource.column": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "column"
+            ]
+          },
+          "ItemizedResource.get_all_items": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ItemizedResource.row": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "row"
+            ]
+          },
+          "LiquidHandler.aspirate96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.dispense96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "tip_rack"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "NimbusBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "NimbusBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "NimbusBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "NimbusBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "OpentronsOT2Backend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "OpentronsOT2Backend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Simulator.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "PowderDispenserChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "dispense_parameters"
+            ]
+          },
+          "PreciseFlexBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "Resource.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "STARBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "STARBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "STARBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "SerializingBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "SerializingBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "SerializingBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "SerializingBackend.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "SerializingBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "USB._serialize_ctrl_transfer_request": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "bmRequestType",
+              "bRequest",
+              "wValue",
+              "wIndex",
+              "data_or_wLength"
+            ]
+          },
+          "VantageBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "VantageBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "VantageBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "VantageBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "VantageBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "VantageBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          }
+        }
+      },
       "channel_guards": [
         {
           "condition": "self._tip is None",
@@ -106476,6 +108456,666 @@
       ]
     },
     "LiquidHandler.dispense96": {
+      "backend_surface": {
+        "rows": {
+          "Deck.get_all_resources": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "EVOBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "EVOBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "EVOBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "EVOBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "EVOBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "EVOBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "ExperimentalSCARA.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "ItemizedResource.column": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "column"
+            ]
+          },
+          "ItemizedResource.get_all_items": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ItemizedResource.row": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "row"
+            ]
+          },
+          "LiquidHandler.aspirate96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.dispense96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "tip_rack"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "NimbusBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "NimbusBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "NimbusBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "NimbusBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "OpentronsOT2Backend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "OpentronsOT2Backend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Simulator.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "PowderDispenserChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "dispense_parameters"
+            ]
+          },
+          "PreciseFlexBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "Resource.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "STARBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "STARBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "STARBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "SerializingBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "SerializingBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "SerializingBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "SerializingBackend.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "SerializingBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "USB._serialize_ctrl_transfer_request": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "bmRequestType",
+              "bRequest",
+              "wValue",
+              "wIndex",
+              "data_or_wLength"
+            ]
+          },
+          "VantageBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "VantageBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "VantageBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "VantageBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "VantageBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "VantageBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          }
+        }
+      },
       "gaps": [],
       "guards": [
         {
@@ -107161,6 +109801,666 @@
       ]
     },
     "LiquidHandler.drop_tips": {
+      "backend_surface": {
+        "rows": {
+          "Deck.get_all_resources": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "EVOBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "EVOBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "EVOBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "EVOBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "EVOBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "EVOBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "ExperimentalSCARA.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "ItemizedResource.column": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "column"
+            ]
+          },
+          "ItemizedResource.get_all_items": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ItemizedResource.row": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "row"
+            ]
+          },
+          "LiquidHandler.aspirate96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.dispense96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "tip_rack"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "NimbusBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "NimbusBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "NimbusBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "NimbusBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "OpentronsOT2Backend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "OpentronsOT2Backend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Simulator.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "PowderDispenserChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "dispense_parameters"
+            ]
+          },
+          "PreciseFlexBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "Resource.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "STARBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "STARBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "STARBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "SerializingBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "SerializingBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "SerializingBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "SerializingBackend.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "SerializingBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "USB._serialize_ctrl_transfer_request": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "bmRequestType",
+              "bRequest",
+              "wValue",
+              "wIndex",
+              "data_or_wLength"
+            ]
+          },
+          "VantageBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "VantageBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "VantageBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "VantageBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "VantageBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "VantageBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          }
+        }
+      },
       "channel_effect": "NO_TIP",
       "channel_guards": [
         {
@@ -107707,6 +111007,666 @@
       ]
     },
     "LiquidHandler.drop_tips96": {
+      "backend_surface": {
+        "rows": {
+          "Deck.get_all_resources": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "EVOBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "EVOBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "EVOBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "EVOBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "EVOBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "EVOBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "ExperimentalSCARA.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "ItemizedResource.column": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "column"
+            ]
+          },
+          "ItemizedResource.get_all_items": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ItemizedResource.row": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "row"
+            ]
+          },
+          "LiquidHandler.aspirate96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.dispense96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "tip_rack"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "NimbusBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "NimbusBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "NimbusBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "NimbusBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "OpentronsOT2Backend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "OpentronsOT2Backend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Simulator.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "PowderDispenserChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "dispense_parameters"
+            ]
+          },
+          "PreciseFlexBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "Resource.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "STARBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "STARBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "STARBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "SerializingBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "SerializingBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "SerializingBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "SerializingBackend.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "SerializingBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "USB._serialize_ctrl_transfer_request": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "bmRequestType",
+              "bRequest",
+              "wValue",
+              "wIndex",
+              "data_or_wLength"
+            ]
+          },
+          "VantageBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "VantageBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "VantageBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "VantageBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "VantageBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "VantageBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          }
+        }
+      },
       "gaps": [],
       "guards": [
         {
@@ -111289,6 +115249,666 @@
       ]
     },
     "LiquidHandler.pick_up_resource": {
+      "backend_surface": {
+        "rows": {
+          "Deck.get_all_resources": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "EVOBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "EVOBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "EVOBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "EVOBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "EVOBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "EVOBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "ExperimentalSCARA.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "ItemizedResource.column": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "column"
+            ]
+          },
+          "ItemizedResource.get_all_items": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ItemizedResource.row": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "row"
+            ]
+          },
+          "LiquidHandler.aspirate96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.dispense96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "tip_rack"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "NimbusBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "NimbusBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "NimbusBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "NimbusBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "OpentronsOT2Backend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "OpentronsOT2Backend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Simulator.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "PowderDispenserChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "dispense_parameters"
+            ]
+          },
+          "PreciseFlexBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "Resource.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "STARBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "STARBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "STARBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "SerializingBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "SerializingBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "SerializingBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "SerializingBackend.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "SerializingBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "USB._serialize_ctrl_transfer_request": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "bmRequestType",
+              "bRequest",
+              "wValue",
+              "wIndex",
+              "data_or_wLength"
+            ]
+          },
+          "VantageBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "VantageBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "VantageBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "VantageBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "VantageBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "VantageBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          }
+        }
+      },
       "gaps": [
         [
           "unresolved_delegate",
@@ -112737,6 +117357,666 @@
       ]
     },
     "LiquidHandler.pick_up_tips96": {
+      "backend_surface": {
+        "rows": {
+          "Deck.get_all_resources": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "EVOBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "EVOBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "EVOBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "EVOBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "EVOBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "EVOBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "ExperimentalSCARA.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "ItemizedResource.column": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "column"
+            ]
+          },
+          "ItemizedResource.get_all_items": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ItemizedResource.row": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "row"
+            ]
+          },
+          "LiquidHandler.aspirate96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.dispense96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "LiquidHandler.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "tip_rack"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "NimbusBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "NimbusBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "NimbusBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "NimbusBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "OpentronsOT2Backend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "OpentronsOT2Backend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Simulator.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "PowderDispenserChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "dispense_parameters"
+            ]
+          },
+          "PreciseFlexBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "Resource.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "STARBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "STARBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "STARBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "SerializingBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "SerializingBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "SerializingBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "SerializingBackend.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "SerializingBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "USB._serialize_ctrl_transfer_request": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "bmRequestType",
+              "bRequest",
+              "wValue",
+              "wIndex",
+              "data_or_wLength"
+            ]
+          },
+          "VantageBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "VantageBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "VantageBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "VantageBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "VantageBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "VantageBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          }
+        }
+      },
       "gaps": [],
       "guards": [
         {
@@ -362676,16 +367956,16 @@
       "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/external/pylabrobot"
     },
     "praxis": {
-      "branch": "wt-20260909-172820",
+      "branch": "plr-sema-inc8-move-family",
       "dirty": true,
-      "dirty_content_id": "7640544e8b8ab1a30d53de3c6d1c420b7d78c54f6936b977892238cf46767e0d",
-      "hash": "03f622437577bb0555af6f0c01f46a273ebfa621",
+      "dirty_content_id": "261f2a8eaae633e07887f9d5a5d8450f9e9022696faf6cfc0533daa26abf3cf8",
+      "hash": "ac3c9903e948264571cab9cae07d7b3d7ce48ec8",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-09T20:41:06.988068+00:00",
+    "stamped_at": "2026-09-10T15:34:32.072756+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   }
