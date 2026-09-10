@@ -4530,6 +4530,56 @@ def test_derive_contract_caller_args_sites_declines_on_closure_unresolved_call()
     assert [s["lineno"] for s in guard_decides.caller_args_sites] == [2]
 
 
+def test_derive_contract_caller_args_sites_declines_on_closure_record_missing_k() -> None:
+    """S17.5.1's SECOND fail-closed condition, the sibling of the test
+    above: a visited closure record with no `K` -- i.e. present in the
+    survey index and therefore walked, but absent from `function_index`
+    so its AST is unavailable -- makes the WHOLE closure's M3 fold
+    decline, and the SAME closure with that record's `K` supplied
+    decides.
+
+    Without this, an incomplete site set could be folded as if it were
+    complete, which is the one way M3's superset argument could be
+    unsound: the fold's soundness rests on ranging over a SUPERSET of the
+    executed call sites, and a record whose body could not be read may
+    contain an admitted site nobody counted. Added at the sprint-133
+    close audit, which found the condition implemented correctly but
+    exercised by no test."""
+    a_node = _func_node("def A(self, x):\n    self.B(x)\n")
+    b_node = _func_node("def B(self, p):\n    self.D(p)\n")
+    d_node = _func_node(
+        "def D(self, y):\n"
+        "    if y:\n"
+        "        raise ValueError('y')\n"
+    )
+    rec_a = _synthetic_record("Foo.A", class_name="Foo", delegates_to=("B",))
+    rec_b = _synthetic_record("Foo.B", class_name="Foo", delegates_to=("D",))
+    rec_d = _synthetic_record("Foo.D", class_name="Foo", findings=(_synthetic_finding(3),))
+    index = build_index([rec_a, rec_b, rec_d])
+
+    # `Foo.B` is walked (it is in the survey index and `Foo.A` delegates to
+    # it) but its AST is absent, so the closure carries a record with no `K`.
+    function_index_missing_k = {
+        ("synthetic.module", "Foo.A", 1): a_node,
+        ("synthetic.module", "Foo.D", 1): d_node,
+    }
+    contract_declines = derive_contract(
+        "synthetic.module", "Foo.A", index, function_index=function_index_missing_k
+    )
+    (guard_declines,) = [g for g in contract_declines.guards if g.depth >= 1]
+    assert guard_declines.caller_args_sites is None
+
+    # The same closure with `Foo.B`'s `K` supplied decides.
+    function_index_complete = dict(function_index_missing_k)
+    function_index_complete[("synthetic.module", "Foo.B", 1)] = b_node
+    contract_decides = derive_contract(
+        "synthetic.module", "Foo.A", index, function_index=function_index_complete
+    )
+    (guard_decides,) = [g for g in contract_decides.guards if g.depth >= 1]
+    assert guard_decides.caller_args_sites is not None
+    assert [s["lineno"] for s in guard_decides.caller_args_sites] == [2]
+
+
 # --- real-PLR pin: AC-17.5's stub-defeater and by-value surface counters ---
 
 
