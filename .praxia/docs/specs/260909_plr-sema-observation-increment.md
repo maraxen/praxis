@@ -1204,7 +1204,7 @@ carries a re-raise, the re-raise emits `UNKNOWN`, and one `UNKNOWN` makes the op
 >
 > **`join` is not modified, not overloaded and not called with a flag.** It stays the one function in
 > the package permitted to aggregate, its own docstring's claim stays true, and the filtering happens
-> at the one call site in `_check` (`plr-sema/src/plr_sema/check/__init__.py:920-955`) where
+> at the one call site in `_check` (`plr-sema/src/plr_sema/check/__init__.py:968-1003`) where
 > `excludes_sites` is already in hand. An implementation that taught `join` about scope would be the
 > configuration `SoundnessScope`'s own docstring refuses.
 
@@ -1324,7 +1324,7 @@ exception-class-keyed narrowing excuses precisely the rows the fence exists to c
 > two identities checkable rather than believed.
 
 > **Normative (F3 — the unscoped fence is untouched, and its untouchedness is asserted rather than
-> assumed).** `unsound` stays exactly `plr-sema/eval/oracle_common.py:1086-1088`, over `verdict`, with no
+> assumed).** `unsound` stays exactly `plr-sema/eval/oracle_common.py:1098-1100`, over `verdict`, with no
 > narrowing, no excuse and no frame test. `rows_excused_by_scope` — increment 6's pure annotation,
 > measured **0** at T36 (`outputs/plr-sema/oracle_replay_260909_inc6.json:2-21`) — keeps its definition
 > and gains a sibling, `rows_excused_by_frame`, for F2's own count. AC-16.8 asserts that the two
@@ -2073,7 +2073,7 @@ precondition guard the analyzer evaluated, outside the excluded sites, fires aga
 the recorded observation; it asserts nothing about completion (A-COMPLETES,
 `.praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md:752`), nothing about the backend, and
 nothing under a different observation. `compare` scores it with a **second** counter, `unsound_scoped`,
-beside the unmodified `unsound` (`plr-sema/eval/oracle_common.py:1086-1088`), and neither replaces the
+beside the unmodified `unsound` (`plr-sema/eval/oracle_common.py:1098-1100`), and neither replaces the
 other. **The alternative considered and rejected: emitting tier (iii) as `SAFE` with a marker** —
 increment 6 §15.5 already rejected it as unsound and must-not-implement, and nothing here reopens it.
 
