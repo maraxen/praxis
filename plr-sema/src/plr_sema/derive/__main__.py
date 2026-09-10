@@ -350,6 +350,7 @@ def build_derived_contracts_payload(
         # and the distinction §17.1.4 makes. Without this half, `aspirate`,
         # `dispense`, `drop_tips` at depth 1 with `caller_args` populated would
         # never receive the surface, and `:375`/`:383` would stay ½ on them.
+        n_entries_with_backend_surface = 0
         for entry in contracts.values():
             for guard in entry.get("guards", ()):
                 # Check predicate (with args is not None -- R-CONST's need)
@@ -365,6 +366,7 @@ def build_derived_contracts_payload(
                         for sub in predicate_walk(node)
                     ):
                         entry["backend_surface"] = {"rows": backend_surface["rows"]}
+                        n_entries_with_backend_surface += 1
                         break
                 # Check caller_args (with or without args -- D5b's need)
                 caller_args_json = guard.get("caller_args")
@@ -379,17 +381,20 @@ def build_derived_contracts_payload(
                             for sub in predicate_walk(term)
                         ):
                             entry["backend_surface"] = {"rows": backend_surface["rows"]}
+                            n_entries_with_backend_surface += 1
                             break
                     else:
                         # Continue to next guard if no backend EnvRef found in caller_args
                         continue
                     # Break outer loop if found in caller_args
                     break
+        backend_surface["n_entries_with_backend_surface"] = n_entries_with_backend_surface
     else:
         backend_surface = {
             "n_surface_candidates": 0,
             "n_surface_absent_by_c15": 0,
             "n_surface_rows": 0,
+            "n_entries_with_backend_surface": 0,
             "rows": {},
         }
     return {

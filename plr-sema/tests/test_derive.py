@@ -3185,8 +3185,9 @@ def test_ac_16_2_backend_surface_is_additive_fifth_top_level_key(
     )
     assert set(payload.keys()) == {"schema_version", "stamp", "receiver_state", "contracts", "backend_surface"}
     surface = payload["backend_surface"]
-    assert set(surface.keys()) == {"n_surface_candidates", "n_surface_absent_by_c15", "n_surface_rows", "rows"}
+    assert set(surface.keys()) == {"n_surface_candidates", "n_surface_absent_by_c15", "n_surface_rows", "n_entries_with_backend_surface", "rows"}
     assert surface["n_surface_rows"] > 0
+    assert surface["n_entries_with_backend_surface"] > 0
 
 
 def test_ac_16_2_backend_surface_degrades_when_function_index_omitted(
@@ -3203,6 +3204,7 @@ def test_ac_16_2_backend_surface_degrades_when_function_index_omitted(
         "n_surface_candidates": 0,
         "n_surface_absent_by_c15": 0,
         "n_surface_rows": 0,
+        "n_entries_with_backend_surface": 0,
         "rows": {},
     }
 
@@ -3352,6 +3354,55 @@ def test_ac_17_4_m_surf_attachment_extends_to_caller_args() -> None:
 
     # Assert that NoBackendEntry did NOT get the attachment
     assert "backend_surface" not in contracts["NoBackendEntry"], "NoBackendEntry should not have backend_surface"
+
+
+def test_ac_17_4_n_entries_with_backend_surface_counter_exists_in_payload(
+    real_stamp: SurveyStamp,
+) -> None:
+    """T53 (spec 260909_plr-sema-move-family-increment.md §17.1.4): the
+    `n_entries_with_backend_surface` counter in the `backend_surface` payload
+    sub-object must be published. This test verifies that the counter exists
+    in the payload with no function_index (else branch, fail-closed path)."""
+    from plr_sema.derive.__main__ import build_derived_contracts_payload
+
+    payload = build_derived_contracts_payload(
+        [],  # Empty records
+        {},  # Empty index
+        real_stamp,
+        # No other arguments -- triggers the else branch
+    )
+    # With no function_index, the counter should be 0 and present
+    assert "n_entries_with_backend_surface" in payload["backend_surface"]
+    assert payload["backend_surface"]["n_entries_with_backend_surface"] == 0
+
+
+def test_real_backend_surface_attachment_matches_counter(
+    survey_records: list[SurveyRecord],
+    survey_index: dict[tuple[str, str], SurveyRecord],
+    real_stamp: SurveyStamp,
+    plr_function_index: FunctionIndex,
+) -> None:
+    """AC-17.4 measurement: verify that the published
+    `n_entries_with_backend_surface` counter in the payload matches the
+    actual count of contract entries that received the attachment."""
+    payload = build_derived_contracts_payload(
+        survey_records,
+        survey_index,
+        real_stamp,
+        function_index=plr_function_index,
+    )
+
+    contracts = payload["contracts"]
+    backend_surface = payload["backend_surface"]
+
+    # Count entries that actually have backend_surface
+    actual_count = sum(1 for entry in contracts.values() if "backend_surface" in entry)
+
+    # Assert the counter matches
+    assert backend_surface["n_entries_with_backend_surface"] == actual_count, (
+        f"Counter mismatch: published {backend_surface['n_entries_with_backend_surface']} "
+        f"but actual count is {actual_count}"
+    )
 
 
 # ---------------------------------------------------------------------------

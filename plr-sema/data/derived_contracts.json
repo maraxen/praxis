@@ -1,5 +1,6 @@
 {
   "backend_surface": {
+    "n_entries_with_backend_surface": 13,
     "n_surface_absent_by_c15": 71,
     "n_surface_candidates": 160,
     "n_surface_rows": 89,
@@ -367958,14 +367959,14 @@
     "praxis": {
       "branch": "plr-sema-inc8-move-family",
       "dirty": true,
-      "dirty_content_id": "261f2a8eaae633e07887f9d5a5d8450f9e9022696faf6cfc0533daa26abf3cf8",
-      "hash": "ac3c9903e948264571cab9cae07d7b3d7ce48ec8",
+      "dirty_content_id": "5d0be5ecd6eed5389f9db8e7395ed0ac6377066ff6953834d509e538de106349",
+      "hash": "8adb83f4049536061c0f7df1a2240c3fd62f1760",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-10T15:34:32.072756+00:00",
+    "stamped_at": "2026-09-10T15:39:59.390666+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   }
