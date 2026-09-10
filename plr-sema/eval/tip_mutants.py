@@ -66,7 +66,15 @@ log = logging.getLogger("tip_mutants")
 
 DEFAULT_CONTRACTS = REPO_ROOT / "plr-sema" / "data" / "derived_contracts.json"
 
-_EXPECTED_EXC = {"m1_remove_pickup": "NoTipError", "m2_duplicate_pickup": "HasTipError"}
+_EXPECTED_EXC = {
+    "m1_remove_pickup": "NoTipError",
+    "m2_duplicate_pickup": "HasTipError",
+    # 260909 (spec §17.9, T55): PLR raises a bare `RuntimeError` at
+    # `external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2069-2070`
+    # ("Resource ... already picked up") -- there is no dedicated exception
+    # class for this guard, unlike `NoTipError`/`HasTipError`.
+    "p3a_pickup_already_held": "RuntimeError",
+}
 
 
 @dataclasses.dataclass
@@ -164,7 +172,79 @@ def make_m2_duplicate_pickup(example: dict[str, Any]) -> dict[str, Any] | None:
     return mutant
 
 
-_MUTATORS = {"m1_remove_pickup": make_m1_remove_pickup, "m2_duplicate_pickup": make_m2_duplicate_pickup}
+def _first_move_family_index(call_sequence: list[dict[str, Any]]) -> int | None:
+    """260909 (spec 260909_plr-sema-move-family-increment.md §17.9, T55):
+    the move family's own analogue of `_first_pickup_index` -- there is no
+    standalone `pick_up_resource` call anywhere in this harness's corpus or
+    fixtures (`training/verify/dispatcher.py`'s `SUPPORTED_TOOLS` does not
+    expose it as a dispatchable verb at all; a raw `pick_up_resource` call
+    entry would raise `UnsupportedCallError` before `verify()` could even
+    plan it), so "the first pickup index" for THIS family is the first
+    `move_resource`/`move_plate`/`move_lid` call -- each of those three
+    verbs is the one place `pick_up_resource` is reachable, as an internal
+    bare-`self` delegate call the move wrapper itself makes."""
+    for i, c in enumerate(call_sequence):
+        if c.get("name") in ("move_resource", "move_plate", "move_lid"):
+            return i
+    return None
+
+
+#: `move_resource`/`move_plate`/`move_lid` call params carry a bare
+#: `"destination"` string naming a deck position (e.g. `"reservoir_1"`,
+#: `"hotel_stack_1"`) -- never a `"<resource>.<Row><Col>"` well ref, so
+#: `_shift_tip_ref`'s regex cannot apply here. This is the move family's
+#: own operand shift (§17.9's own box: "a `resource`/`destination` shift
+#: rather than a tip-spot one").
+_DEST_SUFFIX_RE = re.compile(r"^(?P<base>.+)_(?P<n>\d+)$")
+
+
+def _shift_destination_ref(ref: Any) -> Any:
+    """Bump a trailing `_<N>` numeric suffix by one (wrapping into `_1` on
+    overflow past 9, matching `_shift_tip_ref`'s own "still-valid, just
+    different" discipline) -- non-string / non-matching values pass through
+    unchanged, defensively, exactly like `_shift_tip_ref`."""
+    if not isinstance(ref, str):
+        return ref
+    m = _DEST_SUFFIX_RE.match(ref)
+    if m is None:
+        return ref
+    n = int(m.group("n")) + 1
+    if n > 9:
+        n = 1
+    return f"{m.group('base')}_{n}"
+
+
+def make_p3a_pickup_already_held(example: dict[str, Any]) -> dict[str, Any] | None:
+    """260909 (spec §17.9, T55): the ONE mutator of the `p3a` class --
+    ``p3a_pickup_already_held``. Finds the first move-family call
+    (:func:`_first_move_family_index`), duplicates it with its destination
+    operand shifted (:func:`_shift_destination_ref`), and inserts the
+    duplicate immediately after the original -- the identical
+    duplicate-and-shift shape :func:`make_m2_duplicate_pickup` uses for
+    `pick_up_tips`, adapted to the move family's own single dispatchable
+    verb set (there is no separate `pick_up_resource` call to target,
+    per :func:`_first_move_family_index`'s own docstring). Returns `None`
+    to DECLINE -- the "skip, don't guess" discipline `make_m1_remove_pickup`/
+    `make_m2_duplicate_pickup` already follow -- when the base example
+    contains no move-family call at all."""
+    idx = _first_move_family_index(example["call_sequence"])
+    if idx is None:
+        return None
+    mutant = copy.deepcopy(example)
+    call = mutant["call_sequence"][idx]
+    duplicate = copy.deepcopy(call)
+    dest = duplicate.get("params", {}).get("destination")
+    if dest is not None:
+        duplicate["params"]["destination"] = _shift_destination_ref(dest)
+    mutant["call_sequence"].insert(idx + 1, duplicate)
+    return mutant
+
+
+_MUTATORS = {
+    "m1_remove_pickup": make_m1_remove_pickup,
+    "m2_duplicate_pickup": make_m2_duplicate_pickup,
+    "p3a_pickup_already_held": make_p3a_pickup_already_held,
+}
 
 
 def run_one_mutant(
@@ -258,9 +338,17 @@ def run_one_mutant(
     )
 
 
-def _clean_corpus_examples(corpus_path: Path, limit: int | None) -> list[tuple[str, dict[str, Any]]]:
+#: 260909 (spec §17.9, T55): the base-population filter is now a
+#: parameter (`required_call_names`) rather than a hardcoded
+#: `"pick_up_tips"` literal -- m1/m2's own call sites below pass
+#: `{"pick_up_tips"}` (byte-identical behaviour to every pre-T55 caller);
+#: `p3a_pickup_already_held`'s own base population is the move family's
+#: `{"move_resource", "move_plate", "move_lid"}` instead.
+def _clean_corpus_examples(
+    corpus_path: Path, limit: int | None, *, required_call_names: frozenset[str] = frozenset({"pick_up_tips"})
+) -> list[tuple[str, dict[str, Any]]]:
     """Rows the tier-1 replay executes CLEAN (`RuntimeOutcome.passed`) and
-    that contain >=1 `pick_up_tips` call.
+    that contain >=1 call whose name is in `required_call_names`.
     """
     out: list[tuple[str, dict[str, Any]]] = []
     with corpus_path.open(encoding="utf-8") as f:
@@ -276,7 +364,7 @@ def _clean_corpus_examples(corpus_path: Path, limit: int | None) -> list[tuple[s
                 continue
             if no_call_reason or skip_reason:
                 continue
-            if not any(c.get("name") == "pick_up_tips" for c in call_sequence):
+            if not any(c.get("name") in required_call_names for c in call_sequence):
                 continue
             example = {"call_sequence": call_sequence, "intent_record": intent_record, "deck_layout": deck_layout}
             try:
@@ -290,7 +378,9 @@ def _clean_corpus_examples(corpus_path: Path, limit: int | None) -> list[tuple[s
     return out
 
 
-def _example_files(examples_dir: Path) -> list[tuple[str, dict[str, Any]]]:
+def _example_files(
+    examples_dir: Path, *, required_call_names: frozenset[str] = frozenset({"pick_up_tips"})
+) -> list[tuple[str, dict[str, Any]]]:
     out: list[tuple[str, dict[str, Any]]] = []
     if not examples_dir.is_dir():
         return out
@@ -298,10 +388,13 @@ def _example_files(examples_dir: Path) -> list[tuple[str, dict[str, Any]]]:
         payload = json.loads(path.read_text(encoding="utf-8"))
         if "call_sequence" not in payload:
             continue
-        if not any(c.get("name") == "pick_up_tips" for c in payload["call_sequence"]):
+        if not any(c.get("name") in required_call_names for c in payload["call_sequence"]):
             continue
         out.append((path.stem, payload))
     return out
+
+
+_MOVE_FAMILY_CALL_NAMES = frozenset({"move_resource", "move_plate", "move_lid"})
 
 
 #: A dedicated, tier-3-only fixture directory -- NOT `training/examples/`.
@@ -351,6 +444,32 @@ def main(argv: list[str] | None = None) -> int:
         n_example_bases,
     )
 
+    # 260909 (spec §17.9, T55): `p3a_pickup_already_held`'s own base
+    # population -- move-family calls, not `pick_up_tips` -- built the
+    # SAME way (clean corpus rows, then `--examples-dir`/
+    # `--extra-examples-dir`), kept SEPARATE from `bases` above so m1/m2
+    # (which need a `pick_up_tips` call) and p3a (which needs a
+    # move-family call) each only run against a population that can
+    # possibly construct their own mutant, rather than declining on every
+    # row of the other family's population.
+    move_bases: list[tuple[str, dict[str, Any]]] = []
+    move_bases.extend(
+        _clean_corpus_examples(args.corpus, args.limit, required_call_names=_MOVE_FAMILY_CALL_NAMES)
+    )
+    n_move_corpus_bases = len(move_bases)
+    move_bases.extend(_example_files(args.examples_dir, required_call_names=_MOVE_FAMILY_CALL_NAMES))
+    if args.extra_examples_dir is not None:
+        move_bases.extend(
+            _example_files(args.extra_examples_dir, required_call_names=_MOVE_FAMILY_CALL_NAMES)
+        )
+    n_move_example_bases = len(move_bases) - n_move_corpus_bases
+    log.info(
+        "p3a base examples: %d from corpus (clean, has a move-family call), %d from "
+        "--examples-dir/--extra-examples-dir",
+        n_move_corpus_bases,
+        n_move_example_bases,
+    )
+
     results: list[MutantResult] = []
     for base_id, example in bases:
         for mutant_class in ("m1_remove_pickup", "m2_duplicate_pickup"):
@@ -360,8 +479,17 @@ def main(argv: list[str] | None = None) -> int:
                     _MUTATORS[mutant_class], _EXPECTED_EXC[mutant_class],
                 )
             )
+    for base_id, example in move_bases:
+        results.append(
+            run_one_mutant(
+                base_id, "p3a_pickup_already_held", example, contracts_json, param_names,
+                _MUTATORS["p3a_pickup_already_held"], _EXPECTED_EXC["p3a_pickup_already_held"],
+            )
+        )
 
-    by_class: dict[str, list[MutantResult]] = {"m1_remove_pickup": [], "m2_duplicate_pickup": []}
+    by_class: dict[str, list[MutantResult]] = {
+        "m1_remove_pickup": [], "m2_duplicate_pickup": [], "p3a_pickup_already_held": [],
+    }
     for r in results:
         by_class[r.mutant_class].append(r)
 
@@ -400,7 +528,31 @@ def main(argv: list[str] | None = None) -> int:
             hard_violations.append(
                 f"{mclass}: criterion (ii) VIOLATED -- {len(unsound_will_fail_rows)} row(s) static WILL_FAIL where simulator ran clean: {unsound_will_fail_rows[:5]}"
             )
-        if not will_fail_fired[mclass]:
+
+        if mclass == "p3a_pickup_already_held":
+            # 260909 (spec §17.9, T55): p3a's OWN floor -- NOT criterion
+            # (iii)'s "fired at least once" -- `achieved == attempted` with
+            # `attempted >= 60`, `attempted` == `n_ran` (p1's own shape:
+            # `n_achieved_will_fail_at_raised_index` over `n_ran`), 93 not
+            # 31 as the class's structural denominator (§17.9's own C10
+            # rebuttal).
+            n_attempted = len(ran)
+            n_achieved = verdict_counts.get("will_fail", 0)
+            summary[mclass]["n_attempted"] = n_attempted
+            summary[mclass]["n_achieved_will_fail_at_raised_index"] = n_achieved
+            summary[mclass]["floor_denominator_population"] = 93
+            summary[mclass]["floor_met"] = n_attempted >= 60 and n_achieved == n_attempted
+            if n_attempted < 60:
+                hard_violations.append(
+                    f"{mclass}: floor FAILED -- attempted={n_attempted} < 60 "
+                    f"(n_ran={len(ran)}, n_raised_as_expected={len(raised_as_expected)})"
+                )
+            elif n_achieved != n_attempted:
+                hard_violations.append(
+                    f"{mclass}: floor FAILED -- achieved={n_achieved} != attempted={n_attempted} "
+                    f"(static verdicts at raising index: {verdict_counts})"
+                )
+        elif not will_fail_fired[mclass]:
             hard_violations.append(
                 f"{mclass}: criterion (iii) FAILED -- WILL_FAIL never fired in the direction the simulator raised "
                 f"({len(raised_as_expected)} rows raised as expected; static verdicts there: {verdict_counts})"
@@ -409,6 +561,8 @@ def main(argv: list[str] | None = None) -> int:
     report = {
         "n_corpus_bases": n_corpus_bases,
         "n_example_bases": n_example_bases,
+        "n_move_corpus_bases": n_move_corpus_bases,
+        "n_move_example_bases": n_move_example_bases,
         "by_class": summary,
         "hard_violations": hard_violations,
         "gate_passed": not hard_violations,
@@ -427,7 +581,7 @@ def main(argv: list[str] | None = None) -> int:
     if hard_violations:
         log.error("GATE FAILED:\n%s", "\n".join(hard_violations))
         return 1
-    log.info("GATE PASSED: criteria (i), (ii), (iii) all hold for both mutant classes.")
+    log.info("GATE PASSED: criteria (i)/(ii)/(iii) hold for m1/m2, and the floor holds for p3a.")
     return 0
 
 

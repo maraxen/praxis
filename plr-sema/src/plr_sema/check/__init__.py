@@ -418,6 +418,7 @@ def _findings_for_guards(
     class_hierarchy: dict[str, frozenset[str]] | None,
     poisoned: bool,
     excludes_sites: list[PlrSite] | None,
+    scope_excluded_sites: list[PlrSite] | None = None,
 ) -> list[Finding]:
     """260904 (spec §15.4/§15.5/§15.7, increment 6, T31-2): every guard in
     ``contract["guards"]`` the tip family did not already consume is
@@ -467,6 +468,14 @@ def _findings_for_guards(
             site = _plr_site_from_dict(guard.get("site"))
             if site is not None and site not in excludes_sites:
                 excludes_sites.append(site)
+        # 260909 (§17.8.1 block (10), T55): same fold-and-dedup shape as
+        # `excludes_sites` above, keyed on `GuardResult.scope_excluded`
+        # rather than `tier_iii` -- a per-site tally of E-SCOPE exclusions,
+        # invisible before this field existed.
+        if result.scope_excluded and scope_excluded_sites is not None:
+            site = _plr_site_from_dict(guard.get("site"))
+            if site is not None and site not in scope_excluded_sites:
+                scope_excluded_sites.append(site)
     return findings
 
 
@@ -479,11 +488,13 @@ def _findings_for_call(
     receiver_states: dict[str, Any],
     resources_by_slot: dict[int, ir.Resource],
     walk: tipstate.TipWalk,
+    anchor_walk: tipstate.AnchorWalk,
     vwalk: volumestate.VolumeWalk,
     env: frozenset[str],
     poisoned: bool,
     class_hierarchy: dict[str, frozenset[str]] | None = None,
     excludes_sites: list[PlrSite] | None = None,
+    scope_excluded_sites: list[PlrSite] | None = None,
 ) -> list[Finding]:
     """The per-``CALL`` body: exactly today's (pre-IR) per-operation logic
     (§11.4.1), re-keyed from an ``OperationNode`` to a ``CALL`` instruction
@@ -524,9 +535,21 @@ def _findings_for_call(
     if contract is None:
         return [_unsupported_tool(operation_id)]
 
+    # 260909 (spec 260909_plr-sema-move-family-increment.md §17.4.0, T52):
+    # `tipstate.evaluate_anchor_call` runs BEFORE `evaluate_call`'s two
+    # loops, for the SAME reason tipstate itself runs before the
+    # `guard_predicate_unparsed` loop below -- its own emission REPLACES,
+    # one-for-one, the finding a consumed guard index would otherwise get.
+    # Anchor and channel `consumed` indices are disjoint by construction
+    # (§17.4.0 decision 2, AC-17.3(b)), so the union below needs no
+    # precedence rule.
+    anchor_findings, anchor_consumed = tipstate.evaluate_anchor_call(
+        operation_id, call, contract, receiver_states.get(call.receiver_type), anchor_walk
+    )
     tip_findings, consumed = tipstate.evaluate_call(
         operation_id, call, contract, receiver_states.get(call.receiver_type), walk, poisoned=poisoned
     )
+    consumed = consumed | anchor_consumed
     volume_findings = volumestate.evaluate_call(
         operation_id, call, contract, receiver_states.get(call.receiver_type), vwalk, env=env, poisoned=poisoned
     )
@@ -546,8 +569,10 @@ def _findings_for_call(
             class_hierarchy=class_hierarchy,
             poisoned=poisoned,
             excludes_sites=excludes_sites,
+            scope_excluded_sites=scope_excluded_sites,
         )
     )
+    findings.extend(anchor_findings)
     findings.extend(tip_findings)
     findings.extend(volume_findings)
     if inside_loop:
@@ -621,6 +646,7 @@ def check_ir(
     env: frozenset[str] = frozenset(),
     class_hierarchy: dict[str, frozenset[str]] | None = None,
     excludes_sites: list[PlrSite] | None = None,
+    scope_excluded_sites: list[PlrSite] | None = None,
 ) -> tuple[Finding, ...]:
     """Spec §11.4.1 (260902) / §12.3 (260903, "region semantics for a
     region with a proved trip"): the analysis core. A structured,
@@ -699,6 +725,14 @@ def check_ir(
     """
     receiver_states = receiver_states or {}
     walk = tipstate.TipWalk()
+    # 260909 (spec 260909_plr-sema-move-family-increment.md §17.4.0 decision
+    # 5, T52): `AnchorWalk`, threaded through this SAME region-stack pass in
+    # `TipWalk`'s own manner -- one `PickupState` per `(receiver, anchor
+    # field)` pair, carried across CALLs on the same receiver.
+    anchor_walk = tipstate.AnchorWalk()
+    _all_anchor_fields: frozenset[str] = frozenset(
+        f for rs in receiver_states.values() for f in rs.get("anchor_fields", ())
+    )
     vwalk = volumestate.VolumeWalk()
     poisoned_slots = tipstate.disabled_receivers(bytecode.instructions, receiver_states)
     findings: list[Finding] = []
@@ -724,10 +758,12 @@ def check_ir(
                 receiver_states=receiver_states,
                 resources_by_slot=resources_by_slot,
                 walk=walk,
+                anchor_walk=anchor_walk,
                 vwalk=vwalk,
                 env=env,
                 class_hierarchy=class_hierarchy,
                 excludes_sites=excludes_sites,
+                scope_excluded_sites=scope_excluded_sites,
                 poisoned=instr.receiver in poisoned_slots,
             )
         )
@@ -740,6 +776,18 @@ def check_ir(
         receivers, _end_pc = tipstate.region_receivers(instructions, open_pc)
         for slot in receivers:
             walk.widen(slot)
+            # 260909 (spec §17.4.0 decision 5, T52): `AnchorWalk` gets the
+            # SAME region-entry widening `TipWalk` does, for the identical
+            # reason -- a receiver mentioned in an unresolved LOOP/BRANCH
+            # region may have been mutated on a path this analyzer cannot
+            # trace. Every known anchor field is widened for the slot
+            # (never just one receiver_type's own) -- over-widening a slot
+            # for a field it does not actually carry is harmless (that
+            # `(slot, field)` pair is never consulted, since a real guard's
+            # own `anchor_field` always names a field its OWN receiver_type
+            # actually has).
+            for anchor_field_name in _all_anchor_fields:
+                anchor_walk.widen(slot, anchor_field_name)
         widen_region_volumes(open_pc)
 
     def walk_block(

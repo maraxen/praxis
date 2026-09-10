@@ -107,16 +107,16 @@
       "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/external/pylabrobot"
     },
     "praxis": {
-      "branch": "wt-20260909-172820",
+      "branch": "plr-sema-inc8-move-family",
       "dirty": true,
-      "dirty_content_id": "beb0b1e1127910893f01ef430fe500a46971dc9f9bef7c487964d799daa53686",
-      "hash": "ae0bd2d789afe8ada7553f04db7ddc82f79cb2b3",
+      "dirty_content_id": "5d0be5ecd6eed5389f9db8e7395ed0ac6377066ff6953834d509e538de106349",
+      "hash": "8adb83f4049536061c0f7df1a2240c3fd62f1760",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-09T18:33:53.829886+00:00",
+    "stamped_at": "2026-09-10T15:39:59.390666+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   },

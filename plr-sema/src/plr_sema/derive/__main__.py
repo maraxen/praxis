@@ -45,6 +45,8 @@ from typing import Any
 from plr_sema._provenance import DEFAULT_SURFACE, Surface, survey_stamp
 from plr_sema.derive import (
     SCHEMA_VERSION,
+    SUPPORTED_TOOLS,
+    ClassBasesIndex,
     InlinedGuard,
     SurveyRecord,
     _stamp_to_dict,
@@ -52,9 +54,12 @@ from plr_sema.derive import (
     build_gap_ledger,
     build_index,
     build_unique_index,
+    compute_m_inh_selection,
     default_plr_pkg_root,
     derive_contract,
     load_survey,
+    measure_m_inh_entry_point_impact,
+    resolve_supported_tool,
     scan_dropped_receiver_calls,
 )
 from plr_sema.derive.bindings import param_defaults_from_function
@@ -68,10 +73,12 @@ from plr_sema.derive.receiver_state import (
     VolumeAnchor,
     backend_surface_entry_to_json,
     build_backend_surface,
+    build_plr_class_bases_index,
     build_plr_class_index,
     build_plr_function_index,
     collect_env_ref_method_names,
     compute_channel_bridge,
+    compute_singleton_typestate_anchors,
     compute_tip_families,
     compute_volume_anchors,
     compute_volume_bridge,
@@ -136,6 +143,29 @@ def _guard_to_json(guard: InlinedGuard) -> dict[str, Any]:
     payload["caller_args"] = guard.caller_args
     payload["caller_reachability_clear"] = guard.caller_reachability_clear
     payload["caller_scope_trail"] = None if guard.caller_scope_trail is None else list(guard.caller_scope_trail)
+    # 260909 (spec 260909_plr-sema-move-family-increment.md S17.5.1, T54,
+    # M3): additive `caller_args_sites` -- the whole-closure per-call-site
+    # list, BESIDE the unchanged `caller_args` (never replacing it, C13's
+    # own concession). Already a plain JSON-safe list of dicts (each
+    # `"args"` value is `predicate_to_json`'s own output, per
+    # `compute_caller_args_for_call`) -- no further encoding step. `None`
+    # (key still present) for a depth-0 guard, or when the closure's own
+    # site-set is incomplete (an unresolved self-call anywhere in the
+    # closure, or a visited record with no `K` -- the two fail-closed
+    # conditions), same "computed, found nothing" vs. "field never
+    # existed" additive-field discipline every other field here uses.
+    payload["caller_args_sites"] = (
+        None if guard.caller_args_sites is None else [dict(s) for s in guard.caller_args_sites]
+    )
+    # 260909 (spec §17.4.3, T52, P6): additive `anchor_state`/`anchor_field`
+    # -- this guard's own intra-operation pre-state on its entry point's
+    # singleton typestate anchor, and WHICH anchor field it is about (see
+    # `InlinedGuard.anchor_state`/`.anchor_field`'s own docstrings). Both
+    # `None` (keys still present) for every non-anchor guard, same
+    # "computed, found nothing" vs. "field never existed" discipline every
+    # other additive field on this dataclass already uses.
+    payload["anchor_state"] = guard.anchor_state
+    payload["anchor_field"] = guard.anchor_field
     return payload
 
 
@@ -149,6 +179,10 @@ def build_derived_contracts_payload(
     volume_class_modules: dict[str, str] | None = None,
     volume_anchors: dict[str, VolumeAnchor] | None = None,
     function_index: FunctionIndex | None = None,
+    minh_class_nodes: dict[str, ast.ClassDef] | None = None,
+    minh_class_modules: dict[str, str] | None = None,
+    minh_bases_index: ClassBasesIndex | None = None,
+    anchor_fields: dict[str, tuple[str, ...]] | None = None,
 ) -> dict[str, Any]:
     """AC-7.2 (260901 T11): derive a contract for every record the survey
     indexed -- the WHOLE analyzed PLR surface (4,770 methods across 345
@@ -191,6 +225,17 @@ def build_derived_contracts_payload(
     ``build_contract_keys`` -- see its docstring for the two independent
     collision sources (getter/setter pairs; same-named module-level
     functions in different modules) and the ``@module:lineno`` disambiguator.
+
+    ``minh_class_nodes``/``minh_class_modules``/``minh_bases_index``
+    (260909, T50, spec §17.2, M-INH, additive, opt-in): threaded straight
+    through to every ``derive_contract`` call below. Omitting any of the
+    three reproduces the pre-T50 table exactly (the same
+    fail-closed-by-omission discipline every other additive keyword here
+    uses). Named with an ``minh_`` prefix specifically to avoid colliding
+    with ``volume_class_index``/``volume_class_modules`` above, which are a
+    DIFFERENT whole-tree class index (the volume family's own, §14.4) built
+    under a different gate (``--taxonomy-json``) -- M-INH's own index is
+    unconditional.
     """
     unique_records = build_unique_index(records)
     contract_keys = build_contract_keys(records)
@@ -208,7 +253,11 @@ def build_derived_contracts_payload(
     contracts: dict[str, Any] = {}
     for record_key in sorted(unique_records):
         rec = unique_records[record_key]
-        contract = derive_contract(rec.module, rec.qualname, index, stamp=stamp, function_index=function_index)
+        contract = derive_contract(
+            rec.module, rec.qualname, index, stamp=stamp, function_index=function_index,
+            class_nodes=minh_class_nodes, class_modules=minh_class_modules, bases_index=minh_bases_index,
+            anchor_fields=anchor_fields,
+        )
         out_key = contract_keys[record_key]
         assert out_key not in contracts, (
             f"contract key collision building payload: {out_key!r} "
@@ -302,6 +351,14 @@ def build_derived_contracts_payload(
             and rec.qualname.rsplit(".", 1)[-1] == volume_anchors[rec.class_name].setter
         ):
             entry["is_volume_setter"] = True
+        # 260909 (T52, spec §17.4.3, P6): additive `anchor_net_effects` --
+        # `{anchor_field: net_effect}` ("EMPTY"/"HELD"/"TOP") for every
+        # singleton typestate anchor THIS entry point's own closure
+        # actually touches; absent/`{}` when `anchor_fields` was not
+        # supplied, this entry's class has no anchor, or its closure
+        # never assigns to any of them.
+        if contract.anchor_net_effects:
+            entry["anchor_net_effects"] = dict(sorted(contract.anchor_net_effects.items()))
         contracts[out_key] = entry
     # 260909 (spec 260909_plr-sema-observation-increment.md §16.3, T41,
     # backlog #5023): the additive FIFTH top-level key, `backend_surface`.
@@ -338,27 +395,79 @@ def build_derived_contracts_payload(
         # table onto every one of the rest would be pure JSON bloat for a
         # fact no guard there reads. The SAME `rows` dict object is shared
         # across every entry that gets it -- no per-entry recomputation.
-        for entry in contracts.values():
-            for guard in entry.get("guards", ()):
-                predicate_json = guard.get("predicate")
-                if predicate_json is None:
-                    continue
-                node = predicate_from_json(predicate_json)
+        #
+        # 260909 (T53, spec 260909_plr-sema-move-family-increment.md §17.1.4,
+        # M-SURF): ALSO scans each guard's `caller_args` map, by the SAME rule
+        # as `collect_env_ref_method_names` in `receiver_state.py`. D5b's site
+        # rules read the delegate's runtime `method` identity from `caller_args`,
+        # not from the guard's own `predicate` -- `_check_args` guards carry
+        # `missing`/`has_var_keyword`/`strictness`, never the method itself.
+        # The `caller_args` arm requires NO `args is not None` check (stores
+        # method identity as a reference, not a call), matching D5b's shape
+        # and the distinction §17.1.4 makes. Without this half, `aspirate`,
+        # `dispense`, `drop_tips` at depth 1 with `caller_args` populated would
+        # never receive the surface, and `:375`/`:383` would stay ½ on them.
+        def _terms_carry_backend_envref(term_jsons: "Any") -> bool:
+            for term_json in term_jsons:
+                term = predicate_from_json(term_json)
                 if any(
                     isinstance(sub, EnvRef)
-                    and sub.args is not None
                     and len(sub.path) >= 2
                     and sub.path[0] == "self"
                     and sub.path[1] == "backend"
-                    for sub in predicate_walk(node)
+                    for sub in predicate_walk(term)
                 ):
+                    return True
+            return False
+
+        n_entries_with_backend_surface = 0
+        for entry in contracts.values():
+            for guard in entry.get("guards", ()):
+                attach = False
+                # Check predicate (with args is not None -- R-CONST's need)
+                predicate_json = guard.get("predicate")
+                if predicate_json is not None:
+                    node = predicate_from_json(predicate_json)
+                    if any(
+                        isinstance(sub, EnvRef)
+                        and sub.args is not None
+                        and len(sub.path) >= 2
+                        and sub.path[0] == "self"
+                        and sub.path[1] == "backend"
+                        for sub in predicate_walk(node)
+                    ):
+                        attach = True
+                # Check caller_args (with or without args -- D5b's need)
+                if not attach:
+                    caller_args_json = guard.get("caller_args")
+                    if caller_args_json and _terms_carry_backend_envref(caller_args_json.values()):
+                        attach = True
+                # 260909 (T54, spec 260909_plr-sema-move-family-increment.md
+                # S17.1.4, round 2's R2-C1): ALSO scan `caller_args_sites` --
+                # the defender's extension to R2-C1, not optional. A
+                # move-family guard's `_check_args` sits at depth 2/3 and
+                # carries no `caller_args` at all, so without this arm no
+                # move-family entry is attached and M3's selection fix buys
+                # nothing.
+                if not attach:
+                    caller_args_sites = guard.get("caller_args_sites")
+                    if caller_args_sites:
+                        for site in caller_args_sites:
+                            site_args = site.get("args") if isinstance(site, dict) else None
+                            if site_args and _terms_carry_backend_envref(site_args.values()):
+                                attach = True
+                                break
+                if attach:
                     entry["backend_surface"] = {"rows": backend_surface["rows"]}
+                    n_entries_with_backend_surface += 1
                     break
+        backend_surface["n_entries_with_backend_surface"] = n_entries_with_backend_surface
     else:
         backend_surface = {
             "n_surface_candidates": 0,
             "n_surface_absent_by_c15": 0,
             "n_surface_rows": 0,
+            "n_entries_with_backend_surface": 0,
             "rows": {},
         }
     return {
@@ -463,6 +572,26 @@ def main(argv: list[str] | None = None) -> int:
     # --taxonomy-json), since neither idiom resolution nor param_defaults
     # depends on the tip/volume taxonomy at all.
     function_index: FunctionIndex = build_plr_function_index(surface_tree)
+    # 260909 (T50, spec §17.2, M-INH): the base-closure index, built
+    # UNCONDITIONALLY (like `function_index` above, unlike
+    # receiver_states/volume_class_index below, which need
+    # --taxonomy-json) -- D9 was taken YES, and neither the extractor nor
+    # the fail-closed resolution mechanism depends on the tip/volume
+    # taxonomy at all. `minh_class_nodes`/`minh_class_modules` are a
+    # SEPARATE call from `volume_class_index`/`volume_class_modules`
+    # below (not shared) so a `--taxonomy-json`-less run still gets
+    # M-INH -- sharing them would make M-INH silently depend on a flag
+    # §17.2 never gates it on.
+    minh_class_nodes, minh_class_modules = build_plr_class_index(surface_tree)
+    minh_bases_index = build_plr_class_bases_index(surface_tree, minh_class_nodes)
+    # 260909 (T52, spec §17.4.2, P5): the singleton typestate anchor's
+    # whole-surface selection -- built UNCONDITIONALLY (like `function_index`/
+    # `minh_class_nodes` above, unlike `receiver_states`/`volume_class_index`
+    # below, which need `--taxonomy-json`), since P5's absence rule depends
+    # on neither the tip nor the volume taxonomy at all.
+    anchor_fields, _anchor_candidates = compute_singleton_typestate_anchors(
+        minh_class_nodes, minh_class_modules, function_index
+    )
     # 260903 (spec §14.4, T24): the volume family's own whole-tree class
     # index and P7 anchors, built alongside `receiver_states` under the
     # SAME `--taxonomy-json` gate (P7's used-volume/free-volume accessor
@@ -475,12 +604,48 @@ def main(argv: list[str] | None = None) -> int:
     volume_anchors: dict[str, VolumeAnchor] = {}
     if args.taxonomy_json is not None:
         taxonomy_payload = json.loads(args.taxonomy_json.read_text(encoding="utf-8"))
-        receiver_states = derive_receiver_states(surface_tree, records, taxonomy_payload["classes"])
+        receiver_states = derive_receiver_states(
+            surface_tree, records, taxonomy_payload["classes"], function_index=function_index
+        )
         volume_class_index, volume_class_modules = build_plr_class_index(surface_tree)
         volume_state_exceptions = frozenset(compute_volume_state_exceptions(taxonomy_payload["classes"]))
         volume_anchors = compute_volume_anchors(volume_class_index, volume_state_exceptions)
 
     if args.out is not None:
+        # 260909 (T50, spec §17.2 condition 3): per-entry-point closure
+        # size / guard count / per-guard depth multiset, BEFORE and AFTER
+        # M-INH, for every SUPPORTED_TOOLS entry point that resolves in
+        # this survey -- published UNCONDITIONALLY, and checked for the
+        # doubling bound BEFORE any file is written. An entry point whose
+        # AFTER closure more than doubles STOPS this run (no --out write)
+        # and surfaces to the user by name, per §17.2's own normative box
+        # ("stops and surfaces to the user rather than landing").
+        tool_keys = {
+            name: key
+            for name, key in ((n, resolve_supported_tool(n, index)) for n in sorted(SUPPORTED_TOOLS))
+            if key is not None
+        }
+        m_inh_impact = {
+            name: measure_m_inh_entry_point_impact(
+                key, index, minh_class_nodes, minh_class_modules, minh_bases_index, stamp=stamp
+            )
+            for name, key in tool_keys.items()
+        }
+        doubled_entries = [name for name, impact in m_inh_impact.items() if impact["doubled"]]
+        if doubled_entries:
+            print(
+                "M-INH (T50, §17.2 condition 3): STOPPING before writing --out -- "
+                f"the following entry point(s) more than doubled their closure size "
+                f"under M-INH: {sorted(doubled_entries)}. This is a designed halt, "
+                "not a crash -- surface it to the user rather than landing.",
+                file=sys.stderr,
+            )
+            for name in sorted(doubled_entries):
+                print(f"  {name}: {m_inh_impact[name]}", file=sys.stderr)
+            return 1
+        m_inh_selection = compute_m_inh_selection(
+            records, index, minh_class_nodes, minh_class_modules, minh_bases_index
+        )
         payload = build_derived_contracts_payload(
             records,
             index,
@@ -490,10 +655,28 @@ def main(argv: list[str] | None = None) -> int:
             volume_class_modules=volume_class_modules,
             volume_anchors=volume_anchors,
             function_index=function_index,
+            minh_class_nodes=minh_class_nodes,
+            minh_class_modules=minh_class_modules,
+            minh_bases_index=minh_bases_index,
+            anchor_fields=anchor_fields,
         )
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"wrote {args.out}", file=sys.stderr)
+        print(
+            f"M-INH (T50, §17.2): half1_admitted={len(m_inh_selection['half1_admitted'])} "
+            f"half1_ambiguous_mismatch={len(m_inh_selection['half1_ambiguous_mismatch'])} "
+            f"newly_resolved={len(m_inh_selection['newly_resolved'])} "
+            f"refusal_counts={m_inh_selection['refusal_counts']}",
+            file=sys.stderr,
+        )
+        if m_inh_selection["half1_ambiguous_mismatch"]:
+            print(
+                f"M-INH half1_ambiguous_mismatch detail: {m_inh_selection['half1_ambiguous_mismatch']}",
+                file=sys.stderr,
+            )
+        for name in sorted(m_inh_impact):
+            print(f"M-INH entry point {name!r}: {m_inh_impact[name]}", file=sys.stderr)
         # 260909 (T41, AC-16.2): "the complete measured selection published,
         # including the whole-tree can_pick_up_tip count against the
         # predicted 2 of 8". `probe_method_definitions` itself takes

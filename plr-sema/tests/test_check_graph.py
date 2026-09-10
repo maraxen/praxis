@@ -1599,7 +1599,13 @@ def test_ac_16_14_unobserved_backend_class_declines(contracts_json: str) -> None
     assert strict_finding.verdict is Verdict.UNKNOWN
 
 
-def _t49_ctx(*, caller_args: "dict[str, Any] | None", env: "frozenset[str]", backend_surface: "dict[str, Any]") -> "Any":
+def _t49_ctx(
+    *,
+    caller_args: "dict[str, Any] | None",
+    env: "frozenset[str]",
+    backend_surface: "dict[str, Any]",
+    caller_args_sites: "tuple[dict[str, Any], ...] | None" = None,
+) -> "Any":
     from plr_sema.check.predicate import _Ctx
 
     return _Ctx(
@@ -1614,6 +1620,11 @@ def _t49_ctx(*, caller_args: "dict[str, Any] | None", env: "frozenset[str]", bac
         class_hierarchy=None,
         caller_args=caller_args,
         backend_surface=backend_surface,
+        # 260909 (T54, spec 260909_plr-sema-move-family-increment.md
+        # S17.5.1, M3): additive, `None` by default so every pre-T54 call
+        # site of this helper (the T49 Kleene-range fixtures above)
+        # reproduces its exact original ctx unchanged.
+        caller_args_sites=caller_args_sites,
     )
 
 
@@ -1717,6 +1728,66 @@ def test_ac_16_14_strict_site_rule_never_returns_true() -> None:
     assert _eval_check_args_strict_site_rule(ctx) is None
 
 
+# ---------------------------------------------------------------------------
+# AC-17.5 (spec 260909_plr-sema-move-family-increment.md S17.5.1, T54, M3):
+# the whole-closure conjunctive fold, exercised directly against
+# `_eval_check_args_missing_site_rule`/`_eval_check_args_strict_site_rule`
+# with a hand-built `caller_args_sites` list -- unlike the T49 fixtures
+# above, which range over the (implicit) single-site fallback.
+# ---------------------------------------------------------------------------
+
+
+def test_ac_17_5_fixture_i_one_deciding_one_declining_site_folds_to_half_not_f() -> None:
+    """AC-17.5 fixture (i): a multi-site delegate where ONE site would
+    decide `F` and the OTHER declines is asserted ½ -- NOT `F`. This is
+    the conjunctive fold's own soundness argument made checkable: the
+    admitted set is a superset of what actually executes, so `F` is
+    required at EVERY site, never merely a majority of them. The positive
+    control (both sites decide `F`) folds to `F`, proving the ½ above
+    comes from the declining site and not from some other defect."""
+    from plr_sema.check.predicate import _eval_check_args_missing_site_rule
+
+    deciding_site = {
+        "lineno": 10,
+        "caller_qualname": "Foo.B",
+        "args": {"method": _T49_METHOD_ENVREF, "default": _T49_DEFAULT_SETLIT},
+    }
+    declining_site = {
+        "lineno": 20,
+        "caller_qualname": "Foo.C",
+        "args": {"method": _T49_METHOD_ENVREF},  # no "default" -- this site declines.
+    }
+    mixed_ctx = _t49_ctx(
+        caller_args=None, env=_T49_ENV, backend_surface=_T49_SURFACE,
+        caller_args_sites=(deciding_site, declining_site),
+    )
+    assert _eval_check_args_missing_site_rule(mixed_ctx) is None  # ½, not F.
+
+    both_decide_ctx = _t49_ctx(
+        caller_args=None, env=_T49_ENV, backend_surface=_T49_SURFACE,
+        caller_args_sites=(deciding_site, deciding_site),
+    )
+    assert _eval_check_args_missing_site_rule(both_decide_ctx) is False  # the positive control.
+
+
+def test_ac_17_5_caller_args_sites_takes_precedence_over_caller_args_when_both_present() -> None:
+    """`caller_args_sites` is read WHEN PRESENT, falling back to
+    `caller_args` only otherwise (C13's own concession, made checkable):
+    a ctx carrying a declining `caller_args_sites` decides ½ even though
+    its OWN (unused) `caller_args` would have decided `F` on its own --
+    proving the list, not the scalar fallback, is what actually decided."""
+    from plr_sema.check.predicate import _eval_check_args_missing_site_rule
+
+    declining_site = {"lineno": 20, "caller_qualname": "Foo.C", "args": {"method": _T49_METHOD_ENVREF}}
+    ctx = _t49_ctx(
+        caller_args={"method": _T49_METHOD_ENVREF, "default": _T49_DEFAULT_SETLIT},  # would decide F alone.
+        env=_T49_ENV,
+        backend_surface=_T49_SURFACE,
+        caller_args_sites=(declining_site,),
+    )
+    assert _eval_check_args_missing_site_rule(ctx) is None
+
+
 def test_ac_16_14_set_lit_parses_and_round_trips() -> None:
     """G9's own narrow shape test (T49): an `ast.Set` display of
     `ast.Constant`s parses to `SetLit`, round-trips through `to_json`/
@@ -1733,3 +1804,202 @@ def test_ac_16_14_set_lit_parses_and_round_trips() -> None:
 
     mixed = parse("x == {1, f()}")
     assert isinstance(mixed, Opaque)  # one non-Constant element -> the WHOLE display fails to parse.
+
+
+# ---------------------------------------------------------------------------
+# AC-17.2 (spec 260909_plr-sema-move-family-increment.md §17.1.2/§17.3,
+# T51): `:2055`'s REAL, unmodified `LiquidHandler.pick_up_resource` guard
+# record, end to end -- never through a hand-built predicate.
+# ---------------------------------------------------------------------------
+
+_PICK_UP_RESOURCE_2055_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=2055,
+    qualname="LiquidHandler.pick_up_resource",
+)
+
+
+def _pick_up_resource_graph() -> str:
+    return json.dumps(
+        {
+            "protocol_fqn": "test.t51_r_arm",
+            "operations": [
+                {
+                    "id": "op_1",
+                    "method_name": "pick_up_resource",
+                    "receiver_variable": "lh",
+                    "receiver_type": "LiquidHandler",
+                    "arguments": {},
+                }
+            ],
+            "resources": {},
+        }
+    )
+
+
+def _arm_slots_only_env(arm_slots: "list[int]") -> "frozenset[str]":
+    return frozenset({f"obs:arm_slots={list(arm_slots)}".replace(" ", "")})
+
+
+def test_ac_17_2_2055_safe_end_to_end_through_shipped_guard_record(contracts_json: str) -> None:
+    """AC-17.2's positive claim: `:2055` (`self.setup_finished and not
+    self._resource_pickups`) decides `SAFE` end to end through the REAL,
+    UNMODIFIED `LiquidHandler.pick_up_resource` guard record -- never
+    through a hand-built predicate -- once `arm_slots` observes at least
+    one arm. Only the SECOND `And` conjunct needs to resolve (Kleene `And`:
+    one `False` decides regardless of the other); `self.setup_finished`
+    is never observed here and never has to be."""
+    report = check_graph(_pick_up_resource_graph(), contracts_json, env=_arm_slots_only_env([0, 1]))
+    (finding,) = _site_findings(report, _PICK_UP_RESOURCE_2055_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.SAFE
+
+
+def test_ac_17_2_2055_no_observation_stays_unknown(contracts_json: str) -> None:
+    """§16.2.3's fail-closed default, unaffected by this increment: with no
+    `arm_slots` observation in `env`, `:2055` stays exactly where it was
+    before T51 -- `UNKNOWN`/`guard_env_dependent`."""
+    report = check_graph(_pick_up_resource_graph(), contracts_json)
+    (finding,) = _site_findings(report, _PICK_UP_RESOURCE_2055_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+# ---------------------------------------------------------------------------
+# AC-17.3 (spec 260909_plr-sema-move-family-increment.md §17.4, T52): the
+# `_resource_pickup` typestate, end to end through the REAL, UNMODIFIED
+# `move_resource`/`pick_up_resource`/`move_picked_up_resource`/
+# `drop_resource` guard records -- never through a hand-built predicate.
+# ---------------------------------------------------------------------------
+
+_PICK_UP_RESOURCE_2070_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=2070,
+    qualname="LiquidHandler.pick_up_resource",
+)
+_MOVE_PICKED_UP_RESOURCE_2120_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=2120,
+    qualname="LiquidHandler.move_picked_up_resource",
+)
+_DROP_RESOURCE_2147_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=2147,
+    qualname="LiquidHandler.drop_resource",
+)
+
+
+def _move_resource_graph(n_ops: int) -> str:
+    return json.dumps(
+        {
+            "protocol_fqn": "test.t52_anchor",
+            "operations": [
+                {
+                    "id": f"op_{i + 1}",
+                    "method_name": "move_resource",
+                    "receiver_variable": "lh",
+                    "receiver_type": "LiquidHandler",
+                    "arguments": {},
+                }
+                for i in range(n_ops)
+            ],
+            "resources": {},
+        }
+    )
+
+
+def test_ac_17_3_move_resource_2120_2147_decide_safe_from_held(contracts_json: str) -> None:
+    """AC-17.3: `:2120`/`:2147` decide `SAFE` from `HELD` on a SINGLE
+    `move_resource` call, through the REAL guard records -- their own
+    pre-state is a derive-time CONSTANT (`pick_up_resource`'s own
+    `:2072-2077` effect, strictly earlier in the SAME closure), never the
+    walk's inter-operation carry, so a single, isolated operation already
+    decides both."""
+    report = check_graph(_move_resource_graph(1), contracts_json)
+    (f2120,) = _site_findings(report, _MOVE_PICKED_UP_RESOURCE_2120_SITE, operation_id="op_1")
+    (f2147,) = _site_findings(report, _DROP_RESOURCE_2147_SITE, operation_id="op_1")
+    assert f2120.verdict is Verdict.SAFE
+    assert f2147.verdict is Verdict.SAFE
+
+
+def test_ac_17_3_pick_up_resource_2070_decides_safe_from_empty_carried_state(contracts_json: str) -> None:
+    """AC-17.3: `:2070` decides `SAFE` from `EMPTY` -- carried in from a
+    PRIOR operation's own net effect (`drop_resource`'s `:2263` assignment,
+    `AnchorWalk`'s inter-operation carry, §17.4.3 condition 4), through TWO
+    sequential `move_resource` calls on the same receiver. The FIRST call's
+    own `:2070` starts from a fresh walk (`TOP`, untested here); the
+    SECOND's genuinely decides by state."""
+    report = check_graph(_move_resource_graph(2), contracts_json)
+    (f2070_op2,) = _site_findings(report, _PICK_UP_RESOURCE_2070_SITE, operation_id="op_2")
+    assert f2070_op2.verdict is Verdict.SAFE
+
+
+def test_ac_17_3_no_anchor_widening_on_move_family(contracts_json: str) -> None:
+    """AC-17.3: none of the five widening conditions fire on the real
+    move-family closure -- every one of the three anchor guards decides by
+    state (`SAFE`, never `UNKNOWN`/`guard_env_dependent`) across two
+    sequential operations."""
+    report = check_graph(_move_resource_graph(2), contracts_json)
+    for site, op_id in (
+        (_PICK_UP_RESOURCE_2070_SITE, "op_2"),
+        (_MOVE_PICKED_UP_RESOURCE_2120_SITE, "op_1"),
+        (_DROP_RESOURCE_2147_SITE, "op_1"),
+    ):
+        (finding,) = _site_findings(report, site, operation_id=op_id)
+        assert finding.verdict is Verdict.SAFE, f"{site}: expected SAFE (decided by state, not widened), got {finding.verdict}"
+
+
+def test_ac_17_3_anchor_and_channel_consumed_sets_disjoint() -> None:
+    """AC-17.3(b): the anchor and channel `consumed` index sets are
+    asserted DISJOINT on the tip fixtures -- a synthetic receiver carrying
+    BOTH a P2 channel anchor and a P5 singleton anchor, and a contract
+    whose `guards` mix a channel-scoped own guard (`self.head[i].has_tip`)
+    with a bare-`self` anchor guard (`self._resource_pickup is None`). A
+    guard matching `self.<channel_attr>[<name>]` cannot also match a
+    bare-`self` anchor field, by construction."""
+    from plr_sema.check import ir
+    from plr_sema.check.tipstate import AnchorWalk, TipWalk, evaluate_anchor_call, evaluate_call
+
+    receiver_state = {
+        "channel_attr": "head",
+        "bool_view": {"attr": "has_tip", "field": "_tip", "true_when": "not_none"},
+        "state_fields": ["_tip"],
+        "effects": {},
+        "channel_default_param": {"pick_up_tips": "tip_spots"},
+        "channel_default_disablers": [],
+        "tip_state_exceptions": [],
+        "anchor_fields": ["_resource_pickup"],
+    }
+    contract = {
+        "guards": [
+            {
+                "kind": "raise_guard",
+                "condition": "self.head[channel].has_tip",
+                "site": {"file": "f", "lineno": 1, "qualname": "q"},
+            },
+            {
+                "kind": "raise_guard",
+                "condition": "self._resource_pickup is None",
+                "site": {"file": "f", "lineno": 2, "qualname": "q"},
+                "anchor_state": "HELD",
+                "anchor_field": "_resource_pickup",
+            },
+        ],
+    }
+    call = ir.Call(receiver=0, receiver_type="LiquidHandler", method="pick_up_tips", kwargs={"tip_spots": ir.Seq(items=(ir.Lit(v=0),))})
+    _anchor_findings, anchor_consumed = evaluate_anchor_call("op_1", call, contract, receiver_state, AnchorWalk())
+    _tip_findings, tip_consumed = evaluate_call("op_1", call, contract, receiver_state, TipWalk(), poisoned=False)
+    assert anchor_consumed == {1}
+    assert tip_consumed == {0}
+    assert anchor_consumed & tip_consumed == set()
+
+
+def test_ac_17_3_finding_for_atom_reason_parametrised(contracts_json: str) -> None:
+    """AC-17.3: the ½ branch carries `guard_env_dependent` for the anchor
+    (a fresh-walk `TOP` state on the FIRST `move_resource` call's own
+    `:2070`, which has no preceding effect in its own closure) and
+    `channel_state_unknown` remains the tip family's own reason,
+    unchanged -- both asserted on the SAME report."""
+    report = check_graph(_move_resource_graph(1), contracts_json)
+    (f2070_op1,) = _site_findings(report, _PICK_UP_RESOURCE_2070_SITE, operation_id="op_1")
+    assert f2070_op1.verdict is Verdict.UNKNOWN
+    assert f2070_op1.reason == "guard_env_dependent"

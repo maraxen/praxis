@@ -67,15 +67,18 @@ from typing import Any
 from plr_sema.derive.predicate_ast import EnvRef, from_json as predicate_from_json, walk as predicate_walk
 
 from plr_sema.derive import (
+    ClassBasesIndex,
     DroppedCall,
     Qualkey,
     SurveyRecord,
     _iter_plr_source_files,
     _module_name_for_plr_file,
     _walk_closure,
+    build_class_bases_index,
     default_plr_pkg_root,
     derive_contract,
     resolve,
+    resolve_via_base_closure,
 )
 
 __all__ = [
@@ -95,6 +98,7 @@ __all__ = [
     # and the extended four-segment bridge.
     "compute_volume_state_exceptions",
     "build_plr_class_index",
+    "build_plr_class_bases_index",
     "VolumeAnchor",
     "compute_volume_anchors",
     "dataclass_field_annotations",
@@ -114,6 +118,12 @@ __all__ = [
     "collect_env_ref_method_names",
     "build_backend_surface",
     "probe_method_definitions",
+    # 260909 (spec 260909_plr-sema-move-family-increment.md §17.4, T52,
+    # D7 unit 12): the singleton typestate anchor (P5) and the
+    # intra-operation ordered effect/guard walk (P6).
+    "SingletonAnchorCandidate",
+    "compute_singleton_typestate_anchors",
+    "compute_anchor_guard_states",
 ]
 
 #: §10.2.5's second conjunct: the taxonomy module path that narrows the
@@ -304,6 +314,414 @@ def _typestate_anchor(class_node: ast.ClassDef) -> tuple[str, str, str] | None:
     if len(candidates) != 1:
         return None
     return candidates[0]
+
+
+# ---------------------------------------------------------------------------
+# P5 (spec 260909_plr-sema-move-family-increment.md §17.4.1/§17.4.2/§17.4.3,
+# T52, D7 unit 12): a SECOND, independent typestate-anchor shape from P2's
+# above. P2 requires a bool-view PROPERTY over the field; this anchor
+# requires no property at all -- just a plain `self.<F> = ...` assignment
+# pair (one constant-`None`, one not) plus a null-check guard reading `F`
+# through an `Is`/`IsNot` node, all three found anywhere in the SAME
+# class's own body (§17.4.2's conjuncts (a)/(b)/(c)). Both P2 and P5 can
+# therefore fire independently for the SAME class -- `LiquidHandler` types
+# `self.head` to `TipTracker` (P2's anchor lives on `TipTracker`) and ALSO
+# satisfies P5's own three conjuncts directly on `_resource_pickup`
+# (P5's anchor lives on `LiquidHandler` ITSELF, no separate tracker class).
+# ---------------------------------------------------------------------------
+
+
+def _self_attr_none_check(node: ast.expr, field: str) -> bool:
+    """`self.<field> is None` / `self.<field> is not None` -- the same
+    shape `plr_sema.check.tipstate._null_check` matches at CHECK time,
+    re-detected here purely syntactically because THIS pass runs before any
+    contract table exists (§17.4.2's conjunct (c))."""
+    if not (isinstance(node, ast.Compare) and len(node.ops) == 1 and len(node.comparators) == 1):
+        return False
+    if not isinstance(node.ops[0], (ast.Is, ast.IsNot)):
+        return False
+    right = node.comparators[0]
+    if not (isinstance(right, ast.Constant) and right.value is None):
+        return False
+    return _is_self_attr(node.left, field)
+
+
+def _singleton_anchor_candidate_fields(class_node: ast.ClassDef) -> tuple[str, ...]:
+    """§17.4.2's three conjuncts, scanned over `class_node`'s own body: a
+    field `F` is a candidate iff at least one `self.F = None` `Assign`
+    (conjunct a), at least one `self.F = <non-None>` `Assign` (conjunct b),
+    and at least one `if self.F is[/ not] None: raise ...`-shaped guard
+    (conjunct c) all occur SOMEWHERE in the class body -- purely syntactic,
+    same discipline as P2's `_typestate_anchor` above; no PLR field name is
+    hand-typed. Sorted, deterministic.
+    """
+    none_assigned: set[str] = set()
+    nonnone_assigned: set[str] = set()
+    guarded: set[str] = set()
+    for node in ast.walk(class_node):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Attribute):
+            target = node.targets[0]
+            if _is_self_attr(target):
+                if isinstance(node.value, ast.Constant) and node.value.value is None:
+                    none_assigned.add(target.attr)
+                else:
+                    nonnone_assigned.add(target.attr)
+        elif isinstance(node, ast.If) and len(node.body) == 1 and isinstance(node.body[0], ast.Raise):
+            test = node.test
+            if isinstance(test, ast.Compare) and isinstance(test.left, ast.Attribute) and _self_attr_none_check(test, test.left.attr):
+                guarded.add(test.left.attr)
+    return tuple(sorted(none_assigned & nonnone_assigned & guarded))
+
+
+def _property_setter_node(class_node: ast.ClassDef, field: str) -> "ast.FunctionDef | ast.AsyncFunctionDef | None":
+    """The `@<field>.setter`-decorated definition of `field` in
+    `class_node`, or `None` if it has none."""
+    for member in ast.iter_child_nodes(class_node):
+        if not isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for dec in member.decorator_list:
+            if isinstance(dec, ast.Attribute) and dec.attr == "setter" and isinstance(dec.value, ast.Name) and dec.value.id == field:
+                return member
+    return None
+
+
+def _is_single_assignment_body(node: "ast.FunctionDef | ast.AsyncFunctionDef") -> bool:
+    body = [s for s in node.body if not _is_docstring_stmt(s)]
+    return len(body) == 1 and isinstance(body[0], (ast.Assign, ast.AugAssign))
+
+
+def _singleton_anchor_absent(
+    class_node: ast.ClassDef,
+    field: str,
+    class_name: str,
+    module: str,
+    class_nodes: dict[str, ast.ClassDef],
+    function_index: "FunctionIndex",
+) -> int | None:
+    """§17.4.2's absence rule, three clauses -- returns the 1-based clause
+    number that removed the candidate, or `None` if it survives (present).
+
+    **Clause 3's exception is round 2's R2-C2, conceded.** A `(module,
+    qualname)` defined at exactly two linenos does NOT fire clause 3 when
+    those two definitions are the getter/setter pair of ONE `@property` --
+    one decorated `@property`, the other `@<field>.setter`. Whose qualname
+    clause 3 ranges over: the FUNCTION qualname `<class_name>.<field>`,
+    meaningful only when `field` is itself a property (has function
+    definitions at all) -- a plain attribute has no such definition, so
+    `linenos` below is empty and the clause is vacuous for it, exactly as
+    §17.4.2 states.
+    """
+    setter = _property_setter_node(class_node, field)
+    if setter is not None and not _is_single_assignment_body(setter):
+        return 1  # clause 1.
+    # Clause 2: F assigned anywhere OUTSIDE the analyzed class's own body.
+    for other_name, other_node in class_nodes.items():
+        if other_name == class_name:
+            continue
+        for node in ast.walk(other_node):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Attribute) and target.attr == field and _is_self_attr(target):
+                        return 2  # clause 2.
+    # Clause 3: `<class_name>.<field>` defined at more than one lineno,
+    # other than as the getter/setter pair of one property.
+    qualname = f"{class_name}.{field}"
+    matching = [(m, qn, ln) for (m, qn, ln) in function_index if m == module and qn == qualname]
+    linenos = sorted({ln for (_m, _qn, ln) in matching})
+    if len(linenos) > 1:
+        if len(linenos) == 2:
+            nodes = [function_index[key] for key in matching]
+            is_property = any(
+                any(isinstance(d, ast.Name) and d.id == "property" for d in n.decorator_list) for n in nodes
+            )
+            is_setter_pair = any(
+                any(
+                    isinstance(d, ast.Attribute) and d.attr == "setter" and isinstance(d.value, ast.Name) and d.value.id == field
+                    for d in n.decorator_list
+                )
+                for n in nodes
+            )
+            if is_property and is_setter_pair:
+                return None  # clause 3's exception: the getter/setter pair.
+        return 3  # clause 3.
+    return None
+
+
+@dataclass(frozen=True, slots=True)
+class SingletonAnchorCandidate:
+    """§17.4.2's published whole-surface selection: one `(class, field)`
+    candidate, whether it SURVIVED the absence rule, and if not, which
+    clause (1, 2, or 3) removed it."""
+
+    class_name: str
+    field: str
+    present: bool
+    removed_by_clause: int | None = None
+
+
+def compute_singleton_typestate_anchors(
+    class_nodes: dict[str, ast.ClassDef],
+    class_modules: dict[str, str],
+    function_index: "FunctionIndex",
+) -> tuple[dict[str, tuple[str, ...]], tuple[SingletonAnchorCandidate, ...]]:
+    """§17.4.2, whole-surface: every `(class, field)` candidate pair
+    satisfying conjuncts (a)/(b)/(c) (`_singleton_anchor_candidate_fields`),
+    each tested against the absence rule (`_singleton_anchor_absent`).
+    Returns `(anchors, candidates)` -- `anchors` is `{class_name: (field,
+    ...)}`, sorted, for every candidate that SURVIVES (a class can carry
+    MORE than one independent singleton anchor -- unlike P2's single
+    bool-view slot, nothing in §17.4.2's own three conjuncts forces
+    at-most-one per class, and measured whole-surface `LiquidHandler`
+    genuinely has two: `_blow_out_air_volume`
+    (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:166,
+    973, 1184, 1268`) alongside `_resource_pickup`. Picking an arbitrary
+    "winner" by name would either drop a real, independently-trackable
+    anchor or require hand-typing the one this increment cares about --
+    both refused; every surviving candidate is kept); `candidates` is the
+    COMPLETE published selection, in class/field sorted order, for
+    AC-17.3's by-clause labelling.
+    """
+    candidates: list[SingletonAnchorCandidate] = []
+    anchors: dict[str, list[str]] = {}
+    for class_name, class_node in sorted(class_nodes.items()):
+        module = class_modules.get(class_name, "")
+        for field in _singleton_anchor_candidate_fields(class_node):
+            clause = _singleton_anchor_absent(class_node, field, class_name, module, class_nodes, function_index)
+            candidates.append(
+                SingletonAnchorCandidate(class_name=class_name, field=field, present=clause is None, removed_by_clause=clause)
+            )
+            if clause is None:
+                anchors.setdefault(class_name, []).append(field)
+    return {name: tuple(sorted(fields)) for name, fields in anchors.items()}, tuple(candidates)
+
+
+# ---------------------------------------------------------------------------
+# P6 (spec 260909_plr-sema-move-family-increment.md §17.4.3, T52): the
+# intra-operation ordered effect/guard walk. A DERIVE-TIME, purely
+# AST-structural computation over ONE entry point's own closure (its own
+# body, recursing into resolved bare-`self` delegate calls in SOURCE
+# ORDER -- deliberately NOT `_walk_closure`'s own LIFO frontier, which does
+# not preserve source order, §17.4.0's own box) -- gives every
+# anchor-reading guard reached in that closure a POSITION and folds every
+# strictly-earlier effect on the SAME field into its own pre-state.
+# ---------------------------------------------------------------------------
+
+_ANCHOR_EMPTY = "EMPTY"
+_ANCHOR_HELD = "HELD"
+_ANCHOR_TOP = "TOP"
+#: Sentinel: "nothing in this closure precedes this position -- read
+#: AnchorWalk's own inter-operation carry for this receiver" (§17.4.3
+#: condition 4).
+_ANCHOR_ENTRY = "ENTRY"
+
+
+def _anchor_effect(stmt: ast.stmt, field: str) -> str | None:
+    """§17.4.3's effect table for one statement against `self.<field>`:
+    `"EMPTY"` for a constant-`None` RHS on a plain `self.<field> = <expr>`,
+    `"HELD"` for any other plain-assignment RHS, `"TOP"` (widen) for an
+    `ast.AugAssign`, a tuple target, or a subscript target naming the SAME
+    field -- `tipstate._apply_transfer`'s own third case, same spirit.
+    `None` when this statement does not touch `field` at all.
+    """
+    if isinstance(stmt, ast.AugAssign) and _is_self_attr(stmt.target, field):
+        return _ANCHOR_TOP
+    if isinstance(stmt, ast.Assign):
+        for target in stmt.targets:
+            if isinstance(target, ast.Tuple) and any(isinstance(elt, ast.Attribute) and _is_self_attr(elt, field) for elt in target.elts):
+                return _ANCHOR_TOP
+            if isinstance(target, ast.Subscript) and isinstance(target.value, ast.Attribute) and _is_self_attr(target.value, field):
+                return _ANCHOR_TOP
+        if len(stmt.targets) == 1 and _is_self_attr(stmt.targets[0], field):
+            if isinstance(stmt.value, ast.Constant) and stmt.value.value is None:
+                return _ANCHOR_EMPTY
+            return _ANCHOR_HELD
+    return None
+
+
+def _contains_return_break_continue(stmts: list[ast.stmt]) -> bool:
+    for stmt in stmts:
+        for node in ast.walk(stmt):
+            if isinstance(node, (ast.Return, ast.Break, ast.Continue)):
+                return True
+    return False
+
+
+def _self_call_name(stmt: ast.stmt) -> str | None:
+    """`self.<name>(...)` at statement level -- a bare expression
+    statement, or the RHS of a plain `Assign`/`AnnAssign`, optionally
+    `await`-wrapped. Returns `<name>`, or `None` for anything else
+    (including `self.<attr>.<name>(...)`, e.g. `self.backend.<m>(...)` --
+    a DIFFERENT receiver expression, never a bare-self delegate call).
+    """
+    value: ast.expr | None = None
+    if isinstance(stmt, ast.Expr):
+        value = stmt.value
+    elif isinstance(stmt, (ast.Assign, ast.AnnAssign)):
+        value = stmt.value
+    if isinstance(value, ast.Await):
+        value = value.value
+    if not isinstance(value, ast.Call):
+        return None
+    func = value.func
+    if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) and func.value.id == "self":
+        return func.attr
+    return None
+
+
+class _AnchorWalkCtx:
+    def __init__(
+        self,
+        field: str,
+        class_name: str,
+        class_nodes: dict[str, ast.ClassDef],
+        class_modules: dict[str, str],
+        bases_index: ClassBasesIndex,
+    ) -> None:
+        self.field = field
+        self.class_name = class_name
+        self.class_nodes = class_nodes
+        self.class_modules = class_modules
+        self.bases_index = bases_index
+        self.guard_states: dict[int, str] = {}
+        #: §17.4.3's FIVE widening conditions -- condition 4 (the initial
+        #: state) and condition 5 (the multi-position join, folded silently
+        #: into `_record_guard` below rather than counted separately, since
+        #: it is a JOIN operator applied uniformly, not a distinct decision
+        #: point this walker chooses to take) are not this dict's business;
+        #: it counts conditions 1-3, the ones THIS pass can actually detect.
+        self.widened_by: dict[str, int] = {"condition_1": 0, "condition_2": 0, "condition_3": 0}
+
+    def _record_guard(self, lineno: int, state: str) -> None:
+        # §17.4.3 condition 5: a guard reached at several positions takes
+        # the JOIN of the states at all of them -- TOP on disagreement.
+        existing = self.guard_states.get(lineno)
+        self.guard_states[lineno] = state if existing is None else (existing if existing == state else _ANCHOR_TOP)
+
+    def resolve_self_call(self, class_name: str, method_name: str) -> "tuple[ast.FunctionDef | ast.AsyncFunctionDef, str] | None":
+        """`(method_node, owning_class)`, resolved first within
+        `class_name`'s own body, falling back to M-INH's own
+        `resolve_via_base_closure` (§17.2, already shipped) -- the SAME
+        resolution `_state_updated` needs to reach `Resource` (AC-17.1),
+        so an inherited delegate that touches no anchor state is correctly
+        found and recursed into (contributing nothing), never mistaken for
+        an unresolved one (§17.4.3 condition 3)."""
+        node = self.class_nodes.get(class_name)
+        if node is not None:
+            for member in ast.iter_child_nodes(node):
+                if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)) and member.name == method_name:
+                    return member, class_name
+        ancestor = resolve_via_base_closure(class_name, method_name, self.class_nodes, self.bases_index)
+        if ancestor is None:
+            return None
+        anc_node = self.class_nodes.get(ancestor)
+        if anc_node is None:
+            return None
+        for member in ast.iter_child_nodes(anc_node):
+            if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)) and member.name == method_name:
+                return member, ancestor
+        return None
+
+
+def _walk_anchor_stmts(stmts: list[ast.stmt], state: str, ctx: _AnchorWalkCtx, call_stack: frozenset[str]) -> str:
+    for stmt in stmts:
+        if isinstance(stmt, ast.If) and len(stmt.body) == 1 and isinstance(stmt.body[0], ast.Raise):
+            if _self_attr_none_check(stmt.test, ctx.field):
+                ctx._record_guard(stmt.body[0].lineno, state)
+                continue
+        if isinstance(stmt, ast.Try):
+            state = _walk_anchor_stmts(stmt.body, state, ctx, call_stack)
+            for handler in stmt.handlers:
+                # §17.4.3 condition 2 (round 2's R2-C6 fence): a handler
+                # whose last statement is an `ast.Raise` AND which contains
+                # no `Return`/`Break`/`Continue` at any depth cannot fall
+                # through to positions after the `try` -- its own
+                # assignment is folded (walked, purely for guard/effect
+                # detection inside it) but contributes NO state to what
+                # follows. Any other handler widens.
+                cannot_fall_through = (
+                    bool(handler.body)
+                    and isinstance(handler.body[-1], ast.Raise)
+                    and not _contains_return_break_continue(handler.body)
+                )
+                if cannot_fall_through:
+                    _walk_anchor_stmts(handler.body, state, ctx, call_stack)
+                else:
+                    state = _ANCHOR_TOP
+                    ctx.widened_by["condition_2"] += 1
+            if stmt.orelse:
+                state = _walk_anchor_stmts(stmt.orelse, state, ctx, call_stack)
+            if stmt.finalbody:
+                state = _walk_anchor_stmts(stmt.finalbody, state, ctx, call_stack)
+            continue
+        if isinstance(stmt, (ast.If, ast.For, ast.AsyncFor, ast.While)):
+            # §17.4.3 condition 1: an effect inside a conditionally-reached
+            # branch widens from that point on -- detected here as "a
+            # branch's own sub-walk produced a DIFFERENT state than it was
+            # given", since neither branch is guaranteed to execute.
+            branches = [stmt.body, stmt.orelse] if isinstance(stmt, ast.If) else [stmt.body]
+            widened = False
+            for branch in branches:
+                if branch and _walk_anchor_stmts(branch, state, ctx, call_stack) != state:
+                    widened = True
+            if widened:
+                state = _ANCHOR_TOP
+                ctx.widened_by["condition_1"] += 1
+            continue
+        effect = _anchor_effect(stmt, ctx.field)
+        if effect is not None:
+            state = effect
+            continue
+        call_name = _self_call_name(stmt)
+        if call_name is not None:
+            if call_name in call_stack:
+                continue  # cycle guard: a repeat visit contributes nothing further.
+            resolved = ctx.resolve_self_call(ctx.class_name, call_name)
+            if resolved is None:
+                # §17.4.3 condition 3: an unresolved delegate may mutate
+                # the field invisibly.
+                state = _ANCHOR_TOP
+                ctx.widened_by["condition_3"] += 1
+                continue
+            member, _owner_class = resolved
+            state = _walk_anchor_stmts(list(member.body), state, ctx, call_stack | {call_name})
+            continue
+    return state
+
+
+def compute_anchor_guard_states(
+    entry_node: "ast.FunctionDef | ast.AsyncFunctionDef",
+    *,
+    field: str,
+    class_name: str,
+    class_nodes: dict[str, ast.ClassDef],
+    class_modules: dict[str, str],
+    bases_index: ClassBasesIndex,
+) -> tuple[dict[int, str], dict[str, int], str | None]:
+    """§17.4.3: the intra-operation ordered effect/guard walk over ONE
+    entry point's own closure. Returns `(guard_states, widened_by,
+    net_effect)`:
+
+    * `guard_states` -- `{raise_lineno: "EMPTY"|"HELD"|"TOP"|"ENTRY"}` for
+      every anchor-reading guard (§17.4.2 conjunct (c)'s shape) reached
+      anywhere in the closure, keyed by the SAME lineno the survey records
+      for that guard (the `raise` statement's own `node.lineno`,
+      `scripts/survey_plr_preconditions.py`'s `visit_Raise`) -- so a
+      derive-time lookup by `InlinedGuard.site.lineno` finds it directly,
+      no re-parsing of `condition` needed at derive_contract's own guard
+      loop.
+    * `widened_by` -- counts for conditions 1-3 (this pass's own; 4 and 5
+      are AnchorWalk's/`_record_guard`'s business respectively, §17.4.3's
+      own box).
+    * `net_effect` -- `"EMPTY"`/`"HELD"`/`"TOP"`, this entry point's own
+      LAST unconditionally-reached effect on `field`, or `None` if the
+      closure never touches `field` at all (E3's own no-bridge no-op,
+      `tipstate._apply_transfer`'s identical case) -- the value
+      `evaluate_anchor_call` applies to `AnchorWalk`'s inter-operation
+      carry AFTER evaluating this call's own guards.
+    """
+    ctx = _AnchorWalkCtx(field, class_name, class_nodes, class_modules, bases_index)
+    net = _walk_anchor_stmts(list(entry_node.body), _ANCHOR_ENTRY, ctx, frozenset({entry_node.name}))
+    return ctx.guard_states, dict(ctx.widened_by), (None if net == _ANCHOR_ENTRY else net)
 
 
 # ---------------------------------------------------------------------------
@@ -696,6 +1114,18 @@ class ReceiverState:
     #: `bound_channels` key -- every channel_guards entry degrades to
     #: today's `⊤` behaviour exactly).
     delegate_channel_binding: dict[str, dict[str, dict[str, Any]]] = field(default_factory=dict)
+    #: 260909 (spec 260909_plr-sema-move-family-increment.md §17.4.2, T52,
+    #: P5): every singleton typestate anchor field on THIS receiver class
+    #: itself (e.g. `("_resource_pickup",)` on `LiquidHandler` -- measured
+    #: whole-surface, `LiquidHandler` actually carries TWO, see
+    #: `compute_singleton_typestate_anchors`'s own docstring for why both
+    #: are kept rather than one being picked as a "winner") -- a SECOND,
+    #: independent anchor family from `bool_view_attr`/`state_fields`
+    #: above, which describe P2's anchor on the SEPARATE tracker class.
+    #: Additive; defaults to `()` (no P5 anchor known for this receiver, or
+    #: the caller did not supply a `function_index` --
+    #: `compute_channel_bridge`'s same fail-closed-by-omission discipline).
+    anchor_fields: tuple[str, ...] = ()
 
 
 def receiver_state_to_json(rs: ReceiverState) -> dict[str, Any]:
@@ -722,6 +1152,8 @@ def receiver_state_to_json(rs: ReceiverState) -> dict[str, Any]:
             method: {delegate: dict(binding) for delegate, binding in sorted(bindings.items())}
             for method, bindings in sorted(rs.delegate_channel_binding.items())
         }
+    if rs.anchor_fields:
+        payload["anchor_fields"] = list(rs.anchor_fields)
     return payload
 
 
@@ -729,11 +1161,21 @@ def derive_receiver_states(
     plr_pkg_root: Path,
     records: list[SurveyRecord],
     taxonomy_classes: list[dict[str, Any]],
+    *,
+    function_index: "FunctionIndex | None" = None,
 ) -> dict[str, ReceiverState]:
     """Runs P1-P4 over the whole PLR source tree and returns one
     `ReceiverState` per qualifying receiver class (measured: `{"LiquidHandler":
     ...}` at the current pin -- `head96` also types to `TipTracker` under
     P1a but loses the deterministic tie-break, §10.9's non-goal).
+
+    ``function_index`` (260909, T52, spec §17.4.2, P5, additive, opt-in):
+    when supplied, ALSO computes the whole-surface singleton-anchor
+    selection (`compute_singleton_typestate_anchors`) and attaches each
+    qualifying receiver's own `anchor_fields`. Omitting it (the default)
+    reproduces this function's exact pre-T52 behaviour -- every
+    `ReceiverState.anchor_fields` stays `()`, same fail-closed-by-omission
+    discipline every other additive keyword in this module already uses.
     """
     root = plr_pkg_root if plr_pkg_root is not None else default_plr_pkg_root()
     tip_state_exceptions = compute_tip_state_exceptions(taxonomy_classes)
@@ -764,6 +1206,16 @@ def derive_receiver_states(
     effects_cache: dict[str, dict[str, str]] = {}
     state_fields_cache: dict[str, tuple[str, ...]] = {}
     constructor_state_cache: dict[str, str | None] = {}
+
+    # 260909 (T52, spec §17.4.2, P5, additive, opt-in): the singleton
+    # typestate anchor's whole-surface selection, computed ONCE (not per
+    # receiver -- P5's anchor lives on the RECEIVER class itself, unlike
+    # P2's, so it has no per-tracker-class cache to share). `{}` when
+    # `function_index` was not supplied, degrading every `anchor_fields`
+    # below to `()` exactly as this function's pre-T52 behaviour did.
+    singleton_anchors: dict[str, tuple[str, ...]] = {}
+    if function_index is not None:
+        singleton_anchors, _candidates = compute_singleton_typestate_anchors(class_nodes, class_modules, function_index)
 
     out: dict[str, ReceiverState] = {}
     for receiver_name, receiver_node in sorted(class_nodes.items()):
@@ -831,6 +1283,7 @@ def derive_receiver_states(
                 entry_reset_ledger=entry_reset_ledger,
                 channel_kwarg=channel_kwarg,
                 delegate_channel_binding=delegate_channel_binding,
+                anchor_fields=singleton_anchors.get(receiver_name, ()),
             )
             break  # first (alphabetically) qualifying attribute wins.
     return out
@@ -1268,6 +1721,42 @@ def build_plr_class_index(plr_pkg_root: Path) -> tuple[dict[str, ast.ClassDef], 
     return class_nodes, class_modules
 
 
+def build_plr_class_bases_index(plr_pkg_root: Path, class_nodes: dict[str, ast.ClassDef]) -> ClassBasesIndex:
+    """The whole-tree base-name index M-INH needs (§17.2, T50): a
+    DEDICATED second scan over ``plr_pkg_root`` -- independent of
+    ``build_plr_class_index``'s own scan above, which keeps only the
+    first-definition-wins ``class_nodes``/``class_modules`` and therefore
+    cannot answer "does this bare class name collide across modules?" on
+    its own. This function's own pass collects EVERY module that defines
+    each bare class name (not just the first), then delegates the actual
+    extractor rule and closure-refusal bookkeeping to
+    ``plr_sema.derive.build_class_bases_index`` -- the ONE shared,
+    generic (no PLR knowledge) implementation
+    ``scripts/survey_plr_preconditions.py`` also calls, off its own
+    already-parsed file dict, so the two halves §17.2 requires to land
+    together can never silently apply two different rules.
+
+    Takes the CALLER's own ``class_nodes`` (rather than re-deriving it)
+    so a caller that already built it via ``build_plr_class_index`` above
+    -- ``derive/__main__.py``'s ``main()`` -- does not pay for a third
+    whole-tree AST walk just to get the same first-definition-wins map
+    back.
+    """
+    class_modules_multi: dict[str, set[str]] = {}
+    for file in _iter_plr_source_files(plr_pkg_root):
+        try:
+            source = file.read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=str(file))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        module = _module_name_for_plr_file(file, plr_pkg_root)
+        for top in ast.iter_child_nodes(tree):
+            if isinstance(top, ast.ClassDef):
+                class_modules_multi.setdefault(top.name, set()).add(module)
+    frozen_multi = {name: frozenset(mods) for name, mods in class_modules_multi.items()}
+    return build_class_bases_index(class_nodes, frozen_multi)
+
+
 #: (module, qualname, lineno) -> the function/method's own AST node -- the
 #: SAME triple `SurveyRecord.module`/`.qualname`/`.lineno` carry, verified
 #: against the real survey artifact (260904 T30b): `_record_from_dict`'s
@@ -1481,7 +1970,21 @@ def collect_env_ref_method_names(contracts: dict[str, Any]) -> frozenset[str]:
     arithmetic (§16.1.1) would be permanently unreachable without it. Every
     `caller_args` VALUE is a `Term` JSON (never a `Predicate`), so this reuses
     the SAME `predicate_ast.from_json`/`predicate_ast.walk` pair -- both are
-    total over the whole `Predicate | Term` union, `SetLit` included (G9)."""
+    total over the whole `Predicate | Term` union, `SetLit` included (G9).
+
+    **260909 (T54, spec 260909_plr-sema-move-family-increment.md S17.1.4,
+    round 2's R2-C1): ALSO scans EVERY per-site `args` map of M3's new
+    `"caller_args_sites"` field.** A move-family guard sits at depth >= 2
+    and never carries a populated `"caller_args"` (M1 clause 6, unrelaxed
+    for the single-entry-point-relative field), so without this THIRD scan
+    a method name that only ever appears at depth >= 2 -- `drop_resource`,
+    reached only through `move_resource`'s own two `_check_args` calls --
+    never becomes a `n_surface_candidates` row at all, and the selection
+    half of round 2's R2-C1 stays unrepaired regardless of what the
+    attachment filter does. Every value in every per-site `args` map is a
+    `Term` JSON exactly as `caller_args`'s values are (M3's own
+    `compute_caller_args_for_call`), so the walk below is total over them
+    by construction and needs no new parser."""
     names: set[str] = set()
     for entry in contracts.values():
         for guard in entry.get("guards", ()):
@@ -1498,6 +2001,17 @@ def collect_env_ref_method_names(contracts: dict[str, Any]) -> frozenset[str]:
                     for sub in predicate_walk(term):
                         if isinstance(sub, EnvRef) and sub.path:
                             names.add(sub.path[-1])
+            caller_args_sites = guard.get("caller_args_sites")
+            if caller_args_sites:
+                for site in caller_args_sites:
+                    site_args = site.get("args") if isinstance(site, dict) else None
+                    if not site_args:
+                        continue
+                    for term_json in site_args.values():
+                        term = predicate_from_json(term_json)
+                        for sub in predicate_walk(term):
+                            if isinstance(sub, EnvRef) and sub.path:
+                                names.add(sub.path[-1])
     return frozenset(names)
 
 

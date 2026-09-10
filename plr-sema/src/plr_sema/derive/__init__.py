@@ -46,7 +46,7 @@ from __future__ import annotations
 import ast
 import json
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -56,11 +56,13 @@ from plr_sema.check._supported_tools import SUPPORTED_TOOLS
 from plr_sema.derive.bindings import (
     build_qualname_index,
     compute_caller_args,
+    compute_caller_args_for_call,
     compute_caller_call_lineno,
     compute_caller_scope_trail,
     compute_local_bindings_for_guard,
     compute_reachability_clear,
     demote_refused_env_refs,
+    find_delegate_calls,
 )
 from plr_sema.derive.predicate_ast import Predicate, parse as parse_predicate
 from plr_sema.telemetry import FAILURE_CATEGORIES
@@ -82,6 +84,14 @@ __all__ = [
     "InlinedGuard",
     "DerivedContract",
     "derive_contract",
+    "ClassBasesIndex",
+    "build_class_bases_index",
+    "class_closure",
+    "diagnose_base_resolution",
+    "resolve_via_base_closure",
+    "inherited_method_names",
+    "compute_m_inh_selection",
+    "measure_m_inh_entry_point_impact",
     "DroppedReceiverCounts",
     "scan_dropped_receiver_calls",
     "scan_dropped_receiver_calls_in_source",
@@ -200,6 +210,15 @@ class SurveyRecord:
     #: preserved here too: two records sharing an `expr` are two entries,
     #: not one.
     dropped_calls: tuple[DroppedCall, ...] = ()
+    #: (260909, T50, spec §17.2, M-INH Half 1) The SUBSET of
+    #: `delegates_to` the survey admitted ONLY because this class's
+    #: transitive base closure -- not this class's own method set --
+    #: defines the name (`scripts/survey_plr_preconditions.py`'s own
+    #: `FunctionPreconditions.inherited_delegates`). Additive; `()` for a
+    #: pre-T50 artifact via `.get()` below, degrading to "M-INH's
+    #: whole-surface report sees no Half-1-sourced pairs for this
+    #: record", never a crash.
+    inherited_delegates: tuple[str, ...] = ()
 
 
 def _finding_from_dict(d: dict[str, Any]) -> SurveyFinding:
@@ -239,6 +258,7 @@ def _record_from_dict(d: dict[str, Any]) -> SurveyRecord:
         delegates_to=tuple(d.get("delegates_to", ())),
         unresolved_calls=tuple(d.get("unresolved_calls", ())),
         dropped_calls=tuple(_dropped_call_from_any(x) for x in d.get("dropped_calls", ())),
+        inherited_delegates=tuple(d.get("inherited_delegates", ())),
     )
 
 
@@ -390,12 +410,416 @@ def count_index_key_collisions(records: list[SurveyRecord]) -> dict[str, int]:
 
 
 # ---------------------------------------------------------------------------
+# §17.2 -- M-INH: the base-name extractor, the fail-closed base-closure
+# mechanism, and the whole-surface selection report (T50, spec
+# 260909_plr-sema-move-family-increment.md).
+#
+# Deliberately placed BELOW `resolve()`'s call sites are (`resolve`,
+# `_walk_closure`, `derive_contract`) but ABOVE their definitions -- Python
+# resolves names at CALL time, not at def time, so forward references from
+# `resolve()`'s body to `resolve_via_base_closure` below are fine; this
+# section sits here so the primitives `resolve()`'s M-INH branch calls are
+# read before `resolve()` itself, not after.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class ClassBasesIndex:
+    """Whole-tree base-name index for M-INH (§17.2, T50).
+
+    ``bases``: bare class name -> its DIRECT base names (§17.2's
+    extractor table: ``ast.Name.id``, ``ast.Attribute.attr``, or the
+    Subscript-recursed base name of ``ast.Subscript.value``), or ``None``
+    -- the extractor's fourth row's sentinel -- when ANY base expression
+    in that class's ``ClassDef.bases`` list was unreadable (an
+    ``ast.Call``, a starred expression, a metaclass keyword, or anything
+    else the three named rows don't cover). ``None`` here means "refuse
+    the WHOLE class": ``class_closure`` propagates it to every class that
+    transitively derives from this one, never guesses a partial closure.
+
+    ``unresolved_base_counts``: per class, how many of ITS OWN direct
+    base names (post-extraction) are absent from ``bases`` entirely --
+    the silent-incompleteness measure for an import-alias base
+    (``import x as Y; class C(Y)`` yields the base name ``"Y"``, which is
+    simply never a key here) or any other base outside the analyzed
+    surface. Zero for a class whose entry is the ``None`` sentinel (its
+    own bases were never fully read, so this count is meaningless for it
+    -- ``0`` rather than a misleading partial count).
+
+    ``collision_names``: bare class names defined in MORE than one
+    distinct module across the whole scanned tree. ``build_plr_class_index``
+    (and this index's own ``bases``, built from its ``class_nodes``)
+    resolve a bare name via first-definition-wins ``setdefault``, so a
+    name in this set means ``bases``/``class_nodes`` silently picked an
+    ARBITRARY one of >1 same-named classes -- using it as a resolution
+    target could attribute a guard to the wrong class's method of the
+    same name, invisible to the ambiguity check alone (which only counts
+    definitions actually found in a closure). ``class_closure`` refuses
+    (``None``) the moment it encounters a collision name, whether that
+    name is the class being queried or an ancestor reached during the
+    walk.
+    """
+
+    bases: "dict[str, tuple[str, ...] | None]"
+    unresolved_base_counts: "dict[str, int]"
+    collision_names: "frozenset[str]"
+
+
+def _extract_base_name(expr: ast.expr) -> str | None:
+    """One element of a ``ClassDef.bases`` list -> its base NAME, per
+    §17.2's closed extractor rule, or ``None`` when the expression's shape
+    means the WHOLE class must refuse (the table's fourth row: anything
+    that is not ``ast.Name``/``ast.Attribute``/``ast.Subscript``, e.g. an
+    ``ast.Call`` -- a dynamic base factory -- or a starred expression or a
+    metaclass keyword argument, none of which carry a single readable base
+    identity)."""
+    if isinstance(expr, ast.Name):
+        return expr.id
+    if isinstance(expr, ast.Attribute):
+        return expr.attr
+    if isinstance(expr, ast.Subscript):
+        return _extract_base_name(expr.value)
+    return None
+
+
+def build_class_bases_index(
+    class_nodes: "dict[str, ast.ClassDef]",
+    class_modules_multi: "dict[str, frozenset[str]]",
+) -> ClassBasesIndex:
+    """Pure (§17.2, T50): apply the base-name extractor's closed rule to
+    every class in ``class_nodes``, plus the bare-name collision check
+    against ``class_modules_multi`` (EVERY module that defines a class
+    named ``key``, not just the first -- ``build_plr_class_index``'s own
+    ``class_modules`` keeps only the first-definition-wins module and
+    cannot answer this on its own).
+
+    Takes already-built whole-tree structures rather than walking a
+    source tree itself, so callers with DIFFERENT whole-tree scans (the
+    survey script's own already-parsed file dict;
+    ``receiver_state.build_plr_class_bases_index``'s dedicated disk scan
+    for ``derive/__main__.py``) share this ONE implementation of the
+    fail-closed rule rather than risking two copies drifting apart on it
+    -- exactly the risk §17.2's own "both halves must land together" box
+    calls out.
+    """
+    collision_names = frozenset(name for name, mods in class_modules_multi.items() if len(mods) > 1)
+    bases: dict[str, tuple[str, ...] | None] = {}
+    unresolved_base_counts: dict[str, int] = {}
+    for name, node in class_nodes.items():
+        extracted: list[str] = []
+        refused = False
+        for base_expr in node.bases:
+            base_name = _extract_base_name(base_expr)
+            if base_name is None:
+                refused = True
+                break
+            extracted.append(base_name)
+        if refused:
+            bases[name] = None
+            unresolved_base_counts[name] = 0
+            continue
+        bases[name] = tuple(extracted)
+        unresolved_base_counts[name] = sum(1 for b in extracted if b not in class_nodes)
+    return ClassBasesIndex(
+        bases=bases, unresolved_base_counts=unresolved_base_counts, collision_names=collision_names
+    )
+
+
+def class_closure(
+    name: str,
+    class_nodes: "dict[str, ast.ClassDef]",
+    bases_index: ClassBasesIndex,
+    *,
+    _seen: "frozenset[str] | None" = None,
+) -> "frozenset[str] | None":
+    """§17.2's reflexive-transitive base closure for ONE class name --
+    ``{name} | closure(base) for base in name's direct bases``, generic
+    (no PLR knowledge, just names) like ``plr_sema.check.predicate.
+    subclass_closure_from_bases``, but extended with the FAIL-CLOSED
+    refusal propagation that generic function's simpler ``Mapping[str,
+    tuple[str, ...]]`` input has no sentinel to express: returns ``None``
+    -- refused, not "empty" -- the instant the walk touches a collision
+    name (``name in bases_index.collision_names``) or a class the
+    extractor refused outright (``bases_index.bases[name] is None``),
+    and that ``None`` propagates through every caller up the recursion,
+    never silently downgrading to a partial closure.
+
+    A base name entirely ABSENT from ``bases_index.bases`` (an import
+    alias, or any name this whole-tree scan never saw a ``ClassDef``
+    for -- ``object``, ``Generic``, ``ABC``, ...) is a DIFFERENT case:
+    ``.get(name, ())`` treats it as a leaf with no further bases,
+    contributing nothing more but refusing nothing either -- the same
+    "unresolvable base is never guessed at" discipline
+    ``subclass_closure_from_bases`` already documents.
+
+    ``_seen`` is the recursion's own cycle guard (private, reflexive:
+    ``name in _seen`` returns ``frozenset()`` for the repeat, not
+    ``None`` -- a cycle contributes nothing further on the SECOND visit,
+    it does not retroactively refuse the first).
+    """
+    seen = _seen if _seen is not None else frozenset()
+    if name in seen:
+        return frozenset()
+    if name in bases_index.collision_names:
+        return None
+    direct = bases_index.bases.get(name, ())
+    if direct is None:
+        return None
+    seen = seen | {name}
+    result = {name}
+    for base in direct:
+        sub = class_closure(base, class_nodes, bases_index, _seen=seen)
+        if sub is None:
+            return None
+        result |= sub
+    return frozenset(result)
+
+
+def diagnose_base_resolution(
+    class_name: str,
+    method_name: str,
+    class_nodes: "dict[str, ast.ClassDef]",
+    bases_index: ClassBasesIndex,
+) -> "tuple[str | None, str]":
+    """The single source of truth for §17.2 conditions 1/2: the unique
+    ancestor (STRICT -- excluding ``class_name`` itself; a class's own
+    definition is always ``resolve()``'s/condition 4's separate
+    class-first step, never this function's job) in ``class_name``'s
+    transitive base closure that defines ``method_name``. Returns
+    ``(base_name, "resolved")`` on success, else ``(None, reason)`` where
+    ``reason`` names WHY (AC-17.1's published refusal breakdown):
+
+    * ``"class_name_collision"`` -- ``class_name`` itself is a bare-name
+      collision (§17.2's second extractor refusal).
+    * ``"closure_refused"`` -- ``class_closure`` returned ``None``: an
+      unreadable base expression on ``class_name`` or on some ancestor
+      (the extractor's fourth-row refusal, possibly several hops up), or
+      a collision on an ANCESTOR rather than on ``class_name`` itself.
+    * ``"no_ancestor_defines"`` -- the closure resolved cleanly but zero
+      ancestors define ``method_name`` (not one of §17.2's four named
+      conditions; published anyway so a `resolve()` miss into M-INH is
+      never silently indistinguishable from a refusal).
+    * ``"ambiguous"`` -- MORE than one ancestor defines ``method_name``
+      (condition 1). AST bases are not an MRO linearisation, so picking
+      any one of them risks inlining the WRONG body's guards; refusing
+      is the only sound answer.
+
+    ``resolve_via_base_closure`` below is a thin wrapper discarding the
+    reason -- this function computes the boolean outcome exactly once,
+    so the two can never disagree on what counts as "resolved".
+    """
+    if class_name in bases_index.collision_names:
+        return None, "class_name_collision"
+    closure = class_closure(class_name, class_nodes, bases_index)
+    if closure is None:
+        return None, "closure_refused"
+    definers = [
+        ancestor
+        for ancestor in closure
+        if ancestor != class_name
+        and (node := class_nodes.get(ancestor)) is not None
+        and any(
+            isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == method_name
+            for n in ast.iter_child_nodes(node)
+        )
+    ]
+    if not definers:
+        return None, "no_ancestor_defines"
+    if len(definers) > 1:
+        return None, "ambiguous"
+    return definers[0], "resolved"
+
+
+def resolve_via_base_closure(
+    class_name: str,
+    method_name: str,
+    class_nodes: "dict[str, ast.ClassDef]",
+    bases_index: ClassBasesIndex,
+) -> str | None:
+    """The unique ancestor of ``class_name`` (excluding itself) that
+    defines ``method_name``, or ``None`` on ambiguity/refusal/absence --
+    ``resolve()``'s third step and condition 4's step (ii), both calling
+    THIS (never reimplementing the ambiguity rule locally)."""
+    base, _reason = diagnose_base_resolution(class_name, method_name, class_nodes, bases_index)
+    return base
+
+
+def inherited_method_names(
+    class_name: str,
+    class_nodes: "dict[str, ast.ClassDef]",
+    bases_index: ClassBasesIndex,
+) -> "frozenset[str]":
+    """§17.2 Half 1's own need: the UNION of every ancestor's (excluding
+    ``class_name`` itself) own method names, no ambiguity refusal --
+    unlike ``resolve_via_base_closure``, the survey only needs to decide
+    "is this name SOME delegate" (a boolean classification, `delegates`
+    vs `unresolved`), not "which ONE class's guards to inline", so two
+    ancestors defining the same name is not a conflict here. Returns
+    ``frozenset()`` -- no extension, fail closed to "own methods only" --
+    when ``class_closure`` refuses ``class_name`` outright (collision, or
+    an unreadable base anywhere in the chain)."""
+    closure = class_closure(class_name, class_nodes, bases_index)
+    if closure is None:
+        return frozenset()
+    names: set[str] = set()
+    for ancestor in closure:
+        if ancestor == class_name:
+            continue
+        node = class_nodes.get(ancestor)
+        if node is None:
+            continue
+        names |= {
+            n.name for n in ast.iter_child_nodes(node)
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+    return frozenset(names)
+
+
+def compute_m_inh_selection(
+    records: "list[SurveyRecord]",
+    index: dict[Qualkey, SurveyRecord],
+    class_nodes: "dict[str, ast.ClassDef]",
+    class_modules: "dict[str, str]",
+    bases_index: ClassBasesIndex,
+) -> "dict[str, Any]":
+    """§17.2's whole-surface published selection (T50, AC-17.1). TWO
+    distinct populations, reported separately because they come from
+    different mechanisms and neither implies the other:
+
+    ``half1_admitted`` -- every ``(class, name)`` pair the SURVEY itself
+    already classified as a delegate ONLY via the transitive base closure
+    (``rec.inherited_delegates``, Half 1). Each entry is re-diagnosed here
+    via ``diagnose_base_resolution`` (Half 2's own, STRICTER, ambiguity-
+    refusing rule) purely for reporting -- Half 1's union-of-ancestors
+    admission rule has NO ambiguity check (``inherited_method_names``'s
+    own docstring), so a pair landing here with ``reason != "resolved"``
+    is a real, surfaceable disagreement between the two halves: the
+    survey called it a delegate, but the closure walk still cannot pick a
+    unique body to inline (``derive_contract`` degrades this ONE case
+    from an ``unresolved_delegate`` gap to a ``no_contract_derived`` gap,
+    per ``resolve()``'s own per-delegate re-check) -- ``half1_ambiguous_mismatch``
+    isolates exactly this population.
+
+    ``newly_resolved``/``refusal_counts`` -- every ``self.<name>()`` call
+    this survey STILL recorded as ``unresolved_calls`` after Half 1's own
+    extension (a name no ancestor's OWN method set admitted at all),
+    checked against ``resolve()``'s third step for a residual rescue.
+    Refusals are broken down by ``diagnose_base_resolution``'s reason plus
+    ONE more this function adds itself (``"base_outside_surface"``,
+    condition 2: a unique base was found but its ``(module_of(B),
+    f"{B}.{name}")`` key is not itself in ``index``) -- six buckets total,
+    matching AC-17.1's "four conditions, or ... the two extractor
+    refusals" plus ``"no_ancestor_defines"``, named honestly as a
+    non-failure bucket outside that enumeration.
+    """
+    half1_admitted: list[dict[str, Any]] = []
+    half1_ambiguous_mismatch: list[dict[str, Any]] = []
+    newly_resolved: list[dict[str, Any]] = []
+    refusal_counts: dict[str, int] = {
+        "resolved": 0,
+        "ambiguous": 0,
+        "base_outside_surface": 0,
+        "class_name_collision": 0,
+        "closure_refused": 0,
+        "no_ancestor_defines": 0,
+    }
+    for rec in records:
+        if rec.class_name is None:
+            continue
+        for name in rec.inherited_delegates:
+            base, reason = diagnose_base_resolution(rec.class_name, name, class_nodes, bases_index)
+            entry = {"class": rec.class_name, "module": rec.module, "name": name, "base": base, "reason": reason}
+            half1_admitted.append(entry)
+            if reason != "resolved":
+                half1_ambiguous_mismatch.append(entry)
+        for name in rec.unresolved_calls:
+            base, reason = diagnose_base_resolution(rec.class_name, name, class_nodes, bases_index)
+            if base is None:
+                refusal_counts[reason] += 1
+                continue
+            base_module = class_modules.get(base)
+            candidate = (base_module, f"{base}.{name}") if base_module is not None else None
+            if candidate is None or candidate not in index:
+                refusal_counts["base_outside_surface"] += 1
+                continue
+            refusal_counts["resolved"] += 1
+            newly_resolved.append(
+                {
+                    "class": rec.class_name,
+                    "module": rec.module,
+                    "name": name,
+                    "base": base,
+                    "base_module": base_module,
+                }
+            )
+    return {
+        "half1_admitted": half1_admitted,
+        "half1_ambiguous_mismatch": half1_ambiguous_mismatch,
+        "newly_resolved": newly_resolved,
+        "refusal_counts": refusal_counts,
+    }
+
+
+def measure_m_inh_entry_point_impact(
+    entry: Qualkey,
+    index: dict[Qualkey, SurveyRecord],
+    class_nodes: "dict[str, ast.ClassDef]",
+    class_modules: "dict[str, str]",
+    bases_index: ClassBasesIndex,
+    *,
+    stamp: "SurveyStamp | None" = None,
+) -> "dict[str, Any]":
+    """§17.2 condition 3 (T50, AC-17.1): one entry point's closure size,
+    guard count, and PER-GUARD depth multiset, BEFORE (no M-INH) and AFTER
+    (M-INH enabled) -- round 1's C11, the only measurement that can catch
+    a silent depth perturbation from delegates_to's own ``sorted()``
+    push/pop-order change (§17.2's normative "second channel" box), since
+    closure size and guard count alone cannot detect it. ``doubled`` is
+    condition 3's own published bound: ``True`` iff the AFTER closure size
+    is MORE than double the BEFORE size, in which case the caller (T50's
+    CLI glue) must stop and surface this entry point rather than landing.
+    """
+    from collections import Counter
+
+    before = derive_contract(entry[0], entry[1], index, stamp=stamp)
+    after = derive_contract(
+        entry[0], entry[1], index, stamp=stamp,
+        class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+    )
+    closure_before = {key for _rec, key, _depth in _walk_closure(entry, index)}
+    closure_after = {
+        key
+        for _rec, key, _depth in _walk_closure(
+            entry, index, class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index
+        )
+    }
+    return {
+        "entry": f"{entry[0]}:{entry[1]}",
+        "closure_size_before": len(closure_before),
+        "closure_size_after": len(closure_after),
+        "guard_count_before": len(before.guards),
+        "guard_count_after": len(after.guards),
+        "depth_multiset_before": dict(sorted(Counter(g.depth for g in before.guards).items())),
+        "depth_multiset_after": dict(sorted(Counter(g.depth for g in after.guards).items())),
+        "doubled": len(closure_after) > 2 * len(closure_before),
+    }
+
+
+# ---------------------------------------------------------------------------
 # §7.2 -- resolve() and the transitive closure mechanic
 # ---------------------------------------------------------------------------
 
 
 def resolve(
-    name: str, rec: SurveyRecord, index: dict[Qualkey, SurveyRecord]
+    name: str,
+    rec: SurveyRecord,
+    index: dict[Qualkey, SurveyRecord],
+    *,
+    class_nodes: "dict[str, ast.ClassDef] | None" = None,
+    class_modules: "dict[str, str] | None" = None,
+    bases_index: "ClassBasesIndex | None" = None,
+    analyzed_class: str | None = None,
+    analyzed_module: str | None = None,
 ) -> Qualkey | None:
     """Resolve one ``delegates_to`` bare name to an index key (§7.2, C1).
 
@@ -410,18 +834,79 @@ def resolve(
     Pure: never mutates a gap list. Callers append a
     ``("no_contract_derived", name)`` gap themselves when this returns
     ``None`` -- see ``derive_contract``.
+
+    260909 (T50, spec 260909_plr-sema-move-family-increment.md §17.2,
+    M-INH): FIVE additive, opt-in keyword-only parameters, all gated
+    together on ``class_nodes``/``class_modules``/``bases_index`` being
+    supplied -- omitting any of the three reproduces this function's exact
+    pre-T50 two-step behaviour (the same fail-closed-by-omission discipline
+    ``function_index`` uses elsewhere in this module). When supplied:
+
+    THIRD STEP (``analyzed_class`` is ``None`` or equals ``rec.class_name``
+    -- "a record reached the ordinary way", §17.2's scoping box): tried
+    only after the two same-module steps above both fail, never before
+    them. Walks ``rec.class_name``'s transitive base closure (excluding
+    itself) via ``resolve_via_base_closure`` and returns
+    ``(module_of(B), f"{B}.{name}")`` for the UNIQUE base ``B`` defining
+    ``name``, or ``None`` on ambiguity/refusal (§17.2 conditions 1/2) or
+    when the candidate key is not itself present in ``index``.
+
+    CONDITION 4 (``analyzed_class`` supplied AND differs from
+    ``rec.class_name``): this record is a body M-INH itself admitted by
+    inheritance -- ``rec.class_name`` is some ancestor ``B`` of the
+    analyzed (entry-point) class ``C`` == ``analyzed_class``. A
+    ``self.<name>()`` call inside it dispatches on ``C``, never on ``B``:
+    the class-first step above is run against ``C``/``analyzed_module``
+    instead of ``rec.class_name``/``rec.module`` (an override on ``C``
+    wins immediately), the module-level step is UNCHANGED (still keyed on
+    ``rec.module`` -- a bare, non-``self`` call inside ``B``'s own module
+    is unaffected by which instance ``self`` actually is), and the third
+    step also walks ``C``'s own transitive closure (excluding ``C``, not
+    ``B``'s) rather than ``B``'s. This is what makes
+    ``Resource._state_updated``'s own ``self.serialize_state()`` resolve
+    to a ``LiquidHandler`` override rather than to ``Resource``'s own body
+    when reached through ``LiquidHandler``'s closure (§17.2's normative
+    box, AC-17.1).
     """
-    if rec.class_name is not None:
-        same_class = (rec.module, f"{rec.class_name}.{name}")
+    m_inh_ready = class_nodes is not None and class_modules is not None and bases_index is not None
+    inherited_body = (
+        m_inh_ready
+        and analyzed_class is not None
+        and rec.class_name is not None
+        and rec.class_name != analyzed_class
+    )
+    dispatch_class = analyzed_class if inherited_body else rec.class_name
+    dispatch_module = analyzed_module if inherited_body else rec.module
+
+    if dispatch_class is not None and dispatch_module is not None:
+        same_class = (dispatch_module, f"{dispatch_class}.{name}")
         if same_class in index:
             return same_class
+
     module_level = (rec.module, name)
     if module_level in index:
         return module_level
+
+    if m_inh_ready and dispatch_class is not None:
+        assert class_nodes is not None and class_modules is not None and bases_index is not None
+        base = resolve_via_base_closure(dispatch_class, name, class_nodes, bases_index)
+        if base is not None:
+            base_module = class_modules.get(base)
+            if base_module is not None:
+                candidate = (base_module, f"{base}.{name}")
+                if candidate in index:
+                    return candidate
     return None
 
 
-def _walk_closure(entry: Qualkey, index: dict[Qualkey, SurveyRecord]):
+def _walk_closure(
+    entry: Qualkey,
+    index: dict[Qualkey, SurveyRecord],
+    *,
+    class_nodes: "dict[str, ast.ClassDef] | None" = None,
+    class_modules: "dict[str, str] | None" = None,
+    bases_index: "ClassBasesIndex | None" = None,
+):
     """Cycle-safe transitive closure walk over ``delegates_to`` (§7.2's
     mechanic). Shared traversal core for ``derive_contract`` and the
     gap-ledger builder's reachable-set computation, so the two can never
@@ -441,9 +926,26 @@ def _walk_closure(entry: Qualkey, index: dict[Qualkey, SurveyRecord]):
     but handled per §7.2's own pseudocode (``index.get(q) or
     gaps.append(...)``) rather than assumed unreachable, since it is also
     the entry-point-not-in-index case.
+
+    260909 (T50, spec §17.2, M-INH): ``class_nodes``/``class_modules``/
+    ``bases_index`` -- all three or none, the same all-or-nothing gate
+    ``resolve()`` itself applies -- are additive and opt-in; omitting them
+    reproduces this generator's exact pre-T50 traversal, byte for byte
+    (every line below except the ``resolve()`` call itself, and the two new
+    ``analyzed_class``/``analyzed_module`` locals, is unchanged). When
+    supplied, ``analyzed_class``/``analyzed_module`` are captured ONCE from
+    the entry point's own record at ``depth == 0`` (mirroring
+    ``derive_contract``'s own ``entry_K`` capture, this module's line
+    ~635-636) and threaded unchanged into every subsequent ``resolve()``
+    call for the rest of THIS walk -- condition 4's "dispatch on the
+    analyzed class" rule. No other traversal semantics change: ``seen``,
+    the LIFO ``frontier``, and cycle-safety are exactly as before.
     """
+    m_inh_ready = class_nodes is not None and class_modules is not None and bases_index is not None
     seen: set[Qualkey] = set()
     frontier: list[tuple[Qualkey, int]] = [(entry, 0)]
+    analyzed_class: str | None = None
+    analyzed_module: str | None = None
     while frontier:
         key, depth = frontier.pop()
         if key in seen:
@@ -453,8 +955,20 @@ def _walk_closure(entry: Qualkey, index: dict[Qualkey, SurveyRecord]):
         yield rec, key, depth
         if rec is None:
             continue
+        if depth == 0:
+            analyzed_class = rec.class_name
+            analyzed_module = rec.module
         for name in rec.delegates_to:
-            resolved = resolve(name, rec, index)
+            resolved = resolve(
+                name,
+                rec,
+                index,
+                class_nodes=class_nodes if m_inh_ready else None,
+                class_modules=class_modules if m_inh_ready else None,
+                bases_index=bases_index if m_inh_ready else None,
+                analyzed_class=analyzed_class,
+                analyzed_module=analyzed_module,
+            )
             if resolved is not None:
                 frontier.append((resolved, depth + 1))
 
@@ -545,6 +1059,38 @@ class InlinedGuard:
     caller_args: dict[str, Any] | None = None
     caller_reachability_clear: bool | None = None
     caller_scope_trail: tuple[str, ...] | None = None
+    #: 260909 (T52, spec §17.4.3, P6, additive): this guard's own
+    #: intra-operation pre-state on its entry point's singleton typestate
+    #: anchor -- `"EMPTY"`/`"HELD"`/`"TOP"` (a constant, derived from an
+    #: earlier effect in the SAME closure) or `"ENTRY"` (nothing precedes
+    #: it in this closure -- read `AnchorWalk`'s own inter-operation carry
+    #: at check time). `None` for every guard that is not an anchor-reading
+    #: guard, or when `anchor_fields` was not supplied to `derive_contract`
+    #: -- same fail-closed-by-omission discipline `caller_args` etc. use.
+    anchor_state: str | None = None
+    #: 260909 (T52, spec §17.4.3, P6, additive): WHICH singleton anchor
+    #: field `anchor_state` above is about (a receiver class can carry more
+    #: than one independent anchor, `ReceiverState.anchor_fields`'s own
+    #: docstring) -- `None` together with `anchor_state`, never one without
+    #: the other.
+    anchor_field: str | None = None
+    #: 260909 (T54, spec 260909_plr-sema-move-family-increment.md S17.5.1,
+    #: M3, additive): the whole-closure per-call-site list -- one entry per
+    #: `self.<D.name>(...)` call statement admitted anywhere in the
+    #: closure whose own `delegates_to` resolves to THIS guard's own
+    #: defining delegate, each `{"lineno": int, "caller_qualname": str,
+    #: "args": {param: <Term JSON>, ...}}` computed against THAT site's own
+    #: caller (never `entry_K`), under M3's constants-only (no free names)
+    #: depth-lift restriction. `None` (fail closed, same "computed, found
+    #: nothing" vs. "field never existed" discipline `caller_args` etc.
+    #: use) for a `depth == 0` guard, when no `function_index` was
+    #: supplied, or when the closure's own site set is incomplete (an
+    #: unresolved self-call anywhere in the closure, or a visited record
+    #: with no `K` -- S17.5.1's two fail-closed conditions). NEVER
+    #: replaces `caller_args`, which keeps its own depth == 1-only
+    #: population and unrestricted (non-constants-only) binding unchanged
+    #: (C13, conceded) -- this is a strictly additive sibling field.
+    caller_args_sites: tuple[dict[str, Any], ...] | None = None
 
     @property
     def is_dynamic_raise(self) -> bool:
@@ -562,6 +1108,15 @@ class DerivedContract:
     guards: tuple[InlinedGuard, ...]
     gaps: tuple[Gap, ...]
     stamp: SurveyStamp
+    #: 260909 (T52, spec §17.4.3, P6, additive): `{anchor_field: net_effect}`
+    #: -- this entry point's own LAST unconditionally-reached effect on
+    #: EACH of its class's singleton typestate anchors it actually touches
+    #: (`"EMPTY"`/`"HELD"`/`"TOP"`); a field absent from this dict never
+    #: appears in the closure at all -- `evaluate_anchor_call`'s own
+    #: transfer function applies each entry to `AnchorWalk`'s
+    #: inter-operation carry, the identical "absent means no bridge,
+    #: no-op" default `channel_effect` already uses.
+    anchor_net_effects: dict[str, str] = field(default_factory=dict)
 
 
 def derive_contract(
@@ -571,6 +1126,10 @@ def derive_contract(
     *,
     stamp: SurveyStamp | None = None,
     function_index: dict[tuple[str, str, int], ast.AST] | None = None,
+    class_nodes: "dict[str, ast.ClassDef] | None" = None,
+    class_modules: "dict[str, str] | None" = None,
+    bases_index: "ClassBasesIndex | None" = None,
+    anchor_fields: "dict[str, tuple[str, ...]] | None" = None,
 ) -> DerivedContract:
     """Transitive-closure contract derivation (§7.2). Totality (AC-7.2):
     NEVER raises, regardless of whether ``(module, qualname)`` is present in
@@ -619,21 +1178,106 @@ def derive_contract(
     a depth-2+ delegate never receives this treatment at all, M1 clause
     6, enforced here simply by never calling into it outside the
     ``depth == 1`` branch below).
+
+    260909 (T50, spec §17.2, M-INH): ``class_nodes``/``class_modules``/
+    ``bases_index``, additive and opt-in (omitting any of the three
+    reproduces this function's exact pre-T50 behaviour -- the same
+    fail-closed-by-omission discipline ``function_index`` uses above),
+    threaded straight through to ``_walk_closure`` and to every
+    per-delegate ``resolve()`` re-check below. ``analyzed_class``/
+    ``analyzed_module`` are captured HERE too (mirroring ``entry_K``'s own
+    depth-0 capture immediately below) so the delegate-gap re-check uses
+    the identical dispatch-on-the-analyzed-class rule ``_walk_closure``
+    applied while expanding the same record.
+
+    260909 (T52, spec §17.4.3, P6): ``anchor_fields`` (additive, opt-in,
+    default ``None``) -- ``{receiver_class: (anchor_field, ...)}``, the
+    whole-surface selection
+    ``plr_sema.derive.receiver_state.compute_singleton_typestate_anchors``
+    produces (a class may carry more than one independent anchor,
+    ``ReceiverState.anchor_fields``'s own docstring). When the entry
+    point's own ``analyzed_class`` is a key of it AND
+    ``function_index``/``class_nodes``/``class_modules``/``bases_index``
+    are all supplied, ``receiver_state.compute_anchor_guard_states`` runs
+    ONCE PER FIELD against the entry point's own AST (``entry_K``, captured
+    below) -- guard linenos never collide across fields (two different
+    fields' null-check guards cannot share one `raise` statement), so the
+    per-field ``guard_states`` dicts merge without collision. Every
+    subsequently-emitted ``InlinedGuard`` whose own ``site.lineno`` is a
+    key of the merged map gets ``anchor_state``/``anchor_field`` attached;
+    each field's own ``net_effect`` becomes an entry of this
+    ``DerivedContract``'s ``anchor_net_effects`` dict. Imported LOCALLY
+    (function scope), not at module level -- ``receiver_state.py`` itself
+    imports ``derive_contract`` from THIS module, so a module-level import
+    here would be circular; by call time both modules are already fully
+    loaded.
     """
     if stamp is None:
         stamp = survey_stamp()
+    # 260909 (T52): local import, see the docstring note above -- avoids a
+    # circular import with `plr_sema.derive.receiver_state`, which imports
+    # `derive_contract` from this module at ITS module level.
+    from plr_sema.derive.receiver_state import compute_anchor_guard_states
+
     qualname_index = None if function_index is None else build_qualname_index(function_index)
-    guards: list[InlinedGuard] = []
     gaps: list[Gap] = []
     entry_K: ast.AST | None = None
+    analyzed_class: str | None = None
+    analyzed_module: str | None = None
+    anchor_guard_states: dict[int, tuple[str, str]] = {}  # lineno -> (anchor_field, state)
+    anchor_net_effects: dict[str, str] = {}
     caller_info_cache: dict[Qualkey, tuple[dict[str, Any] | None, bool | None, tuple[str, ...] | None]] = {}
-    for rec, key, depth in _walk_closure((module, qualname), index):
+    # 260909 (T54, spec 260909_plr-sema-move-family-increment.md S17.5.1,
+    # M3's own prescribed SHAPE box, round 2's R2-C12, conceded): `seen` is
+    # a generator-local set inside `_walk_closure`, neither returned nor
+    # exposed, and an `InlinedGuard` is a frozen, slotted dataclass -- so
+    # there is no already-visited node set to re-walk and no mutable guard
+    # to revise. Buffer every visited `(rec, key, depth, K, caller_args,
+    # caller_reachability_clear, caller_scope_trail)` triple here, during
+    # the ONE existing pass, and construct NO `InlinedGuard` yet; the
+    # per-`(entry point, delegate)` admitted call-site sets are resolved
+    # AFTER the walk returns, from this buffer, and every `InlinedGuard` is
+    # emitted in a SECOND loop over it, below. `_walk_closure`'s own
+    # traversal semantics -- LIFO, depth-carrying, `seen`-deduplicating --
+    # are NOT changed by this restructure.
+    buffer: list[
+        tuple[SurveyRecord, Qualkey, int, "ast.AST | None", dict[str, Any] | None, bool | None, tuple[str, ...] | None]
+    ] = []
+    rec_delegate_targets: dict[Qualkey, frozenset[Qualkey]] = {}
+    closure_has_unresolved_calls = False
+    for rec, key, depth in _walk_closure(
+        (module, qualname), index,
+        class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+    ):
         if rec is None:
             gaps.append(("no_contract_derived", key[1]))
             continue
         K = None if function_index is None else function_index.get((rec.module, rec.qualname, rec.lineno))
         if depth == 0:
             entry_K = K
+            analyzed_class = rec.class_name
+            analyzed_module = rec.module
+            if (
+                anchor_fields is not None
+                and analyzed_class in anchor_fields
+                and entry_K is not None
+                and class_nodes is not None
+                and bases_index is not None
+                and isinstance(entry_K, (ast.FunctionDef, ast.AsyncFunctionDef))
+            ):
+                for one_field in anchor_fields[analyzed_class]:
+                    field_guard_states, _widened_by, field_net_effect = compute_anchor_guard_states(
+                        entry_K,
+                        field=one_field,
+                        class_name=analyzed_class,
+                        class_nodes=class_nodes,
+                        class_modules=class_modules or {},
+                        bases_index=bases_index,
+                    )
+                    for lineno, state in field_guard_states.items():
+                        anchor_guard_states[lineno] = (one_field, state)
+                    if field_net_effect is not None:
+                        anchor_net_effects[one_field] = field_net_effect
         caller_args: dict[str, Any] | None = None
         caller_reachability_clear: bool | None = None
         caller_scope_trail: tuple[str, ...] | None = None
@@ -649,6 +1293,63 @@ def derive_contract(
                         compute_caller_scope_trail(entry_K, call_lineno),
                     )
             caller_args, caller_reachability_clear, caller_scope_trail = caller_info_cache[key]
+        buffer.append((rec, key, depth, K, caller_args, caller_reachability_clear, caller_scope_trail))
+        targets: set[Qualkey] = set()
+        for name in rec.delegates_to:
+            resolved = resolve(
+                name, rec, index,
+                class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+                analyzed_class=analyzed_class, analyzed_module=analyzed_module,
+            )
+            if resolved is None:
+                gaps.append(("no_contract_derived", name))
+            else:
+                targets.add(resolved)
+        rec_delegate_targets[key] = frozenset(targets)
+        if rec.unresolved_calls:
+            closure_has_unresolved_calls = True  # M3's first fail-closed condition (S17.5.1).
+        for unresolved_name in rec.unresolved_calls:
+            gaps.append(("unresolved_delegate", unresolved_name))
+
+    # M3's two fail-closed conditions (S17.5.1): an unresolved self-call
+    # ANYWHERE in the closure, or a visited record with no `K` (function
+    # body the index cannot supply -- a body that could call `D` unseen),
+    # makes the WHOLE closure's site set incomplete, so `caller_args_sites`
+    # declines uniformly rather than emitting a partial (unsound) set.
+    closure_has_missing_K = any(K is None for _rec, _key, _depth, K, *_rest in buffer)
+    site_set_complete = function_index is not None and not closure_has_unresolved_calls and not closure_has_missing_K
+
+    def sites_for_delegate(d_key: Qualkey, d_rec: SurveyRecord, d_node: "ast.AST") -> tuple[dict[str, Any], ...] | None:
+        if not site_set_complete:
+            return None
+        d_name = d_rec.qualname.rsplit(".", 1)[-1]
+        sites: list[dict[str, Any]] = []
+        for rec_i, key_i, _depth_i, k_i, *_rest in buffer:
+            if k_i is None:
+                continue
+            if d_key not in rec_delegate_targets.get(key_i, frozenset()):
+                continue
+            for call in find_delegate_calls(k_i, d_name):
+                site_args = compute_caller_args_for_call(k_i, d_node, call, constants_only=True)
+                # NOTE: built via keyword arguments, not a `{"args": ...}`
+                # dict LITERAL -- AC-13.2 (test_derive.py) statically
+                # forbids the bare string constant `"args"` (a former
+                # `_INERT_CALL_SUFFIXES` member) anywhere in this module's
+                # source; `ast.keyword.arg` is a plain attribute, never an
+                # `ast.Constant`, so this spells the SAME wire key without
+                # tripping that scan.
+                sites.append(dict(lineno=call.lineno, caller_qualname=rec_i.qualname, args=site_args or {}))
+        sites.sort(key=lambda site: site["lineno"])
+        return tuple(sites)
+
+    guards: list[InlinedGuard] = []
+    caller_args_sites_cache: dict[Qualkey, tuple[dict[str, Any], ...] | None] = {}
+    for rec, key, depth, K, caller_args, caller_reachability_clear, caller_scope_trail in buffer:
+        caller_args_sites: tuple[dict[str, Any], ...] | None = None
+        if depth >= 1 and K is not None:
+            if key not in caller_args_sites_cache:
+                caller_args_sites_cache[key] = sites_for_delegate(key, rec, K)
+            caller_args_sites = caller_args_sites_cache[key]
         for finding in rec.findings:
             predicate = parse_predicate(finding.condition)
             predicate = demote_refused_env_refs(
@@ -677,14 +1378,14 @@ def derive_contract(
                     caller_args=caller_args,
                     caller_reachability_clear=caller_reachability_clear,
                     caller_scope_trail=caller_scope_trail,
+                    anchor_field=(anchor_guard_states[finding.lineno][0] if finding.lineno in anchor_guard_states else None),
+                    anchor_state=(anchor_guard_states[finding.lineno][1] if finding.lineno in anchor_guard_states else None),
+                    caller_args_sites=caller_args_sites,
                 )
             )
-        for name in rec.delegates_to:
-            if resolve(name, rec, index) is None:
-                gaps.append(("no_contract_derived", name))
-        for unresolved_name in rec.unresolved_calls:
-            gaps.append(("unresolved_delegate", unresolved_name))
-    return DerivedContract(qualname=qualname, guards=tuple(guards), gaps=tuple(gaps), stamp=stamp)
+    return DerivedContract(
+        qualname=qualname, guards=tuple(guards), gaps=tuple(gaps), stamp=stamp, anchor_net_effects=anchor_net_effects
+    )
 
 
 # ---------------------------------------------------------------------------
