@@ -46,7 +46,7 @@ from __future__ import annotations
 import ast
 import json
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -1057,6 +1057,21 @@ class InlinedGuard:
     caller_args: dict[str, Any] | None = None
     caller_reachability_clear: bool | None = None
     caller_scope_trail: tuple[str, ...] | None = None
+    #: 260909 (T52, spec §17.4.3, P6, additive): this guard's own
+    #: intra-operation pre-state on its entry point's singleton typestate
+    #: anchor -- `"EMPTY"`/`"HELD"`/`"TOP"` (a constant, derived from an
+    #: earlier effect in the SAME closure) or `"ENTRY"` (nothing precedes
+    #: it in this closure -- read `AnchorWalk`'s own inter-operation carry
+    #: at check time). `None` for every guard that is not an anchor-reading
+    #: guard, or when `anchor_fields` was not supplied to `derive_contract`
+    #: -- same fail-closed-by-omission discipline `caller_args` etc. use.
+    anchor_state: str | None = None
+    #: 260909 (T52, spec §17.4.3, P6, additive): WHICH singleton anchor
+    #: field `anchor_state` above is about (a receiver class can carry more
+    #: than one independent anchor, `ReceiverState.anchor_fields`'s own
+    #: docstring) -- `None` together with `anchor_state`, never one without
+    #: the other.
+    anchor_field: str | None = None
 
     @property
     def is_dynamic_raise(self) -> bool:
@@ -1074,6 +1089,15 @@ class DerivedContract:
     guards: tuple[InlinedGuard, ...]
     gaps: tuple[Gap, ...]
     stamp: SurveyStamp
+    #: 260909 (T52, spec §17.4.3, P6, additive): `{anchor_field: net_effect}`
+    #: -- this entry point's own LAST unconditionally-reached effect on
+    #: EACH of its class's singleton typestate anchors it actually touches
+    #: (`"EMPTY"`/`"HELD"`/`"TOP"`); a field absent from this dict never
+    #: appears in the closure at all -- `evaluate_anchor_call`'s own
+    #: transfer function applies each entry to `AnchorWalk`'s
+    #: inter-operation carry, the identical "absent means no bridge,
+    #: no-op" default `channel_effect` already uses.
+    anchor_net_effects: dict[str, str] = field(default_factory=dict)
 
 
 def derive_contract(
@@ -1086,6 +1110,7 @@ def derive_contract(
     class_nodes: "dict[str, ast.ClassDef] | None" = None,
     class_modules: "dict[str, str] | None" = None,
     bases_index: "ClassBasesIndex | None" = None,
+    anchor_fields: "dict[str, tuple[str, ...]] | None" = None,
 ) -> DerivedContract:
     """Transitive-closure contract derivation (§7.2). Totality (AC-7.2):
     NEVER raises, regardless of whether ``(module, qualname)`` is present in
@@ -1145,15 +1170,44 @@ def derive_contract(
     depth-0 capture immediately below) so the delegate-gap re-check uses
     the identical dispatch-on-the-analyzed-class rule ``_walk_closure``
     applied while expanding the same record.
+
+    260909 (T52, spec §17.4.3, P6): ``anchor_fields`` (additive, opt-in,
+    default ``None``) -- ``{receiver_class: (anchor_field, ...)}``, the
+    whole-surface selection
+    ``plr_sema.derive.receiver_state.compute_singleton_typestate_anchors``
+    produces (a class may carry more than one independent anchor,
+    ``ReceiverState.anchor_fields``'s own docstring). When the entry
+    point's own ``analyzed_class`` is a key of it AND
+    ``function_index``/``class_nodes``/``class_modules``/``bases_index``
+    are all supplied, ``receiver_state.compute_anchor_guard_states`` runs
+    ONCE PER FIELD against the entry point's own AST (``entry_K``, captured
+    below) -- guard linenos never collide across fields (two different
+    fields' null-check guards cannot share one `raise` statement), so the
+    per-field ``guard_states`` dicts merge without collision. Every
+    subsequently-emitted ``InlinedGuard`` whose own ``site.lineno`` is a
+    key of the merged map gets ``anchor_state``/``anchor_field`` attached;
+    each field's own ``net_effect`` becomes an entry of this
+    ``DerivedContract``'s ``anchor_net_effects`` dict. Imported LOCALLY
+    (function scope), not at module level -- ``receiver_state.py`` itself
+    imports ``derive_contract`` from THIS module, so a module-level import
+    here would be circular; by call time both modules are already fully
+    loaded.
     """
     if stamp is None:
         stamp = survey_stamp()
+    # 260909 (T52): local import, see the docstring note above -- avoids a
+    # circular import with `plr_sema.derive.receiver_state`, which imports
+    # `derive_contract` from this module at ITS module level.
+    from plr_sema.derive.receiver_state import compute_anchor_guard_states
+
     qualname_index = None if function_index is None else build_qualname_index(function_index)
     guards: list[InlinedGuard] = []
     gaps: list[Gap] = []
     entry_K: ast.AST | None = None
     analyzed_class: str | None = None
     analyzed_module: str | None = None
+    anchor_guard_states: dict[int, tuple[str, str]] = {}  # lineno -> (anchor_field, state)
+    anchor_net_effects: dict[str, str] = {}
     caller_info_cache: dict[Qualkey, tuple[dict[str, Any] | None, bool | None, tuple[str, ...] | None]] = {}
     for rec, key, depth in _walk_closure(
         (module, qualname), index,
@@ -1167,6 +1221,27 @@ def derive_contract(
             entry_K = K
             analyzed_class = rec.class_name
             analyzed_module = rec.module
+            if (
+                anchor_fields is not None
+                and analyzed_class in anchor_fields
+                and entry_K is not None
+                and class_nodes is not None
+                and bases_index is not None
+                and isinstance(entry_K, (ast.FunctionDef, ast.AsyncFunctionDef))
+            ):
+                for one_field in anchor_fields[analyzed_class]:
+                    field_guard_states, _widened_by, field_net_effect = compute_anchor_guard_states(
+                        entry_K,
+                        field=one_field,
+                        class_name=analyzed_class,
+                        class_nodes=class_nodes,
+                        class_modules=class_modules or {},
+                        bases_index=bases_index,
+                    )
+                    for lineno, state in field_guard_states.items():
+                        anchor_guard_states[lineno] = (one_field, state)
+                    if field_net_effect is not None:
+                        anchor_net_effects[one_field] = field_net_effect
         caller_args: dict[str, Any] | None = None
         caller_reachability_clear: bool | None = None
         caller_scope_trail: tuple[str, ...] | None = None
@@ -1210,6 +1285,8 @@ def derive_contract(
                     caller_args=caller_args,
                     caller_reachability_clear=caller_reachability_clear,
                     caller_scope_trail=caller_scope_trail,
+                    anchor_field=(anchor_guard_states[finding.lineno][0] if finding.lineno in anchor_guard_states else None),
+                    anchor_state=(anchor_guard_states[finding.lineno][1] if finding.lineno in anchor_guard_states else None),
                 )
             )
         for name in rec.delegates_to:
@@ -1222,7 +1299,9 @@ def derive_contract(
                 gaps.append(("no_contract_derived", name))
         for unresolved_name in rec.unresolved_calls:
             gaps.append(("unresolved_delegate", unresolved_name))
-    return DerivedContract(qualname=qualname, guards=tuple(guards), gaps=tuple(gaps), stamp=stamp)
+    return DerivedContract(
+        qualname=qualname, guards=tuple(guards), gaps=tuple(gaps), stamp=stamp, anchor_net_effects=anchor_net_effects
+    )
 
 
 # ---------------------------------------------------------------------------

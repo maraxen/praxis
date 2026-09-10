@@ -78,6 +78,7 @@ from plr_sema.derive.receiver_state import (
     build_plr_function_index,
     collect_env_ref_method_names,
     compute_channel_bridge,
+    compute_singleton_typestate_anchors,
     compute_tip_families,
     compute_volume_anchors,
     compute_volume_bridge,
@@ -142,6 +143,15 @@ def _guard_to_json(guard: InlinedGuard) -> dict[str, Any]:
     payload["caller_args"] = guard.caller_args
     payload["caller_reachability_clear"] = guard.caller_reachability_clear
     payload["caller_scope_trail"] = None if guard.caller_scope_trail is None else list(guard.caller_scope_trail)
+    # 260909 (spec §17.4.3, T52, P6): additive `anchor_state`/`anchor_field`
+    # -- this guard's own intra-operation pre-state on its entry point's
+    # singleton typestate anchor, and WHICH anchor field it is about (see
+    # `InlinedGuard.anchor_state`/`.anchor_field`'s own docstrings). Both
+    # `None` (keys still present) for every non-anchor guard, same
+    # "computed, found nothing" vs. "field never existed" discipline every
+    # other additive field on this dataclass already uses.
+    payload["anchor_state"] = guard.anchor_state
+    payload["anchor_field"] = guard.anchor_field
     return payload
 
 
@@ -158,6 +168,7 @@ def build_derived_contracts_payload(
     minh_class_nodes: dict[str, ast.ClassDef] | None = None,
     minh_class_modules: dict[str, str] | None = None,
     minh_bases_index: ClassBasesIndex | None = None,
+    anchor_fields: dict[str, tuple[str, ...]] | None = None,
 ) -> dict[str, Any]:
     """AC-7.2 (260901 T11): derive a contract for every record the survey
     indexed -- the WHOLE analyzed PLR surface (4,770 methods across 345
@@ -231,6 +242,7 @@ def build_derived_contracts_payload(
         contract = derive_contract(
             rec.module, rec.qualname, index, stamp=stamp, function_index=function_index,
             class_nodes=minh_class_nodes, class_modules=minh_class_modules, bases_index=minh_bases_index,
+            anchor_fields=anchor_fields,
         )
         out_key = contract_keys[record_key]
         assert out_key not in contracts, (
@@ -325,6 +337,14 @@ def build_derived_contracts_payload(
             and rec.qualname.rsplit(".", 1)[-1] == volume_anchors[rec.class_name].setter
         ):
             entry["is_volume_setter"] = True
+        # 260909 (T52, spec §17.4.3, P6): additive `anchor_net_effects` --
+        # `{anchor_field: net_effect}` ("EMPTY"/"HELD"/"TOP") for every
+        # singleton typestate anchor THIS entry point's own closure
+        # actually touches; absent/`{}` when `anchor_fields` was not
+        # supplied, this entry's class has no anchor, or its closure
+        # never assigns to any of them.
+        if contract.anchor_net_effects:
+            entry["anchor_net_effects"] = dict(sorted(contract.anchor_net_effects.items()))
         contracts[out_key] = entry
     # 260909 (spec 260909_plr-sema-observation-increment.md §16.3, T41,
     # backlog #5023): the additive FIFTH top-level key, `backend_surface`.
@@ -534,6 +554,14 @@ def main(argv: list[str] | None = None) -> int:
     # §17.2 never gates it on.
     minh_class_nodes, minh_class_modules = build_plr_class_index(surface_tree)
     minh_bases_index = build_plr_class_bases_index(surface_tree, minh_class_nodes)
+    # 260909 (T52, spec §17.4.2, P5): the singleton typestate anchor's
+    # whole-surface selection -- built UNCONDITIONALLY (like `function_index`/
+    # `minh_class_nodes` above, unlike `receiver_states`/`volume_class_index`
+    # below, which need `--taxonomy-json`), since P5's absence rule depends
+    # on neither the tip nor the volume taxonomy at all.
+    anchor_fields, _anchor_candidates = compute_singleton_typestate_anchors(
+        minh_class_nodes, minh_class_modules, function_index
+    )
     # 260903 (spec §14.4, T24): the volume family's own whole-tree class
     # index and P7 anchors, built alongside `receiver_states` under the
     # SAME `--taxonomy-json` gate (P7's used-volume/free-volume accessor
@@ -546,7 +574,9 @@ def main(argv: list[str] | None = None) -> int:
     volume_anchors: dict[str, VolumeAnchor] = {}
     if args.taxonomy_json is not None:
         taxonomy_payload = json.loads(args.taxonomy_json.read_text(encoding="utf-8"))
-        receiver_states = derive_receiver_states(surface_tree, records, taxonomy_payload["classes"])
+        receiver_states = derive_receiver_states(
+            surface_tree, records, taxonomy_payload["classes"], function_index=function_index
+        )
         volume_class_index, volume_class_modules = build_plr_class_index(surface_tree)
         volume_state_exceptions = frozenset(compute_volume_state_exceptions(taxonomy_payload["classes"]))
         volume_anchors = compute_volume_anchors(volume_class_index, volume_state_exceptions)
@@ -598,6 +628,7 @@ def main(argv: list[str] | None = None) -> int:
             minh_class_nodes=minh_class_nodes,
             minh_class_modules=minh_class_modules,
             minh_bases_index=minh_bases_index,
+            anchor_fields=anchor_fields,
         )
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")

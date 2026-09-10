@@ -1791,3 +1791,144 @@ def test_ac_17_2_2055_no_observation_stays_unknown(contracts_json: str) -> None:
     (finding,) = _site_findings(report, _PICK_UP_RESOURCE_2055_SITE, operation_id="op_1")
     assert finding.verdict is Verdict.UNKNOWN
     assert finding.reason == "guard_env_dependent"
+
+
+# ---------------------------------------------------------------------------
+# AC-17.3 (spec 260909_plr-sema-move-family-increment.md §17.4, T52): the
+# `_resource_pickup` typestate, end to end through the REAL, UNMODIFIED
+# `move_resource`/`pick_up_resource`/`move_picked_up_resource`/
+# `drop_resource` guard records -- never through a hand-built predicate.
+# ---------------------------------------------------------------------------
+
+_PICK_UP_RESOURCE_2070_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=2070,
+    qualname="LiquidHandler.pick_up_resource",
+)
+_MOVE_PICKED_UP_RESOURCE_2120_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=2120,
+    qualname="LiquidHandler.move_picked_up_resource",
+)
+_DROP_RESOURCE_2147_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=2147,
+    qualname="LiquidHandler.drop_resource",
+)
+
+
+def _move_resource_graph(n_ops: int) -> str:
+    return json.dumps(
+        {
+            "protocol_fqn": "test.t52_anchor",
+            "operations": [
+                {
+                    "id": f"op_{i + 1}",
+                    "method_name": "move_resource",
+                    "receiver_variable": "lh",
+                    "receiver_type": "LiquidHandler",
+                    "arguments": {},
+                }
+                for i in range(n_ops)
+            ],
+            "resources": {},
+        }
+    )
+
+
+def test_ac_17_3_move_resource_2120_2147_decide_safe_from_held(contracts_json: str) -> None:
+    """AC-17.3: `:2120`/`:2147` decide `SAFE` from `HELD` on a SINGLE
+    `move_resource` call, through the REAL guard records -- their own
+    pre-state is a derive-time CONSTANT (`pick_up_resource`'s own
+    `:2072-2077` effect, strictly earlier in the SAME closure), never the
+    walk's inter-operation carry, so a single, isolated operation already
+    decides both."""
+    report = check_graph(_move_resource_graph(1), contracts_json)
+    (f2120,) = _site_findings(report, _MOVE_PICKED_UP_RESOURCE_2120_SITE, operation_id="op_1")
+    (f2147,) = _site_findings(report, _DROP_RESOURCE_2147_SITE, operation_id="op_1")
+    assert f2120.verdict is Verdict.SAFE
+    assert f2147.verdict is Verdict.SAFE
+
+
+def test_ac_17_3_pick_up_resource_2070_decides_safe_from_empty_carried_state(contracts_json: str) -> None:
+    """AC-17.3: `:2070` decides `SAFE` from `EMPTY` -- carried in from a
+    PRIOR operation's own net effect (`drop_resource`'s `:2263` assignment,
+    `AnchorWalk`'s inter-operation carry, §17.4.3 condition 4), through TWO
+    sequential `move_resource` calls on the same receiver. The FIRST call's
+    own `:2070` starts from a fresh walk (`TOP`, untested here); the
+    SECOND's genuinely decides by state."""
+    report = check_graph(_move_resource_graph(2), contracts_json)
+    (f2070_op2,) = _site_findings(report, _PICK_UP_RESOURCE_2070_SITE, operation_id="op_2")
+    assert f2070_op2.verdict is Verdict.SAFE
+
+
+def test_ac_17_3_no_anchor_widening_on_move_family(contracts_json: str) -> None:
+    """AC-17.3: none of the five widening conditions fire on the real
+    move-family closure -- every one of the three anchor guards decides by
+    state (`SAFE`, never `UNKNOWN`/`guard_env_dependent`) across two
+    sequential operations."""
+    report = check_graph(_move_resource_graph(2), contracts_json)
+    for site, op_id in (
+        (_PICK_UP_RESOURCE_2070_SITE, "op_2"),
+        (_MOVE_PICKED_UP_RESOURCE_2120_SITE, "op_1"),
+        (_DROP_RESOURCE_2147_SITE, "op_1"),
+    ):
+        (finding,) = _site_findings(report, site, operation_id=op_id)
+        assert finding.verdict is Verdict.SAFE, f"{site}: expected SAFE (decided by state, not widened), got {finding.verdict}"
+
+
+def test_ac_17_3_anchor_and_channel_consumed_sets_disjoint() -> None:
+    """AC-17.3(b): the anchor and channel `consumed` index sets are
+    asserted DISJOINT on the tip fixtures -- a synthetic receiver carrying
+    BOTH a P2 channel anchor and a P5 singleton anchor, and a contract
+    whose `guards` mix a channel-scoped own guard (`self.head[i].has_tip`)
+    with a bare-`self` anchor guard (`self._resource_pickup is None`). A
+    guard matching `self.<channel_attr>[<name>]` cannot also match a
+    bare-`self` anchor field, by construction."""
+    from plr_sema.check import ir
+    from plr_sema.check.tipstate import AnchorWalk, TipWalk, evaluate_anchor_call, evaluate_call
+
+    receiver_state = {
+        "channel_attr": "head",
+        "bool_view": {"attr": "has_tip", "field": "_tip", "true_when": "not_none"},
+        "state_fields": ["_tip"],
+        "effects": {},
+        "channel_default_param": {"pick_up_tips": "tip_spots"},
+        "channel_default_disablers": [],
+        "tip_state_exceptions": [],
+        "anchor_fields": ["_resource_pickup"],
+    }
+    contract = {
+        "guards": [
+            {
+                "kind": "raise_guard",
+                "condition": "self.head[channel].has_tip",
+                "site": {"file": "f", "lineno": 1, "qualname": "q"},
+            },
+            {
+                "kind": "raise_guard",
+                "condition": "self._resource_pickup is None",
+                "site": {"file": "f", "lineno": 2, "qualname": "q"},
+                "anchor_state": "HELD",
+                "anchor_field": "_resource_pickup",
+            },
+        ],
+    }
+    call = ir.Call(receiver=0, receiver_type="LiquidHandler", method="pick_up_tips", kwargs={"tip_spots": ir.Seq(items=(ir.Lit(v=0),))})
+    _anchor_findings, anchor_consumed = evaluate_anchor_call("op_1", call, contract, receiver_state, AnchorWalk())
+    _tip_findings, tip_consumed = evaluate_call("op_1", call, contract, receiver_state, TipWalk(), poisoned=False)
+    assert anchor_consumed == {1}
+    assert tip_consumed == {0}
+    assert anchor_consumed & tip_consumed == set()
+
+
+def test_ac_17_3_finding_for_atom_reason_parametrised(contracts_json: str) -> None:
+    """AC-17.3: the ½ branch carries `guard_env_dependent` for the anchor
+    (a fresh-walk `TOP` state on the FIRST `move_resource` call's own
+    `:2070`, which has no preceding effect in its own closure) and
+    `channel_state_unknown` remains the tip family's own reason,
+    unchanged -- both asserted on the SAME report."""
+    report = check_graph(_move_resource_graph(1), contracts_json)
+    (f2070_op1,) = _site_findings(report, _PICK_UP_RESOURCE_2070_SITE, operation_id="op_1")
+    assert f2070_op1.verdict is Verdict.UNKNOWN
+    assert f2070_op1.reason == "guard_env_dependent"

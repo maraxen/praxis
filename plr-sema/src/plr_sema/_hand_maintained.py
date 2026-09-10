@@ -373,6 +373,26 @@ def _measure_hm25() -> int:
     `arm_slots`) decides while a `("self", "head")`-shaped one still does
     not -- proving the clause is live and keyed on the RULE, not a stub
     that always matches every `EnvRef`.
+
+    260909 (spec 260909_plr-sema-move-family-increment.md §17.4.0
+    decision 6/§17.7, T52, D7 unit 12, user-approved): PLUS a TWELFTH unit
+    -- the singleton typestate anchor's own shape, `_singleton_anchor_absent`
+    (§17.4.2's absence rule: the property-setter-body test, the
+    getter/setter-pair exception, and the multi-definition test), a NEW
+    symbol distinct from `_typestate_anchor` (P2). `declared` moves 11 ->
+    12, exactly ONE further unit of headroom. **`atom_truth`/
+    `_finding_for_atom` are DELIBERATELY NOT a further unit**: §17.4.0
+    decision 6 GENERALISES them over both `TipState` and the new
+    `PickupState` rather than duplicating them, so `productions` (the
+    three exercised `atom_truth` branches, below) stays at exactly 3 --
+    duplicating them would have landed two or three further productions
+    and this measure at 14-15, tripping T52's own STOP contingency. The
+    probe imports `plr_sema.derive.receiver_state._singleton_anchor_absent`
+    and exercises it against three synthetic fixtures (a setter doing more
+    than one assignment -> clause 1; a two-definition getter/setter pair ->
+    the clause-3 exception, present; a three-definition qualname -> clause
+    3 itself, absent), proving the shape is live and the exception does not
+    swallow clause 3 outright.
     """
     import ast
 
@@ -383,6 +403,7 @@ def _measure_hm25() -> int:
     from plr_sema.derive.predicate_ast import _CMP_OPS, EnvRef, Zip
     from plr_sema.derive.receiver_state import (
         _channel_default_idiom,
+        _singleton_anchor_absent,
         _typestate_anchor,
         _volume_anchor,
         compute_delegate_channel_bindings,
@@ -450,6 +471,61 @@ def _measure_hm25() -> int:
         assert evaluate_predicate(head_node, ctx) is None
         return True
 
+    def _singleton_anchor_absence_probe() -> bool:
+        """The TWELFTH unit's own probe (D7 unit 12, §17.4.2, T52): imports
+        and exercises `_singleton_anchor_absent` -- a NEW symbol distinct
+        from `_typestate_anchor` (P2) -- against three synthetic fixtures:
+        a `@property` whose setter does MORE than one assignment (clause 1,
+        absent); the genuine getter/setter PAIR of one property, defined at
+        exactly two linenos (clause 3's own exception, present); and a
+        THREE-definition qualname (clause 3 itself, absent) -- proving the
+        exception does not swallow clause 3 outright."""
+        assert _singleton_anchor_absent is not None
+        module = "synthetic.module"
+
+        # Fixture (i): clause 1 -- the setter's body is not a single
+        # assignment statement.
+        tree1 = ast.parse(
+            "class C1:\n"
+            "    @property\n"
+            "    def foo(self):\n"
+            "        return self._foo\n"
+            "    @foo.setter\n"
+            "    def foo(self, value):\n"
+            "        self._log = True\n"
+            "        self._foo = value\n"
+        )
+        class1 = tree1.body[0]
+        getter1, setter1 = class1.body[0], class1.body[1]
+        fi1 = {(module, "C1.foo", getter1.lineno): getter1, (module, "C1.foo", setter1.lineno): setter1}
+        assert _singleton_anchor_absent(class1, "foo", "C1", module, {"C1": class1}, fi1) == 1
+
+        # Fixture (ii): clause 3's own exception -- a genuine getter/setter
+        # pair, two definitions, one `@property` one `@foo.setter`.
+        tree2 = ast.parse(
+            "class C2:\n"
+            "    @property\n"
+            "    def foo(self):\n"
+            "        return self._foo\n"
+            "    @foo.setter\n"
+            "    def foo(self, value):\n"
+            "        self._foo = value\n"
+        )
+        class2 = tree2.body[0]
+        getter2, setter2 = class2.body[0], class2.body[1]
+        fi2 = {(module, "C2.foo", getter2.lineno): getter2, (module, "C2.foo", setter2.lineno): setter2}
+        assert _singleton_anchor_absent(class2, "foo", "C2", module, {"C2": class2}, fi2) is None
+
+        # Fixture (iii): clause 3 itself -- THREE definitions at the same
+        # qualname, which the exception (exactly two) must not swallow.
+        tree3 = ast.parse("class C3:\n    def foo(self):\n        pass\n")
+        class3 = tree3.body[0]
+        def3 = class3.body[0]
+        fi3 = {(module, "C3.foo", 100): def3, (module, "C3.foo", 200): def3, (module, "C3.foo", 300): def3}
+        assert _singleton_anchor_absent(class3, "foo", "C3", module, {"C3": class3}, fi3) == 3
+
+        return True
+
     shape_matchers = (
         _typestate_anchor,  # P2
         _channel_default_idiom,  # P3a
@@ -459,6 +535,7 @@ def _measure_hm25() -> int:
         _predicate_amendment_group_probe,  # alpha + beta + EnvRef + Zip + membership (A-C6)
         _path_shape_table_probe,  # R-HEAD + R-ATTR + R-CONST (D4)
         _r_arm_truthiness_clause_probe,  # the amended predicate-position clause (D7 unit 11)
+        _singleton_anchor_absence_probe,  # P5's absence rule (D7 unit 12)
     )
     # atom_truth's three productions: BoolView, NullCheck(is_none=True),
     # NullCheck(is_none=False) -- proven live by actually exercising all
@@ -472,6 +549,7 @@ def _measure_hm25() -> int:
     assert _predicate_amendment_group_probe()
     assert _path_shape_table_probe()
     assert _r_arm_truthiness_clause_probe()
+    assert _singleton_anchor_absence_probe()
     return len(shape_matchers) + len(productions)
 
 
@@ -1101,7 +1179,7 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "`evaluate_predicate` directly."
         ),
         metric="patterns",
-        declared=11,
+        declared=12,
         status="CAPPED",
         why_not_derived=(
             "Syntactic patterns over how PLR/its own analyzer is written "
@@ -1146,7 +1224,14 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "deleted or the `self.head` shape refusal is dropped -- the "
             "unit-11 probe goes red (ImportError/AttributeError, or an "
             "assertion on the KEPT `self.head` ½ result), never silently; "
-            "a complete-`Seq` `EnvRef` reverts to ½ (never wrong), never F/T."
+            "a complete-`Seq` `EnvRef` reverts to ½ (never wrong), never F/T. "
+            "260909 (T52, D7 unit 12): `_singleton_anchor_absent` is "
+            "deleted, renamed, or clause 3's exception starts swallowing "
+            "clause 3 itself -- the unit-12 probe goes red "
+            "(ImportError/AttributeError, or an assertion on one of the "
+            "three fixtures); a real anchor candidate this rule wrongly "
+            "calls absent simply disables the mechanism for that field "
+            "(fail-closed, never wrong)."
         ),
         measure="plr_sema._hand_maintained:_measure_hm25",
     ),

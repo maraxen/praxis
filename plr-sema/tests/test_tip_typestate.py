@@ -928,3 +928,90 @@ def test_ac_13_15_i_disabler_checked_after_rules_2_and_3(contracts_json: str) ->
     # this same operation (transfer's own `:1340` argument guard) is a
     # correct, unrelated finding this fixture's call genuinely earns.
     assert not any(f.verdict is Verdict.WILL_FAIL for f in op3 if f.plr_site == _GET_TIP_SITE)
+
+
+# ---------------------------------------------------------------------------
+# AC-17.3 (spec 260909_plr-sema-move-family-increment.md §17.4, T52): the
+# `_resource_pickup` typestate's own unit-level assertions -- §17.4.0's
+# generalisation of `atom_truth`, the dead-by-construction bool-view
+# branch, and the no-channel-gate decision.
+# ---------------------------------------------------------------------------
+
+
+def test_ac_17_3_atom_truth_serves_both_lattices() -> None:
+    """AC-17.3(c): `atom_truth` is asserted to be ONE function serving
+    BOTH lattices, by a fixture that calls it with a `PickupState` AND
+    with a `TipState`."""
+    from plr_sema.check.tipstate import PickupState, TipState, atom_truth
+
+    assert atom_truth(("null_check", False), TipState.HAS_TIP) == "T"
+    assert atom_truth(("null_check", False), PickupState.HELD) == "T"
+    assert atom_truth(("null_check", True), PickupState.EMPTY) == "T"
+    assert atom_truth(("null_check", True), PickupState.HELD) == "F"
+    assert atom_truth(("null_check", True), PickupState.TOP) == "half"
+    assert atom_truth(("bool_view", None), PickupState.HELD) == "T"  # unreachable at check time (empty bool_view_attr), but the table itself is total.
+
+
+def test_ac_17_3_evaluate_anchor_call_no_channel_gate() -> None:
+    """AC-17.3(a): a `move_*` fixture whose `channels` is `None` (no
+    `use_channels` -- the SAME degenerate receiver_state a channel-free
+    anchor has) still decides all three guards -- `evaluate_anchor_call`
+    reuses NEITHER `evaluate_call`'s `if channels is not None:` gate."""
+    from plr_sema.check import ir
+    from plr_sema.check.tipstate import AnchorWalk, PickupState, evaluate_anchor_call
+
+    receiver_state = {"anchor_fields": ["_resource_pickup"]}
+    contract = {
+        "guards": [
+            {
+                "kind": "raise_guard",
+                "condition": "self._resource_pickup is not None",
+                "site": {"file": "f", "lineno": 2070, "qualname": "LiquidHandler.pick_up_resource"},
+                "anchor_state": "EMPTY",
+                "anchor_field": "_resource_pickup",
+            },
+        ],
+    }
+    call = ir.Call(receiver=0, receiver_type="LiquidHandler", method="move_resource", kwargs={})
+    walk = AnchorWalk()
+    findings, consumed = evaluate_anchor_call("op_1", call, contract, receiver_state, walk)
+    assert consumed == {0}
+    (finding,) = findings
+    assert finding.verdict is Verdict.SAFE  # EMPTY -> "not None" is F.
+
+
+def test_ac_17_3_evaluate_anchor_call_bool_view_dead_by_construction() -> None:
+    """AC-17.3(d): `_parse_atom` is called with an empty `bool_view_attr`
+    for this anchor -- a bool-view-SHAPED condition (`self.<attr>`, no
+    comparison) never produces a bool_view atom, and is simply declined
+    (not consumed, no finding), because the empty string can never equal a
+    real `ast.Attribute.attr`."""
+    from plr_sema.check import ir
+    from plr_sema.check.tipstate import AnchorWalk, evaluate_anchor_call
+
+    receiver_state = {"anchor_fields": ["_resource_pickup"]}
+    contract = {
+        "guards": [
+            {
+                "kind": "raise_guard",
+                "condition": "self._resource_pickup",  # bool-view shape, no Compare.
+                "site": {"file": "f", "lineno": 1, "qualname": "q"},
+            },
+        ],
+    }
+    call = ir.Call(receiver=0, receiver_type="LiquidHandler", method="move_resource", kwargs={})
+    findings, consumed = evaluate_anchor_call("op_1", call, contract, receiver_state, AnchorWalk())
+    assert findings == ()
+    assert consumed == frozenset()
+
+
+def test_ac_17_3_no_anchor_fields_degrades_to_no_involvement() -> None:
+    """§17.4.0's E5-style degrade: `receiver_state` with no `anchor_fields`
+    (or `None`) yields `((), frozenset())` -- no involvement at all."""
+    from plr_sema.check import ir
+    from plr_sema.check.tipstate import AnchorWalk, evaluate_anchor_call
+
+    call = ir.Call(receiver=0, receiver_type="X", method="m", kwargs={})
+    contract = {"guards": [{"kind": "raise_guard", "condition": "self._x is None", "site": {"file": "f", "lineno": 1, "qualname": "q"}}]}
+    assert evaluate_anchor_call("op_1", call, contract, None, AnchorWalk()) == ((), frozenset())
+    assert evaluate_anchor_call("op_1", call, contract, {}, AnchorWalk()) == ((), frozenset())

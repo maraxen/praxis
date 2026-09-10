@@ -88,13 +88,16 @@ from plr_sema.derive.predicate_ast import (
 )
 from plr_sema.derive.receiver_state import (
     BackendSurfaceEntry,
+    SingletonAnchorCandidate,
     backend_surface_entry_to_json,
     build_backend_surface,
     build_plr_class_bases_index,
     build_plr_class_index,
     build_plr_function_index,
     collect_env_ref_method_names,
+    compute_anchor_guard_states,
     compute_delegate_channel_bindings,
+    compute_singleton_typestate_anchors,
     compute_volume_anchors,
     compute_volume_bridge,
     compute_volume_state_exceptions,
@@ -4260,3 +4263,130 @@ def test_move_family_entry_points_do_not_double_and_add_zero_guards_real_plr(
         assert impact["guard_count_before"] == impact["guard_count_after"]
         assert impact["depth_multiset_before"] == impact["depth_multiset_after"]
         assert impact["closure_size_after"] >= impact["closure_size_before"]
+
+
+# ---------------------------------------------------------------------------
+# AC-17.3 (spec 260909_plr-sema-move-family-increment.md §17.4, T52): the
+# `_resource_pickup` typestate -- P5's singleton anchor, its absence rule,
+# and P6's intra-operation ordered effect/guard walk.
+# ---------------------------------------------------------------------------
+
+
+def test_singleton_anchor_selection_finds_resource_pickup_by_name_real_plr() -> None:
+    """AC-17.3: the complete anchor selection is published, with
+    `_resource_pickup` asserted PRESENT by name on `LiquidHandler`."""
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    function_index = build_plr_function_index(root)
+    anchors, candidates = compute_singleton_typestate_anchors(class_nodes, class_modules, function_index)
+    assert "_resource_pickup" in anchors.get("LiquidHandler", ())
+    (candidate,) = (c for c in candidates if c.class_name == "LiquidHandler" and c.field == "_resource_pickup")
+    assert candidate.present is True
+    assert candidate.removed_by_clause is None
+
+
+def test_singleton_anchor_absence_rule_three_fixtures() -> None:
+    """AC-17.3: three absence fixtures, not one (round 2's R2-C2). (i) a
+    synthetic `@property` whose setter does MORE than one assignment ->
+    clause 1, absent. (ii) the genuine getter/setter PAIR of one property,
+    two definitions -> clause 3's own exception, present. (iii) a THREE-
+    definition qualname -> clause 3 itself, absent -- proving the exception
+    (exactly two) does not swallow clause 3 outright."""
+    from plr_sema.derive.receiver_state import _singleton_anchor_absent
+
+    module = "synthetic.module"
+
+    # (i) clause 1.
+    tree1 = ast.parse(
+        "class C1:\n"
+        "    @property\n"
+        "    def foo(self):\n"
+        "        return self._foo\n"
+        "    @foo.setter\n"
+        "    def foo(self, value):\n"
+        "        self._log = True\n"
+        "        self._foo = value\n"
+    )
+    class1 = tree1.body[0]
+    getter1, setter1 = class1.body[0], class1.body[1]
+    fi1 = {(module, "C1.foo", getter1.lineno): getter1, (module, "C1.foo", setter1.lineno): setter1}
+    assert _singleton_anchor_absent(class1, "foo", "C1", module, {"C1": class1}, fi1) == 1
+
+    # (ii) clause 3's own exception.
+    tree2 = ast.parse(
+        "class C2:\n"
+        "    @property\n"
+        "    def foo(self):\n"
+        "        return self._foo\n"
+        "    @foo.setter\n"
+        "    def foo(self, value):\n"
+        "        self._foo = value\n"
+    )
+    class2 = tree2.body[0]
+    getter2, setter2 = class2.body[0], class2.body[1]
+    fi2 = {(module, "C2.foo", getter2.lineno): getter2, (module, "C2.foo", setter2.lineno): setter2}
+    assert _singleton_anchor_absent(class2, "foo", "C2", module, {"C2": class2}, fi2) is None
+
+    # (iii) clause 3 itself.
+    tree3 = ast.parse("class C3:\n    def foo(self):\n        pass\n")
+    class3 = tree3.body[0]
+    def3 = class3.body[0]
+    fi3 = {(module, "C3.foo", 100): def3, (module, "C3.foo", 200): def3, (module, "C3.foo", 300): def3}
+    assert _singleton_anchor_absent(class3, "foo", "C3", module, {"C3": class3}, fi3) == 3
+
+
+def test_compute_anchor_guard_states_move_family_real_plr() -> None:
+    """AC-17.3: `:2070` from `ENTRY` (nothing precedes it in the closure),
+    `:2120`/`:2147` from `HELD`, on the REAL `move_resource`/`move_lid`/
+    `move_plate` closures, with ZERO widening -- the pin-level claim
+    §17.4.3's own box makes."""
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    bases_index = build_plr_class_bases_index(root, class_nodes)
+    liquid_handler = class_nodes["LiquidHandler"]
+    for entry_name in ("pick_up_resource", "move_resource", "move_lid", "move_plate"):
+        entry_node = next(m for m in liquid_handler.body if getattr(m, "name", None) == entry_name)
+        guard_states, widened_by, _net = compute_anchor_guard_states(
+            entry_node,
+            field="_resource_pickup",
+            class_name="LiquidHandler",
+            class_nodes=class_nodes,
+            class_modules=class_modules,
+            bases_index=bases_index,
+        )
+        assert widened_by == {"condition_1": 0, "condition_2": 0, "condition_3": 0}
+        assert guard_states.get(2070) == "ENTRY"
+    move_resource_node = next(m for m in liquid_handler.body if getattr(m, "name", None) == "move_resource")
+    guard_states, _widened, net = compute_anchor_guard_states(
+        move_resource_node,
+        field="_resource_pickup",
+        class_name="LiquidHandler",
+        class_nodes=class_nodes,
+        class_modules=class_modules,
+        bases_index=bases_index,
+    )
+    assert guard_states == {2070: "ENTRY", 2120: "HELD", 2147: "HELD"}
+    assert net == "EMPTY"
+
+
+def test_derive_contract_attaches_anchor_state_to_real_guards(survey_index: dict[tuple[str, str], SurveyRecord]) -> None:
+    """AC-17.3: `derive_contract`, given `anchor_fields`, attaches
+    `anchor_state`/`anchor_field` to the three real move-family guards --
+    the SAME wiring `derive/__main__.py` uses, exercised directly rather
+    than through the whole CLI pipeline."""
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    bases_index = build_plr_class_bases_index(root, class_nodes)
+    function_index = build_plr_function_index(root)
+    module = "pylabrobot.liquid_handling.liquid_handler"
+    contract = derive_contract(
+        module, "LiquidHandler.move_resource", survey_index,
+        function_index=function_index, class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+        anchor_fields={"LiquidHandler": ("_resource_pickup",)},
+    )
+    by_lineno = {g.site.lineno: g for g in contract.guards if g.anchor_field is not None}
+    assert by_lineno[2070].anchor_state == "ENTRY"
+    assert by_lineno[2070].anchor_field == "_resource_pickup"
+    assert by_lineno[2120].anchor_state == "HELD"
+    assert by_lineno[2147].anchor_state == "HELD"
+    assert contract.anchor_net_effects == {"_resource_pickup": "EMPTY"}

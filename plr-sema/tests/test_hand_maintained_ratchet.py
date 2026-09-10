@@ -341,25 +341,29 @@ def test_hand_written_contracts_content_is_pinned() -> None:
     )
 
 
-def test_hm25_d7_unit11_spend_is_one_unit_not_an_overrun() -> None:
-    """260909 (spec 260909_plr-sema-move-family-increment.md §17.1.2/§17.7,
-    T51, D7 unit 11): the approved spend is `declared` 10 -> 11, exactly
-    ONE further unit for the amended predicate-position clause (§17.1.2) --
-    a rule the tenth unit's own probe (`_resolve_env_ref`) does NOT
-    exercise, because the clause lands in `evaluate_predicate`, a different
-    symbol (round 1's C14, conceded). The measured count must land exactly
-    there, not merely under the ceiling (a `live <= declared` pass alone
-    would not distinguish "the eleventh unit is wired" from "it was
-    silently dropped"). This supersedes the prior D4-only assertion
-    (`declared`/live pinned at 10 in isolation) -- HM-25 accumulates spends
-    across separately-approved decisions on the SAME row, unlike HM-26's
-    own per-decision new-row split (`test_hm26_d6_spend_is_one_new_row_not_
-    an_overrun` below)."""
+def test_hm25_d7_unit12_spend_is_one_unit_not_an_overrun() -> None:
+    """260909 (spec 260909_plr-sema-move-family-increment.md §17.4.0
+    decision 6/§17.7, T52, D7 unit 12): the approved spend is `declared`
+    11 -> 12, exactly ONE further unit for the singleton typestate
+    anchor's own absence-rule shape (`_singleton_anchor_absent`, §17.4.2)
+    -- a NEW symbol distinct from `_typestate_anchor` (P2), so none of the
+    prior eleven units' own probes exercise it. `atom_truth`/
+    `_finding_for_atom` are DELIBERATELY generalised (§17.4.0 decision 6)
+    rather than duplicated, so `productions` stays at 3 and this spend is
+    exactly one unit, not two or three (which would trip T52's own STOP
+    contingency at 14-15). The measured count must land exactly there, not
+    merely under the ceiling (a `live <= declared` pass alone would not
+    distinguish "the twelfth unit is wired" from "it was silently
+    dropped"). This supersedes the prior D7-unit-11-only assertion
+    (`declared`/live pinned at 11 in isolation) -- HM-25 accumulates
+    spends across separately-approved decisions on the SAME row, unlike
+    HM-26's own per-decision new-row split (`test_hm26_d6_spend_is_one_new_
+    row_not_an_overrun` below)."""
     (hm25,) = (row for row in REGISTRY if row.id == "HM-25")
-    assert hm25.declared == 11, f"HM-25: declared is {hm25.declared}, expected 11 (D4's tenth unit + D7's eleventh unit)"
+    assert hm25.declared == 12, f"HM-25: declared is {hm25.declared}, expected 12 (D7's eleventh unit + D7's twelfth unit)"
     live = resolve_measure(hm25.measure)
-    assert live == 11, (
-        f"HM-25: live count {live} != declared 11 -- the D7 unit-11 spend "
+    assert live == 12, (
+        f"HM-25: live count {live} != declared 12 -- the D7 unit-12 spend "
         f"must land exactly on the approved unit, neither short (unwired) "
         f"nor over (an unapproved overrun this row's own STOP-and-ask "
         f"contingency forbids)."
