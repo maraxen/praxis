@@ -487,7 +487,7 @@ class RuntimeOutcome:
     #: (a harness-level exception -- `result` is never built in that case).
     volume_tracking_observed: bool = False
     #: 260909 (spec §16.2.1, observation increment, T40, backlog #5023):
-    #: the four-field observation record, read off `verify()`'s own
+    #: the five-field observation record (§17.3 extends it), read off `verify()`'s own
     #: additive `plr_observation` result key -- itself captured at ONE
     #: window inside `verify()`, never re-derived here.  `None` on the
     #: same two conditions `verify()` documents: the deck-build early
@@ -731,13 +731,15 @@ def run_static(graph: dict[str, Any], contracts_json: str) -> dict[str, dict[str
     }
 
 
-#: §16.2.1's CLOSED field list -- read here by NAME and nowhere else, so a
-#: fifth key silently added upstream (e.g. a stale/experimental `verify()`
+#: §16.2.1's CLOSED field list, extended by §17.3 (move-family increment,
+#: T51) with `arm_slots` -- read here by NAME and nowhere else, so a SIXTH
+#: key silently added upstream (e.g. a stale/experimental `verify()`
 #: caller) can never widen `env`. The sorted key-set equality this backs
 #: is what the closed-refusal-list tests in `plr-sema/tests/test_cache.py`
 #: and `training/tests/test_verify_postconditions.py` assert against.
 OBSERVATION_KEYS = frozenset({
     "backend_class", "num_channels", "head_channels", "deck_resource_names",
+    "arm_slots",
 })
 
 
@@ -786,12 +788,20 @@ def observation_env_members(
     (`ref.slot in ctx.resources_by_slot`) is what keeps that vacuity from
     ever firing on a row that never calls `_assert_resources_exist` at all.
 
-    The record is CLOSED (§16.2.1's refusal box): reading exactly the four
-    keys of :data:`OBSERVATION_KEYS`, BY NAME, is what keeps a fifth key
+    The record is CLOSED (§16.2.1's refusal box): reading exactly the
+    keys of :data:`OBSERVATION_KEYS`, BY NAME, is what keeps an unnamed key
     silently added upstream from ever widening `env` -- this function
     simply never looks at it. (`deck_resources_verified` is a DERIVED `env`
-    member, not a fifth key of `plr_observation` itself -- `OBSERVATION_KEYS`
-    is unchanged at four.)
+    member, not a further key of `plr_observation` itself.)
+
+    260909 (spec 260909_plr-sema-move-family-increment.md §17.3, T51): a
+    SIXTH member, `obs:arm_slots`, `json.dumps(sorted(value),
+    separators=(",", ":"))` of `arm_slots` -- SORTED NUMERICALLY first, the
+    identical `head_channels` rule, for the identical reason (a 16-arm
+    backend would otherwise put arm 10 before arm 2). `arm_slots` is read
+    off `plr_observation["arm_slots"]` by NAME, exactly as every other
+    field here, so `OBSERVATION_KEYS` staying closed at five continues to
+    be what keeps a further key from ever entering `env` unnamed.
     """
     if not plr_observation:
         return frozenset()
@@ -835,6 +845,10 @@ def observation_env_members(
         "obs:deck_resources_verified="
         + json.dumps(deck_resources_verified, separators=(",", ":"))
     )
+    # 260909 (spec §17.3, move-family increment, T51): `arm_slots`, SORTED
+    # NUMERICALLY -- the identical `head_channels` rule above, same reason.
+    arm_slots = list(plr_observation["arm_slots"])
+    members.add("obs:arm_slots=" + json.dumps(sorted(arm_slots), separators=(",", ":")))
     return frozenset(members)
 
 

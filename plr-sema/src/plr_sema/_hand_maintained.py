@@ -360,11 +360,24 @@ def _measure_hm25() -> int:
     (ImportError/AttributeError) if it is deleted or renamed, exercising it
     against a synthetic ctx so a signature change that keeps the name but
     breaks the shape also goes red.
+
+    260909 (spec 260909_plr-sema-move-family-increment.md §17.1.2/§17.7,
+    T51, D7 unit 11, user-approved): PLUS an ELEVENTH unit -- the amended
+    predicate-position clause (a complete `ir.Seq`, R-HEAD or R-ARM,
+    decides `T`/`F` by truthiness). This does NOT ride the tenth unit's own
+    probe (round 1's C14: that probe imports `_resolve_env_ref`, and the
+    amended clause lands in `evaluate_predicate`, a different symbol).
+    `declared` moves 10 -> 11, exactly ONE further unit of headroom. The
+    probe imports and exercises `plr_sema.check.predicate.evaluate_predicate`
+    directly, asserting a complete-`Seq` `EnvRef` (R-ARM, non-empty
+    `arm_slots`) decides while a `("self", "head")`-shaped one still does
+    not -- proving the clause is live and keyed on the RULE, not a stub
+    that always matches every `EnvRef`.
     """
     import ast
 
     from plr_sema.check import ir as ir_mod
-    from plr_sema.check.predicate import _Ctx, _resolve_env_ref
+    from plr_sema.check.predicate import _Ctx, _resolve_env_ref, evaluate_predicate
     from plr_sema.check.tipstate import TipState, atom_truth
     from plr_sema.derive.bindings import _match_alpha, _match_beta
     from plr_sema.derive.predicate_ast import _CMP_OPS, EnvRef, Zip
@@ -411,6 +424,32 @@ def _measure_hm25() -> int:
         assert isinstance(value, ir_mod.Top)
         return True
 
+    def _r_arm_truthiness_clause_probe() -> bool:
+        """The ELEVENTH unit's own probe (D7 unit 11, §17.1.2/§17.3, T51):
+        imports and exercises `evaluate_predicate` directly -- a complete
+        `ir.Seq` EnvRef (R-ARM, non-empty `arm_slots`) must decide `True`,
+        while the KEPT `self.head` shape refusal must still return `None`
+        (½) even though R-HEAD is one of the two completeness-declaring
+        rules -- proving the clause is live and keyed on the RULE, not a
+        stub that always matches every `EnvRef`."""
+        assert evaluate_predicate is not None
+        ctx = _Ctx(
+            call=ir_mod.Call(receiver=0, receiver_type="X", method="m", kwargs={}),
+            resources_by_slot={},
+            param_defaults={},
+            bindings_by_name={},
+            depth=0,
+            channel_kwarg=None,
+            channels=None,
+            env=frozenset({"obs:arm_slots=[0,1]"}),
+            class_hierarchy=None,
+        )
+        arm_node = EnvRef(("self", "_resource_pickups"), None)
+        assert evaluate_predicate(arm_node, ctx) is True
+        head_node = EnvRef(("self", "head"), None)
+        assert evaluate_predicate(head_node, ctx) is None
+        return True
+
     shape_matchers = (
         _typestate_anchor,  # P2
         _channel_default_idiom,  # P3a
@@ -419,6 +458,7 @@ def _measure_hm25() -> int:
         operand_pairing_idiom,  # P8
         _predicate_amendment_group_probe,  # alpha + beta + EnvRef + Zip + membership (A-C6)
         _path_shape_table_probe,  # R-HEAD + R-ATTR + R-CONST (D4)
+        _r_arm_truthiness_clause_probe,  # the amended predicate-position clause (D7 unit 11)
     )
     # atom_truth's three productions: BoolView, NullCheck(is_none=True),
     # NullCheck(is_none=False) -- proven live by actually exercising all
@@ -431,6 +471,7 @@ def _measure_hm25() -> int:
     )
     assert _predicate_amendment_group_probe()
     assert _path_shape_table_probe()
+    assert _r_arm_truthiness_clause_probe()
     return len(shape_matchers) + len(productions)
 
 
@@ -1047,10 +1088,20 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "independent of `args`) -- ONE further collective unit for the "
             "PATTERN (\"an `EnvRef` path admitted against the observation "
             "record\"), not one per instance, named inside THIS SAME entry "
-            "rather than a second row."
+            "rather than a second row. 260909 (spec "
+            "260909_plr-sema-move-family-increment.md §17.1.2/§17.7, T51, "
+            "D7 unit 11, user-approved): PLUS the amended predicate-position "
+            "clause -- a complete `ir.Seq` (R-HEAD, and as of this "
+            "increment R-ARM) decides `T`/`F` by truthiness rather than "
+            "staying ½ unconditionally. This does NOT ride the tenth unit's "
+            "own probe (round 1's C14: that probe imports "
+            "`_resolve_env_ref`, and the amended clause lands in "
+            "`evaluate_predicate`, a different symbol) -- booked as its OWN "
+            "eleventh unit, with its own probe importing and exercising "
+            "`evaluate_predicate` directly."
         ),
         metric="patterns",
-        declared=10,
+        declared=11,
         status="CAPPED",
         why_not_derived=(
             "Syntactic patterns over how PLR/its own analyzer is written "
@@ -1090,7 +1141,12 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "(never wrong); the whole-table `n_resolved_by_rule`/"
             "`n_declined_by_rule`/`n_quantifier_decided_by_qmono` counters "
             "(§16.10.1 block 1) move, which is what a reader inspects "
-            "rather than trusting this box's word for the reach."
+            "rather than trusting this box's word for the reach. 260909 "
+            "(T51, D7 unit 11): `evaluate_predicate`'s amended clause is "
+            "deleted or the `self.head` shape refusal is dropped -- the "
+            "unit-11 probe goes red (ImportError/AttributeError, or an "
+            "assertion on the KEPT `self.head` ½ result), never silently; "
+            "a complete-`Seq` `EnvRef` reverts to ½ (never wrong), never F/T."
         ),
         measure="plr_sema._hand_maintained:_measure_hm25",
     ),

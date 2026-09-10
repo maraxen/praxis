@@ -81,6 +81,25 @@ row (C15's soundness precondition, shared with `:321`) -- an
 AST-derived `params`/`has_var_keyword` for a decorated or multiply-defined
 method does not describe the runtime object `inspect.signature` sees.
 
+**260909 (spec 260909_plr-sema-move-family-increment.md §17.1.2/§17.3, T51,
+D7 unit 11): R-ARM and the amended predicate-position clause.** A FOURTH
+admitted `_resolve_env_ref` path shape, `self._resource_pickups`, resolving
+to the observation's `arm_slots` under a new `rule` value `"R-ARM"` -- an
+`EnvRef` path admitted against the observation record, the identical
+pattern R-HEAD/R-ATTR/R-CONST already are, so it rides D4's registry unit
+for free. What does NOT ride free, and is booked as its own unit, is the
+predicate-position clause this increment amends: increment 7's `E-ENV`
+refused `("self","head")` by shape and otherwise decided only for a
+resolved `ir.Lit`, on the stated ground that a dict is not a truth value.
+`:2055` falsifies that ground directly. The amended rule: an `EnvRef`
+resolving to a non-`Top` `ir.Seq` under a `rule` whose own §16.5/§17.3
+specification declares that `Seq` COMPLETE -- today R-HEAD and R-ARM --
+decides `T` iff non-empty and `F` iff empty; every other value, `Top`, or
+rule is ½ exactly as before. Keyed on the RULE, not on
+`isinstance(value, ir.Seq)`, which is what keeps a future lower-bound-Seq
+rule from silently deciding here. The `("self","head")` shape refusal is
+KEPT, unchanged: no guard at this pin reads `self.head` as a truth value.
+
 **Import boundary.** Same as the rest of `check/` (module docstring of
 `plr_sema.check`): no `pylabrobot`, no `libcst`, no `pydantic`, no
 filesystem access, no shelling out. This module DOES import
@@ -331,6 +350,16 @@ def _resolve_env_ref(node: "pa.EnvRef", ctx: _Ctx) -> "tuple[ir.Value, str | Non
     independently of `args`, which is not even inspected here (the whole of
     the argument-independence soundness argument, §16.5.3's own box). The
     MRO is not walked: the lookup is the exact key or nothing.
+
+    **R-ARM** (§17.3, move-family increment, T51): `EnvRef(("self",
+    "_resource_pickups"), None)` -> the COMPLETE `Seq` of the observation's
+    `arm_slots`, ascending, iff `arm_slots` is present. Declared complete
+    subject to §17.3's stability precondition -- the key set of
+    `self._resource_pickups` is fixed for the rest of the program after
+    the capture point, for every receiver with `num_arms >= 1` -- not by
+    the shape alone. No membership case: in term position it behaves
+    exactly as R-HEAD's own `Seq` does, and no guard at this pin reads
+    membership in it.
     """
     obs = _observation(ctx.env)
     if node.path == ("self", "head") and node.args is None:
@@ -353,6 +382,11 @@ def _resolve_env_ref(node: "pa.EnvRef", ctx: _Ctx) -> "tuple[ir.Value, str | Non
         if row is None or "constant_return" not in row:
             return ir.Top(), "R-CONST"
         return ir.Lit(row["constant_return"]), "R-CONST"
+    if node.path == ("self", "_resource_pickups") and node.args is None:
+        slots = obs.get("arm_slots")
+        if not isinstance(slots, list) or not all(isinstance(s, int) for s in slots):
+            return ir.Top(), "R-ARM"
+        return ir.Seq(tuple(ir.Lit(s) for s in sorted(slots))), "R-ARM"
     return ir.Top(), None
 
 
@@ -938,7 +972,14 @@ def evaluate_predicate(node: "pa.Predicate", ctx: Any) -> "bool | None":
         # observed-but-empty head does not accidentally read as falsy here.
         if node.path == ("self", "head") and node.args is None:
             return None
-        value, _rule = _resolve_env_ref(node, ctx)
+        value, rule = _resolve_env_ref(node, ctx)
+        if isinstance(value, ir.Seq) and rule in ("R-HEAD", "R-ARM"):
+            # §17.1.2's amendment (move-family increment, T51): a complete
+            # `Seq` decides by truthiness -- T iff non-empty, F iff empty --
+            # keyed on the RULE's own completeness declaration, never on
+            # `isinstance(value, ir.Seq)` alone (a future Seq-returning rule
+            # that has not argued completeness stays ½ here, unchanged).
+            return len(value.items) > 0
         if isinstance(value, ir.Lit):
             return bool(value.v)  # R-ATTR/R-CONST: the Kleene truth of the resolved Lit.
         return None  # declined, or an unadmitted EnvRef shape -- E-ENV's ½ unchanged.

@@ -120,7 +120,7 @@ The per-operation finding list for one `move_resource` operation confirms it fin
 > (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2085-2092`). `is_dynamic_raise`
 > returns true on the `<dynamic:` prefix and nothing else
 > (`plr-sema/src/plr_sema/check/predicate.py:1121-1125`), `evaluate_guard` short-circuits it to
-> `tier_iii` (`plr-sema/src/plr_sema/check/predicate.py:1400-1401`), and the site is folded into
+> `tier_iii` (`plr-sema/src/plr_sema/check/predicate.py:1441-1442`), and the site is folded into
 > `excludes_sites` (`plr-sema/src/plr_sema/check/__init__.py:932-940`). **This is why `:2092` appears
 > in the ledger's fifteen-finding list and NOT in the replay's thirteen-entry residual site set**, and
 > the two documents agree exactly. The consequence is normative for §17.8: the unscoped `verdict` on a
@@ -448,7 +448,7 @@ clusters that agree to the operation.
 > contract entry receives the surface when any of its guards carries a `self.backend.<m>` `EnvRef`
 > either in its own `predicate` (with `args is not None`, unchanged — R-CONST's need) **or** in its
 > `caller_args` map (with or without `args` — D5b's need, and the shape `_check_args_method_name`
-> actually reads, `plr-sema/src/plr_sema/check/predicate.py:1199-1208`).
+> actually reads, `plr-sema/src/plr_sema/check/predicate.py:1240-1249`).
 >
 > **Its blast radius is confined, and the argument is checkable rather than asserted.** The entries
 > M-SURF newly attaches are precisely those with a `caller_args`-borne `self.backend.<m>` `EnvRef` and
@@ -466,7 +466,7 @@ clusters that agree to the operation.
 > *which entries receive the `rows` dict*. It adds **no rows**, and a site rule needs a **row**:
 > `_check_args_surface_row` returns `ctx.backend_surface.get(f"{backend_class}.{method}")`
 > (`plr-sema/src/plr_sema/check/predicate.py:1249`) with `method` the last segment of
-> `ctx.caller_args["method"]` (`plr-sema/src/plr_sema/check/predicate.py:1199-1208`), and both site
+> `ctx.caller_args["method"]` (`plr-sema/src/plr_sema/check/predicate.py:1240-1249`), and both site
 > rules decline on `row is None` (`plr-sema/src/plr_sema/check/predicate.py:1277-1279`, `:1321-1323`).
 >
 > **The row is missing, and this is measured in the shipped artifact rather than argued.** The
@@ -965,7 +965,7 @@ and `grid` — and no exactness among them (`plr-sema/src/plr_sema/check/ir.py:1
 > >    branch's reason becomes a parameter (§17.6's table), which is the ONE line of `_finding_for_atom`
 > >    this increment changes. **A DUPLICATED `atom_truth` would break D7's arithmetic**: `_measure_hm25`
 > >    returns `len(shape_matchers) + len(productions)` and `productions` is a tuple of *exercised
-> >    `atom_truth` branches* (`plr-sema/src/plr_sema/_hand_maintained.py:414-434`), so a second lattice's
+> >    `atom_truth` branches* (`plr-sema/src/plr_sema/_hand_maintained.py:453-475`), so a second lattice's
 > >    branches would be two or three further productions, the measure would land at 14–15, and T52's own
 > >    STOP contingency would fire. **Generalising keeps `productions` at 3, `shape_matchers` at 9 after
 > >    T51's and T52's one each, and `measure()` at exactly 12 — which is what D7 asks for.**
@@ -977,7 +977,7 @@ and `grid` — and no exactness among them (`plr-sema/src/plr_sema/check/ir.py:1
 >
 > - **No fifth `EnvRef` path shape and no new `Is`-position rule.** `EnvRef(("self","_resource_pickup"))`
 >   never reaches `_resolve_env_ref` on this path, so §17.7's accounting is not short by one and the
->   benchmark-wide broadening of `_eval_is` (`plr-sema/src/plr_sema/check/predicate.py:817-822`) that
+>   benchmark-wide broadening of `_eval_is` (`plr-sema/src/plr_sema/check/predicate.py:851-856`) that
 >   C6 feared is neither proposed nor needed.
 > - **`_finding_for_atom`'s ½ branch must carry `guard_env_dependent` for this anchor**, not the tip
 >   family's `channel_state_unknown` (§17.6's table). That is the ONE line of that function this
@@ -1279,7 +1279,7 @@ and a `None` payload is always legal.
 >
 > **The wire-shape change, named on the PRODUCER side (round 1's C13, conceded).** spec_version 1
 > specified only the consumer's tolerance. All three shipped consumers call `.get(...)` on a `Mapping`
-> — `caller_args.get("method")` (`plr-sema/src/plr_sema/check/predicate.py:1199-1208`),
+> — `caller_args.get("method")` (`plr-sema/src/plr_sema/check/predicate.py:1240-1249`),
 > `caller_args.get("default")` (`plr-sema/src/plr_sema/check/predicate.py:1222-1231`), and
 > `_Ctx.caller_args = guard.get("caller_args")`
 > (`plr-sema/src/plr_sema/check/predicate.py:1425-1432`) — and a list has no `.get`, so **re-typing the
@@ -1443,7 +1443,7 @@ mechanisms it excluded for costing a row.
 > > — in the same sense M3's traversal and the base-name extractor are code, so they cost no unit.
 > > **The measure lands at 12, and here is the arithmetic in full.** `_measure_hm25` returns
 > > `len(shape_matchers) + len(productions)`, today 7 + 3 = 10
-> > (`plr-sema/src/plr_sema/_hand_maintained.py:414-434`). T51 adds **one** matcher (unit 11's
+> > (`plr-sema/src/plr_sema/_hand_maintained.py:453-475`). T51 adds **one** matcher (unit 11's
 > > `evaluate_predicate` probe) → 8. T52 adds **one** matcher (unit 12's singleton anchor/effect
 > > matcher, distinct from `_typestate_anchor`) → 9. **`productions` stays at 3** because §17.4.0
 > > decision 6 GENERALISES `atom_truth` over both lattices instead of duplicating it — its three
@@ -1456,7 +1456,7 @@ mechanisms it excluded for costing a row.
 >
 > **The measure is mechanical, and that is why unit 12 must name a NEW symbol.** C15's premise that
 > `_measure_hm25` returns a hand-written integer is **false** — it returns
-> `len(shape_matchers) + len(productions)` (`plr-sema/src/plr_sema/_hand_maintained.py:414-434`), so the
+> `len(shape_matchers) + len(productions)` (`plr-sema/src/plr_sema/_hand_maintained.py:453-475`), so the
 > `measure() <= declared` ratchet genuinely checks the STOP contingency. **C15's surviving half is
 > right and is binding**: `_typestate_anchor` is *already* in `shape_matchers`
 > (`plr-sema/src/plr_sema/_hand_maintained.py:414-422`), so a P5 implemented as a variant of it adds no
@@ -1569,7 +1569,7 @@ mechanisms it excluded for costing a row.
 >     exclusions are invisible today: `excludes_sites` collects tier-(iii) sites only
 >     (`plr-sema/src/plr_sema/check/__init__.py:932-949`), while `scope_excludes` returns `_SAFE`
 >     directly (`plr-sema/src/plr_sema/check/predicate.py:1442-1444`) and leaves no trace. The counter
->     needs one additive boolean on `GuardResult` (`plr-sema/src/plr_sema/check/predicate.py:1360-1366`)
+>     needs one additive boolean on `GuardResult` (`plr-sema/src/plr_sema/check/predicate.py:1401-1407`)
 >     and a per-site tally in the ledger. **This is round 1's C12 remedy and it applies to the four
 >     mechanisms TAKEN, not only to the one refused**: the amended truthiness clause, R-ARM and any name
 >     M3 newly binds are all live inside `_scope_entry_value`
@@ -1932,7 +1932,7 @@ with `region_unsound` 0.
   normative:** `:2070`, `:2120` and `:2147` are asserted to be decided through the new
   `evaluate_anchor_call`'s `consumed`-index replacement, consumed by the shipped protocol
   (`plr-sema/src/plr_sema/check/__init__.py:451-453`), and a grep asserts **no new `EnvRef` path shape
-  and no change to `_eval_is`** (`plr-sema/src/plr_sema/check/predicate.py:817-822`) — an
+  and no change to `_eval_is`** (`plr-sema/src/plr_sema/check/predicate.py:851-856`) — an
   implementation that routes the typestate through the predicate evaluator fails this. **Four further
   route assertions, each one of §17.4.0's closed decisions made checkable (round 2's R2-C3).** (a) A
   `move_*` fixture whose `channels` is `None` still decides all three guards, which is the
@@ -1942,7 +1942,7 @@ with `region_unsound` 0.
   **disjoint** on the tip fixtures. (c) `atom_truth` is asserted to be **one** function serving both
   lattices, by a fixture that calls it with a `PickupState` and with a `TipState` and by
   `_measure_hm25` being asserted **exactly 12** with `productions` still **3**
-  (`plr-sema/src/plr_sema/_hand_maintained.py:414-434`) — an implementation that duplicates
+  (`plr-sema/src/plr_sema/_hand_maintained.py:453-475`) — an implementation that duplicates
   `atom_truth` measures 14–15 and trips the ratchet, which is the mechanical form of §17.7 unit 12's
   arithmetic. (d) `_parse_atom` is asserted called with an empty `bool_view_attr` for this anchor and
   the bool-view atom asserted **never** produced for it. The complete

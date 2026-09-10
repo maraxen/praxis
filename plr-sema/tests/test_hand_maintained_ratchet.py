@@ -341,28 +341,28 @@ def test_hand_written_contracts_content_is_pinned() -> None:
     )
 
 
-def test_hm25_d4_spend_is_one_unit_not_an_overrun() -> None:
-    """260909 (spec 260909_plr-sema-observation-increment.md §16.5/§16.9,
-    T43, D4): the approved spend is `declared` 9 -> 10, exactly ONE further
-    unit for the §16.5 path-shape table pattern (R-HEAD/R-ATTR/R-CONST),
-    not one per rule -- and the measured count must land exactly there, not
-    merely under the ceiling (a `live <= declared` pass alone would not
-    distinguish "the tenth unit is wired" from "it was silently dropped").
-    D4 is a per-row ceiling spend, not a new registry row -- HM-25's own
-    `declared`/live count are unaffected by whether a LATER, SEPARATE
-    decision (D6, T48, backlog #5026) later adds HM-26 and moves
-    `live_rows()`/`BUDGET_CAP` on ITS OWN: this test asserts D4's spend in
-    isolation, not a frozen global count that a subsequent row's own test
-    (`test_hm26_d6_spend_is_one_new_row_not_an_overrun` below) already
-    covers."""
+def test_hm25_d7_unit11_spend_is_one_unit_not_an_overrun() -> None:
+    """260909 (spec 260909_plr-sema-move-family-increment.md §17.1.2/§17.7,
+    T51, D7 unit 11): the approved spend is `declared` 10 -> 11, exactly
+    ONE further unit for the amended predicate-position clause (§17.1.2) --
+    a rule the tenth unit's own probe (`_resolve_env_ref`) does NOT
+    exercise, because the clause lands in `evaluate_predicate`, a different
+    symbol (round 1's C14, conceded). The measured count must land exactly
+    there, not merely under the ceiling (a `live <= declared` pass alone
+    would not distinguish "the eleventh unit is wired" from "it was
+    silently dropped"). This supersedes the prior D4-only assertion
+    (`declared`/live pinned at 10 in isolation) -- HM-25 accumulates spends
+    across separately-approved decisions on the SAME row, unlike HM-26's
+    own per-decision new-row split (`test_hm26_d6_spend_is_one_new_row_not_
+    an_overrun` below)."""
     (hm25,) = (row for row in REGISTRY if row.id == "HM-25")
-    assert hm25.declared == 10, f"HM-25: declared is {hm25.declared}, expected 10 (D4's one-unit spend)"
+    assert hm25.declared == 11, f"HM-25: declared is {hm25.declared}, expected 11 (D4's tenth unit + D7's eleventh unit)"
     live = resolve_measure(hm25.measure)
-    assert live == 10, (
-        f"HM-25: live count {live} != declared 10 -- the D4 spend must land "
-        f"exactly on the approved unit, neither short (unwired) nor over "
-        f"(an unapproved overrun this row's own STOP-and-ask contingency "
-        f"forbids)."
+    assert live == 11, (
+        f"HM-25: live count {live} != declared 11 -- the D7 unit-11 spend "
+        f"must land exactly on the approved unit, neither short (unwired) "
+        f"nor over (an unapproved overrun this row's own STOP-and-ask "
+        f"contingency forbids)."
     )
 
 

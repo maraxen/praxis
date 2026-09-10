@@ -586,6 +586,7 @@ _SAMPLE_OBSERVATION = {
     "num_channels": 8,
     "head_channels": [0, 1, 2, 3, 4, 5, 6, 7],
     "deck_resource_names": ["tip_rack", "source_plate", "dest_plate"],
+    "arm_slots": [0],
 }
 
 
@@ -617,6 +618,20 @@ def test_observation_env_members_json_encoding_and_int_sort() -> None:
     assert "obs:head_channels=[0,1,2,3,4,5,6,7,8,9,10,11]" in members
     # never the string-sort order [0,1,10,11,2,3,...]
     assert "obs:head_channels=[0,1,10,11,2,3,4,5,6,7,8,9]" not in members
+
+
+def test_observation_env_members_arm_slots_numeric_sort() -> None:
+    """§17.3's identical `head_channels` numeric-sort rule, applied to
+    `arm_slots` (spec 260909_plr-sema-move-family-increment.md §17.3, T51):
+    NEVER string-sorted -- a 16-arm backend would otherwise put arm 10
+    before arm 2."""
+    from oracle_common import observation_env_members
+
+    unsorted = dict(_SAMPLE_OBSERVATION, arm_slots=[10, 2, 0, 1, 9])
+    members = observation_env_members(unsorted, {})
+
+    assert "obs:arm_slots=[0,1,2,9,10]" in members
+    assert "obs:arm_slots=[0,1,10,2,9]" not in members
 
 
 def test_observation_env_members_head_channels_mismatch_raises() -> None:
@@ -684,10 +699,11 @@ def test_observation_partitions_cache_key_via_env(contracts_json: str) -> None:
 
 
 def test_observation_record_closed_refusal_list() -> None:
-    """§16.2.1's CLOSED record: exactly these four keys, no others. This
-    is the "fails if `plr_observation` grows a fifth key" test the T40
-    task row names -- against :data:`oracle_common.OBSERVATION_KEYS`,
-    the same constant `observation_env_members` and
+    """§16.2.1's CLOSED record, extended by §17.3 (move-family increment,
+    T51) with `arm_slots`: exactly these five keys, no others. This is the
+    "fails if `plr_observation` grows an unnamed key" test the T40 task
+    row names -- against :data:`oracle_common.OBSERVATION_KEYS`, the same
+    constant `observation_env_members` and
     `training/tests/test_verify_postconditions.py`'s own closed-list
     assertion (against a REAL `verify()` run) both key off.
     """
@@ -695,9 +711,10 @@ def test_observation_record_closed_refusal_list() -> None:
 
     assert OBSERVATION_KEYS == {
         "backend_class", "num_channels", "head_channels", "deck_resource_names",
+        "arm_slots",
     }
     assert set(_SAMPLE_OBSERVATION) == OBSERVATION_KEYS, (
-        "a fifth key on the sample fixture itself would mean this test file's "
+        "a sixth key on the sample fixture itself would mean this test file's "
         "own fixture has drifted from the closed record -- fix the fixture, "
         "not the constant"
     )

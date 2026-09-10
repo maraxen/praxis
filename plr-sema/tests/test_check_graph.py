@@ -1733,3 +1733,61 @@ def test_ac_16_14_set_lit_parses_and_round_trips() -> None:
 
     mixed = parse("x == {1, f()}")
     assert isinstance(mixed, Opaque)  # one non-Constant element -> the WHOLE display fails to parse.
+
+
+# ---------------------------------------------------------------------------
+# AC-17.2 (spec 260909_plr-sema-move-family-increment.md §17.1.2/§17.3,
+# T51): `:2055`'s REAL, unmodified `LiquidHandler.pick_up_resource` guard
+# record, end to end -- never through a hand-built predicate.
+# ---------------------------------------------------------------------------
+
+_PICK_UP_RESOURCE_2055_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=2055,
+    qualname="LiquidHandler.pick_up_resource",
+)
+
+
+def _pick_up_resource_graph() -> str:
+    return json.dumps(
+        {
+            "protocol_fqn": "test.t51_r_arm",
+            "operations": [
+                {
+                    "id": "op_1",
+                    "method_name": "pick_up_resource",
+                    "receiver_variable": "lh",
+                    "receiver_type": "LiquidHandler",
+                    "arguments": {},
+                }
+            ],
+            "resources": {},
+        }
+    )
+
+
+def _arm_slots_only_env(arm_slots: "list[int]") -> "frozenset[str]":
+    return frozenset({f"obs:arm_slots={list(arm_slots)}".replace(" ", "")})
+
+
+def test_ac_17_2_2055_safe_end_to_end_through_shipped_guard_record(contracts_json: str) -> None:
+    """AC-17.2's positive claim: `:2055` (`self.setup_finished and not
+    self._resource_pickups`) decides `SAFE` end to end through the REAL,
+    UNMODIFIED `LiquidHandler.pick_up_resource` guard record -- never
+    through a hand-built predicate -- once `arm_slots` observes at least
+    one arm. Only the SECOND `And` conjunct needs to resolve (Kleene `And`:
+    one `False` decides regardless of the other); `self.setup_finished`
+    is never observed here and never has to be."""
+    report = check_graph(_pick_up_resource_graph(), contracts_json, env=_arm_slots_only_env([0, 1]))
+    (finding,) = _site_findings(report, _PICK_UP_RESOURCE_2055_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.SAFE
+
+
+def test_ac_17_2_2055_no_observation_stays_unknown(contracts_json: str) -> None:
+    """§16.2.3's fail-closed default, unaffected by this increment: with no
+    `arm_slots` observation in `env`, `:2055` stays exactly where it was
+    before T51 -- `UNKNOWN`/`guard_env_dependent`."""
+    report = check_graph(_pick_up_resource_graph(), contracts_json)
+    (finding,) = _site_findings(report, _PICK_UP_RESOURCE_2055_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
