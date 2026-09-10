@@ -123,7 +123,7 @@ therefore not a hand-maintained surface. **This choice is disclosed, not hidden*
 >    post-state unconditionally.
 >
 > The post-state is `constructor_state(C)` — P4's existing three-way classification
-> (`_classify_write`, `plr-sema/src/plr_sema/derive/receiver_state.py:462-473`) applied to `C`'s
+> (`_classify_write`, `plr-sema/src/plr_sema/derive/receiver_state.py:889-900`) applied to `C`'s
 > `__init__` writes to `state_fields`, exactly as `_effects`
 > (`plr-sema/src/plr_sema/derive/receiver_state.py:410-440`) applies it to `C`'s other methods.
 > `NO_TIP` and `HAS_TIP` are both admissible outcomes; **both-kinds or ambiguous is not a reset** and
@@ -158,15 +158,15 @@ attribute and is scoped out by §10.9's 96-head exclusion, which this increment 
 
 **Where P1 already does most of the work.** P1a's `_annotated_attributes`
 (`plr-sema/src/plr_sema/derive/receiver_state.py:169-182`) already gives `head → TipTracker`, and
-P1b's `_attribute_writers` (`plr-sema/src/plr_sema/derive/receiver_state.py:228-246`) already indexes
+P1b's `_attribute_writers` (`plr-sema/src/plr_sema/derive/receiver_state.py:247-266`) already indexes
 every `self.<name> = …` write by the writing method's qualname — so P5's *candidate set* is
 `_attribute_writers[a]`, and P5 adds only the three-conjunct test above plus the constructor-state
 read. It is a filter over an existing index, not a new scan.
 
 ### 12.1.3 Where it lands in the payload, and the provenance stamp
 
-`ReceiverState` (`plr-sema/src/plr_sema/derive/receiver_state.py:663-688`) gains one field and
-`receiver_state_to_json` (`plr-sema/src/plr_sema/derive/receiver_state.py:692-715`) one key:
+`ReceiverState` (`plr-sema/src/plr_sema/derive/receiver_state.py:1090-1128`) gains one field and
+`receiver_state_to_json` (`plr-sema/src/plr_sema/derive/receiver_state.py:1131-1157`) one key:
 
 ```jsonc
 "receiver_state": {
@@ -178,13 +178,13 @@ read. It is a filter over an existing index, not a new scan.
 ```
 
 `schema_version` stays **1**. `check/` reads the block through `.get()` with an empty default
-(`evaluate_call`, `plr-sema/src/plr_sema/check/tipstate.py:509-536`, already does this for every
+(`evaluate_call`, `plr-sema/src/plr_sema/check/tipstate.py:599-775`, already does this for every
 other key), so a pre-increment table degrades to today's `default = TOP` behaviour — the same
 fail-closed direction as AC-10.7 and AC-11.12, and pinned here by AC-12.2's third sub-assertion.
 
 **Provenance.** Two records, both existing artifacts, neither new:
 
-- The **gap ledger's** `tip_state` block (`plr-sema/src/plr_sema/derive/__main__.py:481-499`, built by
+- The **gap ledger's** `tip_state` block (`plr-sema/src/plr_sema/derive/__main__.py:745-787`, built by
   `compute_tip_families`) gains an `entry_reset` entry per anchored receiver class, alongside
   `tipstate_anchor`. Its value is the derived `{method, post}` pair, or the string `"absent"` /
   `"ambiguous"` when P5 emitted nothing and why. This is the visible surface AC-10.10 established for
@@ -249,8 +249,8 @@ is exactly why they had to be written down rather than relied upon:
 |---|---|---|---|---|
 | **A-CHANNELS** | the reset method populates at least every channel index a later operation names | `default = NO_TIP` answers for indices `exact` does not carry; if the map is *smaller* than the operation's channel set, PLR raises `KeyError` where the analyzer says `SAFE` | a `SAFE` against a run that raised — the first-severity class. Requires a backend whose `num_channels` (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:197`) is below the operation's arity; no corpus row and no chatterbox configuration produces one | tier 1's 0-unsound gate over 268 executed rows / 426 operations, and tier 2b's executed fixtures (§12.4.2) |
 | **A-RESET-ONCE** | a second reset call is a reset, not an error | E6 applies unconditionally; PLR in fact raises `RuntimeError` on a repeat `setup()` (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:190-191`) | nothing in the `SAFE` direction: the *analyzer* would report `NO_TIP` for a program that raises before reaching the next operation, which A-COMPLETES already scopes out — a `WILL_FAIL` claim is a claim about the trace *reaching* that index | the same two |
-| **A-NO-REINTRODUCTION** (round-1 O6) | no method other than the derived `entry_reset.method` reintroduces tip state between an observed reset and a later read, *unless* the ordinary P4 bridge machinery catches it | E6 fires only on the exact reset method; every other tracker-touching method is left to §10.2.4's effect classification and §10.4's E2/E4 split, so the reset's `default` survives across calls the bridge does not model | a channel silently reading `NO_TIP` after something put a tip on it. The live instance is `LiquidHandler.load_state` (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:239-257`), which calls `self.head[channel].load_state(...)` at `:250` — the HM-24 bridge shape exactly — and `TipTracker.load_state` assigns `self._tip = cast(...)` (`external/pylabrobot/pylabrobot/resources/tip_tracker.py:138-142`), which `_classify_write` (`plr-sema/src/plr_sema/derive/receiver_state.py:462-473`) classifies `HAS_TIP` since the RHS is neither a `None` literal nor a self-attr load. **It discharges safely today, but by machinery rather than by argument:** `channels_for_call` returns `None` for `load_state` (no `use_channels`, no channel-default idiom), so `_apply_transfer`'s channels-are-`Top` branch (`plr-sema/src/plr_sema/check/tipstate.py:478-504`) widens instead of asserting anything. What would break it is a future reintroducing method that *does* resolve an exact channel set | tier 1 + tier 2b; and, structurally, AC-12.1's requirement that P5 select exactly one reset method |
-| **A-EARLY-EXIT** (round-1 O7) | control did not exit a region early via `break`, `return` or `raise` before the pc being checked | L1 evaluates every listed body operation on every unrolled iteration; a terminated loop's later iterations do not happen | findings for iterations the execution never ran. Sound because the oracle declines to constrain unreached call sites, the same exemption `compare` already gives post-raise operations (`plr-sema/eval/oracle_common.py:632-651`); this row is the generalisation of increment 1's A-COMPLETES from "did not raise" to "was reached", stated at the width §12.2.3 actually uses it. `continue` is **not** covered here — it does not terminate anything — and is handled instead by withdrawing the trip proof (§12.2.3 condition 4) | tier 2b's `(operation, iteration)` comparison, in which an unvisited call site is not-reached by construction (AC-12.17) |
+| **A-NO-REINTRODUCTION** (round-1 O6) | no method other than the derived `entry_reset.method` reintroduces tip state between an observed reset and a later read, *unless* the ordinary P4 bridge machinery catches it | E6 fires only on the exact reset method; every other tracker-touching method is left to §10.2.4's effect classification and §10.4's E2/E4 split, so the reset's `default` survives across calls the bridge does not model | a channel silently reading `NO_TIP` after something put a tip on it. The live instance is `LiquidHandler.load_state` (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:239-257`), which calls `self.head[channel].load_state(...)` at `:250` — the HM-24 bridge shape exactly — and `TipTracker.load_state` assigns `self._tip = cast(...)` (`external/pylabrobot/pylabrobot/resources/tip_tracker.py:138-142`), which `_classify_write` (`plr-sema/src/plr_sema/derive/receiver_state.py:889-900`) classifies `HAS_TIP` since the RHS is neither a `None` literal nor a self-attr load. **It discharges safely today, but by machinery rather than by argument:** `channels_for_call` returns `None` for `load_state` (no `use_channels`, no channel-default idiom), so `_apply_transfer`'s channels-are-`Top` branch (`plr-sema/src/plr_sema/check/tipstate.py:568-596`) widens instead of asserting anything. What would break it is a future reintroducing method that *does* resolve an exact channel set | tier 1 + tier 2b; and, structurally, AC-12.1's requirement that P5 select exactly one reset method |
+| **A-EARLY-EXIT** (round-1 O7) | control did not exit a region early via `break`, `return` or `raise` before the pc being checked | L1 evaluates every listed body operation on every unrolled iteration; a terminated loop's later iterations do not happen | findings for iterations the execution never ran. Sound because the oracle declines to constrain unreached call sites, the same exemption `compare` already gives post-raise operations (`plr-sema/eval/oracle_common.py:1060-1170`); this row is the generalisation of increment 1's A-COMPLETES from "did not raise" to "was reached", stated at the width §12.2.3 actually uses it. `continue` is **not** covered here — it does not terminate anything — and is handled instead by withdrawing the trip proof (§12.2.3 condition 4) | tier 2b's `(operation, iteration)` comparison, in which an unvisited call site is not-reached by construction (AC-12.17) |
 
 ### 12.1.6 The corpus rows must carry the real `setup()` call
 
@@ -746,7 +746,7 @@ check.
 > containing `for`, `while`, `if`/`elif`/`else` and nesting, each with both tip outcomes represented
 > (a loop that fails at iteration 2; a loop that drops before re-picking and runs clean; a branch
 > where one arm picks up and the other does not). Ground truth is obtained by **executing the source**
-> against the verifier's own chatterbox deck — `build_setup` (`training/verify/deck.py:368`) under the
+> against the verifier's own chatterbox deck — `build_setup` (`training/verify/deck.py:429-551`) under the
 > STRICT + tip/volume-tracking configuration `verify` establishes
 > (`training/verify/verifier.py:104-116`) — recording, per raise, the **operation and the iteration**
 > at which it happened. The static side runs the same source through §12.4.1's runner, `lower_graph`,
@@ -818,7 +818,7 @@ The tier-1 replay loses 40 golden rows to unparseable underscore references such
 268 rows executed, 426 operations, 0 unsound, 189 of 189 crosscheck agreement
 (`outputs/plr-sema/oracle_replay_260902.json:2-17`).
 
-> **Normative.** `row_to_verifier_inputs` (`plr-sema/eval/oracle_common.py:1038-1046`) normalises a
+> **Normative.** `row_to_verifier_inputs` (`plr-sema/eval/oracle_common.py:1378-1410`) normalises a
 > reference of the form `<base>_<Row><Col>` to `<base>.<Row><Col>` **if and only if `<base>` is a
 > declared resource of the row's own deck layout** — the layout it has already computed, not a name
 > pattern. `<Row>` is a single `A`–`H`, `<Col>` one or two digits, matching the regex shape
