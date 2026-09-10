@@ -30,17 +30,28 @@ import pytest
 from plr_sema._hand_maintained import BUDGET_CAP, live_rows
 from plr_sema._provenance import SurveyStamp, survey_stamp
 from plr_sema.derive import (
+    ClassBasesIndex,
     DroppedCall,
     SurveyFinding,
     SurveyRecord,
+    _extract_base_name,
     _is_inert_dropped_receiver_call,
     _iter_plr_source_files,
+    _walk_closure,
+    build_class_bases_index,
     build_contract_keys,
     build_gap_ledger,
     build_index,
+    class_closure,
+    compute_m_inh_selection,
     default_plr_pkg_root,
     derive_contract,
+    diagnose_base_resolution,
+    inherited_method_names,
     load_survey,
+    measure_m_inh_entry_point_impact,
+    resolve,
+    resolve_via_base_closure,
     scan_dropped_receiver_calls,
     scan_dropped_receiver_calls_in_source,
 )
@@ -79,6 +90,7 @@ from plr_sema.derive.receiver_state import (
     BackendSurfaceEntry,
     backend_surface_entry_to_json,
     build_backend_surface,
+    build_plr_class_bases_index,
     build_plr_class_index,
     build_plr_function_index,
     collect_env_ref_method_names,
@@ -183,6 +195,7 @@ def _synthetic_record(
     delegates_to: tuple[str, ...] = (),
     unresolved_calls: tuple[str, ...] = (),
     findings: tuple[SurveyFinding, ...] = (),
+    inherited_delegates: tuple[str, ...] = (),
 ) -> SurveyRecord:
     return SurveyRecord(
         qualname=qualname,
@@ -194,6 +207,7 @@ def _synthetic_record(
         findings=findings,
         delegates_to=delegates_to,
         unresolved_calls=unresolved_calls,
+        inherited_delegates=inherited_delegates,
     )
 
 
@@ -3788,3 +3802,461 @@ def test_guard_to_json_caller_args_absent_for_depth0_guard(
     assert payload["caller_args"] is None
     assert payload["caller_reachability_clear"] is None
     assert payload["caller_scope_trail"] is None
+
+
+# ---------------------------------------------------------------------------
+# T50 -- M-INH, inherited self-call resolution (spec
+# 260909_plr-sema-move-family-increment.md §17.2, AC-17.1). Synthetic
+# in-memory class trees throughout (mirrors this file's own docstring
+# convention: synthetic fixtures for tests about the MECHANIC itself).
+# ---------------------------------------------------------------------------
+
+
+def _class_nodes_from_source(source: str) -> dict[str, ast.ClassDef]:
+    tree = ast.parse(source)
+    return {n.name: n for n in ast.iter_child_nodes(tree) if isinstance(n, ast.ClassDef)}
+
+
+def _uniform_bases_index(class_nodes: dict[str, ast.ClassDef], module: str = "mod") -> ClassBasesIndex:
+    """No collisions, every class in one module -- the common case most
+    of this section's fixtures want; the collision-specific tests below
+    build their own ``class_modules_multi`` instead."""
+    return build_class_bases_index(class_nodes, {name: frozenset({module}) for name in class_nodes})
+
+
+# --- the base-name extractor's four rows (§17.2's table) -------------------
+
+
+def test_extract_base_name_four_rows() -> None:
+    src = """
+class ByName(A): pass
+class ByAttribute(mod.B): pass
+class BySubscript(Generic[T]): pass
+class RefusedCall(factory()): pass
+class RefusedStar(*bases): pass
+"""
+    classes = _class_nodes_from_source(src)
+    assert _extract_base_name(classes["ByName"].bases[0]) == "A"
+    assert _extract_base_name(classes["ByAttribute"].bases[0]) == "B"
+    assert _extract_base_name(classes["BySubscript"].bases[0]) == "Generic"
+    assert _extract_base_name(classes["RefusedCall"].bases[0]) is None
+    assert _extract_base_name(classes["RefusedStar"].bases[0]) is None
+
+
+def test_build_class_bases_index_refuses_whole_class_on_unreadable_base_expression() -> None:
+    """AC-17.1's third stub-defeating fixture: a `ClassDef` with an
+    unreadable base expression makes the WHOLE class refuse rather than
+    contributing a partial closure -- not just the one unreadable base
+    dropped silently."""
+    class_nodes = _class_nodes_from_source("class Bad(factory(), Readable):\n    def m(self): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    assert idx.bases["Bad"] is None
+    assert idx.unresolved_base_counts["Bad"] == 0  # meaningless for a refused class -- 0, not a partial count
+
+
+def test_build_class_bases_index_records_alias_incompleteness() -> None:
+    """An import-alias base yields a name absent from the whole-tree
+    index -- silent INCOMPLETENESS, not a refusal -- and T50 publishes the
+    per-class count rather than assuming zero."""
+    class_nodes = _class_nodes_from_source("class C(AliasedImport):\n    def m(self): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    assert idx.bases["C"] == ("AliasedImport",)
+    assert idx.unresolved_base_counts["C"] == 1
+    assert idx.collision_names == frozenset()
+
+
+def test_build_class_bases_index_bare_name_collision() -> None:
+    """A class name defined in more than one module is a collision --
+    the extractor's second refusal, independent of the base expression
+    shape."""
+    class_nodes = _class_nodes_from_source("class Dup:\n    def m(self): pass\n")
+    idx = build_class_bases_index(class_nodes, {"Dup": frozenset({"mod.a", "mod.b"})})
+    assert idx.collision_names == frozenset({"Dup"})
+
+
+# --- class_closure: reflexive/transitive + fail-closed refusal propagation -
+
+
+def test_class_closure_is_reflexive_and_transitive() -> None:
+    class_nodes = _class_nodes_from_source("class A: pass\nclass B(A): pass\nclass C(B): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    assert class_closure("C", class_nodes, idx) == frozenset({"A", "B", "C"})
+    assert class_closure("A", class_nodes, idx) == frozenset({"A"})
+
+
+def test_class_closure_propagates_refusal_from_an_unreadable_ancestor() -> None:
+    """§17.2's own framing: refusing the class rather than dropping the
+    one base is the whole point -- a subclass of a refused class cannot
+    licitly claim uniqueness either, since it has not seen the refused
+    ancestor's own (unknown) further bases."""
+    class_nodes = _class_nodes_from_source("class Bad(factory()):\n    def m(self): pass\nclass Child(Bad): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    assert class_closure("Bad", class_nodes, idx) is None
+    assert class_closure("Child", class_nodes, idx) is None
+
+
+def test_class_closure_refuses_on_a_collision_anywhere_in_the_chain() -> None:
+    class_nodes = _class_nodes_from_source("class Dup(Base): pass\nclass Base:\n    def m(self): pass\n")
+    idx = build_class_bases_index(class_nodes, {"Dup": frozenset({"mod"}), "Base": frozenset({"mod.a", "mod.b"})})
+    assert class_closure("Dup", class_nodes, idx) is None
+
+
+def test_class_closure_unresolved_base_contributes_itself_but_no_further_ancestors() -> None:
+    """An import alias / out-of-surface base is absent from `bases`
+    entirely -- a leaf, not a refusal. Mirrors
+    `subclass_closure_from_bases`'s own documented behaviour exactly
+    (`test_subclass_closure_unresolvable_base_contributes_nothing_extra`
+    in test_predicate.py): the DIRECT edge to the unresolved name is real
+    (`C`'s ancestor set includes it) -- what stays unguessed is that
+    name's own FURTHER ancestors, since it is not itself a key of
+    `bases_index.bases`."""
+    class_nodes = _class_nodes_from_source("class C(NotIndexed):\n    def m(self): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    assert class_closure("C", class_nodes, idx) == frozenset({"C", "NotIndexed"})
+
+
+# --- diagnose_base_resolution / resolve_via_base_closure: the four reasons -
+
+
+def test_diagnose_base_resolution_resolves_the_unique_ancestor() -> None:
+    class_nodes = _class_nodes_from_source("class A:\n    def m(self): pass\nclass C(A): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    assert diagnose_base_resolution("C", "m", class_nodes, idx) == ("A", "resolved")
+    assert resolve_via_base_closure("C", "m", class_nodes, idx) == "A"
+
+
+def test_diagnose_base_resolution_ambiguous_on_two_defining_ancestors() -> None:
+    """AC-17.1's first stub-defeating fixture: a name defined on TWO
+    classes in the base closure resolves to NEITHER, asserted positively
+    -- an implementation that takes the first base passes every other
+    fixture and fails this one."""
+    class_nodes = _class_nodes_from_source(
+        "class A:\n    def m(self): pass\nclass B:\n    def m(self): pass\nclass C(A, B): pass\n"
+    )
+    idx = _uniform_bases_index(class_nodes)
+    assert diagnose_base_resolution("C", "m", class_nodes, idx) == (None, "ambiguous")
+    assert resolve_via_base_closure("C", "m", class_nodes, idx) is None
+
+
+def test_diagnose_base_resolution_no_ancestor_defines() -> None:
+    class_nodes = _class_nodes_from_source("class A: pass\nclass C(A): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    assert diagnose_base_resolution("C", "nope", class_nodes, idx) == (None, "no_ancestor_defines")
+
+
+def test_diagnose_base_resolution_refuses_on_class_name_collision() -> None:
+    class_nodes = _class_nodes_from_source("class C(A): pass\nclass A:\n    def m(self): pass\n")
+    idx = build_class_bases_index(class_nodes, {"C": frozenset({"mod.a", "mod.b"}), "A": frozenset({"mod"})})
+    assert diagnose_base_resolution("C", "m", class_nodes, idx) == (None, "class_name_collision")
+
+
+def test_diagnose_base_resolution_refuses_when_a_base_is_outside_the_index() -> None:
+    """§17.2 condition 2: a base outside the analyzed surface (an
+    unreadable-expression refusal on the ancestor, here) leaves the gap."""
+    class_nodes = _class_nodes_from_source(
+        "class Bad(factory()):\n    def m(self): pass\nclass C(Bad):\n    pass\n"
+    )
+    idx = _uniform_bases_index(class_nodes)
+    assert diagnose_base_resolution("C", "m", class_nodes, idx) == (None, "closure_refused")
+
+
+# --- inherited_method_names: Half 1's union-of-ancestors, no ambiguity -----
+
+
+def test_inherited_method_names_is_the_union_with_no_ambiguity_refusal() -> None:
+    """Unlike `resolve_via_base_closure`, the survey's own classification
+    need is a boolean ("is this name SOME delegate"), so two ancestors
+    defining the same name is not a conflict here -- both contribute."""
+    class_nodes = _class_nodes_from_source(
+        "class A:\n    def m(self): pass\nclass B:\n    def m(self): pass\n    def n(self): pass\n"
+        "class C(A, B): pass\n"
+    )
+    idx = _uniform_bases_index(class_nodes)
+    assert inherited_method_names("C", class_nodes, idx) == frozenset({"m", "n"})
+
+
+def test_inherited_method_names_empty_when_closure_refused() -> None:
+    class_nodes = _class_nodes_from_source(
+        "class Bad(factory()):\n    def m(self): pass\nclass Child(Bad): pass\n"
+    )
+    idx = _uniform_bases_index(class_nodes)
+    assert inherited_method_names("Child", class_nodes, idx) == frozenset()
+
+
+def test_inherited_method_names_still_reports_an_ancestor_name_c_overrides() -> None:
+    """`inherited_method_names` reports every ANCESTOR's own method names,
+    with no awareness of whether `class_name` itself also defines the
+    same name -- excluding an override at the CALLER's own precedence
+    (`_BodyScanner.visit_Call`'s own-class-branch-first check, mirroring
+    `resolve()`'s class-first step) is what keeps a `self.m()` call on
+    `C` resolving to `C`'s own `m`, never to this set. This is exactly
+    the shape condition 4's override fixture needs: `Base` defines a
+    name `Derived` also overrides, and the override still wins at
+    RESOLUTION time even though this SELECTION-time set does not know
+    which body eventually gets used."""
+    class_nodes = _class_nodes_from_source(
+        "class A:\n    def m(self): pass\nclass C(A):\n    def m(self): pass\n"
+    )
+    idx = _uniform_bases_index(class_nodes)
+    assert "m" in inherited_method_names("C", class_nodes, idx)
+
+
+# --- resolve()'s third step and condition 4 (dispatch on the analyzed class)
+
+
+def test_resolve_without_m_inh_kwargs_reproduces_pre_t50_behaviour() -> None:
+    class_nodes = _class_nodes_from_source("class A:\n    def m(self): pass\nclass C(A): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    rec_c = _synthetic_record("C.foo", class_name="C", module="mod", delegates_to=("m",))
+    index = build_index([_synthetic_record("A.m", class_name="A", module="mod"), rec_c])
+    assert resolve("m", rec_c, index) is None
+    # Only with ALL THREE of class_nodes/class_modules/bases_index does the
+    # third step activate.
+    assert resolve("m", rec_c, index, class_nodes=class_nodes) is None
+    assert (
+        resolve("m", rec_c, index, class_nodes=class_nodes, class_modules={"A": "mod", "C": "mod"}, bases_index=idx)
+        == ("mod", "A.m")
+    )
+
+
+def test_resolve_third_step_refuses_on_ambiguous_base() -> None:
+    """The second half of AC-17.1's first stub-defeating fixture, at
+    `resolve()`'s own level: `LiquidHandler` has more than one base for
+    real, so this is a live condition, not a hypothetical."""
+    class_nodes = _class_nodes_from_source(
+        "class A:\n    def m(self): pass\nclass B:\n    def m(self): pass\nclass C(A, B): pass\n"
+    )
+    idx = _uniform_bases_index(class_nodes)
+    class_modules = {"A": "mod", "B": "mod", "C": "mod"}
+    rec_c = _synthetic_record("C.foo", class_name="C", module="mod", delegates_to=("m",))
+    index = build_index(
+        [
+            _synthetic_record("A.m", class_name="A", module="mod"),
+            _synthetic_record("B.m", class_name="B", module="mod"),
+            rec_c,
+        ]
+    )
+    assert resolve("m", rec_c, index, class_nodes=class_nodes, class_modules=class_modules, bases_index=idx) is None
+
+
+def test_resolve_third_step_refuses_when_candidate_key_absent_from_index() -> None:
+    """§17.2 condition 2: the unique base is found, but its own record was
+    never indexed (e.g. never surveyed) -- the gap stands."""
+    class_nodes = _class_nodes_from_source("class A:\n    def m(self): pass\nclass C(A): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    class_modules = {"A": "mod", "C": "mod"}
+    rec_c = _synthetic_record("C.foo", class_name="C", module="mod", delegates_to=("m",))
+    index = build_index([rec_c])  # A.m deliberately never indexed
+    assert resolve("m", rec_c, index, class_nodes=class_nodes, class_modules=class_modules, bases_index=idx) is None
+
+
+def test_walk_closure_condition4_dispatches_inherited_body_self_call_on_override() -> None:
+    """§17.2 condition 4 / AC-17.1's fourth stub-defeating fixture: an
+    inherited body's own `self.<n>()` call is overridden on the analyzed
+    class, asserted against a fixture where the two bodies carry
+    DIFFERENT guards (different `site.lineno`s stand in for that here) --
+    an implementation that binds the base's body passes every shape
+    fixture and fails this one."""
+    class_nodes = _class_nodes_from_source(
+        "class Base:\n    def helper(self): pass\n    def uses_helper(self): pass\n"
+        "class Derived(Base):\n    def helper(self): pass\n"
+    )
+    class_modules = {"Base": "mod", "Derived": "mod"}
+    bases_index = _uniform_bases_index(class_nodes)
+
+    rec_base_helper = _synthetic_record(
+        "Base.helper", class_name="Base", module="mod", findings=(_synthetic_finding(100),)
+    )
+    rec_base_uses = _synthetic_record(
+        "Base.uses_helper", class_name="Base", module="mod", delegates_to=("helper",)
+    )
+    rec_derived_helper = _synthetic_record(
+        "Derived.helper", class_name="Derived", module="mod", findings=(_synthetic_finding(200),)
+    )
+    rec_derived_entry = _synthetic_record(
+        "Derived.entry", class_name="Derived", module="mod", delegates_to=("uses_helper",)
+    )
+    index = build_index([rec_base_helper, rec_base_uses, rec_derived_helper, rec_derived_entry])
+
+    contract = derive_contract(
+        "mod", "Derived.entry", index,
+        class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+    )
+    site_linenos = {g.site.lineno for g in contract.guards}
+    site_qualnames = {g.site.qualname for g in contract.guards}
+    assert 200 in site_linenos
+    assert 100 not in site_linenos
+    assert "Derived.helper" in site_qualnames
+    assert "Base.helper" not in site_qualnames
+
+    # And the scoping note: a record reached the ORDINARY way (the entry
+    # point's own class) is unaffected -- Derived.entry's OWN self-calls
+    # (none here besides uses_helper, already covered above) never take
+    # the condition-4 branch, since rec.class_name == analyzed_class there.
+    resolved_keys = {
+        key
+        for _rec, key, _depth in _walk_closure(
+            ("mod", "Derived.entry"), index,
+            class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+        )
+    }
+    assert resolved_keys == {
+        ("mod", "Derived.entry"),
+        ("mod", "Base.uses_helper"),
+        ("mod", "Derived.helper"),
+    }
+
+
+def test_measure_m_inh_entry_point_impact_flags_doubling() -> None:
+    """§17.2 condition 3: the closure bound, published and checkable."""
+    class_nodes = _class_nodes_from_source(
+        "class Base:\n    def _x(self): pass\n    def h1(self): pass\n"
+        "    def h2(self): pass\n    def h3(self): pass\n"
+        "class Derived(Base):\n    def entry(self): pass\n"
+    )
+    class_modules = {"Base": "mod", "Derived": "mod"}
+    bases_index = _uniform_bases_index(class_nodes)
+    records = [
+        _synthetic_record("Derived.entry", class_name="Derived", module="mod", delegates_to=("_x",)),
+        _synthetic_record("Base._x", class_name="Base", module="mod", delegates_to=("h1", "h2", "h3")),
+        _synthetic_record("Base.h1", class_name="Base", module="mod"),
+        _synthetic_record("Base.h2", class_name="Base", module="mod"),
+        _synthetic_record("Base.h3", class_name="Base", module="mod"),
+    ]
+    index = build_index(records)
+
+    impact = measure_m_inh_entry_point_impact(
+        ("mod", "Derived.entry"), index, class_nodes, class_modules, bases_index
+    )
+    assert impact["closure_size_before"] == 1
+    assert impact["closure_size_after"] == 5
+    assert impact["doubled"] is True
+
+
+def test_measure_m_inh_entry_point_impact_not_doubled_when_growth_is_modest() -> None:
+    class_nodes = _class_nodes_from_source(
+        "class Base:\n    def _x(self): pass\nclass Derived(Base):\n    def entry(self): pass\n"
+    )
+    class_modules = {"Base": "mod", "Derived": "mod"}
+    bases_index = _uniform_bases_index(class_nodes)
+    records = [
+        _synthetic_record("Derived.entry", class_name="Derived", module="mod", delegates_to=("_x", "other")),
+        _synthetic_record("Base._x", class_name="Base", module="mod"),
+        _synthetic_record("Derived.other", class_name="Derived", module="mod"),
+    ]
+    index = build_index(records)
+    impact = measure_m_inh_entry_point_impact(
+        ("mod", "Derived.entry"), index, class_nodes, class_modules, bases_index
+    )
+    assert impact["closure_size_before"] == 2  # entry + Derived.other (via module-level/step-1, unaffected)
+    assert impact["closure_size_after"] == 3  # + Base._x
+    assert impact["doubled"] is False
+
+
+def test_compute_m_inh_selection_reports_half1_and_half2_populations_separately() -> None:
+    class_nodes = _class_nodes_from_source(
+        "class A:\n    def m(self): pass\nclass B:\n    def m(self): pass\n"
+        "class C(A, B): pass\nclass D(A): pass\n"
+    )
+    class_modules = {"A": "mod", "B": "mod", "C": "mod", "D": "mod"}
+    bases_index = _uniform_bases_index(class_nodes)
+    records = [
+        _synthetic_record("A.m", class_name="A", module="mod"),
+        _synthetic_record("B.m", class_name="B", module="mod"),
+        # Half 1 (the survey) admits "m" into C's delegates via the union
+        # rule -- no ambiguity check -- so it shows up in
+        # inherited_delegates even though Half 2 cannot uniquely resolve it.
+        _synthetic_record(
+            "C.entry", class_name="C", module="mod",
+            delegates_to=("m",), inherited_delegates=("m",),
+        ),
+        # D's closure is unambiguous (only A), so it resolves cleanly and
+        # would ALSO be found via the residual unresolved_calls channel if
+        # the survey had left it unresolved (not the common case, but the
+        # channel exists for exactly this).
+        _synthetic_record("D.entry", class_name="D", module="mod", unresolved_calls=("m",)),
+    ]
+    index = build_index(records)
+
+    selection = compute_m_inh_selection(records, index, class_nodes, class_modules, bases_index)
+    assert len(selection["half1_admitted"]) == 1
+    assert selection["half1_admitted"][0]["class"] == "C"
+    assert selection["half1_admitted"][0]["reason"] == "ambiguous"
+    assert selection["half1_ambiguous_mismatch"] == selection["half1_admitted"]
+
+    assert len(selection["newly_resolved"]) == 1
+    assert selection["newly_resolved"][0] == {
+        "class": "D", "module": "mod", "name": "m", "base": "A", "base_module": "mod",
+    }
+    assert selection["refusal_counts"]["resolved"] == 1
+
+
+# --- real-PLR pin: AC-17.1's own named assertion ---------------------------
+
+
+def test_state_updated_resolves_to_resource_with_zero_guards_real_plr(
+    survey_records: list[SurveyRecord], survey_index: dict[tuple[str, str], SurveyRecord]
+) -> None:
+    """AC-17.1, asserted by name: `_state_updated` resolves to
+    `Resource._state_updated` and contributes ZERO guards. This is the
+    fixture round 1's C8 named -- `LiquidHandler` overrides
+    `serialize_state`, so condition 4 must send `_state_updated`'s own
+    `self.serialize_state()` call to the OVERRIDE when reached through
+    `LiquidHandler`'s closure, not to `Resource`'s own (different) body.
+    """
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    bases_index = build_plr_class_bases_index(root, class_nodes)
+
+    base = resolve_via_base_closure("LiquidHandler", "_state_updated", class_nodes, bases_index)
+    assert base == "Resource"
+
+    resource_module = class_modules["Resource"]
+    state_updated_contract = derive_contract(
+        resource_module, "Resource._state_updated", survey_index,
+        class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+    )
+    assert state_updated_contract.guards == ()
+
+    pick_up_module = "pylabrobot.liquid_handling.liquid_handler"
+    pick_up_contract = derive_contract(
+        pick_up_module, "LiquidHandler.pick_up_resource", survey_index,
+        class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+    )
+    assert ("unresolved_delegate", "_state_updated") not in pick_up_contract.gaps
+    drop_contract = derive_contract(
+        pick_up_module, "LiquidHandler.drop_resource", survey_index,
+        class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+    )
+    assert ("unresolved_delegate", "_state_updated") not in drop_contract.gaps
+
+
+def test_liquid_handler_has_more_than_one_base_real_plr() -> None:
+    """§17.2's own claim, made checkable: condition 1's ambiguity refusal
+    is live at this pin, not a hypothetical."""
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    bases_index = build_plr_class_bases_index(root, class_nodes)
+    assert len(bases_index.bases["LiquidHandler"]) > 1
+
+
+def test_move_family_entry_points_do_not_double_and_add_zero_guards_real_plr(
+    survey_index: dict[tuple[str, str], SurveyRecord]
+) -> None:
+    """§17.2 condition 3, pinned: at this survey pin, `_state_updated`'s
+    own zero guards mean the move-family entry points' guard counts and
+    per-guard depth multisets are UNCHANGED even where closure size grows
+    (round 1's C11 -- the multiset is the only thing that could catch a
+    perturbation, and here it correctly reports none)."""
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    bases_index = build_plr_class_bases_index(root, class_nodes)
+    module = "pylabrobot.liquid_handling.liquid_handler"
+    for qualname in ("LiquidHandler.move_lid", "LiquidHandler.move_plate", "LiquidHandler.move_resource"):
+        impact = measure_m_inh_entry_point_impact(
+            (module, qualname), survey_index, class_nodes, class_modules, bases_index
+        )
+        assert impact["doubled"] is False
+        assert impact["guard_count_before"] == impact["guard_count_after"]
+        assert impact["depth_multiset_before"] == impact["depth_multiset_after"]
+        assert impact["closure_size_after"] >= impact["closure_size_before"]

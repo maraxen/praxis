@@ -45,6 +45,8 @@ from typing import Any
 from plr_sema._provenance import DEFAULT_SURFACE, Surface, survey_stamp
 from plr_sema.derive import (
     SCHEMA_VERSION,
+    SUPPORTED_TOOLS,
+    ClassBasesIndex,
     InlinedGuard,
     SurveyRecord,
     _stamp_to_dict,
@@ -52,9 +54,12 @@ from plr_sema.derive import (
     build_gap_ledger,
     build_index,
     build_unique_index,
+    compute_m_inh_selection,
     default_plr_pkg_root,
     derive_contract,
     load_survey,
+    measure_m_inh_entry_point_impact,
+    resolve_supported_tool,
     scan_dropped_receiver_calls,
 )
 from plr_sema.derive.bindings import param_defaults_from_function
@@ -68,6 +73,7 @@ from plr_sema.derive.receiver_state import (
     VolumeAnchor,
     backend_surface_entry_to_json,
     build_backend_surface,
+    build_plr_class_bases_index,
     build_plr_class_index,
     build_plr_function_index,
     collect_env_ref_method_names,
@@ -149,6 +155,9 @@ def build_derived_contracts_payload(
     volume_class_modules: dict[str, str] | None = None,
     volume_anchors: dict[str, VolumeAnchor] | None = None,
     function_index: FunctionIndex | None = None,
+    minh_class_nodes: dict[str, ast.ClassDef] | None = None,
+    minh_class_modules: dict[str, str] | None = None,
+    minh_bases_index: ClassBasesIndex | None = None,
 ) -> dict[str, Any]:
     """AC-7.2 (260901 T11): derive a contract for every record the survey
     indexed -- the WHOLE analyzed PLR surface (4,770 methods across 345
@@ -191,6 +200,17 @@ def build_derived_contracts_payload(
     ``build_contract_keys`` -- see its docstring for the two independent
     collision sources (getter/setter pairs; same-named module-level
     functions in different modules) and the ``@module:lineno`` disambiguator.
+
+    ``minh_class_nodes``/``minh_class_modules``/``minh_bases_index``
+    (260909, T50, spec §17.2, M-INH, additive, opt-in): threaded straight
+    through to every ``derive_contract`` call below. Omitting any of the
+    three reproduces the pre-T50 table exactly (the same
+    fail-closed-by-omission discipline every other additive keyword here
+    uses). Named with an ``minh_`` prefix specifically to avoid colliding
+    with ``volume_class_index``/``volume_class_modules`` above, which are a
+    DIFFERENT whole-tree class index (the volume family's own, §14.4) built
+    under a different gate (``--taxonomy-json``) -- M-INH's own index is
+    unconditional.
     """
     unique_records = build_unique_index(records)
     contract_keys = build_contract_keys(records)
@@ -208,7 +228,10 @@ def build_derived_contracts_payload(
     contracts: dict[str, Any] = {}
     for record_key in sorted(unique_records):
         rec = unique_records[record_key]
-        contract = derive_contract(rec.module, rec.qualname, index, stamp=stamp, function_index=function_index)
+        contract = derive_contract(
+            rec.module, rec.qualname, index, stamp=stamp, function_index=function_index,
+            class_nodes=minh_class_nodes, class_modules=minh_class_modules, bases_index=minh_bases_index,
+        )
         out_key = contract_keys[record_key]
         assert out_key not in contracts, (
             f"contract key collision building payload: {out_key!r} "
@@ -499,6 +522,18 @@ def main(argv: list[str] | None = None) -> int:
     # --taxonomy-json), since neither idiom resolution nor param_defaults
     # depends on the tip/volume taxonomy at all.
     function_index: FunctionIndex = build_plr_function_index(surface_tree)
+    # 260909 (T50, spec §17.2, M-INH): the base-closure index, built
+    # UNCONDITIONALLY (like `function_index` above, unlike
+    # receiver_states/volume_class_index below, which need
+    # --taxonomy-json) -- D9 was taken YES, and neither the extractor nor
+    # the fail-closed resolution mechanism depends on the tip/volume
+    # taxonomy at all. `minh_class_nodes`/`minh_class_modules` are a
+    # SEPARATE call from `volume_class_index`/`volume_class_modules`
+    # below (not shared) so a `--taxonomy-json`-less run still gets
+    # M-INH -- sharing them would make M-INH silently depend on a flag
+    # §17.2 never gates it on.
+    minh_class_nodes, minh_class_modules = build_plr_class_index(surface_tree)
+    minh_bases_index = build_plr_class_bases_index(surface_tree, minh_class_nodes)
     # 260903 (spec §14.4, T24): the volume family's own whole-tree class
     # index and P7 anchors, built alongside `receiver_states` under the
     # SAME `--taxonomy-json` gate (P7's used-volume/free-volume accessor
@@ -517,6 +552,40 @@ def main(argv: list[str] | None = None) -> int:
         volume_anchors = compute_volume_anchors(volume_class_index, volume_state_exceptions)
 
     if args.out is not None:
+        # 260909 (T50, spec §17.2 condition 3): per-entry-point closure
+        # size / guard count / per-guard depth multiset, BEFORE and AFTER
+        # M-INH, for every SUPPORTED_TOOLS entry point that resolves in
+        # this survey -- published UNCONDITIONALLY, and checked for the
+        # doubling bound BEFORE any file is written. An entry point whose
+        # AFTER closure more than doubles STOPS this run (no --out write)
+        # and surfaces to the user by name, per §17.2's own normative box
+        # ("stops and surfaces to the user rather than landing").
+        tool_keys = {
+            name: key
+            for name, key in ((n, resolve_supported_tool(n, index)) for n in sorted(SUPPORTED_TOOLS))
+            if key is not None
+        }
+        m_inh_impact = {
+            name: measure_m_inh_entry_point_impact(
+                key, index, minh_class_nodes, minh_class_modules, minh_bases_index, stamp=stamp
+            )
+            for name, key in tool_keys.items()
+        }
+        doubled_entries = [name for name, impact in m_inh_impact.items() if impact["doubled"]]
+        if doubled_entries:
+            print(
+                "M-INH (T50, §17.2 condition 3): STOPPING before writing --out -- "
+                f"the following entry point(s) more than doubled their closure size "
+                f"under M-INH: {sorted(doubled_entries)}. This is a designed halt, "
+                "not a crash -- surface it to the user rather than landing.",
+                file=sys.stderr,
+            )
+            for name in sorted(doubled_entries):
+                print(f"  {name}: {m_inh_impact[name]}", file=sys.stderr)
+            return 1
+        m_inh_selection = compute_m_inh_selection(
+            records, index, minh_class_nodes, minh_class_modules, minh_bases_index
+        )
         payload = build_derived_contracts_payload(
             records,
             index,
@@ -526,10 +595,27 @@ def main(argv: list[str] | None = None) -> int:
             volume_class_modules=volume_class_modules,
             volume_anchors=volume_anchors,
             function_index=function_index,
+            minh_class_nodes=minh_class_nodes,
+            minh_class_modules=minh_class_modules,
+            minh_bases_index=minh_bases_index,
         )
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"wrote {args.out}", file=sys.stderr)
+        print(
+            f"M-INH (T50, §17.2): half1_admitted={len(m_inh_selection['half1_admitted'])} "
+            f"half1_ambiguous_mismatch={len(m_inh_selection['half1_ambiguous_mismatch'])} "
+            f"newly_resolved={len(m_inh_selection['newly_resolved'])} "
+            f"refusal_counts={m_inh_selection['refusal_counts']}",
+            file=sys.stderr,
+        )
+        if m_inh_selection["half1_ambiguous_mismatch"]:
+            print(
+                f"M-INH half1_ambiguous_mismatch detail: {m_inh_selection['half1_ambiguous_mismatch']}",
+                file=sys.stderr,
+            )
+        for name in sorted(m_inh_impact):
+            print(f"M-INH entry point {name!r}: {m_inh_impact[name]}", file=sys.stderr)
         # 260909 (T41, AC-16.2): "the complete measured selection published,
         # including the whole-tree can_pick_up_tip count against the
         # predicted 2 of 8". `probe_method_definitions` itself takes

@@ -67,12 +67,14 @@ from typing import Any
 from plr_sema.derive.predicate_ast import EnvRef, from_json as predicate_from_json, walk as predicate_walk
 
 from plr_sema.derive import (
+    ClassBasesIndex,
     DroppedCall,
     Qualkey,
     SurveyRecord,
     _iter_plr_source_files,
     _module_name_for_plr_file,
     _walk_closure,
+    build_class_bases_index,
     default_plr_pkg_root,
     derive_contract,
     resolve,
@@ -95,6 +97,7 @@ __all__ = [
     # and the extended four-segment bridge.
     "compute_volume_state_exceptions",
     "build_plr_class_index",
+    "build_plr_class_bases_index",
     "VolumeAnchor",
     "compute_volume_anchors",
     "dataclass_field_annotations",
@@ -1266,6 +1269,42 @@ def build_plr_class_index(plr_pkg_root: Path) -> tuple[dict[str, ast.ClassDef], 
                 class_nodes.setdefault(top.name, top)
                 class_modules.setdefault(top.name, module)
     return class_nodes, class_modules
+
+
+def build_plr_class_bases_index(plr_pkg_root: Path, class_nodes: dict[str, ast.ClassDef]) -> ClassBasesIndex:
+    """The whole-tree base-name index M-INH needs (§17.2, T50): a
+    DEDICATED second scan over ``plr_pkg_root`` -- independent of
+    ``build_plr_class_index``'s own scan above, which keeps only the
+    first-definition-wins ``class_nodes``/``class_modules`` and therefore
+    cannot answer "does this bare class name collide across modules?" on
+    its own. This function's own pass collects EVERY module that defines
+    each bare class name (not just the first), then delegates the actual
+    extractor rule and closure-refusal bookkeeping to
+    ``plr_sema.derive.build_class_bases_index`` -- the ONE shared,
+    generic (no PLR knowledge) implementation
+    ``scripts/survey_plr_preconditions.py`` also calls, off its own
+    already-parsed file dict, so the two halves §17.2 requires to land
+    together can never silently apply two different rules.
+
+    Takes the CALLER's own ``class_nodes`` (rather than re-deriving it)
+    so a caller that already built it via ``build_plr_class_index`` above
+    -- ``derive/__main__.py``'s ``main()`` -- does not pay for a third
+    whole-tree AST walk just to get the same first-definition-wins map
+    back.
+    """
+    class_modules_multi: dict[str, set[str]] = {}
+    for file in _iter_plr_source_files(plr_pkg_root):
+        try:
+            source = file.read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=str(file))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        module = _module_name_for_plr_file(file, plr_pkg_root)
+        for top in ast.iter_child_nodes(tree):
+            if isinstance(top, ast.ClassDef):
+                class_modules_multi.setdefault(top.name, set()).add(module)
+    frozen_multi = {name: frozenset(mods) for name, mods in class_modules_multi.items()}
+    return build_class_bases_index(class_nodes, frozen_multi)
 
 
 #: (module, qualname, lineno) -> the function/method's own AST node -- the
