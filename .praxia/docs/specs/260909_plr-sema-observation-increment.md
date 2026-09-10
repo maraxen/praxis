@@ -677,7 +677,7 @@ program" is sound only if the analyzed graph is the whole world*
 
 > **Normative (the surface is keyed on PLR's own index and introduces NO hand-typed fact — the round-1
 > correction of increment 6 §15.6, applied in advance).** The table is built over
-> `build_plr_function_index` (`plr-sema/src/plr_sema/derive/receiver_state.py:1323-1356`), the
+> `build_plr_function_index` (`plr-sema/src/plr_sema/derive/receiver_state.py:1773-1806`), the
 > `(module, qualname, lineno) → AST` map the derive package **already** builds over every module-level
 > function and every class method in the PLR tree. **The base class name `LiquidHandlerBackend` appears
 > nowhere in the derivation**, and neither does any method list: the table is not "backend classes", it
@@ -716,7 +716,7 @@ T41 publishes the whole-surface counts and this paragraph is a prediction for it
 
 > **Normative (registry: ZERO).** §16.3 adds no registry row, no per-row ceiling, and no vocabulary
 > member. Its derivation is an AST shape test over PLR's own recorded surface, in the same class as
-> `is_dynamic_raise` (`plr-sema/src/plr_sema/derive/__init__.py:1062-1066`) and `reachability_clear`
+> `is_dynamic_raise` (`plr-sema/src/plr_sema/derive/__init__.py:1076-1080`) and `reachability_clear`
 > (`plr-sema/src/plr_sema/derive/bindings.py:778-815`), both of which increment 6 established cost
 > nothing. **This is recorded as a NON-decision (`D3`) precisely so the round can attack it**: if a
 > reviewer can name one literal PLR fact this section hand-types, the claim is false and the section
@@ -1379,7 +1379,7 @@ at `declared` 12 in every branch. **New rows: zero under D6 declined, ONE under 
 the arithmetic round 1 changed, and it is the difference between a ceiling spend and a cap
 conversation.
 
-- **D6 declined.** `live_rows()` (`plr-sema/src/plr_sema/_hand_maintained.py:1208-1212`) is **24**
+- **D6 declined.** `live_rows()` (`plr-sema/src/plr_sema/_hand_maintained.py:1293-1297`) is **24**
   against `BUDGET_CAP = 24` (`plr-sema/src/plr_sema/_hand_maintained.py:43`) before and after;
   headroom **0**, unchanged. One per-row ceiling unit, HM-25 `declared` 9 → 10.
 - **D6 taken.** `live_rows()` **24 → 25** and `BUDGET_CAP` **24 → 25**, plus the same HM-25 unit. The
@@ -2199,7 +2199,7 @@ operation-level claim and would not be for a site-level one.
 | **D3** | *(a NON-decision, recorded so the round can attack it)* §16.3's derived backend surface introduces **no** hand-typed PLR fact and therefore needs no row | nothing | — | **No decision is asked, and it SURVIVED round 1** — the harness-side literal PLR paths ride increment 5's `volume_tracking_observed` precedent and the registry's scope is the analyzer's own front end, which §16.3 now states with the citation. **One thing changed:** the selection rule's undefined second clause is deleted and replaced by one closed rule with published counts (C16), because an unfalsifiable "complete measured selection" is a worse defect than a hand-typed fact would have been |
 | **D4** | HM-25 `declared` **9 → 10**, for §16.5's `EnvRef` path table (**three** shapes after R-DECK's withdrawal) | one per-row ceiling unit; `live_rows()` and `BUDGET_CAP` both unchanged at 24; no cap conversation | §16.5 cannot ship, and with it `:409` and `:514`; the increment reduces to plumbing | **YES, unchanged after round 1** — the unit buys the pattern regardless of instance count, so R-DECK's withdrawal does not reduce the ask and C25's R-ATTR point is a presentation improvement, now surfaced as an explicit sub-note (§16.5.2). HM-25 is the loud-failure row, §16.10's per-rule counters are the loud test, and increment 6 spent 8 → 9 on this row for this reason |
 | **D5** | Model `_check_args` — **repriced as three options after round 1** | **D5a** the general model, ~350 LOC, five productions. **D5b** two `SAFE`-direction site rules, ~100–130 LOC plus the D6 registry row, C15's absence rule as its precondition. **D5c** neither | under D5c the headline slips a second time, to increment 8 | **D5b, IF D6 IS TAKEN** — the recommendation moves from NO. C1's arithmetic holds at the pin, the `SAFE` direction needs neither the set-difference term nor the `**kwargs` key set, and **D-G6 shows the discharge is one-directional by construction**: both guards carry `reachability_clear` false and `fires is False` returns `SAFE` unguarded by depth, so it can add `SAFE` and can never emit a false `WILL_FAIL`. **D5a stays increment 8's** |
-| **D6** (NEW) | **Accept site-keyed semantic models of named PLR function bodies as a class of hand-maintained fact** — one new registry row against a full `BUDGET_CAP` 24, i.e. a cap conversation | one registry row and a cap raised 24 → 25; the loud half must be a published count (`n_check_args_decided`, `n_assert_resources_decided`) rather than an import-the-symbol measure, because that measure cannot see PLR renaming a local; C15's absence rule becomes a soundness precondition for both rules | **the increment's own gate becomes unwinnable** — `scope_verdict` stays `UNKNOWN` on all 544 operations and the increment is measured against §16.10.2's conjunctive NO-GO-side criterion instead | **YES.** It is the single fact **both** the repaired D2 and D5b need, so asking twice would be dishonest. It is genuinely **not** HM-25's kind — every entry there is keyed on a *shape*, and `why_not_derived` says so in those terms (`plr-sema/src/plr_sema/_hand_maintained.py:485-487`) — so filing it as a ceiling unit would be the cheaper-looking and wrong answer. Its anti-gaming property is strong: each rule is keyed on one `(qualname, lineno)` pair and its reach is a published integer. **Total cost ~250 LOC across T48 and T49**, and it is the only way the headline lands this increment |
+| **D6** (NEW) | **Accept site-keyed semantic models of named PLR function bodies as a class of hand-maintained fact** — one new registry row against a full `BUDGET_CAP` 24, i.e. a cap conversation | one registry row and a cap raised 24 → 25; the loud half must be a published count (`n_check_args_decided`, `n_assert_resources_decided`) rather than an import-the-symbol measure, because that measure cannot see PLR renaming a local; C15's absence rule becomes a soundness precondition for both rules | **the increment's own gate becomes unwinnable** — `scope_verdict` stays `UNKNOWN` on all 544 operations and the increment is measured against §16.10.2's conjunctive NO-GO-side criterion instead | **YES.** It is the single fact **both** the repaired D2 and D5b need, so asking twice would be dishonest. It is genuinely **not** HM-25's kind — every entry there is keyed on a *shape*, and `why_not_derived` says so in those terms (`plr-sema/src/plr_sema/_hand_maintained.py:563-565`) — so filing it as a ceiling unit would be the cheaper-looking and wrong answer. Its anti-gaming property is strong: each rule is keyed on one `(qualname, lineno)` pair and its reach is a published integer. **Total cost ~250 LOC across T48 and T49**, and it is the only way the headline lands this increment |
 
 ---
 
