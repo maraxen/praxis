@@ -677,7 +677,7 @@ program" is sound only if the analyzed graph is the whole world*
 
 > **Normative (the surface is keyed on PLR's own index and introduces NO hand-typed fact — the round-1
 > correction of increment 6 §15.6, applied in advance).** The table is built over
-> `build_plr_function_index` (`plr-sema/src/plr_sema/derive/receiver_state.py:1275-1308`), the
+> `build_plr_function_index` (`plr-sema/src/plr_sema/derive/receiver_state.py:1323-1356`), the
 > `(module, qualname, lineno) → AST` map the derive package **already** builds over every module-level
 > function and every class method in the PLR tree. **The base class name `LiquidHandlerBackend` appears
 > nowhere in the derivation**, and neither does any method list: the table is not "backend classes", it
@@ -716,7 +716,7 @@ T41 publishes the whole-surface counts and this paragraph is a prediction for it
 
 > **Normative (registry: ZERO).** §16.3 adds no registry row, no per-row ceiling, and no vocabulary
 > member. Its derivation is an AST shape test over PLR's own recorded surface, in the same class as
-> `is_dynamic_raise` (`plr-sema/src/plr_sema/derive/__init__.py:549-553`) and `reachability_clear`
+> `is_dynamic_raise` (`plr-sema/src/plr_sema/derive/__init__.py:1062-1066`) and `reachability_clear`
 > (`plr-sema/src/plr_sema/derive/bindings.py:778-815`), both of which increment 6 established cost
 > nothing. **This is recorded as a NON-decision (`D3`) precisely so the round can attack it**: if a
 > reviewer can name one literal PLR fact this section hand-types, the claim is false and the section

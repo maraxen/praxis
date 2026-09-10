@@ -1466,7 +1466,7 @@ spec's actual instinct — don't let derivation silently depend on a moving inpu
 
 Measured contents: 4,770 functions scanned, **1,314 with ≥1 finding**, **2,081 `raise_guard` + 733
 `assert`** findings, **967 unresolved-call entries across 854 functions (75 distinct call names)** —
-`unresolved` is a per-function `set` of bare names (`survey_plr_preconditions.py:138,263`), so the
+`unresolved` is a per-function `set` of bare names (`survey_plr_preconditions.py:207,358`), so the
 967 figure counts (function, name) entries, not distinct calls or call sites; names are not
 class-qualified, so unrelated `_check_*`-style helpers defined on different classes collapse into one
 row if they share a bare name (`plr_survey_common.py:127-129` independently confirms duplicate class
@@ -2350,7 +2350,7 @@ structured data.
 |---|---|---|---|---|---|
 | HM-1 | `PLR_RESOURCE_TYPES` class-name set (`praxis/common/type_inspection.py:14-56`) | entries | **34** | DERIVABLE_NOT_YET | Point `plr_survey_common.collect_all_classes` + the `exception_name_closure` fixpoint at `Resource`/`Machine` instead of `Exception`. The machinery already exists and is proven on 132 exception classes. |
 | HM-2 | `infer_category_from_name` substring rules (`plr_category.py:129+`, 186 LOC, self-documented "BRITTLE") | branches | **MEASURE** | DERIVABLE_NOT_YET | PLR classes carry a real `category` attribute; the function is documented as a fallback for when the class object is unavailable. Derive by AST-reading the attribute per class into a table. |
-| HM-3 | validator-name prefixes in `_is_validation_looking` (`survey_plr_preconditions.py:149-151`) | prefixes | **6** | CAPPED (8) | None known — a heuristic over PLR's naming. |
+| HM-3 | validator-name prefixes in `_is_validation_looking` (`survey_plr_preconditions.py:173-175`) | prefixes | **6** | CAPPED (8) | None known — a heuristic over PLR's naming. |
 | HM-4 | PLR test-file stem heuristic (`plr_survey_common.py:35-40`) | rules | **3** | CAPPED (4) | None known. |
 | HM-5 | `FAILURE_CATEGORIES` (`failure_taxonomy.py:82-89`) | categories | **6** | FROZEN | None — these are our semantics, not PLR's. |
 | HM-6 | `classify_exception` module-prefix dispatch (`:197,209`) | prefixes | **2** | CAPPED (3) | None. |
