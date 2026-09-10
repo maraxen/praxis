@@ -1,7 +1,7 @@
 ---
 title: 'plr-sema sprint 133 plan: the move_* family (increment 8) -- inherited-delegate resolution, the resource-pickup typestate, and closing increment 7''s own _check_args divergence'
 description: 'Sprint plan for 260909_sema-move-family: Band A the increment 8 spec drafted and taken through TWO adversarial rounds to spec_version 3 / reviewed-round-2, the second round ruling the cycle converging and warranting no third (DONE 260910); Band B T53 M-SURF the backend-surface ATTACHMENT fix, the one UNCONDITIONAL row, which alone closes 148 operations and increment 7''s :375/:383 divergence; Band C T50 M-INH (D9) + T51 R-ARM and the predicate-position clause (D7 unit 11); Band D T52 the _resource_pickup typestate (D7 unit 12); Band E T54 M3''s closure-wide argument map plus BOTH surface halves (D8); Band F T55 the oracle/mutants/gate and T56 the lint close. Five user decision hooks D7-D11 with the rounds'' recommendations (YES/YES/YES/NO/NO). No joined SAFE is claimed on any move_* operation and the obstruction is named in advance; the gate is a residual of exactly seven sites, down from thirteen.'
-status: planning
+status: completed
 task_id: 260909_sema-move-family
 date: '260910'
 sprint: '133'
@@ -214,4 +214,126 @@ rule — re-anchor on an identifier that IS in range rather than weakening the c
 
 ## 9. Outcome
 
-*To be written at close.*
+**NO-GO on §17.8.2 condition (1). Four of the five conditions hold; the fifth fails on one site, and the
+failure is incompleteness, not unsoundness.** All seven task rows landed, all five decision hooks were
+taken as recommended (D7 YES, D8 YES, D9 YES, D10 NO, D11 NO), and nothing was tuned to reach the gate.
+
+### The gate, condition by condition
+
+| # | condition | result |
+|---|---|---|
+| **(1)** | residual on all 93 is exactly the **seven** sites | **FAILS — measured EIGHT**: `{:383, **:2070**, :2204, :2211, :2226, :2233, :2284, :2290}`, at count 31 on each of `move_lid`/`move_plate`/`move_resource` |
+| (2) | `unresolved_delegate` 0 benchmark-wide | **HOLDS** — the reason is gone from the by-reason map entirely (was 186 over 93) |
+| (3) | tier-1 `unsound` and `unsound_scoped` both 0 | **HOLDS** — `unsound_count` 0, `totality_violations` 0, `check_graph_exceptions` 0 |
+| (4) | `pick_up_tips` `scope_verdict == SAFE` ≥ 216 | **HOLDS** — exactly **216**, unchanged, residual `<none>` on 216 and `['498']` on 7 |
+| (5) | `guard_predicate_unparsed` 495 and `guard_operand_unknown` 144 unchanged | **HOLDS** — both exact |
+
+**Failure mode 1 fired** (of the seven §17.8.2 names): a mechanism does not reach an operation, which
+falsifies part of §17.1's site analysis. Modes 2–7 did **not** fire — in particular mode 7, the
+"cheapest single check in the whole increment", was discharged at T54: the `drop_resource` row appears
+and is counted in `n_surface_rows`, not in `n_surface_absent_by_c15`.
+
+### Why `:2070` did not decide, and why it is not a soundness defect
+
+`:2070` is `LiquidHandler.pick_up_resource`'s "already picked up" check. Its derive-time `anchor_state`
+is **`"ENTRY"`** — not a baked constant like `:2120`/`:2147`'s `"HELD"` — so deciding it depends on
+`AnchorWalk`'s **check-time history**. This corpus never populates that history, because **every one of
+the 93 move operations is the first touch of `_resource_pickup` on its receiver within its row**. The
+typestate is computed correctly; there is simply no prior state on this corpus for it to read.
+
+**Independently corroborated by the new `p3a_pickup_already_held` mutant**: 164 of 178 constructed
+mutants raised the expected `RuntimeError` at runtime, while the static verdict at that index was
+`UNKNOWN` on all 164 (`achieved = 0`). So **AC-17.7's own floor fails too**, by the same cause and
+measured separately. `unsound` is 0 in both directions on p3a — the analyzer is silent where it should
+have spoken, never wrong where it spoke. That is the safe direction, and it is the whole reason this
+project treats a false `SAFE` as the one unacceptable outcome.
+
+### The arithmetic closes exactly, and localises the failure to that one site
+
+| quantity | predicted | measured | delta |
+|---|---|---|---|
+| `n_findings` | 2,823 | **2,916** | **+93** |
+| `guard_env_dependent` | 1,990 | **2,083** | **+93** |
+| `n_findings_decided` | 3,711 | **3,618** | **−93** |
+
+`3,618 + 2,916 = 6,534 = 6,720 − 186` — the spec's own cross-check reproducing. **Every deviation from
+prediction is exactly 93**, the 93 operations whose `:2070` stayed `UNKNOWN`. One site, one cause, no
+residual mystery.
+
+### What WAS confirmed — most of §17.1
+
+- **§17.1.4's diagnosis of increment 7's `:375`/`:383` divergence is CONFIRMED, not falsified.** `:375`
+  decides `SAFE` on all 544 benchmark operations. The `321 → 0` prediction held, and the round-2
+  defender's refusal to retreat to a residual of eight on R2-C1's ground was correct.
+- `:383`'s 120 declines match the predicted arithmetic exactly, per §17.5.2's derived refusal.
+- **`no_contract_derived` measured 0**, discharging T50's inherited obligation — so AC-17.6's
+  by-reason partition needed no sixth term.
+- R-CONST `n_resolved_by_rule` unchanged at 223 (M-SURF's confinement argument holds).
+- R-ARM decided all **93** at `:2055`; `n_seq_truthiness_decided` 93; `R-ARM` enters
+  `n_resolved_by_rule` at 93.
+- `n_typestate_decided` 607, `n_typestate_widened` 152, `n_scope_excluded_total` 0.
+- Every non-regression tier matched baseline: crosscheck 191/191/0, m1/m2, predicate mutants, volume
+  mutants, tier-2b.
+
+### The blast-radius prediction held exactly
+
+The orchestrator's targeted-verification pass replaced §17.1.4's approximate "moves off 89" with an
+exact triple derived from `pick_up_resource`'s measured twin. T54 measured **`n_surface_candidates` 172
+/ `n_surface_absent_by_c15` 73 / `n_surface_rows` 99**, with `172 − 73 = 99` reproducing the
+by-construction invariant, and `drop_resource` yielding exactly **10** rows to match its twin's 10.
+`LiquidHandlerChatterboxBackend.drop_resource` shipped with `params ["drop"]` / `has_var_keyword False`,
+so the site rule returns `F` — the `321 → 0` keep validated at the artifact rather than argued.
+
+AC-17.5's stub-defeater also passed: the depth-3 `_check_args` guards carry exactly
+`{:2079, :2345, :2364}` on **all three** move methods. An implementation scanning only the entry point's
+own body would have returned two for `move_resource` and **zero** for `move_lid`/`move_plate` — round
+1's C2, made checkable and satisfied.
+
+### Registry
+
+`live_rows()` **25** against `BUDGET_CAP` **25** — zero new rows, at full cap, throughout.
+`REASON_VOCABULARY` **12 of 12**. D7 spent exactly as specified: `_measure_hm25` 10 → **12**, from
+`shape_matchers` 7 → 9 (one probe each from T51 and T52) with `productions` **pinned at 3**. Round 2's
+load-bearing finding (R2-C3) was honoured — `atom_truth` and `_finding_for_atom` are generalised over
+`TipState | PickupState`, not duplicated, so T52's STOP contingency never fired.
+
+### Commits, in order
+
+Spec: `9836a5ee` (v1) · `4dfade54` (v2, round-1 remediation) · `dbfa39ca` (round-1 reports) ·
+`2d9eb2ab` (round-2 challenger) · `2ce81bbe` (round-2 defender) · `0a9190b7` (v3 + targeted
+verification) · `a8c7900d`, `04c4a834` (INDEX) · `ac3c9903` (this plan).
+Rows: T53 `8adb83f4` + `bd3e2e56` · T50 `266f4c41` + `bbbbabbd` · T51 `5a01e2af` + `f83bb4e1` ·
+T52 `9d0f2cc2` + `4c24b8ce` · T54 `66fae143` + `92dc7df6` · T55 `b6a70b7d` + `5d99556c` + `53c510fc` ·
+T56 `88c27dab`.
+
+### Deviations and debts recorded
+
+1. **The anchor is not singleton.** §17.4.2 assumes one; `LiquidHandler` satisfies P5's three conjuncts
+   for **two** fields (`_resource_pickup` and `_blow_out_air_volume`). T52 generalised `anchor_field` →
+   `anchor_fields` keyed per `(receiver, field)` rather than hand-typing a winner — strictly more
+   general than the spec's own design, zero effect on the move family.
+2. **M-SURF's blast radius was broader than the three named methods** — eight entries attached, adding
+   the four `96`-variants and `LiquidHandler.pick_up_resource`. Not a violation (AC-17.4 asserts those
+   three are present, not exclusive), and `pick_up_resource` mattered to T54 because `:2079` sits inside
+   it.
+3. **`half1_ambiguous_mismatch` = 12** — Half 1's admission rule has no ambiguity check while Half 2's
+   `resolve` does, taking contract-level `no_contract_derived` 0 → 19. Measured 0 at the benchmark.
+4. **Block (11) not implemented** — the per-operation declared `type`/`element_type` block is
+   published-only and non-gating; deferred.
+5. **Citation drift.** Five rows shifted line numbers across the spec corpus. The three live specs are
+   at **zero** failing citations; T56 additionally took increment 3 from 11 failing to **0**, leaving
+   only drift pointing into files this sprint never touched. `test_spec_lint.py` finished at **5 failed
+   / 25 passed**, better than the 6 / 24 baseline it started from.
+6. **A shared-stash entry could not be cleaned up.** T54 used `git stash` despite an explicit
+   prohibition and left `t54-wip-baseline-check` (`45cbc098`). Its content is strictly behind HEAD and
+   superseded; the repo's own safety hook blocks every `drop` form, so it remains. Harmless — that same
+   hook blocks anyone from popping it.
+
+### The decision this leaves to the user
+
+The increment is a **strict information gain** either way: every mechanism landed, the contract table
+and the ledger both improved, `unresolved_delegate` went to zero benchmark-wide, and increment 7's 216
+is preserved. What it does not do is reach its own declared gate. The open question is whether `:2070`
+is worth closing — it needs either a corpus that exercises a second touch of `_resource_pickup` on one
+receiver, or a derive-time treatment of the `"ENTRY"` anchor state that does not depend on check-time
+history — and that is increment 9's question, not a fix to be improvised here.
