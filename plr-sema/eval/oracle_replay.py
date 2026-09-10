@@ -229,6 +229,13 @@ class RowResult:
     #: (`unsound_count` above) is UNCHANGED by this field's existence --
     #: F3's own normative box (§16.7).
     unsound_scoped_count: int = 0
+    #: 260909 (spec §17.8.1 block (10), increment 8, T55): E-SCOPE-excluded
+    #: guard sites visited anywhere in THIS row's lowered graph, threaded
+    #: from ``run_static_calls``'s new ``scope_excluded_sites`` collector --
+    #: same one-list-per-ROW shape as ``excludes_sites`` above, published as
+    #: a pure annotation with no gate effect (``unknown_ledger.py`` is where
+    #: this becomes the per-site tally the block calls for).
+    scope_excluded_sites: list[str] = dataclasses.field(default_factory=list)
 
 
 def run_row(
@@ -400,6 +407,10 @@ def run_row(
     #: strings for `RowResult` right after, so this function's own return
     #: value stays JSON-friendly like every other field.
     row_excludes_sites: list[Any] = []
+    #: 260909 (§17.8.1 block (10), T55): same shape as `row_excludes_sites`
+    #: immediately above, threaded to `run_static_calls`'s new
+    #: `scope_excluded_sites` kwarg.
+    row_scope_excluded_sites: list[Any] = []
     _check_start = time.perf_counter()
     try:
         param_names = param_names_from_contracts(contracts_json)
@@ -412,6 +423,7 @@ def run_row(
             resource_types=rt.resource_types,
             element_types=rt.element_types,
             excludes_sites=row_excludes_sites,
+            scope_excluded_sites=row_scope_excluded_sites,
             # 260909 (spec §16.2/§16.5, increment 7, T46): thread the
             # in-window observation record through to `run_static_calls`'s
             # `env` build -- the missing wire between T40's capture (already
@@ -492,6 +504,7 @@ def run_row(
         runtime_elapsed_s=runtime_elapsed_s,
         excludes_sites=sorted({_site_key(s) for s in row_excludes_sites}),
         unsound_scoped_count=unsound_scoped_count,
+        scope_excluded_sites=sorted({_site_key(s) for s in row_scope_excluded_sites}),
     )
 
 
@@ -1197,6 +1210,85 @@ def main(argv: list[str] | None = None) -> int:
             sorted(_e["residual_reason_sets"].items(), key=lambda kv: (-kv[1], kv[0]))
         )
 
+    # 260909 (spec 260909_plr-sema-move-family-increment.md §17.8.1 blocks
+    # (2)/(3)/(10), increment 8, T55): R-ARM/the truthiness clause, the
+    # typestate's own decided/widened split, and the per-site E-SCOPE
+    # exclusion tally -- three counters this increment's own mechanisms
+    # need that increment 7's per-site derivation (above) did not, because
+    # none of the three existed before T51/T52/predicate.py's new
+    # `GuardResult.scope_excluded` field (this row).
+    #
+    # R-ARM/the truthiness clause (§17.3/§17.1.2): ONE site, `:2055`
+    # (`if self.setup_finished and not self._resource_pickups:`,
+    # `LiquidHandler.pick_up_resource`) -- R-ARM resolves
+    # `self._resource_pickups` and the amended clause decides the `not`
+    # test's truth from its own completeness, so this site's
+    # resolved/declined count is BOTH R-ARM's own count and
+    # `n_seq_truthiness_decided` (same site, two names, exactly as
+    # §17.8.3's own prediction table states -- "the Kleene `And` needs
+    # only the second conjunct").
+    _SITE_R_ARM = f"{_LH}:2055:LiquidHandler.pick_up_resource"
+    _r_arm_resolved, _r_arm_declined = _resolved_declined(_SITE_R_ARM)
+    n_resolved_by_rule["R-ARM"] = _r_arm_resolved
+    n_declined_by_rule["R-ARM"] = _r_arm_declined
+    n_seq_truthiness_decided = {
+        "total": _r_arm_resolved,
+        "by_site": {_SITE_R_ARM: _r_arm_resolved},
+    }
+
+    # The typestate (§17.4): `n_typestate_decided` (guards the state
+    # ACTUALLY decided, i.e. verdict safe/will_fail) and `n_typestate_widened`
+    # (verdict unknown with reason guard_env_dependent), counted over every
+    # Finding whose site is a guard the regenerated contract table itself
+    # marks with a non-null `anchor_field` -- derived from the table, never
+    # hand-typed linenos, so a future anchor (beyond `_resource_pickup`'s
+    # three move-family sites and `_blow_out_air_volume`'s own) is picked
+    # up automatically. Per-condition attribution for widening is NOT
+    # reconstructed here -- conditions 1-3 are derive-time-only
+    # (`receiver_state.compute_anchor_guard_states`'s own `widened_by`,
+    # already exercised as a pure function by T52's own tests) and
+    # conditions 4/5 are check-time history this Finding-level view cannot
+    # separate from 1-3 once both collapse to the identical
+    # `guard_env_dependent` reason; §17.14 records this as a scope note.
+    _contracts_payload_for_anchor = json.loads(contracts_json)
+    _anchor_guard_sites: set[str] = set()
+    for _entry in _contracts_payload_for_anchor.get("contracts", {}).values():
+        for _g in _entry.get("guards", ()):
+            if _g.get("anchor_field"):
+                _site = _g.get("site")
+                if isinstance(_site, dict) and _site.get("lineno") is not None:
+                    _anchor_guard_sites.add(
+                        f"{_site.get('file')}:{_site.get('lineno')}:{_site.get('qualname')}"
+                    )
+    n_typestate_decided = 0
+    n_typestate_widened = 0
+    typestate_by_site: dict[str, dict[str, int]] = {}
+    if len(executed_results) == len(_collected_findings):
+        for _row3, (_sink_row_id3, _row_findings3) in zip(executed_results, _collected_findings):
+            if id(_row3) not in _analyzable_ids:
+                continue
+            for f in _row_findings3:
+                _sk3 = _site_key(f.plr_site)
+                if _sk3 not in _anchor_guard_sites:
+                    continue
+                _e3 = typestate_by_site.setdefault(_sk3, {"decided": 0, "widened": 0})
+                if f.verdict.value in ("safe", "will_fail"):
+                    n_typestate_decided += 1
+                    _e3["decided"] += 1
+                elif f.verdict.value == "unknown" and f.reason == "guard_env_dependent":
+                    n_typestate_widened += 1
+                    _e3["widened"] += 1
+
+    # Block (10): E-SCOPE exclusions, invisible before `GuardResult
+    # .scope_excluded` existed (`excludes_sites` collects tier-(iii) sites
+    # only; `scope_excludes` itself returned `_SAFE` directly and left no
+    # trace). One-row-one-count per site, same dedup discipline
+    # `excludes_sites`/`rows_excused_by_scope` already use.
+    n_scope_excluded_by_site: collections.Counter = collections.Counter()
+    for r in analyzable_results:
+        for _sk4 in r.scope_excluded_sites:
+            n_scope_excluded_by_site[_sk4] += 1
+
     # Crosscheck agreement rate
     cc_joined = crosscheck_result["joined"]
     cc_agreement_rate = (
@@ -1334,6 +1426,15 @@ def main(argv: list[str] | None = None) -> int:
         "n_quantifier_decided_by_qmono": n_quantifier_decided_by_qmono,
         "n_check_args_decided": n_check_args_decided,
         "n_assert_resources_decided": n_assert_resources_decided,
+        # 260909 (§17.8.1 blocks (2)/(3)/(10), increment 8, T55).
+        "n_seq_truthiness_decided": n_seq_truthiness_decided,
+        "n_typestate_decided": n_typestate_decided,
+        "n_typestate_widened": n_typestate_widened,
+        "n_typestate_by_site": typestate_by_site,
+        "n_scope_excluded_by_site": dict(
+            sorted(n_scope_excluded_by_site.items(), key=lambda kv: (-kv[1], kv[0]))
+        ),
+        "n_scope_excluded_total": sum(n_scope_excluded_by_site.values()),
         # 260909 (spec §16.10.1 block 5, §16.10.2, increment 7, T46): per
         # executed operation, scope_verdict + the residual non-excluded
         # UNKNOWN site set, aggregated per method -- and the gate itself,
@@ -1372,6 +1473,7 @@ def main(argv: list[str] | None = None) -> int:
                 "check_graph_exception": r.check_graph_exception,
                 "unsound": r.unsound_count,
                 "excludes_sites": r.excludes_sites,
+                "scope_excluded_sites": r.scope_excluded_sites,
             }
             for r in results
         ],

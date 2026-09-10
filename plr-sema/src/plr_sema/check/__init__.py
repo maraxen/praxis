@@ -418,6 +418,7 @@ def _findings_for_guards(
     class_hierarchy: dict[str, frozenset[str]] | None,
     poisoned: bool,
     excludes_sites: list[PlrSite] | None,
+    scope_excluded_sites: list[PlrSite] | None = None,
 ) -> list[Finding]:
     """260904 (spec §15.4/§15.5/§15.7, increment 6, T31-2): every guard in
     ``contract["guards"]`` the tip family did not already consume is
@@ -467,6 +468,14 @@ def _findings_for_guards(
             site = _plr_site_from_dict(guard.get("site"))
             if site is not None and site not in excludes_sites:
                 excludes_sites.append(site)
+        # 260909 (§17.8.1 block (10), T55): same fold-and-dedup shape as
+        # `excludes_sites` above, keyed on `GuardResult.scope_excluded`
+        # rather than `tier_iii` -- a per-site tally of E-SCOPE exclusions,
+        # invisible before this field existed.
+        if result.scope_excluded and scope_excluded_sites is not None:
+            site = _plr_site_from_dict(guard.get("site"))
+            if site is not None and site not in scope_excluded_sites:
+                scope_excluded_sites.append(site)
     return findings
 
 
@@ -485,6 +494,7 @@ def _findings_for_call(
     poisoned: bool,
     class_hierarchy: dict[str, frozenset[str]] | None = None,
     excludes_sites: list[PlrSite] | None = None,
+    scope_excluded_sites: list[PlrSite] | None = None,
 ) -> list[Finding]:
     """The per-``CALL`` body: exactly today's (pre-IR) per-operation logic
     (§11.4.1), re-keyed from an ``OperationNode`` to a ``CALL`` instruction
@@ -559,6 +569,7 @@ def _findings_for_call(
             class_hierarchy=class_hierarchy,
             poisoned=poisoned,
             excludes_sites=excludes_sites,
+            scope_excluded_sites=scope_excluded_sites,
         )
     )
     findings.extend(anchor_findings)
@@ -635,6 +646,7 @@ def check_ir(
     env: frozenset[str] = frozenset(),
     class_hierarchy: dict[str, frozenset[str]] | None = None,
     excludes_sites: list[PlrSite] | None = None,
+    scope_excluded_sites: list[PlrSite] | None = None,
 ) -> tuple[Finding, ...]:
     """Spec §11.4.1 (260902) / §12.3 (260903, "region semantics for a
     region with a proved trip"): the analysis core. A structured,
@@ -751,6 +763,7 @@ def check_ir(
                 env=env,
                 class_hierarchy=class_hierarchy,
                 excludes_sites=excludes_sites,
+                scope_excluded_sites=scope_excluded_sites,
                 poisoned=instr.receiver in poisoned_slots,
             )
         )

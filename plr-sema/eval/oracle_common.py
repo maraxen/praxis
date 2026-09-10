@@ -864,6 +864,7 @@ def run_static_calls(
     resource_types: Mapping[str, str] | None = None,
     element_types: Mapping[str, str | None] | None = None,
     excludes_sites: "list[Any] | None" = None,
+    scope_excluded_sites: "list[Any] | None" = None,
 ) -> tuple[dict[str, dict[str, Any]], list[int]]:
     """The ``lower_calls`` path (§11.2.2/§11.10 tier 1) -- ``adapt_graph``'s
     replacement. Lowers ``example["call_sequence"]``'s PLANNED subset
@@ -957,6 +958,14 @@ def run_static_calls(
     to publish ``rows_excused_by_scope`` as a pure annotation (no gate
     effect, §15.10's own normative box).
 
+    ``scope_excluded_sites`` (spec 260909_plr-sema-move-family-increment.md
+    §17.8.1 block (10), T55): same threading discipline as
+    ``excludes_sites`` immediately above, verbatim to :func:`check_ir`'s
+    own ``scope_excluded_sites`` collector -- a caller gets back one
+    ``PlrSite`` per E-SCOPE-excluded guard (``GuardResult.scope_excluded``)
+    visited anywhere in this call's lowered graph, deduplicated the same
+    way. ``None`` (the default) costs nothing.
+
     ``result[oid]["scoped_verdict"]`` (spec 260909 §16.6, increment 7,
     T44, Q1): the per-operation counterpart of
     ``AnalysisReport.scope_verdict`` -- the SAME ``join`` this function
@@ -994,7 +1003,10 @@ def run_static_calls(
     env = env | observation_env_members(plr_observation, resources)
 
     bc, not_planned = _lower_row_calls_notified(example, plr_kwargs, resources, param_names, resource_types, element_types)
-    raw_findings = check_ir(bc, contracts, receiver_states, env=env, excludes_sites=excludes_sites)
+    raw_findings = check_ir(
+        bc, contracts, receiver_states, env=env, excludes_sites=excludes_sites,
+        scope_excluded_sites=scope_excluded_sites,
+    )
 
     planned_indices = [i for i in range(len(example["call_sequence"])) if i not in set(not_planned)]
     origin = bc.sideband.get("origin", {})

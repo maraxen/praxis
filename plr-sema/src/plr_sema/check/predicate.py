@@ -1476,11 +1476,21 @@ class GuardResult:
     """`verdict` in `{"safe", "will_fail", "unknown"}`; `reason` is `""`
     for `"safe"`/`"will_fail"` and a `REASON_VOCABULARY` member for
     `"unknown"`; `tier_iii` tells the caller to fold this guard's `site`
-    into `AnalysisReport.scope.excludes_sites` (§15.5)."""
+    into `AnalysisReport.scope.excludes_sites` (§15.5).
+
+    260909 (spec 260909_plr-sema-move-family-increment.md §17.8.1 block
+    (10), T55): `scope_excluded` is the additive boolean the spec calls
+    for -- `True` iff this `"safe"` verdict was produced by E-SCOPE
+    (`scope_excludes` below returning `True`) rather than by the guard's
+    own predicate deciding `F`. E-SCOPE exclusions are otherwise invisible
+    (`excludes_sites` collects tier-(iii) sites only, `scope_excludes`
+    itself returns `_SAFE` directly and leaves no trace) -- this field is
+    what lets a caller fold the site into a per-site tally instead."""
 
     verdict: str
     reason: str = ""
     tier_iii: bool = False
+    scope_excluded: bool = False
 
 
 _SAFE = GuardResult(verdict="safe")
@@ -1561,7 +1571,11 @@ def evaluate_guard(
 
     scope_entries = _exclude_self_entry(guard)
     if scope_excludes(scope_entries, ctx):
-        return _SAFE
+        # 260909 (§17.8.1 block (10), T55): a fresh instance, not the
+        # shared `_SAFE` singleton -- the one caller that cares
+        # (`_findings_for_guards`) reads `scope_excluded` off the RESULT,
+        # not off identity, so this costs nothing on every other path.
+        return GuardResult(verdict="safe", scope_excluded=True)
 
     site_rule = _site_rule_for(guard)
     value = site_rule(ctx) if site_rule is not None else evaluate_predicate(predicate, ctx)
