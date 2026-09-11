@@ -81,7 +81,17 @@ def main(argv: list[str] | None = None) -> int:
             log.info("skip %s (no call_sequence/intent_record)", f.name)
             continue
         rt = run_runtime(ex)
-        st, not_planned = run_static_calls(ex, rt.plr_kwargs, contracts_json, param_names=param_names)
+        # 260903 (spec §14.6/§14.11, increment 5, T27, #5043): the volume-family
+        # sibling of T46's `plr_observation` wire -- `RuntimeOutcome.
+        # volume_tracking_observed` was never threaded here either, so `env`
+        # stayed empty for `does_volume_tracking` even when `verify()` observed
+        # tracking on. Threading it can only turn UNKNOWN into decided; it
+        # cannot mint a new SAFE (the env member is read only on a FIRING
+        # volume guard, `check/volumestate.py` `_pair_finding`).
+        st, not_planned = run_static_calls(
+            ex, rt.plr_kwargs, contracts_json, param_names=param_names,
+            volume_tracking_observed=rt.volume_tracking_observed,
+        )
         if not_planned:
             log.warning("%s: %d call(s) never planned (no CALL emitted): indices=%s",
                         f.name, len(not_planned), not_planned)
