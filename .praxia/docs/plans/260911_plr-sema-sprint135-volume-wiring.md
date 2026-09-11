@@ -182,4 +182,13 @@ parity in the close commit). `code_review_diff` (rig): see §6.
 `write_backlog_triage_result`. The orchestrator's backlog scan (logged) stood as the triage; the route
 was rubric-determined regardless.
 
-_Audit addendum: written when both reviews land._
+**Audit addendum.** `praxia:reviewer` (Sonnet): PASS, no required fixes -- report at
+`.praxia/docs/audits/260911_plr-sema-sprint135-audit.md`, logged as `260911_sprint135_reviewer_audit`
+in `.praxia/audits.jsonl`. `code_review_diff` (rig, `vllm/titanix-vllm-primary`) over
+`12003b06..80dd7103`: **no record at close** (launched 18:05Z, still running at 18:19Z with no
+`.praxia/code_reviews.jsonl` written) -- it stalled at turn 2 after its `run_verification` `fmt`
+call was rejected as a near-identical repeat of the prior `lint` call (the #949/#951 repeat-loop
+shape), and its `fmt` step **reformatted two untouched workspace files** (`eval/unknown_ledger.py`,
+`scripts/check_spec_citations.py`), which were reverted before the close commit. The Sonnet audit is
+therefore the review gate of record for this sprint; if the rig record lands later it can be appended
+here, but the sprint does not wait on it.
