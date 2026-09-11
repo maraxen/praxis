@@ -81,7 +81,11 @@ def main(argv: list[str] | None = None) -> int:
             log.info("skip %s (no call_sequence/intent_record)", f.name)
             continue
         rt = run_runtime(ex)
-        st, not_planned = run_static_calls(ex, rt.plr_kwargs, contracts_json, param_names=param_names)
+        # #5043: volume-family sibling of T46's `plr_observation` wire.
+        st, not_planned = run_static_calls(
+            ex, rt.plr_kwargs, contracts_json, param_names=param_names,
+            volume_tracking_observed=rt.volume_tracking_observed,
+        )
         if not_planned:
             log.warning("%s: %d call(s) never planned (no CALL emitted): indices=%s",
                         f.name, len(not_planned), not_planned)
