@@ -147,8 +147,21 @@ both ways proves nothing):
 Tests 2 and 3 passing in both directions is correct and intended -- they are the
 regression guards proving the narrowing disabled neither R6 nor the `.whl` arm.
 
-**CI step 12 reproduced locally, end to end.** Both commands, the second of which has
-never executed in CI (the step's shell aborts at the first failure). After the wheel
+**Direct proof against the tree that actually carries the nine files.** This matters
+because of a branch fact worth stating plainly: **`main` has no `training/` directory at
+all.** The nine manifests exist only on `coxswain-p2-pipeline` (#156) and the branches
+stacked on it. So the fix branch, cut from `main`, *cannot* reproduce the false positive,
+and neither could the dispatch worktree. The scratch-repo tests above are branch-independent
+and do prove it -- they synthesize the real paths -- but the conclusive check is running
+the fixed function against the primary checkout, which sits on `coxswain-p2-pipeline`:
+
+```
+candidates from the OLD leaky pattern:  all 9 paths, unchanged
+check_untracked with the FIX applied:   NONE
+```
+
+**CI step 12 also reproduced locally, end to end** -- both commands, the second of which
+has never executed in CI (the step's shell aborts at the first failure). After the wheel
 build produced the wheels:
 
 ```
@@ -156,9 +169,18 @@ check_wheel_coherence.py --check-untracked  -> exit 0   "coherence OK (untracked
 check_wheel_contract.py                     -> exit 0   "CONTRACT-OK 29"
 ```
 
+Read that second block for what it is: run from a `main`-based tree, it demonstrates **no
+regression** and that `check_wheel_contract.py` passes -- not that the false positive is
+gone. The differential tests and the direct run above are what establish the fix.
+
 (Before the wheels existed, `check_wheel_contract.py` fails with
 `.../overlay/assets/wheels does not exist -- run build_wheels.py first` -- an environment
 artifact, not a gate failure; CI satisfies it at step 9.)
+
+**Consequence for the stack:** CI on the fix's own PR will pass with or without the fix,
+since `main` has nothing to trip on. #156 picks the fix up only once #160 merges to
+`main` **and** #156 gets a fresh merge-result build -- a push to its branch or a re-run.
+Re-running the existing red run is not enough; it would rebuild the old merge commit.
 
 ## 5. Surface-dispatch record (dispatch `3d9768bd`)
 
