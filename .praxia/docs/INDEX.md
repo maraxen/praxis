@@ -1,6 +1,7 @@
-# praxis Internal Docs
+# wt-20260909-172820 Internal Docs
 
 ## Daily
+- [260912_overnight-decisions](daily/260912_overnight-decisions.md) — Every decision the 260912 L5 loop made without a human gate: the REPL-refocus staleness dispositions, the #5110 selection, and the praxia debt filings.
 
 ## Handoffs
 - [260131_e2e-autonomous-handoff](handoffs/260131_e2e-autonomous-handoff.md)
@@ -13,6 +14,8 @@
 - [260121_final-merge-handoff](handoffs/260121_final-merge-handoff.md)
 
 ## Plans
+- [260912_repl-gate-manifest-scope-sprint136](plans/260912_repl-gate-manifest-scope-sprint136.md) — Sprint 136 plan and record: the repl.yml GATE G7 false positive that skipped all ten browser gates on the 4-PR stack, its two-defect root cause, the surface-dispatch fixer run, and the differential verification.
+- [260824_repl-autocomplete-scope](plans/260824_repl-autocomplete-scope.md) — Scope and outcome for as-you-type completion in the JupyterLite PLR REPL; the planned jedi preload proved unnecessary
 - [260817_praxis-repl-refocus-execution-plan](plans/260817_praxis-repl-refocus-execution-plan.md) — Dependency-ordered 8-phase execution plan composed from three adversarially-reviewed specs and five executed spikes, with per-phase gates, audit strategy, rollback, and an unproven-assumptions ledger.
 - [260210_final-protocol-execution-fix-plan](plans/260210_final-protocol-execution-fix-plan.md)
 - [260210_protocol-playground-fix-plan](plans/260210_protocol-playground-fix-plan.md)
@@ -22,20 +25,17 @@
 - [260121_final-merge-plan](plans/260121_final-merge-plan.md)
 - [260121_jules-integration-plan](plans/260121_jules-integration-plan.md)
 - [260115_test-plan-v1](plans/260115_test-plan-v1.md)
-- [telemetry](plans/.praxia/telemetry.jsonl)
-- [telemetry.jsonl](plans/.praxia/telemetry.jsonl.lock) ⚠️ non-standard extension
 
 ## Specs
 - [260817_spec-visualizer-transport-shim](specs/260817_spec-visualizer-transport-shim.md) — Adversarially-reviewed spec for the praxis REPL refocus (visualizer); converged=True after 1 round(s), verdict REVISE.
 - [260817_spec-web-repl-extraction](specs/260817_spec-web-repl-extraction.md) — Adversarially-reviewed spec for the praxis REPL refocus (web-repl); converged=True after 1 round(s), verdict REVISE.
 - [260817_spec-wheel-build-plr-upgrade](specs/260817_spec-wheel-build-plr-upgrade.md) — Adversarially-reviewed spec for the praxis REPL refocus (build-pipeline); converged=True after 2 round(s), verdict ACCEPT.
 - [260122_inventory-wizard-design-spec](specs/260122_inventory-wizard-design-spec.md)
-- [telemetry](specs/.praxia/telemetry.jsonl)
-- [telemetry.jsonl](specs/.praxia/telemetry.jsonl.lock) ⚠️ non-standard extension
 
 ## Actuation Surfaces
 
 ## Audits
+- [260912_sprint136-audit](audits/260912_sprint136-audit.md) — Sonnet praxia:reviewer report for commit e995de31, persisted verbatim: soundness answer, six-dimension scores, and the two non-blocking staleness suggestions with their resolution.
 - [260206_hardware-discovery-audit](audits/260206_hardware-discovery-audit.md)
 - [260206_python-worker-audit](audits/260206_python-worker-audit.md)
 - [260131_comprehensive-logic-audit](audits/260131_comprehensive-logic-audit.md)
