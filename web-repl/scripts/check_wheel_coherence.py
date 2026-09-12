@@ -30,10 +30,12 @@ combined default:
   rebuild, so it also catches "the wheel on disk is not the one the last
   successful build produced."
 - ``--check-untracked`` (R6 + R8, ADR Sec 4.3 re-specification -- see the
-  "NO ALLOWLIST" note below): asserts ZERO ``*.whl`` and ZERO
-  ``manifest.json`` files are git-tracked anywhere in the repo, and reports
-  (never silently fixes) the dead ``.gitignore`` negation R6 requires
-  removed.
+  "NO ALLOWLIST" note below): asserts ZERO ``*.whl`` files are git-tracked
+  anywhere in the repo, and ZERO ``manifest.json`` files are git-tracked
+  under the browser wheel output directories (the loader's only filename
+  seam -- a training-output ``manifest.json`` in a sibling subproject
+  cannot shadow it; see backlog #5110), and reports (never silently
+  fixes) the dead ``.gitignore`` negation R6 requires removed.
 
 With **no** flags, the combined default runs pin + manifest + import-sweep
 (matching every "bare `check_wheel_coherence.py`" invocation in the wheel
@@ -54,7 +56,12 @@ wheel to allowlist"). Since NOTHING should ever be git-tracked under either
 wheels directory once the 0.1.6-era tracked wheels are untracked (P3.11, a
 separate task), an allowlist has nothing left to name. This file implements
 the superseding, simpler design: the clean-tree arm is "zero tracked
-`.whl`, zero tracked `manifest.json`, repo-wide" -- no per-name exception.
+`.whl` repo-wide; zero tracked `manifest.json` under the browser wheel
+output directories" -- no per-name exception. The manifest arm is not
+repo-wide: a generic basename plus a sibling Coxswain training
+subproject in the same monorepo made a repo-wide check a false
+positive (backlog #5110). The ``.whl`` arm stays repo-wide -- tracked
+wheels anywhere are a real hygiene violation.
 
 House rules: uv-run only, argparse + logging, narrow runs, fail loud.
 """
@@ -224,6 +231,20 @@ _TRACKED_OLD_WHEELS = (
     "praxis/web-client/src/assets/wheels/pylibftdi-0.0.0-py3-none-any.whl",
 )
 
+# R6's intent: manifest.json is the only filename seam for the browser
+# wheel loader. A stale tracked copy under either wheels directory would
+# shadow the built one. Backlog #5110: git pathspec `*manifest.json`
+# matches a PARTIAL basename (so train_manifest.json) AND any path ending
+# in the literal 'manifest.json', which pulled in Coxswain training
+# artifacts (training/{assemble/out,golden,out}/manifest.json) -- a
+# sibling subproject in this monorepo whose outputs cannot shadow the
+# loader. Filter candidates by exact basename, then scope to these dirs.
+# The .whl arm stays repo-wide and is otherwise untouched.
+_WHEEL_MANIFEST_PARENTS = (
+    Path("web-repl") / "overlay" / "assets" / "wheels",
+    Path("praxis") / "web-client" / "src" / "assets" / "wheels",
+)
+
 
 def _find_gitignore_negation(gitignore_path: Path = GITIGNORE_PATH) -> list[int]:
     """Locate the negation by CONTENT, never by a hardcoded line number --
@@ -248,11 +269,22 @@ def check_untracked(*, repo_root: Path = REPO_ROOT, gitignore_path: Path = GITIG
             f"repo-wide, no allowlist): {tracked_whl}"
         )
 
-    tracked_manifest = _git_ls_files("*manifest.json", cwd=repo_root)
+    # Backlog #5110: do not treat a pathspec suffix as a basename. `*` in a
+    # git pathspec matches across `/` AND matches a partial basename, so
+    # `*manifest.json` hits train_manifest.json plus Coxswain training
+    # manifests that cannot shadow the browser wheel loader. Exact-basename
+    # filter, then scope to the wheel output directories.
+    candidates = _git_ls_files("*manifest.json", cwd=repo_root)
+    tracked_manifest = [
+        p
+        for p in candidates
+        if Path(p).name == "manifest.json" and Path(p).parent in _WHEEL_MANIFEST_PARENTS
+    ]
     if tracked_manifest:
         problems.append(
-            f"{len(tracked_manifest)} tracked manifest.json file(s) found (R6 "
-            f"forbids this too, repo-wide): {tracked_manifest}"
+            f"{len(tracked_manifest)} tracked manifest.json file(s) found under "
+            f"a browser wheel output directory (R6 forbids this -- a stale "
+            f"tracked copy would shadow the built loader seam): {tracked_manifest}"
         )
 
     negation_lines = _find_gitignore_negation(gitignore_path)
@@ -285,7 +317,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--check-untracked",
         action="store_true",
-        help="R6/R8: zero tracked .whl/manifest.json repo-wide, no allowlist. "
+        help="R6/R8: zero tracked .whl repo-wide; zero tracked manifest.json "
+        "under the browser wheel output directories. No allowlist. "
         "Never part of the bare default -- always explicit.",
     )
     parser.add_argument(
