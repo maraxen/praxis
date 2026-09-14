@@ -93,7 +93,7 @@ test = [
     "responses",                   # Mock HTTP requests
     "freezegun",
     "fakeredis",
-    "pyfakefs>=5.2.0",            # In-memory filesystem for faster tests
+    "pyfakefs>=6.2.0",            # In-memory filesystem for faster tests
     "celery",
     "aiosqlite",
     "alembic",
