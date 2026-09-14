@@ -85,7 +85,7 @@ test = [
     "pytest-timeout",
     "pytest-socket>=0.6.0",        # Prevent inadvertent network access
     "pytest-skip-slow>=0.0.5",     # Mark and skip slow tests
-    "pytest-randomly>=3.12.0",     # Randomize test order to catch dependencies
+    "pytest-randomly>=4.0.1",     # Randomize test order to catch dependencies
     "pytest-monitor>=1.6.0",       # Monitor test performance
     "factory-boy>=3.2.0",
     "httpx>=0.24.0",
