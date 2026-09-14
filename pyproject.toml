@@ -89,7 +89,7 @@ test = [
     "pytest-monitor>=1.6.0",       # Monitor test performance
     "factory-boy>=3.2.0",
     "httpx>=0.24.0",
-    "locust>=2.15.0",
+    "locust>=2.43.4",
     "responses",                   # Mock HTTP requests
     "freezegun",
     "fakeredis",
