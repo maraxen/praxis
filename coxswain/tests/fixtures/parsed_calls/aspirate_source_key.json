@@ -1,0 +1,11 @@
+{
+  "utterance": "aspirate 10 uL from A1",
+  "name": "aspirate",
+  "verb": "aspirate from",
+  "receiver_type": "liquid_handler",
+  "params": { "source": "A1", "volume_ul": 10 },
+  "missing_required": [],
+  "unresolved_slots": [],
+  "expected_phrase": "aspirate from A1",
+  "_comment": "TARGET_KEYS fall-through: no destination/target key is present, so 'source' supplies the descriptor. The verb already carries the 'from' preposition; the phrase stays ASCII and typeable."
+}

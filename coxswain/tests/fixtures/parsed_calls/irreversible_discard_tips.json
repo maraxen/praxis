@@ -1,0 +1,11 @@
+{
+  "utterance": "discard the tips at C3",
+  "name": "discard_tips",
+  "verb": "discard",
+  "receiver_type": "liquid_handler",
+  "params": { "what": "tips", "at": "C3" },
+  "missing_required": [],
+  "unresolved_slots": [],
+  "expected_phrase": "discard tips at C3",
+  "_comment": "FR-3's worked example: irreversible tier, so this phrase is rendered verbatim on the card and matched case-insensitively with collapsed whitespace (AC-13). The noun key ('what': 'tips') joins the location descriptor with the fixed connector ' at '."
+}

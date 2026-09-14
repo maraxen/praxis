@@ -40,6 +40,9 @@ dependencies = [
 [tool.uv.sources]
 pylabrobot = { path = "external/pylabrobot", editable = true }
 
+[tool.uv.workspace]
+members = ["coxswain"]
+
 [project.optional-dependencies]
 fw = [
     "pyusb",
@@ -325,7 +328,7 @@ dev = [
 ]
 
 [tool.ty.src]
-include = ["praxis/backend"]
+include = ["praxis/backend", "coxswain/src"]
 exclude = [
     "praxis/backend/commons",
     "tests",

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "coxswain"
+version = "0.0.1"
+description = "Fine-tuned function-calling model deploys for the browser, on top of a live grounding source. First (and for now, only) consumer: PLR voice/text lab commands in praxis's web-repl."
+authors = [{name = "Marielle Russo"}]
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+# The FFT gate and its tests are pure stdlib (NFR-1/NFR-2). The ONE exception
+# is coxswain/fft/preconditions/: the W0-approved port of the dependency-free
+# simulation subset keeps its upstream pydantic result models as-is
+# (recon record 260824_w0_simulation_reuse_verdict classifies them as
+# "pydantic-only, DB-free" members), so pydantic is declared here.
+dependencies = ["pydantic>=2.0.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# coxswain has no coverage target of its own: the root pyproject.toml's
+# [tool.pytest.ini_options] sets testpaths = ["tests"] and addopts includes
+# "--cov=praxis". Without a local override, running pytest inside coxswain/
+# would inherit that addopts, report ~0% coverage of `praxis`, and hard-fail
+# once CI restores --cov-fail-under. Same fix as web-repl/pyproject.toml; see
+# ADR .praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md §5.4.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--no-cov"]

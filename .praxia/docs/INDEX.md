@@ -27,6 +27,11 @@
 - [260115_test-plan-v1](plans/260115_test-plan-v1.md)
 
 ## Specs
+- [260825_copilot-pipeline-challenger](specs/260825_copilot-pipeline-challenger.md) — CHALLENGER-role findings against 260825_coxswain-phase-2-functiongemma-copilot-p.md. All file:line claims in the spec were re-verified against the tree on repl-fresh-boot; findings are ranked blocker/major/minor with cites and concrete fixes. No wholesale rewrite proposed.
+- [260825_copilot-pipeline-defender](specs/260825_copilot-pipeline-defender.md) — DEFENDER counter-role review of 260825_coxswain-phase-2-functiongemma-copilot-p.md: steelman of D1-D10, robustness audit of load-bearing-but-fragile claims, critical-path feasibility re-verified against the tree, and resilience judgment of §8 counters. All repo cites re-verified 260825 on branch repl-fresh-boot.
+- [260825_coxswain-phase-2-functiongemma-copilot-p](specs/260825_coxswain-phase-2-functiongemma-copilot-p.md) — Spec for the synthetic-data pipeline, functiongemma-270m-it fine-tune, browser serving via Transformers.js/WebGPU behind --with-coxswain, and ParseSource integration. REV 2: reconciled from challenger (2 blockers, 7 majors, 8 minors) and defender (11 robustness findings) reviews of 260825.
+- [260824_coxswain-mvp-ux-spec](specs/260824_coxswain-mvp-ux-spec.md) — Implementable specification for the Coxswain propose/confirm, clarification, FFT-gate-extension and audit-trail surfaces: formalizes the eight negotiable UX axes (N1-N8) resolved in brainstorm session 48789b43 against the locked architecture (F1-F10), with fixer-ready work-item decomposition, correlation-ID contract, structural safety constraints mandated by the pre-mortem, and a risk table. Revised 260824 to close the adversarial review cycle (audits 260824_coxswain_spec_challenge / _defense) — see the Revision Log.
+- [260824_coxswain-ux-open-design-axes-task-id-260](specs/260824_coxswain-ux-open-design-axes-task-id-260.md)
 - [260817_spec-visualizer-transport-shim](specs/260817_spec-visualizer-transport-shim.md) — Adversarially-reviewed spec for the praxis REPL refocus (visualizer); converged=True after 1 round(s), verdict REVISE.
 - [260817_spec-web-repl-extraction](specs/260817_spec-web-repl-extraction.md) — Adversarially-reviewed spec for the praxis REPL refocus (web-repl); converged=True after 1 round(s), verdict REVISE.
 - [260817_spec-wheel-build-plr-upgrade](specs/260817_spec-wheel-build-plr-upgrade.md) — Adversarially-reviewed spec for the praxis REPL refocus (build-pipeline); converged=True after 2 round(s), verdict ACCEPT.
@@ -74,6 +79,9 @@
 - [251222_pyodide-integration-audit](audits/251222_pyodide-integration-audit.md)
 
 ## Research
+- [260825_copilot-pipeline-recon](research/260825_copilot-pipeline-recon.md) — Verification of the 260824 scoping doc claims against current code, filling gaps for the next phase spec: tool-schema extraction seams, Chatterbox execution verification, protocol fixtures, PLR docs corpus, web-repl serving substrate, parse-source seam, and artifact-size constraints.
+- [260825_functiongemma-training-serving-research](research/260825_functiongemma-training-serving-research.md) — Fine-tuning and browser-serving google/functiongemma-270m-it for a PyLabRobot lab-automation copilot
+- [260824_gemma-finetuned-plr-voice-text-copilot-scoping](research/260824_gemma-finetuned-plr-voice-text-copilot-scoping.md) — Scoping assessment for a Gemma model fine-tuned to translate voice/text lab instructions into validated PyLabRobot calls inside the JupyterLite Playground rebase: training-data sourcing, browser deployment feasibility, clarification UX, and build-location recommendation.
 - [260817_g2-spike-battery-verdict](research/260817_g2-spike-battery-verdict.md) — Adjudication of the five G2 criteria from spikes S-A/S-B/S-C/S-D/S-E/S-F, with independent spot-check output; overall PARTIAL-GO.
 - [260817_spike-evidence-repl-refocus](research/260817_spike-evidence-repl-refocus.md) — Five executed browser/CPython spikes grounding the refocus specs; every finding tagged ran/read with verbatim commands and output.
 - [260817_standalone-web-repl-extraction-shell-and-brainstorm](research/260817_standalone-web-repl-extraction-shell-and-brainstorm.md)

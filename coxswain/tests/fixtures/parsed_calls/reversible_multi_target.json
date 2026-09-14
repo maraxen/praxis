@@ -1,0 +1,11 @@
+{
+  "utterance": "transfer from A1 to B1, B2 and B3",
+  "name": "transfer",
+  "verb": "transfer to",
+  "receiver_type": "liquid_handler",
+  "params": { "source": "A1", "destination": ["B1", "B2", "B3"] },
+  "missing_required": [],
+  "unresolved_slots": [],
+  "expected_phrase": "transfer to B1 +2 more",
+  "_comment": "FR-3 multi-target rule: first target in the call's declared (as-given) order -- never sorted, never deduplicated -- followed by ' +<n-1> more'. The rendered card lists all targets in full; only the phrase is abbreviated."
+}

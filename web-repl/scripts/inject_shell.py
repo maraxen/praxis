@@ -82,6 +82,13 @@ _ANCHOR_PATTERN = re.compile(r'id=["\']' + re.escape(_ANCHOR_ID) + r'["\']')
 _SHA_ASSIGN_PATTERN = re.compile(r'window\.PRAXIS_GIT_SHA\s*=\s*"([^"]*)"')
 _SCRIPT_SRC_PATTERN = re.compile(r'<script src="([^"]*)"></script>')
 
+# The --with-coxswain build adds ONE extra line inside the same marker block:
+# a module script for the Coxswain side panel (FR-12: only under the flag;
+# a default build's injected block is byte-identical to its historical shape).
+_COXSWAIN_TAG_PATTERN = re.compile(
+    r'<script type="module" src="([^"]*coxswain-shell\.js)"></script>'
+)
+
 
 class InjectError(RuntimeError):
     """Raised for any condition that must fail shell injection loudly."""
@@ -137,22 +144,25 @@ def _git_head(repo_root: Path) -> str:
     return result.stdout.strip()
 
 
-def _render_block(sha: str, script_src: str) -> str:
+def _render_block(sha: str, script_src: str, *, with_coxswain: bool = False) -> str:
     # json-safe-enough: sha is either 40 hex chars or the literal "dev", and
     # script_src is a build-controlled relative path -- neither ever
     # contains a quote or `</script>`, but escape defensively anyway rather
     # than trust that invariant forever.
     safe_sha = sha.replace("\\", "\\\\").replace('"', '\\"').replace("</", "<\\/")
     safe_src = script_src.replace('"', "&quot;")
-    return (
-        f"{_BEGIN_MARKER}\n"
-        f'<script>window.PRAXIS_GIT_SHA = "{safe_sha}";</script>\n'
-        f'<script src="{safe_src}"></script>\n'
-        f"{_END_MARKER}"
-    )
+    lines = [
+        f"{_BEGIN_MARKER}\n",
+        f'<script>window.PRAXIS_GIT_SHA = "{safe_sha}";</script>\n',
+        f'<script src="{safe_src}"></script>\n',
+    ]
+    if with_coxswain:
+        lines.append('<script type="module" src="../shell/coxswain-shell.js"></script>\n')
+    lines.append(f"{_END_MARKER}")
+    return "".join(lines)
 
 
-def inject(html: str, sha: str, script_src: str) -> str:
+def inject(html: str, sha: str, script_src: str, *, with_coxswain: bool = False) -> str:
     """Return *html* with the injected block inserted (or replaced, if a
     previous injection's markers are already present), positioned by the
     ``id="jupyter-lite-main"`` anchor (see ``_find_anchor_tag_start``).
@@ -167,7 +177,7 @@ def inject(html: str, sha: str, script_src: str) -> str:
     incident went undetected.
     """
     anchor_start = _find_anchor_tag_start(html)
-    block = _render_block(sha, script_src)
+    block = _render_block(sha, script_src, with_coxswain=with_coxswain)
 
     if _BEGIN_MARKER in html:
         if _END_MARKER not in html:
@@ -195,7 +205,7 @@ def _extract_injected_block(html: str) -> str:
     return html[start:end]
 
 
-def check(target: Path, default_script_src: str) -> None:
+def check(target: Path, default_script_src: str, *, require_coxswain: bool = False) -> None:
     """Verify *target* was injected correctly, WITHOUT modifying it.
 
     Raises ``InjectError`` (never returns falsy -- callers should treat any
@@ -238,12 +248,31 @@ def check(target: Path, default_script_src: str) -> None:
             f"{script_src}\" ({shell_path}), which does not exist on disk."
         )
 
+    coxswain_path: Path | None = None
+    if require_coxswain:
+        coxswain_match = _COXSWAIN_TAG_PATTERN.search(block)
+        if coxswain_match is None:
+            raise InjectError(
+                f"{target}: this is a --with-coxswain build but the injected "
+                "block carries no coxswain-shell.js <script type=module> tag -- "
+                "FR-12 says Coxswain ships ONLY under the flag, so a flagged "
+                "build without the tag would silently drop the panel."
+            )
+        coxswain_path = (target.parent / coxswain_match.group(1)).resolve()
+        if not coxswain_path.is_file():
+            raise InjectError(
+                f'{target}: injected block references coxswain module src="'
+                f'{coxswain_match.group(1)}" ({coxswain_path}), which does not '
+                "exist on disk."
+            )
+
     logger.info(
         "check OK: %s -- anchor present exactly once, praxis_git_sha=%s, "
-        "shell script found at %s",
+        "shell script found at %s%s",
         target,
         sha,
         shell_path,
+        f", coxswain module found at {coxswain_path}" if require_coxswain else "",
     )
 
 
@@ -294,6 +323,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "empty, or the referenced shell script is not on disk. This is "
         "what CI calls. Mutually exclusive with --dev/--sha, which only "
         "apply to the write path.",
+    )
+    parser.add_argument(
+        "--with-coxswain",
+        action="store_true",
+        help="Inject the Coxswain side panel <script type=module> tag "
+        "(../shell/coxswain-shell.js) inside the same PRAXIS-SHELL-INJECT "
+        "block, and REQUIRE it during --check. FR-12: Coxswain ships only "
+        "under this flag; without it the injected block is byte-identical "
+        "to its historical shape. Must match the flag passed to build_repl.py.",
     )
     parser.add_argument(
         "--dev",
@@ -368,7 +406,7 @@ def main(argv: list[str] | None = None) -> int:
         failed = 0
         for target in targets:
             try:
-                check(target, args.script_src)
+                check(target, args.script_src, require_coxswain=args.with_coxswain)
             except InjectError as exc:
                 logger.error("%s", exc)
                 failed += 1
@@ -395,12 +433,17 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         try:
             original = target.read_text()
-            injected = inject(original, sha, args.script_src)
+            injected = inject(original, sha, args.script_src, with_coxswain=args.with_coxswain)
             write_atomic(injected, target)
         except InjectError as exc:
             logger.error("%s", exc)
             return 1
-        logger.info("injected praxis_git_sha=%s into %s", sha, target)
+        logger.info(
+            "injected praxis_git_sha=%s into %s%s",
+            sha,
+            target,
+            " (with coxswain panel)" if args.with_coxswain else "",
+        )
 
     logger.info("injected %d target(s)", len(targets))
     return 0

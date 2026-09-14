@@ -985,6 +985,81 @@ class VizCheckError(RuntimeError):
     """Raised for any condition that must fail --viz-check loudly, pin mismatch included."""
 
 
+def build_fresh_boot_probe_code() -> str:
+    """In-kernel payload for the fresh-notebook bootstrap (gate T4).
+
+    Runs EXACTLY what a user is told to type in a brand-new notebook -- `import
+    praxis_boot` then `await praxis_boot.setup()` -- and nothing else. It
+    deliberately does NOT fetch the loader itself or pass a host root, because
+    those two omissions are the whole claim being tested: that a fresh kernel
+    can reach the loader with no URL and no base path typed by hand.
+
+    Records sys.path and cwd unconditionally. `import praxis_boot` only works
+    because the kernel mounts the JupyterLite contents drive at /drive and runs
+    there; if that ever stops being true the import fails, and the failure would
+    be indistinguishable from "the file was not shipped" without these fields.
+    """
+    start_a, start_b = PROBE_START[: len(PROBE_START) // 2], PROBE_START[len(PROBE_START) // 2 :]
+    end_a, end_b = PROBE_END[: len(PROBE_END) // 2], PROBE_END[len(PROBE_END) // 2 :]
+    return textwrap.dedent(
+        f"""
+        import json, os, sys, traceback
+        RESULT: dict = {{}}
+
+        RESULT["cwd"] = os.getcwd()
+        RESULT["sys_path_head"] = sys.path[:4]
+        RESULT["drive_listing"] = (
+            sorted(os.listdir("/drive")) if os.path.isdir("/drive") else None
+        )
+
+        # Baseline: a fresh kernel must NOT already have pylabrobot, or this
+        # gate would pass without the bootstrap doing anything.
+        try:
+            import pylabrobot as _pre
+            RESULT["plr_before"] = getattr(_pre, "__version__", "present")
+        except Exception as e:  # noqa: BLE001
+            RESULT["plr_before"] = f"{{type(e).__name__}}"
+
+        try:
+            import praxis_boot
+            RESULT["import_praxis_boot"] = True
+        except Exception as e:  # noqa: BLE001
+            RESULT["import_praxis_boot"] = False
+            RESULT["import_error"] = f"{{type(e).__name__}}: {{e}}"
+
+        if RESULT.get("import_praxis_boot"):
+            try:
+                RESULT["derived_host_root"] = praxis_boot.derive_host_root()
+            except Exception as e:  # noqa: BLE001
+                RESULT["derived_host_root"] = None
+                RESULT["derive_error"] = f"{{type(e).__name__}}: {{e}}"
+
+            try:
+                RESULT["setup_returned"] = await praxis_boot.setup()
+                RESULT["setup_ok"] = True
+            except Exception as e:  # noqa: BLE001
+                RESULT["setup_ok"] = False
+                RESULT["setup_error"] = f"{{type(e).__name__}}: {{e}}"
+                RESULT["setup_traceback"] = traceback.format_exc()
+
+            try:
+                import builtins
+                import pylabrobot
+                from pylabrobot.io.serial import Serial
+                RESULT["plr_after"] = getattr(pylabrobot, "__version__", None)
+                RESULT["serial_is_shim"] = Serial is getattr(builtins, "WebSerial", None)
+            except Exception as e:  # noqa: BLE001
+                RESULT["plr_after"] = None
+                RESULT["serial_is_shim"] = None
+                RESULT["post_import_error"] = f"{{type(e).__name__}}: {{e}}"
+
+        print({start_a!r} + {start_b!r})
+        print(json.dumps(RESULT))
+        print({end_a!r} + {end_b!r})
+        """
+    ).strip()
+
+
 TYPEAHEAD_EDITOR_SELECTORS = (
     ".jp-CodeConsole-promptCell .cm-content",
     ".jp-InputArea-editor .cm-content",
@@ -1721,6 +1796,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--fresh-boot-check",
+        action="store_true",
+        help=(
+            "Assert a BRAND-NEW notebook can bootstrap with two lines and no hand-typed "
+            "URL (gate T4): `import praxis_boot` then `await praxis_boot.setup()`, then "
+            "check pylabrobot imports AND that its Serial is the browser shim. "
+            "--notebook-check cannot cover this: it runs welcome.ipynb, which carries "
+            "its own stamped HOST_ROOT and its own fetch-and-exec cell."
+        ),
+    )
+    p.add_argument(
         "--typeahead-check",
         action="store_true",
         help=(
@@ -1888,11 +1974,13 @@ def main(argv: list[str] | None = None) -> int:
         and not args.notebook_check
         and not args.completion_check
         and not args.typeahead_check
+        and not args.fresh_boot_check
         and not args.expect_fail
     ):
         LOG.error(
             "nothing to do: pass --probe, --viz-check, --notebook-check, "
-            "--completion-check, --typeahead-check, and/or --expect-fail"
+            "--completion-check, --typeahead-check, --fresh-boot-check, "
+            "and/or --expect-fail"
         )
         return 2
 
@@ -1990,6 +2078,90 @@ def main(argv: list[str] | None = None) -> int:
                 LOG.error("FAIL: %s", f)
             return 1
         LOG.info("viz-check PASSED")
+        return 0
+
+    if args.fresh_boot_check:
+        serve_dir = args.serve_dir.resolve()
+        if not serve_dir.is_dir():
+            LOG.error("--serve-dir does not exist or is not a directory: %s", serve_dir)
+            return 2
+        try:
+            result = run_probe(
+                serve_dir=serve_dir,
+                base_path=args.base_path,
+                coi=args.coi,
+                chrome_path=str(chrome_path),
+                timeout_s=args.timeout,
+                expect_praxis_sha=None,
+                entry=args.entry,
+                offline=args.offline,
+                code_override=build_fresh_boot_probe_code(),
+            )
+        except Exception as e:  # noqa: BLE001
+            LOG.error("fresh-boot-check run failed: %s: %s", type(e).__name__, e)
+            return 2
+
+        if args.out:
+            args.out.write_text(json.dumps(result, indent=2) + "\n")
+            LOG.info("wrote result to %s", args.out)
+
+        expected_root = _normalize_base_path(args.base_path)
+        LOG.info(
+            "fresh boot: cwd=%s import_praxis_boot=%s derived_host_root=%s (expected %s)",
+            result.get("cwd"),
+            result.get("import_praxis_boot"),
+            result.get("derived_host_root"),
+            expected_root,
+        )
+        LOG.info(
+            "fresh boot: plr_before=%s plr_after=%s serial_is_shim=%s",
+            result.get("plr_before"),
+            result.get("plr_after"),
+            result.get("serial_is_shim"),
+        )
+
+        failures: list[str] = []
+        if result.get("plr_before") != "ModuleNotFoundError":
+            failures.append(
+                f"pylabrobot was ALREADY importable before the bootstrap "
+                f"(plr_before={result.get('plr_before')!r}), so this gate would pass "
+                "without praxis_boot doing anything. The premise is broken, not the fix."
+            )
+        if not result.get("import_praxis_boot"):
+            failures.append(
+                f"`import praxis_boot` failed: {result.get('import_error')}. It is "
+                f"importable only because the kernel runs in the contents drive "
+                f"(cwd={result.get('cwd')!r}, sys.path head "
+                f"{result.get('sys_path_head')!r}, /drive={result.get('drive_listing')!r}) "
+                "-- either the file was not shipped into web-repl/files/ or that "
+                "assumption no longer holds."
+            )
+        if result.get("derived_host_root") != expected_root:
+            failures.append(
+                f"derived host root {result.get('derived_host_root')!r} != expected "
+                f"{expected_root!r} ({result.get('derive_error')}). A wrong root 404s "
+                "the loader fetch, which is the whole failure this removes."
+            )
+        if not result.get("setup_ok"):
+            failures.append(
+                f"praxis_boot.setup() raised: {result.get('setup_error')}"
+            )
+        if not result.get("serial_is_shim"):
+            failures.append(
+                "pylabrobot's Serial is NOT the browser shim after setup, so device "
+                "I/O would silently use desktop pyserial. Note praxis_main() never "
+                "re-raises, so this can only be caught by checking, not by awaiting."
+            )
+
+        if failures:
+            for f in failures:
+                LOG.error("FAIL: %s", f)
+            return 1
+        LOG.info(
+            "fresh-boot-check PASSED: two lines in a bare kernel produced PyLabRobot %s "
+            "with browser shims bound",
+            result.get("plr_after"),
+        )
         return 0
 
     if args.typeahead_check:

@@ -1,0 +1,362 @@
+/*
+ * coxswain.css -- W3 side panel + propose/confirm/failure card styling.
+ *
+ * Plain CSS, no Lumino docking (spec W3): the shell wraps <body> content in
+ * .cx-shell (flex row: page + panel). Every Coxswain class is cx- prefixed.
+ * No animations at all, so prefers-reduced-motion needs no exceptions; the
+ * NFR-6 floor is met by construction. Interactive affordances are native
+ * buttons/inputs/labels, so keyboard reachability comes free (NFR-6/H4).
+ */
+
+:root {
+  --cx-panel-width: 380px;
+  --cx-border: #d0d4da;
+  --cx-bg: #f7f8fa;
+  --cx-card-bg: #ffffff;
+  --cx-ink: #1c2430;
+  --cx-muted: #5b6472;
+  --cx-accent: #2456a6;
+  --cx-danger: #a32c2c;
+  --cx-warn-bg: #fdf3d7;
+  --cx-note-bg: #eef2f8;
+}
+
+/* --- layout ---------------------------------------------------------------- */
+
+.cx-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.cx-shell > .cx-page {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cx-panel {
+  flex: 0 0 var(--cx-panel-width);
+  width: var(--cx-panel-width);
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--cx-border);
+  background: var(--cx-bg);
+  color: var(--cx-ink);
+  font: 14px/1.45 system-ui, sans-serif;
+  max-height: 100vh;
+}
+
+/* --- tabs -------------------------------------------------------------------- */
+
+.cx-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--cx-border);
+  background: var(--cx-card-bg);
+}
+
+.cx-tab {
+  flex: 1 1 50%;
+  border: 0;
+  border-right: 1px solid var(--cx-border);
+  background: transparent;
+  padding: 10px 0;
+  font: inherit;
+  cursor: pointer;
+  color: var(--cx-muted);
+}
+
+.cx-tab:last-child {
+  border-right: 0;
+}
+
+.cx-tab-active {
+  color: var(--cx-accent);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--cx-accent);
+}
+
+.cx-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.cx-view-viz {
+  padding: 0;
+}
+
+.cx-viz-frame {
+  border: 0;
+  width: 100%;
+  height: 100%;
+  flex: 1 1 auto;
+}
+
+/* --- transcript ------------------------------------------------------------- */
+
+.cx-transcript {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cx-user-line {
+  align-self: flex-end;
+  background: var(--cx-accent);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 14px 14px 2px 14px;
+  margin: 0;
+  max-width: 90%;
+  overflow-wrap: break-word;
+}
+
+.cx-system-line {
+  align-self: flex-start;
+  color: var(--cx-muted);
+  background: var(--cx-note-bg);
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin: 0;
+  max-width: 95%;
+  overflow-wrap: break-word;
+}
+
+.cx-card-host {
+  align-self: stretch;
+}
+
+/* --- cards (shared) ------------------------------------------------------------ */
+
+.cx-card {
+  background: var(--cx-card-bg);
+  border: 1px solid var(--cx-border);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cx-propose-head,
+.cx-failure-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.cx-restatement {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.cx-tier-badge {
+  flex: 0 0 auto;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--cx-border);
+  color: var(--cx-muted);
+}
+
+.cx-tier-irreversible {
+  border-color: var(--cx-danger);
+  color: var(--cx-danger);
+}
+
+.cx-warnings {
+  list-style: none;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 0;
+  margin: 0;
+}
+
+.cx-warning-badge {
+  background: var(--cx-warn-bg);
+  border: 1px solid #e3cf8f;
+  color: #6b5510;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+/* --- fields ------------------------------------------------------------------- */
+
+.cx-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.cx-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cx-field-row label {
+  font-size: 12px;
+  color: var(--cx-muted);
+}
+
+.cx-field-row input {
+  font: inherit;
+  padding: 5px 8px;
+  border: 1px solid var(--cx-border);
+  border-radius: 5px;
+  min-width: 90px;
+  background: #fff;
+  color: var(--cx-ink);
+}
+
+.cx-field-dirty_unvalidated input,
+.cx-field-revalidating input {
+  border-style: dashed;
+}
+
+.cx-field-awaiting_clarification input {
+  border-color: var(--cx-accent);
+}
+
+.cx-field-invalid input {
+  border-color: var(--cx-danger);
+}
+
+.cx-field-note {
+  display: none;
+  font-size: 12px;
+}
+
+.cx-field-dirty_unvalidated .cx-field-note,
+.cx-field-revalidating .cx-field-note,
+.cx-field-awaiting_clarification .cx-field-note,
+.cx-field-invalid .cx-field-note {
+  display: block;
+  color: var(--cx-muted);
+  background: var(--cx-note-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.cx-field-invalid .cx-field-note {
+  color: var(--cx-danger);
+}
+
+.cx-disclosure {
+  margin: 0;
+  font-size: 13px;
+  color: var(--cx-muted);
+}
+
+/* --- collapsed literal call ------------------------------------------------ */
+
+.cx-call-details summary,
+.cx-attempted-call summary {
+  cursor: pointer;
+  color: var(--cx-accent);
+  font-size: 13px;
+}
+
+.cx-call-pre,
+.cx-attempted-call-pre {
+  background: var(--cx-bg);
+  border: 1px solid var(--cx-border);
+  border-radius: 6px;
+  padding: 8px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
+/* --- confirm row --------------------------------------------------------------- */
+
+.cx-confirm-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cx-confirm-row button {
+  font: inherit;
+  padding: 7px 18px;
+  border-radius: 6px;
+  border: 1px solid var(--cx-border);
+  cursor: pointer;
+}
+
+.cx-confirm {
+  background: var(--cx-accent);
+  border-color: var(--cx-accent);
+  color: #fff;
+}
+
+.cx-confirm[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cx-cancel {
+  background: transparent;
+  color: var(--cx-muted);
+}
+
+.cx-typed-phrase {
+  flex: 1 1 160px;
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--cx-border);
+  border-radius: 5px;
+}
+
+/* --- failure card ---------------------------------------------------------------- */
+
+.cx-failure-card {
+  border-color: var(--cx-danger);
+}
+
+.cx-failure-title {
+  font-weight: 700;
+  color: var(--cx-danger);
+}
+
+.cx-failure-status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--cx-muted);
+}
+
+.cx-failure-detail {
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+.cx-drift-line {
+  margin: 0;
+  background: var(--cx-warn-bg);
+  border: 1px solid #e3cf8f;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #6b5510;
+}
+
+.cx-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

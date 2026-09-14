@@ -1,0 +1,11 @@
+{
+  "utterance": "discard the tips at waste reservoir station number twelve on deck seven",
+  "name": "discard_tips",
+  "verb": "discard",
+  "receiver_type": "liquid_handler",
+  "params": { "what": "tips", "at": "Waste reservoir station number twelve on deck seven" },
+  "missing_required": [],
+  "unresolved_slots": [],
+  "expected_phrase": "discard tips at Waste reservoir station number twelve on",
+  "_comment": "FR-3 length rule: the full phrase ('discard tips at ' + the 51-char descriptor = 67 chars) exceeds PHRASE_MAX_CHARS=60, so the DESCRIPTOR alone is truncated on a word boundary to a 44-char budget (60 minus the fixed 'discard tips at ' prefix) and the phrase is REGENERATED from the truncated form. The user types exactly the string rendered."
+}

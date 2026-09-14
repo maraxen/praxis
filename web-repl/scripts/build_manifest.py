@@ -53,6 +53,15 @@ DEFAULT_REPO_ROOT = _THIS_FILE.parents[2]
 # and it is where manifest.json itself is written).
 SOURCE_SUBDIRS = ("shims", "python")
 
+#: FR-12/D2: the Coxswain asset directory is sha-tracked in the manifest ONLY
+#: under --with-coxswain (a default build's manifest carries no coxswain entry
+#: whatsoever -- AC-11's path-substring clause). These files are static browser
+#: assets, not bootstrap-fetched Python sources, so they live in a SEPARATE key
+#: the python bootstrap loader never reads -- adding them to `sources` would
+#: make transport.py fetch JS/CSS into the Pyodide VFS for nothing.
+COXSWAIN_ASSET_SUBDIR = "coxswain"
+COXSWAIN_ASSET_SUFFIXES = {".js", ".css"}
+
 # Directory names to always skip while walking for sources -- never fetched,
 # never part of the contract, and would silently bloat/drift the manifest.
 _SKIP_DIR_NAMES = {"__pycache__"}
@@ -173,6 +182,36 @@ def collect_wheels(wheels_dir: Path) -> list[dict]:
     return entries
 
 
+# --- coxswain assets array (flag-gated) -----------------------------------------
+
+
+def collect_coxswain_assets(overlay_dir: Path) -> list[dict]:
+    """sha256 entries for every staged Coxswain browser asset under
+    ``overlay/assets/coxswain/`` (*.js / *.css), keyed relative to overlay/
+    like the sources entries. Enumerated from disk, never hardcoded."""
+    subdir = overlay_dir / "assets" / COXSWAIN_ASSET_SUBDIR
+    if not subdir.is_dir():
+        raise ManifestError(
+            f"--with-coxswain was passed but {subdir} does not exist -- there are "
+            "no Coxswain assets to track. Refusing to write an empty claim."
+        )
+    entries = []
+    for path in sorted(subdir.rglob("*")):
+        if any(part in _SKIP_DIR_NAMES for part in path.relative_to(subdir).parts[:-1]):
+            continue
+        if path.suffix.lower() not in COXSWAIN_ASSET_SUFFIXES:
+            continue
+        rel = path.relative_to(overlay_dir).as_posix()
+        entries.append({"path": rel, "sha256": _sha256_file(path)})
+    if not entries:
+        raise ManifestError(
+            f"{subdir} contains no *.js/*.css assets -- refusing to track nothing "
+            "under --with-coxswain."
+        )
+    entries.sort(key=lambda e: e["path"])
+    return entries
+
+
 # --- sources array -------------------------------------------------------------
 
 
@@ -229,7 +268,9 @@ def collect_sources(overlay_dir: Path) -> list[dict]:
 # --- manifest assembly + atomic write ------------------------------------------
 
 
-def build_manifest(*, web_repl_root: Path, repo_root: Path, dev: bool) -> dict:
+def build_manifest(
+    *, web_repl_root: Path, repo_root: Path, dev: bool, with_coxswain: bool = False
+) -> dict:
     overlay_dir = web_repl_root / "overlay"
     wheels_dir = overlay_dir / "assets" / "wheels"
     if not wheels_dir.is_dir():
@@ -245,11 +286,16 @@ def build_manifest(*, web_repl_root: Path, repo_root: Path, dev: bool) -> dict:
         )
     sources = collect_sources(overlay_dir)
     praxis_git_sha = DEV_SENTINEL if dev else _git_head(repo_root)
-    return {
+    manifest = {
         "praxis_git_sha": praxis_git_sha,
         "wheels": wheels,
         "sources": sources,
     }
+    if with_coxswain:
+        # Key present ONLY under the flag: a default manifest is byte-identical
+        # to its pre-coxswain shape for identical inputs (AC-11/RISK-14).
+        manifest["coxswain_assets"] = collect_coxswain_assets(overlay_dir)
+    return manifest
 
 
 def write_manifest_atomic(manifest: dict, dest: Path) -> None:
@@ -318,6 +364,17 @@ def verify_manifest(manifest: dict, *, web_repl_root: Path) -> list[str]:
                 f"source sha256 mismatch: {entry['path']} "
                 f"manifest={entry['sha256']} disk={actual_sha}"
             )
+    for entry in manifest.get("coxswain_assets", []):
+        path = overlay_dir / entry["path"]
+        if not path.is_file():
+            problems.append(f"coxswain asset missing on disk: {entry['path']}")
+            continue
+        actual_sha = _sha256_file(path)
+        if actual_sha != entry["sha256"]:
+            problems.append(
+                f"coxswain asset sha256 mismatch: {entry['path']} "
+                f"manifest={entry['sha256']} disk={actual_sha}"
+            )
     return problems
 
 
@@ -326,6 +383,14 @@ def verify_manifest(manifest: dict, *, web_repl_root: Path) -> list[str]:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--with-coxswain",
+        action="store_true",
+        help="Also sha-track overlay/assets/coxswain/*.{js,css} under the "
+        "manifest's 'coxswain_assets' key. Without this flag the generated "
+        "manifest carries no coxswain entries at all (FR-12/AC-11). Must match "
+        "the flag passed to build_repl.py.",
+    )
     parser.add_argument(
         "--dev",
         action="store_true",
@@ -388,7 +453,10 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         manifest = build_manifest(
-            web_repl_root=web_repl_root, repo_root=args.repo_root.resolve(), dev=args.dev
+            web_repl_root=web_repl_root,
+            repo_root=args.repo_root.resolve(),
+            dev=args.dev,
+            with_coxswain=args.with_coxswain,
         )
         write_manifest_atomic(manifest, dest)
     except ManifestError as exc:

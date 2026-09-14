@@ -140,6 +140,16 @@ _PLACEHOLDER_RE = re.compile(r"\{\{[^}]*\}\}")
 # 2.1/4.2; spec R18). Do not shorten or rename either directory.
 _AUGMENTATION_TAG = '<script type="module" src="../visualizer-augmentations/index.js"></script>'
 
+# The SECOND module tag (W4, deviation D-C / FR-12): the Coxswain highlight
+# subscriber, injected ONLY into the STAGED dist copy of visualizer/index.html
+# by build_repl.py under --with-coxswain -- NEVER during vendor(). The tracked
+# overlay/assets/visualizer/index.html ships in EVERY build and must stay
+# coxswain-free (AC-11 clause 3), which is why this lives beside the
+# augmentation tag machinery but is invoked from the build's post-staging step.
+# The relative path inherits the augmentation tag's sibling constraint:
+# coxswain/ must remain a sibling of visualizer/ under overlay/assets/.
+_COXSWAIN_HIGHLIGHT_TAG = '<script type="module" src="../coxswain/viz_highlight.js"></script>'
+
 # Konva 8.4.3 provenance (R4). Sourced from cdnjs, not the unpkg URL upstream
 # declares in index.html -- unpkg.com is unreachable from this sandbox (curl
 # -> 000). Version-pinned and banner/md5-verified here; never byte-diffed
@@ -285,6 +295,37 @@ def inject_augmentation_tag(html: str) -> str:
             f"before, found {n_body_close}. Context:\n\n{_format_context_blocks(blocks)}"
         )
     return html.replace("</body>", f"    {_AUGMENTATION_TAG}\n  </body>")
+
+
+def inject_coxswain_highlight_tag(html: str) -> str:
+    """BUILD-TIME ONLY (never inside vendor()): append the Coxswain highlight
+    subscriber tag right after the augmentation tag, before </body>.
+
+    "Alongside -- never instead of" (FR-12): the augmentation tag must already
+    be present exactly once, and the result carries both. Idempotence is a
+    guard, not a feature: a second call raises, because a doubled subscriber
+    would draw every highlight twice and the mistake belongs in CI, not on a
+    user's screen."""
+    n_aug = html.count(_AUGMENTATION_TAG)
+    if n_aug != 1:
+        raise VendorError(
+            f"expected exactly one augmentation tag to anchor the coxswain "
+            f"highlight tag beside, found {n_aug}. Context:\n\n"
+            f"{_format_context_blocks(_locate_context(html, 'visualizer-augmentations'))}"
+        )
+    if _COXSWAIN_HIGHLIGHT_TAG in html:
+        raise VendorError("coxswain highlight tag is already present; refusing to double-inject")
+    n_body_close = html.count("</body>")
+    if n_body_close != 1:
+        blocks = _locate_context(html, "</body>", n_context=10)
+        raise VendorError(
+            f"expected exactly one </body> tag to inject the coxswain highlight "
+            f"tag before, found {n_body_close}. Context:\n\n{_format_context_blocks(blocks)}"
+        )
+    return html.replace(
+        _AUGMENTATION_TAG,
+        f"{_AUGMENTATION_TAG}\n    {_COXSWAIN_HIGHLIGHT_TAG}",
+    )
 
 
 def find_leftover_external_urls(html: str) -> list[str]:

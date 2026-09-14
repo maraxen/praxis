@@ -203,6 +203,21 @@ def _bootstrap_self_fetch_routes() -> dict[str, tuple[int, str]]:
     return routes
 
 
+@pytest.fixture(autouse=True)
+def _clean_builtin_shims():
+    """stages.apply() staples Web* shim classes DIRECTLY onto builtins, which
+    monkeypatch cannot unwind. Without this cleanup the leak reaches
+    test_rid_invariant's defensive precondition (builtins must be shim-free)
+    whenever both modules run in one process -- a cross-module pollution bug,
+    fixed here at the only module that causes it."""
+    yield
+    import builtins
+
+    for name in ("WebSerial", "WebUSB", "WebHID", "WebFTDI"):
+        if hasattr(builtins, name):
+            delattr(builtins, name)
+
+
 @pytest.fixture()
 def loader(tmp_path, monkeypatch):
     """Import a fresh ``praxis_bootstrap`` module per test, running with cwd

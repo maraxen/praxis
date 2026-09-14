@@ -1,0 +1,11 @@
+{
+  "utterance": "transfer 50 uL from A1 to B3",
+  "name": "transfer",
+  "verb": "transfer to",
+  "receiver_type": "liquid_handler",
+  "params": { "source": "A1", "destination": "B3", "volume_ul": 50 },
+  "missing_required": [],
+  "unresolved_slots": [],
+  "expected_phrase": "transfer to B3",
+  "_comment": "FR-3: single target; the volume quantity never appears in the phrase. destination wins over source by TARGET_KEYS order, not by param insertion order."
+}

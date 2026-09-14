@@ -1,0 +1,11 @@
+{
+  "utterance": "read the absorbance at A1",
+  "name": "read_absorbance",
+  "verb": "read",
+  "receiver_type": "plate_reader",
+  "params": { "at": "A1", "wavelength_nm": 600 },
+  "missing_required": [],
+  "unresolved_slots": [],
+  "expected_phrase": "read A1",
+  "_comment": "FR-3 derivation is uniform across tiers even though read_only calls never render a confirm field. No noun key is present, so the object phrase degrades to the bare location descriptor; the numeric wavelength must never appear."
+}

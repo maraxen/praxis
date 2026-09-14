@@ -16,6 +16,7 @@ on:
     # rejected or silently mis-parsed.
     paths:
       - 'web-repl/**'
+      - 'coxswain/**'
       - 'scripts/repl_smoke.py'
       - 'external/pylabrobot'
       - '.github/workflows/repl.yml'
@@ -24,6 +25,7 @@ on:
   pull_request:
     paths:
       - 'web-repl/**'
+      - 'coxswain/**'
       - 'scripts/repl_smoke.py'
       - 'external/pylabrobot'
       - '.github/workflows/repl.yml'
@@ -146,6 +148,17 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --notebook-check --base-path /praxis/
 
+      # A brand-new notebook is not covered by --notebook-check: that runs
+      # welcome.ipynb, which carries its own build-stamped HOST_ROOT and its own
+      # fetch-and-exec cell. This runs the two lines a user is actually told to
+      # type in a notebook they created, in a bare kernel, and then checks BOTH
+      # that pylabrobot imports and that its Serial is the browser shim --
+      # praxis_main() never re-raises, so awaiting it proves nothing on its own.
+      - name: Fresh notebook bootstraps in two lines
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --fresh-boot-check --base-path /praxis/
+
       # Completion has three tiers and they see different things. build_repl.py's
       # assert_completion_autocompletion already covered tier 1 (the setting reached
       # the runtime config) during the build step above. These two cover the rest:
@@ -212,3 +225,53 @@ jobs:
             web-repl/dist/jupyter-lite.json
             web-repl/dist/api/contents/all.json
           if-no-files-found: ignore
+
+  # Coxswain W1.0 (260824_coxswain-mvp-ux-spec.md). The root pyproject sets
+  # testpaths = ["tests"], so ci.yml never collects coxswain/tests; this job
+  # runs them via an explicit path argument, which overrides testpaths.
+  # coxswain/pyproject.toml carries its own [tool.pytest.ini_options]
+  # (--no-cov) so the root --cov addopts do not leak into this run.
+  # `bun test web-repl/shell/coxswain` needs no package.json by design; the
+  # harness under that directory was observed failing as well as passing
+  # before it was depended on here (same rule as every gate above).
+  coxswain:
+    name: Coxswain pytest + JS harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONDONTWRITEBYTECODE: 1
+
+    steps:
+      # submodules: recursive is LOAD-BEARING here too (see the repl job): the
+      # root pyproject resolves `pylabrobot` as a path dependency on
+      # external/pylabrobot, so even `uv run pytest coxswain/tests` fails in its
+      # implicit env sync on a bare checkout ("does not appear to be a Python
+      # project"). Observed failing exactly that way before this line landed.
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      # --all-packages, not a bare `uv run`: coxswain is a uv WORKSPACE MEMBER
+      # but the root project does not depend on it, so the default sync installs
+      # only the root env and `import coxswain` fails at collection
+      # (ModuleNotFoundError). --all-packages installs every member; --no-sync
+      # then keeps pytest from re-syncing the member back out.
+      - name: Coxswain Python tests
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv sync --all-packages
+          uv run --no-sync pytest coxswain/tests -q
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Coxswain JS harness
+        run: bun test web-repl/shell/coxswain
