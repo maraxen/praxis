@@ -1,0 +1,9 @@
+{
+ "cache_key": "048a1f30fa2be243d6329cbdc0594dfcb1b18805e4ee29dadbc084c7edf62238",
+ "fetched_at": "2026-08-25T22:08:03.940349+00:00",
+ "input_hash": "263cd4828127bf9166e3b0a4572ca16812f29f4c2732d65a0a0f40af67042405",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Please aspirate 15, 20, and 100 microliters from the same well.\",\n\"clarification\": null\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

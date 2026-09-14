@@ -55,6 +55,39 @@ PLR_RESOURCE_TYPES: frozenset[str] = frozenset({
   "Machine",
 })
 
+# The "Machine frontends" + "Base machine class" subset of PLR_RESOURCE_TYPES
+# above -- receivers/drivers of operations (e.g. `lh.aspirate(...)`), never
+# themselves a placeable, deck-sited resource. `PLR_RESOURCE_TYPES` widened to
+# include these (b5635334) so `is_pylabrobot_resource` correctly treats a
+# machine parameter as an "asset that needs to be acquired at runtime" (see
+# that function's own docstring) -- but a consumer that specifically models
+# physical deck placement (e.g. `computation_graph_extractor.py`'s
+# `RESOURCE_ON_DECK` precondition, backlog #4951) must exclude this subset:
+# a `LiquidHandler` parameter is the instrument doing the placing, not
+# something placed. Kept as a literal, explicitly-maintained subset (not
+# derived) so a `PLR_RESOURCE_TYPES` edit can't silently widen or narrow it;
+# `tests/utils/test_type_inspection.py`'s
+# `test_machine_frontend_types_is_a_subset_of_plr_resource_types` is the
+# guard that keeps the two in sync.
+PLR_MACHINE_FRONTEND_TYPES: frozenset[str] = frozenset({
+  "LiquidHandler",
+  "PlateReader",
+  "HeaterShaker",
+  "Shaker",
+  "TemperatureController",
+  "Centrifuge",
+  "Thermocycler",
+  "Pump",
+  "PumpArray",
+  "Fan",
+  "Sealer",
+  "Peeler",
+  "PowderDispenser",
+  "Incubator",
+  "SCARA",
+  "Machine",
+})
+
 # Regex pattern for extracting resource types from string type hints
 _PLR_RESOURCE_PATTERN = re.compile(
   r"\b(" + "|".join(sorted(PLR_RESOURCE_TYPES, key=len, reverse=True)) + r")\b"

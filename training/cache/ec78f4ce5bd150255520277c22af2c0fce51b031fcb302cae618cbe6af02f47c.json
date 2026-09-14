@@ -1,0 +1,9 @@
+{
+ "cache_key": "ec78f4ce5bd150255520277c22af2c0fce51b031fcb302cae618cbe6af02f47c",
+ "fetched_at": "2026-09-02T15:17:12.230942+00:00",
+ "input_hash": "1cb8b8273d88495d85fdf8931c073c78acb7fb70fbbe5119b69f3f8726e16432",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Move liquid into well B7 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

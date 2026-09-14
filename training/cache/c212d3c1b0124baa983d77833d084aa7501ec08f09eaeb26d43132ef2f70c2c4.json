@@ -1,0 +1,9 @@
+{
+ "cache_key": "c212d3c1b0124baa983d77833d084aa7501ec08f09eaeb26d43132ef2f70c2c4",
+ "fetched_at": "2026-09-01T21:11:59.055407+00:00",
+ "input_hash": "6dfeb60c2535a5844f1c9e8a984d47547426b98b3e50dac14a25a93a069dc827",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Stamp all wells from plate_2 into plate_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

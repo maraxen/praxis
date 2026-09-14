@@ -1,0 +1,9 @@
+{
+ "cache_key": "fdd50f7b8de17b5096610f78acfd1178ffe706377ab7e66c39b75462f5f3983f",
+ "fetched_at": "2026-09-03T15:10:30.071497+00:00",
+ "input_hash": "da00bb03d78661b8b893adcaff9ce63aecdcf8cac825afc601efd6886aacecb5",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you write a poem about working in a chemistry lab?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

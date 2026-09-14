@@ -1,0 +1,9 @@
+{
+ "cache_key": "54d7e2b418b6ffdf9f96d1df8d86d6e7cca9d5ea28dbaba5de46925446b5b6e9",
+ "fetched_at": "2026-09-01T21:20:04.904749+00:00",
+ "input_hash": "346d5fa740fae01da6ac79c8747fe879e5a3ae8eaa27d6bcc481d6dcbf53adde",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure luminescence in well B6.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

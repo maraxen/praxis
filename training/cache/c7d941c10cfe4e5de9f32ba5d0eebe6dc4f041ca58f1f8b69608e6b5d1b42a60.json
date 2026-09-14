@@ -1,0 +1,9 @@
+{
+ "cache_key": "c7d941c10cfe4e5de9f32ba5d0eebe6dc4f041ca58f1f8b69608e6b5d1b42a60",
+ "fetched_at": "2026-09-03T15:01:46.237407+00:00",
+ "input_hash": "3080a6c01da69cbeba02096bde86280726a76554714b6711056b347382a37049",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you touch the tip ends against the well wall to take off any hanging liquid droplets?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

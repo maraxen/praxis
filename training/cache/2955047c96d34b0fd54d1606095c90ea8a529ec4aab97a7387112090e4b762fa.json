@@ -1,0 +1,9 @@
+{
+ "cache_key": "2955047c96d34b0fd54d1606095c90ea8a529ec4aab97a7387112090e4b762fa",
+ "fetched_at": "2026-09-01T21:06:42.751331+00:00",
+ "input_hash": "71717d00fad35fea1ebb6da7c76c63ea1a3c393a914eef9d46f03f625eb47a7c",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Aspirate 100 and 15 microliters into the channels.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

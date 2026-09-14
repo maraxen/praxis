@@ -1,0 +1,9 @@
+{
+ "cache_key": "4f25092a94a85ca78c21e918ba95392026fb65b2b2c4b107c2ec5bae05d20ca7",
+ "fetched_at": "2026-09-01T21:15:51.552001+00:00",
+ "input_hash": "56d646abc91b058722999b5d9f8a536a18a373b28bd1411fcfb9a3489c7c8252",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I cannot adjust or stop heater shaker operations. If you need, I can help move the plate or resource once shaking has finished.\", \"utterance\": \"Please halt the shaking on the heater shaker.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "0a7a210fd7628fe52464844486f432878ea027c6c023d6ccefae6b436d0fe844",
+ "fetched_at": "2026-08-28T18:04:38.511090+00:00",
+ "input_hash": "968057328413944759f87e2f7f86068404acd6d33eca8842267c25d52dd605c6",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the absorbance at 540 nm at wells D10 and E6.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

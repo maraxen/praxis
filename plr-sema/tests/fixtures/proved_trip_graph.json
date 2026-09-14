@@ -1,0 +1,405 @@
+{
+  "protocol_fqn": "fixtures.proved_trip.proved_trip_protocol",
+  "protocol_name": "proved_trip_protocol",
+  "operations": [
+    {
+      "id": "op_1",
+      "line_number": 0,
+      "method_name": "pick_up_tips",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "tips"
+      },
+      "node_type": "dynamic",
+      "preconditions": [],
+      "creates_state": [
+        "tips_loaded"
+      ],
+      "depends_on_params": [
+        "tips"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_2",
+      "line_number": 0,
+      "method_name": "",
+      "receiver_variable": "",
+      "receiver_type": null,
+      "arguments": {},
+      "node_type": "region",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": "proved_source_0",
+      "foreach_body": [
+        "op_1"
+      ],
+      "trip": 3,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_3",
+      "line_number": 0,
+      "method_name": "pick_up_tips",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "tips"
+      },
+      "node_type": "dynamic",
+      "preconditions": [],
+      "creates_state": [
+        "tips_loaded"
+      ],
+      "depends_on_params": [
+        "tips"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_4",
+      "line_number": 0,
+      "method_name": "",
+      "receiver_variable": "",
+      "receiver_type": null,
+      "arguments": {},
+      "node_type": "region",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": "proved_source_1",
+      "foreach_body": [
+        "op_3"
+      ],
+      "trip": 4,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_5",
+      "line_number": 0,
+      "method_name": "pick_up_tips",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "tips"
+      },
+      "node_type": "dynamic",
+      "preconditions": [],
+      "creates_state": [
+        "tips_loaded"
+      ],
+      "depends_on_params": [
+        "tips"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_6",
+      "line_number": 0,
+      "method_name": "",
+      "receiver_variable": "",
+      "receiver_type": null,
+      "arguments": {},
+      "node_type": "region",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": "proved_source_2",
+      "foreach_body": [
+        "op_5"
+      ],
+      "trip": 3,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_7",
+      "line_number": 0,
+      "method_name": "pick_up_tips",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "tips"
+      },
+      "node_type": "dynamic",
+      "preconditions": [],
+      "creates_state": [
+        "tips_loaded"
+      ],
+      "depends_on_params": [
+        "tips"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_8",
+      "line_number": 0,
+      "method_name": "",
+      "receiver_variable": "",
+      "receiver_type": null,
+      "arguments": {},
+      "node_type": "region",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": "proved_source_3",
+      "foreach_body": [
+        "op_7"
+      ],
+      "trip": 12,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_9",
+      "line_number": 0,
+      "method_name": "pick_up_tips",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "tips"
+      },
+      "node_type": "dynamic",
+      "preconditions": [],
+      "creates_state": [
+        "tips_loaded"
+      ],
+      "depends_on_params": [
+        "tips"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_10",
+      "line_number": 0,
+      "method_name": "",
+      "receiver_variable": "",
+      "receiver_type": null,
+      "arguments": {},
+      "node_type": "region",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": "proved_source_4",
+      "foreach_body": [
+        "op_9"
+      ],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_11",
+      "line_number": 0,
+      "method_name": "pick_up_tips",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "tips"
+      },
+      "node_type": "dynamic",
+      "preconditions": [],
+      "creates_state": [
+        "tips_loaded"
+      ],
+      "depends_on_params": [
+        "tips"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_12",
+      "line_number": 0,
+      "method_name": "",
+      "receiver_variable": "",
+      "receiver_type": null,
+      "arguments": {},
+      "node_type": "region",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": "proved_source_5",
+      "foreach_body": [
+        "op_11"
+      ],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_13",
+      "line_number": 0,
+      "method_name": "pick_up_tips",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "tips"
+      },
+      "node_type": "dynamic",
+      "preconditions": [],
+      "creates_state": [
+        "tips_loaded"
+      ],
+      "depends_on_params": [
+        "tips"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_14",
+      "line_number": 0,
+      "method_name": "",
+      "receiver_variable": "",
+      "receiver_type": null,
+      "arguments": {},
+      "node_type": "region",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": "proved_source_6",
+      "foreach_body": [
+        "op_13"
+      ],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_15",
+      "line_number": 0,
+      "method_name": "pick_up_tips",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {
+        "resource": "tips"
+      },
+      "node_type": "dynamic",
+      "preconditions": [],
+      "creates_state": [
+        "tips_loaded"
+      ],
+      "depends_on_params": [
+        "tips"
+      ],
+      "foreach_source": null,
+      "foreach_body": [],
+      "trip": null,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_16",
+      "line_number": 0,
+      "method_name": "",
+      "receiver_variable": "",
+      "receiver_type": null,
+      "arguments": {},
+      "node_type": "region",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": "proved_source_7",
+      "foreach_body": [
+        "op_15"
+      ],
+      "trip": 0,
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    }
+  ],
+  "resources": {
+    "lh": {
+      "variable_name": "lh",
+      "declared_type": "LiquidHandler",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": true,
+      "parental_chain": [],
+      "source_expression": null,
+      "items_x": null,
+      "items_y": null
+    },
+    "tips": {
+      "variable_name": "tips",
+      "declared_type": "TipRack",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": true,
+      "parental_chain": [
+        "TipCarrier",
+        "Deck"
+      ],
+      "source_expression": null,
+      "items_x": null,
+      "items_y": null
+    }
+  },
+  "preconditions": [],
+  "execution_order": [
+    "op_2",
+    "op_4",
+    "op_6",
+    "op_8",
+    "op_10",
+    "op_12",
+    "op_14",
+    "op_16"
+  ],
+  "machine_types": [
+    "LiquidHandler"
+  ],
+  "resource_types": [
+    "LiquidHandler",
+    "TipRack"
+  ],
+  "has_loops": true,
+  "has_conditionals": false
+}

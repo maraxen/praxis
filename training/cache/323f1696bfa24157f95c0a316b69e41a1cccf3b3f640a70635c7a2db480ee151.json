@@ -1,0 +1,9 @@
+{
+ "cache_key": "323f1696bfa24157f95c0a316b69e41a1cccf3b3f640a70635c7a2db480ee151",
+ "fetched_at": "2026-09-02T17:18:30.875047+00:00",
+ "input_hash": "af86029c7092f5ba021c42edb525812e3ce839e99c7f93f072b611f059deec57",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Set plate 1 down in hotel stack 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

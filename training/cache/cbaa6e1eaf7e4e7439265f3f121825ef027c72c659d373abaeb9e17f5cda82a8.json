@@ -1,0 +1,9 @@
+{
+ "cache_key": "cbaa6e1eaf7e4e7439265f3f121825ef027c72c659d373abaeb9e17f5cda82a8",
+ "fetched_at": "2026-09-02T17:17:58.391405+00:00",
+ "input_hash": "f35c4e1f57da4b2523c6a4ff7c7f487443f7d1d9f2a6b85652dc2e6b50432bd8",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please carry the reservoir to reservoir 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

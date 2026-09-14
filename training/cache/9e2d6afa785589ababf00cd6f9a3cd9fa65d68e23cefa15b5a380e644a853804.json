@@ -1,0 +1,9 @@
+{
+ "cache_key": "9e2d6afa785589ababf00cd6f9a3cd9fa65d68e23cefa15b5a380e644a853804",
+ "fetched_at": "2026-09-02T16:52:15.310100+00:00",
+ "input_hash": "00924ca661740ab3ee44c3ae5816a4da6d7816d6d66fa5681548cdd7b688b795",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure absorbance at 650 nm for wells A9, D9, G5, and H1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

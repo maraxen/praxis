@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:14:40Z",
+ "key": "6fd76453a53020dd15f4e897624247b61e38be641642fb0f4db6949235c46042",
+ "prompt_sha256": "6fd76453a53020dd15f4e897624247b61e38be641642fb0f4db6949235c46042",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Pick up tips from tiprack A1:C1.\nPlease take tips from tiprack A1:C1.\nGet tips from tiprack A1:C1.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

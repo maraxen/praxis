@@ -1,0 +1,9 @@
+{
+ "cache_key": "fd2a52043d150d159635bc1112292c90db4be45c84368597d79c9dbaeead8355",
+ "fetched_at": "2026-09-01T21:16:07.346347+00:00",
+ "input_hash": "2a9cb71babe3a986b9e5a031205555b217272b1751979d9686573d9adee0b945",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Move resource scale_station_1 over to reservoir_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

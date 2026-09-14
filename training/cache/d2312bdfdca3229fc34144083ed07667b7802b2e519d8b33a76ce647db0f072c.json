@@ -1,0 +1,9 @@
+{
+ "cache_key": "d2312bdfdca3229fc34144083ed07667b7802b2e519d8b33a76ce647db0f072c",
+ "fetched_at": "2026-09-01T21:20:04.905127+00:00",
+ "input_hash": "b3a9ee3dedcc7ea1cd20c0f8d88a616c312e3f35666511fbdf1c1a6188fbb437",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the plate's luminescence.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

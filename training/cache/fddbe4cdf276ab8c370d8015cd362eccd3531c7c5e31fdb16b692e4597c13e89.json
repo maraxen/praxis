@@ -1,0 +1,9 @@
+{
+ "cache_key": "fddbe4cdf276ab8c370d8015cd362eccd3531c7c5e31fdb16b692e4597c13e89",
+ "fetched_at": "2026-09-01T21:11:15.145357+00:00",
+ "input_hash": "feef851715248b4195960cddae0870321cb36d93700b76da18df78ebc7405b66",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer the whole layout by stamping 150.0 microliters from plate_2 to plate_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "2e1001a6c8a5aa8a8425adf5348e42b13d7392b7f8b3de757bcf6e8888152708",
+ "fetched_at": "2026-09-02T15:57:20.056156+00:00",
+ "input_hash": "cae424b23c79906dcf5ebe14691b42cf00a9cd07e6a8fee0d6abf79dab51f19e",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you put the tips back into the tip rack?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

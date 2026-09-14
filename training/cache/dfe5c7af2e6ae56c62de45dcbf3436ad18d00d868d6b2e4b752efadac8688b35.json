@@ -1,0 +1,9 @@
+{
+ "cache_key": "dfe5c7af2e6ae56c62de45dcbf3436ad18d00d868d6b2e4b752efadac8688b35",
+ "fetched_at": "2026-09-02T16:30:53.773503+00:00",
+ "input_hash": "d8a359a2f3d5ba1fba3eff9f11240ae281f893055e56b42241c6f3396f6388c7",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Grab new tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

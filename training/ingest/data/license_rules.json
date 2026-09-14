@@ -1,0 +1,98 @@
+{
+  "license_rules_version": "1",
+  "rules": [
+    {
+      "spdx_id": "MIT",
+      "all_of": [
+        "permission is hereby granted, free of charge",
+        "the software is provided \"as is\""
+      ],
+      "none_of": [],
+      "verdict": "permissive",
+      "added_in_version": "1",
+      "justification": "Canonical MIT license detection"
+    },
+    {
+      "spdx_id": "BSD-3-Clause",
+      "all_of": [
+        "redistributions of source code must retain",
+        "neither the name of"
+      ],
+      "none_of": [],
+      "verdict": "permissive",
+      "added_in_version": "1",
+      "justification": "Canonical BSD-3-Clause license detection"
+    },
+    {
+      "spdx_id": "BSD-2-Clause",
+      "all_of": [
+        "redistributions of source code must retain"
+      ],
+      "none_of": [
+        "neither the name of"
+      ],
+      "verdict": "permissive",
+      "added_in_version": "1",
+      "justification": "Canonical BSD-2-Clause license detection"
+    },
+    {
+      "spdx_id": "Apache-2.0",
+      "all_of": [
+        "apache license",
+        "version 2.0, january 2004"
+      ],
+      "none_of": [],
+      "verdict": "permissive",
+      "added_in_version": "1",
+      "justification": "Canonical Apache-2.0 license detection"
+    },
+    {
+      "spdx_id": "AGPL-3.0-only",
+      "all_of": [
+        "gnu affero general public license"
+      ],
+      "none_of": [],
+      "verdict": "copyleft",
+      "added_in_version": "1",
+      "justification": "Canonical AGPL-3.0 license detection"
+    },
+    {
+      "spdx_id": "GPL-3.0-only",
+      "all_of": [
+        "gnu general public license",
+        "version 3"
+      ],
+      "none_of": [
+        "affero",
+        "lesser"
+      ],
+      "verdict": "copyleft",
+      "added_in_version": "1",
+      "justification": "Canonical GPL-3.0 license detection"
+    },
+    {
+      "spdx_id": "GPL-2.0-only",
+      "all_of": [
+        "gnu general public license",
+        "version 2"
+      ],
+      "none_of": [
+        "affero",
+        "lesser"
+      ],
+      "verdict": "copyleft",
+      "added_in_version": "1",
+      "justification": "Canonical GPL-2.0 license detection"
+    },
+    {
+      "spdx_id": "LGPL-3.0-only",
+      "all_of": [
+        "gnu lesser general public license"
+      ],
+      "none_of": [],
+      "verdict": "copyleft",
+      "added_in_version": "1",
+      "justification": "Canonical LGPL-3.0 license detection"
+    }
+  ]
+}

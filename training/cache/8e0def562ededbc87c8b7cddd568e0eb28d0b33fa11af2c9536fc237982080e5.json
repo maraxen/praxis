@@ -1,0 +1,9 @@
+{
+ "cache_key": "8e0def562ededbc87c8b7cddd568e0eb28d0b33fa11af2c9536fc237982080e5",
+ "fetched_at": "2026-09-02T15:08:07.909865+00:00",
+ "input_hash": "e35efa37254d71884cbaca8f843536d23af0fb1008cf0236f8079bc50f21831a",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Draw up 25 microliters.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

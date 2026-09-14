@@ -1,0 +1,9 @@
+{
+ "cache_key": "293143c7229eda9ca8f6d53c390abf5332cf62a4ddab46cb1dddd744230321a4",
+ "fetched_at": "2026-09-03T14:58:26.786570+00:00",
+ "input_hash": "a50bb66b1d22594d0c2ce3a1721c618ba4a29adf1240fce319eebfa2f69abb28",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please pipette up and down 5 times to mix the sample in well A1 before transferring 50 uL over to plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

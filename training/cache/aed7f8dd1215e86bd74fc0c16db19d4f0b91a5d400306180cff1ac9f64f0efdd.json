@@ -1,0 +1,9 @@
+{
+ "cache_key": "aed7f8dd1215e86bd74fc0c16db19d4f0b91a5d400306180cff1ac9f64f0efdd",
+ "fetched_at": "2026-09-03T15:10:49.179087+00:00",
+ "input_hash": "a60984948bfdaca317b10c176d2e65ded21c252070d05c426ae6bd39054f24ef",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you give me a recipe for making homemade chocolate cake?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "daffd72b3b5b7d224e27005211d5d3fd5f4b0a618c50749e22412589dc912925",
+ "fetched_at": "2026-09-02T20:33:43.088072+00:00",
+ "input_hash": "67d3ded61cb64f0620c6964ed14abf7973c054c32865c7dc6de34b2d1b2d8715",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and measure luminescence on the plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

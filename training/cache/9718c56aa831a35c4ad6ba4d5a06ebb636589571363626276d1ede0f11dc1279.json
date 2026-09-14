@@ -1,0 +1,9 @@
+{
+ "cache_key": "9718c56aa831a35c4ad6ba4d5a06ebb636589571363626276d1ede0f11dc1279",
+ "fetched_at": "2026-09-02T16:15:15.643618+00:00",
+ "input_hash": "213304d489829e545b5f8b0bcb7aab55670451735c72f3faf0b40b41726a5198",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you read the OD for the plate loaded in the reader?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

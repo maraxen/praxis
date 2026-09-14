@@ -1,0 +1,9 @@
+{
+ "cache_key": "4d55508bcb9466969c76393eeca433d1d7f80064b6740a759fcb2688b55b1f7d",
+ "fetched_at": "2026-09-01T21:11:59.055856+00:00",
+ "input_hash": "04d12f243c629979a17f55dadef38448fe7bc8a0649f6a2fd827448a919298c2",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Stamp 25 uL per well from plate_2 over to the plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

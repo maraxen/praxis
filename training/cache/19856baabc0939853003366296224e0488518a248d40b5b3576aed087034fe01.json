@@ -1,0 +1,9 @@
+{
+ "cache_key": "19856baabc0939853003366296224e0488518a248d40b5b3576aed087034fe01",
+ "fetched_at": "2026-09-02T16:53:21.146935+00:00",
+ "input_hash": "3b5262f0a265292b61a8ea86b1d6dd374aa397258fda7699fd1e8d1641f75965",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Scan absorbance at 405 nm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

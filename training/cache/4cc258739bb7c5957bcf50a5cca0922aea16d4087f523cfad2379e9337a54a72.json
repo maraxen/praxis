@@ -1,0 +1,9 @@
+{
+ "cache_key": "4cc258739bb7c5957bcf50a5cca0922aea16d4087f523cfad2379e9337a54a72",
+ "fetched_at": "2026-09-03T15:02:01.641667+00:00",
+ "input_hash": "525e4127d165ca4ad1f77eb4695de029858c8b37ea98ec38ea4abe12db474156",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Touch the tips against the well walls to knock off any remaining droplets.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

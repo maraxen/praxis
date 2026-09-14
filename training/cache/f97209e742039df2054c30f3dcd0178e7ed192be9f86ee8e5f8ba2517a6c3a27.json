@@ -1,0 +1,9 @@
+{
+ "cache_key": "f97209e742039df2054c30f3dcd0178e7ed192be9f86ee8e5f8ba2517a6c3a27",
+ "fetched_at": "2026-09-01T21:13:13.269378+00:00",
+ "input_hash": "37a681017b97a427817b29586b59f5c4eadff89a6d6b7e02b1ef5d7b2c2b359a",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"Controlling the heater-shaker's thermal settings is not supported. I can assist with moving plates to or from the module using move_plate or move_resource, or handling liquids with transfer, aspirate, and dispense.\", \"utterance\": \"Can you warm the heater-shaker to 37 \\u00b0C?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

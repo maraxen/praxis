@@ -1,0 +1,9 @@
+{
+ "cache_key": "e0a10d34c08e79762ebaef042885cfa9717fdfad25cb164e3ac69666eac1aafc",
+ "fetched_at": "2026-09-01T21:08:24.677374+00:00",
+ "input_hash": "98dfeec76a6d4959422d845819a31bb77a5d66b17b3d1147d44205677ca9d833",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Dispense 75.0 microliters into plate_2.A9.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

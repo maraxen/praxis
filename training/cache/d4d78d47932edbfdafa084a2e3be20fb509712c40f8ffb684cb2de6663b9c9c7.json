@@ -1,0 +1,9 @@
+{
+ "cache_key": "d4d78d47932edbfdafa084a2e3be20fb509712c40f8ffb684cb2de6663b9c9c7",
+ "fetched_at": "2026-08-28T18:02:06.866122+00:00",
+ "input_hash": "cc0ce3f954b72c5b867707f98bacb89ea49d1e2ec050208d2a99a76fd2f2d3de",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Pick up fresh pipette tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

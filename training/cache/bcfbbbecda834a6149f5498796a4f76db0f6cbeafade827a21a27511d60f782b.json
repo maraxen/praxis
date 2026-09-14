@@ -1,0 +1,9 @@
+{
+ "cache_key": "bcfbbbecda834a6149f5498796a4f76db0f6cbeafade827a21a27511d60f782b",
+ "fetched_at": "2026-09-02T15:16:37.272320+00:00",
+ "input_hash": "6ba4537f127a1c3a8e3970efc5ce55b16e33db669dec0b4cdd077215450ef63c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Move sample from plate 2, H9 to plate 2, G1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

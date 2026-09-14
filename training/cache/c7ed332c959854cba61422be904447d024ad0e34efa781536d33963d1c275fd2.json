@@ -1,0 +1,9 @@
+{
+ "cache_key": "c7ed332c959854cba61422be904447d024ad0e34efa781536d33963d1c275fd2",
+ "fetched_at": "2026-08-28T18:03:51.998151+00:00",
+ "input_hash": "9039f969e729c40f8da51558eeb2a08aeb50e6431ce52dfdaf47b204f4d4aca3",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please move plate_2 to reservoir_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

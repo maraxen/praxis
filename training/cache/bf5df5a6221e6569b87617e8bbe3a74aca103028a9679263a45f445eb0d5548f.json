@@ -1,0 +1,9 @@
+{
+ "cache_key": "bf5df5a6221e6569b87617e8bbe3a74aca103028a9679263a45f445eb0d5548f",
+ "fetched_at": "2026-09-02T15:12:06.519257+00:00",
+ "input_hash": "32a8b7ca2830355392bf80d0414dafd0e70b5f74838b54b4d6d3bd275a3263a5",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put the solution into well A11 of plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

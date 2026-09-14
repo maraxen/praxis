@@ -1,0 +1,9 @@
+{
+ "cache_key": "97b93a37c8149336f8bc32877227c43cd2e03921e7a5c864d285aeeab406d67d",
+ "fetched_at": "2026-09-02T15:36:39.272525+00:00",
+ "input_hash": "a40708fae173bc545bc9f20da58e89b98b04dcea399ddd40fe5140d68c0da8ed",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Replicate plate 2 onto plate 1, transferring 150 microliters per well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

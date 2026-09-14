@@ -508,6 +508,7 @@ class GraphNodeType(str, Enum):
   DYNAMIC = "dynamic"  # Requires runtime data
   CONDITIONAL = "conditional"  # Branches based on runtime value
   FOREACH = "foreach"  # Loop over collection
+  REGION = "region"  # A for/while/if region-header node; emits no CALL (spec §12.2.2)
 
 
 class PreconditionType(str, Enum):
@@ -552,6 +553,15 @@ class OperationNode(BaseModel):
     default=None, description="Variable being iterated (for foreach nodes)"
   )
   foreach_body: list[str] = Field(default_factory=list, description="Child node IDs in loop body")
+  trip: int | None = Field(
+    default=None,
+    description=(
+      "Proved trip count for a REGION loop header, or null when unprovable "
+      "(spec §12.2.3: range()/list-display/items_x-or-items_y literals only, "
+      "withdrawn by a Continue anywhere in the body; a while region is always "
+      "null). Meaningless outside a REGION node whose foreach_body is set."
+    ),
+  )
 
   # For conditional nodes
   condition_expr: str | None = Field(default=None, description="Condition expression")

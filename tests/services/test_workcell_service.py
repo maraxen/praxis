@@ -4,14 +4,13 @@ from unittest.mock import AsyncMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums.workcell import WorkcellStatusEnum
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.workcell import (
-    Workcell,
     WorkcellCreate,
     WorkcellUpdate,
 )
+from praxis.backend.models.enums.workcell import WorkcellStatusEnum
 from praxis.backend.services.workcell import workcell_service
-from praxis.backend.models.domain.filters import SearchFilters
 
 
 @pytest.mark.asyncio

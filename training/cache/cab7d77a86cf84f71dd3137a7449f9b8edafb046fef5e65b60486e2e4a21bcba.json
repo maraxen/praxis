@@ -1,0 +1,9 @@
+{
+ "cache_key": "cab7d77a86cf84f71dd3137a7449f9b8edafb046fef5e65b60486e2e4a21bcba",
+ "fetched_at": "2026-09-01T21:19:08.653964+00:00",
+ "input_hash": "f5fd8c3b53ba4ae831070ac72f0f9a6895bd8ceb92f7219f982ca733c24e6dfc",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the plate absorbance at 540.0 nm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "49f9426197ea4fc00824c0946903f5314b8103d37e54faf52b240a7d577a0b68",
+ "fetched_at": "2026-09-01T21:20:04.905898+00:00",
+ "input_hash": "62c71912e45c931532cf13055cc2118c9c29bd2429551c735a1ee19b0e207201",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read luminescence in well E1 at a focal height of 10.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "cc6aa2cd80d0fd6ec72f3e8257ac6d1454b41b58828f3646f962b3b4d6b7555f",
+ "fetched_at": "2026-09-02T20:46:48.859610+00:00",
+ "input_hash": "3efad480d25115e302679dc53fdaa0a4ff5dc537dad1d9e1355bbf8cc23ec922",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please measure luminescence in wells D9 and H2 of the loaded plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

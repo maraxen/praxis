@@ -1,0 +1,9 @@
+{
+ "cache_key": "6bde05e8cce397c11d1e92d9d18c7aff72ed16fbdff9675a30e18eb2de024ce8",
+ "fetched_at": "2026-09-02T15:19:09.187251+00:00",
+ "input_hash": "85edf01d26db0c4e25ba6857bf85283d79685ea29f6461196c2483e91813b45f",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Carry liquid over to well E10 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "5262e6f0cbf794172317df4524a8d8761fd2f039bba7118c8ce93238cf276690",
+ "fetched_at": "2026-09-01T21:18:22.289430+00:00",
+ "input_hash": "edd9b31e03adb7436e8b7918a1228bd87b0e8e644b6f071529020b9f0b4cc1bd",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you move lid_1 to reservoir_1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

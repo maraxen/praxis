@@ -1,0 +1,9 @@
+{
+ "cache_key": "1f097dbeb942521028a596ff5b12ee4f3a657e9a705077c210c073963d475169",
+ "fetched_at": "2026-09-03T14:59:28.093325+00:00",
+ "input_hash": "6829a3d89c3cf5dd61fb4edc66f13ba9f6f077cb54c4adb38a3417b089034d42",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Draw and expel the liquid in well D2 a few times to homogenize it, then transfer 80 uL over to well D3.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

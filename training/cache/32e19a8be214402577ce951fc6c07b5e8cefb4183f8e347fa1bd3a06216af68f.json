@@ -1,0 +1,9 @@
+{
+ "cache_key": "32e19a8be214402577ce951fc6c07b5e8cefb4183f8e347fa1bd3a06216af68f",
+ "fetched_at": "2026-09-01T21:16:07.347116+00:00",
+ "input_hash": "2b1cb72df5621293314f6893ee180ef211f62733ba6572015cfd1ac2eb96d9ae",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please move to reservoir_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

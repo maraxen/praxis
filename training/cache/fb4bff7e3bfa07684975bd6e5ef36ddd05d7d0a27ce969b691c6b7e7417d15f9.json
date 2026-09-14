@@ -1,0 +1,9 @@
+{
+ "cache_key": "fb4bff7e3bfa07684975bd6e5ef36ddd05d7d0a27ce969b691c6b7e7417d15f9",
+ "fetched_at": "2026-09-02T20:50:18.158696+00:00",
+ "input_hash": "197cad22a5458715e54435eaa560535e55da594a401a02e29a6e006bab71c448",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please measure the luminescence of well F11 at a focal height of 5.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

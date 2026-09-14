@@ -1,0 +1,9 @@
+{
+ "cache_key": "781225a2e594ebac93947ba9808485e72f1a0c30f0e3dcd50c6836cdf6dd7dd7",
+ "fetched_at": "2026-09-02T20:19:22.791625+00:00",
+ "input_hash": "ed98b2cfff5a7e5e778ed4a52e7ea03df576e4561cd29f3ecddade31ce2c2f55",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Place the plate in hotel stack 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

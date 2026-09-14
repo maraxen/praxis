@@ -1,8 +1,9 @@
-import cloudpickle
-import sys
 import os
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock
+
+import cloudpickle
 
 # Add project root to path
 sys.path.append(os.getcwd())

@@ -12,7 +12,6 @@ import typing
 
 from praxis.backend.utils.async_run import run_sync
 
-
 _orig_asyncio_run = asyncio.run
 
 
@@ -57,12 +56,12 @@ from tests.factories import (
   FunctionCallLogFactory,
   FunctionDataOutputFactory,
   FunctionProtocolDefinitionFactory,
+  MachineFactory,
   ProtocolRunFactory,
   ResourceDefinitionFactory,
   ResourceFactory,
   WellDataOutputFactory,
   WorkcellFactory,
-  MachineFactory,
 )
 
 

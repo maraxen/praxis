@@ -1,0 +1,9 @@
+{
+ "cache_key": "f4dc1e98098a2050ed145bc1f672c64664aad391d6d1dc5f25a803b7dd0399a9",
+ "fetched_at": "2026-09-01T21:18:22.289514+00:00",
+ "input_hash": "00388ea8b9c91697338f11dff245ed665bba1e9367c58bb8beeaffd15bed7a29",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer lid_1 to hotel_stack_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

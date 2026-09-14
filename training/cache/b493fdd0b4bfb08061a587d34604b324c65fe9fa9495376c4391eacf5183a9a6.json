@@ -1,0 +1,9 @@
+{
+ "cache_key": "b493fdd0b4bfb08061a587d34604b324c65fe9fa9495376c4391eacf5183a9a6",
+ "fetched_at": "2026-09-01T21:19:40.786748+00:00",
+ "input_hash": "4cb42ee2c5cc2927dee7360c692e68f83fbb662d46fd2881dc94177f7cdc5528",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the fluorescence of the loaded plate at 535 nm excitation with a focal height of 7.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

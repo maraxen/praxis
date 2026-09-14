@@ -1,0 +1,9 @@
+{
+ "cache_key": "76bfec321de616431837b1a3ff109191767bd2b396684650d9958b597539ad1d",
+ "fetched_at": "2026-09-01T21:17:08.525139+00:00",
+ "input_hash": "e521480d5062207654826d664a0b84960d125ccfc4dda529d06a0f8d6d95c7b7",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I don't have cooking recipes, but I can help execute lab liquid handling protocols like aspirating, dispensing, stamping, moving plates, and reading absorbance or luminescence.\", \"utterance\": \"Give me a recipe for homemade chocolate cake.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

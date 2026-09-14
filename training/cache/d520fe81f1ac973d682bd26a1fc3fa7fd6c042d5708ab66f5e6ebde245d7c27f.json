@@ -1,0 +1,9 @@
+{
+ "cache_key": "d520fe81f1ac973d682bd26a1fc3fa7fd6c042d5708ab66f5e6ebde245d7c27f",
+ "fetched_at": "2026-09-02T15:42:05.026169+00:00",
+ "input_hash": "f8188fa566721085fcd0d5009a971bef6ed6b39f7ec25eca6c9b8662b352385e",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please copy plate 2 onto plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

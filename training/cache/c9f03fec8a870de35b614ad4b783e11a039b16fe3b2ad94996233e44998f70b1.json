@@ -1,0 +1,9 @@
+{
+ "cache_key": "c9f03fec8a870de35b614ad4b783e11a039b16fe3b2ad94996233e44998f70b1",
+ "fetched_at": "2026-09-02T15:12:17.407223+00:00",
+ "input_hash": "547ae6aead757392cf1cc7c7ed5922103c38a68dbcd8e619d3804bec87345d5f",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please deliver into well G6 of plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

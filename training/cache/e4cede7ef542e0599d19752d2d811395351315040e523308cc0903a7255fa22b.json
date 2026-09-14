@@ -1,0 +1,9 @@
+{
+ "cache_key": "e4cede7ef542e0599d19752d2d811395351315040e523308cc0903a7255fa22b",
+ "fetched_at": "2026-09-01T21:19:08.654060+00:00",
+ "input_hash": "da1cab24cfa76a85eb93f78623fd92426b3ed4513e1700f11340dd50e367fcab",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read fluorescence at excitation 535.0 nm and focal height 10.0 mm for wells C1, E1, G5, and H1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

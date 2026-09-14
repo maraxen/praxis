@@ -1,0 +1,9 @@
+{
+ "cache_key": "97b8abbc5e2bd4bc6d0e538811b5da27c2f2aa555f7b081dfdb191f94a6545cc",
+ "fetched_at": "2026-09-02T20:48:04.052138+00:00",
+ "input_hash": "8e83aec209e64ae3637b4392cb326d5ee9e9f243a5644e0b12baa766651ddbc7",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please read the glow of the loaded plate at a focal height of 15.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:15:15Z",
+ "key": "0a272de04ca6a3f90a27606d1f3a881b933577040a07757e94140f24e93fed24",
+ "prompt_sha256": "0a272de04ca6a3f90a27606d1f3a881b933577040a07757e94140f24e93fed24",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Pick up tips from source_tip_spots i:i + batch_size.\nPlease get the tips from source_tip_spots i:i + batch_size.\nLoad tips from source_tip_spots i:i + batch_size.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

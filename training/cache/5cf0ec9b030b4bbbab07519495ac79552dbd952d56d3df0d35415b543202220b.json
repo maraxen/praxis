@@ -1,0 +1,9 @@
+{
+ "cache_key": "5cf0ec9b030b4bbbab07519495ac79552dbd952d56d3df0d35415b543202220b",
+ "fetched_at": "2026-09-02T16:03:48.388789+00:00",
+ "input_hash": "bb1336081f5f409a41d712e74319c91dfae5e2cce4009282470025a627e47774",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Place at reservoir 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

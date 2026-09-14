@@ -1,0 +1,9 @@
+{
+ "cache_key": "58cd0f7d531effe07a7d8e91e453146708aaa89d5668c236f0847c49b07afe8a",
+ "fetched_at": "2026-09-02T16:24:40.408503+00:00",
+ "input_hash": "5be2ecc1471a28dcfa5e7c4b5217300520fbc8a232a536e01f62294dfdcd237f",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Grab tips from spots C11 and D12 on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

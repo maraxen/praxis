@@ -1,0 +1,9 @@
+{
+ "cache_key": "8c3bca21303fc4a6f59a3d3f717116f5043c18e028e96ad92ff76f708a316ef8",
+ "fetched_at": "2026-09-01T21:11:59.056082+00:00",
+ "input_hash": "9885334972d8c4a132c28567debc95ae7959f4c850595d414a7c2b1c4c86d45a",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Stamp 15 uL from plate_2 onto the plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

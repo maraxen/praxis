@@ -1,0 +1,9 @@
+{
+ "cache_key": "cbf31a525e4882ef9598a73207a6642125489b1eae82fc2bd31bd16ce794364e",
+ "fetched_at": "2026-09-03T14:59:45.799414+00:00",
+ "input_hash": "9351101c1b2c6e83c471dced20eb52aa4ac5a12bcd90e6970138c1883339f02b",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you do a blowout to get those remaining droplets out of the tips once dispensing is done?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

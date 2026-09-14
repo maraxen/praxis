@@ -1,17 +1,20 @@
 """Unit tests for Machinemodel."""
 import json
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums import AssetType, MachineCategoryEnum, MachineStatusEnum
 from praxis.backend.models.domain.machine import (
     Machine,
     MachineBase,
     MachineCreate,
-    MachineRead as MachineResponse,
     MachineUpdate,
 )
+from praxis.backend.models.domain.machine import (
+    MachineRead as MachineResponse,
+)
+from praxis.backend.models.enums import AssetType, MachineCategoryEnum, MachineStatusEnum
 
 
 @pytest.mark.asyncio

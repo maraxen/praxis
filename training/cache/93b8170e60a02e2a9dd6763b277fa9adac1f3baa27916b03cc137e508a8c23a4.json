@@ -1,0 +1,9 @@
+{
+ "cache_key": "93b8170e60a02e2a9dd6763b277fa9adac1f3baa27916b03cc137e508a8c23a4",
+ "fetched_at": "2026-09-03T15:04:38.158148+00:00",
+ "input_hash": "d4784e664184295ed53f8dfec44fcc55a0adc5bd266fd1eab2831f650ea7ae5c",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and set the shaker-heater on the deck to 37\\u00b0C.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

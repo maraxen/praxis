@@ -1,0 +1,312 @@
+{
+  "artifact_categories": [
+    "list_escape_format",
+    "slot_order_only",
+    "gold_slot_annotation"
+  ],
+  "reports": {
+    "baseline_v2": {
+      "n_examples": 228,
+      "exact_match_successes": 37,
+      "n_failures": 191,
+      "by_category": {
+        "gold_slot_annotation": 3,
+        "list_escape_format": 1,
+        "name_mismatch": 33,
+        "no_call": 56,
+        "other": 10,
+        "param_content": 71,
+        "slot_order_only": 4,
+        "spurious_call": 13
+      },
+      "by_class_and_category": {
+        "ambiguous_referent": {
+          "gold_slot_annotation": 1,
+          "name_mismatch": 7,
+          "no_call": 14,
+          "param_content": 11
+        },
+        "clean_parse": {
+          "gold_slot_annotation": 2,
+          "list_escape_format": 1,
+          "name_mismatch": 25,
+          "no_call": 18,
+          "other": 8,
+          "param_content": 43,
+          "slot_order_only": 4
+        },
+        "missing_slot": {
+          "name_mismatch": 1,
+          "no_call": 24,
+          "other": 2,
+          "param_content": 17
+        },
+        "out_of_surface": {
+          "spurious_call": 13
+        }
+      },
+      "artifact_rows": 8,
+      "artifact_adjusted_accuracy_ceiling": 0.19736842105263158,
+      "other_rows": [
+        {
+          "record_id": "cov-0273-pick_up_tips__none-13",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "cov-0579-move_lid__none-14",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "cov-0623-read_absorbance__none-13",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "cov-0639-read_fluorescence__missing-slot-14",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "cov-0653-read_fluorescence__none-13",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "cov-0669-read_luminescence__missing-slot-14",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "golden-clean-move_lid-01",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "golden-clean-read_fluorescence-02",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "golden-clean-read_fluorescence-04",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        },
+        {
+          "record_id": "ovl-f05a5f93c4",
+          "reasons": [
+            "sequence length 2 != intended 1"
+          ]
+        }
+      ],
+      "source": "training/eval/reports/260901_baseline_real_v2.json"
+    },
+    "A": {
+      "n_examples": 228,
+      "exact_match_successes": 88,
+      "n_failures": 140,
+      "by_category": {
+        "gold_slot_annotation": 16,
+        "list_escape_format": 12,
+        "name_mismatch": 11,
+        "no_call": 10,
+        "other": 3,
+        "param_content": 60,
+        "slot_order_only": 26,
+        "spurious_call": 1,
+        "unknown_verb": 1
+      },
+      "by_class_and_category": {
+        "ambiguous_referent": {
+          "gold_slot_annotation": 4,
+          "no_call": 1,
+          "param_content": 14,
+          "slot_order_only": 10
+        },
+        "clean_parse": {
+          "gold_slot_annotation": 12,
+          "list_escape_format": 9,
+          "name_mismatch": 8,
+          "no_call": 8,
+          "param_content": 31,
+          "slot_order_only": 13,
+          "unknown_verb": 1
+        },
+        "missing_slot": {
+          "list_escape_format": 3,
+          "name_mismatch": 3,
+          "no_call": 1,
+          "other": 3,
+          "param_content": 15,
+          "slot_order_only": 3
+        },
+        "out_of_surface": {
+          "spurious_call": 1
+        }
+      },
+      "artifact_rows": 54,
+      "artifact_adjusted_accuracy_ceiling": 0.6228070175438597,
+      "other_rows": [
+        {
+          "record_id": "golden-missing-slot-01",
+          "reasons": [
+            "0: missing_required derived ('source',) != intended ()"
+          ]
+        },
+        {
+          "record_id": "golden-missing-slot-08",
+          "reasons": [
+            "0: missing_required derived ('at',) != intended ()"
+          ]
+        },
+        {
+          "record_id": "golden-missing-slot-11",
+          "reasons": [
+            "0: missing_required derived ('focal_height_mm',) != intended ()"
+          ]
+        }
+      ],
+      "source": "training/eval/reports/260901_p26_arm_A.json"
+    },
+    "B": {
+      "n_examples": 228,
+      "exact_match_successes": 85,
+      "n_failures": 143,
+      "by_category": {
+        "gold_slot_annotation": 15,
+        "list_escape_format": 10,
+        "name_mismatch": 13,
+        "no_call": 9,
+        "other": 2,
+        "param_content": 66,
+        "slot_order_only": 25,
+        "spurious_call": 2,
+        "unknown_verb": 1
+      },
+      "by_class_and_category": {
+        "ambiguous_referent": {
+          "gold_slot_annotation": 3,
+          "name_mismatch": 1,
+          "no_call": 1,
+          "param_content": 15,
+          "slot_order_only": 9
+        },
+        "clean_parse": {
+          "gold_slot_annotation": 12,
+          "list_escape_format": 8,
+          "name_mismatch": 8,
+          "no_call": 7,
+          "param_content": 33,
+          "slot_order_only": 13,
+          "unknown_verb": 1
+        },
+        "missing_slot": {
+          "list_escape_format": 2,
+          "name_mismatch": 4,
+          "no_call": 1,
+          "other": 2,
+          "param_content": 18,
+          "slot_order_only": 3
+        },
+        "out_of_surface": {
+          "spurious_call": 2
+        }
+      },
+      "artifact_rows": 50,
+      "artifact_adjusted_accuracy_ceiling": 0.5921052631578947,
+      "other_rows": [
+        {
+          "record_id": "golden-missing-slot-08",
+          "reasons": [
+            "0: missing_required derived ('at',) != intended ()"
+          ]
+        },
+        {
+          "record_id": "golden-missing-slot-11",
+          "reasons": [
+            "0: missing_required derived ('focal_height_mm',) != intended ()"
+          ]
+        }
+      ],
+      "source": "training/eval/reports/260901_p26_arm_B.json"
+    },
+    "C": {
+      "n_examples": 228,
+      "exact_match_successes": 81,
+      "n_failures": 147,
+      "by_category": {
+        "gold_slot_annotation": 14,
+        "list_escape_format": 11,
+        "name_mismatch": 14,
+        "no_call": 6,
+        "other": 3,
+        "param_content": 73,
+        "slot_order_only": 22,
+        "spurious_call": 3,
+        "unknown_verb": 1
+      },
+      "by_class_and_category": {
+        "ambiguous_referent": {
+          "gold_slot_annotation": 3,
+          "name_mismatch": 2,
+          "no_call": 1,
+          "param_content": 16,
+          "slot_order_only": 7
+        },
+        "clean_parse": {
+          "gold_slot_annotation": 11,
+          "list_escape_format": 8,
+          "name_mismatch": 9,
+          "no_call": 4,
+          "param_content": 37,
+          "slot_order_only": 13,
+          "unknown_verb": 1
+        },
+        "missing_slot": {
+          "list_escape_format": 3,
+          "name_mismatch": 3,
+          "no_call": 1,
+          "other": 3,
+          "param_content": 20,
+          "slot_order_only": 2
+        },
+        "out_of_surface": {
+          "spurious_call": 3
+        }
+      },
+      "artifact_rows": 47,
+      "artifact_adjusted_accuracy_ceiling": 0.5614035087719298,
+      "other_rows": [
+        {
+          "record_id": "golden-missing-slot-08",
+          "reasons": [
+            "0: missing_required derived ('at',) != intended ()"
+          ]
+        },
+        {
+          "record_id": "golden-missing-slot-11",
+          "reasons": [
+            "0: missing_required derived ('focal_height_mm',) != intended ()"
+          ]
+        },
+        {
+          "record_id": "golden-missing-slot-12",
+          "reasons": [
+            "0: missing_required derived ('destination',) != intended ()"
+          ]
+        }
+      ],
+      "source": "training/eval/reports/260901_p26_arm_C.json"
+    }
+  }
+}

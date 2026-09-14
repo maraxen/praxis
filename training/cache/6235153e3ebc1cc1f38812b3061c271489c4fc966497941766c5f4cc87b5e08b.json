@@ -1,0 +1,9 @@
+{
+ "cache_key": "6235153e3ebc1cc1f38812b3061c271489c4fc966497941766c5f4cc87b5e08b",
+ "fetched_at": "2026-09-02T15:12:06.521058+00:00",
+ "input_hash": "3b1b2dc7592dc59187cfa4432936d81253accf90677c7b4b65aa04006201737d",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put the mixture into plate 2, well G1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "c69bb4d7771a9cede755ebdb73f0ba09aa9ab5ce7659a4dc3a44e720e3c9a964",
+ "fetched_at": "2026-09-03T15:00:19.085232+00:00",
+ "input_hash": "71234707ae2e0158096d5654b4dc25bd2d12ba9462f8dc48c549e00da02f4ae1",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and perform a blowout stroke on the tips to clear out any residual droplets.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

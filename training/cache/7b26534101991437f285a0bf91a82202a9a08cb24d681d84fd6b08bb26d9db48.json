@@ -1,0 +1,9 @@
+{
+ "cache_key": "7b26534101991437f285a0bf91a82202a9a08cb24d681d84fd6b08bb26d9db48",
+ "fetched_at": "2026-09-01T21:17:54.670042+00:00",
+ "input_hash": "6d6318be5550710479e3d88adb2a3b547a600e68378cf0641e037e6fe02aeb87",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Move the plate to scale_station_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

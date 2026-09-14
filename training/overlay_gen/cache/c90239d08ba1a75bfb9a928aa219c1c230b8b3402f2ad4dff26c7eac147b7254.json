@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:52Z",
+ "key": "c90239d08ba1a75bfb9a928aa219c1c230b8b3402f2ad4dff26c7eac147b7254",
+ "prompt_sha256": "c90239d08ba1a75bfb9a928aa219c1c230b8b3402f2ad4dff26c7eac147b7254",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Please discard the tips into target_tip_spots i:i + batch_size.\nDrop the tips into target_tip_spots i:i + batch_size.\nMove the tips to target_tip_spots i:i + batch_size to drop them.",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "789667ff1c8a07cb6117db69a2cf99f67964da9c406d74f77385649d99c21d35",
+ "fetched_at": "2026-08-25T22:08:13.448734+00:00",
+ "input_hash": "b781729731ce0c0d39b6a4183b5ff521d5412d8f387568580482b0406ec9c129",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Dispense 200 microliters, 200 microliters, and 15 microliters into plate_2_A2.\",\n\"clarification\": null\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

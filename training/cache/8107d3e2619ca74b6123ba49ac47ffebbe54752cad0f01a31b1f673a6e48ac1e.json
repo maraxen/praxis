@@ -1,0 +1,9 @@
+{
+ "cache_key": "8107d3e2619ca74b6123ba49ac47ffebbe54752cad0f01a31b1f673a6e48ac1e",
+ "fetched_at": "2026-08-28T18:01:10.443030+00:00",
+ "input_hash": "727b91995cc034f4c0d9708c8214b2217f6268c4e9f5424b818d23afd49f5338",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer 50 microliters to plate_2.G6 and 75 microliters to plate_1.B12 from plate_1.G6.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

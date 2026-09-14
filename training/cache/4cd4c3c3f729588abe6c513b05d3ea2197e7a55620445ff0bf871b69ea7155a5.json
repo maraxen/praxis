@@ -1,0 +1,9 @@
+{
+ "cache_key": "4cd4c3c3f729588abe6c513b05d3ea2197e7a55620445ff0bf871b69ea7155a5",
+ "fetched_at": "2026-09-01T21:19:40.788386+00:00",
+ "input_hash": "602f399c291a2622bcb46652f01f3b146259da29e6f474c018105b4072e79384",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read luminescence in wells A1, A3, E9, and H5.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "a784c68dc711b4ea6733ef1f3fe2f1c1f9100899a7d831ad6dc0fa3a3cc91fd7",
+ "fetched_at": "2026-09-04T00:12:50.111084+00:00",
+ "input_hash": "0b303dd77310c7e73bb12af9f5d95830f0b9cad89e5f2a471e7590435d45dae8",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I don't have the ability to track or inspect the remaining liquid volume in reservoirs or wells. I can, however, help you aspirate, dispense, or transfer a specified volume if you'd like.\", \"utterance\": \"How much volume is left in reservoir trough 2 right now?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:15:05Z",
+ "key": "01c9f255a0f1a641d872f68c61a6e01ae87eb677b115981d4c719390c6931f15",
+ "prompt_sha256": "01c9f255a0f1a641d872f68c61a6e01ae87eb677b115981d4c719390c6931f15",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Dispense 15 uL into plate B1.\nPlease transfer 15 uL into plate B1.\nDeliver 15 uL to plate B1.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

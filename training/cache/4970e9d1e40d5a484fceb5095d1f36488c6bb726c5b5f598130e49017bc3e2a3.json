@@ -1,0 +1,9 @@
+{
+ "cache_key": "4970e9d1e40d5a484fceb5095d1f36488c6bb726c5b5f598130e49017bc3e2a3",
+ "fetched_at": "2026-09-01T21:13:48.585001+00:00",
+ "input_hash": "c7159d025f251ea684e590f50eab330ef7ddf153c20c6d0716d4ed62c94f9f89",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I cannot control module heating or temperature settings. I can, however, execute liquid handling steps like transfer, aspirate, dispense, or move resources and plates. Would you like help with any of those?\", \"utterance\": \"Change the heater-shaker module temperature to 37 degrees.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

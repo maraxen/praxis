@@ -1,0 +1,43 @@
+{
+  "intent_record": {
+    "record_id": "ex_aspirate_dispense",
+    "utterance": "take 20 microliters from the trough and dispense it into well A2 of the assay plate, then drop the tips into rack positions C1 and D1",
+    "source": "synthetic",
+    "calls": [
+      {
+        "name": "pick_up_tips",
+        "params": {"at": ["tip_rack.C1", "tip_rack.D1"]}
+      },
+      {
+        "name": "aspirate",
+        "params": {"source": "reagent_trough", "volume_ul": 20}
+      },
+      {
+        "name": "dispense",
+        "params": {"destination": "assay_plate.A2", "volume_ul": 20}
+      },
+      {
+        "name": "drop_tips",
+        "params": {"destination": ["tip_rack.C1", "tip_rack.D1"]}
+      }
+    ],
+    "expected_effects": [
+      {"effect": "aspirates", "target_ref": "reagent_trough"},
+      {"effect": "dispenses", "target_ref": "assay_plate.A2"},
+      {"effect": "drops_tips", "target_ref": "tip_rack.C1"}
+    ]
+  },
+  "call_sequence": [
+    {"name": "pick_up_tips", "params": {"at": ["tip_rack.C1", "tip_rack.D1"]}},
+    {"name": "aspirate", "params": {"source": "reagent_trough", "volume_ul": 20}},
+    {"name": "dispense", "params": {"destination": "assay_plate.A2", "volume_ul": 20}},
+    {"name": "drop_tips", "params": {"destination": ["tip_rack.C1", "tip_rack.D1"]}}
+  ],
+  "deck_layout": {
+    "resources": {
+      "reagent_trough": "Trough",
+      "assay_plate": "Plate"
+    },
+    "seed_volumes": {"reagent_trough": 5000}
+  }
+}

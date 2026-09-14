@@ -1,0 +1,9 @@
+{
+ "cache_key": "1be90033a213cd6457665d55224fd25ee0d2a4192906311b0cb6190848edd880",
+ "fetched_at": "2026-09-02T15:17:12.230355+00:00",
+ "input_hash": "00bd9383b10a2c76e5e2c1ddfa30d3c68a477d47c542020f5b65e278ade7b958",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Shuttle 20 microliters from well G6 of plate 2 to well A11 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

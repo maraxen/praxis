@@ -1,0 +1,9 @@
+{
+ "cache_key": "b098f51ffa7dc4b0fe8cb73627710d8eb8c473b524858e16281e8af0be02deeb",
+ "fetched_at": "2026-09-03T15:00:01.334456+00:00",
+ "input_hash": "a5c9da7a1372739cd498d5beadc237ef2543e008b5ff348c50ed49a57d05c086",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Make sure to blow out any leftover drops hanging on the tips once the dispense step finishes.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

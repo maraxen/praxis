@@ -1,0 +1,9 @@
+{
+ "cache_key": "e899a5f9694d4631ebd6ddeb632bd62cb79d9d11f64dea920db9008f28d3901c",
+ "fetched_at": "2026-09-02T16:19:30.141020+00:00",
+ "input_hash": "0cbd4b76a95dda45144665aa9c589fc7d38962db06a7e876a8b29ec0b3a21f70",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please read the OD for wells A4 and A8 on the plate in the reader.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

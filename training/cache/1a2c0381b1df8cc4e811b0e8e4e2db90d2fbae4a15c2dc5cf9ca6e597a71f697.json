@@ -1,0 +1,9 @@
+{
+ "cache_key": "1a2c0381b1df8cc4e811b0e8e4e2db90d2fbae4a15c2dc5cf9ca6e597a71f697",
+ "fetched_at": "2026-09-01T21:20:04.905540+00:00",
+ "input_hash": "44baa41c7b6daab2c81e13c5ce62879b6bf6714d2cb977c3fff710c91195f3c5",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the luminescence of the plate at a focal height of 4.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

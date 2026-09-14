@@ -1,0 +1,9 @@
+{
+ "cache_key": "6a67c4461f537f411d7ada5fc51e53a6443754f1d458861fe9e10919ae3280ae",
+ "fetched_at": "2026-09-03T15:09:42.733450+00:00",
+ "input_hash": "b2018ffd6397db1f76ce2ff9e0d9c22c46edf1418d0ec3f142ee1a316ed92a12",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Hey, what's the weather forecast looking like for this afternoon?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "2d2505da960478b4301fb70f0c7502c328593101d3c7f1777628b196df209083",
+ "fetched_at": "2026-09-02T15:17:12.230024+00:00",
+ "input_hash": "4ae19e4213a7e164efe9c3c8665d69cac794dc57c52b604f7eac1ce1c561d76a",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please move 15 microliters from well G12 of plate 1 into well G3 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

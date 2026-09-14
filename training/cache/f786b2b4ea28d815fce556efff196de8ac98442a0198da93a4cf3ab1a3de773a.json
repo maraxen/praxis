@@ -1,0 +1,9 @@
+{
+ "cache_key": "f786b2b4ea28d815fce556efff196de8ac98442a0198da93a4cf3ab1a3de773a",
+ "fetched_at": "2026-09-02T20:29:29.117925+00:00",
+ "input_hash": "0aead87a257b90fdb59c132bf78a1c3382643fe503e00cc250f8518e23125719",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure fluorescence for wells A7 and D9 using an excitation wavelength of 535 nm, an emission wavelength of 590 nm, and a focal height of 15.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

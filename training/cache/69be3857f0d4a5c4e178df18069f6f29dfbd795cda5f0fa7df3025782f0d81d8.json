@@ -1,0 +1,9 @@
+{
+ "cache_key": "69be3857f0d4a5c4e178df18069f6f29dfbd795cda5f0fa7df3025782f0d81d8",
+ "fetched_at": "2026-09-02T15:54:44.456492+00:00",
+ "input_hash": "5e94628d19693b58cb87e8d3f81b2a14cde2cdf795493984a2ffd76dac56fc57",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please return the tips to the tip rack when you are done.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

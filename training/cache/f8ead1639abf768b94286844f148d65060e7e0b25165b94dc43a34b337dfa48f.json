@@ -1,0 +1,9 @@
+{
+ "cache_key": "f8ead1639abf768b94286844f148d65060e7e0b25165b94dc43a34b337dfa48f",
+ "fetched_at": "2026-09-02T16:30:53.773367+00:00",
+ "input_hash": "50ff1f863115022d5c8686bd9ce1ad69df30e275ca6befae16670b899a136b77",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Load clean tips for the pipette.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

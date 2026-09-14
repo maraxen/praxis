@@ -7,8 +7,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.domain.outputs import (
+    FunctionDataOutput,
+    PlateDataVisualization,
+    WellDataOutput,
+)
 from praxis.backend.models.enums.outputs import DataOutputTypeEnum, SpatialContextEnum
-from praxis.backend.models.domain.outputs import FunctionDataOutput, WellDataOutput, PlateDataVisualization
 from praxis.backend.services.plate_viz import read_plate_data_visualization
 from praxis.backend.utils.uuid import uuid7
 

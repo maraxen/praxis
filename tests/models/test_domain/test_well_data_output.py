@@ -5,7 +5,6 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from praxis.backend.models.enums import AssetType
 from praxis.backend.models.domain.outputs import FunctionDataOutput, WellDataOutput
 from praxis.backend.models.domain.protocol import (
     FunctionCallLog,
@@ -17,6 +16,7 @@ from praxis.backend.models.domain.protocol_source import (
     ProtocolSourceRepository,
 )
 from praxis.backend.models.domain.resource import Resource, ResourceDefinition
+from praxis.backend.models.enums import AssetType
 from praxis.backend.utils.uuid import uuid7
 
 

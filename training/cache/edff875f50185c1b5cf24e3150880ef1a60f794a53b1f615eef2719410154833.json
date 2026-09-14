@@ -1,0 +1,9 @@
+{
+ "cache_key": "edff875f50185c1b5cf24e3150880ef1a60f794a53b1f615eef2719410154833",
+ "fetched_at": "2026-09-02T20:18:54.174683+00:00",
+ "input_hash": "55e7c6f71f1eaa32512a2dea770bc604ca431695c9023706021c5f91db35989c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you place the plate onto reservoir 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

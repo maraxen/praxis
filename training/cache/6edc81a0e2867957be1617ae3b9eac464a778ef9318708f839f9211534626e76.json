@@ -1,0 +1,9 @@
+{
+ "cache_key": "6edc81a0e2867957be1617ae3b9eac464a778ef9318708f839f9211534626e76",
+ "fetched_at": "2026-09-01T21:20:04.904843+00:00",
+ "input_hash": "19e94288f24a07431ce614be177c9810d577827ccf9af12acee7f8477989995f",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the luminescence for wells C5 and E4.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

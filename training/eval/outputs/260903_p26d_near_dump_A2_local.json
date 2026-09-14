@@ -1,0 +1,111 @@
+{
+  "artifact_kind": "praxis-recorded-model-outputs",
+  "base_revision": "outputs/p26b/A/checkpoint@main",
+  "recorded_by": "praxis_training.baseline_eval.runner.run_local",
+  "model_label": "A2 local cpu near-surface probe pre-check",
+  "inputs": {
+    "device": "cpu",
+    "dtype": "model-default",
+    "dtype_resolved": "torch.float32",
+    "split": "eval",
+    "max_new_tokens": 128
+  },
+  "outputs": [
+    {
+      "record_id": "cov-0701-tip_inventory__out-of-surface-16",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>the tip rack<escape>,destination:<escape>the tip rack<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0702-tip_inventory__out-of-surface-17",
+      "raw_output": "I cannot check the tip inventory or capacity. I can help you with liquid handling tasks such as aspirating, dispensing, transferring, moving plates, or reading absorbance."
+    },
+    {
+      "record_id": "cov-0703-tip_inventory__out-of-surface-18",
+      "raw_output": "<start_function_call>call:discard_tips{at:<escape>deck_position_1<escape>,what:<escape>tips<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0704-tip_inventory__out-of-surface-19",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>rack[\"A\"]<escape>,<escape>[\"R\"<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0721-consumables_ordering__out-of-surface-16",
+      "raw_output": "I cannot perform a standard order placement or dispense. I can, however, move the deck resource to a new destination like the plate or move the plate lid to a new destination like a reader or hotel."
+    },
+    {
+      "record_id": "cov-0722-consumables_ordering__out-of-surface-17",
+      "raw_output": "I cannot run reorders or order the contents of a bottle. I can help you with liquid handling tasks such as aspirating, dispensing, transferring, or moving plates."
+    },
+    {
+      "record_id": "cov-0723-consumables_ordering__out-of-surface-18",
+      "raw_output": "I cannot order or manage the supply chain for labware. I can, however, assist with liquid handling tasks such as aspirating, transferring, or moving plates."
+    },
+    {
+      "record_id": "cov-0724-consumables_ordering__out-of-surface-19",
+      "raw_output": "<start_function_call>call:discard_tips{at:<escape>the lab supply portal<escape>,what:<escape>tips<escape>,out:<escape>the lab supply portal<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0741-deck_display__out-of-surface-16",
+      "raw_output": "<start_function_call>call:move_resource{destination:<escape>the deck<escape>,resource:<escape>the deck layout and all the plates and tip boxes<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0742-deck_display__out-of-surface-17",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>the deck<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0743-deck_display__out-of-surface-18",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>the tip racks<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0744-deck_display__out-of-surface-19",
+      "raw_output": "<start_function_call>call:pick_up_tips{}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0761-sample_value_query__out-of-surface-16",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>the well<escape>,volume_ul:100.0}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0762-sample_value_query__out-of-surface-17",
+      "raw_output": "<start_function_call>call:read_absorbance{at:[<escape>C4<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0763-sample_value_query__out-of-surface-18",
+      "raw_output": "I cannot perform protein concentration measurements. I can, however, assist with liquid handling tasks such as aspirating, dispensing, transferring, or moving plates and tips."
+    },
+    {
+      "record_id": "cov-0764-sample_value_query__out-of-surface-19",
+      "raw_output": "I cannot check the buffer remaining in the source trough. I can, however, perform a transfer to the destination well or dispense the tips into the tip spot."
+    },
+    {
+      "record_id": "cov-0781-scheduling_logging__out-of-surface-16",
+      "raw_output": "I cannot schedule plate transfers. I can, however, move the plate to a new destination like a reader or hotel."
+    },
+    {
+      "record_id": "cov-0782-scheduling_logging__out-of-surface-17",
+      "raw_output": "I cannot set reminders. I can help with liquid handling tasks such as aspirating, dispensing, transferring, or moving plates."
+    },
+    {
+      "record_id": "cov-0783-scheduling_logging__out-of-surface-18",
+      "raw_output": "I cannot log notes or manage lab notebooks. I can assist with liquid handling tasks such as aspirating, transferring, or moving plates and tips."
+    },
+    {
+      "record_id": "cov-0784-scheduling_logging__out-of-surface-19",
+      "raw_output": "<start_function_call>call:read_absorbance{at:[<escape>plate_1[1]<escape>,<escape>plate_1[2]<escape>],wavelength_nm:2530.0}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0801-run_status__out-of-surface-16",
+      "raw_output": "I cannot check or estimate the remaining time on a protocol run. I can help you with liquid handling tasks such as aspirating, dispensing, transferring, or moving plates."
+    },
+    {
+      "record_id": "cov-0802-run_status__out-of-surface-17",
+      "raw_output": "<start_function_call>call:read_fluorescence{}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0803-run_status__out-of-surface-18",
+      "raw_output": "I cannot track or update the status of pipetting steps. I can, however, run a move_resource or transfer command to move the deck to a new location."
+    },
+    {
+      "record_id": "cov-0804-run_status__out-of-surface-19",
+      "raw_output": "I'm unable to track or monitor the status of a plate's run. I can help you with liquid handling tasks such as aspirating, dispensing, transferring, moving plates, or reading absorbance, fluorescence, or luminescence."
+    }
+  ]
+}

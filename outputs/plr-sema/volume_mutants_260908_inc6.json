@@ -1,0 +1,23 @@
+{
+  "by_class": {
+    "v1_overdraw_dispense": {
+      "n_construction_skipped": 0,
+      "n_error": 0,
+      "n_raised_as_expected": 67,
+      "n_ran": 67,
+      "n_total": 67,
+      "static_verdict_at_raising_index": {
+        "none": 0,
+        "safe": 0,
+        "unknown": 0,
+        "will_fail": 67
+      },
+      "unsound_safe_where_simulator_raised": [],
+      "unsound_will_fail_where_simulator_ran_clean": []
+    }
+  },
+  "gate_passed": true,
+  "hard_violations": [],
+  "n_corpus_bases": 66,
+  "n_example_bases": 1
+}

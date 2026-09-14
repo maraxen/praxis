@@ -4,17 +4,16 @@ import uuid
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums.asset import AssetType
-from praxis.backend.models.enums.machine import MachineStatusEnum
-from praxis.backend.models.domain.resource import (
-    ResourceDefinition,
-)
 from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.machine import (
-    Machine,
     MachineCreate,
     MachineUpdate,
 )
+from praxis.backend.models.domain.resource import (
+    ResourceDefinition,
+)
+from praxis.backend.models.enums.asset import AssetType
+from praxis.backend.models.enums.machine import MachineStatusEnum
 from praxis.backend.services.machine import machine_service
 
 

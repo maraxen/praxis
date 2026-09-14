@@ -1,0 +1,9 @@
+{
+ "cache_key": "7169903ac9c04099cd1e6f387816cec7cd98c43f3ee9b701c162621a5497c92f",
+ "fetched_at": "2026-09-02T16:22:20.317463+00:00",
+ "input_hash": "25c47b542b64d94858ed2c6d692bab1adcf3e8155ed068156ccf949d3f7b04c9",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Grab tips from the D8 and F12 spots on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

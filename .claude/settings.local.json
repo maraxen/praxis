@@ -93,7 +93,10 @@
       "Bash(DATABASE_URL=\"sqlite+aiosqlite:///./test.db\" uv run alembic revision:*)",
       "Bash(DATABASE_URL=\"sqlite+aiosqlite:///./test.db\" uv run alembic:*)",
       "Bash(uv run:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "mcp__plugin_praxia_core__backlog",
+      "mcp__plugin_praxia_core__handoff",
+      "mcp__plugin_praxia_core__lesson"
     ]
   }
 }

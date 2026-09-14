@@ -1,0 +1,9 @@
+{
+ "cache_key": "6b8623468c4b16dbb8b8284c268280a463be28cf5f1a6222f50f85821046aa6e",
+ "fetched_at": "2026-09-02T16:07:16.082031+00:00",
+ "input_hash": "9967524c78fba6653fcc20752c52cc62bb491bc36a6b83b7ce63abf8723eaeb2",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Set down at reservoir 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

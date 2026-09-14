@@ -1,0 +1,9 @@
+{
+ "cache_key": "f98897923e64b9426b0fede45896372c0bf963f2a31cf7466a1e70cf4adca169",
+ "fetched_at": "2026-09-01T21:06:09.575108+00:00",
+ "input_hash": "2bf83dd4c71e84191c8943a86a5196368f6834c8ed91aac0627090c4ec6eeaf7",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please aspirate 15 microliters from plate_1.G7.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

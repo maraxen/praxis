@@ -1,0 +1,9 @@
+{
+ "cache_key": "c9b36393fd13af22a9c1908ea661939a964569c7491978213677467bef0fbdf6",
+ "fetched_at": "2026-09-02T20:38:44.174453+00:00",
+ "input_hash": "07a14102afa4a8a45500b256d7751a6fc93b28dd0ea87021d8720beeee088c30",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please return the tips to the F9 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

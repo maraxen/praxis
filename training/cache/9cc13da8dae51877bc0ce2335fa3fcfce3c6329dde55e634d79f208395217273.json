@@ -1,0 +1,9 @@
+{
+ "cache_key": "9cc13da8dae51877bc0ce2335fa3fcfce3c6329dde55e634d79f208395217273",
+ "fetched_at": "2026-09-01T21:18:46.210445+00:00",
+ "input_hash": "924eaac663be37882edec3545ab2c26e2ddae5b90183feb2769497996a44c4bd",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure the absorbance of the plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

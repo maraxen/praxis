@@ -1,0 +1,9 @@
+{
+ "cache_key": "29386d2b6c8c0f009a3bfc5fb8f4a5c720dd93efc69cf1d7b1c299484c7a3030",
+ "fetched_at": "2026-08-25T22:08:32.961543+00:00",
+ "input_hash": "b664b4cd6e97de01619e7cf40e9a0054d61409be9f9687cd77e1d4d34e2ba208",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Please transfer 20 microliters from plate_2_B3 to the same well.\",\n\"clarification\": null\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

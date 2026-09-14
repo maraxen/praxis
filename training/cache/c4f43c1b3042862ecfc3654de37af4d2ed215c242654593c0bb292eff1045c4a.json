@@ -1,0 +1,9 @@
+{
+ "cache_key": "c4f43c1b3042862ecfc3654de37af4d2ed215c242654593c0bb292eff1045c4a",
+ "fetched_at": "2026-09-02T16:24:40.408453+00:00",
+ "input_hash": "72234a7e6e630a4c45c1c3754ba5efadeccc7d5f19732aca3e298decbb99fb37",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Get a tip from the B11 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

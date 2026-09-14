@@ -1,0 +1,9 @@
+{
+ "cache_key": "e3102d86db34534f64c357fd4b9f1303cb1415b4211b95f942633c05d09e02f5",
+ "fetched_at": "2026-09-04T00:13:20.811300+00:00",
+ "input_hash": "f96581ca773713a935b61d93d12eed8805e045ba7f6e3bdc9ca47b458163a11f",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I cannot look up historical assay values or stored well data. I can, however, execute a new measurement on your plate using `read_luminescence`.\", \"utterance\": \"What was the luminescence value measured in well H12 on the assay plate?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

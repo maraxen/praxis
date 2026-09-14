@@ -1,0 +1,9 @@
+{
+ "cache_key": "f2a940fd3505b0fbdcd53831bdd163e59e9f4e4689c19109edeefff0b7ed106b",
+ "fetched_at": "2026-09-03T15:00:01.332596+00:00",
+ "input_hash": "8a9aaaa46b0926d013adde955d9c1bbd2462bd73d496b54335d79a3712511773",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could we blow out the leftover droplets from the tips?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

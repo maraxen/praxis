@@ -5,13 +5,13 @@ Tests cover all CRUD operations, authentication, and user-specific functionality
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.user import (
     User,
     UserCreate,
     UserUpdate,
 )
 from praxis.backend.services.user import UserService, user_service
-from praxis.backend.models.domain.filters import SearchFilters
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,9 @@
+{
+ "cache_key": "348df22483d5ca81150a6c27f61616a93da8dcdb2e38f71ae26e479164504bef",
+ "fetched_at": "2026-09-01T21:11:15.145499+00:00",
+ "input_hash": "142ca55e9589998da48730233890f1666bcae4356c175b21776b40bf78af34e7",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Stamp plate_2 onto plate_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

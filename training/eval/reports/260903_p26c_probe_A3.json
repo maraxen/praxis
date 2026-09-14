@@ -1,0 +1,261 @@
+{
+  "report_kind": "praxis-baseline-eval-report",
+  "clarify_scope_note": "clarify_expected/predicted cover OUT-OF-SURFACE (abstention) and MISSING-SLOT (derived missing_required) classes only; ambiguous-referent detection needs live kernel grounding (cue 2, F1-rev2/C-M1) and is verified at P2.9 integration, not in this static harness",
+  "mode": "local_inference",
+  "labeled_as": "LIVE LOCAL INFERENCE",
+  "base_revision": "outputs/p26c/A/checkpoint@local",
+  "model_label": "p26 arm A seed 0 recipe 0.1.0 sha256:f8d247d16078127ee441dda83cb78698b6c6efaa67f02f07c392851bc305a494 [probe]",
+  "inputs": {
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "dtype_resolved": "torch.bfloat16",
+    "split": "all",
+    "max_new_tokens": 128,
+    "dump_outputs": "outputs/p26c/A/probe_dump.json"
+  },
+  "n_examples": 122,
+  "exact_match_accuracy": {
+    "value": 0.860655737704918,
+    "successes": 105,
+    "n": 122,
+    "wilson95": [
+      0.7881609441681257,
+      0.9111387086060205
+    ]
+  },
+  "clarify_recall": {
+    "value": 0.890625,
+    "successes": 57,
+    "n": 64,
+    "wilson95": [
+      0.791033563044378,
+      0.9459926928558887
+    ]
+  },
+  "clarify_precision": {
+    "value": 0.95,
+    "successes": 57,
+    "n": 60,
+    "wilson95": [
+      0.8630144677590493,
+      0.9828476986548146
+    ]
+  },
+  "clarify_confusion": {
+    "true_positive": 57,
+    "false_negative": 7,
+    "false_positive": 3,
+    "true_negative": 55
+  },
+  "tripwire_out_of_surface_tool_calls": 0,
+  "per_class": {
+    "ambiguous_referent": {
+      "n": 21,
+      "exact_match": {
+        "value": 0.9047619047619048,
+        "successes": 19,
+        "n": 21,
+        "wilson95": [
+          0.710898639513539,
+          0.9734762041176277
+        ]
+      },
+      "clarify_expected": 0,
+      "clarify_predicted": 2
+    },
+    "clean_parse": {
+      "n": 37,
+      "exact_match": {
+        "value": 0.8648648648648649,
+        "successes": 32,
+        "n": 37,
+        "wilson95": [
+          0.7202542934496557,
+          0.9408592103815522
+        ]
+      },
+      "clarify_expected": 0,
+      "clarify_predicted": 1
+    },
+    "missing_slot": {
+      "n": 32,
+      "exact_match": {
+        "value": 0.6875,
+        "successes": 22,
+        "n": 32,
+        "wilson95": [
+          0.5143621429926826,
+          0.8204575262434688
+        ]
+      },
+      "clarify_expected": 32,
+      "clarify_predicted": 25
+    },
+    "out_of_surface": {
+      "n": 32,
+      "exact_match": {
+        "value": 1.0,
+        "successes": 32,
+        "n": 32,
+        "wilson95": [
+          0.8928524512964033,
+          1.0
+        ]
+      },
+      "clarify_expected": 32,
+      "clarify_predicted": 32
+    }
+  },
+  "exact_match_failures": [
+    {
+      "record_id": "nat-0093-dispense__missing-slot-13",
+      "class": "missing_slot",
+      "reasons": [
+        "name mismatch: 0: predicted 'drop_tips' != intended 'dispense'",
+        "0: missing_required derived () != intended ('volume_ul',)",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='plate_1.A10', resource_type='tip_spot'),) != intended (DerivedSlot(arg_name='destination', reference='plate_1.A10', resource_type='container'),)"
+      ]
+    },
+    {
+      "record_id": "nat-0288-pick_up_tips__missing-slot-13",
+      "class": "missing_slot",
+      "reasons": [
+        "params mismatch: 0: predicted {'at': ['the pipetting head']} != intended {}",
+        "0: missing_required derived () != intended ('at',)",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='at', reference='the pipetting head', resource_type='tip_spot'),) != intended ()"
+      ]
+    },
+    {
+      "record_id": "nat-0289-pick_up_tips__missing-slot-14",
+      "class": "missing_slot",
+      "reasons": [
+        "name mismatch: 0: predicted 'drop_tips' != intended 'pick_up_tips'",
+        "params mismatch: 0: predicted {'destination': 'the channels'} != intended {}",
+        "0: missing_required derived () != intended ('at',)",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='the channels', resource_type='tip_spot'),) != intended ()"
+      ]
+    },
+    {
+      "record_id": "nat-0338-drop_tips__none-13",
+      "class": "clean_parse",
+      "reasons": [
+        "name mismatch: 0: predicted 'pick_up_tips' != intended 'drop_tips'",
+        "params mismatch: 0: predicted {'at': ['tip_rack.H7']} != intended {'destination': 'tip_rack.H7'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='at', reference='tip_rack.H7', resource_type='tip_spot'),) != intended (DerivedSlot(arg_name='destination', reference='tip_rack.H7', resource_type='tip_spot'),)"
+      ]
+    },
+    {
+      "record_id": "nat-0419-move_resource__missing-slot-14",
+      "class": "missing_slot",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'reservoir_1', 'resource': 'reservoir_1'} != intended {'destination': 'reservoir_1'}",
+        "0: missing_required derived () != intended ('resource',)",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='reservoir_1', resource_type='resource'), DerivedSlot(arg_name='resource', reference='reservoir_1', resource_type='resource')) != intended (DerivedSlot(arg_name='destination', reference='reservoir_1', resource_type='resource'),)"
+      ]
+    },
+    {
+      "record_id": "nat-0467-move_resource__none-12",
+      "class": "clean_parse",
+      "reasons": [
+        "name mismatch: 0: predicted 'move_plate' != intended 'move_resource'",
+        "params mismatch: 0: predicted {'destination': 'scale_station_1', 'plate': 'hotel_stack_1'} != intended {'destination': 'scale_station_1', 'resource': 'hotel_stack_1'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='scale_station_1', resource_type='resource'), DerivedSlot(arg_name='plate', reference='hotel_stack_1', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='scale_station_1', resource_type='resource'), DerivedSlot(arg_name='resource', reference='hotel_stack_1', resource_type='resource'))"
+      ]
+    },
+    {
+      "record_id": "nat-0468-move_resource__none-13",
+      "class": "clean_parse",
+      "reasons": [
+        "name mismatch: 0: predicted 'move_plate' != intended 'move_resource'",
+        "params mismatch: 0: predicted {'destination': 'scale_station_1', 'plate': 'hotel_stack_1'} != intended {'destination': 'scale_station_1', 'resource': 'hotel_stack_1'}",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='scale_station_1', resource_type='resource'), DerivedSlot(arg_name='plate', reference='hotel_stack_1', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='scale_station_1', resource_type='resource'), DerivedSlot(arg_name='resource', reference='hotel_stack_1', resource_type='resource'))"
+      ]
+    },
+    {
+      "record_id": "nat-0482-move_plate__missing-slot-12",
+      "class": "missing_slot",
+      "reasons": [
+        "name mismatch: 0: predicted 'move_resource' != intended 'move_plate'",
+        "0: missing_required derived ('resource',) != intended ('plate',)"
+      ]
+    },
+    {
+      "record_id": "nat-0483-move_plate__missing-slot-13",
+      "class": "missing_slot",
+      "reasons": [
+        "name mismatch: 0: predicted 'drop_tips' != intended 'move_plate'",
+        "0: missing_required derived () != intended ('plate',)",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='reservoir_1', resource_type='tip_spot'),) != intended (DerivedSlot(arg_name='destination', reference='reservoir_1', resource_type='resource'),)"
+      ]
+    },
+    {
+      "record_id": "nat-0547-move_lid__missing-slot-12",
+      "class": "missing_slot",
+      "reasons": [
+        "name mismatch: 0: predicted 'move_plate' != intended 'move_lid'",
+        "0: missing_required derived ('plate',) != intended ('lid',)"
+      ]
+    },
+    {
+      "record_id": "nat-0548-move_lid__missing-slot-13",
+      "class": "missing_slot",
+      "reasons": [
+        "name mismatch: 0: predicted 'move_plate' != intended 'move_lid'",
+        "params mismatch: 0: predicted {'destination': 'reservoir_1', 'plate': 'reservoir_1'} != intended {'destination': 'reservoir_1'}",
+        "0: missing_required derived () != intended ('lid',)",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='reservoir_1', resource_type='resource'), DerivedSlot(arg_name='plate', reference='reservoir_1', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='reservoir_1', resource_type='resource'),)"
+      ]
+    },
+    {
+      "record_id": "nat-0549-move_lid__missing-slot-14",
+      "class": "missing_slot",
+      "reasons": [
+        "name mismatch: 0: predicted 'move_plate' != intended 'move_lid'",
+        "params mismatch: 0: predicted {'destination': 'reservoir_1', 'plate': 'reservoir_1'} != intended {'destination': 'reservoir_1'}",
+        "0: missing_required derived () != intended ('lid',)",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='reservoir_1', resource_type='resource'), DerivedSlot(arg_name='plate', reference='reservoir_1', resource_type='plate')) != intended (DerivedSlot(arg_name='destination', reference='reservoir_1', resource_type='resource'),)"
+      ]
+    },
+    {
+      "record_id": "nat-0564-move_plate__ambiguous-referent-14",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'scale_station_1'} != intended {'destination': 'scale_station_1', 'plate': 'the plate'}",
+        "0: missing_required derived ('plate',) != intended ()",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='scale_station_1', resource_type='resource'),) != intended (DerivedSlot(arg_name='destination', reference='scale_station_1', resource_type='resource'), DerivedSlot(arg_name='plate', reference='the plate', resource_type='plate'))"
+      ]
+    },
+    {
+      "record_id": "nat-0592-read_absorbance__missing-slot-12",
+      "class": "missing_slot",
+      "reasons": [
+        "params mismatch: 0: predicted {'at': ['plate.OD']} != intended {}"
+      ]
+    },
+    {
+      "record_id": "nat-0608-move_lid__ambiguous-referent-13",
+      "class": "ambiguous_referent",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'scale_station_1'} != intended {'destination': 'scale_station_1', 'lid': 'the lid'}",
+        "0: missing_required derived ('lid',) != intended ()",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='scale_station_1', resource_type='resource'),) != intended (DerivedSlot(arg_name='destination', reference='scale_station_1', resource_type='resource'), DerivedSlot(arg_name='lid', reference='the lid', resource_type='lid'))"
+      ]
+    },
+    {
+      "record_id": "nat-0622-read_absorbance__none-12",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'at': [405.0]} != intended {'wavelength_nm': 405.0}",
+        "0: missing_required derived ('wavelength_nm',) != intended ()"
+      ]
+    },
+    {
+      "record_id": "nat-0652-read_fluorescence__none-12",
+      "class": "clean_parse",
+      "reasons": [
+        "name mismatch: 0: predicted 'read_luminescence' != intended 'read_fluorescence'",
+        "params mismatch: 0: predicted {'at': ['plate.excitation_nm', 'plate.emission_nm', 'plate.focal_height_mm'], 'focal_height_mm': 15.0} != intended {'emission_nm': 620.0, 'excitation_nm': 535.0, 'focal_height_mm': 15.0}"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "167e50ba8b6ddbc3ed1087dc830371faab210a061de70177f02de71392bb2b23",
+ "fetched_at": "2026-09-02T15:13:31.697409+00:00",
+ "input_hash": "02306a019d3e7dbed6a6b4689aba107e0b792ddce2489b847f8eb9cd54ffa555",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Drop 25 microliters into the source well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

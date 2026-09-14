@@ -1,0 +1,9 @@
+{
+ "cache_key": "98e2f03b831527a16fcb8c5aa2a8b39b9c68ecfdd900ee7da4f5be36b3a25931",
+ "fetched_at": "2026-09-01T21:20:04.904996+00:00",
+ "input_hash": "8c1a295033c9a03261acbdfb114178dd5319b16aefa9c064c71a85651f35ce81",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Perform a luminescence reading on the loaded plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

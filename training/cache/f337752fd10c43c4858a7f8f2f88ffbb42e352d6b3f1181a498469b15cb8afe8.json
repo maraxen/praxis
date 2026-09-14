@@ -1,0 +1,9 @@
+{
+ "cache_key": "f337752fd10c43c4858a7f8f2f88ffbb42e352d6b3f1181a498469b15cb8afe8",
+ "fetched_at": "2026-09-01T21:13:48.585370+00:00",
+ "input_hash": "fd44be334b8c484c366b91dafa55d2f7efe50f74f36d7b90e6e8c27e52bf8d74",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Drop the tips into tip_rack.H6.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "ddce2c5333e728ef320f683f4744a8f906d8f3db4ed68aff0a14958870512559",
+ "fetched_at": "2026-09-01T21:20:04.905062+00:00",
+ "input_hash": "bd05ff1bb74f1e922243534730323679fbf2899d19b9aa90b9ce6b6331aea3ce",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read luminescence from wells D9 and H2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "c082c1933b916c7214fc42e11aec9234af354f4c1bc9c193557b0f1f6fd89c9e",
+ "fetched_at": "2026-09-02T16:07:16.081644+00:00",
+ "input_hash": "324e9432ebb725b7905b9e52869fe9db1378c8bd013f2eda58980cf7b7990da4",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put down on scale station 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

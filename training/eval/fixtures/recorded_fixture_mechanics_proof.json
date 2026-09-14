@@ -1,0 +1,47 @@
+{
+  "artifact_kind": "praxis-recorded-model-outputs",
+  "base_revision": "google/functiongemma-270m-it@gated-repo-no-token-access",
+  "recorded_by": "HAND-AUTHORED by the P2.1 worker (ox-alpha, backlog 4476) to prove harness MECHANICS ONLY. These strings are NOT model outputs. The real baseline run is BLOCKED: google/functiongemma-270m-it is a gated HF repo requiring accepted Gemma terms + HF_TOKEN.",
+  "note_on_coverage": "8 eval examples exercising every scorer path: exact positive match, param-mismatch failure, cue-1 clarify hit, cue-1 clarify MISS (hallucinated param), out-of-surface abstention (TP), out-of-surface violation via EXCLUDED verb (not clarify-routing), ambiguous-referent passthrough (exact-match axis; cue-2 is kernel-side per C-M1), truncated-span hardened parse.",
+  "outputs": [
+    {
+      "record_id": "golden-clean-aspirate-03",
+      "raw_output": "<start_function_call>call:aspirate{source:<escape>lysis_buffer_reservoir<escape>,volume_ul:<escape>100<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-dispense-03",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>waste_plate_A1<escape>,volume_ul:<escape>50<escape>}<end_function_call>",
+      "note": "wrong volume (15 stated) -> params mismatch"
+    },
+    {
+      "record_id": "golden-missing-slot-01",
+      "raw_output": "<start_function_call>call:aspirate{volume_ul:<escape>50<escape>}<end_function_call>",
+      "note": "incomplete call as supervised -> derived missing_required=['source'] -> clarify TP"
+    },
+    {
+      "record_id": "golden-missing-slot-03",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>waste_plate_A1<escape>,volume_ul:<escape>100<escape>}<end_function_call>",
+      "note": "model hallucinates a destination instead of leaving it absent -> clarify MISS (FN)"
+    },
+    {
+      "record_id": "golden-out-surface-01",
+      "raw_output": "",
+      "note": "abstention (no call) on heater-shaker request -> clarify TP + exact match"
+    },
+    {
+      "record_id": "golden-out-surface-02",
+      "raw_output": "<start_function_call>call:mix{at:<escape>samples<escape>}<end_function_call>",
+      "note": "calls PHANTOM verb 'mix' (excluded from phase-2 surface) -> wrong-call failure, NOT clarify-routing"
+    },
+    {
+      "record_id": "golden-ambig-ref-02",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>there<escape>,volume_ul:<escape>80<escape>}<end_function_call>",
+      "note": "deictic reference passed through verbatim -> exact-match axis; grounding is kernel-side"
+    },
+    {
+      "record_id": "golden-clean-transfer-03",
+      "raw_output": "<start_function_call>call:transfer{source:<escape>calibrator_1<escape>,destination:<escape>standards_plate_A1<escape>,volume_ul:<escape>50<escape>",
+      "note": "MISSING <end_function_call> (truncated decode) -> hardened parser recovers best-effort"
+    }
+  ]
+}

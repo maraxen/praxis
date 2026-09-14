@@ -1,0 +1,9 @@
+{
+ "cache_key": "1620ace8ff7a21f9214c79e4acbaba5cc6f2d58141c933631aad842ad3e69857",
+ "fetched_at": "2026-09-03T15:10:30.070659+00:00",
+ "input_hash": "a813b5cef48b15e8095c01f395aad3ce0e11037a427d522b4381f5f8c7cd1a90",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Got any good jokes to tell me while I wait for this incubation to finish?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

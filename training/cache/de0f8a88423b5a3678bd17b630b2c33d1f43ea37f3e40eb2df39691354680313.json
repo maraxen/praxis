@@ -1,0 +1,9 @@
+{
+ "cache_key": "de0f8a88423b5a3678bd17b630b2c33d1f43ea37f3e40eb2df39691354680313",
+ "fetched_at": "2026-09-02T15:19:09.187363+00:00",
+ "input_hash": "06a6f02912f45bfa8b36fb937374edb1fc8364da63fe7acbf5f43ee12f92a7f3",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Shuttle liquid into well A8 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

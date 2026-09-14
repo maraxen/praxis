@@ -1,0 +1,54 @@
+{
+  "generator": "fetch_models.py --runtime",
+  "generator_version": "1.0.0",
+  "generated_at": "2026-08-25T22:09:28Z",
+  "pins": {
+    "transformers.js": {
+      "npm": "@huggingface/transformers",
+      "version": "4.2.0",
+      "tarball_sha512": "sha512-8BRCoBMH0XsWaEIamuR0LrJGAfftgHAfb2Vrffy0VKlSAE/MnUJ5/h/zTfEP3fDIft+nk7TqB8xXEyABGitBjQ=="
+    },
+    "onnxruntime-web": {
+      "npm": "onnxruntime-web",
+      "version": "1.26.0-dev.20260416-b7804b056c",
+      "tarball_sha512": "sha512-MD6Ss4GSpQBo6zqoJzyT9LRbKYs7x/JVN23FT24EcEvlqF4VuzPOeH6X38orZPKHQDbprn7K+SBpu0/mj2CQiw=="
+    },
+    "substitutions": [
+      {
+        "what": "wasmPaths jsDelivr default -> ./ort/",
+        "why": "GATE G5 forbids the jsDelivr CDN host anywhere in dist",
+        "matches_expected": 1
+      }
+    ]
+  },
+  "files": [
+    {
+      "path": "model_integrity.js",
+      "sha256": "8411efce516361625e0c56c75ced393a6771b89016ee9d23ee5e4758b2f22c4c",
+      "bytes": 11127,
+      "tracked": true,
+      "role": "hand-authored"
+    },
+    {
+      "path": "ort/ort-wasm-simd-threaded.asyncify.mjs",
+      "sha256": "5959c6733039619c9af710d8e1bae8d6e84402787990637be987c2b1bd6c5fa9",
+      "bytes": 47389,
+      "tracked": true,
+      "role": "vendored-lib"
+    },
+    {
+      "path": "ort/ort-wasm-simd-threaded.asyncify.wasm",
+      "sha256": "e0c0c6d3e73d43b8a249972f8358f845b08cc16fec3c80efafdf8bed40366786",
+      "bytes": 23567050,
+      "tracked": false,
+      "role": "fetched-binary-untracked"
+    },
+    {
+      "path": "transformers.min.js",
+      "sha256": "1ed1ea40eb4d142e3773bf03985b69da5a781c33053eacb48eb3e54d406c4b27",
+      "bytes": 558310,
+      "tracked": true,
+      "role": "vendored-lib"
+    }
+  ]
+}

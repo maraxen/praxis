@@ -1,0 +1,9 @@
+{
+ "cache_key": "7cbd08b5887a3c67aa1494ddd63d40349a96fd0ba3b26e55f2cbe1dcc9459bda",
+ "fetched_at": "2026-09-02T20:24:24.866941+00:00",
+ "input_hash": "3fdd0f758f647d08d449840c321d51d0bb9bde15a1b3d0f3db9bf2fd90c68d21",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put lid 1 on the hotel stack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

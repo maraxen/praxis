@@ -1,0 +1,9 @@
+{
+ "cache_key": "3863c9676594df82c5be9fd98fe8b3dc215ae1c2b8ca486ef636c6f930daad00",
+ "fetched_at": "2026-09-02T14:57:20.608077+00:00",
+ "input_hash": "0dc1e34f2bbff5d8f5c0ed2a36807d345e0ca207832eb351597baf974c17410d",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Take tips from the tip box for the next transfer.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

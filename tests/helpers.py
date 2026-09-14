@@ -275,11 +275,6 @@ async def create_protocol_definition(
         FunctionProtocolDefinition instance
 
     """
-    from praxis.backend.models.domain.protocol_source import (
-        FileSystemProtocolSource,
-        ProtocolSourceRepository,
-    )
-
     # Generate unique name if not provided
     if name is None:
         name = f"test_protocol_{uuid7()!s}"
@@ -397,7 +392,6 @@ async def create_function_data_output(
 
     """
     from praxis.backend.models.enums import DataOutputTypeEnum
-    from praxis.backend.models.domain.protocol import FunctionCallLog
 
     # Create protocol run if not provided
     if protocol_run is None:

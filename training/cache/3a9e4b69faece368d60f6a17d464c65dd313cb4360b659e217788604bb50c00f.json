@@ -1,0 +1,9 @@
+{
+ "cache_key": "3a9e4b69faece368d60f6a17d464c65dd313cb4360b659e217788604bb50c00f",
+ "fetched_at": "2026-09-02T16:55:03.921392+00:00",
+ "input_hash": "3e5ddaaa1257efe7cea3f0b93b293d8f7e76dcdee3ff9840f031e751df49cb34",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the OD at 405 nm across the plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

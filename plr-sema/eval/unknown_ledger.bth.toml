@@ -1,0 +1,40 @@
+# bathos sidecar for plr-sema/eval/unknown_ledger.py (band B0, backlog #4976).
+# Plan: .praxia/docs/plans/260904_plr-sema-sprint127-predicates.md §1 row B0.
+#
+# This is the INSTRUMENT sprint 127 is measured by, not a claim about the
+# analyzer itself -- no analyzer semantics change here. It observes the
+# frozen tier-1 sidecar-gated benchmark (oracle_replay.py, unchanged) via
+# oracle_common.FINDINGS_SINK and publishes root-cause CLUSTERS (grouped by
+# (reason, plr_site, condition)) instead of the raw per-finding count
+# oracle_replay.py's own report already carries -- the granularity the main
+# spec's deferred row (f) asked for.
+
+[experiment]
+hypothesis = "The planning-time probe (sprint plan §0, an ephemeral, non-tracked check_ir wrapper over the first 150 corpus rows) found that a SINGLE reason, guard_predicate_unparsed, blocks every one of the frozen benchmark's executed real operations (the per-op reason set is {guard_predicate_unparsed} on most ops and {guard_predicate_unparsed, volume_state_unknown} on the rest -- never a third combination, and never a reason set this analyzer's REASON_VOCABULARY would call anything else). This ledger, built on the properly-seamed run_static_calls path (not a check_ir monkeypatch) over the FULL frozen benchmark (all 343 executed rows / 548 ops, not a 150-row slice), reproduces that finding: guard_predicate_unparsed is present in >=1 cluster on every UNKNOWN-verdict operation, and the per_op_reason_set_histogram has at most two distinct reason sets, both containing guard_predicate_unparsed."
+stage_name = "calibration"
+novel = true
+
+[outcomes.pass]
+condition = "n_ops_unknown = n_ops_executed AND every per_op_reason_set_histogram entry's reason_set contains 'guard_predicate_unparsed'"
+is_residual = false
+decision = "The ledger confirms the planning-time probe's headline finding on the full frozen benchmark, not just its 150-row sample: guard_predicate_unparsed is the universal blocker. Band A (increment 6 spec draft) can size the predicate-language grammar directly against this ledger's clusters."
+reasoning = "Every executed op is UNKNOWN (matching oracle_replay.py's own unknown_rate=1.0 baseline) and no reason set omits guard_predicate_unparsed -- the deferred predicate-language row (c) is confirmed as the single lever that can move unknown_rate at all."
+
+[outcomes.marginal]
+condition = "n_ops_unknown = n_ops_executed AND NOT (every per_op_reason_set_histogram entry's reason_set contains 'guard_predicate_unparsed')"
+is_residual = false
+decision = "unknown_rate is still 1.0 (no regression), but a reason set exists that does NOT involve guard_predicate_unparsed -- the planning-time probe's 150-row sample under-generalised. Re-derive band A's grammar sizing from THIS ledger's actual reason-set histogram, not the probe's."
+reasoning = "The headline (unknown_rate 1.0, 0 unsound) still holds, but the root-cause distribution the probe reported was incomplete -- band A must not assume the predicate language alone clears every op."
+
+[outcomes.fail]
+condition = "n_ops_unknown != n_ops_executed OR n_ops_executed != <oracle_replay's own operations_executed, cross-checked in baseline_comparison>"
+is_residual = true
+decision = "Stop: either this ledger disagrees with oracle_replay.py's own unknown_rate about which ops are UNKNOWN (a bug in this script's clustering, not the analyzer -- unknown_rate itself is unchanged, this script only re-derives it), or the positional row correlation invariant broke (an oracle_replay.py control-flow change this script's own RuntimeError should already have caught). No spec/grammar sizing from this ledger until fixed."
+reasoning = "This ledger must never publish a population that disagrees with the benchmark it observes -- it is instrumentation, not a second oracle; any disagreement is a defect in unknown_ledger.py, not new analyzer signal."
+
+[result_schema]
+n_ops_executed = "int"
+n_ops_unknown = "int"
+n_clusters = "int"
+n_findings_total = "int"
+top_cluster_n_ops_blocked = "int"

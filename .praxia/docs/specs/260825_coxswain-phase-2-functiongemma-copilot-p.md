@@ -67,9 +67,18 @@ contemplex session `70ae4959`; MVP spec `260824_coxswain-mvp-ux-spec.md`.
    `assertValidEnvelope` (worker emits raw results); decode config = stop tokens
    [`<end_of_turn>`, `<start_function_response>`], max_new_tokens 128, greedy.
 5. **F5 Text-first**; voice push-to-talk later.
-6. **F6 Teacher backends (amended 260825, user-directed)**: ox-alpha via spawned jcode workers
-   (ambiguity-injection, golden authoring) + titanix-vllm-primary localhost vLLM (verified live;
-   bulk mechanical passes); external routing not required; golden-50 human-reviewed always.
+6. **F6 Teacher backends (amended 260825, user-directed; amended again 260827)**: ox-alpha via
+   spawned jcode workers (ambiguity-injection, golden authoring) + titanix-vllm-primary localhost
+   vLLM (verified live; smoke-scale mechanical passes only as of 260827) + **Gemini 3.7 Flash
+   (`gemini-3.7-flash-medium`, shelled via the local `agy` CLI -- no API key, agy owns its own
+   auth), the full-scale-pass teacher (260827)** after titanix-vllm-primary was flagged as not
+   viable at that scale; golden-50 human-reviewed always. Non-Gemma model -- D13's
+   teacher-derivative gate does not apply. Implemented in `floor_gen.teachers.GeminiTeacher`
+   (batched per user direction; real-verified) / `overlay_gen.pair_builder.GeminiTeacherClient`
+   (not yet batched), both using `agy --json-schema` guided decoding to enforce the exact response
+   contract at decode time
+   (see `.praxia/docs/decisions/260827_teacher-backend-gemini-3-7-flash-for-full-scale-floor_gen-overlay_gen-pass.md`
+   for the full design + coverage/brittleness analysis).
 
 ## 4. Corrected ground truth (implementer must honor)
 

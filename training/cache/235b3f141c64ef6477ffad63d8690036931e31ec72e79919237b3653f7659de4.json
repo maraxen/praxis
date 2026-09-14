@@ -1,0 +1,9 @@
+{
+ "cache_key": "235b3f141c64ef6477ffad63d8690036931e31ec72e79919237b3653f7659de4",
+ "fetched_at": "2026-09-02T15:52:11.222276+00:00",
+ "input_hash": "0f1fa7c5f3ab04c8206d84876ef62f87569849fbe830cd687326313e9ff5208e",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"You can return the tips now.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

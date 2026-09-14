@@ -1,0 +1,9 @@
+{
+ "cache_key": "bf4283b5b60e499320f41d43fe3308d91ea64b6519db381e994c621b17a58025",
+ "fetched_at": "2026-09-02T15:17:12.230435+00:00",
+ "input_hash": "09a6454ffadc764bdeea79f81a392e7e37faa10be386918a687d4c86f8b8a055",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Bring over 200 microliters from well F12 of plate 1 to well H2 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "649177e05859ffb7f2ddec0a183177be0b64f0434fccf90f7b610e398607ebf6",
+ "fetched_at": "2026-08-28T18:03:09.528447+00:00",
+ "input_hash": "79378d87cb06f3f642096e1e733d343c839be942766b47e44c6c3fbb74643913",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Move to scale_station_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "84b5118e2dfe6988a0cc57afac10eeb33fcba1e5574d57e9941744e1f06bc8b9",
+ "fetched_at": "2026-09-03T15:03:53.931528+00:00",
+ "input_hash": "36302d3537fb9a31d6e5180fe868cb45e24373d7ea2512370c19fd56716f868b",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you bring the heater-shaker module on the deck up to 37 degrees Celsius?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

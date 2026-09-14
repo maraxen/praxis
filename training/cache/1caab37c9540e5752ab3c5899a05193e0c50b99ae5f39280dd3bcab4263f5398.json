@@ -1,0 +1,9 @@
+{
+ "cache_key": "1caab37c9540e5752ab3c5899a05193e0c50b99ae5f39280dd3bcab4263f5398",
+ "fetched_at": "2026-08-28T18:01:56.040396+00:00",
+ "input_hash": "a0d6138ac81cd71cf2e8119022dc2257ff8485c9331beda1df531e42b7957d29",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Pick up tips from tip_rack.C4 and tip_rack.D12.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

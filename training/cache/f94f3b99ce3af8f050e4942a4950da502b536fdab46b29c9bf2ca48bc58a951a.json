@@ -1,0 +1,9 @@
+{
+ "cache_key": "f94f3b99ce3af8f050e4942a4950da502b536fdab46b29c9bf2ca48bc58a951a",
+ "fetched_at": "2026-09-02T15:10:59.365755+00:00",
+ "input_hash": "37f4a6e6d08fa823e4f2752027f786559356743188092985d26407f6572ba8e0",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Pull 15 microliters from the same well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

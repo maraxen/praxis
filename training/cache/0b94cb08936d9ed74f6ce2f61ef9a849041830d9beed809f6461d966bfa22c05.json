@@ -1,0 +1,9 @@
+{
+ "cache_key": "0b94cb08936d9ed74f6ce2f61ef9a849041830d9beed809f6461d966bfa22c05",
+ "fetched_at": "2026-09-02T16:28:47.761031+00:00",
+ "input_hash": "988f58bd8c32b174ea96f82c19723df6aa9a5107c6274478ed90c74bc3494030",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and load new tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

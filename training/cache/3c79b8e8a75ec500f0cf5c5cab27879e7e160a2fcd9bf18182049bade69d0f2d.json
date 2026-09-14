@@ -1,0 +1,9 @@
+{
+ "cache_key": "3c79b8e8a75ec500f0cf5c5cab27879e7e160a2fcd9bf18182049bade69d0f2d",
+ "fetched_at": "2026-09-01T21:20:15.678844+00:00",
+ "input_hash": "c275c3cc45c40278fc61bb376b540daf55b05298bd56a900ff28aeabfeeb3ed4",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the luminescence of the loaded plate at a focal height of 15.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

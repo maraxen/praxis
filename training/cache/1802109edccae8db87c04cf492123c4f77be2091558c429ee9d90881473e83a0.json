@@ -1,0 +1,9 @@
+{
+ "cache_key": "1802109edccae8db87c04cf492123c4f77be2091558c429ee9d90881473e83a0",
+ "fetched_at": "2026-09-03T15:10:04.030963+00:00",
+ "input_hash": "5a78eedded1d005d41695e46377eb064c00f59081b97bb21aa5da00a7e9ee71c",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"What's the weather looking like outside today?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

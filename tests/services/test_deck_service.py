@@ -6,12 +6,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums.asset import AssetType
-from praxis.backend.models.enums.machine import MachineStatusEnum
-from praxis.backend.models.domain.deck import Deck, DeckDefinition, DeckCreate, DeckUpdate
-from praxis.backend.models.domain.resource import ResourceDefinition
+from praxis.backend.models.domain.deck import Deck, DeckCreate, DeckDefinition, DeckUpdate
 from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.machine import MachineCreate
+from praxis.backend.models.domain.resource import ResourceDefinition
+from praxis.backend.models.enums.asset import AssetType
+from praxis.backend.models.enums.machine import MachineStatusEnum
 from praxis.backend.services.deck import deck_service
 from praxis.backend.services.machine import machine_service
 

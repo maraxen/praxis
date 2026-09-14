@@ -1,0 +1,86 @@
+{
+  "audit_rules_version": "1",
+  "adjudications": {
+    "48f324ecbdd894fb": {
+      "adjudicated_digest": "5736f1928c4f4ad6",
+      "reading": "confirms_current_table",
+      "rationale": "KWARG_ONLY: cookbook evidence (bare IDENT + CLASSISH corroboration, no lh.mix) is consistent with the current phantom classification; nothing disputes it.",
+      "action": "none",
+      "action_ref": "",
+      "adjudicated_by": "praxia-orchestrator (autonomous, per spec Sec5.3/5.4.1's own anticipated reading; pending human review)",
+      "adjudicated_on": "2026-08-28"
+    },
+    "cba9e7252459ba02": {
+      "adjudicated_digest": "493ad82e0121f310",
+      "reading": "confirms_current_table",
+      "rationale": "KWARG_ONLY: cookbook evidence (bare IDENT among kwarg-shaped siblings, blow_out_air_volume elsewhere) is consistent with the current phantom classification.",
+      "action": "none",
+      "action_ref": "",
+      "adjudicated_by": "praxia-orchestrator (autonomous, per spec Sec5.3/5.4.1's own anticipated reading; pending human review)",
+      "adjudicated_on": "2026-08-28"
+    },
+    "06c80084cfd4f899": {
+      "adjudicated_digest": "3c8182168a4ecd70",
+      "reading": "confirms_current_table",
+      "rationale": "NO_EVIDENCE: absent from all 91 recipes; no evidence contradicts the current phantom classification, so the table stands unconfirmed but undisputed.",
+      "action": "none",
+      "action_ref": "",
+      "adjudicated_by": "praxia-orchestrator (autonomous, per spec Sec5.3/5.4.1's own anticipated reading; pending human review)",
+      "adjudicated_on": "2026-08-28"
+    },
+    "2aecba9592b23575": {
+      "adjudicated_digest": "7fe9b9db08b1df0f",
+      "reading": "confirms_current_table",
+      "rationale": "NO_EVIDENCE: absent from all 91 recipes; no evidence contradicts the current phantom classification, so the table stands unconfirmed but undisputed.",
+      "action": "none",
+      "action_ref": "",
+      "adjudicated_by": "praxia-orchestrator (autonomous, per spec Sec5.3/5.4.1's own anticipated reading; pending human review)",
+      "adjudicated_on": "2026-08-28"
+    },
+    "be49985595c4fd84": {
+      "adjudicated_digest": "018a4c06b426ded0",
+      "reading": "table_is_wrong",
+      "rationale": "liquid_handler.use_channels is a real vendored context-manager method taught by the cookbook (recipes.yml:152) but absent from both TOOL_SCHEMA and NON_SURFACE_VERB_REASONS; gap filed.",
+      "action": "file_backlog_item",
+      "action_ref": "backlog:4663",
+      "adjudicated_by": "praxia-orchestrator (autonomous, per spec Sec5.3/5.4.1's own anticipated reading; pending human review)",
+      "adjudicated_on": "2026-08-28"
+    },
+    "5bac7251795f939e": {
+      "adjudicated_digest": "474eeb30821d0fe3",
+      "reading": "table_is_wrong",
+      "rationale": "liquid_handler.use_tips is a real vendored async context-manager method taught by the cookbook (recipes.yml:232) but absent from both canonical tables; gap filed.",
+      "action": "file_backlog_item",
+      "action_ref": "backlog:4664",
+      "adjudicated_by": "praxia-orchestrator (autonomous, per spec Sec5.3/5.4.1's own anticipated reading; pending human review)",
+      "adjudicated_on": "2026-08-28"
+    },
+    "87ec5c3dd62bc68f": {
+      "adjudicated_digest": "bf0b06f1c6862edc",
+      "reading": "table_is_wrong",
+      "rationale": "liquid_handler.probe_tip_presence_via_pickup is real and taught by the cookbook (lines 212, 252); sibling verbs probe_tip_inventory/consolidate_tip_inventory are excluded but this one is not; gap filed.",
+      "action": "file_backlog_item",
+      "action_ref": "backlog:4665",
+      "adjudicated_by": "praxia-orchestrator (autonomous, per spec Sec5.3/5.4.1's own anticipated reading; pending human review)",
+      "adjudicated_on": "2026-08-28"
+    },
+    "d2e178c4027a643c": {
+      "adjudicated_digest": "602217d7580d20d6",
+      "reading": "table_is_wrong",
+      "rationale": "liquid_handler.clear_head_state is real and taught by the cookbook (line 467); its counterpart update_head_state is excluded but this one is not; gap filed.",
+      "action": "file_backlog_item",
+      "action_ref": "backlog:4666",
+      "adjudicated_by": "praxia-orchestrator (autonomous, per spec Sec5.3/5.4.1's own anticipated reading; pending human review)",
+      "adjudicated_on": "2026-08-28"
+    },
+    "11e8fd5f0ec89147": {
+      "adjudicated_digest": "5b3fe846c33276b2",
+      "reading": "token_is_not_a_method",
+      "rationale": "head is a real vendored attribute, not a callable method; method_shaped() cannot distinguish attributes from methods given recipes.yml's grammar, which carries no call syntax; gap filed.",
+      "action": "file_backlog_item",
+      "action_ref": "backlog:4667",
+      "adjudicated_by": "praxia-orchestrator (autonomous, per spec Sec5.3/5.4.1's own anticipated reading; pending human review)",
+      "adjudicated_on": "2026-08-28"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "4bf80aa942229eeba7425109188f21b2b45b7c0e2c36ad3e72f889f19da7cc5b",
+ "fetched_at": "2026-09-02T15:12:06.521162+00:00",
+ "input_hash": "79a0031a1efd6fed3bf85f1d2ec825404a5a3d631170e4b7cafcf7f7043e95d9",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Deliver the liquid into well C2 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

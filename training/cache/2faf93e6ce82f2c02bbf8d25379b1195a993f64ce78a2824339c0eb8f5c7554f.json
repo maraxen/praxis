@@ -1,0 +1,9 @@
+{
+ "cache_key": "2faf93e6ce82f2c02bbf8d25379b1195a993f64ce78a2824339c0eb8f5c7554f",
+ "fetched_at": "2026-09-03T15:03:34.773018+00:00",
+ "input_hash": "85d7ddaec240e3ef10333cd877da3b44a7af63c68bebd4f21291f6c4408f5237",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you tip the plate over and dump all the liquid straight into the waste container?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

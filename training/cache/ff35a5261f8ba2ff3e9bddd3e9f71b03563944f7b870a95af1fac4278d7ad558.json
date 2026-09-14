@@ -1,0 +1,9 @@
+{
+ "cache_key": "ff35a5261f8ba2ff3e9bddd3e9f71b03563944f7b870a95af1fac4278d7ad558",
+ "fetched_at": "2026-09-02T15:13:31.697365+00:00",
+ "input_hash": "28ec7258380b8ac92054f87cf3f181dff9e485b610c415fc3bc3de591a1a2f6d",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put 200 microliters into the destination well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

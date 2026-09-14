@@ -7,28 +7,25 @@ Tests for:
 - Audit logging
 """
 
-import pytest
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from praxis.backend.core.simulation.state_models import SimulationState, StateLevel
 from praxis.backend.core.simulation.state_resolution import (
     OperationRecord,
     ResolutionType,
-    StateResolution,
-    UncertainStateChange,
     StatePropertyType,
+    UncertainStateChange,
 )
-from praxis.backend.core.simulation.state_models import SimulationState, StateLevel
-from praxis.backend.models.enums.schedule import ScheduleStatusEnum
 from praxis.backend.models.enums.resolution import ResolutionActionEnum, ResolutionTypeEnum
+from praxis.backend.models.enums.schedule import ScheduleStatusEnum
 from praxis.backend.services.state_resolution_service import (
-    StateResolutionService,
     StateResolutionRequest,
+    StateResolutionService,
     UncertainStateChangeResponse,
-    StateResolutionLogResponse,
 )
 
 

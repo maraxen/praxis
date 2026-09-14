@@ -1,0 +1,9 @@
+{
+ "cache_key": "5abc3c6c44cc0eb19cfb0674774bb389c0389db068d2263d4d026af8c81fe998",
+ "fetched_at": "2026-09-02T20:25:31.801671+00:00",
+ "input_hash": "ab18d728d8ac646edaff6f30287c0d476bcee4da7ffb299fdf582950500593fc",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure fluorescence in well A12 using an excitation wavelength of 535 nm and a focal height of 15 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

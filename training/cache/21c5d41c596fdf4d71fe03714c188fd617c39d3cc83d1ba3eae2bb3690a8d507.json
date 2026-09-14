@@ -1,0 +1,9 @@
+{
+ "cache_key": "21c5d41c596fdf4d71fe03714c188fd617c39d3cc83d1ba3eae2bb3690a8d507",
+ "fetched_at": "2026-09-02T15:36:39.272046+00:00",
+ "input_hash": "2dee1ef8cf7d22a2e87425c2766d65a0c27738364bcec03380b295504f688eac",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please copy plate 1 onto plate 2, transferring 10 microliters per well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

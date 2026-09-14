@@ -1,0 +1,12 @@
+{
+ "canonical_tables_fingerprint_version": "2",
+ "fingerprint": "fd08ca0e47e11046",
+ "built_artifacts": {
+  "training/out/corpus_p23_smoke.jsonl": "8beab6d56ec89059fd8bfcd486ae6bcf6e8387507f34e2a888978e82188e447a",
+  "training/overlay_gen/out/overlay_smoke.jsonl": "6a251717af7d7e5b0d3aaf1a24c6358079377f734d4eb47fab07afddfa44c1b7",
+  "training/assemble/out/corpus_p25.jsonl": "0c1b0230cd5236517c39e41abc821349a66ecd942d45c658eb25b5526e3f2a35",
+  "training/assemble/out/corpus_p25_sidecar.jsonl": "d14693fe4b10391cfdd2f7abfa8c4d0e2b5093b8881b80740f55be28ffc4cd2c",
+  "training/assemble/out/manifest.json": "ed15e0f893cb34c3c9a4a8766d735655a716c16de49b68ff80caad16a00335c9"
+ },
+ "regeneration_order": ["floor_gen", "overlay_gen", "assemble", "ingest"]
+}

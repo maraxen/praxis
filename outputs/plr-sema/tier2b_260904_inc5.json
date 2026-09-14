@@ -1,0 +1,327 @@
+{
+  "summary_flat": {
+    "rows": 16,
+    "operations": 54,
+    "bytecode_divergences_extractor": 0,
+    "bytecode_divergences_renderer": 0,
+    "region_fixtures": 16,
+    "region_unsound": 0,
+    "region_will_fail_fired": 7,
+    "rows_normalised": 0,
+    "region_trip_mismatches": 0,
+    "region_harness_errors": 0,
+    "region_uncovered_keys": 0,
+    "elapsed_seconds": 3.0540295159444213,
+    "volume_fixtures": 4,
+    "volume_unsound": 0,
+    "volume_will_fail_fired": 3
+  },
+  "per_shape_coverage": {
+    "for": true,
+    "while": true,
+    "if": true
+  },
+  "trip_mismatches": [],
+  "harness_errors": [],
+  "unsound_rows": [],
+  "fixtures": [
+    {
+      "name": "break_fixture",
+      "shape": "break",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 3,
+      "n_findings": 73
+    },
+    {
+      "name": "continue_fixture",
+      "shape": "continue",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 3,
+      "n_findings": 25
+    },
+    {
+      "name": "for_pickup_aspirate_drop_clean",
+      "shape": "for",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [
+        {
+          "region_id": "op_4",
+          "trip": 2,
+          "executed": 2
+        }
+      ],
+      "n_operations": 4,
+      "n_findings": 75
+    },
+    {
+      "name": "for_pickup_no_drop_raises",
+      "shape": "for",
+      "status": "compared",
+      "raised": "HasTipError: Channel has tip",
+      "raised_key": [
+        "pick_up_tips",
+        29,
+        2
+      ],
+      "static_verdict_at_raised": "will_fail",
+      "will_fail_at_raised": true,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [
+        {
+          "region_id": "op_2",
+          "trip": 2,
+          "executed": 2
+        }
+      ],
+      "n_operations": 2,
+      "n_findings": 25
+    },
+    {
+      "name": "if_no_pickup_raises",
+      "shape": "if",
+      "status": "compared",
+      "raised": "NoTipError: Channel 0 does not have a tip.",
+      "raised_key": [
+        "aspirate",
+        27,
+        1
+      ],
+      "static_verdict_at_raised": "will_fail",
+      "will_fail_at_raised": true,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 3,
+      "n_findings": 24
+    },
+    {
+      "name": "if_pickup_then_aspirate_merge",
+      "shape": "if",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 4,
+      "n_findings": 35
+    },
+    {
+      "name": "nested_for_if_clean",
+      "shape": "nested",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [
+        {
+          "region_id": "op_5",
+          "trip": 2,
+          "executed": 2
+        }
+      ],
+      "n_operations": 5,
+      "n_findings": 75
+    },
+    {
+      "name": "range_zero",
+      "shape": "range_zero",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [
+        {
+          "region_id": "op_2",
+          "trip": 0,
+          "executed": 0
+        }
+      ],
+      "n_operations": 2,
+      "n_findings": 1
+    },
+    {
+      "name": "straightline_clean",
+      "shape": "straightline",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 3,
+      "n_findings": 35
+    },
+    {
+      "name": "two_sites_same_method",
+      "shape": "other",
+      "status": "compared",
+      "raised": "HasTipError: Channel has tip",
+      "raised_key": [
+        "pick_up_tips",
+        40,
+        1
+      ],
+      "static_verdict_at_raised": "will_fail",
+      "will_fail_at_raised": true,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [
+        {
+          "region_id": "op_3",
+          "trip": 1,
+          "executed": 1
+        }
+      ],
+      "n_operations": 3,
+      "n_findings": 24
+    },
+    {
+      "name": "volume_collective_exhaustion",
+      "shape": "other",
+      "status": "compared",
+      "raised": "TooLittleLiquidError: Not enough liquid in container: 20.0uL > 10.0uL.",
+      "raised_key": [
+        "dispense",
+        34,
+        3
+      ],
+      "static_verdict_at_raised": "will_fail",
+      "will_fail_at_raised": true,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [
+        {
+          "region_id": "op_4",
+          "trip": 3,
+          "executed": 3
+        }
+      ],
+      "n_operations": 4,
+      "n_findings": 66
+    },
+    {
+      "name": "volume_retip",
+      "shape": "other",
+      "status": "compared",
+      "raised": "TooLittleLiquidError: Not enough liquid in container: 50.0uL > 0uL.",
+      "raised_key": [
+        "dispense",
+        47,
+        1
+      ],
+      "static_verdict_at_raised": "unknown",
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 5,
+      "n_findings": 59
+    },
+    {
+      "name": "volume_second_iteration",
+      "shape": "other",
+      "status": "compared",
+      "raised": "TooLittleLiquidError: Not enough liquid in container: 30.0uL > 20.0uL.",
+      "raised_key": [
+        "dispense",
+        33,
+        2
+      ],
+      "static_verdict_at_raised": "will_fail",
+      "will_fail_at_raised": true,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [
+        {
+          "region_id": "op_4",
+          "trip": 2,
+          "executed": 2
+        }
+      ],
+      "n_operations": 4,
+      "n_findings": 52
+    },
+    {
+      "name": "volume_straightline",
+      "shape": "other",
+      "status": "compared",
+      "raised": "TooLittleLiquidError: Not enough liquid in container: 60.0uL > 50.0uL.",
+      "raised_key": [
+        "dispense",
+        36,
+        1
+      ],
+      "static_verdict_at_raised": "will_fail",
+      "will_fail_at_raised": true,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 3,
+      "n_findings": 37
+    },
+    {
+      "name": "while_counter_clean",
+      "shape": "while",
+      "status": "compared",
+      "raised": null,
+      "raised_key": null,
+      "static_verdict_at_raised": null,
+      "will_fail_at_raised": false,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 4,
+      "n_findings": 38
+    },
+    {
+      "name": "while_raises",
+      "shape": "while",
+      "status": "compared",
+      "raised": "NoTipError: Channel 0 does not have a tip.",
+      "raised_key": [
+        "aspirate",
+        33,
+        1
+      ],
+      "static_verdict_at_raised": "will_fail",
+      "will_fail_at_raised": true,
+      "n_unsound": 0,
+      "n_uncovered": 0,
+      "trip_checks": [],
+      "n_operations": 2,
+      "n_findings": 14
+    }
+  ]
+}

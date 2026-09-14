@@ -1,0 +1,9 @@
+{
+ "cache_key": "664069b83ae66a711a26ed12f410f5978577e812534e9be00b8e981446b595af",
+ "fetched_at": "2026-09-02T20:50:18.159551+00:00",
+ "input_hash": "702b235e7b15a1a3db036d144fb36b45cf8795e9b81ffc41725076339287ede8",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and read the glow on the plate at a focal height of 7.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

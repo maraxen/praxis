@@ -1,0 +1,54 @@
+# Pre-registration for the Coxswain P2.6 fine-tune ablation (task 260901_p26_finetune,
+# backlog 4848, gate doc .praxia/docs/specs/260825_p25_slice_gate.md rev 260901).
+# Written BEFORE any training run; the promotion rule below is applied mechanically.
+
+[experiment]
+hypothesis = "Full-parameter SFT of google/functiongemma-270m-it@39eccb09 on the assembled P2.5 corpus (D5 recipe: lr 1e-5 cosine, bf16, completion-only loss; recorded deviation 8 epochs x effective batch 16; train-side exact-duplicate dedup) lifts exact-match accuracy on the FIXED 228-row eval split from the live baseline 0.162 [0.120, 0.216] toward the T_acc 0.80 anchor while keeping clarify recall at or above the baseline 0.705, and the negative-mixing ratio (arm A raw 56% / B 50% / C 33% negatives) is the recipe variable that governs clarify precision (baseline 0.564, anchor 0.90) and the out-of-surface tripwire (baseline 13 fabricated calls on 44 rows)."
+stage_name = "ablation"
+novel = true
+
+# Promotion (D8 provisional anchors, thresholds doc 260825_p25_provisional_thresholds.md):
+# all three anchors on the full eval split AND the AC-2.6.3 tripwire at zero.
+[outcomes.pass]
+condition = "exact_match_accuracy >= 0.80 AND clarify_precision >= 0.90 AND clarify_recall >= 0.70 AND tripwire_out_of_surface_tool_calls = 0"
+decision = "Promote this arm's checkpoint (sha256 in train_manifest.json); proceed to P2.7b export parity"
+reasoning = "T_acc / T_clr_prec / T_clr_recall anchors cleared on the same 228-row split the baseline was measured on, and no fabricated call on any out-of-surface row"
+is_residual = false
+# Stricter bar the pass must also clear: the full eval split was scored (not a
+# smoke subset) and the run actually trained (>= 100 optimizer steps; the
+# smallest arm at 8 epochs x eff. batch 16 is ~170 steps).
+adversarial_check = "exact_match_accuracy >= 0.80 AND n_eval >= 228 AND global_steps >= 100"
+
+# Eligible under the pre-registered ranking rule (recall must not regress below
+# the baseline point 0.705) and distinguishable from the baseline (accuracy above
+# the baseline's Wilson upper bound 0.216), but at least one anchor missed.
+[outcomes.marginal]
+condition = "clarify_recall >= 0.705 AND exact_match_accuracy > 0.216 AND NOT (exact_match_accuracy >= 0.80 AND clarify_precision >= 0.90 AND tripwire_out_of_surface_tool_calls = 0)"
+decision = "Rank eligible arms by exact_match_accuracy (tie: clarify_precision); report all three numbers with Wilson intervals beside baseline v2; PROPOSE at most one D8 threshold revision to the user with the numbers as justification -- never apply it unilaterally"
+reasoning = "The fine-tune moved the model without hurting the safety behaviour F1 protects; whether the remaining gap is a threshold or a data problem is the user's jury call"
+is_residual = false
+
+# Recall regressed or accuracy indistinguishable from baseline: not promotable,
+# and the one-sprint NO-GO data path (floor_gen scalar-surface fix + regen) is back on the table.
+[outcomes.fail]
+condition = "clarify_recall < 0.705 OR exact_match_accuracy <= 0.216"
+decision = "Do not promote; write the numbers into the promotion doc and hand the GO/NO-GO back to the user (data fix vs recipe change)"
+reasoning = "Either the safety behaviour regressed (recall) or training on this corpus produced no measurable lift"
+is_residual = true
+
+[result_schema]
+arm = "str"
+seed = "int"
+recipe_version = "str"
+mode = "str"
+n_train = "int"
+negative_fraction = "float"
+max_length = "int"
+global_steps = "int"
+train_loss = "float"
+checkpoint_sha256 = "str"
+n_eval = "int"
+exact_match_accuracy = "float"
+clarify_recall = "float"
+clarify_precision = "float"
+tripwire_out_of_surface_tool_calls = "int"

@@ -1,5 +1,5 @@
 from pylabrobot.liquid_handling import LiquidHandler
-from pylabrobot.resources import Plate, TipRack, Well
+from pylabrobot.resources import Well
 
 
 async def test_itemized_args(

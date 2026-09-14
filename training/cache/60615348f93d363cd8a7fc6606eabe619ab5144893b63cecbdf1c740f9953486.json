@@ -1,0 +1,9 @@
+{
+ "cache_key": "60615348f93d363cd8a7fc6606eabe619ab5144893b63cecbdf1c740f9953486",
+ "fetched_at": "2026-09-01T21:11:59.055254+00:00",
+ "input_hash": "a38e3ef6ef76cdc831966b91111a4c4600984608162b7505630e15fd937bab4e",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Copy plate_1 over to plate_2 using stamping.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

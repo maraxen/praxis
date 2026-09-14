@@ -1,0 +1,9 @@
+{
+ "cache_key": "f6530b41f530e7a18182d9b6028cb4ae83aa36ec173292021d530bd59d1e5ecb",
+ "fetched_at": "2026-09-02T16:15:15.644104+00:00",
+ "input_hash": "2e60f49bccf25a073c6ff92459aec1a8baeca9492b1ab1c60a401842f8d83215",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please measure absorbance at well A1 on the plate in the reader.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

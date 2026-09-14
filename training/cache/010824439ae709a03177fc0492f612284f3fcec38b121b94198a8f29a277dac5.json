@@ -1,0 +1,9 @@
+{
+ "cache_key": "010824439ae709a03177fc0492f612284f3fcec38b121b94198a8f29a277dac5",
+ "fetched_at": "2026-09-02T15:11:10.983028+00:00",
+ "input_hash": "62abdf5e08e8217c2da01aeae3ee6263da2155912836371081a50e8bb76e569c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Deliver 10 microliters into plate 1, well F1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

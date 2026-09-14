@@ -1,0 +1,9 @@
+{
+ "cache_key": "e028cb6c0468a206c7a87886d3e07a56fe215494026dd178ee090670061471cb",
+ "fetched_at": "2026-09-01T21:20:04.905764+00:00",
+ "input_hash": "56f34f65aca28eb749b8bb525d37d44c1c69ef07abb7a04ed2f4030f05b0528f",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure the luminescence in wells A3, C1, D1, and H5 at a focal height of 5.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

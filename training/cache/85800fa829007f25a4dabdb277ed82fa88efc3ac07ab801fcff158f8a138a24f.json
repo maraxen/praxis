@@ -1,0 +1,9 @@
+{
+ "cache_key": "85800fa829007f25a4dabdb277ed82fa88efc3ac07ab801fcff158f8a138a24f",
+ "fetched_at": "2026-09-02T15:42:05.026696+00:00",
+ "input_hash": "c078c1d0b71657032b58542920cde3356e5151c429a1d56da5839ad6820ebfe1",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Copy the full plate 2 layout over to plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

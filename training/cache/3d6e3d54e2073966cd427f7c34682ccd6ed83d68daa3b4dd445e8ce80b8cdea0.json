@@ -1,0 +1,9 @@
+{
+ "cache_key": "3d6e3d54e2073966cd427f7c34682ccd6ed83d68daa3b4dd445e8ce80b8cdea0",
+ "fetched_at": "2026-09-01T21:14:33.230475+00:00",
+ "input_hash": "aeb35f5595d191429e38f0d300e94c7ab84ab9fbab8891a2ae030a193d022ccd",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Return the tips into the rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

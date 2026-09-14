@@ -1,0 +1,9 @@
+{
+ "cache_key": "65251ad261e710f51be80921b1b698ede9dfd4e312e22308d088f15ab01f0af7",
+ "fetched_at": "2026-09-03T15:03:34.773075+00:00",
+ "input_hash": "b7dfaa9a86dfd1e8931eb2c979cebea17ec19dfe0dbb9ffa6137cf6d36da1473",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please dump the contents of the 96-well plate straight into the liquid waste.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

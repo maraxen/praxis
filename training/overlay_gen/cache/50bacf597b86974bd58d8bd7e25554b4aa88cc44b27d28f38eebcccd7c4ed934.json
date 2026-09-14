@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-28T18:06:18Z",
+ "key": "50bacf597b86974bd58d8bd7e25554b4aa88cc44b27d28f38eebcccd7c4ed934",
+ "prompt_sha256": "50bacf597b86974bd58d8bd7e25554b4aa88cc44b27d28f38eebcccd7c4ed934",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Draw 100 *num_channels uL from well *num_channels.\nPlease aspirate 100 *num_channels uL from well *num_channels.\nPull up 100 *num_channels uL from well *num_channels.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

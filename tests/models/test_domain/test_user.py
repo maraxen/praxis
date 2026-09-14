@@ -9,8 +9,10 @@ from praxis.backend.models.domain.user import (
     User,
     UserBase,
     UserCreate,
-    UserRead as UserResponse,
     UserUpdate,
+)
+from praxis.backend.models.domain.user import (
+    UserRead as UserResponse,
 )
 
 

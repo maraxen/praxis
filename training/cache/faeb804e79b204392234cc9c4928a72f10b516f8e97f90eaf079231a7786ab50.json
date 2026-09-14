@@ -1,0 +1,9 @@
+{
+ "cache_key": "faeb804e79b204392234cc9c4928a72f10b516f8e97f90eaf079231a7786ab50",
+ "fetched_at": "2026-09-02T15:13:31.697149+00:00",
+ "input_hash": "977b186e5ee4d7bf40b4fa6cd5259d5df8b49d4e64ab040326a06b4b4ec3724b",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Deliver 25 microliters to the source well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

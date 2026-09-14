@@ -1,0 +1,9 @@
+{
+ "cache_key": "b7afcf681203888f8ab3556b5c0c060e8c8bf8d25d34c726eab595ad30cadddd",
+ "fetched_at": "2026-08-28T18:02:51.924391+00:00",
+ "input_hash": "12827ba0e0490c854d5a05c0267aaea28a9c1ac16acd5b983c24ad1393a7a5bb",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I'm sorry, but I cannot shake or mix microplates as shaking is outside my supported capabilities. I can help you with liquid handling (aspirate, dispense, transfer, stamp), moving plates and lids (move_plate, move_lid), or plate reader measurements (read_absorbance, read_fluorescence, read_luminescence).\", \"utterance\": \"Please shake the microplate at 500 rpm for five minutes.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

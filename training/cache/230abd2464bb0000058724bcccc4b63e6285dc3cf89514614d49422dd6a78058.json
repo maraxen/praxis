@@ -1,0 +1,9 @@
+{
+ "cache_key": "230abd2464bb0000058724bcccc4b63e6285dc3cf89514614d49422dd6a78058",
+ "fetched_at": "2026-09-02T16:24:40.408396+00:00",
+ "input_hash": "17025ad00a451c498dbbdc25459c5a17c4de659a789e4839530492ac4abd0b8e",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Load tips from spots E7 and H7 on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

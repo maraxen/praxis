@@ -1,0 +1,9 @@
+{
+ "cache_key": "b8f75b24f60cb62928ad6d64fc308f902e19550e7f68d4f232b7fb1c97a713d2",
+ "fetched_at": "2026-09-03T15:00:34.427329+00:00",
+ "input_hash": "efa26bb16ca5fdf1c5fbf182c5598262dadf463e4852461a5c35185e5bbf2c18",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Would you blow out the tips to push out any leftover droplets?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "183b96e70c06b25eb6bdc35b90c993ad46fb3d8ddcf3d81002447e3d7ed10624",
+ "fetched_at": "2026-09-02T16:46:29.082750+00:00",
+ "input_hash": "ef8456c584480b42dbb5518dbd48d0045d19eccd6f68cea64a914b97bc054d28",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put down at reservoir 1, please.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

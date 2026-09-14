@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:57Z",
+ "key": "bb3e2e513ec067b22bfb201abe7d93f23687d7cc18d141210dd0558e0898c704",
+ "prompt_sha256": "bb3e2e513ec067b22bfb201abe7d93f23687d7cc18d141210dd0558e0898c704",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Aspirate sample_volume_ul * 0.8 uL from plate dst_well\nPlease draw sample_volume_ul * 0.8 uL out of plate dst_well\nRetrieve sample_volume_ul * 0.8 uL from plate dst_well",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

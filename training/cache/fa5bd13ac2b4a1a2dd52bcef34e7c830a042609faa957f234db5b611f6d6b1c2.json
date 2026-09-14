@@ -1,0 +1,9 @@
+{
+ "cache_key": "fa5bd13ac2b4a1a2dd52bcef34e7c830a042609faa957f234db5b611f6d6b1c2",
+ "fetched_at": "2026-09-01T21:18:46.210547+00:00",
+ "input_hash": "92056e7b6f54e185df5083633b70664bbd9250d8f515df17238fb0ce78a21490",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the absorbance for wells G6 and H12.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

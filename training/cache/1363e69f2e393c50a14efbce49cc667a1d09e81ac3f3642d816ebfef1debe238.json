@@ -1,0 +1,9 @@
+{
+ "cache_key": "1363e69f2e393c50a14efbce49cc667a1d09e81ac3f3642d816ebfef1debe238",
+ "fetched_at": "2026-09-01T21:15:51.552961+00:00",
+ "input_hash": "8f7b18d40c6451a5e8260a6c2fa7cf4fba9eb41b775fa8757cc78b96bc7936cb",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I cannot stop or manage the heater shaker cycle. I can, however, help with deck movements like move_plate or liquid handling like transfer and dispense.\", \"utterance\": \"End the shaking cycle on the heater shaker.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

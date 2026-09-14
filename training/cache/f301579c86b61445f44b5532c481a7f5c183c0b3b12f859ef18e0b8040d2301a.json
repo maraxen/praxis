@@ -1,0 +1,9 @@
+{
+ "cache_key": "f301579c86b61445f44b5532c481a7f5c183c0b3b12f859ef18e0b8040d2301a",
+ "fetched_at": "2026-09-02T14:53:49.353471+00:00",
+ "input_hash": "d333af5eff3b1a5a8a6857940bb92f438fc9d7654e89a7c4e3d33c71f8bd02b2",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Pipette up 150 microliters.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

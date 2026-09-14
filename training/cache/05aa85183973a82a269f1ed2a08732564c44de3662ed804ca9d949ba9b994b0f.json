@@ -1,0 +1,9 @@
+{
+ "cache_key": "05aa85183973a82a269f1ed2a08732564c44de3662ed804ca9d949ba9b994b0f",
+ "fetched_at": "2026-09-01T21:18:46.210597+00:00",
+ "input_hash": "ddf491cce6b3f891d49efce5c0ae787a51831846787fbd1b6390618b242cda2d",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure the absorbance in wells A4 and A8.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

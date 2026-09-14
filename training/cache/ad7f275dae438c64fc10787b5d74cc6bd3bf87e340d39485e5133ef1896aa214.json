@@ -1,0 +1,9 @@
+{
+ "cache_key": "ad7f275dae438c64fc10787b5d74cc6bd3bf87e340d39485e5133ef1896aa214",
+ "fetched_at": "2026-09-02T17:24:23.245388+00:00",
+ "input_hash": "f645eb1f3a2353746c9b53fff294482a31c8270b9cd94a9f314f0c6509fb79e0",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Set plate 2 down on reservoir 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

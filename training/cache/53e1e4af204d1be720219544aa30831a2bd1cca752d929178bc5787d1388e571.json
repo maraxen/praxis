@@ -1,0 +1,9 @@
+{
+ "cache_key": "53e1e4af204d1be720219544aa30831a2bd1cca752d929178bc5787d1388e571",
+ "fetched_at": "2026-09-01T21:14:33.231125+00:00",
+ "input_hash": "27f46aff495e6a2beb59717d7ebb4311e64cb4db443d69619c878ebfb1f3815a",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I cannot run shaking commands. Supported operations include moving plates or resources (move_plate, move_resource) and liquid transfers (aspirate, dispense, transfer).\", \"utterance\": \"Orbital shake the microplate for 5 minutes at 500 rpm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "0aea96406c4a4f2f3dd4ecbb642b84de37c2f8266be944b56c51cf55e1efe1f1",
+ "fetched_at": "2026-09-01T21:15:51.554455+00:00",
+ "input_hash": "9e9f1b5d9f6d73dd4adeca0c68ecb449bc14d712ee2268bc6f522486e4050125",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I cannot operate the heater shaker module. I can help you move deck resources, move plates, or run pipetting steps like aspirate and dispense.\", \"utterance\": \"Please turn off shaking on the heater shaker unit.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "54ac526d3d9e08a74749fe253f902683120d45d7567f6ef2187bd3dd6b788167",
+ "fetched_at": "2026-09-02T16:52:15.309698+00:00",
+ "input_hash": "5f80fd8545dd1323855013534d7b585ab027ffbe3121d5f8f69dba847cd1ca5d",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure absorbance at 540 nm in wells D10 and E6.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

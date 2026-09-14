@@ -1,0 +1,9 @@
+{
+ "cache_key": "dbcdcf1280bbf7c7a024cd299b0746000f692869983718193b1b4993411dc033",
+ "fetched_at": "2026-08-28T18:04:51.262377+00:00",
+ "input_hash": "0a9b128d54c9f8c01d942791db120e84e4fa1adfe8a9c3e6300038d1217466d1",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure fluorescence in wells A6, D4, F11, and G8 with excitation wavelength 535 nm, emission wavelength 620 nm, and a focal height of 5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

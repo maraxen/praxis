@@ -1,0 +1,9 @@
+{
+ "cache_key": "a6d83b4ec869677267c245e9f8eb44455717bb27464d791828dc6b665d67677c",
+ "fetched_at": "2026-09-02T16:00:04.674201+00:00",
+ "input_hash": "92c155d190d533f0b1ee8f6c5be539f51ad5b350f39aa65c9a3a778d609f5246",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you relocate hotel stack 1 to reservoir 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

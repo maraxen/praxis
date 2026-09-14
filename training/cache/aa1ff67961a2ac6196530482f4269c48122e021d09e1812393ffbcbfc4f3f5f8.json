@@ -1,0 +1,9 @@
+{
+ "cache_key": "aa1ff67961a2ac6196530482f4269c48122e021d09e1812393ffbcbfc4f3f5f8",
+ "fetched_at": "2026-09-01T21:19:08.654519+00:00",
+ "input_hash": "3b7d2a790fa0d314ae26f9874c78b7e73e70ae745f59bc34157d6543c0d8a56e",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure fluorescence at wells D7 and F4 with excitation wavelength 535.0 nm and focal height 15.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

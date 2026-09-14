@@ -1,0 +1,9 @@
+{
+ "cache_key": "320464b8f95aecf3b22449fa41f3fa199909e260f2738c0fd13dff5056cf2003",
+ "fetched_at": "2026-09-01T21:15:28.150397+00:00",
+ "input_hash": "714ccdd982358ff3dde7efa406fae7479fc52138b97c32bad3a33f0949e6bd90",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Discard tips at the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

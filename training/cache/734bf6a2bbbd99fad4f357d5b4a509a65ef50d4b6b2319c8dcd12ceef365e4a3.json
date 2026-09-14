@@ -1,0 +1,9 @@
+{
+ "cache_key": "734bf6a2bbbd99fad4f357d5b4a509a65ef50d4b6b2319c8dcd12ceef365e4a3",
+ "fetched_at": "2026-09-01T21:09:18.728463+00:00",
+ "input_hash": "a34d504e65dfc186a4ba57d92daedbc9693210b1ba7aa14da794e2b87a684dba",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Dispense 25 microliters and 50 microliters into the destination well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}
