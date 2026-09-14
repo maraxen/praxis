@@ -129,3 +129,96 @@ def test_root_level_manifest_json_is_not_a_coherence_problem(tmp_path: Path) -> 
         repo_root=scratch, gitignore_path=scratch / ".gitignore"
     )
     assert _manifest_problems(problems) == []
+
+
+def _negation_problems(problems: list[str]) -> list[str]:
+    return [p for p in problems if ".gitignore" in p or "negation" in p]
+
+
+def test_find_gitignore_negation_reports_no_lines_when_absent(tmp_path: Path) -> None:
+    """Test 5: a .gitignore without the negation yields no line numbers.
+
+    This is the post-P3.11 steady state: the negation was removed from the
+    real .gitignore and the two hand-committed wheels untracked, so the
+    check must stay silent rather than keep instructing a remediation that
+    has already happened.
+    """
+    gitignore = tmp_path / ".gitignore"
+    gitignore.write_text("node_modules/\n*.pyc\n**/src/assets/wheels/\n")
+
+    assert check_wheel_coherence._find_gitignore_negation(gitignore) == []
+
+
+def test_find_gitignore_negation_locates_by_content_not_line_number(tmp_path: Path) -> None:
+    """Test 6: the negation is found wherever it sits, and reported 1-indexed.
+
+    The original R6 asserted on a hardcoded ``sed -n '22,26p'`` range, which
+    went wrong the moment anyone edited a line above it. Padding the file
+    with unrelated lines must not change the outcome, only the reported
+    number.
+    """
+    gitignore = tmp_path / ".gitignore"
+    padding = "\n".join(f"# filler {i}" for i in range(40))
+    gitignore.write_text(f"{padding}\n!**/src/assets/wheels/\ndist/\n")
+
+    # 40 filler lines occupy 1..40, so the negation is line 41.
+    assert check_wheel_coherence._find_gitignore_negation(gitignore) == [41]
+
+
+def test_find_gitignore_negation_ignores_surrounding_whitespace(tmp_path: Path) -> None:
+    """Test 7: the match is on the stripped line, so indentation still counts."""
+    gitignore = tmp_path / ".gitignore"
+    gitignore.write_text("a/\n   !**/src/assets/wheels/   \nb/\n")
+
+    assert check_wheel_coherence._find_gitignore_negation(gitignore) == [2]
+
+
+def test_find_gitignore_negation_reports_every_occurrence(tmp_path: Path) -> None:
+    """Test 8: a duplicated negation reports all of its lines, not just the first."""
+    gitignore = tmp_path / ".gitignore"
+    gitignore.write_text("!**/src/assets/wheels/\nx/\n!**/src/assets/wheels/\n")
+
+    assert check_wheel_coherence._find_gitignore_negation(gitignore) == [1, 3]
+
+
+def test_find_gitignore_negation_on_missing_file_is_not_an_error(tmp_path: Path) -> None:
+    """Test 9: a repo with no .gitignore is silent, not a crash.
+
+    check_untracked always passes a gitignore_path, including for scratch
+    repos that never create one, so this path is exercised in practice.
+    """
+    assert check_wheel_coherence._find_gitignore_negation(tmp_path / "nope" / ".gitignore") == []
+
+
+def test_negation_present_is_reported_as_a_problem(tmp_path: Path) -> None:
+    """Test 10: end-to-end, a restored negation still trips check_untracked.
+
+    The P3.11 remediation is done, but this arm is a regression guard, not
+    dead state: re-adding the negation re-exposes the wheel output
+    directories to git. The message must name the file and the line and
+    must NOT instruct `git rm --cached` on wheels that are no longer
+    tracked.
+    """
+    scratch = _init_scratch(tmp_path)
+    gitignore = scratch / ".gitignore"
+    gitignore.write_text("dist/\n!**/src/assets/wheels/\n")
+
+    problems = check_wheel_coherence.check_untracked(
+        repo_root=scratch, gitignore_path=gitignore
+    )
+
+    negation = _negation_problems(problems)
+    assert len(negation) == 1
+    assert "line(s) 2" in negation[0]
+    assert "git rm --cached" not in negation[0]
+
+
+def test_clean_gitignore_produces_no_negation_problem(tmp_path: Path) -> None:
+    """Test 11: the steady state -- no negation, no wheels -- is fully clean."""
+    scratch = _init_scratch(tmp_path)
+    (scratch / ".gitignore").write_text("dist/\n**/src/assets/wheels/\n")
+
+    problems = check_wheel_coherence.check_untracked(
+        repo_root=scratch, gitignore_path=scratch / ".gitignore"
+    )
+    assert problems == []
