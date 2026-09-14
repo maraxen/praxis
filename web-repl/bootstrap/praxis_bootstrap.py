@@ -286,7 +286,7 @@ def _setup_broadcast_listener(channel) -> None:
     globals()["_praxis_channel"] = channel
 
 
-async def praxis_main(host_root: str) -> None:
+async def praxis_main(host_root: str, *, raise_on_error: bool = False) -> None:
     """The ordered fail-closed stage ledger. Every stage after the two-file
     self-bootstrap runs inside the single ``try`` below; ANY exception
     there -- typed (``PraxisBootError`` and subclasses) or not -- is caught
@@ -294,6 +294,22 @@ async def praxis_main(host_root: str) -> None:
     ``praxis:ready`` post at the bottom of the ``try`` body is ever reached.
     """
     import js
+
+    # Once-guard: if already run successfully in this kernel, skip stages and
+    # re-post ready. The flag is set only after ALL stages pass; a failed
+    # sequence leaves it unset, so a retry re-runs the stages.
+    if getattr(builtins, "_PRAXIS_BOOT_DONE", False):
+        js.console.log("[Bootstrap] already bootstrapped in this kernel; skipping")
+        try:
+            channel = js.BroadcastChannel.new("praxis_repl")
+        except Exception:
+            channel = js.BroadcastChannel("praxis_repl")
+
+        def _post(msg: dict) -> None:
+            channel.postMessage(js.Object.fromEntries(list(msg.items())))
+
+        _post({"type": "praxis:ready"})
+        return
 
     try:
         channel = js.BroadcastChannel.new("praxis_repl")
@@ -388,6 +404,9 @@ async def praxis_main(host_root: str) -> None:
         stages.verify_identity()
 
         js.console.log("[Bootstrap] All stages passed")
+        # Set the once-guard flag ONLY after all stages pass, so a failed
+        # sequence leaves it unset and a retry re-runs the stages.
+        builtins._PRAXIS_BOOT_DONE = True
         _post({"type": "praxis:ready"})
 
     except Exception as exc:  # noqa: BLE001 -- fail-closed catch-all, by design
@@ -396,3 +415,5 @@ async def praxis_main(host_root: str) -> None:
         js.console.error(f"[Bootstrap] FAILED: {exc}")
         traceback.print_exc()
         _post({"type": "praxis:error", "reason": str(exc)})
+        if raise_on_error:
+            raise
