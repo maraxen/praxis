@@ -20,17 +20,38 @@ PLR_RESOURCE_TYPES: frozenset[str] = frozenset({
   # Containers
   "Plate",
   "TipRack",
+  "NestedTipRack",
   "Trough",
   "TubeRack",
+  "ContainerRack",
+  "ItemizedResource",
+  "Liddable",
+  "PetriDish",
   "Container",
   # Carriers
   "PlateCarrier",
   "TipCarrier",
   "TroughCarrier",
   "Carrier",
-  "CarrierSite",
+  "MFXCarrier",
+  "TubeCarrier",
+  # Holders (PLR replaced the old CarrierSite with these; CarrierSite no longer
+  # exists anywhere in the pinned submodule)
+  "ResourceHolder",
+  "PlateHolder",
+  "PetriDishHolder",
+  "PlateAdapter",
   # Infrastructure
   "Deck",
+  "HamiltonDeck",
+  "HamiltonSTARDeck",
+  "OTDeck",
+  "NimbusDeck",
+  "VantageDeck",
+  "TecanDeck",
+  "Trash",
+  "ResourceStack",
+  "TecanWashStation",
   "Slot",
   "Resource",
   # Lids
@@ -60,6 +81,46 @@ _PLR_RESOURCE_PATTERN = re.compile(
   r"\b(" + "|".join(sorted(PLR_RESOURCE_TYPES, key=len, reverse=True)) + r")\b"
 )
 
+# Base resource nouns that user protocols idiomatically subclass (e.g. a custom
+# `CorningCostar96Plate(Plate)`). A subclass name is recognised by suffix so that
+# protocols defined outside this repo keep working; see _string_names_plr_type.
+_PLR_SUBCLASS_SUFFIXES: tuple[str, ...] = (
+  "Plate",
+  "TipRack",
+  "TubeRack",
+  "Trough",
+  "Carrier",
+  "Container",
+  "Deck",
+  "Resource",
+  "Holder",
+  "Well",
+  "Lid",
+  "Tube",
+)
+
+# Identifier tokens inside a type-hint string, e.g. "list[Well]" -> ["list", "Well"].
+_IDENTIFIER_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def _string_names_plr_type(type_str: str) -> bool:
+  """Whether a type-hint string names a PLR resource or machine.
+
+  Matching is per-identifier, never by raw substring. A bare `t in type_str`
+  containment test treats any name merely *containing* a short entry of
+  PLR_RESOURCE_TYPES as a lab asset -- "WellnessScore" matches "Well",
+  "MachineLearningModel" matches "Machine", "PlateauConfig" matches "Plate" --
+  and this predicate gates runtime asset acquisition, so those are not cosmetic
+  misses. Each identifier must therefore either be a known PLR name outright or
+  end in a base noun that PLR resources are idiomatically subclassed from.
+  """
+  for token in _IDENTIFIER_PATTERN.findall(type_str):
+    if token in PLR_RESOURCE_TYPES:
+      return True
+    if any(token.endswith(suffix) for suffix in _PLR_SUBCLASS_SUFFIXES):
+      return True
+  return False
+
 
 def is_pylabrobot_resource(type_or_str: Any) -> bool:
   """Check if the given type or string is a Pylabrobot Resource or Machine.
@@ -71,8 +132,7 @@ def is_pylabrobot_resource(type_or_str: Any) -> bool:
   Both resources and machines are "assets" that need to be acquired at runtime.
   """
   if isinstance(type_or_str, str):
-    # Check if any known PLR type name is in the string
-    return any(t in type_or_str for t in PLR_RESOURCE_TYPES)
+    return _string_names_plr_type(type_or_str)
 
   origin = get_origin(type_or_str)
   if origin is Union:
