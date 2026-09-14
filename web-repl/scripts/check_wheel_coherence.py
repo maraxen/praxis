@@ -226,10 +226,6 @@ def check_import_sweep(manifest: dict, *, web_repl_root: Path = WEB_REPL_ROOT) -
 # --- R6 + R8 (--check-untracked): zero tracked wheels/manifests, no allowlist
 
 _GITIGNORE_NEGATION = "!**/src/assets/wheels/"
-_TRACKED_OLD_WHEELS = (
-    "praxis/web-client/src/assets/wheels/pylabrobot-0.1.6-py3-none-any.whl",
-    "praxis/web-client/src/assets/wheels/pylibftdi-0.0.0-py3-none-any.whl",
-)
 
 # R6's intent: manifest.json is the only filename seam for the browser
 # wheel loader. A stale tracked copy under either wheels directory would
@@ -292,15 +288,15 @@ def check_untracked(*, repo_root: Path = REPO_ROOT, gitignore_path: Path = GITIG
         lines_str = ", ".join(str(n) for n in negation_lines)
         rel = gitignore_path.relative_to(repo_root) if gitignore_path.is_relative_to(repo_root) else gitignore_path
         problems.append(
-            f"{rel} still contains the dead negation {_GITIGNORE_NEGATION!r} "
-            f"(currently line(s) {lines_str} -- located by content, not a hardcoded "
-            "line number). R6 requires this gone. NOT fixed by this script: removing "
-            "it must land in the SAME COMMIT as `git rm --cached` on the two "
-            "currently-tracked old wheels, and this agent is forbidden from touching "
-            "the git index. Human/P3.11 action required: (a) `git rm --cached "
-            f"{_TRACKED_OLD_WHEELS[0]} {_TRACKED_OLD_WHEELS[1]}`, then commit; (b) in "
-            f"that SAME commit, delete line {lines_str} of {rel} "
-            f"({_GITIGNORE_NEGATION!r})."
+            f"{rel} contains the negation {_GITIGNORE_NEGATION!r} (currently "
+            f"line(s) {lines_str} -- located by content, not a hardcoded line "
+            "number). R6 requires it absent: the negation re-exposes the browser "
+            "wheel output directories to git, which is how the old hand-committed "
+            "wheels came to be tracked in the first place. Remediation: delete "
+            f"that line from {rel}. This script never edits .gitignore. Note the "
+            "tracked-wheel condition this used to accompany is separately and "
+            "unconditionally enforced by the .whl arm above (ZERO tracked wheels "
+            "repo-wide), so this check is about the precondition, not the symptom."
         )
 
     return problems
