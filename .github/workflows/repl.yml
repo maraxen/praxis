@@ -204,14 +204,20 @@ jobs:
           uv run python -m pytest web-repl/tests/test_base_path.py -q
           uv run python -m pytest web-repl/tests/test_browser_visualizer.py -q
           uv run python -m pytest web-repl/tests/test_build_manifest.py -q
+          uv run python -m pytest web-repl/tests/test_build_manifest_coxswain.py -q
+          uv run python -m pytest web-repl/tests/test_check_wheel_coherence.py -q
           uv run python -m pytest web-repl/tests/test_contract_covers_imports.py -q
           uv run python -m pytest web-repl/tests/test_d1_praxis_git_sha.py -q
           uv run python -m pytest web-repl/tests/test_fetch_vendored_wheels.py -q
+          uv run python -m pytest web-repl/tests/test_inject_shell_coxswain.py -q
           uv run python -m pytest web-repl/tests/test_plr_contract.py -q
           uv run python -m pytest web-repl/tests/test_praxis_bootstrap_loader.py -q
+          uv run python -m pytest web-repl/tests/test_prune_pyodide.py -q
+          uv run python -m pytest web-repl/tests/test_repl_workflow_covers_tests.py -q
           uv run python -m pytest web-repl/tests/test_rid_invariant.py -q
           uv run python -m pytest web-repl/tests/test_stamp_loader_shas.py -q
           uv run python -m pytest web-repl/tests/test_transport.py -q
+          uv run python -m pytest web-repl/tests/test_viz_highlight_staging.py -q
 
       - name: Upload diagnostics on failure
         if: failure()
