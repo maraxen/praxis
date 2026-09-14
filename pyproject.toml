@@ -22,7 +22,7 @@ dependencies = [
     "uuid-utils>=0.11.0",
     "sqlmodel>=0.0.22",
     "dependency-injector",
-    "pwdlib[bcrypt]>=0.2.0",
+    "pwdlib[bcrypt]>=0.3.0",
     "bcrypt",
     "python-jose[cryptography]>=3.3.0",
     "python-keycloak>=5.8.1",
