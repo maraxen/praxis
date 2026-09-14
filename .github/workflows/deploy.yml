@@ -127,7 +127,7 @@ jobs:
       # site; if a future change needs COI, add it back PINNED.
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       # ~479 MB after build_repl.py prunes the 62 test-suite packages and stale
       # duplicate wheels (584 MB before). Comfortably inside Pages' 1 GB limit.
