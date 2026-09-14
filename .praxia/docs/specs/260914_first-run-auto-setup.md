@@ -5,7 +5,7 @@ status: draft
 task_id: 260914_first-run-setup
 date: '260914'
 backlog_ids: ''
-adversarial_review: 'round1 REVISE->revised 260914 (challenge_r1, defense_r1)'
+adversarial_review: 'round1 REVISE->revised; round2 REVISE (1 MAJOR)->revised 260914 (challenge_r1, defense_r1, adjudication_r1, challenge_r2)'
 ---
 # Zero-action first-run setup for the PyLabRobot REPL (debt #1396)
 
@@ -50,7 +50,8 @@ Each criterion is proved by the gate named in section 8.
 - **AC-2 (first cell waits).** A first cell sent the moment the kernel reports idle
   (before setup could have finished) still meets AC-1, and `praxis_boot.gate_waited is True`,
   where `gate_waited` is set only when the gate saw `state == "running"` on entry for
-  that cell (section 6.2). Asserted in `--fresh-boot-check` (section 8.3).
+  that cell (section 6.2). Asserted in `--fresh-boot-check` (section 8.3), which always
+  delays the async pylabrobot wheel fetch so the wait is deterministic, not timing luck.
 - **AC-3 (fail-closed and visible).** If any bootstrap stage fails, the user's first
   cell gets execute status `error`. Its visible output contains `PraxisAutoSetupError`
   plus the failing stage's reason, and none of the cell's own code runs (a side-effect
@@ -82,16 +83,19 @@ Each criterion is proved by the gate named in section 8.
   `dist/jupyter-lite.json` does not carry
   `loadPyodideOptions.env.PYTHONSTARTUP == "/drive/praxis_startup.py"`, (b) that file
   is not staged and indexed, or (c) the vendored pyodide-kernel wheel no longer
-  contains the awaited-transform internals the gate relies on (section 7 row 10, T5).
+  contains the awaited-transform internals the gate relies on, including the
+  cleanup-before-line transform loop order (section 7 row 10, T5).
   A pyodide-kernel or IPython change that drops env passthrough or PYTHONSTARTUP
   handling is NOT detectable at build time; it is detected at runtime by
   `--fresh-boot-check` only.
 - **AC-10 (docs match behaviour).** welcome.ipynb and the `praxis_boot.py` docstring
   no longer tell users to run setup. No **code cell** of any notebook shipped under
-  `web-repl/files/` contains any of the shared forbidden list `praxis_main(`, `setup(`,
-  `HOST_ROOT =` (checked by a unit test, section 8.1, and by the notebook-check static
-  check, section 8.3; all three use the same list and scan code cells only). Markdown
-  cells may mention `praxis_boot.setup()`.
+  `web-repl/files/` contains any of the shared forbidden list `praxis_main(`,
+  `praxis_boot.setup(`, `HOST_ROOT =` (checked by a unit test, section 8.1, and by the
+  notebook-check and fresh-boot static checks, section 8.3; all three use the same list
+  and scan code cells only). The list deliberately does not contain a bare `setup(`, so
+  PyLabRobot's normal `await lh.setup()` stays allowed in shipped device notebooks.
+  Markdown cells may mention `praxis_boot.setup()`.
 - **AC-11 (existing gates).** Every current repl.yml step passes on the new build,
   with the premise changes from section 8.
 
@@ -204,22 +208,31 @@ try:
     _praxis_boot._autostart(origin="PYTHONSTARTUP")
 except BaseException as _praxis_exc:
     # Inline catch-and-rewrite gate. Needs no praxis_boot import.
+    # Guarded formatting (R2-5): the exception's own __repr__ may raise.
+    try:
+        _praxis_detail = repr(_praxis_exc)
+    except BaseException:
+        _praxis_detail = "<unprintable exception>"
     try:
         _praxis_msg = (
-            f"praxis auto-setup could not start: {_praxis_exc!r}. Your cell was NOT run. "
+            "PraxisAutoSetupError: praxis auto-setup could not start: " + _praxis_detail
+            + ". Your cell was NOT run. "
             "A copy of praxis_boot.py or praxis_startup.py saved in this browser shadows "
             "the shipped one: delete or restore it in the file browser, then restart the kernel."
         )
+    except BaseException:
+        _praxis_msg = "PraxisAutoSetupError: praxis auto-setup could not start. Your cell was NOT run."
+    try:
         async def _praxis_inline_gate(lines, _m=_praxis_msg):
             try:
                 return ["raise RuntimeError(" + repr(_m) + ")\n"]
             except BaseException:
-                return ["raise RuntimeError('praxis auto-setup could not start')\n"]
+                return ["raise RuntimeError('PraxisAutoSetupError: praxis auto-setup could not start')\n"]
         get_ipython().kernel.lite_transform_manager.cleanup_transforms.insert(0, _praxis_inline_gate)
     except BaseException:
         pass  # kernel internals missing: T5 build contract + --fresh-boot-check
 finally:
-    for _praxis_n in ("_praxis_boot", "_praxis_msg", "_praxis_inline_gate"):
+    for _praxis_n in ("_praxis_boot", "_praxis_detail", "_praxis_msg", "_praxis_inline_gate"):
         globals().pop(_praxis_n, None)
     globals().pop("_praxis_n", None)
 ```
@@ -230,6 +243,9 @@ state, so the `praxis_boot` gate can show them. The `except BaseException` branc
 the two cases `_autostart` cannot: `import praxis_boot` itself failing, and a protocol
 mismatch (section 7 row 11). The inline gate blocks every cell with an error naming the
 cause, and like every gate it only ever returns a rewrite, never raises (S0 E4 rule).
+Every message built on this path goes through a guarded formatter with a static
+fallback string that still contains the literal `PraxisAutoSetupError`, so an exception
+whose `__repr__`/`__str__` raises still installs the inline gate (R2-5).
 A user-deleted or user-edited `/drive/praxis_startup.py` (IndexedDB-shadowed) is not
 covered by this branch; see R3.
 
@@ -285,14 +301,35 @@ dispatch on `state`:
 1. If `state in ("ready", "dismissed")`, return `lines` unchanged. This is the
    steady-state cost: one comparison per cell.
 2. If `state == "running"`: set `gate_waited = True`, then `await asyncio.shield(_task)`
-   (catching any exception from the task), then **re-dispatch from step 1, re-reading
-   `state`**. A task that ended `failed` therefore reaches step 3, and one that ended
+   **exactly once for this cell** (catching any exception the task ended with), then
+   **re-dispatch once through steps 1, 3 and 4, re-reading `state`; never back into
+   step 2**. A task that ended `failed` therefore reaches step 3, and one that ended
    `ready` returns the original lines. No "waiting…" print (S0-8 not measured).
+   Liveness rules (R2-4):
+   - **Task done but state still `running`** (for example the task was cancelled:
+     `_run_setup` re-raises `CancelledError` without recording state): set
+     `state = "failed"` and `failure = RuntimeError("praxis auto-setup task ended without a result")`,
+     with `__cause__` set to the task's exception (or the `CancelledError`) when one is
+     available. Then continue to step 3.
+   - **The wait itself is interrupted** (`KeyboardInterrupt` or `CancelledError` raised
+     into the gate while awaiting): do not re-await and do not re-raise. Return
+     `["raise __import__('praxis_boot').PraxisAutoSetupError('praxis auto-setup was interrupted while this cell waited for it. Your cell was NOT run; re-run it, or run await praxis_boot.setup().')\n"]`
+     (a static string). The shielded task keeps running, so the next cell waits for
+     it again, at most once. There is no unbounded re-dispatch loop.
+   - Any other state still `running` after the single wait (task not done, wait not
+     interrupted; should be impossible) goes to step 4.
 3. If `state == "failed"`: when the joined source contains `praxis_boot`, return
    `lines` unchanged (this is the recovery path, AC-5). Otherwise return
    `["raise __import__('praxis_boot')._gate_error()\n"]`.
 4. If the gate itself hits an internal error (including any other `state` value),
-   return `["raise RuntimeError(" + repr(f"praxis auto-setup gate error: {exc!r}") + ")\n"]`.
+   return `["raise RuntimeError(" + repr("PraxisAutoSetupError: praxis auto-setup gate error: " + _safe_repr(exc)) + ")\n"]`.
+   The whole step-4 build sits in its own `try`; if it fails, return the static line
+   `["raise RuntimeError('PraxisAutoSetupError: praxis auto-setup gate error')\n"]`.
+
+**`_safe_repr(obj, fallback="<unprintable exception>") -> str`** (R2-5): returns
+`repr(obj)`, or `fallback` if `repr` raises anything (`BaseException`). Every error
+message built in `praxis_boot` (gate step 4, `_gate_error`, `status()`) formats
+exceptions only through `_safe_repr` / an equivalent guarded `str`.
 
 The replacement never adds lines in front of user code; it either returns the lines
 untouched or replaces them all. That keeps `%%cell` magics and traceback line numbers
@@ -302,7 +339,12 @@ intact on the success path.
 The message says: PyLabRobot setup failed in this kernel, then `failure`'s type and
 message, then the site root if it was derived, then: "Your cell was NOT run. Retry with
 `await praxis_boot.setup()` in a cell, restart the kernel, or run
-`praxis_boot.dismiss()` to use this kernel without PyLabRobot." Because the exception
+`praxis_boot.dismiss()` to use this kernel without PyLabRobot." The message is built
+with guarded formatting (R2-5): the whole construction sits in `try/except BaseException`,
+and on any failure `_gate_error()` still returns `PraxisAutoSetupError` with the static
+message "PyLabRobot setup failed in this kernel (details unavailable). Your cell was NOT
+run. Retry with `await praxis_boot.setup()`, or restart the kernel." (and `__cause__`
+still set to `failure` when that assignment itself succeeds). Because the exception
 is raised inside the cell's own execution, it becomes a normal traceback with status
 `error` (S0-6). Two failures get different recovery text:
 - **`_verify()` failed after `praxis_main` completed** (failure mode 6): the once-guard
@@ -316,8 +358,11 @@ is raised inside the cell's own execution, it becomes a normal traceback with st
 **`dismiss()`** sets `state = "dismissed"`, but only while `state == "failed"`. The
 call passes the gate because its source contains `praxis_boot`. Open question OQ-2.
 
-**`status()`** prints and returns a dict: `state`, `host_root`, pylabrobot version,
-`autostart_origin`, `kernel_nonce`, `failure` repr.
+**`status()`** prints exactly one line, `praxis auto-setup state: <state>` (for example
+`praxis auto-setup state: ready`), with no other prefix or suffix, then returns a dict:
+`state`, `host_root`, pylabrobot version, `autostart_origin`, `kernel_nonce`, `failure`
+(via `_safe_repr`, `None` when there is no failure). `--notebook-check` matches the
+literal `praxis auto-setup state: ready` (sections 6.5, 8.3).
 
 **`praxis_main` changes** (praxis_bootstrap.py:289):
 - Signature becomes `async def praxis_main(host_root: str, *, raise_on_error: bool = False)`.
@@ -386,8 +431,10 @@ adds a banner.
   a reload or restart." Cell 2 becomes "1. Setup is automatic": what happens, that
   the first cell may take a few seconds, what a `PraxisAutoSetupError` means, and the
   three ways to recover. Cell 4 becomes "Checking or retrying setup":
-  `praxis_boot.status()`, `await praxis_boot.setup()`. Add a short code cell
-  `import praxis_boot; praxis_boot.status()` before cell 6. Cell 6 stays as it is.
+  `praxis_boot.status()`, `await praxis_boot.setup()` (mentioned in markdown only). Add
+  a short code cell `import praxis_boot; praxis_boot.status()` before cell 6; its output
+  line is exactly `praxis auto-setup state: ready` in a healthy kernel (section 6.2
+  `status()`). Cell 6 stays as it is.
 - **praxis_boot.py module docstring.** Lead with "You normally never import this: every
   kernel runs it automatically at start (via `praxis_startup.py`)". Then document
   `status()`, `setup()` (retry, idempotent), `dismiss()`, and the gate. Replace
@@ -410,13 +457,14 @@ adds a banner.
 | 7 | Kernel restarted mid-setup | Worker is killed; the new kernel starts over | AC-7 gate restarts after setup completes. Restarting mid-setup is covered by the worker teardown (F2) and not gated separately (R7) |
 | 8 | User calls `setup()` while auto is running | Waits, then `already bootstrapped` | `_lock` + shield. Unit test T3 |
 | 9 | First cell is `%pip install …` | Waits (cleanup_transforms runs before pip_magic) | Unit test orders transforms. Browser gate cell 1 variant |
-| 10 | pyodide-kernel bump drops PYTHONSTARTUP handling, renames `lite_transform_manager`/`cleanup_transforms`, or stops awaiting transforms | Before T5: silently back to a bare kernel | **Transform internals detected at build time** by T5's `assert_kernel_autosetup_contract`. It reads the vendored wheel at `dist/extensions/@jupyterlite/pyodide-kernel-extension/static/pypi/pyodide_kernel-*.whl` (observed: `pyodide_kernel-0.8.2-py3-none-any.whl`), asserts exactly one match with version `0.8.2`, and asserts the wheel sources still contain the literal `code = await self.lite_transform_manager.transform_cell(code)` (`kernel.py:104`) and the literal awaited loop `lines = await transform(lines)` (`litetransform.py:32`; both lines appear in the S0 E4 traceback). **Dropped PYTHONSTARTUP handling or env passthrough is runtime-only**: it lives in IPython (`shellapp.py:422`) and the worker JS, not in this wheel, so it is detected only by `--fresh-boot-check` in CI (AC-1 fails with `ModuleNotFoundError`, `praxis_boot.state` is not `ready`). **Detected by users**: only with T9 banner |
-| 11 | `import praxis_boot` fails in the startup file (user shadowed/edited `praxis_boot.py` in IndexedDB, or deleted it) | Every cell raises `RuntimeError("praxis auto-setup could not start: …")` naming the import error or the protocol mismatch, and how to recover | `praxis_startup.py`'s `except BaseException` branch (6.2) installs an inline catch-and-rewrite gate into `get_ipython().kernel.lite_transform_manager.cleanup_transforms`, with no `praxis_boot` import. It covers both `import praxis_boot` failing and `AUTOSETUP_PROTOCOL != 1`. Unit test in `test_praxis_startup.py`. A deleted/edited `praxis_startup.py` itself stays uncovered; R3 |
+| 10 | pyodide-kernel bump drops PYTHONSTARTUP handling, renames `lite_transform_manager`/`cleanup_transforms`, or stops awaiting transforms | Before T5: silently back to a bare kernel | **Transform internals detected at build time** by T5's `assert_kernel_autosetup_contract`. It reads the vendored wheel at `dist/extensions/@jupyterlite/pyodide-kernel-extension/static/pypi/pyodide_kernel-*.whl` (observed: `pyodide_kernel-0.8.2-py3-none-any.whl`), asserts exactly one match with version `0.8.2`, and asserts the wheel sources still contain the literal `code = await self.lite_transform_manager.transform_cell(code)` (`kernel.py:104`), the literal loop header `for transform in self.cleanup_transforms + self.line_transforms:` (`litetransform.py:31`; catches a rename of `cleanup_transforms` or a reorder that would put `pip_magic` ahead of the gate) and the literal awaited loop body `lines = await transform(lines)` (`litetransform.py:32`; lines 104 and 32 appear in the S0 E4 traceback). **Dropped PYTHONSTARTUP handling or env passthrough is runtime-only**: it lives in IPython (`shellapp.py:422`) and the worker JS, not in this wheel, so it is detected only by `--fresh-boot-check` in CI (AC-1 fails with `ModuleNotFoundError`, `praxis_boot.state` is not `ready`). **Detected by users**: only with T9 banner |
+| 11 | `import praxis_boot` fails in the startup file (user shadowed/edited `praxis_boot.py` in IndexedDB, or deleted it) | Every cell raises `RuntimeError("PraxisAutoSetupError: praxis auto-setup could not start: …")` naming the import error or the protocol mismatch (or a static fallback if the exception cannot be formatted), and how to recover | `praxis_startup.py`'s `except BaseException` branch (6.2) installs an inline catch-and-rewrite gate into `get_ipython().kernel.lite_transform_manager.cleanup_transforms`, with no `praxis_boot` import. It covers both `import praxis_boot` failing and `AUTOSETUP_PROTOCOL != 1`. Unit test in `test_praxis_startup.py`. A deleted/edited `praxis_startup.py` itself stays uncovered; R3 |
 | 12 | A shell tab from an older deploy on the same origin answers D1 first (also: two kernels booting at once) | `shell_ping` resolves on the FIRST pong regardless of sha (`transport.py:283-289`), so a stale tab's pong fails D1. The first cell gets `PraxisAutoSetupError` whose text says to close other Praxis tabs from an older deploy and restart the kernel | Pre-existing, but now reached on every kernel start. `transport.py` is sha-pinned and NOT changed (AC-8). Follow-up debt in section 11. R5 |
 | 13 | Offline | Same as today; all assets local | `--probe --offline` still in repl.yml |
 | 14 | User wants plain Python after a failure | Cells blocked | `praxis_boot.dismiss()`. OQ-2 |
 | 15 | Old saved notebook still has the legacy bootstrap cell | Runs as a no-op via the once-guard, prints `bootstrap complete` | Unit test T2 |
 | 16 | An exception escapes a gate (`_gate_cell` or the inline startup gate) out of `transform_cell` | Internal traceback, JS pageerrors (`Cannot set properties of undefined (setting 'execution_count')`), kernel stuck `busy` (S0 E4 uncaught variant) | Prevented by the normative rule in 6.2: every gate catches everything and returns a rewrite. Unit tests: internal gate error returns a raise line and never raises (both gates) |
+| 17 | Setup task cancelled, or the first cell's wait interrupted (`KeyboardInterrupt`/`CancelledError`), or an exception whose `__repr__`/`__str__` raises reaches a message build | Cancelled task: the cell gets `PraxisAutoSetupError` ("task ended without a result"), state `failed`. Interrupted wait: the cell raises `PraxisAutoSetupError('praxis auto-setup was interrupted …')`; the next cell waits again, at most once. Unformattable exception: the static fallback message, still containing `PraxisAutoSetupError` | Gate liveness rules and `_safe_repr` (6.2, R2-4/R2-5). Unit tests in `test_praxis_boot_autosetup.py` and `test_praxis_startup.py` (section 8.1) |
 
 ## 8. Test and gate plan
 
@@ -425,10 +473,10 @@ adds a banner.
 | File | New/changed | Covers |
 |---|---|---|
 | `web-repl/tests/test_praxis_bootstrap_loader.py` | Changed: add `test_raise_on_error_reraises_after_posting_error`, `test_positional_call_still_swallows`, `test_once_guard_skips_stages_and_reposts_ready`, `test_force_clears_guard` (the last one is in the praxis_boot test) | AC-6, failure modes 2-4 and 15 |
-| `web-repl/tests/test_praxis_boot_autosetup.py` | **New.** Fakes a `js` module (XHR returning a loader stub) and a fake shell exposing `.kernel.lite_transform_manager` built from a copy of `LiteTransformerManager` semantics (a plain object with `cleanup_transforms`/`line_transforms` lists). Tests: `_autostart` idempotent; gate waits while running; gate re-dispatches after the wait: running → failed returns the raise-rewrite lines, running → ready returns the original lines; `gate_waited` is set only when the gate entered with `running`; `_verify`-failure error text names kernel restart; D1-mismatch error text says to close other Praxis tabs from an older deploy and restart; ready passes lines through byte-identical; failed replaces lines with a single raise line and executing it raises `PraxisAutoSetupError` whose `__cause__` is the recorded failure; failed + `praxis_boot` in source passes through; `_verify` failure → failed; concurrent `setup()` during auto runs `praxis_main` exactly once (call counter); `setup()` in ready prints `already bootstrapped`; internal gate error returns a raise line and never raises; `dismiss` only from failed; gate is `cleanup_transforms[0]`, ahead of `pip_magic` | AC-2..6 logic, failure modes 6, 8, 9 |
-| `web-repl/tests/test_praxis_startup.py` | **New.** Runs `praxis_startup.py` with a stub `praxis_boot` in `sys.modules`: calls `_autostart(origin="PYTHONSTARTUP")` once and leaves no names in its exec namespace (success and failure paths). With a fake `get_ipython()` exposing `.kernel.lite_transform_manager.cleanup_transforms`: (a) `praxis_boot` import raising → inline gate inserted at index 0, and awaiting it returns a single raise line whose message names the import error; (b) `AUTOSETUP_PROTOCOL` differing → same, message names the protocol mismatch; (c) the inline gate never raises; (d) with no `get_ipython`/manager, the file itself still does not raise | Failure modes 11, 16 |
-| `web-repl/tests/test_autosetup_build_assertions.py` | **New.** `assert_autosetup_env` (missing key / wrong path / key misfiled at top level → `BuildAssertionError`), `assert_praxis_startup_shipped` (staged-but-unindexed, indexed-but-missing), `assert_kernel_autosetup_contract` against synthetic wheels placed at `extensions/@jupyterlite/pyodide-kernel-extension/static/pypi/` (a good one passes; no wheel, two wheels, wrong version, a `litetransform.py` with `lines = transform(lines)` lacking `await`, or a missing `transform_cell` await each fail) | AC-9, failure mode 10 |
-| `web-repl/tests/test_base_path.py` | Changed: replace needle tests with `assert_no_hardcoded_bootstrap_in_notebooks`. Any `files/**/*.ipynb` whose **code cells** contain any of the shared forbidden list `praxis_main(`, `setup(`, `HOST_ROOT =` fails the build; markdown cells are not scanned (they may mention `praxis_boot.setup()`). Tests include a notebook with `await praxis_boot.setup()` in markdown only (passes) and in a code cell (fails). `test_real_source_notebook_carries_the_needle` becomes `test_real_source_notebooks_carry_no_bootstrap` | AC-10, and removes the vacuous-green trap |
+| `web-repl/tests/test_praxis_boot_autosetup.py` | **New.** Fakes a `js` module (XHR returning a loader stub) and a fake shell exposing `.kernel.lite_transform_manager` built from a copy of `LiteTransformerManager` semantics (a plain object with `cleanup_transforms`/`line_transforms` lists). Tests: `_autostart` idempotent; gate waits while running; gate re-dispatches after the wait: running → failed returns the raise-rewrite lines, running → ready returns the original lines; `gate_waited` is set only when the gate entered with `running`; `_verify`-failure error text names kernel restart; D1-mismatch error text says to close other Praxis tabs from an older deploy and restart; ready passes lines through byte-identical; failed replaces lines with a single raise line and executing it raises `PraxisAutoSetupError` whose `__cause__` is the recorded failure; failed + `praxis_boot` in source passes through; `_verify` failure → failed; concurrent `setup()` during auto runs `praxis_main` exactly once (call counter); `setup()` in ready prints `already bootstrapped`; internal gate error returns a raise line and never raises; `dismiss` only from failed; gate is `cleanup_transforms[0]`, ahead of `pip_magic`. Liveness (R2-4): a cancelled task leaves state `running` → the gate sets `failed` with a cause and returns the raise-rewrite line; the gate awaits `_task` at most once per cell (await counter == 1 even when state is still `running` afterwards); `KeyboardInterrupt` and `CancelledError` raised into the wait each return the static 'setup was interrupted' raise line, do not raise, and do not loop; a following cell with the task still pending waits once more. Robustness (R2-5), each with an exception class whose `__repr__` and `__str__` raise: (i) as `failure`, `_gate_error()` returns a `PraxisAutoSetupError` with the static fallback message; (ii) as a forced internal gate error, step 4 returns a single raise line containing `PraxisAutoSetupError` and never raises; (iii) `status()` still prints its line and returns. `status()` prints exactly `praxis auto-setup state: ready` in a ready kernel (captured stdout) | AC-2..6 logic, failure modes 6, 8, 9, 17 |
+| `web-repl/tests/test_praxis_startup.py` | **New.** Runs `praxis_startup.py` with a stub `praxis_boot` in `sys.modules`: calls `_autostart(origin="PYTHONSTARTUP")` once and leaves no names in its exec namespace (success and failure paths). With a fake `get_ipython()` exposing `.kernel.lite_transform_manager.cleanup_transforms`: (a) `praxis_boot` import raising → inline gate inserted at index 0, and awaiting it returns a single raise line whose message names the import error; (b) `AUTOSETUP_PROTOCOL` differing → same, message names the protocol mismatch; (c) the inline gate never raises; (d) with no `get_ipython`/manager, the file itself still does not raise; (e) (R2-5) `praxis_boot` import raising an exception whose `__repr__` and `__str__` raise → the inline gate is still inserted at index 0, and its single raise line contains `PraxisAutoSetupError`; in (a) and (b) the raise line also contains `PraxisAutoSetupError` | Failure modes 11, 16, 17 |
+| `web-repl/tests/test_autosetup_build_assertions.py` | **New.** `assert_autosetup_env` (missing key / wrong path / key misfiled at top level → `BuildAssertionError`), `assert_praxis_startup_shipped` (staged-but-unindexed, indexed-but-missing), `assert_kernel_autosetup_contract` against synthetic wheels placed at `extensions/@jupyterlite/pyodide-kernel-extension/static/pypi/` (a good one passes; no wheel, two wheels, wrong version, a `litetransform.py` with `lines = transform(lines)` lacking `await`, a `litetransform.py` whose loop is `for transform in self.line_transforms + self.cleanup_transforms:` (reordered) or iterates a renamed list, or a missing `transform_cell` await each fail) | AC-9, failure mode 10 |
+| `web-repl/tests/test_base_path.py` | Changed: replace needle tests with `assert_no_hardcoded_bootstrap_in_notebooks`. Any `files/**/*.ipynb` whose **code cells** contain any of the shared forbidden list `praxis_main(`, `praxis_boot.setup(`, `HOST_ROOT =` fails the build; markdown cells are not scanned (they may mention `praxis_boot.setup()`). Synthetic tests include a notebook with `await praxis_boot.setup()` in markdown only (passes), in a code cell (fails), and `await lh.setup()` in a code cell (passes). `test_real_source_notebook_carries_the_needle` becomes `test_real_source_notebooks_carry_no_bootstrap`, the only test in the file that reads the real `web-repl/files/` tree; it passes only after T6 (see T5/T6 ordering, section 9) | AC-10, and removes the vacuous-green trap |
 
 Local verification is always a single file, e.g. `uv run python -m pytest web-repl/tests/test_praxis_boot_autosetup.py -q`.
 
@@ -440,7 +488,8 @@ Local verification is always a single file, e.g. `uv run python -m pytest web-re
 - `assert_praxis_startup_shipped(out_dir)`: same shape as `assert_praxis_boot_shipped`.
 - `assert_kernel_autosetup_contract(out_dir)`: failure mode 10. Reads
   `out_dir/extensions/@jupyterlite/pyodide-kernel-extension/static/pypi/pyodide_kernel-*.whl`
-  and asserts the literals `lines = await transform(lines)` and
+  and asserts the literals `for transform in self.cleanup_transforms + self.line_transforms:`,
+  `lines = await transform(lines)` and
   `code = await self.lite_transform_manager.transform_cell(code)`. It does not claim to
   detect dropped PYTHONSTARTUP/env passthrough (runtime-only, `--fresh-boot-check`).
 - `assert_no_hardcoded_bootstrap_in_notebooks(out_dir)`: replaces `apply_base_path`'s
@@ -452,11 +501,11 @@ Local verification is always a single file, e.g. `uv run python -m pytest web-re
 
 | Mode | Change | Exact assertions |
 |---|---|---|
-| `--fresh-boot-check` | **Premise replaced.** `build_fresh_boot_probe_code` no longer imports or calls `praxis_boot.setup`. Its first statement reads `praxis_boot` state, then imports pylabrobot | `state == "ready"`; `autostart_origin == "PYTHONSTARTUP"`; `plr_version` startswith `0.2.2+g`; `serial_is_shim is True`; `derived_host_root == expected_root` (read from `praxis_boot.host_root`); `setup_called_by_probe is False` (a static check that the probe source contains none of the shared forbidden list `praxis_main(`, `setup(`, `HOST_ROOT =`, asserted by the harness before sending); **`gate_waited is True`** (REQUIRED). The probe cell is dispatched at the first `idle` while real setup is still awaiting `shell_ping`/`micropip`. Because `gate_waited` is set only when the gate entered with `state == "running"` for that cell, `True` proves setup completed after the cell's execute request reached the gate, so the assertion cannot pass vacuously. If real setup ever finishes before first idle (S0 E2: short setups are absorbed by the ~9.8 s boot), the check fails red rather than passing; the remedy is a harness-side delay fault on a bootstrap asset, never dropping the assertion. The old `plr_before == ModuleNotFoundError` premise moves to the negative control below |
-| `--autosetup-fault-check` (**new**) | `ServedDir` gains `faults: dict[path_suffix, "404" or "tamper"]`, applied in `Handler.do_GET` for the first N matching requests (`--fault-count`, default 1). Run once each for `404:bootstrap/stages.py` and `tamper:bootstrap/stages.py`. The page is served by the harness, so worker requests are intercepted (unlike `page.route`, repl.yml:137-140) | Cell 1 = `_S = 'side' + 'effect'; import builtins; builtins.__praxis_cell_ran = True; print(_S)`: its output contains `PraxisAutoSetupError` and the fault's reason (`HTTP 404` / `sha256 mismatch`); the side-effect string is absent from outputs; execute status `error` (read from the notebook model, not the DOM, per repl_smoke.py:1342-1353). Cell 2 = the same, must also be blocked (every cell, not only the first). Cell 3 = `import praxis_boot; await praxis_boot.setup()` (fault count spent, so the retry succeeds): no error, prints `ready`. Cell 4 = AC-1 probe → `True`. `gate_waited` is RECORDED only, not asserted (a 404/sha fault fails within milliseconds). **This doubles as the negative control:** if auto-setup never ran, cell 1 would print the side effect and the gate fails |
+| `--fresh-boot-check` | **Premise replaced.** `build_fresh_boot_probe_code` no longer imports or calls `praxis_boot.setup`. Its first statement reads `praxis_boot` state, then imports pylabrobot | `state == "ready"`; `autostart_origin == "PYTHONSTARTUP"`; `plr_version` startswith `0.2.2+g`; `serial_is_shim is True`; `derived_host_root == expected_root` (read from `praxis_boot.host_root`); `setup_called_by_probe is False` (a static check that the probe source contains none of the shared forbidden list `praxis_main(`, `praxis_boot.setup(`, `HOST_ROOT =`, asserted by the harness before sending); **`gate_waited is True`** (REQUIRED). The probe cell is dispatched at the first `idle`. **Deterministic wait (R2-1):** `--fresh-boot-check` ALWAYS runs with the harness fault `delay:assets/wheels/<pylabrobot wheel filename>:15`, where the filename is read from the served `assets/wheels/manifest.json` entry with `package == "pylabrobot"` (currently `pylabrobot-0.2.2+gdd79c4c8-py3-none-any.whl`), so the delayed request path is `<base-path>assets/wheels/pylabrobot-0.2.2+gdd79c4c8-py3-none-any.whl`. That fetch is made by `await micropip.install(wheel_url, deps=False)` in bootstrap stage 7 (`praxis_bootstrap.py:358-360`), an awaited coroutine: micropip 0.11.1 fetches URLs through Pyodide's async JS `fetch`, so the worker's event loop stays free while the server sleeps. The delay is NEVER put on a sync-XHR file (`bootstrap/praxis_bootstrap.py`, `bootstrap/stages.py`, `bootstrap/transport.py`, `assets/wheels/manifest.json`, the `assets/python`/`assets/shims` sources: `praxis_boot.py` and `praxis_bootstrap.py:102-103`, `transport.py:101` use `xhr.open("GET", url, False)`), because a sync XHR blocks the worker thread and would delay kernel-ready itself, so the cell would find setup already done. **Why 15 s:** S0 E2 measured kernel boot ~9.8 s, with setup starting ~3.9 s before the first cell could run; the wheel fetch comes after D1 and D2, so it begins at most ~6 s into boot. Holding it 15 s keeps setup `running` for at least ~9 s past first idle (and still covers a CI runner twice as slow), while staying well inside the cell timeout, which is raised by the delay (record the measured gate wait and adjust the timeout, never the assertion). Assertions: the delay fault's hit counter is > 0 (trap 5); `gate_waited is True`; the measured gate wait (harness wall time from sending the probe's execute request to its execute_reply) is recorded in the result JSON. Because `gate_waited` is set only when the gate entered with `state == "running"` for that cell, `True` proves setup completed after the cell's execute request reached the gate, so the assertion cannot pass vacuously. The old `plr_before == ModuleNotFoundError` premise moves to the negative control below |
+| `--autosetup-fault-check` (**new**) | `ServedDir` gains `faults: dict[path_suffix, Fault]` with three kinds: `404`, `tamper`, and `delay:<path-suffix>:<seconds>` (sleep `<seconds>` in the handler thread, then serve the file normally; parse the seconds with `rsplit(":", 1)`). Faults are matched on the parsed URL path, `urllib.parse.unquote(urllib.parse.urlsplit(self.path).path).endswith(suffix)` (C-17; `unquote`, not `unquote_plus`, so the wheel's literal `+` survives), applied in `Handler.do_GET` for the first N matching requests (`--fault-count`, default 1), and each fault keeps a hit counter. The server is `ThreadingHTTPServer` (`repl_smoke.py:274`), so a delay holds only that one request. Run once each for `404:bootstrap/stages.py` and `tamper:bootstrap/stages.py`. The page is served by the harness, so worker requests are intercepted (unlike `page.route`, repl.yml:137-140). **Notebook:** a harness-created blank notebook, not welcome.ipynb. The harness loads `<base-path>lab/index.html` (no `?path=`), waits for `window.jupyterapp`, creates the notebook with `window.jupyterapp.serviceManager.contents.newUntitled({type: "notebook", path: ""})`, opens the returned path with `window.jupyterapp.commands.execute("docmanager:open", {path, factory: "Notebook", kernel: {name: "python"}})`, then accepts a Select Kernel dialog if one appears (same handling as `repl_smoke.py:1286-1298`) and inserts the cells below into the model | Cell 1 = `_S = 'side' + 'effect'; import builtins; builtins.__praxis_cell_ran = True; print(_S)`: its output contains `PraxisAutoSetupError` and the fault's reason (`HTTP 404` / `sha256 mismatch`); the side-effect string is absent from outputs; execute status `error` (read from the notebook model, not the DOM, per repl_smoke.py:1342-1353). Cell 2 = the same, must also be blocked (every cell, not only the first). Cell 3 = `import praxis_boot; await praxis_boot.setup()` (fault count spent, so the retry succeeds): no error, prints `ready`. Cell 4 = AC-1 probe → `True`. `gate_waited` is RECORDED only, not asserted (a 404/sha fault fails within milliseconds). **This doubles as the negative control:** if auto-setup never ran, cell 1 would print the side effect and the gate fails |
 | `--restart-check` (**new**) | After AC-1 passes, restart via the kernel API (`session.kernel.restart()`, no command dispatch and so no dialog, F7). Then run the AC-1 probe as a cell (lab notebook, same as notebook-check) | `kernel_nonce` after ≠ before; `state == "ready"`; `serial_is_shim is True` |
 | `--race-check` (folded into `--fresh-boot-check`) | Cell sent as soon as `kernel.status == "idle"` is first seen | AC-1 passes; `gate_waited is True` (see `--fresh-boot-check`) |
-| `--notebook-check` | `NOTEBOOK_EXPECTED` becomes (`"state: ready"`, `"PyLabRobot 0.2.2+g"`, `"Serial is the browser shim: True"`), and `"bootstrap complete"` is removed. Before running, the harness asserts the staged welcome.ipynb **code cells** contain none of the shared forbidden list `praxis_main(`, `setup(`, `HOST_ROOT =` (markdown not scanned) | AC-10, AC-1 in the lab app |
+| `--notebook-check` | `NOTEBOOK_EXPECTED` becomes (`"praxis auto-setup state: ready"`, `"PyLabRobot 0.2.2+g"`, `"Serial is the browser shim: True"`), and `"bootstrap complete"` is removed. The first literal is exactly the line `praxis_boot.status()` prints (section 6.2) from the welcome.ipynb status cell (section 6.5). Before running, the harness asserts the staged welcome.ipynb **code cells** contain none of the shared forbidden list `praxis_main(`, `praxis_boot.setup(`, `HOST_ROOT =` (markdown not scanned) | AC-10, AC-1 in the lab app |
 | `--probe`, `--probe --offline`, `--completion-check` | Replace step 1 (fetch+exec+`praxis_main`, repl_smoke.py:318-330 and 629-640) with `import praxis_boot; await praxis_boot.setup()` and record `praxis_boot.state`. The gate plus once-guard make this a no-op check, not a second run. Check whether later probe steps rely on names the old `exec(..., globals())` put into the user namespace (e.g. `_praxis_channel`, `bootstrap_playground(globals())` injections); if so, import them from `builtins`/`web_bridge` explicitly | AC-6, AC-11 |
 | `--typeahead-check` | Unchanged; its ready cell now waits for setup. The timeout may need to go up; record the measured delta | AC-11, R6 |
 
@@ -470,7 +519,10 @@ Local verification is always a single file, e.g. `uv run python -m pytest web-re
    not AC-1. Always pair it with the `_verify` identity check executed in the user's cell.
 4. **Restart that isn't a restart.** Without the nonce comparison, a no-op restart passes.
 5. **Faults that don't reach the worker.** Use harness-side `ServedDir` faults, not
-   `page.route`. Self-test: fault-check asserts the handler actually served a faulted response (counter > 0).
+   `page.route`. Self-test: fault-check asserts the handler actually served a faulted response (counter > 0), and fresh-boot-check asserts the same for its wheel delay fault.
+8. **A delay that blocks the worker.** A delay on a sync-XHR asset stalls kernel-ready, so
+   the cell never sees `running` (or it passes for the wrong reason). Delays go only on the
+   async micropip wheel fetch (8.3).
 6. **Unit fakes that drift from the pinned kernel.** The fake manager's ordering
    assumption (cleanup before line transforms) is backed by the build contract in T5,
    which reads the real wheel.
@@ -478,7 +530,7 @@ Local verification is always a single file, e.g. `uv run python -m pytest web-re
    Include a test where `praxis_main` succeeds and `_verify` fails.
 
 ### 8.5 AC → proof
-AC-1 fresh-boot-check, notebook-check · AC-2 fresh-boot-check (`gate_waited is True`) + unit (running → ready/failed re-dispatch) · AC-3 fault-check cells 1-2 · AC-4 unit (_verify fails), fault-check · AC-5 fault-check cell 3, unit · AC-6 unit (once-guard, lock counter), probe modes · AC-7 restart-check · AC-8 unchanged sha unit tests, fault-check tamper run, `git diff` shows stages.py/transport.py untouched · AC-9 build assertions + their unit test · AC-10 test_base_path + notebook-check static check · AC-11 full repl.yml run on the PR.
+AC-1 fresh-boot-check, notebook-check · AC-2 fresh-boot-check with the always-on `delay:assets/wheels/<pylabrobot wheel>:15` fault (delay hit counter > 0, `gate_waited is True`, measured gate wait recorded) + unit (running → ready/failed re-dispatch, single wait per cell, cancelled/interrupted wait) · AC-3 fault-check cells 1-2 on a harness-created blank notebook + unit (bad-repr exceptions still yield `PraxisAutoSetupError` text in gate step 4, `_gate_error` and the startup inline gate) · AC-4 unit (_verify fails), fault-check · AC-5 fault-check cell 3, unit · AC-6 unit (once-guard, lock counter), probe modes · AC-7 restart-check · AC-8 unchanged sha unit tests, fault-check tamper run, `git diff` shows stages.py/transport.py untouched · AC-9 build assertions + their unit test · AC-10 test_base_path + notebook-check static check · AC-11 full repl.yml run on the PR.
 
 ## 9. Fixer tasks
 
@@ -504,7 +556,8 @@ Section 6.2. Additive only; the marker line stays unchanged.
 
 ### T3: praxis_boot state machine, gate, setup refactor
 Section 6.2 in full (`_autostart`, `_run_setup`, `_gate_cell`, `_gate_error`,
-`PraxisAutoSetupError`, `status`, `dismiss`, lock, nonce, protocol constant).
+`PraxisAutoSetupError`, `status`, `dismiss`, `_safe_repr`, the gate liveness rules, lock,
+nonce, protocol constant).
 **Files**: `web-repl/files/praxis_boot.py` (modify), `web-repl/tests/test_praxis_boot_autosetup.py` (create), `.github/workflows/repl.yml` (add that file's Tests line)
 **Gate**: `uv run python -m pytest web-repl/tests/test_praxis_boot_autosetup.py -q`
 **Deps**: T2 · **~250 LOC incl. tests**
@@ -520,25 +573,37 @@ Add `assert_autosetup_env`, `assert_praxis_startup_shipped`, `assert_kernel_auto
 and `assert_no_hardcoded_bootstrap_in_notebooks`, wired next to `assert_praxis_boot_shipped`
 (build_repl.py:1275). Remove the `apply_base_path` rewrite and its zero-change failure.
 The kernel contract reads `dist/extensions/@jupyterlite/pyodide-kernel-extension/static/pypi/pyodide_kernel-*.whl`
-and asserts the literal `lines = await transform(lines)` loop (section 8.2).
+and asserts the literals `for transform in self.cleanup_transforms + self.line_transforms:`
+(`litetransform.py:31`), `lines = await transform(lines)` and the `transform_cell` await (section 8.2).
+The shared forbidden list is `praxis_main(`, `praxis_boot.setup(`, `HOST_ROOT =` (AC-10).
+**Order (R2-3): T5 lands before T6.** T5 writes `test_real_source_notebooks_carry_no_bootstrap`,
+but welcome.ipynb still carries its bootstrap cell until T6, so that one test is excluded
+from T5's gate and enabled by T6's gate.
 **Files**: `web-repl/scripts/build_repl.py`, `web-repl/tests/test_base_path.py` (modify), `web-repl/tests/test_autosetup_build_assertions.py` (create), `.github/workflows/repl.yml` (add the new file's Tests line)
-**Gate**: the two pytest files, each on its own; the full build `uv run python web-repl/scripts/build_repl.py --base-path /praxis/ > /tmp/build.log 2>&1; grep -E "ASSERTION|autosetup|startup" /tmp/build.log` runs in CI (it needs the vendored Pyodide)
-**Deps**: T4; must land in the same PR as T6 because the build fails until welcome.ipynb loses `HOST_ROOT` · **~200 LOC**
+**Gate** (synthetic cases only): `uv run python -m pytest web-repl/tests/test_autosetup_build_assertions.py -q`, then separately `uv run python -m pytest web-repl/tests/test_base_path.py -q -k "not test_real_source_notebooks_carry_no_bootstrap"`. The full build `uv run python web-repl/scripts/build_repl.py --base-path /praxis/ > /tmp/build.log 2>&1; grep -E "ASSERTION|autosetup|startup" /tmp/build.log` runs in CI on the PR's final commit only (it needs the vendored Pyodide, and fails until T6 and T7 land, C-1)
+**Deps**: T4; same PR as T6 · **~200 LOC**
 
 ### T6: welcome.ipynb + docstrings
-Section 6.5.
+Section 6.5 (including the `praxis_boot.status()` code cell whose output is `praxis auto-setup state: ready`).
+Runs after T5, whose rewritten `test_base_path.py` must already exist.
 **Files**: `web-repl/files/welcome.ipynb`, `web-repl/files/praxis_boot.py` (docstrings only)
-**Gate**: `uv run python -m pytest web-repl/tests/test_base_path.py -q` (code-cell no-bootstrap check with the shared forbidden list)
-**Deps**: T3 (and lands with T5) · **~80 lines**
+**Gate**: `uv run python -m pytest web-repl/tests/test_base_path.py -q` (the whole file, now including `test_real_source_notebooks_carry_no_bootstrap`: no code cell under `web-repl/files/` contains `praxis_main(`, `praxis_boot.setup(` or `HOST_ROOT =`), plus `uv run python -m pytest web-repl/tests/test_base_path.py -q -k test_real_source_notebooks_carry_no_bootstrap` to show that test ran (1 passed, not deselected)
+**Deps**: T3, T5 · **~80 lines**
 
 ### T7: repl_smoke premises + new modes
 Rewrite `build_fresh_boot_probe_code` and its assertions (repl_smoke.py:988-1060, 2083-2165).
-Add `ServedDir` faults, `--autosetup-fault-check`, `--restart-check`, the notebook-check
-expected-string and static-source changes, and the probe/completion step-1 swap
+Add `ServedDir` faults with three kinds, `404`, `tamper` and `delay:<path-suffix>:<seconds>`,
+matched on the parsed, unquoted URL path (C-17) and each with a hit counter. Make
+`--fresh-boot-check` always apply `delay:assets/wheels/<pylabrobot wheel from manifest.json>:15`,
+assert its hit counter > 0 and `gate_waited is True`, and record the measured gate wait.
+Never delay a sync-XHR asset (section 8.3). Add `--autosetup-fault-check` (on a
+harness-created blank notebook), `--restart-check`, the notebook-check expected-string
+(`praxis auto-setup state: ready`) and static-source changes (forbidden list
+`praxis_main(`, `praxis_boot.setup(`, `HOST_ROOT =`), and the probe/completion step-1 swap
 (section 8.3). In the same task (C-1), flip the env: add `loadPyodideOptions.env.PYTHONSTARTUP`
 to `web-repl/jupyter-lite.json` (section 6.1).
 **Files**: `scripts/repl_smoke.py`, `web-repl/jupyter-lite.json` (modify)
-**Gate**: `uv run python scripts/repl_smoke.py --help | grep -E "autosetup-fault-check|restart-check"`; `uv run python -c "import json;d=json.load(open('web-repl/jupyter-lite.json'));print(d['jupyter-config-data']['litePluginSettings']['@jupyterlite/pyodide-kernel-extension:kernel']['loadPyodideOptions'])"` shows the env; the browser run happens in CI (T8)
+**Gate**: `uv run python scripts/repl_smoke.py --help | grep -E "autosetup-fault-check|restart-check|fault"`; `uv run python -c "import json;d=json.load(open('web-repl/jupyter-lite.json'));print(d['jupyter-config-data']['litePluginSettings']['@jupyterlite/pyodide-kernel-extension:kernel']['loadPyodideOptions'])"` shows the env; the browser run happens in CI (T8)
 **Deps**: T3-T6 · **~350 LOC**
 
 ### T8: repl.yml wiring
@@ -562,7 +627,7 @@ tracks the latest message per `kernel_nonce`.
 
 | # | Risk | Mitigation / rollback |
 |---|---|---|
-| R1 | F3/F6 rely on pyodide-kernel internals and break on a version bump | T5 contract fails the build for transform-internal changes; dropped PYTHONSTARTUP/env passthrough is caught only at runtime by `--fresh-boot-check`. Pins in pyproject.toml:33-34. Rollback: remove `loadPyodideOptions` from jupyter-lite.json and the kernel returns to manual setup, since `setup()` still works standalone |
+| R1 | F3/F6 rely on pyodide-kernel internals and break on a version bump | T5 contract fails the build for transform-internal changes (a missing await, or a renamed or reordered `cleanup_transforms` in the `litetransform.py:31` loop header); dropped PYTHONSTARTUP/env passthrough is caught only at runtime by `--fresh-boot-check`. Pins in pyproject.toml:33-34. Rollback: remove `loadPyodideOptions` from jupyter-lite.json and the kernel returns to manual setup, since `setup()` still works standalone |
 | R2 | Replacing a cell's code in the gate surprises users (their cell "didn't run") | The message says so explicitly and gives three recovery paths. OQ-2 |
 | R3 | A user's IndexedDB copy of `praxis_boot.py` (edited/renamed) shadows the shipped one, so auto-setup silently doesn't happen | A shadowed/broken `praxis_boot.py` (import failure or protocol mismatch) is made visible by the startup file's inline gate (failure mode 11). **Known limitation:** a user-deleted or user-edited `/drive/praxis_startup.py` (IndexedDB-shadowed) is NOT mitigated without T9 (banner); the kernel silently falls back to manual setup. Document "don't edit praxis_boot.py / praxis_startup.py" in their headers |
 | R4 | `setup(force=True)` re-running stages in one kernel might break R-ID identity. **Unverified:** the `sys.modules` import cache used by `import_shim_class` (`stages.py:276-285`) suggests identity is preserved under force, but this is not proven; `test_praxis_bootstrap_loader.py:424-450` is a synthetic double exec, not a force re-run | Pre-existing behaviour. The once-guard stops accidental re-runs. Whether `force` should stay public is OQ-5 |
