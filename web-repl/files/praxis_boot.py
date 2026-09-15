@@ -141,6 +141,34 @@ def derive_host_root() -> str:
     return root
 
 
+def _inject_playground_names() -> None:
+    """Inject playground names into the IPython user namespace.
+
+    The legacy welcome bootstrap cell exec'd the loader into the NOTEBOOK globals,
+    so ``praxis_main``'s ``bootstrap_playground(globals())`` reached the user.
+    ``_run_setup`` execs it into a private dict, so those names never reached the
+    user's namespace. This injects them after a successful bootstrap so a notebook
+    can write ``LiquidHandler(backend=STAR(), deck=...)`` without imports.
+
+    If there is no IPython shell (e.g., in CPython tests), this is a no-op.
+    Any exception here is swallowed and does NOT fail setup.
+    """
+    try:
+        import IPython
+
+        shell = IPython.get_ipython()
+        if shell is None:
+            return
+
+        import web_bridge
+
+        web_bridge.bootstrap_playground(shell.user_ns)
+    except Exception:
+        # Failures here must never fail setup (the post-condition is _verify,
+        # not ergonomics). Swallow silently.
+        pass
+
+
 def _verify() -> str:
     """Confirm the bootstrap actually did what it claims. Returns the version.
 
@@ -305,6 +333,7 @@ async def _run_setup(
             return None
 
         host_root = root
+        _inject_playground_names()
         state = "ready"
         failure = None
         if not auto:

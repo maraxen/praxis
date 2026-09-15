@@ -765,3 +765,219 @@ def test_status_reports_no_failure_as_none(pb, capsys):
     result = pb.status()
     capsys.readouterr()
     assert result["failure"] is None
+
+
+# ---------------------------------------------------------------------------
+# Playground names (T3b)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_playground_names_injected_before_ready(pb, monkeypatch):
+    """Success: with a fake IPython.get_ipython() returning a shell whose
+    user_ns is a dict, and a fake web_bridge module recording calls, a
+    successful _run_setup calls bootstrap_playground exactly once with that
+    exact user_ns object (identity), and the call happens BEFORE state
+    becomes "ready"."""
+    _install_fake_js(monkeypatch)
+    monkeypatch.setattr(pb, "_verify", lambda: "0.2.2+gdeadbeef")
+
+    async def _ok(host_root, *, raise_on_error=False):
+        return None
+
+    _set_hook(monkeypatch, _ok)
+
+    # Create a fake shell with a user_ns dict
+    user_ns = {}
+    manager = _FakeManager()
+    fake_shell = _FakeShell(manager)
+    fake_shell.user_ns = user_ns
+
+    fake_ipython = types.ModuleType("IPython")
+    fake_ipython.get_ipython = lambda: fake_shell
+    monkeypatch.setitem(sys.modules, "IPython", fake_ipython)
+
+    # Create a fake web_bridge that records calls and state at time of call
+    bootstrap_calls = []
+    state_at_call = []
+
+    def fake_bootstrap_playground(ns):
+        bootstrap_calls.append(ns)
+        state_at_call.append(pb.state)
+
+    fake_web_bridge = types.ModuleType("web_bridge")
+    fake_web_bridge.bootstrap_playground = fake_bootstrap_playground
+    monkeypatch.setitem(sys.modules, "web_bridge", fake_web_bridge)
+
+    result = await pb._run_setup(host_root_override=HOST_ROOT)
+
+    assert result == HOST_ROOT
+    assert pb.state == "ready"
+    assert len(bootstrap_calls) == 1
+    assert bootstrap_calls[0] is user_ns  # identity check
+    # The injection happens before state becomes "ready", so it must be called before that
+    assert state_at_call[0] != "ready"
+    # After the injection, state is set to "ready"
+    assert pb.state == "ready"
+    # Clean up the fake module
+    monkeypatch.delitem(sys.modules, "web_bridge")
+
+
+@pytest.mark.asyncio
+async def test_playground_names_skipped_when_no_shell(pb, monkeypatch):
+    """No shell: get_ipython() returns None → bootstrap_playground is not
+    called and setup still reaches "ready"."""
+    _install_fake_js(monkeypatch)
+    monkeypatch.setattr(pb, "_verify", lambda: "0.2.2+gdeadbeef")
+
+    async def _ok(host_root, *, raise_on_error=False):
+        return None
+
+    _set_hook(monkeypatch, _ok)
+
+    # Create a fake IPython that returns None
+    fake_ipython = types.ModuleType("IPython")
+    fake_ipython.get_ipython = lambda: None
+    monkeypatch.setitem(sys.modules, "IPython", fake_ipython)
+
+    # Create a fake web_bridge that records calls
+    bootstrap_calls = []
+
+    def fake_bootstrap_playground(ns):
+        bootstrap_calls.append(ns)
+
+    fake_web_bridge = types.ModuleType("web_bridge")
+    fake_web_bridge.bootstrap_playground = fake_bootstrap_playground
+    monkeypatch.setitem(sys.modules, "web_bridge", fake_web_bridge)
+
+    result = await pb._run_setup(host_root_override=HOST_ROOT)
+
+    assert result == HOST_ROOT
+    assert pb.state == "ready"
+    assert len(bootstrap_calls) == 0  # not called
+    assert pb.failure is None
+    # Clean up the fake module
+    monkeypatch.delitem(sys.modules, "web_bridge")
+
+
+@pytest.mark.asyncio
+async def test_playground_names_failure_does_not_fail_setup(pb, monkeypatch):
+    """Injection raises: fake bootstrap_playground raises RuntimeError →
+    setup still reaches "ready", failure is None, nothing propagates."""
+    _install_fake_js(monkeypatch)
+    monkeypatch.setattr(pb, "_verify", lambda: "0.2.2+gdeadbeef")
+
+    async def _ok(host_root, *, raise_on_error=False):
+        return None
+
+    _set_hook(monkeypatch, _ok)
+
+    # Create a fake shell with a user_ns dict
+    user_ns = {}
+    manager = _FakeManager()
+    fake_shell = _FakeShell(manager)
+    fake_shell.user_ns = user_ns
+
+    fake_ipython = types.ModuleType("IPython")
+    fake_ipython.get_ipython = lambda: fake_shell
+    monkeypatch.setitem(sys.modules, "IPython", fake_ipython)
+
+    # Create a fake web_bridge that raises
+    def fake_bootstrap_playground(ns):
+        raise RuntimeError("bootstrap_playground failed")
+
+    fake_web_bridge = types.ModuleType("web_bridge")
+    fake_web_bridge.bootstrap_playground = fake_bootstrap_playground
+    monkeypatch.setitem(sys.modules, "web_bridge", fake_web_bridge)
+
+    # This must not raise despite the injection failing
+    result = await pb._run_setup(host_root_override=HOST_ROOT)
+
+    assert result == HOST_ROOT
+    assert pb.state == "ready"
+    assert pb.failure is None
+    # Clean up the fake module
+    monkeypatch.delitem(sys.modules, "web_bridge")
+
+
+@pytest.mark.asyncio
+async def test_playground_names_not_called_on_setup_failure(pb, monkeypatch):
+    """Failed setup when praxis_main raises: bootstrap_playground is never
+    called when praxis_main raises during _run_setup."""
+    _install_fake_js(monkeypatch)
+
+    async def _boom(host_root, *, raise_on_error=False):
+        raise RuntimeError("stage exploded")
+
+    _set_hook(monkeypatch, _boom)
+
+    # Create a fake shell with a user_ns dict
+    user_ns = {}
+    manager = _FakeManager()
+    fake_shell = _FakeShell(manager)
+    fake_shell.user_ns = user_ns
+
+    fake_ipython = types.ModuleType("IPython")
+    fake_ipython.get_ipython = lambda: fake_shell
+    monkeypatch.setitem(sys.modules, "IPython", fake_ipython)
+
+    # Create a fake web_bridge that records calls
+    bootstrap_calls = []
+
+    def fake_bootstrap_playground(ns):
+        bootstrap_calls.append(ns)
+
+    fake_web_bridge = types.ModuleType("web_bridge")
+    fake_web_bridge.bootstrap_playground = fake_bootstrap_playground
+    monkeypatch.setitem(sys.modules, "web_bridge", fake_web_bridge)
+
+    # Setup fails, but we catch the exception because we're testing with auto=True
+    await pb._run_setup(host_root_override=HOST_ROOT, auto=True)
+
+    assert pb.state == "failed"
+    assert len(bootstrap_calls) == 0  # not called
+
+
+@pytest.mark.asyncio
+async def test_playground_names_not_called_when_verify_fails(pb, monkeypatch):
+    """Failed setup when _verify raises: bootstrap_playground is never called
+    when praxis_main succeeds but _verify fails during _run_setup."""
+    _install_fake_js(monkeypatch)
+
+    async def _ok(host_root, *, raise_on_error=False):
+        return None
+
+    _set_hook(monkeypatch, _ok)
+
+    # Make _verify fail
+    def _bad_verify():
+        raise RuntimeError("Serial class is NOT the browser shim")
+
+    monkeypatch.setattr(pb, "_verify", _bad_verify)
+
+    # Create a fake shell with a user_ns dict
+    user_ns = {}
+    manager = _FakeManager()
+    fake_shell = _FakeShell(manager)
+    fake_shell.user_ns = user_ns
+
+    fake_ipython = types.ModuleType("IPython")
+    fake_ipython.get_ipython = lambda: fake_shell
+    monkeypatch.setitem(sys.modules, "IPython", fake_ipython)
+
+    # Create a fake web_bridge that records calls
+    bootstrap_calls = []
+
+    def fake_bootstrap_playground(ns):
+        bootstrap_calls.append(ns)
+
+    fake_web_bridge = types.ModuleType("web_bridge")
+    fake_web_bridge.bootstrap_playground = fake_bootstrap_playground
+    monkeypatch.setitem(sys.modules, "web_bridge", fake_web_bridge)
+
+    # Setup fails because _verify raises, but we catch the exception because
+    # we're testing with auto=True
+    await pb._run_setup(host_root_override=HOST_ROOT, auto=True)
+
+    assert pb.state == "failed"
+    assert len(bootstrap_calls) == 0  # not called
