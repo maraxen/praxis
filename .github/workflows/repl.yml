@@ -210,6 +210,7 @@ jobs:
           uv run python -m pytest web-repl/tests/test_plr_contract.py -q
           uv run python -m pytest web-repl/tests/test_praxis_boot_autosetup.py -q
           uv run python -m pytest web-repl/tests/test_praxis_bootstrap_loader.py -q
+          uv run python -m pytest web-repl/tests/test_praxis_startup.py -q
           uv run python -m pytest web-repl/tests/test_rid_invariant.py -q
           uv run python -m pytest web-repl/tests/test_stamp_loader_shas.py -q
           uv run python -m pytest web-repl/tests/test_transport.py -q
