@@ -201,6 +201,7 @@ jobs:
       - name: Tests
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python -m pytest web-repl/tests/test_autosetup_build_assertions.py -q
           uv run python -m pytest web-repl/tests/test_base_path.py -q
           uv run python -m pytest web-repl/tests/test_browser_visualizer.py -q
           uv run python -m pytest web-repl/tests/test_build_manifest.py -q
