@@ -1710,7 +1710,11 @@ AUTOSETUP_FAULT_SIDE_EFFECT_NEEDLE = "side" + "effect"
 
 #: Cell 3: the fault count is spent by the time this runs (PYTHONSTARTUP's own
 #: auto-setup attempt already consumed it), so this manual retry succeeds.
-AUTOSETUP_FAULT_RETRY_CELL = "import praxis_boot\nawait praxis_boot.setup()"
+#: Also records gate_waited for AC-2 measurement.
+AUTOSETUP_FAULT_RETRY_CELL = (
+    "import praxis_boot\nawait praxis_boot.setup()\n"
+    "import json; print(json.dumps({\"gate_waited\": praxis_boot.gate_waited}))"
+)
 
 #: AC-1's literal zero-action cell (spec section 3): used verbatim as cell 4
 #: of --autosetup-fault-check and as the pre/post-restart cell of
@@ -1728,6 +1732,14 @@ FAULT_REASON_NEEDLE: dict[str, str] = {
     "404": "HTTP 404",
     "tamper": "sha256 mismatch",
 }
+
+#: Regex to match the exact success line printed by praxis_boot.setup() when
+#: setup completes normally (spec section 6.2 _run_setup step 6, trap 2).
+#: The line is: `PyLabRobot {version} ready (site root {root}); Serial is the browser shim`
+#: This pattern matches the stable parts that are independent of version and root.
+AUTOSETUP_SUCCESS_LINE_PATTERN = re.compile(
+    r"PyLabRobot\s+\S+\s+ready\s+\(site\s+root\s+[^)]*\);\s+Serial\s+is\s+the\s+browser\s+shim"
+)
 
 
 def build_restart_probe_cell() -> str:
@@ -3008,15 +3020,36 @@ def main(argv: list[str] | None = None) -> int:
                 failures.append(
                     f"cell 3 (retry, fault count spent): expected no error, got {out3[:300]!r}"
                 )
-            if "ready" not in out3.lower():
+            if not AUTOSETUP_SUCCESS_LINE_PATTERN.search(out3):
                 failures.append(
-                    f"cell 3 (retry): expected setup's own 'ready' print, got {out3[:300]!r}"
+                    f"cell 3 (retry): expected praxis_boot.setup()'s success line "
+                    f"'PyLabRobot <version> ready (site root <root>); Serial is the browser shim', "
+                    f"got {out3[:300]!r}"
                 )
+            # Record gate_waited for AC-2 measurement (not a pass/fail condition):
+            # scan every line for a JSON object carrying it, last one wins.
+            gate_waited = None
+            for line in out3.splitlines():
+                try:
+                    data = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                if isinstance(data, dict) and "gate_waited" in data:
+                    gate_waited = data["gate_waited"]
+            result["gate_waited"] = gate_waited
 
             c4 = cells[3]
             out4 = c4.get("output_text") or ""
             if c4.get("has_error_output") or "True" not in out4 or "False" in out4:
                 failures.append(f"cell 4 (AC-1 probe): expected bare 'True', got {out4[:300]!r}")
+
+            # Check that all faults actually fired (spec trap 5)
+            for i, f in enumerate(faults):
+                if f.hits < 1:
+                    failures.append(
+                        f"fault {i + 1} ({f.kind}:{f.suffix}): never fired (hits={f.hits}); "
+                        "the gate's blocked-cell assertions would be unproven (test-design trap 5)."
+                    )
 
         if result.get("pageerrors"):
             failures.append(f"pageerror(s): {result['pageerrors']}")
