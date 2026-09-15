@@ -28,8 +28,11 @@ never leaks between tests.
 from __future__ import annotations
 
 import asyncio
+import ast
 import builtins
 import importlib
+import inspect
+import re
 import sys
 import types
 from pathlib import Path
@@ -765,6 +768,60 @@ def test_status_reports_no_failure_as_none(pb, capsys):
     result = pb.status()
     capsys.readouterr()
     assert result["failure"] is None
+
+
+# ---------------------------------------------------------------------------
+# Recovery hint validation
+# ---------------------------------------------------------------------------
+
+
+def test_setup_hints_only_use_real_setup_keywords(pb):
+    """Guard against recovery hints that suggest setup() with incorrect keyword
+    arguments (e.g. 'host_root=' instead of 'host_root_override='). This test
+    reads the real praxis_boot.py source, finds all praxis_boot.setup() calls
+    in string literals (recovery hints), and asserts each keyword is a real
+    parameter of the setup() function."""
+    # Read the real praxis_boot.py source
+    praxis_boot_path = Path(__file__).resolve().parents[1] / "files" / "praxis_boot.py"
+    with open(praxis_boot_path) as f:
+        source = f.read()
+
+    tree = ast.parse(source)
+
+    # Get the real setup() signature from the pb fixture
+    setup_sig = inspect.signature(pb.setup)
+    valid_param_names = set(setup_sig.parameters.keys())
+
+    # Find all string constants that contain praxis_boot.setup( calls
+    found_hints = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            string_val = node.value
+            # Find all praxis_boot.setup(...) calls in this string
+            # Regex pattern: praxis_boot.setup( followed by keyword args
+            matches = re.findall(
+                r'praxis_boot\.setup\(([^)]*)\)',
+                string_val
+            )
+            for match in matches:
+                # Extract keyword argument names from the call
+                # Pattern: word characters followed by =
+                keywords = re.findall(r'\b([A-Za-z_]\w*)\s*=', match)
+                if keywords:
+                    found_hints.append((string_val, match, keywords))
+                    # Verify each keyword is a real parameter
+                    for kw in keywords:
+                        assert kw in valid_param_names, (
+                            f"setup() hint uses invalid keyword '{kw}' "
+                            f"(valid keywords are {sorted(valid_param_names)}). "
+                            f"Hint string: {string_val!r}"
+                        )
+
+    # Ensure we actually found at least one hint, so the test isn't vacuous
+    assert len(found_hints) > 0, (
+        "No praxis_boot.setup(...) calls found in string literals in praxis_boot.py. "
+        "Either all recovery hints have been removed, or the regex pattern needs updating."
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -119,7 +119,7 @@ def derive_host_root() -> str:
         raise RuntimeError(
             "could not read the kernel worker's own location, so the site root "
             "cannot be derived. Pass it explicitly: "
-            "await praxis_boot.setup(host_root='/praxis/')"
+            "await praxis_boot.setup(host_root_override='/praxis/')"
         ) from exc
 
     # rfind, not find: a site deployed under a path that itself contains
@@ -130,7 +130,7 @@ def derive_host_root() -> str:
             f"could not derive the site root: the kernel worker URL {pathname!r} "
             f"does not contain {_WORKER_MARKER!r}, so the layout this relies on has "
             "changed. Pass it explicitly: "
-            "await praxis_boot.setup(host_root='/praxis/')"
+            "await praxis_boot.setup(host_root_override='/praxis/')"
         )
 
     root = pathname[:index]
