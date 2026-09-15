@@ -42,6 +42,9 @@ if str(_FILES_DIR) not in sys.path:
 
 HOST_ROOT = "/praxis/"
 
+# D1 detection substring used in _gate_error(); must remain synchronized with stages.py
+_D1_DETECTION_SUBSTRING = "D1 whole-deployment staleness check"
+
 _LOADER_SOURCE = (
     "async def praxis_main(host_root, *, raise_on_error=False):\n"
     "    import builtins\n"
@@ -638,6 +641,31 @@ def test_gate_error_names_closing_older_tabs_on_d1_mismatch(pb):
     msg = str(pb._gate_error()).lower()
     assert "close other praxis tabs from an older deploy" in msg
     assert "restart the kernel" in msg
+
+
+def test_d1_detection_substring_matches_real_stages_message(pb):
+    """Verify that the D1 detection substring in _gate_error() matches the
+    actual message text in stages.py. This ensures the detection doesn't
+    silently break if stages.py is reworded."""
+    # Read the praxis_boot.py source and assert the substring is there
+    praxis_boot_path = Path(__file__).resolve().parents[1] / "files" / "praxis_boot.py"
+    with open(praxis_boot_path) as f:
+        praxis_boot_source = f.read()
+
+    assert _D1_DETECTION_SUBSTRING in praxis_boot_source, (
+        f"D1 detection substring {_D1_DETECTION_SUBSTRING!r} not found in praxis_boot.py; "
+        "the constant in the test file is now stale"
+    )
+
+    # Read the stages.py source and assert the substring is there
+    stages_path = Path(__file__).resolve().parents[1] / "bootstrap" / "stages.py"
+    with open(stages_path) as f:
+        stages_source = f.read()
+
+    assert _D1_DETECTION_SUBSTRING in stages_source, (
+        f"D1 detection substring {_D1_DETECTION_SUBSTRING!r} not found in stages.py; "
+        "the detection logic in praxis_boot._gate_error() is now stale"
+    )
 
 
 # ---------------------------------------------------------------------------
