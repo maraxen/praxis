@@ -17,7 +17,12 @@
     },
     "litePluginSettings": {
       "@jupyterlite/pyodide-kernel-extension:kernel": {
-        "disablePyPIFallback": true
+        "disablePyPIFallback": true,
+        "loadPyodideOptions": {
+          "env": {
+            "PYTHONSTARTUP": "/drive/praxis_startup.py"
+          }
+        }
       }
     }
   }
