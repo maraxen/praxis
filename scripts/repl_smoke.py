@@ -62,6 +62,7 @@ Hard constraints (verified 2026-08-17, see plan section 5.6):
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import logging
 import os
@@ -70,6 +71,7 @@ import subprocess
 import sys
 import textwrap
 import threading
+import time
 import urllib.parse
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -187,6 +189,125 @@ def chromium_launch_args(*, offline: bool) -> list[str]:
 PROBE_START = "===PRAXIS_PROBE_JSON_START==="
 PROBE_END = "===PRAXIS_PROBE_JSON_END==="
 
+#: Shared forbidden-list (spec .praxia/docs/specs/260914_first-run-auto-setup.md,
+#: AC-10 / section 8.3 / section 8.4 trap 1): a probe or shipped notebook code
+#: cell that calls any of these itself would make auto-setup gates pass even
+#: with auto-setup entirely broken. Deliberately excludes a bare `setup(` so
+#: PyLabRobot's own `await lh.setup()` stays allowed. The build-side copy of
+#: this same list lives in web-repl/scripts/build_repl.py (T5, out of this
+#: task's scope) and web-repl/tests/test_base_path.py (T5/T6) -- kept as a
+#: separate literal there rather than imported, since repl_smoke.py is not on
+#: the build's import path.
+FORBIDDEN_BOOTSTRAP_CALLS: tuple[str, ...] = ("praxis_main(", "praxis_boot.setup(", "HOST_ROOT =")
+
+#: Import lines that would make AC-1's playground-names clause pass vacuously
+#: (spec section 8.3, --fresh-boot-check row, T3b): the whole point of that
+#: clause is that LiquidHandler/STAR are resolvable with NO import.
+PLAYGROUND_NAME_IMPORT_NEEDLES: tuple[str, ...] = (
+    "import LiquidHandler",
+    "from pylabrobot.liquid_handling",
+)
+
+
+def find_forbidden_bootstrap_call(source: str) -> str | None:
+    """Return the first shared-forbidden-list substring found in *source*, or None."""
+    for needle in FORBIDDEN_BOOTSTRAP_CALLS:
+        if needle in source:
+            return needle
+    return None
+
+
+def probe_imports_playground_names(source: str) -> bool:
+    """True if *source* imports LiquidHandler/STAR itself (spec section 8.3, T3b)."""
+    return any(needle in source for needle in PLAYGROUND_NAME_IMPORT_NEEDLES)
+
+
+@dataclasses.dataclass
+class Fault:
+    """One ServedDir fault (spec section 8.3, --autosetup-fault-check row).
+
+    kind:
+      - "404"    -- answer with an HTTP 404 instead of serving the file.
+      - "tamper" -- serve the real file with corrupted bytes appended, so a
+        sha256 pin over the served content mismatches.
+      - "delay"  -- sleep `delay_s` in the handler thread, then serve the file
+        unmodified. **Never put this on a sync-XHR asset**
+        (`bootstrap/praxis_bootstrap.py`, `bootstrap/stages.py`,
+        `bootstrap/transport.py`, `assets/wheels/manifest.json`, the
+        `assets/python`/`assets/shims` sources): a sync XHR blocks the worker
+        thread and would delay kernel-ready itself, so a probe cell would
+        never observe `state == "running"` (test-design trap 8). Delays only
+        ever target the async micropip wheel fetch.
+
+    `suffix` is matched against `urllib.parse.unquote(urllib.parse.urlsplit(self.path).path)`
+    (C-17: `unquote`, not `unquote_plus`, so a literal `+` in a wheel filename
+    survives). `max_hits` bounds how many of the FIRST matching requests are
+    actually faulted (`--fault-count`, default 1); every match beyond that is
+    served normally, which is what makes a post-fault retry succeed
+    (--autosetup-fault-check cell 3). `hits` is the running counter the harness
+    reads back to prove the fault path was actually exercised (test-design
+    trap 5).
+    """
+
+    kind: str
+    suffix: str
+    delay_s: float = 0.0
+    max_hits: int = 1
+    hits: int = 0
+
+    def __post_init__(self) -> None:
+        if self.kind not in ("404", "tamper", "delay"):
+            raise ValueError(
+                f"unknown fault kind {self.kind!r}; expected one of 404, tamper, delay"
+            )
+
+
+def parse_fault(spec: str, *, max_hits: int) -> Fault:
+    """Parse a `--fault` value: `404:<suffix>`, `tamper:<suffix>`, or `delay:<suffix>:<seconds>`.
+
+    The delay form is split with `rsplit(":", 1)` (spec section 8.3) so a
+    `suffix` containing colons (none of ours do, but paths are not guaranteed
+    not to) still parses; only the LAST colon-separated field is the seconds.
+    """
+    kind, _, rest = spec.partition(":")
+    if kind == "delay":
+        try:
+            suffix, seconds_s = rest.rsplit(":", 1)
+            delay_s = float(seconds_s)
+        except ValueError as e:
+            raise ValueError(
+                f"bad delay fault {spec!r}: expected delay:<path-suffix>:<seconds>"
+            ) from e
+        return Fault(kind="delay", suffix=suffix, delay_s=delay_s, max_hits=max_hits)
+    if not rest:
+        raise ValueError(f"bad fault {spec!r}: expected <kind>:<path-suffix>")
+    return Fault(kind=kind, suffix=rest, max_hits=max_hits)
+
+
+#: --fresh-boot-check's always-on wheel-delay fault (spec section 8.3, R2-1).
+#: S0 E2 measured kernel boot ~9.8s with setup starting ~3.9s in; the wheel
+#: fetch comes after D1/D2, so holding it 15s keeps state=="running" for at
+#: least ~9s past first idle (and still covers a CI runner twice as slow)
+#: while staying well inside the cell timeout.
+FRESH_BOOT_WHEEL_DELAY_S = 15.0
+
+
+def read_wheel_filename(serve_dir: Path, package: str) -> str:
+    """Read a wheel's served filename from assets/wheels/manifest.json.
+
+    Never hardcode a wheel filename (spec section 8.3): the pylabrobot wheel's
+    +g<sha> local version segment changes on every rebuild.
+    """
+    manifest_path = serve_dir / "assets" / "wheels" / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except OSError as e:
+        raise RuntimeError(f"could not read {manifest_path}: {e}") from e
+    for entry in manifest.get("wheels", []):
+        if entry.get("package") == package and entry.get("filename"):
+            return entry["filename"]
+    raise RuntimeError(f"no {package!r} entry with a filename in {manifest_path}")
+
 
 def find_repo_root(start: Path) -> Path:
     """Search upward from `start` for the directory containing pyproject.toml.
@@ -238,8 +359,11 @@ def _normalize_base_path(base_path: str) -> str:
     return base_path
 
 
-def make_handler(serve_dir: Path, base_path: str, coi: bool) -> type[SimpleHTTPRequestHandler]:
+def make_handler(
+    serve_dir: Path, base_path: str, coi: bool, faults: list[Fault] | None = None
+) -> type[SimpleHTTPRequestHandler]:
     prefix = _normalize_base_path(base_path)
+    fault_list = faults if faults is not None else []
 
     class Handler(SimpleHTTPRequestHandler):
         def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -252,6 +376,58 @@ def make_handler(serve_dir: Path, base_path: str, coi: bool) -> type[SimpleHTTPR
             elif prefix != "/" and p == prefix[:-1]:
                 p = "/"
             return super().translate_path(p)
+
+        def _matching_fault(self) -> Fault | None:
+            # C-17: unquote (never unquote_plus) so a literal '+' in a wheel
+            # filename survives, and match on the parsed URL PATH only --
+            # translate_path above already strips the query string, but
+            # urlsplit().path is used here directly since faults are matched
+            # BEFORE translate_path runs.
+            req_path = urllib.parse.unquote(urllib.parse.urlsplit(self.path).path)
+            for fault in fault_list:
+                if fault.hits < fault.max_hits and req_path.endswith(fault.suffix):
+                    return fault
+            return None
+
+        def _serve_tampered(self) -> None:
+            fs_path = self.translate_path(self.path)
+            try:
+                with open(fs_path, "rb") as fh:
+                    data = fh.read()
+            except OSError:
+                self.send_error(404, "praxis fault injection: tamper source missing")
+                return
+            tampered = data + b"\n# praxis-fault-injected-tamper\n"
+            self.send_response(200)
+            ctype = self.guess_type(fs_path)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(tampered)))
+            self.end_headers()
+            self.wfile.write(tampered)
+
+        def do_GET(self) -> None:
+            fault = self._matching_fault()
+            if fault is not None:
+                fault.hits += 1
+                LOG.info(
+                    "fault injected: kind=%s suffix=%s hit=%d/%d path=%s",
+                    fault.kind, fault.suffix, fault.hits, fault.max_hits, self.path,
+                )
+                if fault.kind == "404":
+                    self.send_error(404, "praxis fault injection: 404")
+                    return
+                if fault.kind == "tamper":
+                    self._serve_tampered()
+                    return
+                if fault.kind == "delay":
+                    # Holds only THIS request/thread: ThreadingHTTPServer gives
+                    # every connection its own thread, so the rest of the site
+                    # (and the kernel-ready path) stays responsive while this
+                    # one sleeps (spec section 8.3, trap 8).
+                    time.sleep(fault.delay_s)
+                    super().do_GET()
+                    return
+            super().do_GET()
 
         def end_headers(self) -> None:
             if coi:
@@ -269,8 +445,11 @@ def make_handler(serve_dir: Path, base_path: str, coi: bool) -> type[SimpleHTTPR
 class ServedDir:
     """Context manager wrapping a background ThreadingHTTPServer."""
 
-    def __init__(self, serve_dir: Path, base_path: str, coi: bool) -> None:
-        handler_cls = make_handler(serve_dir, base_path, coi)
+    def __init__(
+        self, serve_dir: Path, base_path: str, coi: bool, faults: list[Fault] | None = None
+    ) -> None:
+        self.faults = faults if faults is not None else []
+        handler_cls = make_handler(serve_dir, base_path, coi, self.faults)
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler_cls)
         self.port = self.httpd.server_address[1]
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
@@ -315,15 +494,19 @@ def build_probe_code(host_root: str, expect_praxis_sha: str | None) -> str:
 
 
         async def _main():
-            # --- 1. fetch + exec the bootstrap, then await praxis_main ---
+            # --- 1. auto-setup already ran via PYTHONSTARTUP + the cleanup_transforms
+            # gate before this cell was ever dispatched (spec 260914_first-run-auto-setup.md
+            # section 8.3, --probe/--probe --offline/--completion-check row); this call is
+            # therefore a no-op guarded by praxis_boot's once-guard/lock, not a second run
+            # (AC-6). Kept (rather than removed outright) so this probe still measures
+            # `praxis_boot.state` end to end, and still works standalone if ever run
+            # against a kernel where PYTHONSTARTUP did not fire.
             try:
-                xhr = js.XMLHttpRequest.new()
-                xhr.open("GET", HOST_ROOT + "bootstrap/praxis_bootstrap.py", False)
-                xhr.send(None)
-                bootstrap_src = str(xhr.responseText)
-                exec(compile(bootstrap_src, "praxis_bootstrap.py", "exec"), globals())
-                await praxis_main(HOST_ROOT)  # noqa: F821 - injected by exec above
-                RESULT["praxis_ready"] = True
+                import praxis_boot
+                await praxis_boot.setup()
+                RESULT["praxis_ready"] = praxis_boot.state == "ready"
+                RESULT["praxis_boot_state"] = praxis_boot.state
+                RESULT["autostart_origin"] = getattr(praxis_boot, "autostart_origin", None)
             except Exception as e:  # noqa: BLE001 - probe must never die silently
                 RESULT["praxis_ready"] = False
                 RESULT["bootstrap_error"] = f"{{type(e).__name__}}: {{e}}"
@@ -626,14 +809,15 @@ def build_completion_probe_code(host_root: str) -> str:
 
 
         async def _main():
-            # --- 1. boot praxis so pylabrobot is importable at all ---
+            # --- 1. auto-setup already ran via PYTHONSTARTUP + the gate; this is a
+            # no-op retry through the once-guard/lock (AC-6), not a second run --
+            # kept only so pylabrobot is importable and praxis_boot.state is measured
+            # even if PYTHONSTARTUP did not fire (spec section 8.3, --completion-check row) ---
             try:
-                xhr = js.XMLHttpRequest.new()
-                xhr.open("GET", HOST_ROOT + "bootstrap/praxis_bootstrap.py", False)
-                xhr.send(None)
-                exec(compile(str(xhr.responseText), "praxis_bootstrap.py", "exec"), globals())
-                await praxis_main(HOST_ROOT)  # noqa: F821 - injected by exec above
-                RESULT["praxis_ready"] = True
+                import praxis_boot
+                await praxis_boot.setup()
+                RESULT["praxis_ready"] = praxis_boot.state == "ready"
+                RESULT["praxis_boot_state"] = praxis_boot.state
             except Exception as e:  # noqa: BLE001 - probe must never die silently
                 RESULT["praxis_ready"] = False
                 RESULT["bootstrap_error"] = f"{{type(e).__name__}}: {{e}}"
@@ -755,6 +939,7 @@ def run_probe(
     entry: str = "lab",
     offline: bool = False,
     code_override: str | None = None,
+    faults: list[Fault] | None = None,
 ) -> dict[str, Any]:
     # `code_override` lets a caller drive this same browser/serve/sentinel
     # machinery with a DIFFERENT in-kernel payload. It exists so --completion-check
@@ -762,6 +947,10 @@ def run_probe(
     # --offline (both CI gates), and its f-string + textwrap.dedent + split-sentinel
     # construction is the path that silently produced a mis-dedented payload once
     # already. A new payload is a new function; this is the seam that allows it.
+    # `faults` (spec section 8.3) lets --fresh-boot-check always hold the async
+    # pylabrobot wheel fetch so AC-2's wait is deterministic, and lets --autosetup-
+    # fault-check/--fault inject 404/tamper/delay faults at the harness's static
+    # server, never via page.route() (trap 5: route() does not see Worker requests).
     try:
         from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
         from playwright.sync_api import sync_playwright
@@ -771,7 +960,7 @@ def run_probe(
     prefix = _normalize_base_path(base_path)
     timeout_ms = timeout_s * 1000
 
-    with ServedDir(serve_dir, base_path, coi) as served:
+    with ServedDir(serve_dir, base_path, coi, faults=faults) as served:
         url = (
             f"http://127.0.0.1:{served.port}{prefix}{entry}/index.html"
         )
@@ -785,6 +974,8 @@ def run_probe(
         )
         full_url = f"{url}?{params}"
         LOG.info("navigating to %s (url length %d)", url, len(full_url))
+        probe_wall_start = time.monotonic()
+        probe_wall_s: float | None = None
 
         request_log: list[dict[str, Any]] = []
         http_errors: list[dict[str, Any]] = []
@@ -851,7 +1042,7 @@ def run_probe(
                         arg=PROBE_END,
                         timeout=timeout_ms,
                     )
-                except Exception as wait_exc:  # noqa: BLE001
+                except Exception as wait_exc:
                     # A bare "Timeout 120000ms exceeded" tells you NOTHING about why the
                     # boot never finished, and the page is about to be closed in the
                     # `finally` below -- so everything diagnostic has to be harvested
@@ -860,7 +1051,7 @@ def run_probe(
                     # a slow kernel are the same message.
                     try:
                         stuck_body = page.evaluate("() => document.body.innerText")
-                    except Exception:  # noqa: BLE001
+                    except Exception:
                         stuck_body = "<unavailable>"
                     def _entry_url(entry: Any) -> str | None:
                         if isinstance(entry, dict):
@@ -886,6 +1077,14 @@ def run_probe(
                         f"{json.dumps(console_messages[-40:], indent=2)}\n"
                         f"  page text (last 1500 chars): {stuck_body[-1500:]!r}"
                     ) from wait_exc
+
+                # Approximates "wall time from sending the execute request to its
+                # execute_reply" (spec section 8.3's --fresh-boot-check row): this is
+                # actually navigation-start-to-sentinel-found, a superset that also
+                # includes full kernel boot -- precise execute-request timing would
+                # need frontend instrumentation of kernel status transitions, which
+                # this harness does not have. Recorded for evidence, not thresholded.
+                probe_wall_s = time.monotonic() - probe_wall_start
 
                 body_text = page.evaluate("() => document.body.innerText")
                 cross_origin_isolated = page.evaluate("() => window.crossOriginIsolated")
@@ -968,6 +1167,8 @@ def run_probe(
         "serve_dir": str(serve_dir),
         "offline": offline,
         "offline_blackhole_hosts": list(OFFLINE_BLACKHOLE_HOSTS) if offline else [],
+        "probe_wall_s": probe_wall_s,
+        "faults": [dataclasses.asdict(f) for f in (faults or [])],
     }
     return result
 
@@ -986,24 +1187,34 @@ class VizCheckError(RuntimeError):
 
 
 def build_fresh_boot_probe_code() -> str:
-    """In-kernel payload for the fresh-notebook bootstrap (gate T4).
+    """In-kernel payload for AC-1/AC-2 fresh-boot auto-setup (spec
+    260914_first-run-auto-setup.md section 8.3, --fresh-boot-check row).
 
-    Runs EXACTLY what a user is told to type in a brand-new notebook -- `import
-    praxis_boot` then `await praxis_boot.setup()` -- and nothing else. It
-    deliberately does NOT fetch the loader itself or pass a host root, because
-    those two omissions are the whole claim being tested: that a fresh kernel
-    can reach the loader with no URL and no base path typed by hand.
+    PREMISE REPLACED (was gate T4's "type two lines"): auto-setup already ran
+    via PYTHONSTARTUP + the `cleanup_transforms` gate by the time this cell was
+    ever dispatched to the kernel, so this probe must NOT import or call
+    `praxis_boot.setup()` (nor `praxis_main()`, nor set `HOST_ROOT`) itself --
+    doing so would make the gate pass even if auto-setup were entirely broken
+    (test-design trap 1). It only READS `praxis_boot` state and then imports
+    pylabrobot. Two static checks the HARNESS makes on THIS SOURCE STRING
+    before it is ever sent to the kernel close the rest of that gap:
+    `setup_called_by_probe` (none of the shared forbidden list
+    `praxis_main(`/`praxis_boot.setup(`/`HOST_ROOT =` appear below --
+    `find_forbidden_bootstrap_call`) and the playground-names import-free
+    check (no `import LiquidHandler`/`from pylabrobot.liquid_handling` line
+    below -- `probe_imports_playground_names`); AC-1's playground-names clause
+    (T3b) is only meaningful if the names were never imported by the probe.
 
-    Records sys.path and cwd unconditionally. `import praxis_boot` only works
-    because the kernel mounts the JupyterLite contents drive at /drive and runs
-    there; if that ever stops being true the import fails, and the failure would
-    be indistinguishable from "the file was not shipped" without these fields.
+    Records sys.path/cwd unconditionally, same reasoning as before: `import
+    praxis_boot` only works because the kernel mounts the JupyterLite contents
+    drive at /drive and runs there, and a failure there would otherwise be
+    indistinguishable from "the file was not shipped".
     """
     start_a, start_b = PROBE_START[: len(PROBE_START) // 2], PROBE_START[len(PROBE_START) // 2 :]
     end_a, end_b = PROBE_END[: len(PROBE_END) // 2], PROBE_END[len(PROBE_END) // 2 :]
     return textwrap.dedent(
         f"""
-        import json, os, sys, traceback
+        import builtins, json, os, sys
         RESULT: dict = {{}}
 
         RESULT["cwd"] = os.getcwd()
@@ -1011,14 +1222,6 @@ def build_fresh_boot_probe_code() -> str:
         RESULT["drive_listing"] = (
             sorted(os.listdir("/drive")) if os.path.isdir("/drive") else None
         )
-
-        # Baseline: a fresh kernel must NOT already have pylabrobot, or this
-        # gate would pass without the bootstrap doing anything.
-        try:
-            import pylabrobot as _pre
-            RESULT["plr_before"] = getattr(_pre, "__version__", "present")
-        except Exception as e:  # noqa: BLE001
-            RESULT["plr_before"] = f"{{type(e).__name__}}"
 
         try:
             import praxis_boot
@@ -1028,22 +1231,17 @@ def build_fresh_boot_probe_code() -> str:
             RESULT["import_error"] = f"{{type(e).__name__}}: {{e}}"
 
         if RESULT.get("import_praxis_boot"):
+            RESULT["state"] = getattr(praxis_boot, "state", None)
+            RESULT["gate_waited"] = getattr(praxis_boot, "gate_waited", None)
+            RESULT["autostart_origin"] = getattr(praxis_boot, "autostart_origin", None)
+            RESULT["kernel_nonce"] = getattr(praxis_boot, "kernel_nonce", None)
+            RESULT["derived_host_root"] = getattr(praxis_boot, "host_root", None)
             try:
-                RESULT["derived_host_root"] = praxis_boot.derive_host_root()
-            except Exception as e:  # noqa: BLE001
-                RESULT["derived_host_root"] = None
-                RESULT["derive_error"] = f"{{type(e).__name__}}: {{e}}"
+                RESULT["failure"] = repr(getattr(praxis_boot, "failure", None))
+            except Exception:  # noqa: BLE001 - a bad __repr__ must not sink the probe
+                RESULT["failure"] = "<unprintable exception>"
 
             try:
-                RESULT["setup_returned"] = await praxis_boot.setup()
-                RESULT["setup_ok"] = True
-            except Exception as e:  # noqa: BLE001
-                RESULT["setup_ok"] = False
-                RESULT["setup_error"] = f"{{type(e).__name__}}: {{e}}"
-                RESULT["setup_traceback"] = traceback.format_exc()
-
-            try:
-                import builtins
                 import pylabrobot
                 from pylabrobot.io.serial import Serial
                 RESULT["plr_after"] = getattr(pylabrobot, "__version__", None)
@@ -1052,6 +1250,22 @@ def build_fresh_boot_probe_code() -> str:
                 RESULT["plr_after"] = None
                 RESULT["serial_is_shim"] = None
                 RESULT["post_import_error"] = f"{{type(e).__name__}}: {{e}}"
+
+            # Playground names (AC-1's last sentence, T3b): the legacy welcome
+            # bootstrap cell exec'd the loader into the NOTEBOOK globals, so
+            # LiquidHandler/STAR landed in the user namespace with no import.
+            # Evaluated with NO import of either name anywhere in this probe --
+            # the harness checks that statically (probe_imports_playground_names)
+            # before this source is ever sent.
+            try:
+                RESULT["playground_names_ok"] = bool(
+                    "LiquidHandler" in globals()
+                    and LiquidHandler.__name__ == "LiquidHandler"  # noqa: F821
+                    and "STAR" in globals()
+                )
+            except Exception as e:  # noqa: BLE001
+                RESULT["playground_names_ok"] = False
+                RESULT["playground_names_error"] = f"{{type(e).__name__}}: {{e}}"
 
         print({start_a!r} + {start_b!r})
         print(json.dumps(RESULT))
@@ -1179,7 +1393,7 @@ def run_typeahead_check(
                     result["completer_sample"] = [
                         items.nth(i).inner_text().strip() for i in range(min(6, items.count()))
                     ]
-                except Exception:  # noqa: BLE001 - sample is diagnostics, not the assertion
+                except Exception:
                     result["completer_sample"] = None
                 if not result["completer_item_count"]:
                     result["failures"].append(
@@ -1213,10 +1427,31 @@ DEFAULT_NOTEBOOK = "welcome.ipynb"
 #: them, and that coupling is deliberate: it is what makes this a test OF the
 #: notebook rather than a test that some notebook ran.
 NOTEBOOK_EXPECTED = (
-    "bootstrap complete",
+    "praxis auto-setup state: ready",
     "PyLabRobot 0.2.2+g",
     "Serial is the browser shim: True",
 )
+
+
+def find_forbidden_bootstrap_in_notebook(nb_path: Path) -> list[str]:
+    """Scan a staged notebook's CODE cells only for the shared forbidden list (AC-10).
+
+    Markdown cells may still mention `praxis_boot.setup()` (spec section 8.3,
+    --notebook-check row); only `cell_type == "code"` cells are scanned, same
+    scope as the AC-10 unit test and the fresh-boot static probe-source check.
+    """
+    nb = json.loads(nb_path.read_text())
+    hits: list[str] = []
+    for cell in nb.get("cells", []):
+        if cell.get("cell_type") != "code":
+            continue
+        source = cell.get("source", "")
+        if isinstance(source, list):
+            source = "".join(source)
+        needle = find_forbidden_bootstrap_call(source)
+        if needle:
+            hits.append(needle)
+    return hits
 
 
 class NotebookCheckError(RuntimeError):
@@ -1254,6 +1489,15 @@ def run_notebook_check(
     timeout_ms = timeout_s * 1000
     console_messages: list[dict[str, Any]] = []
     pageerrors: list[str] = []
+
+    # AC-10 static check, made BEFORE the notebook is ever run (spec section
+    # 8.3, --notebook-check row): a shipped code cell calling praxis_main(/
+    # praxis_boot.setup(/HOST_ROOT = would make this gate pass even with
+    # auto-setup entirely broken.
+    nb_path = serve_dir / "files" / notebook
+    forbidden_bootstrap_hits = (
+        find_forbidden_bootstrap_in_notebook(nb_path) if nb_path.is_file() else None
+    )
 
     with ServedDir(serve_dir, base_path, coi=False) as served:
         url = (
@@ -1420,12 +1664,414 @@ def run_notebook_check(
                     "tracebacks": tracebacks,
                     "pageerrors": pageerrors,
                     "offline": offline,
+                    "forbidden_bootstrap_hits": forbidden_bootstrap_hits,
                 }
                 if not result["all_found"]:
                     result["outputs_text"] = outputs_text[-3000:]
                     result["body_text_tail"] = body_text[-2000:]
                     result["console"] = console_messages
                 return result
+            finally:
+                browser.close()
+
+
+# ---------------------------------------------------------------------------
+# --autosetup-fault-check / --restart-check (spec 260914_first-run-auto-setup.md
+# section 8.3). Both drive a HARNESS-CREATED blank notebook in the real lab app
+# (never welcome.ipynb), because the S0 spike found `notebook:run-all-cells`
+# halts at the first raising cell (section 5.1) -- a gated setup failure would
+# stop a run-all at cell 1, which is fine for --notebook-check (a failure there
+# SHOULD fail loudly) but wrong for a check that needs cells 2-4 to run
+# regardless of cell 1's outcome. Cells are therefore run ONE AT A TIME via
+# `notebook:run-cell` on an explicit active-cell index.
+#
+# NOT independently browser-verified in this task: there is no local browser
+# run available here (the built site is stale; CI runs the browser gates on
+# the PR). The JupyterLab/jupyterlite command and shared-model surface used
+# below (`docmanager:open` with an explicit kernel, `notebook:run-cell`,
+# `model.sharedModel.insertCell`/`deleteCell`, `cell.sharedModel.setSource`,
+# `sessionContext.session.kernel.restart()`) is written from the pinned
+# jupyterlite-core 0.8.1 API as documented, mirroring the ALREADY-VERIFIED
+# patterns in run_notebook_check (kernel-selection dialog handling, reading
+# outputs from the model rather than the DOM -- repl_smoke.py:1342-1353 in the
+# pre-change file). Every step's own return value is checked before the next
+# step runs, so a wrong API name surfaces as a `dispatched: False` / raised
+# result in CI rather than a silent false pass.
+# ---------------------------------------------------------------------------
+
+#: Cell 1/2 of --autosetup-fault-check: a side-effect sentinel that must be
+#: ABSENT from the cell's own output if the gate blocked it (spec section 8.3).
+#: Built from two literals, like the split-sentinel convention used by
+#: build_probe_code, so the contiguous string exists only in printed output.
+AUTOSETUP_FAULT_SIDE_EFFECT_CELL = (
+    "_S = 'side' + 'effect'; import builtins; builtins.__praxis_cell_ran = True; print(_S)"
+)
+AUTOSETUP_FAULT_SIDE_EFFECT_NEEDLE = "side" + "effect"
+
+#: Cell 3: the fault count is spent by the time this runs (PYTHONSTARTUP's own
+#: auto-setup attempt already consumed it), so this manual retry succeeds.
+#: Also records gate_waited for AC-2 measurement.
+AUTOSETUP_FAULT_RETRY_CELL = (
+    "import praxis_boot\nawait praxis_boot.setup()\n"
+    "import json; print(json.dumps({\"gate_waited\": praxis_boot.gate_waited}))"
+)
+
+#: AC-1's literal zero-action cell (spec section 3): used verbatim as cell 4
+#: of --autosetup-fault-check and as the pre/post-restart cell of
+#: --restart-check by wrapping it in the same sentinel-JSON shape as
+#: build_fresh_boot_probe_code so kernel_nonce/state are readable too.
+AC1_ZERO_ACTION_LINE = (
+    "import builtins, pylabrobot; from pylabrobot.io.serial import Serial; "
+    "print(Serial is builtins.WebSerial)"
+)
+
+#: Substring expected in a gate-blocked cell's traceback text for each fault
+#: kind (spec section 8.3/failure modes 1-3), read off praxis_bootstrap.py's
+#: own error text (`HTTP {status}` / `loader module sha256 mismatch`).
+FAULT_REASON_NEEDLE: dict[str, str] = {
+    "404": "HTTP 404",
+    "tamper": "sha256 mismatch",
+}
+
+#: Regex to match the exact success line printed by praxis_boot.setup() when
+#: setup completes normally (spec section 6.2 _run_setup step 6, trap 2).
+#: The line is: `PyLabRobot {version} ready (site root {root}); Serial is the browser shim`
+#: This pattern matches the stable parts that are independent of version and root.
+AUTOSETUP_SUCCESS_LINE_PATTERN = re.compile(
+    r"PyLabRobot\s+\S+\s+ready\s+\(site\s+root\s+[^)]*\);\s+Serial\s+is\s+the\s+browser\s+shim"
+)
+
+
+def build_restart_probe_cell() -> str:
+    """AC-1 + nonce probe cell for --restart-check, run before and after a
+    kernel restart. Deliberately does not call setup()/praxis_main() itself
+    (same trap-1 reasoning as build_fresh_boot_probe_code): auto-setup must
+    already have completed via PYTHONSTARTUP by the time this cell runs.
+    """
+    start_a, start_b = PROBE_START[: len(PROBE_START) // 2], PROBE_START[len(PROBE_START) // 2 :]
+    end_a, end_b = PROBE_END[: len(PROBE_END) // 2], PROBE_END[len(PROBE_END) // 2 :]
+    return textwrap.dedent(
+        f"""
+        import builtins, json
+        RESULT: dict = {{}}
+        try:
+            import praxis_boot
+            RESULT["state"] = getattr(praxis_boot, "state", None)
+            RESULT["kernel_nonce"] = getattr(praxis_boot, "kernel_nonce", None)
+            import pylabrobot
+            from pylabrobot.io.serial import Serial
+            RESULT["serial_is_shim"] = Serial is getattr(builtins, "WebSerial", None)
+        except Exception as e:  # noqa: BLE001
+            RESULT["error"] = f"{{type(e).__name__}}: {{e}}"
+        print({start_a!r} + {start_b!r})
+        print(json.dumps(RESULT))
+        print({end_a!r} + {end_b!r})
+        """
+    ).strip()
+
+
+def _extract_sentinel_json(text: str) -> dict[str, Any]:
+    """Pull the PROBE_START/PROBE_END-delimited JSON blob out of *text*.
+
+    Shared by --restart-check/--autosetup-fault-check cell output, which is
+    read from the notebook MODEL (a cell's stdout stream text), not the DOM --
+    same reasoning as run_probe's page-text sentinel search.
+    """
+    match = re.search(
+        re.escape(PROBE_START) + r"\s*(.*?)\s*" + re.escape(PROBE_END), text, re.DOTALL
+    )
+    if not match:
+        raise NotebookCheckError(
+            f"no sentinel-delimited JSON found in cell output; last 500 chars: {text[-500:]!r}"
+        )
+    return json.loads(match.group(1))
+
+
+def _open_blank_notebook(page: Any, *, timeout_ms: float) -> str:
+    """Create a blank notebook via the contents API and open it with an
+    explicit Python kernel, handling the Select Kernel dialog if it appears
+    (same trap as run_notebook_check: a notebook with no saved kernel
+    preference prompts and silently blocks every later dispatch until
+    accepted). Returns the notebook's server-side path.
+    """
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+    created = page.evaluate(
+        """async () => {
+            try {
+                const model = await window.jupyterapp.serviceManager.contents.newUntitled(
+                    {type: "notebook", path: ""});
+                return {ok: true, path: model.path};
+            } catch (e) {
+                return {ok: false, error: String(e)};
+            }
+        }"""
+    )
+    if not created.get("ok"):
+        raise NotebookCheckError(f"could not create a blank notebook: {created.get('error')!r}")
+    notebook_path = created["path"]
+    LOG.info("harness-created blank notebook at %s", notebook_path)
+
+    opened = page.evaluate(
+        """async (path) => {
+            try {
+                await window.jupyterapp.commands.execute("docmanager:open", {
+                    path, factory: "Notebook", kernel: {name: "python"}});
+                return {ok: true};
+            } catch (e) {
+                return {ok: false, error: String(e)};
+            }
+        }""",
+        notebook_path,
+    )
+    if not opened.get("ok"):
+        raise NotebookCheckError(f"could not open the blank notebook: {opened.get('error')!r}")
+
+    page.wait_for_function(
+        "() => !!document.querySelector('.jp-Notebook')", timeout=timeout_ms
+    )
+    try:
+        page.wait_for_selector(".jp-Dialog", timeout=10_000)
+        LOG.info("kernel-selection dialog present; accepting")
+        page.click(".jp-Dialog .jp-mod-accept")
+        page.wait_for_selector(".jp-Dialog", state="detached", timeout=timeout_ms)
+    except PlaywrightTimeoutError:
+        LOG.info("no kernel-selection dialog appeared")
+
+    page.wait_for_function(
+        """() => {
+            const w = window.jupyterapp?.shell?.currentWidget;
+            return w?.sessionContext?.session?.kernel?.status === 'idle';
+        }""",
+        timeout=timeout_ms,
+    )
+    return notebook_path
+
+
+#: Runs ONE cell by index via `notebook:run-cell` and reads its outputs back
+#: from the notebook MODEL (never the DOM -- JupyterLab 4 windows the
+#: notebook, so an off-screen cell's output is not in the DOM at all).
+_RUN_ONE_CELL_JS = r"""async (index) => {
+    const w = window.jupyterapp.shell.currentWidget;
+    w.content.activeCellIndex = index;
+    let dispatched = true, dispatch_error = null;
+    try {
+        await window.jupyterapp.commands.execute('notebook:run-cell');
+    } catch (e) {
+        dispatched = false;
+        dispatch_error = String(e);
+    }
+    const cell = w.content.model.cells.get(index);
+    const outs = cell.outputs;
+    const n = outs.length ?? outs.size;
+    const chunks = [];
+    let has_error_output = false;
+    for (let j = 0; j < n; j++) {
+        const o = outs.get ? outs.get(j) : outs[j];
+        const d = o?.toJSON ? o.toJSON() : o;
+        if (!d) continue;
+        if (d.output_type === 'error' || d.ename) has_error_output = true;
+        if (typeof d.text === 'string') chunks.push(d.text);
+        else if (Array.isArray(d.text)) chunks.push(d.text.join(''));
+        if (d.data && typeof d.data['text/plain'] === 'string') {
+            chunks.push(d.data['text/plain']);
+        }
+        if (d.ename) chunks.push(d.ename + ': ' + d.evalue);
+        if (Array.isArray(d.traceback)) chunks.push(d.traceback.join('\n'));
+    }
+    return {
+        dispatched: dispatched,
+        dispatch_error: dispatch_error,
+        output_text: chunks.join('\n'),
+        has_error_output: has_error_output,
+    };
+}"""
+
+
+def run_autosetup_fault_check(
+    *,
+    serve_dir: Path,
+    base_path: str,
+    chrome_path: str,
+    timeout_s: float,
+    faults: list[Fault],
+    offline: bool = False,
+) -> dict[str, Any]:
+    """AC-3/AC-5 fault-injection gate (spec section 8.3, --autosetup-fault-check row).
+
+    Doubles as the negative control the old --fresh-boot-check premise
+    (`plr_before == ModuleNotFoundError`) used to provide: if auto-setup never
+    ran at all, cell 1 would print its side-effect string instead of being
+    blocked, and the assertions below would fail for that reason (spec section
+    8.3, table note).
+
+    Cell sources are written directly into the notebook model
+    (`cell.sharedModel.setSource`), not typed: the harness creates this
+    notebook itself, so there is no pre-existing source worth preserving by
+    typing. See the module docstring above for the browser-verification caveat.
+    """
+    from playwright.sync_api import sync_playwright
+
+    prefix = _normalize_base_path(base_path)
+    timeout_ms = timeout_s * 1000
+    pageerrors: list[str] = []
+
+    cell_sources = [
+        AUTOSETUP_FAULT_SIDE_EFFECT_CELL,
+        AUTOSETUP_FAULT_SIDE_EFFECT_CELL,
+        AUTOSETUP_FAULT_RETRY_CELL,
+        AC1_ZERO_ACTION_LINE,
+    ]
+
+    with ServedDir(serve_dir, base_path, coi=False, faults=faults) as served:
+        url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        LOG.info("navigating to %s", url)
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                executable_path=chrome_path,
+                headless=True,
+                args=chromium_launch_args(offline=offline),
+            )
+            try:
+                page = browser.new_context().new_page()
+                page.on("pageerror", lambda exc: pageerrors.append(str(exc)))
+                page.goto(url, wait_until="load", timeout=timeout_ms)
+
+                notebook_path = _open_blank_notebook(page, timeout_ms=timeout_ms)
+
+                prep = page.evaluate(
+                    """(sources) => {
+                        const w = window.jupyterapp.shell.currentWidget;
+                        const model = w.content.model;
+                        while (model.cells.length < sources.length) {
+                            model.sharedModel.insertCell(model.cells.length,
+                                {cell_type: "code", source: ""});
+                        }
+                        while (model.cells.length > sources.length) {
+                            model.sharedModel.deleteCell(model.cells.length - 1);
+                        }
+                        for (let i = 0; i < sources.length; i++) {
+                            model.cells.get(i).sharedModel.setSource(sources[i]);
+                        }
+                        return {cell_count: model.cells.length};
+                    }""",
+                    cell_sources,
+                )
+                LOG.info("prepared %d cell(s) in the blank notebook", prep.get("cell_count"))
+
+                cell_results: list[dict[str, Any]] = []
+                for i in range(len(cell_sources)):
+                    r = page.evaluate(_RUN_ONE_CELL_JS, i)
+                    LOG.info(
+                        "cell %d: dispatched=%s has_error_output=%s output=%r",
+                        i, r.get("dispatched"), r.get("has_error_output"),
+                        (r.get("output_text") or "")[:200],
+                    )
+                    cell_results.append(r)
+
+                return {
+                    "notebook": notebook_path,
+                    "url": url,
+                    "cells": cell_sources,
+                    "cell_results": cell_results,
+                    "pageerrors": pageerrors,
+                    "offline": offline,
+                    "faults": [dataclasses.asdict(f) for f in faults],
+                }
+            finally:
+                browser.close()
+
+
+def run_restart_check(
+    *,
+    serve_dir: Path,
+    base_path: str,
+    chrome_path: str,
+    timeout_s: float,
+    offline: bool = False,
+) -> dict[str, Any]:
+    """AC-7 gate (spec section 8.3, --restart-check row): after AC-1 passes,
+    restart the kernel via the kernel API (`session.kernel.restart()` -- no
+    command dispatch, so no Select Kernel dialog, S0 finding F7), then run the
+    SAME probe cell again and assert `kernel_nonce` changed. See the module
+    docstring above for the browser-verification caveat.
+    """
+    from playwright.sync_api import sync_playwright
+
+    prefix = _normalize_base_path(base_path)
+    timeout_ms = timeout_s * 1000
+    pageerrors: list[str] = []
+
+    with ServedDir(serve_dir, base_path, coi=False) as served:
+        url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        LOG.info("navigating to %s", url)
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                executable_path=chrome_path,
+                headless=True,
+                args=chromium_launch_args(offline=offline),
+            )
+            try:
+                page = browser.new_context().new_page()
+                page.on("pageerror", lambda exc: pageerrors.append(str(exc)))
+                page.goto(url, wait_until="load", timeout=timeout_ms)
+
+                notebook_path = _open_blank_notebook(page, timeout_ms=timeout_ms)
+
+                probe_code = build_restart_probe_cell()
+                page.evaluate(
+                    """(source) => {
+                        const w = window.jupyterapp.shell.currentWidget;
+                        const model = w.content.model;
+                        model.cells.get(0).sharedModel.setSource(source);
+                    }""",
+                    probe_code,
+                )
+
+                before = page.evaluate(_RUN_ONE_CELL_JS, 0)
+                before_result = _extract_sentinel_json(before.get("output_text") or "")
+                LOG.info("restart-check: before restart %s", before_result)
+
+                restart_outcome = page.evaluate(
+                    """async () => {
+                        try {
+                            const w = window.jupyterapp.shell.currentWidget;
+                            await w.sessionContext.session.kernel.restart();
+                            return {ok: true};
+                        } catch (e) {
+                            return {ok: false, error: String(e)};
+                        }
+                    }"""
+                )
+                if not restart_outcome.get("ok"):
+                    raise NotebookCheckError(
+                        f"session.kernel.restart() failed: {restart_outcome.get('error')!r}"
+                    )
+
+                page.wait_for_function(
+                    """() => {
+                        const w = window.jupyterapp?.shell?.currentWidget;
+                        return w?.sessionContext?.session?.kernel?.status === 'idle';
+                    }""",
+                    timeout=timeout_ms,
+                )
+
+                after = page.evaluate(_RUN_ONE_CELL_JS, 0)
+                after_result = _extract_sentinel_json(after.get("output_text") or "")
+                LOG.info("restart-check: after restart %s", after_result)
+
+                return {
+                    "notebook": notebook_path,
+                    "url": url,
+                    "before": before_result,
+                    "after": after_result,
+                    "pageerrors": pageerrors,
+                    "offline": offline,
+                }
             finally:
                 browser.close()
 
@@ -1720,27 +2366,26 @@ def run_viz_check(
             measured_layers,
             manifest_path,
         )
+    elif expected.get("shape_count") is None or expected.get("layer_count") is None:
+        failures.append(
+            "shape_count/layer_count have never been recorded for this fixture -- "
+            "run `uv run python scripts/repl_smoke.py --viz-check --record` once "
+            "(with sandbox disabled) before this check can gate anything"
+        )
     else:
-        if expected.get("shape_count") is None or expected.get("layer_count") is None:
+        if measured_shapes != expected["shape_count"]:
             failures.append(
-                "shape_count/layer_count have never been recorded for this fixture -- "
-                "run `uv run python scripts/repl_smoke.py --viz-check --record` once "
-                "(with sandbox disabled) before this check can gate anything"
+                f"shape_count mismatch: measured {measured_shapes}, "
+                f"expected {expected['shape_count']} (pin {live_sha}, recorded "
+                f"{manifest.get('generated_at')}) -- if this is a real upstream "
+                "render change, re-record with --viz-check --record; if it is a "
+                "regression, that is exactly what this gate exists to catch"
             )
-        else:
-            if measured_shapes != expected["shape_count"]:
-                failures.append(
-                    f"shape_count mismatch: measured {measured_shapes}, "
-                    f"expected {expected['shape_count']} (pin {live_sha}, recorded "
-                    f"{manifest.get('generated_at')}) -- if this is a real upstream "
-                    "render change, re-record with --viz-check --record; if it is a "
-                    "regression, that is exactly what this gate exists to catch"
-                )
-            if measured_layers != expected["layer_count"]:
-                failures.append(
-                    f"layer_count mismatch: measured {measured_layers}, "
-                    f"expected {expected['layer_count']} (pin {live_sha})"
-                )
+        if measured_layers != expected["layer_count"]:
+            failures.append(
+                f"layer_count mismatch: measured {measured_layers}, "
+                f"expected {expected['layer_count']} (pin {live_sha})"
+            )
 
     if fill_before_actual != fill_before:
         failures.append(
@@ -1799,11 +2444,57 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--fresh-boot-check",
         action="store_true",
         help=(
-            "Assert a BRAND-NEW notebook can bootstrap with two lines and no hand-typed "
-            "URL (gate T4): `import praxis_boot` then `await praxis_boot.setup()`, then "
-            "check pylabrobot imports AND that its Serial is the browser shim. "
-            "--notebook-check cannot cover this: it runs welcome.ipynb, which carries "
-            "its own stamped HOST_ROOT and its own fetch-and-exec cell."
+            "Assert AC-1/AC-2 zero-action auto-setup (spec 260914_first-run-auto-setup.md "
+            "section 8.3): a first cell that neither imports nor calls praxis_boot.setup() "
+            "itself still gets a ready kernel, `praxis_boot.gate_waited is True`, and "
+            "AC-1's playground names (LiquidHandler/STAR) resolve with no import. Always "
+            "holds the async pylabrobot wheel fetch for 15s so the wait is deterministic. "
+            "--notebook-check cannot cover this: it runs welcome.ipynb, a saved notebook, "
+            "not a first-ever cell dispatched at kernel idle."
+        ),
+    )
+    p.add_argument(
+        "--autosetup-fault-check",
+        action="store_true",
+        help=(
+            "AC-3/AC-5 fault-injection gate (spec section 8.3): inject a --fault at the "
+            "harness's static server, then assert a harness-created blank notebook's "
+            "first two cells are blocked with a PraxisAutoSetupError naming the fault "
+            "(and their own side-effect sentinel does NOT run), a third recovery cell "
+            "(`await praxis_boot.setup()`, fault count spent) succeeds, and a fourth "
+            "cell reproduces AC-1. Requires at least one --fault."
+        ),
+    )
+    p.add_argument(
+        "--restart-check",
+        action="store_true",
+        help=(
+            "AC-7 gate (spec section 8.3): after AC-1 passes, restart the kernel via "
+            "session.kernel.restart() (no command dispatch, so no Select Kernel dialog) "
+            "and assert praxis_boot.kernel_nonce changed, state is 'ready' again, and "
+            "Serial is still the browser shim."
+        ),
+    )
+    p.add_argument(
+        "--fault",
+        action="append",
+        default=[],
+        metavar="KIND:SUFFIX[:SECONDS]",
+        help=(
+            "--autosetup-fault-check only (repeatable). `404:<path-suffix>`, "
+            "`tamper:<path-suffix>`, or `delay:<path-suffix>:<seconds>`. Matched against "
+            "the served request's parsed, unquoted URL path with str.endswith. Example: "
+            "--fault 404:bootstrap/stages.py or --fault tamper:bootstrap/stages.py."
+        ),
+    )
+    p.add_argument(
+        "--fault-count",
+        type=int,
+        default=1,
+        help=(
+            "How many of the FIRST matching requests each --fault actually faults; "
+            "requests after that are served normally, which is what makes the "
+            "post-fault retry cell succeed. Default: 1."
         ),
     )
     p.add_argument(
@@ -1975,12 +2666,14 @@ def main(argv: list[str] | None = None) -> int:
         and not args.completion_check
         and not args.typeahead_check
         and not args.fresh_boot_check
+        and not args.autosetup_fault_check
+        and not args.restart_check
         and not args.expect_fail
     ):
         LOG.error(
             "nothing to do: pass --probe, --viz-check, --notebook-check, "
             "--completion-check, --typeahead-check, --fresh-boot-check, "
-            "and/or --expect-fail"
+            "--autosetup-fault-check, --restart-check, and/or --expect-fail"
         )
         return 2
 
@@ -2005,7 +2698,7 @@ def main(argv: list[str] | None = None) -> int:
                 notebook=args.notebook,
                 offline=args.offline,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             LOG.error("notebook-check failed: %s: %s", type(e).__name__, e)
             LOG.error(
                 "If this is a Chromium launch failure ('apply-seccomp: unshare(CLONE_NEWUSER)'), "
@@ -2021,6 +2714,14 @@ def main(argv: list[str] | None = None) -> int:
             args.out.write_text(output)
             LOG.info("wrote result to %s", args.out)
 
+        if result.get("forbidden_bootstrap_hits"):
+            LOG.error(
+                "notebook-check FAILED (AC-10, static check): %s's code cells contain "
+                "forbidden bootstrap call(s) %s -- this would make the run below pass "
+                "even with auto-setup entirely broken (test-design trap 1)",
+                result["notebook"], result["forbidden_bootstrap_hits"],
+            )
+            return 1
         if result["pageerrors"]:
             LOG.error("notebook-check: %d pageerror(s): %s", len(result["pageerrors"]), result["pageerrors"])
             return 1
@@ -2085,19 +2786,65 @@ def main(argv: list[str] | None = None) -> int:
         if not serve_dir.is_dir():
             LOG.error("--serve-dir does not exist or is not a directory: %s", serve_dir)
             return 2
+
+        probe_code = build_fresh_boot_probe_code()
+
+        # Test-design trap 1 (spec section 8.4): a probe that sets up the kernel
+        # itself would pass even with auto-setup entirely broken. Refuse to run
+        # rather than silently proving nothing.
+        forbidden_hit = find_forbidden_bootstrap_call(probe_code)
+        if forbidden_hit is not None:
+            LOG.error(
+                "fresh-boot-check refused to run: its own probe source contains "
+                "forbidden bootstrap call %r -- this is a harness bug, not a "
+                "product failure", forbidden_hit,
+            )
+            return 2
+        if probe_imports_playground_names(probe_code):
+            LOG.error(
+                "fresh-boot-check refused to run: its own probe source imports "
+                "LiquidHandler/pylabrobot.liquid_handling, which would make "
+                "playground_names_ok pass vacuously (T3b)"
+            )
+            return 2
+
+        # R2-1: ALWAYS delay the async micropip wheel fetch so AC-2's wait is
+        # deterministic, not timing luck. Read the filename from the served
+        # manifest -- never hardcode it, the +g<sha> segment changes per build.
+        try:
+            wheel_filename = read_wheel_filename(serve_dir, "pylabrobot")
+        except RuntimeError as e:
+            LOG.error("fresh-boot-check could not resolve the pylabrobot wheel: %s", e)
+            return 2
+        wheel_delay_fault = Fault(
+            kind="delay",
+            suffix=f"assets/wheels/{wheel_filename}",
+            delay_s=FRESH_BOOT_WHEEL_DELAY_S,
+            max_hits=1,
+        )
+        LOG.info(
+            "fresh-boot-check: always-on delay fault on assets/wheels/%s (%ss)",
+            wheel_filename, FRESH_BOOT_WHEEL_DELAY_S,
+        )
+
+        # Keep well inside the cell timeout (the delay raises how long boot
+        # takes; never shrink the assertion to fit a smaller timeout instead).
+        gate_timeout_s = max(args.timeout, FRESH_BOOT_WHEEL_DELAY_S + 60.0)
+
         try:
             result = run_probe(
                 serve_dir=serve_dir,
                 base_path=args.base_path,
                 coi=args.coi,
                 chrome_path=str(chrome_path),
-                timeout_s=args.timeout,
+                timeout_s=gate_timeout_s,
                 expect_praxis_sha=None,
                 entry=args.entry,
                 offline=args.offline,
-                code_override=build_fresh_boot_probe_code(),
+                code_override=probe_code,
+                faults=[wheel_delay_fault],
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             LOG.error("fresh-boot-check run failed: %s: %s", type(e).__name__, e)
             return 2
 
@@ -2106,26 +2853,35 @@ def main(argv: list[str] | None = None) -> int:
             LOG.info("wrote result to %s", args.out)
 
         expected_root = _normalize_base_path(args.base_path)
+        delay_hits = wheel_delay_fault.hits
+        measured_gate_wait_s = result.get("_meta", {}).get("probe_wall_s")
         LOG.info(
-            "fresh boot: cwd=%s import_praxis_boot=%s derived_host_root=%s (expected %s)",
+            "fresh boot: cwd=%s import_praxis_boot=%s state=%s autostart_origin=%s "
+            "derived_host_root=%s (expected %s)",
             result.get("cwd"),
             result.get("import_praxis_boot"),
+            result.get("state"),
+            result.get("autostart_origin"),
             result.get("derived_host_root"),
             expected_root,
         )
         LOG.info(
-            "fresh boot: plr_before=%s plr_after=%s serial_is_shim=%s",
-            result.get("plr_before"),
+            "fresh boot: plr_after=%s serial_is_shim=%s playground_names_ok=%s "
+            "gate_waited=%s wheel-delay hits=%d/%d measured probe wall=%.2fs",
             result.get("plr_after"),
             result.get("serial_is_shim"),
+            result.get("playground_names_ok"),
+            result.get("gate_waited"),
+            delay_hits, wheel_delay_fault.max_hits,
+            measured_gate_wait_s if measured_gate_wait_s is not None else -1.0,
         )
 
         failures: list[str] = []
-        if result.get("plr_before") != "ModuleNotFoundError":
+        if delay_hits < 1:
             failures.append(
-                f"pylabrobot was ALREADY importable before the bootstrap "
-                f"(plr_before={result.get('plr_before')!r}), so this gate would pass "
-                "without praxis_boot doing anything. The premise is broken, not the fix."
+                f"the always-on wheel-delay fault never fired (hits={delay_hits}); "
+                "the wait this gate depends on was NOT deterministic (test-design "
+                "trap 5)."
             )
         if not result.get("import_praxis_boot"):
             failures.append(
@@ -2136,21 +2892,44 @@ def main(argv: list[str] | None = None) -> int:
                 "-- either the file was not shipped into web-repl/files/ or that "
                 "assumption no longer holds."
             )
+        if result.get("state") != "ready":
+            failures.append(
+                f"praxis_boot.state == {result.get('state')!r}, expected 'ready' "
+                f"(failure={result.get('failure')})"
+            )
+        if result.get("autostart_origin") != "PYTHONSTARTUP":
+            failures.append(
+                f"praxis_boot.autostart_origin == {result.get('autostart_origin')!r}, "
+                "expected 'PYTHONSTARTUP' -- auto-setup did not start from the "
+                "startup file"
+            )
+        plr_after = result.get("plr_after") or ""
+        if not plr_after.startswith("0.2.2+g"):
+            failures.append(
+                f"pylabrobot version {plr_after!r} does not start with '0.2.2+g'"
+            )
         if result.get("derived_host_root") != expected_root:
             failures.append(
-                f"derived host root {result.get('derived_host_root')!r} != expected "
-                f"{expected_root!r} ({result.get('derive_error')}). A wrong root 404s "
-                "the loader fetch, which is the whole failure this removes."
+                f"praxis_boot.host_root {result.get('derived_host_root')!r} != "
+                f"expected {expected_root!r}. A wrong root 404s the loader fetch."
             )
-        if not result.get("setup_ok"):
+        if result.get("serial_is_shim") is not True:
             failures.append(
-                f"praxis_boot.setup() raised: {result.get('setup_error')}"
+                "pylabrobot's Serial is NOT the browser shim after auto-setup, so "
+                "device I/O would silently use desktop pyserial."
             )
-        if not result.get("serial_is_shim"):
+        if result.get("playground_names_ok") is not True:
             failures.append(
-                "pylabrobot's Serial is NOT the browser shim after setup, so device "
-                "I/O would silently use desktop pyserial. Note praxis_main() never "
-                "re-raises, so this can only be caught by checking, not by awaiting."
+                "AC-1's playground-names clause failed: LiquidHandler/STAR are not "
+                f"resolvable with no import ({result.get('playground_names_error')})"
+            )
+        if result.get("gate_waited") is not True:
+            failures.append(
+                "praxis_boot.gate_waited is not True -- this run does not prove "
+                "AC-2's wait: the probe cell never observed state=='running' on "
+                "entry, so either setup finished before the cell was dispatched "
+                "(the always-on wheel delay should prevent this) or the gate "
+                "itself is not wiring gate_waited correctly."
             )
 
         if failures:
@@ -2158,9 +2937,199 @@ def main(argv: list[str] | None = None) -> int:
                 LOG.error("FAIL: %s", f)
             return 1
         LOG.info(
-            "fresh-boot-check PASSED: two lines in a bare kernel produced PyLabRobot %s "
-            "with browser shims bound",
-            result.get("plr_after"),
+            "fresh-boot-check PASSED: a fresh kernel auto-set-up PyLabRobot %s with "
+            "browser shims bound and playground names resolvable, with NO setup "
+            "code typed or run by this probe (gate_waited=%s, wheel-delay hits=%d, "
+            "measured wait=%.2fs)",
+            result.get("plr_after"), result.get("gate_waited"), delay_hits,
+            measured_gate_wait_s if measured_gate_wait_s is not None else -1.0,
+        )
+        return 0
+
+    if args.autosetup_fault_check:
+        serve_dir = args.serve_dir.resolve()
+        if not serve_dir.is_dir():
+            LOG.error("--serve-dir does not exist or is not a directory: %s", serve_dir)
+            return 2
+        if not args.fault:
+            LOG.error(
+                "--autosetup-fault-check requires at least one --fault "
+                "(e.g. --fault 404:bootstrap/stages.py)"
+            )
+            return 2
+        try:
+            faults = [parse_fault(spec, max_hits=args.fault_count) for spec in args.fault]
+        except ValueError as e:
+            LOG.error("bad --fault: %s", e)
+            return 2
+
+        try:
+            result = run_autosetup_fault_check(
+                serve_dir=serve_dir,
+                base_path=args.base_path,
+                chrome_path=str(chrome_path),
+                timeout_s=args.timeout,
+                faults=faults,
+                offline=args.offline,
+            )
+        except Exception as e:
+            LOG.error("autosetup-fault-check run failed: %s: %s", type(e).__name__, e)
+            return 2
+
+        if args.out:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(json.dumps(result, indent=2, sort_keys=True))
+            LOG.info("wrote result to %s", args.out)
+
+        cells = result.get("cell_results") or []
+        failures: list[str] = []
+        if len(cells) < 4:
+            failures.append(f"expected 4 cell results, got {len(cells)}")
+        else:
+            expected_reason = None
+            for f in faults:
+                expected_reason = FAULT_REASON_NEEDLE.get(f.kind)
+                if expected_reason:
+                    break
+
+            for idx in (0, 1):
+                c = cells[idx]
+                out = c.get("output_text") or ""
+                if "PraxisAutoSetupError" not in out:
+                    failures.append(
+                        f"cell {idx + 1}: expected 'PraxisAutoSetupError' in output, "
+                        f"got {out[:300]!r}"
+                    )
+                if expected_reason and expected_reason not in out:
+                    failures.append(
+                        f"cell {idx + 1}: expected fault reason {expected_reason!r} in "
+                        f"output, got {out[:300]!r}"
+                    )
+                if AUTOSETUP_FAULT_SIDE_EFFECT_NEEDLE in out:
+                    failures.append(
+                        f"cell {idx + 1}: its own side-effect sentinel "
+                        f"{AUTOSETUP_FAULT_SIDE_EFFECT_NEEDLE!r} appeared in output -- "
+                        "the cell's code RAN instead of being blocked"
+                    )
+                if not c.get("has_error_output"):
+                    failures.append(f"cell {idx + 1}: expected an error output, found none")
+
+            c3 = cells[2]
+            out3 = c3.get("output_text") or ""
+            if c3.get("has_error_output"):
+                failures.append(
+                    f"cell 3 (retry, fault count spent): expected no error, got {out3[:300]!r}"
+                )
+            if not AUTOSETUP_SUCCESS_LINE_PATTERN.search(out3):
+                failures.append(
+                    f"cell 3 (retry): expected praxis_boot.setup()'s success line "
+                    f"'PyLabRobot <version> ready (site root <root>); Serial is the browser shim', "
+                    f"got {out3[:300]!r}"
+                )
+            # Record gate_waited for AC-2 measurement (not a pass/fail condition):
+            # scan every line for a JSON object carrying it, last one wins.
+            gate_waited = None
+            for line in out3.splitlines():
+                try:
+                    data = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                if isinstance(data, dict) and "gate_waited" in data:
+                    gate_waited = data["gate_waited"]
+            result["gate_waited"] = gate_waited
+
+            c4 = cells[3]
+            out4 = c4.get("output_text") or ""
+            if c4.get("has_error_output") or "True" not in out4 or "False" in out4:
+                failures.append(f"cell 4 (AC-1 probe): expected bare 'True', got {out4[:300]!r}")
+
+            # Check that all faults actually fired (spec trap 5)
+            for i, f in enumerate(faults):
+                if f.hits < 1:
+                    failures.append(
+                        f"fault {i + 1} ({f.kind}:{f.suffix}): never fired (hits={f.hits}); "
+                        "the gate's blocked-cell assertions would be unproven (test-design trap 5)."
+                    )
+
+        if result.get("pageerrors"):
+            failures.append(f"pageerror(s): {result['pageerrors']}")
+
+        LOG.info(
+            "autosetup-fault-check: faults=%s cells=%s",
+            result.get("faults"),
+            [
+                {"has_error_output": c.get("has_error_output"), "dispatched": c.get("dispatched")}
+                for c in cells
+            ],
+        )
+
+        if failures:
+            for f in failures:
+                LOG.error("FAIL: %s", f)
+            return 1
+        LOG.info(
+            "autosetup-fault-check PASSED: every cell was blocked while the fault was "
+            "live, the retry succeeded once it was spent, and AC-1 held afterward"
+        )
+        return 0
+
+    if args.restart_check:
+        serve_dir = args.serve_dir.resolve()
+        if not serve_dir.is_dir():
+            LOG.error("--serve-dir does not exist or is not a directory: %s", serve_dir)
+            return 2
+        try:
+            result = run_restart_check(
+                serve_dir=serve_dir,
+                base_path=args.base_path,
+                chrome_path=str(chrome_path),
+                timeout_s=args.timeout,
+                offline=args.offline,
+            )
+        except Exception as e:
+            LOG.error("restart-check run failed: %s: %s", type(e).__name__, e)
+            return 2
+
+        if args.out:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(json.dumps(result, indent=2, sort_keys=True))
+            LOG.info("wrote result to %s", args.out)
+
+        before = result.get("before") or {}
+        after = result.get("after") or {}
+        LOG.info("restart-check: nonce before=%s after=%s", before.get("kernel_nonce"), after.get("kernel_nonce"))
+
+        failures: list[str] = []
+        if before.get("state") != "ready" or before.get("serial_is_shim") is not True:
+            failures.append(
+                f"AC-1 did not hold BEFORE the restart (state={before.get('state')!r}, "
+                f"serial_is_shim={before.get('serial_is_shim')!r}); this gate only "
+                "proves anything once AC-1 has already passed"
+            )
+        if after.get("state") != "ready":
+            failures.append(f"praxis_boot.state == {after.get('state')!r} after restart, expected 'ready'")
+        if after.get("serial_is_shim") is not True:
+            failures.append("Serial is NOT the browser shim after restart")
+        if not before.get("kernel_nonce") or not after.get("kernel_nonce"):
+            failures.append(
+                f"could not read kernel_nonce on both sides (before={before.get('kernel_nonce')!r}, "
+                f"after={after.get('kernel_nonce')!r})"
+            )
+        elif before.get("kernel_nonce") == after.get("kernel_nonce"):
+            failures.append(
+                f"kernel_nonce unchanged ({before.get('kernel_nonce')!r}) across the restart -- "
+                "this did not actually get a new interpreter (test-design trap 4)"
+            )
+        if result.get("pageerrors"):
+            failures.append(f"pageerror(s): {result['pageerrors']}")
+
+        if failures:
+            for f in failures:
+                LOG.error("FAIL: %s", f)
+            return 1
+        LOG.info(
+            "restart-check PASSED: kernel_nonce changed (%s -> %s), AC-1 held again",
+            before.get("kernel_nonce"), after.get("kernel_nonce"),
         )
         return 0
 
@@ -2178,7 +3147,7 @@ def main(argv: list[str] | None = None) -> int:
                 entry=args.entry,
                 offline=args.offline,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             LOG.error("typeahead-check run failed: %s: %s", type(e).__name__, e)
             return 2
 
@@ -2219,7 +3188,7 @@ def main(argv: list[str] | None = None) -> int:
                     _normalize_base_path(args.base_path)
                 ),
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             LOG.error("completion-check run failed: %s: %s", type(e).__name__, e)
             LOG.error(
                 "If this is a Chromium launch failure ('apply-seccomp: "

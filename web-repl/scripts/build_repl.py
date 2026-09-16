@@ -97,13 +97,15 @@ import argparse
 import hashlib
 import json
 import logging
+import re
 import shutil
 import subprocess
 import time
+import zipfile
 from pathlib import Path
 
-import fetch_vendored_wheels  # same directory; sys.path[0] is this script's dir
 import fetch_pyodide  # same directory; sys.path[0] is this script's dir
+import fetch_vendored_wheels  # same directory; sys.path[0] is this script's dir
 
 logger = logging.getLogger("build_repl")
 
@@ -622,81 +624,265 @@ def stamp_loader_shas(bootstrap_py: Path, source_dir: Path) -> dict[str, str]:
     return shas
 
 
-SOURCE_HOST_ROOT = 'HOST_ROOT = "/"'
-
-
 def normalize_base_path(value: str) -> str:
     """Return *value* with exactly one leading and one trailing slash."""
     stripped = value.strip().strip("/")
     return "/" if not stripped else f"/{stripped}/"
 
 
-def apply_base_path(out_dir: Path, base_path: str) -> int:
-    """Rewrite the notebooks' absolute HOST_ROOT for a subpath deploy.
+# --- auto-setup build assertions (debt #1396) ---------------------------
+#
+# Retired here: the old apply_base_path() build-time HOST_ROOT rewrite and its
+# "changed == 0 raises" guard (assert_no_root_host_root). Auto-setup (design A,
+# section 6.1 of the spec) means no shipped notebook hardcodes a HOST_ROOT or
+# calls the bootstrap directly any more -- praxis_boot.derive_host_root() works
+# it out itself, at runtime, from the kernel worker's own location. --base-path
+# is still accepted by this script's CLI (scripts/repl_smoke.py and the served
+# prefix still use it), but nothing in this file consumes the normalized value
+# any more: there is no longer a notebook rewrite for it to drive.
 
-    GitHub Pages serves a project site under /<repo>/, so a notebook that fetches
-    from "/" reaches the DOMAIN root and 404s on every bootstrap file. HOST_ROOT
-    cannot be derived at runtime: the kernel is a Web Worker whose global is
-    `self`, not `window`, so there is no document location to read. It has to be
-    substituted at build time.
+_STARTUP_ENV_KEY = "PYTHONSTARTUP"
+_STARTUP_ENV_VALUE = "/drive/praxis_startup.py"
 
-    Rewrites the STAGED copy only -- web-repl/files/*.ipynb stays
-    deployment-agnostic, the same discipline stamp_loader_shas() uses for the
-    bootstrap. Returns the number of notebooks changed.
+
+def assert_autosetup_env(out_dir: Path) -> None:
+    """Fail the build if the runtime config will not auto-run praxis_startup.py.
+
+    Auto-setup depends entirely on IPython running ``PYTHONSTARTUP`` during
+    kernel init (design A, spec section 6.1) -- there is no other signal that
+    tells a fresh kernel to bootstrap itself. If this env key is missing,
+    dropped by the doit-cache regeneration bug ``discard_doit_cache()`` guards
+    against (build_repl.py:227-247), or misfiled outside the kernel's own
+    ``litePluginSettings`` block, every kernel silently falls back to the old
+    manual ``import praxis_boot; await praxis_boot.setup()`` path with zero
+    build-time signal -- the same invisible-failure shape
+    ``assert_pyodide_is_local`` exists to catch for ``pyodideUrl``, which is
+    why this checks that key (and ``disablePyPIFallback``) are still present
+    too, not just the new one.
     """
-    if base_path == "/":
-        return 0
+    config_path = out_dir / "jupyter-lite.json"
+    if not config_path.is_file():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {config_path} does not exist."
+        )
+    settings = (
+        json.loads(config_path.read_text())
+        .get("jupyter-config-data", {})
+        .get("litePluginSettings", {})
+        .get("@jupyterlite/pyodide-kernel-extension:kernel", {})
+    )
+    if not settings.get("disablePyPIFallback"):
+        raise BuildAssertionError(
+            "BUILD ASSERTION FAILED: jupyter-lite.json's kernel litePluginSettings "
+            "no longer set `disablePyPIFallback` -- this block appears to have "
+            "been regenerated from scratch, the same doit-cache failure shape "
+            "discard_doit_cache() guards against (build_repl.py:227-247), which "
+            "puts the PYTHONSTARTUP key below at equal risk."
+        )
+    if not settings.get("pyodideUrl"):
+        raise BuildAssertionError(
+            "BUILD ASSERTION FAILED: jupyter-lite.json's kernel litePluginSettings "
+            "carry no `pyodideUrl` (see assert_pyodide_is_local) -- the same "
+            "regenerated-config failure shape, which puts PYTHONSTARTUP at equal "
+            "risk."
+        )
+    env = settings.get("loadPyodideOptions", {}).get("env", {})
+    value = env.get(_STARTUP_ENV_KEY)
+    if value != _STARTUP_ENV_VALUE:
+        raise BuildAssertionError(
+            "BUILD ASSERTION FAILED: jupyter-lite.json's kernel litePluginSettings "
+            f"`loadPyodideOptions.env.{_STARTUP_ENV_KEY}` is {value!r}, expected "
+            f"{_STARTUP_ENV_VALUE!r}. Without it, IPython never runs "
+            "praxis_startup.py at kernel init and every kernel falls silently "
+            "back to the manual `await praxis_boot.setup()` path (debt #1396)."
+        )
+    logger.info("autosetup env is wired: %s=%s", _STARTUP_ENV_KEY, value)
 
+
+def assert_praxis_startup_shipped(out_dir: Path) -> None:
+    """Fail the build if the PYTHONSTARTUP shim is not reachable at kernel init.
+
+    Same two-halves shape as ``assert_praxis_boot_shipped``, for the same
+    reason: the kernel's ``/drive`` mount is populated from the static
+    contents index, not from what is merely present in ``files/`` on disk, so
+    a staged-but-unindexed file and an indexed-but-missing file both silently
+    defeat auto-setup, and each fails differently from the other.
+    """
+    staged = out_dir / "files" / "praxis_startup.py"
+    if not staged.is_file():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {staged} does not exist, so "
+            f"`{_STARTUP_ENV_VALUE}` would point at a file the kernel never sees "
+            "and every kernel falls back to the manual bootstrap path. Expected "
+            "it to be staged from web-repl/files/."
+        )
+
+    index_path = out_dir / "api" / "contents" / "all.json"
+    if not index_path.is_file():
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {index_path} does not exist, so the "
+            "contents index was never generated and the kernel's /drive mount "
+            "will be empty."
+        )
+    listed = {
+        entry.get("path") for entry in json.loads(index_path.read_text()).get("content", [])
+    }
+    if "praxis_startup.py" not in listed:
+        raise BuildAssertionError(
+            "BUILD ASSERTION FAILED: praxis_startup.py is staged but MISSING "
+            f"from the contents index {index_path} (which lists {sorted(listed)!r}). "
+            "An unindexed file never appears in the kernel's /drive mount, so "
+            f"`{_STARTUP_ENV_VALUE}` would point at a file IPython cannot read."
+        )
+    logger.info("PYTHONSTARTUP shim shipped: files/praxis_startup.py staged and indexed")
+
+
+_KERNEL_WHEEL_DIR = "extensions/@jupyterlite/pyodide-kernel-extension/static/pypi"
+_KERNEL_WHEEL_GLOB = "pyodide_kernel-*.whl"
+_KERNEL_WHEEL_EXPECTED_VERSION = "0.8.2"
+_KERNEL_WHEEL_NAME_RE = re.compile(r"^pyodide_kernel-([^-]+)-")
+_KERNEL_CELL_AWAIT_LITERAL = (
+    "code = await self.lite_transform_manager.transform_cell(code)"
+)
+_KERNEL_TRANSFORM_LOOP_LITERAL = (
+    "for transform in self.cleanup_transforms + self.line_transforms:"
+)
+_KERNEL_TRANSFORM_AWAIT_LITERAL = "lines = await transform(lines)"
+
+
+def assert_kernel_autosetup_contract(out_dir: Path) -> None:
+    """Fail the build if the vendored pyodide-kernel wheel drops the internals
+    the auto-setup gate depends on (failure mode 10, spec section 7/8.2).
+
+    ``praxis_boot._autostart`` installs its gate at
+    ``get_ipython().kernel.lite_transform_manager.cleanup_transforms[0]``, and
+    relies on ``cleanup_transforms`` running BEFORE ``line_transforms`` (which
+    holds ``pip_magic``) and on every transform being awaited. A kernel bump
+    that renames ``lite_transform_manager``/``cleanup_transforms``, reorders
+    the loop, or drops an ``await`` would silently disable the gate with no
+    build-time signal otherwise -- exactly the failure this exists to catch,
+    the same way ``assert_praxis_boot_shipped`` catches a missing file rather
+    than waiting for a runtime ``ModuleNotFoundError``.
+
+    Reads the wheel rather than trusting the pin in pyproject.toml, because a
+    version bump could land without anyone re-reading the kernel's source --
+    this is the belt, not just the pin. It does NOT detect a dropped
+    PYTHONSTARTUP/env passthrough: that lives in IPython and the worker JS,
+    not in this wheel, and is caught only at runtime by ``--fresh-boot-check``.
+    """
+    wheel_dir = out_dir / _KERNEL_WHEEL_DIR
+    matches = sorted(wheel_dir.glob(_KERNEL_WHEEL_GLOB)) if wheel_dir.is_dir() else []
+    if len(matches) != 1:
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: expected exactly one {_KERNEL_WHEEL_GLOB!r} "
+            f"under {wheel_dir}, found {len(matches)} ({[m.name for m in matches]!r}). "
+            "The auto-setup gate (debt #1396) is wired against a specific pinned "
+            "pyodide-kernel build and cannot verify its internals without exactly "
+            "one wheel to read."
+        )
+    wheel_path = matches[0]
+    name_match = _KERNEL_WHEEL_NAME_RE.match(wheel_path.name)
+    version = name_match.group(1) if name_match else None
+    if version != _KERNEL_WHEEL_EXPECTED_VERSION:
+        raise BuildAssertionError(
+            "BUILD ASSERTION FAILED: vendored pyodide-kernel wheel "
+            f"{wheel_path.name} is version {version!r}, expected "
+            f"{_KERNEL_WHEEL_EXPECTED_VERSION!r}. A kernel version bump can "
+            "rename lite_transform_manager/cleanup_transforms, reorder the "
+            "transform loop, or drop an await -- any of which silently "
+            "disables auto-setup (failure mode 10). Re-verify the literals "
+            "this assertion checks against the new wheel before updating the "
+            "pin."
+        )
+
+    try:
+        with zipfile.ZipFile(wheel_path) as zf:
+            kernel_py = zf.read("pyodide_kernel/kernel.py").decode("utf-8")
+            litetransform_py = zf.read("pyodide_kernel/litetransform.py").decode("utf-8")
+    except KeyError as exc:
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {wheel_path.name} no longer contains "
+            f"{exc}. The auto-setup gate's contract cannot be verified."
+        ) from exc
+
+    missing = [
+        literal
+        for literal, source in (
+            (_KERNEL_CELL_AWAIT_LITERAL, kernel_py),
+            (_KERNEL_TRANSFORM_LOOP_LITERAL, litetransform_py),
+            (_KERNEL_TRANSFORM_AWAIT_LITERAL, litetransform_py),
+        )
+        if literal not in source
+    ]
+    if missing:
+        raise BuildAssertionError(
+            f"BUILD ASSERTION FAILED: {wheel_path.name} no longer contains the "
+            f"following literal(s) the auto-setup gate depends on: {missing!r}. "
+            "A missing `transform_cell` await, a renamed or reordered "
+            "`cleanup_transforms` loop, or a dropped `await` before "
+            "`transform(lines)` would each silently disable the gate "
+            "(praxis_boot._autostart, spec section 6.2, failure mode 10) with "
+            "no signal until `--fresh-boot-check` at runtime. This assertion "
+            "does not detect a dropped PYTHONSTARTUP/env passthrough -- that "
+            "is IPython/worker-side, not in this wheel."
+        )
+    logger.info(
+        "kernel autosetup contract holds: %s carries the transform_cell/"
+        "cleanup_transforms/await literals",
+        wheel_path.name,
+    )
+
+
+_FORBIDDEN_BOOTSTRAP_LITERALS = ("praxis_main(", "praxis_boot.setup(", "HOST_ROOT =")
+
+
+def assert_no_hardcoded_bootstrap_in_notebooks(out_dir: Path) -> None:
+    """Fail the build if a shipped notebook still hand-triggers bootstrap.
+
+    Replaces the old ``apply_base_path`` rewrite and its "changed == 0
+    raises" guard: auto-setup (debt #1396) means no shipped notebook should
+    hardcode a ``HOST_ROOT`` or call the bootstrap directly any more (AC-10).
+    A stale notebook that still does either is more subtle than the old
+    KeyError-shaped miss -- it still boots and mostly still works -- but it is
+    the same "looks healthy, isn't" trap this file's other assertions guard
+    against: it fights the once-guard, or reintroduces a stale absolute
+    fetch root that 404s on a subpath deploy.
+
+    Scans **code cells only** -- markdown cells may legitimately mention
+    ``praxis_boot.setup()`` in prose (welcome.ipynb does, section 6.5). The
+    forbidden list deliberately excludes a bare ``setup(``, so PyLabRobot's
+    own ``await lh.setup()`` idiom stays allowed in shipped device notebooks.
+    """
     files_dir = out_dir / "files"
     if not files_dir.is_dir():
         raise BuildAssertionError(
-            f"BUILD ASSERTION FAILED: {files_dir} does not exist, so --base-path "
-            "cannot be applied and the deployed notebooks would fetch from the "
-            "domain root."
+            f"BUILD ASSERTION FAILED: {files_dir} does not exist, so shipped "
+            "notebooks cannot be checked for hardcoded bootstrap calls."
         )
 
-    replacement = f'HOST_ROOT = "{base_path}"'
-    changed = 0
+    offenders: dict[str, list[str]] = {}
     for notebook in sorted(files_dir.rglob("*.ipynb")):
-        text = notebook.read_text()
-        # The notebook stores source as JSON string literals, so the quotes are
-        # escaped on disk; handle both forms rather than guessing which.
-        for needle, sub in (
-            (SOURCE_HOST_ROOT, replacement),
-            (SOURCE_HOST_ROOT.replace('"', '\\"'), replacement.replace('"', '\\"')),
-        ):
-            if needle in text:
-                text = text.replace(needle, sub)
-                changed += 1
-        notebook.write_text(text)
+        nb = json.loads(notebook.read_text())
+        for cell in nb.get("cells", []):
+            if cell.get("cell_type") != "code":
+                continue
+            source = cell.get("source", "")
+            if isinstance(source, list):
+                source = "".join(source)
+            hits = [needle for needle in _FORBIDDEN_BOOTSTRAP_LITERALS if needle in source]
+            if hits:
+                offenders.setdefault(str(notebook), []).extend(hits)
 
-    if changed == 0:
-        raise BuildAssertionError(
-            f"BUILD ASSERTION FAILED: --base-path {base_path} was requested but no "
-            f"notebook under {files_dir} contained {SOURCE_HOST_ROOT!r}. The deployed "
-            "site would boot, open the notebook, and 404 on its first cell. Either "
-            "the notebook changed shape or the substitution needle is stale."
-        )
-    logger.info("applied base path %s to %d notebook occurrence(s)", base_path, changed)
-    return changed
-
-
-def assert_no_root_host_root(out_dir: Path, base_path: str) -> None:
-    """Fail if any staged notebook still fetches from the domain root."""
-    if base_path == "/":
-        return
-    offenders = [
-        str(nb)
-        for nb in sorted((out_dir / "files").rglob("*.ipynb"))
-        if SOURCE_HOST_ROOT in nb.read_text()
-        or SOURCE_HOST_ROOT.replace('"', '\\"') in nb.read_text()
-    ]
     if offenders:
         raise BuildAssertionError(
-            "BUILD ASSERTION FAILED: these staged notebooks still carry "
-            f"{SOURCE_HOST_ROOT!r} despite --base-path {base_path}: {offenders}. "
-            "They would 404 on their first cell against a subpath deploy."
+            "BUILD ASSERTION FAILED: these shipped notebooks still hand-trigger "
+            f"bootstrap in a code cell: {offenders}. Auto-setup (debt #1396) "
+            "runs on every kernel start; a hardcoded `praxis_main(`, "
+            "`praxis_boot.setup(` or `HOST_ROOT =` in a code cell fights the "
+            "once-guard or reintroduces a stale domain-root fetch. Remove it "
+            "-- setup is automatic now."
         )
+    logger.info("no shipped notebook hardcodes bootstrap in a code cell")
 
 
 def _dir_bytes(path: Path) -> int:
@@ -1203,11 +1389,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--base-path",
         default="/",
         help=(
-            "URL prefix the built site will be served under. Default '/'. Set this "
-            "for a subpath deploy (GitHub Pages project sites serve at /<repo>/, so "
-            "the praxis site needs '/praxis/'): it rewrites the absolute HOST_ROOT in "
-            "the STAGED notebooks, which cannot be derived at runtime because the "
-            "kernel is a Web Worker with no document location."
+            "URL prefix the built site will be served under. Default '/'. Kept for "
+            "compatibility with scripts/repl_smoke.py and the served prefix, which "
+            "still take it -- this build script no longer consumes it itself. Since "
+            "debt #1396 (auto-setup), the site root is derived at RUNTIME by "
+            "praxis_boot.derive_host_root() from the kernel worker's own location, "
+            "which replaced the old build-time HOST_ROOT notebook rewrite."
         ),
     )
     parser.add_argument(
@@ -1273,13 +1460,19 @@ def main(argv: list[str] | None = None) -> int:
         if not args.debug_skip_jupyterlite:
             assert_completion_autocompletion(out_dir)
             assert_praxis_boot_shipped(out_dir)
+            assert_praxis_startup_shipped(out_dir)
+            assert_autosetup_env(out_dir)
+            assert_kernel_autosetup_contract(out_dir)
 
         if not args.debug_skip_jupyterlite and not args.no_prune_pyodide:
             prune_pyodide_bundle(out_dir)
 
-        base_path = normalize_base_path(args.base_path)
-        apply_base_path(out_dir, base_path)
-        assert_no_root_host_root(out_dir, base_path)
+        # --base-path itself is still accepted (repl_smoke.py and the served
+        # prefix still use it -- see the "auto-setup build assertions" comment
+        # above), but this script no longer consumes the normalized value: the
+        # HOST_ROOT rewrite it used to drive is retired in favour of
+        # praxis_boot.derive_host_root() at runtime.
+        assert_no_hardcoded_bootstrap_in_notebooks(out_dir)
 
         run_build_manifest(dev=args.dev, with_coxswain=args.with_coxswain)
         stage_overlay(out_dir, include_coxswain=args.with_coxswain)

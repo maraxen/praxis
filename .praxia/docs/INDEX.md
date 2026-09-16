@@ -1,4 +1,4 @@
-# wt-20260909-172820 Internal Docs
+# wt1396 Internal Docs
 
 ## Daily
 - [260912_overnight-decisions](daily/260912_overnight-decisions.md) — Every decision the 260912 L5 loop made without a human gate: the REPL-refocus staleness dispositions, the #5110 selection, and the praxia debt filings.
@@ -27,6 +27,7 @@
 - [260115_test-plan-v1](plans/260115_test-plan-v1.md)
 
 ## Specs
+- [260914_first-run-auto-setup](specs/260914_first-run-auto-setup.md) — Spec for bootstrapping PyLabRobot automatically on every Pyodide kernel start, fail-closed and visible, with no user-typed setup
 - [260825_copilot-pipeline-challenger](specs/260825_copilot-pipeline-challenger.md) — CHALLENGER-role findings against 260825_coxswain-phase-2-functiongemma-copilot-p.md. All file:line claims in the spec were re-verified against the tree on repl-fresh-boot; findings are ranked blocker/major/minor with cites and concrete fixes. No wholesale rewrite proposed.
 - [260825_copilot-pipeline-defender](specs/260825_copilot-pipeline-defender.md) — DEFENDER counter-role review of 260825_coxswain-phase-2-functiongemma-copilot-p.md: steelman of D1-D10, robustness audit of load-bearing-but-fragile claims, critical-path feasibility re-verified against the tree, and resilience judgment of §8 counters. All repo cites re-verified 260825 on branch repl-fresh-boot.
 - [260825_coxswain-phase-2-functiongemma-copilot-p](specs/260825_coxswain-phase-2-functiongemma-copilot-p.md) — Spec for the synthetic-data pipeline, functiongemma-270m-it fine-tune, browser serving via Transformers.js/WebGPU behind --with-coxswain, and ParseSource integration. REV 2: reconciled from challenger (2 blockers, 7 majors, 8 minors) and defender (11 robustness findings) reviews of 260825.
