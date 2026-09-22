@@ -201,8 +201,6 @@ Currently, the FTDI driver runs in the Python/Pyodide worker. Phase B will:
 2. Create message-passing protocol between main thread and Pyodide worker
 3. Convert Python-side shim to a thin proxy
 
-See `.agent/backlog/hardware_connectivity.md` for details.
-
 ## Related Files
 
 - `jupyterlite-repl.component.ts` - REPL UI component

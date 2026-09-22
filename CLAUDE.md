@@ -122,6 +122,12 @@ and will otherwise write against the wrong checkout.
 Public docs (`README.md`, `docs/`, `CONTRIBUTING.md`, this file, `AGENTS.md`) are out of
 scope for that convention.
 
+The legacy `.agent/` directories (root, `praxis/`, `praxis/web-client/`) were **retired on
+2026-09-22** (debt #1293). Don't recreate them. Old docs and prose still cite `.agent/...`
+paths; the manifest at `.praxia/docs/archive/agent-dirs-retired.md` lists every removed file
+and the commit to restore it from, and `.praxia/docs/migration-manifest.txt` maps the 211
+files moved out earlier, on 2026-05-22.
+
 ## Conventions worth not relearning
 
 - **`py2dmol` / `py2Dmol` is a real package** (sokrypton/py2Dmol) and is **never** a typo
@@ -145,8 +151,5 @@ TDD / systematic-debugging / verification-before-completion sections. These part
 - **`npx playwright test` as the E2E entry point** — there is no npm `e2e` script. The
   browser gate is Python/Playwright-driven through `scripts/repl_smoke.py`, orchestrated by
   `repl.yml`.
-- **`.agent/staging/e2e_autonomous_handoff.md`** — `.agent/` exists in three places
-  (`.agent/`, `praxis/.agent/`, `praxis/web-client/.agent/`) and is slated for migration
-  into `.praxia/docs/`. Don't add to it.
 - **Bun-for-everything** — correct for the JS harness and the web client, but the REPL
   surface and every gate above are Python via `uv`.

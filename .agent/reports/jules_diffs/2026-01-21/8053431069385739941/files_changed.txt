@@ -1,2 +1,0 @@
-.agent/research/state_history_optimization.md
-temp_state_size_test.py

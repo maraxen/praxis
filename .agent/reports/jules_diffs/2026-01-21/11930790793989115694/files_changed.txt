@@ -1,7 +1,0 @@
-praxis/web-client/e2e/auth.setup.ts
-praxis/web-client/e2e/specs/asset-wizard.spec.ts
-praxis/web-client/package-lock.json
-praxis/web-client/package.json
-praxis/web-client/playwright.config.ts
-praxis/web-client/test-results/.last-run.json
-test-results/.last-run.json

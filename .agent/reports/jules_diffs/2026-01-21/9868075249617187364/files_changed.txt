@@ -1,9 +1,0 @@
-praxis/web-client/.gitignore
-praxis/web-client/e2e/specs/workcell-dashboard.spec.ts
-praxis/web-client/package-lock.json
-praxis/web-client/package.json
-praxis/web-client/playwright.config.ts
-praxis/web-client/src/app/app.html
-praxis/web-client/src/app/app.routes.ts
-praxis/web-client/src/app/features/workcells/workcell-dashboard.component.ts
-praxis/web-client/src/app/features/workcells/workcell.routes.ts
