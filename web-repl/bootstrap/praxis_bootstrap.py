@@ -344,7 +344,9 @@ async def praxis_main(host_root: str, *, raise_on_error: bool = False) -> None:
         manifest = transport.fetch_manifest(host_root, _xhr_new)
 
         # 3. D1: shell-ping/pong, then compare praxis_git_sha (fail closed).
-        shell_sha = await transport.shell_ping(_register_shell_pong_handler, _post)
+        shell_sha = await transport.shell_ping(
+            _register_shell_pong_handler, _post, expected_sha=manifest["praxis_git_sha"]
+        )
         stages.assert_praxis_git_sha(manifest["praxis_git_sha"], shell_sha)
 
         # 4. D2: fetch every manifest-listed source, verify sha256, write to
