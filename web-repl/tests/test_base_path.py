@@ -1,18 +1,23 @@
-"""Tests for ``build_repl``'s ``--base-path`` subpath support.
+"""Tests for ``build_repl``'s ``--base-path`` normalization and the
+auto-setup notebook guard that replaced its old HOST_ROOT rewrite.
 
-GitHub Pages serves a project site under ``/<repo>/``, so ``praxis`` deploys at
-``https://maraxen.github.io/praxis/``. A notebook that fetches from ``"/"`` reaches
-the DOMAIN root there and 404s on every bootstrap file. HOST_ROOT cannot be derived
-at runtime -- the kernel is a Web Worker whose global is ``self``, not ``window``, so
-there is no document location to read -- which is why this is a build-time rewrite.
+Debt #1396 (auto-setup) retired the build-time ``apply_base_path`` rewrite:
+the site root is now derived at RUNTIME by ``praxis_boot.derive_host_root()``
+from the kernel worker's own location, so no notebook needs a baked-in
+HOST_ROOT any more. What replaced the rewrite's guard is
+``assert_no_hardcoded_bootstrap_in_notebooks``, which fails the build if any
+shipped notebook's CODE cells still hand-trigger bootstrap -- a stale
+``praxis_main(``, ``praxis_boot.setup(`` or ``HOST_ROOT =`` call would fight
+the once-guard or reintroduce a stale absolute fetch root.
 
-The failure this guards against is the "looks healthy, isn't" shape: the site boots,
-the notebook opens, and only the first cell fails.
+The failure this guards against is the same "looks healthy, isn't" shape the
+old rewrite guarded against: the site boots, the notebook opens, and only
+something more subtle goes wrong (a double-run, or a 404 on a subpath
+deploy) than an outright crash.
 """
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -26,14 +31,15 @@ if str(_SCRIPTS) not in sys.path:
 import build_repl  # noqa: E402 -- path setup must precede this
 
 
-def _notebook(dest: Path, *sources: str) -> Path:
+def _notebook(dest: Path, *cells: tuple[str, str]) -> Path:
+    """Write a notebook. Each cell is a ``(cell_type, source)`` pair."""
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(
         json.dumps(
             {
                 "cells": [
-                    {"cell_type": "code", "source": [s + "\n"], "metadata": {}, "outputs": []}
-                    for s in sources
+                    {"cell_type": cell_type, "source": [source + "\n"], "metadata": {}, "outputs": []}
+                    for cell_type, source in cells
                 ],
                 "metadata": {},
                 "nbformat": 4,
@@ -42,6 +48,10 @@ def _notebook(dest: Path, *sources: str) -> Path:
         )
     )
     return dest
+
+
+def _code(dest: Path, *sources: str) -> Path:
+    return _notebook(dest, *(("code", s) for s in sources))
 
 
 @pytest.mark.parametrize(
@@ -61,73 +71,73 @@ def test_normalize_base_path(raw, expected):
     assert build_repl.normalize_base_path(raw) == expected
 
 
-def test_root_base_path_is_a_no_op(tmp_path):
-    """The default must not touch anything -- local flows depend on it."""
-    nb = _notebook(tmp_path / "files" / "welcome.ipynb", 'HOST_ROOT = "/"')
-    before = nb.read_text()
-    assert build_repl.apply_base_path(tmp_path, "/") == 0
-    assert nb.read_text() == before
-
-
-def test_rewrites_host_root(tmp_path):
-    nb = _notebook(tmp_path / "files" / "welcome.ipynb", 'HOST_ROOT = "/"')
-    assert build_repl.apply_base_path(tmp_path, "/praxis/") == 1
-    assert 'HOST_ROOT = \\"/praxis/\\"' in nb.read_text()
-    build_repl.assert_no_root_host_root(tmp_path, "/praxis/")  # must not raise
-
-
-def test_rewrites_every_notebook_not_just_the_first(tmp_path):
-    """files/ is a directory, not one file -- a loop that stopped early would
-    leave later notebooks pointing at the domain root."""
-    a = _notebook(tmp_path / "files" / "a.ipynb", 'HOST_ROOT = "/"')
-    b = _notebook(tmp_path / "files" / "nested" / "b.ipynb", 'HOST_ROOT = "/"')
-    assert build_repl.apply_base_path(tmp_path, "/praxis/") == 2
-    for nb in (a, b):
-        assert 'HOST_ROOT = \\"/praxis/\\"' in nb.read_text()
-
-
-def test_leaves_unrelated_source_alone(tmp_path):
-    nb = _notebook(
-        tmp_path / "files" / "welcome.ipynb",
-        'HOST_ROOT = "/"',
-        'xhr.open("GET", HOST_ROOT + "bootstrap/praxis_bootstrap.py", False)',
-    )
-    build_repl.apply_base_path(tmp_path, "/praxis/")
-    text = nb.read_text()
-    assert "bootstrap/praxis_bootstrap.py" in text, "unrelated source was mangled"
-
-
-def test_missing_needle_fails_the_build(tmp_path):
-    """A silent miss ships a site that boots and 404s on its first cell."""
-    _notebook(tmp_path / "files" / "welcome.ipynb", "print(1)")
-    with pytest.raises(build_repl.BuildAssertionError, match="no notebook"):
-        build_repl.apply_base_path(tmp_path, "/praxis/")
-
-
 def test_missing_files_dir_fails_the_build(tmp_path):
     with pytest.raises(build_repl.BuildAssertionError, match="does not exist"):
-        build_repl.apply_base_path(tmp_path, "/praxis/")
+        build_repl.assert_no_hardcoded_bootstrap_in_notebooks(tmp_path)
 
 
-def test_assert_catches_an_unrewritten_notebook(tmp_path):
-    """The belt to apply_base_path's braces: if anything reintroduces a root
-    HOST_ROOT after the rewrite, the build must still fail."""
-    _notebook(tmp_path / "files" / "stale.ipynb", 'HOST_ROOT = "/"')
-    with pytest.raises(build_repl.BuildAssertionError, match="still carry"):
-        build_repl.assert_no_root_host_root(tmp_path, "/praxis/")
-
-
-def test_assert_is_a_no_op_at_root(tmp_path):
-    _notebook(tmp_path / "files" / "welcome.ipynb", 'HOST_ROOT = "/"')
-    build_repl.assert_no_root_host_root(tmp_path, "/")  # must not raise
-
-
-def test_real_source_notebook_carries_the_needle():
-    """Coupling check: the rewrite targets a literal, so the notebook must keep it.
-
-    If welcome.ipynb ever stops containing `HOST_ROOT = "/"` verbatim, the build
-    would fail loudly (missing needle) rather than silently -- but this test says
-    so at the point of the edit instead.
+def test_forbidden_literal_in_markdown_only_passes(tmp_path):
+    """Markdown cells may document `praxis_boot.setup()` in prose (welcome.ipynb
+    does, spec section 6.5) -- only code cells are scanned.
     """
-    src = (Path(__file__).resolve().parents[1] / "files" / "welcome.ipynb").read_text()
-    assert 'HOST_ROOT = \\"/\\"' in src
+    _notebook(
+        tmp_path / "files" / "welcome.ipynb",
+        ("markdown", "Retry with `await praxis_boot.setup()` in a cell."),
+        ("code", "print('hello')"),
+    )
+    build_repl.assert_no_hardcoded_bootstrap_in_notebooks(tmp_path)  # must not raise
+
+
+@pytest.mark.parametrize(
+    "forbidden_source",
+    [
+        "await praxis_boot.setup()",
+        "await praxis_main(HOST_ROOT)",
+        'HOST_ROOT = "/"',
+    ],
+    ids=["praxis_boot.setup(", "praxis_main(", "HOST_ROOT ="],
+)
+def test_forbidden_literal_in_code_cell_fails(tmp_path, forbidden_source):
+    _code(tmp_path / "files" / "stale.ipynb", forbidden_source)
+    with pytest.raises(build_repl.BuildAssertionError, match="hand-trigger"):
+        build_repl.assert_no_hardcoded_bootstrap_in_notebooks(tmp_path)
+
+
+def test_bare_setup_call_in_code_cell_passes(tmp_path):
+    """PyLabRobot's own `await lh.setup()` idiom must stay allowed: the
+    forbidden list deliberately has no bare `setup(` entry.
+    """
+    _code(tmp_path / "files" / "device.ipynb", "await lh.setup()")
+    build_repl.assert_no_hardcoded_bootstrap_in_notebooks(tmp_path)  # must not raise
+
+
+def test_rewritten_notebook_with_no_forbidden_literal_passes(tmp_path):
+    _code(
+        tmp_path / "files" / "welcome.ipynb",
+        "import praxis_boot; praxis_boot.status()",
+        "await lh.setup()",
+    )
+    build_repl.assert_no_hardcoded_bootstrap_in_notebooks(tmp_path)  # must not raise
+
+
+def test_scans_every_notebook_not_just_the_first(tmp_path):
+    """files/ is a directory, not one file -- a loop that stopped early would
+    let a later offending notebook through unnoticed.
+    """
+    _code(tmp_path / "files" / "a.ipynb", "print(1)")
+    _code(tmp_path / "files" / "nested" / "b.ipynb", 'HOST_ROOT = "/"')
+    with pytest.raises(build_repl.BuildAssertionError, match="hand-trigger"):
+        build_repl.assert_no_hardcoded_bootstrap_in_notebooks(tmp_path)
+
+
+def test_real_source_notebooks_carry_no_bootstrap():
+    """Coupling check, and the only test in this file that reads the real
+    ``web-repl/files/`` tree.
+
+    Runs against the ACTUAL shipped notebooks. Expected to fail until T6
+    (welcome.ipynb's rewrite, spec section 6.5 / 9) lands -- T5 lands first
+    per the spec's T5/T6 ordering (R2-3) and welcome.ipynb still carries its
+    old bootstrap cell until then.
+    """
+    files_dir = Path(__file__).resolve().parents[1] / "files"
+    build_repl.assert_no_hardcoded_bootstrap_in_notebooks(files_dir.parent)
