@@ -9,7 +9,6 @@ actual source existing.
 
 from __future__ import annotations
 
-import shutil
 import sys
 from pathlib import Path
 
@@ -22,10 +21,16 @@ if str(_SCRIPTS_DIR) not in sys.path:
 import build_repl  # noqa: E402 -- path setup must precede this import
 
 
-def _make_persistence_source(tmp_path: Path) -> Path:
-    """Create a minimal temporary persistence source tree with the three required
-    modules plus a __tests__ directory that should be excluded."""
-    src = tmp_path / "persistence"
+def _make_shell_source_tree(tmp_path: Path) -> tuple[Path, Path]:
+    """Create a minimal temporary shell/ source tree: praxis-shell.js plus a
+    persistence/ dir with the three required modules and a __tests__
+    directory that should be excluded. Returns (shell_dir, persistence_dir).
+    """
+    shell_dir = tmp_path / "shell_src"
+    shell_dir.mkdir()
+    (shell_dir / "praxis-shell.js").write_text("// praxis-shell.js\n")
+
+    src = shell_dir / "persistence"
     src.mkdir()
     (src / "codec.js").write_text("// codec.js\n")
     (src / "core.js").write_text("// core.js\n")
@@ -34,10 +39,9 @@ def _make_persistence_source(tmp_path: Path) -> Path:
     # Add a __tests__ directory that should be excluded during staging
     tests_dir = src / "__tests__"
     tests_dir.mkdir()
-    (tests_dir / "codec.test.js").write_text("// test file\n")
-    (tests_dir / "core.test.js").write_text("// test file\n")
+    (tests_dir / "x.test.js").write_text("// test file\n")
 
-    return src
+    return shell_dir, src
 
 
 def _make_dist_dir(tmp_path: Path) -> Path:
@@ -47,85 +51,89 @@ def _make_dist_dir(tmp_path: Path) -> Path:
     return dist
 
 
-def test_stage_shell_stages_persistence_modules(tmp_path: Path) -> None:
-    """Verify that stage_shell copies the three persistence modules from a
-    temporary source tree and excludes __tests__."""
-    src = _make_persistence_source(tmp_path)
+def test_stage_shell_stages_persistence_modules(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify that build_repl.stage_shell() itself copies the three persistence
+    modules from a temporary source tree and excludes __tests__. Exercising
+    the production function (not a re-implementation) so a regression in
+    stage_shell's persistence block fails this test."""
+    shell_dir, src = _make_shell_source_tree(tmp_path)
     dist = _make_dist_dir(tmp_path)
 
-    # Temporarily patch PERSISTENCE_JS_MODULES to point to our fixture
-    original_modules = build_repl.PERSISTENCE_JS_MODULES
-    try:
-        build_repl.PERSISTENCE_JS_MODULES = src
+    monkeypatch.setattr(build_repl, "SHELL_DIR", shell_dir)
+    monkeypatch.setattr(build_repl, "PERSISTENCE_JS_MODULES", src)
 
-        # Call stage_shell with our fixture dist directory
-        # We only care about the persistence staging part, so we'll directly
-        # test the persistence-specific code path
-        dst_dir = dist / "shell"
-        if build_repl.PERSISTENCE_JS_MODULES.is_dir():
-            dst_modules = dst_dir / "persistence"
-            if dst_modules.exists():
-                shutil.rmtree(dst_modules)
-            staged = build_repl._copytree_filtered(
-                build_repl.PERSISTENCE_JS_MODULES,
-                dst_modules,
-                skip=lambda rel: "__tests__" in rel.parts,
-            )
+    build_repl.stage_shell(dist)
 
-            # Verify the three required modules were staged
-            assert (dst_modules / "codec.js").is_file()
-            assert (dst_modules / "core.js").is_file()
-            assert (dst_modules / "panel.js").is_file()
+    dst_modules = dist / "shell" / "persistence"
 
-            # Verify __tests__ directory was NOT staged
-            assert not (dst_modules / "__tests__").exists()
+    # Verify the three required modules were staged with identical bytes.
+    assert (dst_modules / "codec.js").read_bytes() == (src / "codec.js").read_bytes()
+    assert (dst_modules / "core.js").read_bytes() == (src / "core.js").read_bytes()
+    assert (dst_modules / "panel.js").read_bytes() == (src / "panel.js").read_bytes()
 
-            # Verify the count is correct (3 files, no __tests__)
-            assert staged == 3
-    finally:
-        build_repl.PERSISTENCE_JS_MODULES = original_modules
+    # Verify __tests__ directory was NOT staged
+    assert not (dst_modules / "__tests__").exists()
 
 
-def test_stage_shell_removes_stale_persistence_files(tmp_path: Path) -> None:
-    """Verify that a stale file in dist/shell/persistence/ is removed when
-    stage_shell runs."""
-    src = _make_persistence_source(tmp_path)
+def test_stage_shell_removes_stale_persistence_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify that a stale file in dist/shell/persistence/, present before
+    build_repl.stage_shell() runs, is removed by it."""
+    shell_dir, src = _make_shell_source_tree(tmp_path)
     dist = _make_dist_dir(tmp_path)
 
-    # Create a stale file in the destination
-    dst_dir = dist / "shell"
-    dst_modules = dst_dir / "persistence"
+    # Create a stale file in the destination before staging.
+    dst_modules = dist / "shell" / "persistence"
     dst_modules.mkdir(parents=True, exist_ok=True)
     stale_file = dst_modules / "old.js"
     stale_file.write_text("// stale file\n")
-
     assert stale_file.exists(), "Setup: stale file should exist before staging"
 
-    # Temporarily patch PERSISTENCE_JS_MODULES to point to our fixture
-    original_modules = build_repl.PERSISTENCE_JS_MODULES
-    try:
-        build_repl.PERSISTENCE_JS_MODULES = src
+    monkeypatch.setattr(build_repl, "SHELL_DIR", shell_dir)
+    monkeypatch.setattr(build_repl, "PERSISTENCE_JS_MODULES", src)
 
-        # Simulate the rmtree and recopy from stage_shell
-        if build_repl.PERSISTENCE_JS_MODULES.is_dir():
-            dst_modules = dst_dir / "persistence"
-            if dst_modules.exists():
-                shutil.rmtree(dst_modules)
-            build_repl._copytree_filtered(
-                build_repl.PERSISTENCE_JS_MODULES,
-                dst_modules,
-                skip=lambda rel: "__tests__" in rel.parts,
-            )
+    build_repl.stage_shell(dist)
 
-        # Verify the stale file is gone
-        assert not stale_file.exists(), "Stale file should be removed after staging"
+    # Verify the stale file is gone
+    assert not stale_file.exists(), "Stale file should be removed after staging"
 
-        # Verify the new files are present
-        assert (dst_modules / "codec.js").is_file()
-        assert (dst_modules / "core.js").is_file()
-        assert (dst_modules / "panel.js").is_file()
-    finally:
-        build_repl.PERSISTENCE_JS_MODULES = original_modules
+    # Verify the new files are present
+    assert (dst_modules / "codec.js").is_file()
+    assert (dst_modules / "core.js").is_file()
+    assert (dst_modules / "panel.js").is_file()
+
+
+def test_stage_shell_removes_stale_dist_when_source_absent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A-10: a persistence module deleted from source cannot survive in dist.
+    If PERSISTENCE_JS_MODULES no longer exists at all, a stale dist/shell/
+    persistence/ dir from a previous build must still be removed."""
+    shell_dir = tmp_path / "shell_src"
+    shell_dir.mkdir()
+    (shell_dir / "praxis-shell.js").write_text("// praxis-shell.js\n")
+
+    # Source persistence dir is absent entirely.
+    absent_src = shell_dir / "persistence"
+    assert not absent_src.exists()
+
+    dist = _make_dist_dir(tmp_path)
+    dst_modules = dist / "shell" / "persistence"
+    dst_modules.mkdir(parents=True, exist_ok=True)
+    (dst_modules / "old.js").write_text("// stale file\n")
+    assert dst_modules.exists(), "Setup: stale dist dir should exist before staging"
+
+    monkeypatch.setattr(build_repl, "SHELL_DIR", shell_dir)
+    monkeypatch.setattr(build_repl, "PERSISTENCE_JS_MODULES", absent_src)
+
+    build_repl.stage_shell(dist)
+
+    assert not dst_modules.exists(), (
+        "Stale persistence dir must be removed even when source is absent"
+    )
 
 
 def test_assert_dist_complete_requires_persistence_modules(tmp_path: Path) -> None:

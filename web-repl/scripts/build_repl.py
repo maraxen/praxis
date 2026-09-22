@@ -1031,10 +1031,12 @@ def stage_shell(out_dir: Path) -> Path:
     # Stage persistence modules if the directory exists.
     # The modules are required in assert_dist_complete, so if the source exists,
     # stage it; if it doesn't yet, the assertion will fail later with a clear message.
+    # The stale-target removal is unconditional (A-10): a module deleted from
+    # source must not survive in dist even if the whole source dir vanishes.
+    dst_modules = dst_dir / "persistence"
+    if dst_modules.exists():
+        shutil.rmtree(dst_modules)
     if PERSISTENCE_JS_MODULES.is_dir():
-        dst_modules = dst_dir / "persistence"
-        if dst_modules.exists():
-            shutil.rmtree(dst_modules)
         staged = _copytree_filtered(
             PERSISTENCE_JS_MODULES,
             dst_modules,
