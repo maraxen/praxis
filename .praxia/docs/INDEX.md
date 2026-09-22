@@ -1,4 +1,4 @@
-# wt1396 Internal Docs
+# wt-20260909-172820 Internal Docs
 
 ## Daily
 - [260912_overnight-decisions](daily/260912_overnight-decisions.md) — Every decision the 260912 L5 loop made without a human gate: the REPL-refocus staleness dispositions, the #5110 selection, and the praxia debt filings.
@@ -19,8 +19,10 @@
 - [260817_praxis-repl-refocus-execution-plan](plans/260817_praxis-repl-refocus-execution-plan.md) — Dependency-ordered 8-phase execution plan composed from three adversarially-reviewed specs and five executed spikes, with per-phase gates, audit strategy, rollback, and an unproven-assumptions ledger.
 - [260210_final-protocol-execution-fix-plan](plans/260210_final-protocol-execution-fix-plan.md)
 - [260210_protocol-playground-fix-plan](plans/260210_protocol-playground-fix-plan.md)
+- [260209_asset-wizard-deck-selector](plans/260209_asset-wizard-deck-selector.md) — Plan for adding a deck-selection step to the asset wizard, written ahead of the Feb 2026 E2E debugging wave
 - [260131_ship-work-plan](plans/260131_ship-work-plan.md)
 - [260128_e2e-test-suite-hardening-plan](plans/260128_e2e-test-suite-hardening-plan.md)
+- [260126_opfs-only-refactor](plans/260126_opfs-only-refactor.md) — Plan to make OPFS the only browser-mode persistence layer, removing the legacy sql.js + IndexedDB path
 - [260122_web-hid-shim](plans/260122_web-hid-shim.md)
 - [260121_final-merge-plan](plans/260121_final-merge-plan.md)
 - [260121_jules-integration-plan](plans/260121_jules-integration-plan.md)
@@ -42,8 +44,17 @@
 
 ## Audits
 - [260912_sprint136-audit](audits/260912_sprint136-audit.md) — Sonnet praxia:reviewer report for commit e995de31, persisted verbatim: soundness answer, six-dimension scores, and the two non-blocking staleness suggestions with their resolution.
+- [260209_web-client-technical-debt](audits/260209_web-client-technical-debt.md) — Web-client debt entries from Feb 2026, starting with replacing DeckCatalogService's hardcoded deck-type matching with programmatic PyLabRobot detection
+- [260206_e2e-diff-report](audits/260206_e2e-diff-report.md) — File-by-file report of the 32-file E2E change set from the Feb 2026 Jules sessions
+- [260206_e2e-jules-session-review](audits/260206_e2e-jules-session-review.md) — Final status review of the Jules E2E sessions for backlog #380/#426
 - [260206_hardware-discovery-audit](audits/260206_hardware-discovery-audit.md)
+- [260206_jules-audit-asset-wizards](audits/260206_jules-audit-asset-wizards.md) — Jules deep audit of the asset wizards (Feb 3, 2026; quality score 4/10)
+- [260206_jules-audit-core-components](audits/260206_jules-audit-core-components.md) — Jules deep audit of the Docs and StateInspector core components (Feb 3, 2026; quality score 6.5/10)
+- [260206_jules-audit-core-services](audits/260206_jules-audit-core-services.md) — Jules deep audit of the web-client core services (Feb 3, 2026; quality score 6/10)
+- [260206_jules-audit-resource-index](audits/260206_jules-audit-resource-index.md) — Jules deep audit of the resource and index components (Feb 3, 2026; quality score 4/10)
+- [260206_jules-audit-run-protocol](audits/260206_jules-audit-run-protocol.md) — Jules deep audit of the run-protocol feature (Feb 3, 2026; quality score 4/10)
 - [260206_python-worker-audit](audits/260206_python-worker-audit.md)
+- [260206_web-client-deep-audit-synthesis](audits/260206_web-client-deep-audit-synthesis.md) — Synthesis of 15+ Jules deep-audit sessions over the Angular web client (Feb 3, 2026)
 - [260131_comprehensive-logic-audit](audits/260131_comprehensive-logic-audit.md)
 - [260129_code-smells-audit](audits/260129_code-smells-audit.md)
 - [260129_complexity-audit](audits/260129_complexity-audit.md)
@@ -92,6 +103,7 @@
 - [260817_wheel-build-plr-upgrade-and-version-cohe-brainstorm](research/260817_wheel-build-plr-upgrade-and-version-cohe-brainstorm.md)
 - [260131_asset-wizard-filtering-logic-recon](research/260131_asset-wizard-filtering-logic-recon.md)
 - [260131_simulated-machine-instantiation-recon](research/260131_simulated-machine-instantiation-recon.md)
+- [260122_deck-layout-coming-soon-investigation](research/260122_deck-layout-coming-soon-investigation.md) — Found the coming-soon message for non-Hamilton decks intentional: slot-based layout editing was unimplemented
 - [260122_inventory-wizard-recon](research/260122_inventory-wizard-recon.md)
 - [260122_jules-dispatch-recon-20260122](research/260122_jules-dispatch-recon-20260122.md)
 - [260122_recon-asset-wizard-visual](research/260122_recon-asset-wizard-visual.md)
@@ -148,6 +160,7 @@
 - [260120_roadmap](roadmaps/pre-ship-cleanup/260120_roadmap.md)
 
 ## Archive
+- [agent-dirs-retired](archive/agent-dirs-retired.md) — Manifest of the 740 files removed or relocated when the three legacy .agent/ directories were retired, with the git commit to restore them from
 
 ## Misc
 - [260210_final-mvp-implementation-strategy](misc/260210_final-mvp-implementation-strategy.md)

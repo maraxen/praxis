@@ -1,9 +1,0 @@
-{
-    "browser_subagent": {
-        "in_use": false,
-        "holder": null,
-        "since": null
-    },
-    "last_updated": "2026-01-07T11:31:00Z",
-    "notes": "Set 'in_use' to true and 'holder' to your agent ID before using browser_subagent. Release when done."
-}
