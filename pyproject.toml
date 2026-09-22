@@ -316,7 +316,20 @@ dev = [
     # transitive packages and is never imported at runtime; `uv run` includes the
     # `dev` group by default, which is also how playwright below is reached.
     "jupyter-server==2.20.0",
-    "playwright>=1.57.0",
+    # Upper-bounded, not just floored: uv.lock is gitignored (see .gitignore), so
+    # CI's `uv sync` re-resolves this constraint fresh on every run instead of
+    # replaying a committed lock -- nothing anchors the installed version besides
+    # this line. playwright 1.63.0 ships Chromium build 1243 (Chrome for Testing
+    # 153.0.8010.12), which SIGTRAPs a ThreadPoolForeground worker and takes the
+    # whole browser process down ~10s after launch, deterministically, in BOTH
+    # GitHub Actions (run 35792530831) and local WSL2 (dmesg: "chrome:
+    # ThreadPoolForeg: potentially unexpected fatal signal 5" -> WSL CaptureCrash
+    # for the chromium-1243 pid) -- independent of what the page is doing (--probe,
+    # which finishes in ~9s, never hits it; --persistence-check, which is still
+    # mid-flight at 10s, always does). 1.62.0 (Chromium build 1234) does not
+    # reproduce this. Bump the ceiling only after confirming the replacement
+    # Chromium build survives a `--persistence-check` run without --chrome-path.
+    "playwright>=1.57.0,<1.63.0",
     "pytest-asyncio>=1.2.0",
     "pytest-cov>=7.0.0",
     "pytest-playwright>=0.7.2",

@@ -3169,6 +3169,32 @@ def _run_persistence_scenario_s10(
     return out
 
 
+def _ensure_persistence_browser(
+    p: Any, browser: Any, *, chrome_path: str, offline: bool, scenario_label: str
+) -> Any:
+    """Relaunch the shared `--persistence-check` browser if it died under a
+    PRIOR scenario, instead of letting one browser-process crash cascade into
+    every remaining scenario reporting a misleading "browser has been closed"
+    (masking which scenario, if any, actually broke). Observed root cause
+    (260922): a genuine Chromium-level crash -- not anything in this harness or
+    in the product's persistence JS -- see the `playwright` pin comment in
+    pyproject.toml for the full diagnosis. This function does not change what
+    any scenario asserts; it only decides which browser instance a scenario
+    runs against.
+    """
+    if browser.is_connected():
+        return browser
+    LOG.warning(
+        "persistence-check: browser was disconnected before %s -- relaunching",
+        scenario_label,
+    )
+    return p.chromium.launch(
+        executable_path=chrome_path,
+        headless=True,
+        args=chromium_launch_args(offline=offline),
+    )
+
+
 def run_persistence_check(
     *,
     serve_dir: Path,
@@ -3207,6 +3233,9 @@ def run_persistence_check(
                     s1 = {"error": f"{type(e).__name__}: {e}"}
                 result["s1"] = s1
 
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S2"
+                )
                 try:
                     s2 = _run_persistence_scenario_s2(browser, served, prefix, timeout_ms)
                 except Exception as e:
@@ -3214,6 +3243,9 @@ def run_persistence_check(
                     s2 = {"error": f"{type(e).__name__}: {e}"}
                 result["s2"] = s2
 
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S3"
+                )
                 try:
                     s3 = _run_persistence_scenario_s3(browser, served, prefix, timeout_ms)
                 except Exception as e:
@@ -3221,6 +3253,9 @@ def run_persistence_check(
                     s3 = {"error": f"{type(e).__name__}: {e}"}
                 result["s3"] = s3
 
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S4"
+                )
                 try:
                     s4 = _run_persistence_scenario_s4(browser, served, prefix, timeout_ms)
                 except Exception as e:
@@ -3228,6 +3263,9 @@ def run_persistence_check(
                     s4 = {"error": f"{type(e).__name__}: {e}"}
                 result["s4"] = s4
 
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S5"
+                )
                 try:
                     s5 = _run_persistence_scenario_s5(browser, served, prefix, timeout_ms)
                 except Exception as e:
@@ -3235,6 +3273,9 @@ def run_persistence_check(
                     s5 = {"error": f"{type(e).__name__}: {e}"}
                 result["s5"] = s5
 
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S6"
+                )
                 try:
                     s6 = _run_persistence_scenario_s6(browser, served, prefix, timeout_ms)
                 except Exception as e:
@@ -3242,6 +3283,9 @@ def run_persistence_check(
                     s6 = {"error": f"{type(e).__name__}: {e}"}
                 result["s6"] = s6
 
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S7"
+                )
                 try:
                     s7 = _run_persistence_scenario_s7(browser, served, prefix, timeout_ms)
                 except Exception as e:
@@ -3249,6 +3293,9 @@ def run_persistence_check(
                     s7 = {"error": f"{type(e).__name__}: {e}"}
                 result["s7"] = s7
 
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S8"
+                )
                 try:
                     s8 = _run_persistence_scenario_s8(browser, served, prefix, timeout_ms)
                 except Exception as e:
@@ -3256,6 +3303,9 @@ def run_persistence_check(
                     s8 = {"error": f"{type(e).__name__}: {e}"}
                 result["s8"] = s8
 
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S9"
+                )
                 try:
                     s9 = _run_persistence_scenario_s9(browser, served, prefix, timeout_ms)
                 except Exception as e:
@@ -3263,6 +3313,9 @@ def run_persistence_check(
                     s9 = {"error": f"{type(e).__name__}: {e}"}
                 result["s9"] = s9
 
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S10"
+                )
                 try:
                     s10 = _run_persistence_scenario_s10(browser, served, prefix, timeout_ms)
                 except Exception as e:
@@ -3270,7 +3323,15 @@ def run_persistence_check(
                     s10 = {"error": f"{type(e).__name__}: {e}"}
                 result["s10"] = s10
             finally:
-                browser.close()
+                # `browser` may already be a dead process (crashed under some
+                # earlier scenario, never relaunched because nothing after S10
+                # needed it) -- closing an already-disconnected browser raises,
+                # which would mask whatever real failures are already in
+                # `result`. Best-effort only.
+                try:
+                    browser.close()
+                except Exception:  # noqa: BLE001 -- see comment above
+                    pass
 
     failures: list[str] = result["failures"]
 
