@@ -1,3 +1,7 @@
+---
+title: 'Technical Debt'
+---
+
 # Technical Debt
 <!-- Migrated to MCP database on 2026-01-21 -->
 

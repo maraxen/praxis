@@ -1,3 +1,7 @@
+---
+title: 'Protocols'
+---
+
 # Protocols
 
 Protocols are the core of Praxis - Python scripts that define automated laboratory workflows.

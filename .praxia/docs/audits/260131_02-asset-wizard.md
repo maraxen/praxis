@@ -1,3 +1,7 @@
+---
+title: 'Asset Wizard Audit'
+---
+
 # Asset Wizard Audit
 
 ## Resource Definition Chain

@@ -2,7 +2,8 @@
 title: E2E Test Suite Stabilization - Session Handoff
 created: 2026-01-27T15:17:00-05:00
 priority: high
-status: in-progress
+status: archived
+original_status: 'in-progress'
 ---
 
 # E2E Test Suite Stabilization - Handoff

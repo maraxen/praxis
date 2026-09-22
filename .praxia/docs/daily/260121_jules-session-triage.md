@@ -1,3 +1,7 @@
+---
+title: 'Jules Session Triage - 2026-01-21 11:10 AM'
+---
+
 # Jules Session Triage - 2026-01-21 11:10 AM
 
 **Total Sessions**: 50

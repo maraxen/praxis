@@ -1,3 +1,7 @@
+---
+title: 'FINAL MVP IMPLEMENTATION STRATEGY'
+---
+
 # FINAL MVP IMPLEMENTATION STRATEGY
 
 **Version**: 2.0 (Refined)

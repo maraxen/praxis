@@ -1,3 +1,7 @@
+---
+title: 'REST API Reference'
+---
+
 # REST API Reference
 
 The Praxis backend provides a RESTful API built with FastAPI. All endpoints are prefixed with `/api/v1`.

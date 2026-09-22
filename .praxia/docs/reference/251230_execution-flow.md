@@ -1,3 +1,7 @@
+---
+title: 'Execution Flow'
+---
+
 # Execution Flow
 
 This document details how protocols are executed in Praxis, from user request to completion.

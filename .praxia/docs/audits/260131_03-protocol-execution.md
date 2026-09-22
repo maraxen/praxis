@@ -1,3 +1,7 @@
+---
+title: 'Protocol Execution Audit'
+---
+
 # Protocol Execution Audit
 
 ## Parameter Resolution

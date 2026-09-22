@@ -1,3 +1,7 @@
+---
+title: 'Browser Mode Connection Persistence Tests'
+---
+
 # Browser Mode Connection Persistence Tests
 
 This document outlines the test plan for validating hardware connection persistence in Browser Mode.

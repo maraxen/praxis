@@ -1,3 +1,7 @@
+---
+title: 'Asset Selection Logic & Status Report'
+---
+
 # Asset Selection Logic & Status Report
 
 **Date:** 2026-01-21

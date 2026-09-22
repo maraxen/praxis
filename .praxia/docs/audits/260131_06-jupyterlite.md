@@ -1,3 +1,7 @@
+---
+title: 'JupyterLite Bootstrap Audit'
+---
+
 # JupyterLite Bootstrap Audit
 
 ## 2-Phase BroadcastChannel Architecture

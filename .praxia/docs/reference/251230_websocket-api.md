@@ -1,3 +1,7 @@
+---
+title: 'WebSocket API'
+---
+
 # WebSocket API
 
 Praxis uses WebSockets for real-time monitoring of protocol execution. This allows the frontend to receive status changes, progress updates, logs, and telemetry without polling.

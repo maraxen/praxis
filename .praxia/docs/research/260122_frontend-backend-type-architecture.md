@@ -1,3 +1,7 @@
+---
+title: 'Research Report: Frontend and Backend Type Architecture'
+---
+
 # Research Report: Frontend and Backend Type Architecture
 
 ## Overview

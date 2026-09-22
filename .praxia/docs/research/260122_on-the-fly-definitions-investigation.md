@@ -1,3 +1,7 @@
+---
+title: 'Investigation: On-the-Fly Simulation Definition Creation'
+---
+
 # Investigation: On-the-Fly Simulation Definition Creation
 
 ## Executive Summary

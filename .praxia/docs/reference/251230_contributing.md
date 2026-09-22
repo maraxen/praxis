@@ -1,3 +1,7 @@
+---
+title: 'Contributing'
+---
+
 # Contributing
 
 Thank you for your interest in contributing to Praxis! This guide covers how to set up your development environment and submit contributions.

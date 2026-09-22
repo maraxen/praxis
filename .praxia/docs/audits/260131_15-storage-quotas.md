@@ -1,3 +1,7 @@
+---
+title: 'Storage Quotas Audit'
+---
+
 # Storage Quotas Audit
 
 ## Status: ⚠️ LocalStorage Handled, OPFS Quota Not Monitored

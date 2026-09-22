@@ -1,3 +1,7 @@
+---
+title: 'Configuration'
+---
+
 # Configuration
 
 Praxis is configured through environment variables and configuration files.

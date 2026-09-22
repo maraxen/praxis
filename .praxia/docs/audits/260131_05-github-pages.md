@@ -1,3 +1,7 @@
+---
+title: 'GitHub Pages Pathing Audit'
+---
+
 # GitHub Pages Pathing Audit
 
 ## baseHref Calculation Patterns

@@ -1,3 +1,7 @@
+---
+title: 'E2E Test Status Report - Praxis'
+---
+
 # E2E Test Status Report - Praxis
 
 ## Summary

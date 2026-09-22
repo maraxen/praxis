@@ -1,3 +1,7 @@
+---
+title: 'Critical Features Inventory'
+---
+
 # Critical Features Inventory
 
 > **Created:** 2026-01-31T00:52:00 | **Updated:** 2026-01-31T00:54:00

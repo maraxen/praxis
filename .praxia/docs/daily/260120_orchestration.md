@@ -1,3 +1,7 @@
+---
+title: 'Orchestration Learning Log'
+---
+
 # Orchestration Learning Log
 
 > Persistent memory for agent orchestration strategies, lessons, and evolution.

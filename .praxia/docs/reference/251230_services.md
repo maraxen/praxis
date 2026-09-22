@@ -1,3 +1,7 @@
+---
+title: 'Service Layer Reference'
+---
+
 # Service Layer Reference
 
 The service layer implements business logic and provides a clean interface for the API layer.

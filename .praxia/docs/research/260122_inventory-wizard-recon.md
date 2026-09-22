@@ -1,3 +1,7 @@
+---
+title: 'Recon Report: Inventory Wizard Analysis'
+---
+
 # Recon Report: Inventory Wizard Analysis
 
 **Date**: 2026-01-21

@@ -1,3 +1,7 @@
+---
+title: 'Installation Overview'
+---
+
 # Installation Overview
 
 Praxis can be deployed in several ways depending on your needs. Choose the mode that best fits your environment.

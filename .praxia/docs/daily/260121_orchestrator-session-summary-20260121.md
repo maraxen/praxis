@@ -1,3 +1,7 @@
+---
+title: 'Orchestrator Session Summary - 2026-01-21'
+---
+
 # Orchestrator Session Summary - 2026-01-21
 
 **Status**: Active & Dispatched

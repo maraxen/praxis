@@ -1,3 +1,7 @@
+---
+title: 'Investigation Report: Selective Transfer Parameter Persistence'
+---
+
 # Investigation Report: Selective Transfer Parameter Persistence
 
 **Date**: 2026-01-21  

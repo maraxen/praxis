@@ -1,3 +1,7 @@
+---
+title: 'AUDIT-09: Direct Control Feature'
+---
+
 # AUDIT-09: Direct Control Feature
 
 ## 1. Component Map

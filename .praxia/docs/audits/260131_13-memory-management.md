@@ -1,3 +1,7 @@
+---
+title: 'Pyodide Memory Management Audit'
+---
+
 # Pyodide Memory Management Audit
 
 ## Status: ⚠️ No Explicit Cleanup Between Runs

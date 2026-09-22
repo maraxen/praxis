@@ -1,3 +1,7 @@
+---
+title: 'Browser Mode'
+---
+
 # Browser Mode
 
 Praxis supports a frontend-only browser mode that runs entirely in the browser without requiring a backend server.

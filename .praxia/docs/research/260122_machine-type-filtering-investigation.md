@@ -1,3 +1,7 @@
+---
+title: 'Machine Type Filtering Investigation Report'
+---
+
 # Machine Type Filtering Investigation Report
 
 ## Status

@@ -1,3 +1,7 @@
+---
+title: 'Build Error Report - 2026-01-24'
+---
+
 # Build Error Report - 2026-01-24
 
 ## Status: 🔴 BLOCKING

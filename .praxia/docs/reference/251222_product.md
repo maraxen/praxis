@@ -1,3 +1,7 @@
+---
+title: 'Product Guide: PyLabPraxis'
+---
+
 # Product Guide: PyLabPraxis
 
 ## Vision

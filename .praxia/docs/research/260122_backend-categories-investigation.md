@@ -1,3 +1,7 @@
+---
+title: 'Investigation Report: Backend Categories in Inventory'
+---
+
 # Investigation Report: Backend Categories in Inventory
 
 **Task ID**: 260121152847

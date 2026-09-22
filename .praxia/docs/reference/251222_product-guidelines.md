@@ -1,3 +1,7 @@
+---
+title: 'Product Guidelines: PyLabPraxis'
+---
+
 # Product Guidelines: PyLabPraxis
 
 ## Visual Identity & Aesthetic

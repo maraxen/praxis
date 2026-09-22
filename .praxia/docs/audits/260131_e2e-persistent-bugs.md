@@ -1,3 +1,7 @@
+---
+title: 'E2E Persistent Bugs - Full Audit'
+---
+
 # E2E Persistent Bugs - Full Audit
 
 > Generated: 2026-01-31T08:55

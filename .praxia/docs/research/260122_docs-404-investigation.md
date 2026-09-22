@@ -1,3 +1,7 @@
+---
+title: 'Docs 404 Investigation'
+---
+
 # Docs 404 Investigation
 
 ## Problem Summary

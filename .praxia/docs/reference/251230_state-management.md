@@ -1,3 +1,7 @@
+---
+title: 'State Management'
+---
+
 # State Management
 
 Praxis uses a multi-layered state management approach to handle different types of data with appropriate persistence and sharing strategies.

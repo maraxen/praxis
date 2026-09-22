@@ -1,3 +1,7 @@
+---
+title: 'Data Visualization'
+---
+
 # Data Visualization
 
 Praxis provides built-in data visualization for protocol outputs using Plotly.

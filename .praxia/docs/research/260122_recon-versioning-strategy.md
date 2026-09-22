@@ -1,3 +1,7 @@
+---
+title: 'Reconnaissance Report: Versioning Strategy and Roadmap'
+---
+
 # Reconnaissance Report: Versioning Strategy and Roadmap
 
 ## 1. Current State Summary

@@ -1,3 +1,7 @@
+---
+title: 'Production Mode Installation'
+---
+
 # Production Mode Installation
 
 Production Mode is designed for shared lab environments, multi-user access, and long-running scheduled protocols. It uses a full stack with a dedicated API server and persistent databases.

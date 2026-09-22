@@ -1,3 +1,7 @@
+---
+title: 'Praxis Demo Script'
+---
+
 # Praxis Demo Script
 
 This script provides a step-by-step walkthrough of the Praxis platform in **Browser Mode**. It highlights key features including asset management, protocol execution, and live monitoring.

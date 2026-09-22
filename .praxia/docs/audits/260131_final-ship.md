@@ -1,3 +1,7 @@
+---
+title: 'Praxis Ship-Ready Verification Results'
+---
+
 # Praxis Ship-Ready Verification Results
 
 **Date:** 2026-01-31 | **Build:** ✅ PASSED

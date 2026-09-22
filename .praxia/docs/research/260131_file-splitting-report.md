@@ -1,3 +1,7 @@
+---
+title: 'web-client File Splitting Candidates Report'
+---
+
 # web-client File Splitting Candidates Report
 
 This report identifies the best candidates for splitting based on line count and architectural complexity within the `web-client` application.

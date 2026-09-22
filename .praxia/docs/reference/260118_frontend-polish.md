@@ -1,3 +1,7 @@
+---
+title: 'Frontend Polish Pipeline'
+---
+
 # Frontend Polish Pipeline
 
 This document describes the visual polish pipeline used for the Praxis web-client and tracks remaining items for future sessions.

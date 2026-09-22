@@ -1,3 +1,7 @@
+---
+title: 'Jules Diff Extraction - 2026-01-21'
+---
+
 # Jules Diff Extraction - 2026-01-21
 
 | Session ID | Task | Status | Files |

@@ -1,3 +1,7 @@
+---
+title: 'Serialization Audit'
+---
+
 # Serialization Audit
 
 ## Deck State → Python

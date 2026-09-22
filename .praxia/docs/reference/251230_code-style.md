@@ -1,3 +1,7 @@
+---
+title: 'Code Style Guide'
+---
+
 # Code Style Guide
 
 Coding conventions and style guidelines for Praxis.

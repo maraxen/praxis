@@ -1,3 +1,7 @@
+---
+title: 'Lite Mode Installation'
+---
+
 # Lite Mode Installation
 
 Lite Mode provides a lightweight local development environment using the FastAPI backend but replacing heavy infrastructure like PostgreSQL and Redis with local SQLite and in-memory stores.

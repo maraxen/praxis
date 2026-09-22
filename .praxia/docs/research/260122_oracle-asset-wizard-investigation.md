@@ -1,3 +1,7 @@
+---
+title: 'Oracle Advisory: Asset Wizard Investigation Report'
+---
+
 # Oracle Advisory: Asset Wizard Investigation Report
 
 **Date:** 2026-01-21  

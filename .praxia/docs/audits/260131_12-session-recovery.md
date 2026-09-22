@@ -1,3 +1,7 @@
+---
+title: 'Session & Run Recovery Audit'
+---
+
 # Session & Run Recovery Audit
 
 ## Status: ⚠️ Browser Mode Has Limitations

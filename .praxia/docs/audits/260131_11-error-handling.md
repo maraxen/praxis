@@ -1,3 +1,7 @@
+---
+title: 'Error Boundary Handling Audit'
+---
+
 # Error Boundary Handling Audit
 
 ## Status: ✅ Good Coverage with Minor Gaps

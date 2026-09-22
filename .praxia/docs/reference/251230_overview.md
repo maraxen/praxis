@@ -1,3 +1,7 @@
+---
+title: 'Architecture Overview'
+---
+
 # Architecture Overview
 
 Source: praxis/backend/core/protocols/orchestrator.py

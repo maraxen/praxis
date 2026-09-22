@@ -1,3 +1,7 @@
+---
+title: 'E2E Static Analysis - Redundant/Outdated Tests'
+---
+
 # E2E Static Analysis - Redundant/Outdated Tests
 
 > Generated: 2026-01-31T09:00

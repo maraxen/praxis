@@ -1,3 +1,7 @@
+---
+title: 'State Inspection & Simulation Reporting Gap Analysis'
+---
+
 # State Inspection & Simulation Reporting Gap Analysis
 
 **Date:** 2026-01-15

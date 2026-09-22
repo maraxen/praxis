@@ -1,3 +1,7 @@
+---
+title: 'Update Archive Workflow'
+---
+
 # Update Archive Workflow
 
 **Trigger**: When `.agent/archive/` becomes cluttered with loose folders (e.g., `prompts/`, `summaries/`, `backlog/`) that are no longer active.

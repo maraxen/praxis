@@ -1,3 +1,7 @@
+---
+title: 'Hardware Discovery Audit'
+---
+
 # Hardware Discovery Audit
 
 ## Architecture Overview

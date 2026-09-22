@@ -1,3 +1,7 @@
+---
+title: 'Investigation: Add Resource vs. Add Machine Flow in Playground'
+---
+
 # Investigation: Add Resource vs. Add Machine Flow in Playground
 
 ## Executive Summary

@@ -1,3 +1,7 @@
+---
+title: 'Playwright + Angular Best Practices (2026)'
+---
+
 # Playwright + Angular Best Practices (2026)
 
 > A consolidated guide for E2E testing Angular applications with Playwright.

@@ -1,3 +1,7 @@
+---
+title: 'Hardware Discovery'
+---
+
 # Hardware Discovery
 
 Praxis can automatically detect laboratory devices connected via USB or serial ports using browser APIs.

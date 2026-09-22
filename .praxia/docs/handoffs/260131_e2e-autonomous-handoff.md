@@ -1,3 +1,7 @@
+---
+title: 'Autonomous E2E Stabilization Handoff'
+---
+
 # Autonomous E2E Stabilization Handoff
 
 **Created:** 2026-01-31T00:44:00 | **Handoff To:** Fresh Session

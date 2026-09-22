@@ -1,3 +1,7 @@
+---
+title: 'Data Visualization E2E Investigation'
+---
+
 # Data Visualization E2E Investigation
 
 ## 1. Root Cause of Canvas Not Rendering

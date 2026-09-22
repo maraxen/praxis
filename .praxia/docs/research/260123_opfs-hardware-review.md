@@ -1,3 +1,7 @@
+---
+title: 'Hardware Discovery Under OPFS'
+---
+
 # Hardware Discovery Under OPFS
 
 ## Persistence Points Found

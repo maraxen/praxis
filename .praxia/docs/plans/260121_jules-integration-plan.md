@@ -1,3 +1,7 @@
+---
+title: 'Jules Integration Plan - 2026-01-21'
+---
+
 # Jules Integration Plan - 2026-01-21
 
 ## Summary

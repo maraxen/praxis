@@ -1,3 +1,7 @@
+---
+title: 'Resource Management Error Log & Audit'
+---
+
 # Resource Management Error Log & Audit
 
 **Date:** 2026-01-15

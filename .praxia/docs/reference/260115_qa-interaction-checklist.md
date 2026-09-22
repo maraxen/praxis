@@ -1,3 +1,7 @@
+---
+title: 'QA Interaction Checklist'
+---
+
 # QA Interaction Checklist
 
 This checklist covers user-facing interactions across the PyLabPraxis web client. Use this to verify feature coverage during manual QA or when designing automated tests.

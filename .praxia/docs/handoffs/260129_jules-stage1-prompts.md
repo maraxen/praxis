@@ -1,3 +1,7 @@
+---
+title: 'Jules Stage 1 Dispatch Prompts'
+---
+
 # Jules Stage 1 Dispatch Prompts
 
 ## Session 1A: Interceptor Type Safety

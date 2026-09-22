@@ -1,3 +1,7 @@
+---
+title: 'Backend Machine Registration Work Extraction Report'
+---
+
 # Backend Machine Registration Work Extraction Report
 
 **Task ID**: TD-1201

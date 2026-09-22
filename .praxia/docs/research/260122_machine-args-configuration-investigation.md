@@ -1,3 +1,7 @@
+---
+title: 'Investigation Report: Per-Machine Argument Configuration'
+---
+
 # Investigation Report: Per-Machine Argument Configuration
 
 **Task ID:** 260121152037

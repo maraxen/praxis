@@ -1,3 +1,7 @@
+---
+title: 'General Code Style Principles'
+---
+
 # General Code Style Principles
 
 This document outlines general coding principles that apply across all languages and frameworks used in this project.

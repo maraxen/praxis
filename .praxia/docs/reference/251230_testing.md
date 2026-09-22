@@ -1,3 +1,7 @@
+---
+title: 'Testing Guide'
+---
+
 # Testing Guide
 
 Comprehensive guide to testing in Praxis.

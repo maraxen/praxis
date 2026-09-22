@@ -1,3 +1,7 @@
+---
+title: 'Inventory Search Logic Investigation - Root Cause Analysis'
+---
+
 # Inventory Search Logic Investigation - Root Cause Analysis
 
 ## Executive Summary

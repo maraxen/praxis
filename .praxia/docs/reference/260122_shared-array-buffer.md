@@ -1,3 +1,7 @@
+---
+title: 'Known Issue: SharedArrayBuffer is not defined'
+---
+
 # Known Issue: SharedArrayBuffer is not defined
 
 ## Issue Description

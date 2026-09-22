@@ -1,3 +1,7 @@
+---
+title: 'Protocol Inference: Sharp Bits & Gotchas'
+---
+
 # Protocol Inference: Sharp Bits & Gotchas
 
 This document covers edge cases, limitations, and best practices for working with Praxis's automatic protocol inference system. Understanding these "sharp bits" will help you write protocols that are correctly analyzed and avoid common pitfalls.

@@ -311,3 +311,4 @@ Recategorised: 2026-09-22 (debt #1293 part 2) -- misc/ entries above moved again
 .praxia/docs/misc/260121_jules-handover-20260121.md → .praxia/docs/handoffs/260121_jules-handover-20260121.md [git]
 .praxia/docs/misc/260129_jules-stage1-prompts.md → .praxia/docs/handoffs/260129_jules-stage1-prompts.md [git]
 .praxia/docs/misc/260123_opfs-hardware-review-1.md → (deleted: byte-identical duplicate of 260123_opfs-hardware-review.md)
+.praxia/docs/audits/251222_pyodide-integration-audit.md → (deleted: empty since created in 0207c0c5, 2026-01-21)

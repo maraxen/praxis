@@ -1,3 +1,7 @@
+---
+title: 'Browser Interrupt Logic Extraction (TD-801)'
+---
+
 # Browser Interrupt Logic Extraction (TD-801)
 
 ## Overview

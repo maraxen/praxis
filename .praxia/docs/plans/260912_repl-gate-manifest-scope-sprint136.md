@@ -1,7 +1,7 @@
 ---
 title: 'REPL gate unblock: scoping R6''s manifest scan to the wheel seam (sprint 136, #5110)'
 description: 'Sprint 136 plan and record: the repl.yml GATE G7 false positive that skipped all ten browser gates on the 4-PR stack, its two-defect root cause, the surface-dispatch fixer run, and the differential verification.'
-status: completed
+status: complete
 task_id: 260912_repl-gate-manifest-scope
 date: '260912'
 sprint: '136'

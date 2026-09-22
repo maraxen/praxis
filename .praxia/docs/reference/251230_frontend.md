@@ -1,3 +1,7 @@
+---
+title: 'Frontend Components'
+---
+
 # Frontend Components
 
 The Praxis frontend is built with Angular 21 using standalone components, signal-based reactivity, and Material Design.

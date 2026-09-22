@@ -1,3 +1,7 @@
+---
+title: 'WebSerial Port Persistence Audit'
+---
+
 # WebSerial Port Persistence Audit
 
 ## Status: ✅ Good - Authorized Ports Persist

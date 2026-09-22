@@ -1,3 +1,7 @@
+---
+title: 'Backend Components'
+---
+
 # Backend Components
 
 The Praxis backend is organized into distinct layers, each with clear responsibilities. This document details the core components and their interactions.

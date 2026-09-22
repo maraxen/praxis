@@ -1,3 +1,7 @@
+---
+title: 'Extracted Geometry Heuristics Code (TD-702)'
+---
+
 # Extracted Geometry Heuristics Code (TD-702)
 
 This report documents the extracted geometry heuristics implementation and fixes from Jules session `16235462376134233538` (Fix Geometry Heuristics in web_bridge.py).
