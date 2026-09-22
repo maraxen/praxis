@@ -237,8 +237,8 @@ jobs:
           uv run python -m pytest web-repl/tests/test_d1_praxis_git_sha.py -q
           uv run python -m pytest web-repl/tests/test_fetch_vendored_wheels.py -q
           uv run python -m pytest web-repl/tests/test_inject_shell_coxswain.py -q
-          uv run python -m pytest web-repl/tests/test_plr_contract.py -q
           uv run python -m pytest web-repl/tests/test_persistence_staging.py -q
+          uv run python -m pytest web-repl/tests/test_plr_contract.py -q
           uv run python -m pytest web-repl/tests/test_praxis_boot_autosetup.py -q
           uv run python -m pytest web-repl/tests/test_praxis_bootstrap_loader.py -q
           uv run python -m pytest web-repl/tests/test_praxis_startup.py -q

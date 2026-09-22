@@ -130,6 +130,28 @@ describe("codec: modelToFileBytes and fileBytesToModel", () => {
       expect(restored.format).toBe("base64");
       expect(restored.content).toBe(original.content);
     });
+
+    // Bug B (post-review): `btoa(String.fromCharCode.apply(null, data))`
+    // throws "RangeError: Maximum call stack size exceeded" once `data` is
+    // large enough to overflow `Function.prototype.apply`'s argument limit
+    // (observed around 1 MB). A 2 MB non-UTF-8 binary exercises exactly the
+    // fileBytesToModel base64-fallback path that used the offending call.
+    test("2 MB non-UTF-8 binary round-trips by content without throwing", () => {
+      const size = 2 * 1024 * 1024;
+      const data = new Uint8Array(size);
+      for (let i = 0; i < size; i++) {
+        data[i] = i % 256; // deterministic; every 256-byte block includes 0xFF, an invalid UTF-8 lead byte
+      }
+
+      let restored;
+      expect(() => {
+        restored = fileBytesToModel("large.bin", data);
+      }).not.toThrow();
+      expect(restored.format).toBe("base64");
+
+      const bytesBack = modelToFileBytes(restored);
+      expect(bytesBack).toEqual(data);
+    });
   });
 
   describe("UTF-8 fallback for invalid text", () => {

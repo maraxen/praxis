@@ -768,12 +768,36 @@ describe("AC-3: restore", () => {
 
     const result = await core.onRestoreClick();
 
-    expect(result).toEqual({ restored: 1, skipped: 1 });
+    expect(result).toEqual({ restored: 1, skipped: 1, failed: 0, failures: [] });
     const restored = await contents.get("sub/restore-me.ipynb", { content: true });
     expect(restored.content).toEqual({ v: "disk" });
     const untouched = await contents.get("existing.ipynb", { content: true });
     expect(untouched.content).toEqual({ v: "drive-existing" }); // never overwritten
     expect(await handleStore.get("mirrored-paths")).toEqual(["sub/restore-me.ipynb"]);
+  });
+
+  test("bug A: one file's read failure is recorded and skipped, the rest of the restore still completes", async () => {
+    const handle = createFakeDirectoryHandle({ name: "work", permission: "granted" });
+    await writeDiskFile(handle, "bad.ipynb", JSON.stringify({ v: "disk" }, null, 1) + "\n");
+    await writeDiskFile(handle, "good.ipynb", JSON.stringify({ v: "disk-good" }, null, 1) + "\n");
+    handle._fault("bad.ipynb", "getFileHandle", "NotReadableError");
+
+    const contents = createFakeContents();
+    const handleStore = createFakeHandleStore({ "working-folder": handle, "pending-paths": [], "excluded-paths": {} });
+    const core = createPersistence({ handleStore, contents });
+    await core.init();
+
+    const result = await core.onRestoreClick();
+
+    expect(result.restored).toBe(1);
+    expect(result.skipped).toBe(0);
+    expect(result.failed).toBe(1);
+    expect(result.failures).toEqual([{ path: "bad.ipynb", reason: expect.any(String) }]);
+
+    const good = await contents.get("good.ipynb", { content: true });
+    expect(good.content).toEqual({ v: "disk-good" });
+    await expect(contents.get("bad.ipynb")).rejects.toThrow();
+    expect(await handleStore.get("mirrored-paths")).toEqual(["good.ipynb"]);
   });
 
   test("restore skips dot-prefixed paths", async () => {

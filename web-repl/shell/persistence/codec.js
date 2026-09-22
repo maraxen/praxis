@@ -118,11 +118,33 @@ export function fileBytesToModel(path, bytes) {
     format = "text";
   } catch {
     // Not valid UTF-8: treat as binary (base64).
-    content = btoa(String.fromCharCode.apply(null, data));
+    content = bytesToBase64(data);
     format = "base64";
   }
 
   return { path, type: "file", format, content };
+}
+
+/**
+ * Convert a Uint8Array to a base64 string without blowing the call stack.
+ *
+ * `btoa(String.fromCharCode.apply(null, data))` throws
+ * "RangeError: Maximum call stack size exceeded" once `data` is large enough
+ * that spreading it as `apply` arguments overflows the engine's argument
+ * limit (observed around 1 MB). Build the binary string in bounded chunks
+ * instead, then base64-encode the whole thing in one `btoa` call.
+ *
+ * @param {Uint8Array} data - Raw bytes to encode.
+ * @returns {string} Base64-encoded string.
+ */
+function bytesToBase64(data) {
+  const CHUNK_SIZE = 0x8000; // 32768 bytes per chunk, well under apply's arg limit.
+  let binary = "";
+  for (let offset = 0; offset < data.length; offset += CHUNK_SIZE) {
+    const chunk = data.subarray(offset, offset + CHUNK_SIZE);
+    binary += String.fromCharCode.apply(null, chunk);
+  }
+  return btoa(binary);
 }
 
 /**

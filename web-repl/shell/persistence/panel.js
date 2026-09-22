@@ -10,13 +10,16 @@
 // snapshots. `mount(window)` is the module's only export (module plan row).
 //
 // D6 gesture invariant (statically enforced by T5's
-// check_gesture_invariant.py over this directory): every button's click
-// listener is EXACTLY `() => core.on<Something>Click(...)`, with nothing --
-// no `await`, no `.then(`, no other statement -- before that call. Anything
-// asynchronous is chained on the promise the call returns. `pickDirectory`
-// is injected into core as `window.showDirectoryPicker.bind(window)` -- a
-// REFERENCE, not a call -- so the literal string `showDirectoryPicker(`
-// never appears in this file; `core.js` never names it at all.
+// check_gesture_invariant.py over this directory): for every button whose
+// action requires a gesture-bound core call, that button's click listener is
+// EXACTLY `() => core.on<Something>Click(...)`, with nothing -- no `await`,
+// no `.then(`, no other statement -- before that call. Anything asynchronous
+// is chained on the promise the call returns. (A UI-only listener like the
+// status chip's panel-open toggle is not gesture-bound and is exempt -- see
+// its own listener below.) `pickDirectory` is injected into core as
+// `window.showDirectoryPicker.bind(window)` -- a REFERENCE, not a call --
+// so the literal string `showDirectoryPicker(` never appears in this file;
+// `core.js` never names it at all.
 //
 // The smoke harness's forced-prompt test switch is a page-level test-only
 // global; this file must never reference it (B-11).
@@ -360,11 +363,20 @@ export async function mount(win) {
       }
       row.append(
         actionButton(doc, "restore", "Restore from folder", () =>
-          core.onRestoreClick()?.then((result) => {
-            if (!result) return;
-            restoreStatus = `restored ${result.restored}, skipped ${result.skipped}`;
-            render(core.state);
-          }),
+          core.onRestoreClick()
+            ?.then((result) => {
+              if (!result) return;
+              restoreStatus = `restored ${result.restored}, skipped ${result.skipped}`;
+              if (result.failed > 0) {
+                restoreStatus += `, failed ${result.failed}`;
+              }
+              render(core.state);
+            })
+            .catch((error) => {
+              console.error("Restore from folder failed:", error);
+              restoreStatus = "Restore failed -- see console for details.";
+              render(core.state);
+            }),
         ),
       );
     }

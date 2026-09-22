@@ -702,13 +702,15 @@ export function createPersistence({
   // -- T3: save/remove entry points, Replace, restore -----------------------
 
   /** Routed here by panel.js from `contents.fileChanged` type "save"
-   * (explicit save AND autosave alike -- G2). Not a gesture call: the actual
-   * disk write happens later, off the write chain, never inside a click
-   * handler. Suppressed for paths an active restore is currently writing
-   * into the drive, so restore's own `contents.save` never re-enters the
-   * mirror chain for itself (D7). Returns the enqueued job's promise so
-   * callers (including tests) can await completion; the mirror chain itself
-   * is fire-and-forget from every OTHER call site. */
+   * (explicit save AND autosave alike -- G2). Not a gesture call: it is
+   * never invoked from inside a click handler. The actual disk write IS on
+   * the ordered write chain -- this enqueues it there, it just doesn't run
+   * synchronously with the fileChanged event. Suppressed for paths an
+   * active restore is currently writing into the drive, so restore's own
+   * `contents.save` never re-enters the mirror chain for itself (D7).
+   * Returns the enqueued job's promise so callers (including tests) can
+   * await completion; the mirror chain itself is fire-and-forget from every
+   * OTHER call site. */
   function handleFileSaved(path) {
     try {
       splitDrivePath(path); // reject ""/"."/".."/invalid segments
@@ -810,7 +812,9 @@ export function createPersistence({
    * write chain (D7). Every folder file absent from the drive is written,
    * with parent directories created first; drive files are never
    * overwritten. Restored paths are added to `mirrored-paths`, since the
-   * disk copy is by definition equal. */
+   * disk copy is by definition equal. A single file's read/decode/write
+   * failure is recorded and skipped over -- it must not abort the rest of
+   * the restore or reject the caller's promise (bug A). */
   async function runRestore() {
     const handle = model.handle;
     const generation = model.generation;
@@ -820,11 +824,12 @@ export function createPersistence({
     } catch (error) {
       applyHandleError(error);
       notify();
-      return { restored: 0, skipped: 0 };
+      return { restored: 0, skipped: 0, failed: 0, failures: [] };
     }
 
     let restored = 0;
     let skipped = 0;
+    const failures = [];
     for (const path of entries) {
       if (generation !== model.generation) break; // a later rebind supersedes this restore
       if (isDotPath(path)) {
@@ -850,13 +855,15 @@ export function createPersistence({
         await contents.save(path, fileModel);
         mirroredPaths.add(path); // restored == disk copy, by definition (D7)
         restored += 1;
+      } catch (error) {
+        failures.push({ path, reason: error && error.message ? error.message : String(error) });
       } finally {
         restoringPaths.delete(path);
       }
     }
     await persistMirrored();
     notify();
-    return { restored, skipped };
+    return { restored, skipped, failed: failures.length, failures };
   }
 
   /** Panel's "Restore from folder". If the cached permission is not
