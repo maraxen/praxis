@@ -1,3 +1,7 @@
+---
+title: 'WebSerial Hardware-in-the-Loop (HITL) Testing Guide'
+---
+
 # WebSerial Hardware-in-the-Loop (HITL) Testing Guide
 
 This document outlines the manual testing procedures for verifying WebSerial-based hardware discovery and communication in Praxis. Due to current CI limitations, this process is a critical step to ensure hardware compatibility before merging related changes.

@@ -1,7 +1,7 @@
 ---
 title: 'Sprint 136 review gate: R6 manifest scope narrowing (#5110) - PASS'
 description: 'Sonnet praxia:reviewer report for commit e995de31, persisted verbatim: soundness answer, six-dimension scores, and the two non-blocking staleness suggestions with their resolution.'
-status: completed
+status: complete
 task_id: 260912_repl-gate-manifest-scope
 date: '260912'
 ---

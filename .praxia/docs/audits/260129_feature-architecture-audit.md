@@ -1,3 +1,7 @@
+---
+title: 'Feature Module Architecture Audit'
+---
+
 # Feature Module Architecture Audit
 
 ## Objective

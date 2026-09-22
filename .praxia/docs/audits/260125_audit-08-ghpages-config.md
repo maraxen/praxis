@@ -1,3 +1,7 @@
+---
+title: 'AUDIT-08: GitHub Pages Deployment Configuration'
+---
+
 # AUDIT-08: GitHub Pages Deployment Configuration
 
 This audit reviews the configuration and deployment process for the GitHub Pages version of the Praxis web client.

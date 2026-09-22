@@ -1,3 +1,7 @@
+---
+title: 'Workcell Interface & Deck View Audit'
+---
+
 # Workcell Interface & Deck View Audit
 
 **Date:** 2026-01-15

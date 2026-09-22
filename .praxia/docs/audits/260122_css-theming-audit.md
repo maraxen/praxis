@@ -1,3 +1,7 @@
+---
+title: 'Hardcoded CSS Audit Report'
+---
+
 ## Hardcoded CSS Audit Report
 
 This report identifies instances within `praxis/web-client/src` where hardcoded color values (hex, rgb, rgba) are used instead of theme-aware CSS variables.

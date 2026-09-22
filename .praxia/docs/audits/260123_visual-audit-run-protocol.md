@@ -1,3 +1,7 @@
+---
+title: 'Visual Audit - Run Protocol Pages'
+---
+
 # Visual Audit - Run Protocol Pages
 
 *Jules Session: E2E-VIZ-02 (`12590817473184387784`)*

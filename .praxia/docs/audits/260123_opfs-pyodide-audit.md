@@ -1,3 +1,7 @@
+---
+title: 'OPFS + Pyodide Integration Audit'
+---
+
 # OPFS + Pyodide Integration Audit
 
 *Jules Session: OPFS-01 (`9221878143682473760`)*

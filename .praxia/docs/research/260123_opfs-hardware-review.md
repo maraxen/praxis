@@ -1,0 +1,30 @@
+---
+title: 'Hardware Discovery Under OPFS'
+---
+
+# Hardware Discovery Under OPFS
+
+## Persistence Points Found
+1.  **Browser Permissions**: The service uses `navigator.serial.getPorts()` and `navigator.usb.getDevices()` to retrieve devices for which the user has previously granted access. The persistence of these permissions is handled by the browser itself.
+2.  **Backend State**: The service interacts with a backend via API calls to fetch discovered devices (`HardwareService.discoverHardwareApiV1HardwareDiscoverGet`), register machines (`HardwareService.registerMachineApiV1HardwareRegisterPost`), and manage connection states (`HardwareService.connectDeviceApiV1HardwareConnectPost`, `HardwareService.listConnectionsApiV1HardwareConnectionsGet`). The backend is responsible for persisting this information.
+
+## Compliance Check
+- [x] Uses async repositories: All persistence-related operations are asynchronous, using `async/await` and Promises.
+- [x] No direct localStorage: A search of the code confirms that `localStorage` is not used.
+- [x] Error handling for OPFS failures: The service includes `try...catch` blocks for browser and backend API calls, which will handle potential failures gracefully. While not specific to OPFS, this demonstrates robust handling of asynchronous operations.
+
+## Test Results
+
+| Scenario                   | Expected Behavior                                                                                                                              | Analysis Result                                                                                                                                                                                                                         |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Initial Discovery**      | User is prompted to select a device, which then appears in the list.                                                                           | Correct. `requestSerialPort` or `requestUsbDevice` triggers the browser's permission prompt.                                                                                                                                             |
+| **Save Configuration**     | Device configuration is updated and persisted for future use.                                                                                  | Correct. The configuration is sent to the backend for persistence via `registerAsMachine` or `connectViaBackend`.                                                                                                                        |
+| **Page Reload**            | Previously authorized devices and their backend-managed connection states are restored.                                                        | Correct. On initialization, `discoverAll` fetches authorized devices from the browser and connection states from the backend, effectively restoring the application's state.                                                              |
+| **No Devices Connected**   | The discovery process completes, and the UI shows an empty list of devices.                                                                    | Correct. The `discoverAll` method handles this scenario gracefully, resulting in an empty `discoveredDevices` array.                                                                                                                      |
+| **Device Disconnects**     | For backend-managed connections, the status should update to 'disconnected' or 'error'. Browser connections will fail on the next I/O operation. | Correct. The device status is updated on the next `fetchBackendConnections` call or a failed heartbeat. Direct browser connections are not actively monitored for disconnections.                                                            |
+| **State Recovery (Crash)** | Similar to a page reload, the state is recovered by re-fetching information from the browser and the backend.                                    | Correct. The `discoverAll` and `fetchBackendConnections` methods serve as the recovery mechanism. State for direct browser-to-device connections (not managed by the backend) is lost, which is the expected behavior.                 |
+
+## Issues/Recommendations
+1.  **Disconnect Detection**: The service does not actively listen for `disconnect` events from the WebSerial or WebUSB APIs. For devices not managed by the backend, a disconnection will not be immediately reflected in the UI. **Recommendation**: Consider adding event listeners for the `connect` and `disconnect` events on the `navigator.serial` and `navigator.usb` objects to provide a more real-time view of device availability.
+2.  **State Synchronization**: The device state is managed by a signal (`discoveredDevices`). While this is effective, a more advanced state management library (like NgRx or Elf) could be beneficial if the complexity of the application grows. The current implementation is sufficient for now.
+3.  **Error Propagation**: Errors from backend calls are caught and logged, and in some cases, a device's status is set to 'error'. This is good practice, but ensuring that user-facing error messages are consistently clear and actionable would be a valuable improvement.

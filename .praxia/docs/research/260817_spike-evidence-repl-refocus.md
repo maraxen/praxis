@@ -3,7 +3,7 @@ title: Spike evidence — praxis REPL refocus
 description: Five executed browser/CPython spikes grounding the refocus specs; every finding tagged ran/read with verbatim commands and output.
 category: research
 task_id: 260817_praxis_repl_refocus
-status: final
+status: complete
 date: 260817
 ---
 

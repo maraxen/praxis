@@ -1,3 +1,7 @@
+---
+title: 'RECON Report: Global Module Shimming Status'
+---
+
 # RECON Report: Global Module Shimming Status
 
 ## 1. Modules Injected into `sys.modules`

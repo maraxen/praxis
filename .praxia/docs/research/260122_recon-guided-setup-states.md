@@ -1,3 +1,7 @@
+---
+title: 'Reconnaissance Report: Guided Setup Visual State Transitions'
+---
+
 # Reconnaissance Report: Guided Setup Visual State Transitions
 
 ## Summary of Investigation

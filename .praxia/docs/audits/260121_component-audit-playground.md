@@ -1,3 +1,7 @@
+---
+title: 'Component Audit: Playground & Run Protocol'
+---
+
 # Component Audit: Playground & Run Protocol
 
 ## Mock Data / Hardcoded Values

@@ -1,3 +1,7 @@
+---
+title: 'Inventory Wizard Redesign Spec'
+---
+
 # Inventory Wizard Redesign Spec
 
 ## Component Hierarchy

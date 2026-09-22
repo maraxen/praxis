@@ -1,3 +1,7 @@
+---
+title: 'RECON - Repository Cleanup Audit'
+---
+
 # RECON - Repository Cleanup Audit
 
 This report identifies stale files, duplicate information, and consolidation opportunities to improve repository hygiene.

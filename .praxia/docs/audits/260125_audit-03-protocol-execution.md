@@ -1,3 +1,7 @@
+---
+title: 'AUDIT-03: Protocol Library & Execution Monitor'
+---
+
 # AUDIT-03: Protocol Library & Execution Monitor
 
 ## 1. Component Map

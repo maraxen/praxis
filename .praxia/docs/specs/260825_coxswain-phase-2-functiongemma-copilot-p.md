@@ -1,9 +1,10 @@
 ---
 title: 'Coxswain Phase 2: FunctionGemma copilot pipeline'
 description: 'Spec for the synthetic-data pipeline, functiongemma-270m-it fine-tune, browser serving via Transformers.js/WebGPU behind --with-coxswain, and ParseSource integration. REV 2: reconciled from challenger (2 blockers, 7 majors, 8 minors) and defender (11 robustness findings) reviews of 260825.'
-status: draft-rev2
+status: draft
 task_id: 260825_copilot_pipeline_spec
 date: '260825'
+revision: '2'
 ---
 
 # Coxswain Phase 2 — FunctionGemma copilot pipeline (rev 2)

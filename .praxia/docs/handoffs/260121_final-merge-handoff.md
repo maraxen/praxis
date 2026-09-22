@@ -1,3 +1,7 @@
+---
+title: 'FINAL MERGE HANDOFF - v0.1-alpha'
+---
+
 # FINAL MERGE HANDOFF - v0.1-alpha
 
 **Date**: 2026-01-21
