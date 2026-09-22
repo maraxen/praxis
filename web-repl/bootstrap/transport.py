@@ -259,7 +259,9 @@ def fetch_sources(manifest: dict, host_root: str, xhr_new, dest_root: str = ".")
 # ---------------------------------------------------------------------------
 
 
-async def shell_ping(register_handler, post_fn, timeout_s: float = 5.0) -> str:
+async def shell_ping(
+    register_handler, post_fn, timeout_s: float = 5.0, expected_sha: str | None = None
+) -> str:
     """Ask the shell (``web-repl/shell/praxis-shell.js``) for its injected
     ``praxis_git_sha`` over the ``praxis:shell-ping`` / ``praxis:shell-pong``
     handshake on the ``praxis_repl`` BroadcastChannel (ADR Sec 2.3 D1).
@@ -276,9 +278,21 @@ async def shell_ping(register_handler, post_fn, timeout_s: float = 5.0) -> str:
     ``PraxisUnavailableError`` if no pong arrives within *timeout_s* -- "a
     missing pong ... is the bootstrap's problem to time out on" per
     ``praxis-shell.js``'s own protocol comment.
+
+    One ping can draw SEVERAL pongs: every same-origin tab's shell listens on
+    the shared ``praxis_repl`` channel, so a still-open tab from an older
+    deploy answers too, and may answer first (debt #1858). Pass
+    *expected_sha* (the manifest's ``praxis_git_sha``) and a matching pong
+    wins as soon as it arrives, whatever came before it. If the timeout
+    elapses with pongs seen but none matching, the FIRST one seen is
+    returned rather than raising, so the caller's
+    ``stages.assert_praxis_git_sha`` still fails closed with its real
+    drift diagnosis naming both shas. Without *expected_sha* the first pong
+    wins, as before.
     """
     loop = asyncio.get_event_loop()
     fut = loop.create_future()
+    seen: list = []
 
     def _on_message(data):
         if (
@@ -286,13 +300,18 @@ async def shell_ping(register_handler, post_fn, timeout_s: float = 5.0) -> str:
             and data.get("type") == "praxis:shell-pong"
             and not fut.done()
         ):
-            fut.set_result(data.get("praxis_git_sha"))
+            sha = data.get("praxis_git_sha")
+            seen.append(sha)
+            if expected_sha is None or sha == expected_sha:
+                fut.set_result(sha)
 
     register_handler(_on_message)
     post_fn({"type": "praxis:shell-ping"})
     try:
         return await asyncio.wait_for(fut, timeout=timeout_s)
     except asyncio.TimeoutError as exc:
+        if seen:
+            return seen[0]
         raise PraxisUnavailableError(
             f"D1 praxis:shell-ping timed out after {timeout_s}s waiting for "
             "praxis:shell-pong -- no shell present, or a shell that never "
