@@ -1027,6 +1027,27 @@ def stage_shell(out_dir: Path) -> Path:
     dst = dst_dir / "praxis-shell.js"
     shutil.copy2(src, dst)
     logger.info("staged shell/praxis-shell.js -> %s", dst)
+
+    # Stage persistence modules if the directory exists.
+    # The modules are required in assert_dist_complete, so if the source exists,
+    # stage it; if it doesn't yet, the assertion will fail later with a clear message.
+    # The stale-target removal is unconditional (A-10): a module deleted from
+    # source must not survive in dist even if the whole source dir vanishes.
+    dst_modules = dst_dir / "persistence"
+    if dst_modules.exists():
+        shutil.rmtree(dst_modules)
+    if PERSISTENCE_JS_MODULES.is_dir():
+        staged = _copytree_filtered(
+            PERSISTENCE_JS_MODULES,
+            dst_modules,
+            # Test files never ship: bun discovers them from the source tree, so
+            # a copy under dist/ is dead weight on every page load path.
+            skip=lambda rel: "__tests__" in rel.parts,
+        )
+        logger.info(
+            "staged %d persistence module file(s) -> %s", staged, dst_modules
+        )
+
     return dst
 
 
@@ -1042,6 +1063,13 @@ _REQUIRED_COXSWAIN_MODULES = (
     "vdom.js",
     "envelope.js",
     "timing.js",
+)
+
+PERSISTENCE_JS_MODULES = SHELL_DIR / "persistence"
+_REQUIRED_PERSISTENCE_MODULES = (
+    "codec.js",
+    "core.js",
+    "panel.js",
 )
 
 
@@ -1154,6 +1182,7 @@ def assert_dist_complete(out_dir: Path, *, with_coxswain: bool = False) -> None:
         out_dir / "bootstrap" / "stages.py",
         out_dir / "bootstrap" / "transport.py",
         out_dir / "shell" / "praxis-shell.js",
+        *(out_dir / "shell" / "persistence" / name for name in _REQUIRED_PERSISTENCE_MODULES),
         out_dir / "lab" / "index.html",
         out_dir / "repl" / "index.html",
         # The welcome notebook, and the contents index that makes it VISIBLE. Both,

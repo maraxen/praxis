@@ -62,6 +62,7 @@ Hard constraints (verified 2026-08-17, see plan section 5.6):
 from __future__ import annotations
 
 import argparse
+import base64
 import dataclasses
 import json
 import logging
@@ -69,6 +70,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import textwrap
 import threading
 import time
@@ -1850,6 +1852,1674 @@ def _open_blank_notebook(page: Any, *, timeout_ms: float) -> str:
     return notebook_path
 
 
+# ---------------------------------------------------------------------------
+# --persistence-check (spec .praxia/docs/specs/260922_repl-persistence-ladder.md).
+# T8a below: S1-S3 (AC-8, AC-9, AC-13, AC-14, AC-17). T8b (further down,
+# scenarios S4-S10, AC-10/11/12) builds on this same harness.
+#
+# Each scenario runs in its OWN fresh browser context (spec A-8/B-6: "Every
+# scenario starts in a fresh browser context, so IndexedDB, OPFS and
+# localStorage all start empty unless the scenario seeds them"). The harness
+# never uses page.dispatch_event -- every gesture-bound interaction goes
+# through a real page.click() or page.keyboard, because the whole point of
+# D6/AC-9 is proving the product's gesture calls are reachable from REAL
+# user-activation-carrying clicks, not synthetic DOM events (which a headless
+# browser would happily deliver even through an `await`).
+#
+# Stable selectors this harness depends on (T6, panel.js header comment):
+#   #praxis-persistence[data-praxis-tier][data-praxis-excluded]
+#   [data-praxis-action=protect|choose-folder|reconnect|restore|keep-browser-only|toggle-panel]
+#   dialog#praxis-persistence-first-save
+# ---------------------------------------------------------------------------
+
+#: Installed on every persistence-check context (S1-S3 alike). Wraps
+#: `navigator.storage.persist`/`.persisted`, calling through to the real
+#: implementation, and installs the capture/bubble click listeners that
+#: `inClickDispatch` reads (D6 table, browser level). Activation and the
+#: in-click-dispatch flag are captured SYNCHRONOUSLY at call time, before the
+#: wrapped call's promise settles -- a call made after even a short `await`
+#: would still read `userActivation: true` (Chromium's transient activation
+#: lasts seconds), so capturing it post-resolution would prove nothing.
+PERSISTENCE_BASE_INIT_SCRIPT = r"""
+(() => {
+  window.__praxisGestureLog = [];
+  window.__praxisInClickDispatch = false;
+  window.addEventListener('click', () => { window.__praxisInClickDispatch = true; }, true);
+  window.addEventListener('click', () => { window.__praxisInClickDispatch = false; }, false);
+
+  function activation() {
+    return !!(window.navigator.userActivation && window.navigator.userActivation.isActive);
+  }
+
+  const storage = window.navigator && window.navigator.storage;
+  if (storage) {
+    if (typeof storage.persist === 'function') {
+      const origPersist = storage.persist.bind(storage);
+      storage.persist = function () {
+        const userActivation = activation();
+        const inClickDispatch = !!window.__praxisInClickDispatch;
+        return origPersist().then((result) => {
+          window.__praxisGestureLog.push({ api: 'persist', userActivation, inClickDispatch, result });
+          return result;
+        });
+      };
+    }
+    if (typeof storage.persisted === 'function') {
+      const origPersisted = storage.persisted.bind(storage);
+      storage.persisted = function () {
+        const userActivation = activation();
+        const inClickDispatch = !!window.__praxisInClickDispatch;
+        return origPersisted().then((result) => {
+          window.__praxisGestureLog.push({ api: 'persisted', userActivation, inClickDispatch, result });
+          return result;
+        });
+      };
+    }
+  }
+})();
+"""
+
+#: S2 only. Stubs `showDirectoryPicker` with a REAL OPFS subdirectory handle
+#: (AC-10's picker-stub shape, reused here since D6's gesture proof needs a
+#: real FileSystemDirectoryHandle, not a mock) and wraps
+#: `FileSystemHandle.prototype.{queryPermission,requestPermission}` -- adding
+#: them if the browser's OPFS handles don't implement the permission API at
+#: all (`permission_methods_polyfilled`, spec risk table) -- with the
+#: forced-"prompt" test switch. That switch lives ONLY here, never in product
+#: code (B-11): `queryPermission` returns "prompt" while
+#: `localStorage["__praxis_test_force_prompt"] === "1"`, until
+#: `requestPermission` is called, which clears the flag.
+PERSISTENCE_PICKER_STUB_INIT_SCRIPT = r"""
+(() => {
+  window.__praxisPermissionMethodsPolyfilled = false;
+  const proto = window.FileSystemHandle && window.FileSystemHandle.prototype;
+
+  function activation() {
+    return !!(window.navigator.userActivation && window.navigator.userActivation.isActive);
+  }
+
+  if (proto) {
+    if (typeof proto.queryPermission !== 'function') {
+      proto.queryPermission = function () { return Promise.resolve('granted'); };
+      window.__praxisPermissionMethodsPolyfilled = true;
+    }
+    if (typeof proto.requestPermission !== 'function') {
+      proto.requestPermission = function () { return Promise.resolve('granted'); };
+      window.__praxisPermissionMethodsPolyfilled = true;
+    }
+
+    const origQueryPermission = proto.queryPermission;
+    const origRequestPermission = proto.requestPermission;
+
+    proto.queryPermission = function (...args) {
+      const userActivation = activation();
+      const inClickDispatch = !!window.__praxisInClickDispatch;
+      if (window.localStorage.getItem('__praxis_test_force_prompt') === '1') {
+        window.__praxisGestureLog.push({
+          api: 'queryPermission', userActivation, inClickDispatch, result: 'prompt', forced: true,
+        });
+        return Promise.resolve('prompt');
+      }
+      return origQueryPermission.apply(this, args).then((result) => {
+        window.__praxisGestureLog.push({ api: 'queryPermission', userActivation, inClickDispatch, result });
+        return result;
+      });
+    };
+
+    proto.requestPermission = function (...args) {
+      const userActivation = activation();
+      const inClickDispatch = !!window.__praxisInClickDispatch;
+      return origRequestPermission.apply(this, args).then((result) => {
+        window.localStorage.removeItem('__praxis_test_force_prompt');
+        window.__praxisGestureLog.push({ api: 'requestPermission', userActivation, inClickDispatch, result });
+        return result;
+      });
+    };
+  }
+
+  window.showDirectoryPicker = function () {
+    const userActivation = activation();
+    const inClickDispatch = !!window.__praxisInClickDispatch;
+    window.__praxisGestureLog.push({ api: 'showDirectoryPicker', userActivation, inClickDispatch });
+    if (typeof window.__praxisPickerCalled === 'function') {
+      window.__praxisPickerCalled();
+    }
+    return window.navigator.storage.getDirectory().then((root) =>
+      root.getDirectoryHandle('praxis-persist-probe', { create: true }));
+  };
+})();
+"""
+
+#: S3 only. Added AFTER PERSISTENCE_BASE_INIT_SCRIPT so it wins: feature
+#: detection is `window.isSecureContext && typeof win.showDirectoryPicker ===
+#: "function"` (panel.js D5), so deleting the function is enough to make
+#: `fsaSupported` false with no user-agent sniffing involved.
+PERSISTENCE_NO_FSA_INIT_SCRIPT = r"""
+(() => { window.showDirectoryPicker = undefined; })();
+"""
+
+#: How long to wait to prove a selector is ABSENT (S1's repl_entry_has_chip).
+#: Short relative to --timeout: the loader IIFE's pathname check is a
+#: synchronous early return (D2/T6), so if the chip were going to appear it
+#: would within milliseconds, not seconds.
+_PERSISTENCE_ABSENCE_TIMEOUT_MS = 5000
+
+
+def _persistence_seed_notebook_js(path: str) -> str:
+    return (
+        """async () => {
+            try {
+                await window.jupyterapp.serviceManager.contents.save(%s, {
+                    type: "notebook", format: "json",
+                    content: { cells: [], metadata: {}, nbformat: 4, nbformat_minor: 5 },
+                });
+                return { ok: true };
+            } catch (e) {
+                return { ok: false, error: String(e) };
+            }
+        }"""
+        % json.dumps(path)
+    )
+
+
+def _run_persistence_scenario_s1(browser: Any, served: ServedDir, prefix: str, timeout_ms: float) -> dict[str, Any]:
+    """S1 (AC-8): fresh context, no seeding. Chip appears on lab/ before any
+    save, `initial_tier` is read off the `persisted()` wrapper's own log (not
+    just the DOM, per T8a), and repl/ never gets a chip."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    context = browser.new_context()
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        try:
+            page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+            out["indicator_present_before_save"] = True
+        except PlaywrightTimeoutError:
+            out["indicator_present_before_save"] = False
+
+        if out["indicator_present_before_save"]:
+            try:
+                page.wait_for_function(
+                    "() => (window.__praxisGestureLog||[]).some(e => e.api === 'persisted')",
+                    timeout=timeout_ms,
+                )
+            except PlaywrightTimeoutError:
+                pass
+            gesture_log = page.evaluate("() => window.__praxisGestureLog || []")
+            persisted_entries = [e for e in gesture_log if e.get("api") == "persisted"]
+            out["initial_tier"] = (
+                ("L1" if persisted_entries[-1].get("result") is True else "L0")
+                if persisted_entries
+                else None
+            )
+            out["s1_persisted_log"] = persisted_entries
+        else:
+            out["initial_tier"] = None
+
+        repl_url = f"http://127.0.0.1:{served.port}{prefix}repl/index.html"
+        page2 = context.new_page()
+        page2.goto(repl_url, wait_until="load", timeout=timeout_ms)
+        try:
+            page2.wait_for_selector(
+                "#praxis-persistence", state="attached", timeout=_PERSISTENCE_ABSENCE_TIMEOUT_MS
+            )
+            out["repl_entry_has_chip"] = True
+        except PlaywrightTimeoutError:
+            out["repl_entry_has_chip"] = False
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s2(browser: Any, served: ServedDir, prefix: str, timeout_ms: float) -> dict[str, Any]:
+    """S2 (AC-9, AC-14): fresh context with the OPFS picker stub, drive seeded
+    with persist-probe.ipynb. Clicks Protect, then Choose working folder;
+    sets the forced-prompt flag, reloads, and clicks Reconnect. No content
+    assertions (that is T8b's job) -- only gesture-synchrony and storage
+    hygiene."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    picker_calls = {"n": 0}
+    context = browser.new_context()
+
+    def _on_picker_called() -> None:
+        picker_calls["n"] += 1
+
+    context.expose_function("__praxisPickerCalled", _on_picker_called)
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    context.add_init_script(PERSISTENCE_PICKER_STUB_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+        seeded = page.evaluate(_persistence_seed_notebook_js("persist-probe.ipynb"))
+        out["seed_ok"] = bool(seeded.get("ok"))
+        out["seed_error"] = seeded.get("error")
+
+        # -- Protect ----------------------------------------------------
+        page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click("[data-praxis-action=protect]", timeout=timeout_ms)
+        try:
+            page.wait_for_function(
+                "() => (window.__praxisGestureLog||[]).some(e => e.api === 'persist')",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        page.wait_for_timeout(300)  # let core.js's own .then()/notify()/render() land
+
+        log_before_choose = page.evaluate("() => window.__praxisGestureLog || []")
+        persist_entries = [e for e in log_before_choose if e.get("api") == "persist"]
+        out["persist_returned"] = persist_entries[-1].get("result") if persist_entries else None
+        out["tier_after_persist"] = page.get_attribute("#praxis-persistence", "data-praxis-tier")
+
+        # -- Choose working folder ---------------------------------------
+        page.click("[data-praxis-action=choose-folder]", timeout=timeout_ms)
+        try:
+            page.wait_for_function(
+                "() => (window.__praxisGestureLog||[]).some(e => e.api === 'showDirectoryPicker')",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        try:
+            page.wait_for_function(
+                "() => document.querySelector('#praxis-persistence')"
+                "?.getAttribute('data-praxis-tier') === 'L2'",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+
+        out["permission_methods_polyfilled"] = page.evaluate(
+            "() => !!window.__praxisPermissionMethodsPolyfilled"
+        )
+        log_before_reload = page.evaluate("() => window.__praxisGestureLog || []")
+
+        # -- Force prompt, reload, Reconnect -----------------------------
+        page.evaluate("() => window.localStorage.setItem('__praxis_test_force_prompt', '1')")
+        page.reload(wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        try:
+            page.wait_for_function(
+                "() => document.querySelector('#praxis-persistence')"
+                "?.getAttribute('data-praxis-tier') === 'L2-paused'",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        out["tier_on_prompt"] = page.get_attribute("#praxis-persistence", "data-praxis-tier")
+
+        page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click("[data-praxis-action=reconnect]", timeout=timeout_ms)
+        try:
+            page.wait_for_function(
+                "() => (window.__praxisGestureLog||[]).some(e => e.api === 'requestPermission')",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        page.wait_for_timeout(300)
+
+        log_after_reload = page.evaluate("() => window.__praxisGestureLog || []")
+        # __praxisGestureLog is a page-realm global: page.reload() replaces the
+        # JS realm, so the array (and anything logged before it) is gone --
+        # merge the pre- and post-reload halves here, in Python, rather than
+        # trying to smuggle state across the reload inside the page.
+        out["gesture_log"] = log_before_reload + log_after_reload
+        out["picker_calls"] = picker_calls["n"]
+
+        # -- AC-14 storage hygiene, evaluated at the end of S2 ------------
+        db_names = page.evaluate(
+            "async () => (await indexedDB.databases()).map((d) => d.name)"
+        )
+        out["indexeddb_names"] = db_names
+        out["hygiene_no_legacy_jupyterlite_dbs"] = not any(
+            re.match(r"^JupyterLite Storage - ", n or "") for n in (db_names or [])
+        )
+        out["hygiene_one_praxis_repl_contents"] = (db_names or []).count("praxis-repl-contents") == 1
+        out["hygiene_praxis_repl_persistence_present"] = "praxis-repl-persistence" in (db_names or [])
+
+        probe = page.evaluate(
+            """async () => {
+                try {
+                    const model = await window.jupyterapp.serviceManager.contents.get(
+                        "persist-probe.ipynb", { content: true });
+                    return { ok: true, has_content: model.content !== undefined && model.content !== null };
+                } catch (e) {
+                    return { ok: false, error: String(e) };
+                }
+            }"""
+        )
+        out["hygiene_probe_readable"] = bool(probe.get("ok") and probe.get("has_content"))
+        out["hygiene_probe_error"] = probe.get("error")
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s3(browser: Any, served: ServedDir, prefix: str, timeout_ms: float) -> dict[str, Any]:
+    """S3 (AC-13): fresh context whose init script deletes
+    `window.showDirectoryPicker` -- the non-FSA / D5 degraded-browser path.
+    Also drives a real explicit save (via the harness's own
+    `_open_blank_notebook`, already used by --autosetup-fault-check /
+    --restart-check) to prove the first-save gate's modal model excludes the
+    "Choose working folder" option when `pickDirectory === null`."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    context = browser.new_context()
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    context.add_init_script(PERSISTENCE_NO_FSA_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        try:
+            page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+            out["nofsa_indicator_present"] = True
+        except PlaywrightTimeoutError:
+            out["nofsa_indicator_present"] = False
+
+        if out["nofsa_indicator_present"]:
+            out["nofsa_l2_controls"] = page.locator("[data-praxis-action=choose-folder]").count()
+            panel_text = page.eval_on_selector("#praxis-persistence", "(el) => el.textContent") or ""
+            out["nofsa_message_mentions_chromium"] = "Chromium" in panel_text
+        else:
+            out["nofsa_l2_controls"] = None
+            out["nofsa_message_mentions_chromium"] = None
+
+        modal_choose_absent = None
+        if out["nofsa_indicator_present"]:
+            try:
+                _open_blank_notebook(page, timeout_ms=timeout_ms)
+                page.evaluate(
+                    """async () => {
+                        try {
+                            await window.jupyterapp.commands.execute("docmanager:save");
+                        } catch (e) {
+                            /* the gate is driven by evt.result settling either way (D4) */
+                        }
+                    }"""
+                )
+                page.wait_for_selector(
+                    "dialog#praxis-persistence-first-save[open]", timeout=timeout_ms
+                )
+                modal_choose_absent = (
+                    page.locator(
+                        "dialog#praxis-persistence-first-save [data-praxis-action=choose-folder]"
+                    ).count()
+                    == 0
+                )
+            except (PlaywrightTimeoutError, NotebookCheckError) as e:
+                out["s3_modal_trigger_error"] = f"{type(e).__name__}: {e}"
+        out["nofsa_modal_choose_absent"] = modal_choose_absent
+    finally:
+        context.close()
+    return out
+
+
+# ---------------------------------------------------------------------------
+# T8b: scenarios S4-S10 (AC-10, AC-11, AC-12), built on T8a's harness above.
+#
+# Same discipline as T8a (D6/AC-9, and the T8b dispatch's own instruction):
+# every gesture-bound or UI interaction is a real page.click() / page.keyboard
+# call, never page.dispatch_event. Every storage/content assertion compares
+# BY CONTENT (parsed notebook `.cells`, or exact bytes where the assertion is
+# specifically about bytes staying unchanged), never by presence alone.
+# ---------------------------------------------------------------------------
+
+
+def _persistence_seed_notebook_with_source_js(path: str, source: str) -> str:
+    """JS to seed *path* as a notebook with exactly ONE code cell whose
+    source is *source*. S1-S3's `_persistence_seed_notebook_js` seeds an
+    empty-cells notebook, which is enough for hygiene/gesture checks that
+    never edit anything -- T8b scenarios open, EDIT and re-save a cell, so
+    they need something to click into and replace.
+    """
+    content = {
+        "cells": [
+            {
+                "cell_type": "code",
+                "source": [source],
+                "metadata": {},
+                "outputs": [],
+                "execution_count": None,
+            }
+        ],
+        "metadata": {},
+        "nbformat": 4,
+        "nbformat_minor": 5,
+    }
+    return (
+        """async () => {
+            try {
+                await window.jupyterapp.serviceManager.contents.save(%s, {
+                    type: "notebook", format: "json",
+                    content: %s,
+                });
+                return { ok: true };
+            } catch (e) {
+                return { ok: false, error: String(e) };
+            }
+        }"""
+        % (json.dumps(path), json.dumps(content))
+    )
+
+
+#: Seed arbitrary files (by TEXT content) into the picker stub's real OPFS
+#: subdirectory (`praxis-persist-probe`, the same one
+#: `PERSISTENCE_PICKER_STUB_INIT_SCRIPT`'s `showDirectoryPicker` stub hands
+#: back). Called with `page.evaluate(_PERSISTENCE_OPFS_WRITE_FILES_JS,
+#: {"sub/a.ipynb": "...", ".hidden": "..."})` -- BEFORE the picker/choose
+#: click, so the seeded bytes are already "on disk" the moment core.js binds
+#: the folder. Creates parent directories and dot-prefixed entries alike;
+#: dot-prefixed SKIPPING is the product's job (D1), not the seed's.
+_PERSISTENCE_OPFS_WRITE_FILES_JS = r"""
+async (files) => {
+    try {
+        const root = await navigator.storage.getDirectory();
+        const probeDir = await root.getDirectoryHandle('praxis-persist-probe', { create: true });
+        for (const [path, text] of Object.entries(files)) {
+            const segments = path.split('/');
+            const fileName = segments.pop();
+            let dir = probeDir;
+            for (const seg of segments) {
+                dir = await dir.getDirectoryHandle(seg, { create: true });
+            }
+            const fileHandle = await dir.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(text);
+            await writable.close();
+        }
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, error: String(e) };
+    }
+}
+"""
+
+#: Read one file's TEXT back out of the same OPFS probe directory. Called
+#: with `page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "sub/a.ipynb")`.
+#: Returns `{exists: false, text: null}` for a genuinely absent path (never
+#: raises), so callers can compare "before" vs "after" without special-casing
+#: a first read.
+_PERSISTENCE_OPFS_READ_FILE_JS = r"""
+async (path) => {
+    try {
+        const root = await navigator.storage.getDirectory();
+        const probeDir = await root.getDirectoryHandle('praxis-persist-probe', { create: true });
+        const segments = path.split('/');
+        const fileName = segments.pop();
+        let dir = probeDir;
+        for (const seg of segments) {
+            dir = await dir.getDirectoryHandle(seg, { create: false });
+        }
+        const fileHandle = await dir.getFileHandle(fileName, { create: false });
+        const file = await fileHandle.getFile();
+        const text = await file.text();
+        return { exists: true, text };
+    } catch (e) {
+        if (e && (e.name === 'NotFoundError' || e.name === 'InvalidStateError')) {
+            return { exists: false, text: null };
+        }
+        return { exists: false, text: null, error: String(e) };
+    }
+}
+"""
+
+#: Read the DRIVE's copy of a path through the real contents API (never the
+#: DOM). Called with `page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "a.ipynb")`.
+_PERSISTENCE_DRIVE_GET_JS = r"""
+async (path) => {
+    try {
+        const model = await window.jupyterapp.serviceManager.contents.get(path, { content: true });
+        return { exists: true, content: model.content, format: model.format };
+    } catch (e) {
+        return { exists: false, content: null, error: String(e) };
+    }
+}
+"""
+
+
+def _notebook_json_text(source: str) -> str:
+    """Build standalone notebook JSON text used to seed OPFS "on-disk" bytes
+    directly (S5, S7). This is NOT necessarily byte-identical to what the
+    product's `codec.js` would emit for the same cells -- scenarios that need
+    that never compare raw bytes across the OPFS/drive boundary; they compare
+    parsed `.cells` (`_cells_match`) instead. The one place raw-byte equality
+    matters (S5's `differs_disk_untouched_after_save`) compares this
+    function's own output against itself before/after a skipped mirror
+    write, never against the product's serialization.
+    """
+    content = {
+        "cells": [
+            {
+                "cell_type": "code",
+                "source": [source],
+                "metadata": {},
+                "outputs": [],
+                "execution_count": None,
+            }
+        ],
+        "metadata": {},
+        "nbformat": 4,
+        "nbformat_minor": 5,
+    }
+    return json.dumps(content, indent=1) + "\n"
+
+
+def _cells_match(opfs_text: str | None, drive_content: Any) -> bool:
+    """Compare a notebook BY CONTENT (`.cells`), the comparison every T8b
+    scenario uses except S5's byte-exact "unchanged" check."""
+    if opfs_text is None or not isinstance(drive_content, dict):
+        return False
+    try:
+        disk = json.loads(opfs_text)
+    except (TypeError, ValueError):
+        return False
+    if not isinstance(disk, dict):
+        return False
+    return disk.get("cells") == drive_content.get("cells")
+
+
+def _decode_notebook_content(content: Any, fmt: str | None) -> dict[str, Any] | None:
+    """Normalize whatever `contents.get(..., {content:true})` returns for a
+    notebook into a parsed dict, regardless of which `format` the backend
+    chose. Measured empirically (S10): our own save/mirror paths return
+    `format="json"` with `content` already parsed, but JupyterLite's OWN
+    file-browser Upload path returns `format="base64"` with `content` as a
+    base64 string for a freshly-uploaded .ipynb -- so a caller that assumes
+    "json" and does `content.get(...)` crashes on a plain str. This decodes
+    either shape (and a bare "text" JSON string) before comparing, which is
+    still an exact-content comparison, just format-agnostic."""
+    if isinstance(content, dict):
+        return content
+    if not isinstance(content, str):
+        return None
+    raw = content
+    if fmt == "base64":
+        try:
+            raw = base64.b64decode(content).decode("utf-8")
+        except Exception:
+            return None
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _cell_source_text(cells: list[dict[str, Any]] | None, index: int = 0) -> str:
+    """nbformat allows a cell's `source` to be a string OR a list of
+    strings -- normalize either shape to one string for marker checks."""
+    if not cells or index >= len(cells):
+        return ""
+    source = cells[index].get("source")
+    if isinstance(source, list):
+        return "".join(source)
+    return source or ""
+
+
+def _dialog_open(page: Any) -> bool:
+    """Whether the first-save gate `<dialog>` is currently open. Polled after
+    EVERY step of S6 (`gate_never_opened_s6`) and used directly by S8/S9."""
+    return bool(
+        page.evaluate(
+            "() => { const d = document.querySelector('dialog#praxis-persistence-first-save');"
+            " return !!(d && d.open); }"
+        )
+    )
+
+
+def _poll_until(fn: Any, *, timeout_s: float = 10.0, interval_s: float = 0.25) -> Any:
+    """Poll `fn()` until truthy or *timeout_s* elapses; returns the last
+    value. Used wherever a T8b assertion depends on core.js's single ordered
+    write chain (D7) settling asynchronously, with no DOM signal to
+    `wait_for_selector` on (e.g. a disk write landing after `contents.save`).
+    """
+    deadline = time.monotonic() + timeout_s
+    result = fn()
+    while not result and time.monotonic() < deadline:
+        time.sleep(interval_s)
+        result = fn()
+    return result
+
+
+def _poll_drive_cell_source_contains(
+    page: Any, path: str, marker: str, *, timeout_s: float
+) -> dict[str, Any]:
+    """Poll `contents.get(path)` until its first cell's source contains
+    *marker*, or timeout. Returns the last drive-get result either way, so a
+    timeout still leaves callers something to inspect/report rather than a
+    bare None."""
+    last: dict[str, Any] = {}
+
+    def _check() -> bool:
+        nonlocal last
+        last = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, path)
+        content = last.get("content") or {}
+        return marker in _cell_source_text(content.get("cells"))
+
+    _poll_until(_check, timeout_s=timeout_s)
+    return last
+
+
+def _open_existing_notebook(page: Any, path: str, *, timeout_ms: float) -> None:
+    """Open an ALREADY-SEEDED notebook at *path* via `docmanager:open` (the
+    same real JupyterLab command `_open_blank_notebook` uses after creation),
+    handling the Select Kernel dialog if it appears. Never creates the file:
+    callers seed it first via `_persistence_seed_notebook_with_source_js` /
+    `_persistence_seed_notebook_js`. Does not wait for kernel-idle -- T8b only
+    ever edits cell TEXT and saves, never runs a cell, so there is nothing to
+    wait for a live kernel for."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+    opened = page.evaluate(
+        """async (path) => {
+            try {
+                await window.jupyterapp.commands.execute("docmanager:open", {
+                    path, factory: "Notebook", kernel: {name: "python"}});
+                return {ok: true};
+            } catch (e) {
+                return {ok: false, error: String(e)};
+            }
+        }""",
+        path,
+    )
+    if not opened.get("ok"):
+        raise NotebookCheckError(f"could not open {path!r}: {opened.get('error')!r}")
+    page.wait_for_function("() => !!document.querySelector('.jp-Notebook')", timeout=timeout_ms)
+    try:
+        page.wait_for_selector(".jp-Dialog", timeout=10_000)
+        LOG.info("kernel-selection dialog present for %s; accepting", path)
+        page.click(".jp-Dialog .jp-mod-accept")
+        page.wait_for_selector(".jp-Dialog", state="detached", timeout=timeout_ms)
+    except PlaywrightTimeoutError:
+        LOG.info("no kernel-selection dialog appeared for %s", path)
+
+
+def _replace_first_cell_source(page: Any, new_source: str, *, timeout_ms: float) -> None:
+    """Click into the notebook's first cell editor and replace its whole
+    source with *new_source* -- real page.click() + page.keyboard only,
+    never dispatchEvent (same discipline as D6/AC-9)."""
+    loc = page.locator(".jp-Notebook .jp-CodeCell .cm-content").first
+    loc.wait_for(state="visible", timeout=timeout_ms)
+    loc.click()
+    page.keyboard.press("Control+a")
+    page.keyboard.type(new_source)
+
+
+def _run_persistence_scenario_s4(
+    browser: Any, served: ServedDir, prefix: str, timeout_ms: float
+) -> dict[str, Any]:
+    """S4 (AC-10): fresh context, drive seeded with persist-probe.ipynb (one
+    editable cell), OPFS starts empty. Binds via a real panel click, checks
+    the mirror BY CONTENT right after the bind and again after a real
+    Control+S resave, then reloads and proves rehydration needs no new
+    picker call (and rebinds to the SAME folder name)."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    picker_calls = {"n": 0}
+    context = browser.new_context()
+
+    def _on_picker_called() -> None:
+        picker_calls["n"] += 1
+
+    context.expose_function("__praxisPickerCalled", _on_picker_called)
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    context.add_init_script(PERSISTENCE_PICKER_STUB_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+        seeded = page.evaluate(_persistence_seed_notebook_with_source_js("persist-probe.ipynb", "s4-before"))
+        out["seed_ok"] = bool(seeded.get("ok"))
+        out["seed_error"] = seeded.get("error")
+
+        page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click("[data-praxis-action=choose-folder]", timeout=timeout_ms)
+        page.wait_for_function(
+            "() => document.querySelector('#praxis-persistence')"
+            "?.getAttribute('data-praxis-tier') === 'L2'",
+            timeout=timeout_ms,
+        )
+
+        disk = page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb")
+        drive = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "persist-probe.ipynb")
+        out["mirror_after_choose_matches"] = _cells_match(disk.get("text"), drive.get("content"))
+        out["mirror_after_choose_disk_exists"] = disk.get("exists")
+        out["mirror_after_choose_drive_exists"] = drive.get("exists")
+
+        _open_existing_notebook(page, "persist-probe.ipynb", timeout_ms=timeout_ms)
+        _replace_first_cell_source(page, "s4-after", timeout_ms=timeout_ms)
+        page.keyboard.press("Control+s")
+        drive_after_resave = _poll_drive_cell_source_contains(
+            page, "persist-probe.ipynb", "s4-after", timeout_s=timeout_ms / 1000
+        )
+
+        def _resave_mirrored() -> bool:
+            d = page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb")
+            return _cells_match(d.get("text"), drive_after_resave.get("content"))
+
+        out["mirror_after_resave_matches"] = bool(
+            _poll_until(_resave_mirrored, timeout_s=timeout_ms / 1000)
+        )
+
+        chip_text_before_reload = (
+            page.eval_on_selector("[data-praxis-action=toggle-panel]", "(el) => el.textContent") or ""
+        )
+        out["folder_name_before_reload"] = chip_text_before_reload
+
+        page.reload(wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        try:
+            page.wait_for_function(
+                "() => document.querySelector('#praxis-persistence')"
+                "?.getAttribute('data-praxis-tier') === 'L2'",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        out["tier_after_reload"] = page.get_attribute("#praxis-persistence", "data-praxis-tier")
+        out["picker_calls"] = picker_calls["n"]
+        chip_text_after_reload = (
+            page.eval_on_selector("[data-praxis-action=toggle-panel]", "(el) => el.textContent") or ""
+        )
+        out["folder_name_after_reload"] = chip_text_after_reload
+        out["rehydrated_without_picker"] = picker_calls["n"] == 1 and out["tier_after_reload"] == "L2"
+        out["rehydrated_folder_name_matches"] = (
+            "praxis-persist-probe" in chip_text_before_reload
+            and "praxis-persist-probe" in chip_text_after_reload
+        )
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s5(
+    browser: Any, served: ServedDir, prefix: str, timeout_ms: float
+) -> dict[str, Any]:
+    """S5 (AC-10, D7 "differs on disk"): fresh context. Before choosing a
+    folder, OPFS praxis-persist-probe/ is seeded with persist-probe.ipynb
+    holding DIFFERENT content from the drive's own seeded version, so bulk
+    sync must exclude it (never overwrite it). A real, forced explicit save
+    of the drive file afterwards must still leave the disk bytes untouched;
+    only a real click on Replace disk copy may write them."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    context = browser.new_context()
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    context.add_init_script(PERSISTENCE_PICKER_STUB_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+        opfs_before = _notebook_json_text("s5-on-disk-before-choose")
+        seed_opfs = page.evaluate(_PERSISTENCE_OPFS_WRITE_FILES_JS, {"persist-probe.ipynb": opfs_before})
+        out["seed_opfs_ok"] = bool(seed_opfs.get("ok"))
+        out["seed_opfs_error"] = seed_opfs.get("error")
+
+        seeded = page.evaluate(
+            _persistence_seed_notebook_with_source_js("persist-probe.ipynb", "s5-drive-version")
+        )
+        out["seed_drive_ok"] = bool(seeded.get("ok"))
+        out["seed_drive_error"] = seeded.get("error")
+
+        page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click("[data-praxis-action=choose-folder]", timeout=timeout_ms)
+
+        def _excluded_one() -> bool:
+            return page.get_attribute("#praxis-persistence", "data-praxis-excluded") == "1"
+
+        _poll_until(_excluded_one, timeout_s=timeout_ms / 1000)
+        out["excluded_after_choose"] = page.get_attribute("#praxis-persistence", "data-praxis-excluded")
+        chip_text = page.eval_on_selector("[data-praxis-action=toggle-panel]", "(el) => el.textContent") or ""
+        out["differs_excluded"] = out["excluded_after_choose"] == "1" and "(1 not mirrored)" in chip_text
+
+        disk_before_save = page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb")
+
+        _open_existing_notebook(page, "persist-probe.ipynb", timeout_ms=timeout_ms)
+        # Force real dirtiness (a no-op net edit) so the explicit save below
+        # is a genuine content-changing save, not a skipped no-op save --
+        # the exclusion must hold even though a real fileChanged "save"
+        # fires.
+        cell = page.locator(".jp-Notebook .jp-CodeCell .cm-content").first
+        cell.wait_for(state="visible", timeout=timeout_ms)
+        cell.click()
+        page.keyboard.press("End")
+        page.keyboard.type(" ")
+        page.keyboard.press("Backspace")
+        page.keyboard.press("Control+s")
+        page.wait_for_timeout(800)  # give the (must-be-skipped) mirror chain a chance to run
+
+        disk_after_save = page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb")
+        out["differs_disk_untouched_after_save"] = (
+            disk_after_save.get("text") == disk_before_save.get("text") == opfs_before
+        )
+
+        panel_hidden = page.eval_on_selector("#praxis-persistence > div", "(el) => el.hidden")
+        if panel_hidden:
+            page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click(
+            '[data-praxis-action=replace-disk-copy][data-praxis-path="persist-probe.ipynb"]',
+            timeout=timeout_ms,
+        )
+
+        def _excluded_zero() -> bool:
+            return page.get_attribute("#praxis-persistence", "data-praxis-excluded") == "0"
+
+        _poll_until(_excluded_zero, timeout_s=timeout_ms / 1000)
+        out["excluded_after_replace"] = page.get_attribute("#praxis-persistence", "data-praxis-excluded")
+
+        disk_after_replace = page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb")
+        drive_after_replace = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "persist-probe.ipynb")
+        out["replace_writes"] = out["excluded_after_replace"] == "0" and _cells_match(
+            disk_after_replace.get("text"), drive_after_replace.get("content")
+        )
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s6(
+    browser: Any, served: ServedDir, prefix: str, timeout_ms: float
+) -> dict[str, Any]:
+    """S6 (AC-10, B-1/B-3): fresh context, drive seeded with
+    persist-probe.ipynb. Binds through the PANEL's Choose working folder
+    before any save (B-3: this alone sets the ack to "folder"), forces
+    queryPermission to "prompt", reloads, makes a real explicit Control+S
+    save while paused (the pending set must persist it), reloads again with
+    the flag still set, then Reconnects with a real click. The first-save
+    gate dialog is polled after EVERY step -- it must never open
+    (gate_never_opened_s6), because the ack was already set by the bind."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    dialog_checks: list[bool] = []
+    context = browser.new_context()
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    context.add_init_script(PERSISTENCE_PICKER_STUB_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+        dialog_checks.append(_dialog_open(page))
+
+        seeded = page.evaluate(_persistence_seed_notebook_with_source_js("persist-probe.ipynb", "s6-initial"))
+        out["seed_ok"] = bool(seeded.get("ok"))
+        out["seed_error"] = seeded.get("error")
+
+        # -- bind through the panel, before any save (B-3) --------------------
+        page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click("[data-praxis-action=choose-folder]", timeout=timeout_ms)
+        page.wait_for_function(
+            "() => document.querySelector('#praxis-persistence')"
+            "?.getAttribute('data-praxis-tier') === 'L2'",
+            timeout=timeout_ms,
+        )
+        dialog_checks.append(_dialog_open(page))
+
+        disk_before_edit = page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb")
+        out["disk_after_bind_exists"] = disk_before_edit.get("exists")
+
+        # -- force "prompt", reload --------------------------------------------
+        page.evaluate("() => window.localStorage.setItem('__praxis_test_force_prompt', '1')")
+        page.reload(wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        try:
+            page.wait_for_function(
+                "() => document.querySelector('#praxis-persistence')"
+                "?.getAttribute('data-praxis-tier') === 'L2-paused'",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        out["tier_on_prompt"] = page.get_attribute("#praxis-persistence", "data-praxis-tier")
+        dialog_checks.append(_dialog_open(page))
+
+        # -- explicit Control+S save while paused ------------------------------
+        _open_existing_notebook(page, "persist-probe.ipynb", timeout_ms=timeout_ms)
+        _replace_first_cell_source(page, "s6-edited", timeout_ms=timeout_ms)
+        page.keyboard.press("Control+s")
+        drive_after_edit_save = _poll_drive_cell_source_contains(
+            page, "persist-probe.ipynb", "s6-edited", timeout_s=timeout_ms / 1000
+        )
+        dialog_checks.append(_dialog_open(page))  # right after Control+S (D4)
+
+        out["paused_save_not_written"] = (
+            page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb").get("text")
+            == disk_before_edit.get("text")
+        )
+
+        # -- reload again, flag still set: pending survives ---------------------
+        page.reload(wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        try:
+            page.wait_for_function(
+                "() => document.querySelector('#praxis-persistence')"
+                "?.getAttribute('data-praxis-tier') === 'L2-paused'",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        out["tier_after_second_reload"] = page.get_attribute("#praxis-persistence", "data-praxis-tier")
+        out["pending_survives_reload"] = out["tier_after_second_reload"] == "L2-paused"
+        dialog_checks.append(_dialog_open(page))
+
+        # -- real click Reconnect -----------------------------------------------
+        page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click("[data-praxis-action=reconnect]", timeout=timeout_ms)
+        dialog_checks.append(_dialog_open(page))  # right after the click, during the flush
+        try:
+            page.wait_for_function(
+                "() => document.querySelector('#praxis-persistence')"
+                "?.getAttribute('data-praxis-tier') === 'L2'",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        out["tier_after_reconnect"] = page.get_attribute("#praxis-persistence", "data-praxis-tier")
+        dialog_checks.append(_dialog_open(page))
+
+        disk_after_reconnect = page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb")
+        out["reconnect_flushed_matches"] = out["tier_after_reconnect"] == "L2" and _cells_match(
+            disk_after_reconnect.get("text"), drive_after_edit_save.get("content")
+        )
+
+        out["dialog_checks"] = dialog_checks
+        out["gate_never_opened_s6"] = not any(dialog_checks)
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s7(
+    browser: Any, served: ServedDir, prefix: str, timeout_ms: float
+) -> dict[str, Any]:
+    """S7 (AC-10, restore): fresh context with a bound folder. OPFS is seeded
+    with sub/restore-me.ipynb and a dot-prefixed .hidden file (both absent
+    from the drive); the drive holds persist-probe.ipynb whose content
+    differs from the disk copy (bulk sync excludes it -- restore must still
+    never overwrite a drive-present path, excluded or not)."""
+    out: dict[str, Any] = {}
+    context = browser.new_context()
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    context.add_init_script(PERSISTENCE_PICKER_STUB_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+        restore_me_text = _notebook_json_text("restore-me-content")
+        opfs_probe_text = _notebook_json_text("s7-on-disk")
+        seed_opfs = page.evaluate(
+            _PERSISTENCE_OPFS_WRITE_FILES_JS,
+            {
+                "sub/restore-me.ipynb": restore_me_text,
+                ".hidden": "should not restore",
+                "persist-probe.ipynb": opfs_probe_text,
+            },
+        )
+        out["seed_opfs_ok"] = bool(seed_opfs.get("ok"))
+        out["seed_opfs_error"] = seed_opfs.get("error")
+
+        seeded = page.evaluate(_persistence_seed_notebook_with_source_js("persist-probe.ipynb", "s7-drive"))
+        out["seed_drive_ok"] = bool(seeded.get("ok"))
+        drive_probe_before = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "persist-probe.ipynb")
+
+        # -- bind (starting state: "fresh context with a bound folder") --------
+        page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click("[data-praxis-action=choose-folder]", timeout=timeout_ms)
+
+        def _excluded_one() -> bool:
+            return page.get_attribute("#praxis-persistence", "data-praxis-excluded") == "1"
+
+        _poll_until(_excluded_one, timeout_s=timeout_ms / 1000)
+        out["excluded_after_choose"] = page.get_attribute("#praxis-persistence", "data-praxis-excluded")
+
+        # -- real click Restore ---------------------------------------------------
+        page.click("[data-praxis-action=restore]", timeout=timeout_ms)
+
+        def _restored() -> bool:
+            d = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "sub/restore-me.ipynb")
+            return bool(d.get("exists"))
+
+        _poll_until(_restored, timeout_s=timeout_ms / 1000)
+
+        drive_restored = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "sub/restore-me.ipynb")
+        out["restore_matches"] = _cells_match(restore_me_text, drive_restored.get("content"))
+
+        drive_hidden = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, ".hidden")
+        out["restore_skipped_dotfile"] = drive_hidden.get("exists") is False
+
+        drive_probe_after = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "persist-probe.ipynb")
+        out["restore_did_not_overwrite"] = drive_probe_after.get("content") == drive_probe_before.get("content")
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s8(
+    browser: Any, served: ServedDir, prefix: str, timeout_ms: float
+) -> dict[str, Any]:
+    """S8 (AC-11): fresh context, drive seeded with persist-probe.ipynb (one
+    editable cell). A real click into the notebook plus a real Control+S
+    opens the first-save gate modal. Proves Escape (twice -- Chromium's
+    CloseWatcher makes the SECOND consecutive Escape non-cancelable) and a
+    backdrop click do NOT close it, and that a real choose-folder click
+    does."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    context = browser.new_context()
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    context.add_init_script(PERSISTENCE_PICKER_STUB_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+        seeded = page.evaluate(_persistence_seed_notebook_with_source_js("persist-probe.ipynb", ""))
+        out["seed_ok"] = bool(seeded.get("ok"))
+
+        _open_existing_notebook(page, "persist-probe.ipynb", timeout_ms=timeout_ms)
+        _replace_first_cell_source(page, "s8-marker", timeout_ms=timeout_ms)
+        page.keyboard.press("Control+s")
+
+        page.wait_for_selector("dialog#praxis-persistence-first-save[open]", timeout=timeout_ms)
+        out["modal_open"] = bool(
+            page.evaluate(
+                "() => document.querySelector('dialog#praxis-persistence-first-save')?.open === true"
+            )
+        )
+        out["modal_focus_inside"] = bool(
+            page.evaluate(
+                "() => { const d = document.querySelector('dialog#praxis-persistence-first-save');"
+                " return !!(d && d.contains(document.activeElement)); }"
+            )
+        )
+
+        drive_after_first_save = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "persist-probe.ipynb")
+        out["save_landed_before_modal"] = "s8-marker" in _cell_source_text(
+            (drive_after_first_save.get("content") or {}).get("cells")
+        )
+
+        # -- Escape x2: the SECOND press is non-cancelable (CloseWatcher); the
+        # dialog must re-arm itself on `close` when no choice is recorded.
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(200)
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(200)
+        out["modal_survives_double_escape"] = bool(
+            page.evaluate(
+                "() => { const d = document.querySelector('dialog#praxis-persistence-first-save');"
+                " return !!(d && d.open && d.contains(document.activeElement)); }"
+            )
+        )
+
+        # -- backdrop click: no listener closes the dialog on it -----------------
+        page.mouse.click(2, 2)
+        page.wait_for_timeout(200)
+        out["modal_survives_backdrop_click"] = bool(
+            page.evaluate(
+                "() => document.querySelector('dialog#praxis-persistence-first-save')?.open === true"
+            )
+        )
+
+        # -- choosing a folder (real click) closes it -----------------------------
+        page.click(
+            "dialog#praxis-persistence-first-save [data-praxis-action=choose-folder]",
+            timeout=timeout_ms,
+        )
+        try:
+            page.wait_for_selector(
+                "dialog#praxis-persistence-first-save[open]", state="detached", timeout=timeout_ms
+            )
+            out["modal_closed"] = True
+        except PlaywrightTimeoutError:
+            out["modal_closed"] = not bool(
+                page.evaluate(
+                    "() => document.querySelector('dialog#praxis-persistence-first-save')?.open === true"
+                )
+            )
+
+        # -- a second explicit save must NOT reopen it -----------------------------
+        try:
+            page.wait_for_function(
+                "() => document.querySelector('#praxis-persistence')"
+                "?.getAttribute('data-praxis-tier') === 'L2'",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        page.click(".jp-Notebook .jp-CodeCell .cm-content", timeout=timeout_ms)
+        page.keyboard.press("Control+s")
+        page.wait_for_timeout(500)
+        out["modal_reopened"] = bool(
+            page.evaluate(
+                "() => document.querySelector('dialog#praxis-persistence-first-save')?.open === true"
+            )
+        )
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s9(
+    browser: Any, served: ServedDir, prefix: str, timeout_ms: float
+) -> dict[str, Any]:
+    """S9 (AC-11): fresh context. Create Untitled.ipynb via File -> New ->
+    Notebook (real menu clicks, not the harness's contents.newUntitled
+    shortcut used elsewhere), type a marker into the first cell, and press a
+    real Control+S. JupyterLab's rename-untitled-on-save dialog must appear
+    BEFORE the gate modal (D4: the command's `evt.result` only resolves once
+    that dialog is answered and the save completes); the gate then opens, and
+    the RENAMED file holds the marker by content."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    context = browser.new_context()
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+        # -- File -> New -> Notebook, real menu clicks -----------------------------
+        page.click(".lm-MenuBar-item:has-text('File')", timeout=timeout_ms)
+        page.click(".lm-Menu-itemLabel:has-text('New')", timeout=timeout_ms)
+        page.click(".lm-Menu-itemLabel:text-is('Notebook')", timeout=timeout_ms)
+
+        # A kernel-selection dialog may appear before the notebook is usable.
+        try:
+            page.wait_for_selector(".jp-Dialog", timeout=10_000)
+            page.click(".jp-Dialog .jp-mod-accept")
+            page.wait_for_selector(".jp-Dialog", state="detached", timeout=timeout_ms)
+        except PlaywrightTimeoutError:
+            pass
+
+        page.wait_for_function("() => !!document.querySelector('.jp-Notebook')", timeout=timeout_ms)
+        _replace_first_cell_source(page, "s9-marker", timeout_ms=timeout_ms)
+
+        page.keyboard.press("Control+s")
+
+        # -- JupyterLab's rename-untitled dialog ------------------------------------
+        page.wait_for_selector(".jp-Dialog", timeout=timeout_ms)
+        out["rename_dialog_before_gate"] = not _dialog_open(page)
+        name_input = page.locator(".jp-Dialog input[type=text], .jp-Dialog .jp-mod-styled input").first
+        name_input.wait_for(state="visible", timeout=timeout_ms)
+        name_input.click()
+        page.keyboard.press("Control+a")
+        page.keyboard.type("renamed-probe.ipynb")
+        page.click(".jp-Dialog .jp-mod-accept", timeout=timeout_ms)
+        page.wait_for_selector(".jp-Dialog", state="detached", timeout=timeout_ms)
+
+        # -- gate then opens ----------------------------------------------------------
+        page.wait_for_selector("dialog#praxis-persistence-first-save[open]", timeout=timeout_ms)
+        out["gate_after_rename"] = _dialog_open(page)
+
+        drive = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "renamed-probe.ipynb")
+        out["renamed_file_saved"] = "s9-marker" in _cell_source_text((drive.get("content") or {}).get("cells"))
+        out["renamed_drive_exists"] = drive.get("exists")
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s10(
+    browser: Any, served: ServedDir, prefix: str, timeout_ms: float
+) -> dict[str, Any]:
+    """S10 (AC-12): fresh context, drive seeded with persist-probe.ipynb.
+    Proves native JupyterLab Download and Upload round-trip BY CONTENT, using
+    Playwright's download/filechooser events fired from real UI clicks -- no
+    praxis export code exists (D3): this scenario is what decides whether
+    T10's contingent Download button is actually needed."""
+    out: dict[str, Any] = {}
+    context = browser.new_context(accept_downloads=True)
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+        seeded = page.evaluate(_persistence_seed_notebook_with_source_js("persist-probe.ipynb", "s10-drive"))
+        out["seed_ok"] = bool(seeded.get("ok"))
+
+        drive_before = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "persist-probe.ipynb")
+
+        # -- Download: right-click the file row in the file browser, click Download --
+        try:
+            row = page.locator(".jp-DirListing-item", has_text="persist-probe.ipynb").first
+            row.wait_for(state="visible", timeout=timeout_ms)
+            row.click(button="right")
+            page.wait_for_selector(".lm-Menu-itemLabel:text-is('Download')", timeout=timeout_ms)
+            with page.expect_download(timeout=timeout_ms) as download_info:
+                page.click(".lm-Menu-itemLabel:text-is('Download')", timeout=timeout_ms)
+            download = download_info.value
+            tmp_path = Path(tempfile.mkdtemp()) / "downloaded-persist-probe.ipynb"
+            download.save_as(str(tmp_path))
+            downloaded_text = tmp_path.read_text()
+            out["download_matches"] = _cells_match(downloaded_text, drive_before.get("content"))
+        except Exception as e:  # noqa: BLE001 -- report, don't crash the whole run
+            out["download_matches"] = False
+            out["download_error"] = f"{type(e).__name__}: {e}"
+
+        # -- Upload: real click on Upload, real file chooser --------------------------
+        try:
+            upload_marker = "s10-upload-marker"
+            upload_text = _notebook_json_text(upload_marker)
+            upload_content = json.loads(upload_text)
+            tmp_upload_dir = Path(tempfile.mkdtemp())
+            tmp_upload_path = tmp_upload_dir / "upload-probe.ipynb"
+            tmp_upload_path.write_text(upload_text)
+
+            upload_button = page.locator("[title='Upload Files'], [title='Upload']").first
+            upload_button.wait_for(state="visible", timeout=timeout_ms)
+            with page.expect_file_chooser(timeout=timeout_ms) as fc_info:
+                upload_button.click(timeout=timeout_ms)
+            file_chooser = fc_info.value
+            file_chooser.set_files(str(tmp_upload_path))
+
+            def _uploaded() -> bool:
+                d = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "upload-probe.ipynb")
+                return bool(d.get("exists"))
+
+            _poll_until(_uploaded, timeout_s=timeout_ms / 1000)
+            drive_uploaded = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "upload-probe.ipynb")
+            decoded = _decode_notebook_content(
+                drive_uploaded.get("content"), drive_uploaded.get("format")
+            )
+            out["upload_matches"] = decoded is not None and decoded.get("cells") == upload_content.get(
+                "cells"
+            )
+            out["upload_drive_format"] = drive_uploaded.get("format")
+        except Exception as e:  # noqa: BLE001
+            out["upload_matches"] = False
+            out["upload_error"] = f"{type(e).__name__}: {e}"
+    finally:
+        context.close()
+    return out
+
+
+def _ensure_persistence_browser(
+    p: Any, browser: Any, *, chrome_path: str, offline: bool, scenario_label: str
+) -> Any:
+    """Relaunch the shared `--persistence-check` browser if it died under a
+    PRIOR scenario, instead of letting one browser-process crash cascade into
+    every remaining scenario reporting a misleading "browser has been closed"
+    (masking which scenario, if any, actually broke). Observed root cause
+    (260922): a genuine Chromium-level crash -- not anything in this harness or
+    in the product's persistence JS -- see the `playwright` pin comment in
+    pyproject.toml for the full diagnosis. This function does not change what
+    any scenario asserts; it only decides which browser instance a scenario
+    runs against.
+    """
+    if browser.is_connected():
+        return browser
+    LOG.warning(
+        "persistence-check: browser was disconnected before %s -- relaunching",
+        scenario_label,
+    )
+    return p.chromium.launch(
+        executable_path=chrome_path,
+        headless=True,
+        args=chromium_launch_args(offline=offline),
+    )
+
+
+def run_persistence_check(
+    *,
+    serve_dir: Path,
+    base_path: str,
+    chrome_path: str,
+    timeout_s: float,
+    offline: bool = False,
+) -> dict[str, Any]:
+    """--persistence-check: T8a (S1-S3 / AC-8, AC-9, AC-13, AC-14, AC-17) plus
+    T8b (S4-S10 / AC-10, AC-11, AC-12).
+
+    Follows the existing check shape (ServedDir, chromium_launch_args, a
+    `result` dict with `failures`) -- see `run_typeahead_check` above.
+    """
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as e:  # pragma: no cover - environment problem
+        raise RuntimeError(f"playwright is not importable: {e}") from e
+
+    prefix = _normalize_base_path(base_path)
+    timeout_ms = timeout_s * 1000
+    result: dict[str, Any] = {"failures": []}
+
+    with ServedDir(serve_dir, base_path, coi=False) as served:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                executable_path=chrome_path,
+                headless=True,
+                args=chromium_launch_args(offline=offline),
+            )
+            try:
+                try:
+                    s1 = _run_persistence_scenario_s1(browser, served, prefix, timeout_ms)
+                except Exception as e:  # keep going -- AC-17 needs a partial result, not a crash
+                    LOG.warning("persistence-check S1 raised: %s: %s", type(e).__name__, e)
+                    s1 = {"error": f"{type(e).__name__}: {e}"}
+                result["s1"] = s1
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S2"
+                )
+                try:
+                    s2 = _run_persistence_scenario_s2(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S2 raised: %s: %s", type(e).__name__, e)
+                    s2 = {"error": f"{type(e).__name__}: {e}"}
+                result["s2"] = s2
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S3"
+                )
+                try:
+                    s3 = _run_persistence_scenario_s3(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S3 raised: %s: %s", type(e).__name__, e)
+                    s3 = {"error": f"{type(e).__name__}: {e}"}
+                result["s3"] = s3
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S4"
+                )
+                try:
+                    s4 = _run_persistence_scenario_s4(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S4 raised: %s: %s", type(e).__name__, e)
+                    s4 = {"error": f"{type(e).__name__}: {e}"}
+                result["s4"] = s4
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S5"
+                )
+                try:
+                    s5 = _run_persistence_scenario_s5(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S5 raised: %s: %s", type(e).__name__, e)
+                    s5 = {"error": f"{type(e).__name__}: {e}"}
+                result["s5"] = s5
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S6"
+                )
+                try:
+                    s6 = _run_persistence_scenario_s6(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S6 raised: %s: %s", type(e).__name__, e)
+                    s6 = {"error": f"{type(e).__name__}: {e}"}
+                result["s6"] = s6
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S7"
+                )
+                try:
+                    s7 = _run_persistence_scenario_s7(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S7 raised: %s: %s", type(e).__name__, e)
+                    s7 = {"error": f"{type(e).__name__}: {e}"}
+                result["s7"] = s7
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S8"
+                )
+                try:
+                    s8 = _run_persistence_scenario_s8(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S8 raised: %s: %s", type(e).__name__, e)
+                    s8 = {"error": f"{type(e).__name__}: {e}"}
+                result["s8"] = s8
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S9"
+                )
+                try:
+                    s9 = _run_persistence_scenario_s9(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S9 raised: %s: %s", type(e).__name__, e)
+                    s9 = {"error": f"{type(e).__name__}: {e}"}
+                result["s9"] = s9
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S10"
+                )
+                try:
+                    s10 = _run_persistence_scenario_s10(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S10 raised: %s: %s", type(e).__name__, e)
+                    s10 = {"error": f"{type(e).__name__}: {e}"}
+                result["s10"] = s10
+            finally:
+                # `browser` may already be a dead process (crashed under some
+                # earlier scenario, never relaunched because nothing after S10
+                # needed it) -- closing an already-disconnected browser raises,
+                # which would mask whatever real failures are already in
+                # `result`. Best-effort only.
+                try:
+                    browser.close()
+                except Exception:  # noqa: BLE001 -- see comment above
+                    pass
+
+    failures: list[str] = result["failures"]
+
+    # -- AC-8 -----------------------------------------------------------------
+    indicator_present = s1.get("indicator_present_before_save")
+    result["indicator_present_before_save"] = indicator_present
+    if indicator_present is not True:
+        failures.append(
+            f"AC-8 indicator_present_before_save: expected True, got {indicator_present!r} -- "
+            "the #praxis-persistence chip never appeared on the lab entry before any save"
+        )
+    initial_tier = s1.get("initial_tier")
+    result["initial_tier"] = initial_tier
+    if initial_tier not in ("L0", "L1"):
+        failures.append(f"AC-8 initial_tier: expected 'L0' or 'L1', got {initial_tier!r}")
+    repl_entry_has_chip = s1.get("repl_entry_has_chip")
+    result["repl_entry_has_chip"] = repl_entry_has_chip
+    if repl_entry_has_chip is not False:
+        failures.append(f"AC-8 repl_entry_has_chip: expected False, got {repl_entry_has_chip!r}")
+
+    # -- AC-9 -----------------------------------------------------------------
+    gesture_log = s2.get("gesture_log") or []
+    result["gesture_log"] = gesture_log
+    required_apis = {"persist", "showDirectoryPicker", "requestPermission"}
+    seen_apis = {e.get("api") for e in gesture_log}
+    missing_apis = required_apis - seen_apis
+    if missing_apis:
+        failures.append(f"AC-9 gesture_log: missing entries for {sorted(missing_apis)}")
+    for entry in gesture_log:
+        if entry.get("api") in required_apis and (
+            entry.get("userActivation") is not True or entry.get("inClickDispatch") is not True
+        ):
+            failures.append(f"AC-9 gesture_log entry not gesture-synchronous: {entry}")
+
+    picker_calls = s2.get("picker_calls")
+    result["picker_calls"] = picker_calls
+    if picker_calls != 1:
+        failures.append(f"AC-9 picker_calls: expected 1, got {picker_calls!r}")
+
+    persist_returned = s2.get("persist_returned")
+    tier_after_persist = s2.get("tier_after_persist")
+    result["persist_returned"] = persist_returned  # no assertion on the VALUE (AC-9)
+    result["tier_after_persist"] = tier_after_persist
+    expected_tier_after_persist = "L1" if persist_returned is True else "L0"
+    if tier_after_persist != expected_tier_after_persist:
+        failures.append(
+            f"AC-9 tier_after_persist: persist_returned={persist_returned!r} implies "
+            f"{expected_tier_after_persist!r}, got {tier_after_persist!r}"
+        )
+    result["permission_methods_polyfilled"] = s2.get("permission_methods_polyfilled")
+
+    # -- AC-13 ------------------------------------------------------------
+    result["nofsa_l2_controls"] = s3.get("nofsa_l2_controls")
+    if result["nofsa_l2_controls"] != 0:
+        failures.append(f"AC-13 nofsa_l2_controls: expected 0, got {result['nofsa_l2_controls']!r}")
+    result["nofsa_message_mentions_chromium"] = s3.get("nofsa_message_mentions_chromium")
+    if result["nofsa_message_mentions_chromium"] is not True:
+        failures.append(
+            "AC-13 nofsa_message_mentions_chromium: expected True, got "
+            f"{result['nofsa_message_mentions_chromium']!r}"
+        )
+    result["nofsa_modal_choose_absent"] = s3.get("nofsa_modal_choose_absent")
+    if result["nofsa_modal_choose_absent"] is not True:
+        failures.append(
+            "AC-13 nofsa_modal_choose_absent: expected True, got "
+            f"{result['nofsa_modal_choose_absent']!r}"
+        )
+    result["nofsa_indicator_present"] = s3.get("nofsa_indicator_present")
+    if result["nofsa_indicator_present"] is not True:
+        failures.append(
+            f"AC-13 nofsa_indicator_present: expected True, got {result['nofsa_indicator_present']!r}"
+        )
+
+    # -- AC-14 ------------------------------------------------------------
+    result["indexeddb_names"] = s2.get("indexeddb_names")
+    result["hygiene_no_legacy_jupyterlite_dbs"] = s2.get("hygiene_no_legacy_jupyterlite_dbs")
+    if result["hygiene_no_legacy_jupyterlite_dbs"] is not True:
+        failures.append(
+            "AC-14 hygiene_no_legacy_jupyterlite_dbs: expected True, got "
+            f"{result['hygiene_no_legacy_jupyterlite_dbs']!r}"
+        )
+    result["hygiene_one_praxis_repl_contents"] = s2.get("hygiene_one_praxis_repl_contents")
+    if result["hygiene_one_praxis_repl_contents"] is not True:
+        failures.append(
+            "AC-14 hygiene_one_praxis_repl_contents: expected True, got "
+            f"{result['hygiene_one_praxis_repl_contents']!r}"
+        )
+    result["hygiene_praxis_repl_persistence_present"] = s2.get("hygiene_praxis_repl_persistence_present")
+    if result["hygiene_praxis_repl_persistence_present"] is not True:
+        failures.append(
+            "AC-14 hygiene_praxis_repl_persistence_present: expected True, got "
+            f"{result['hygiene_praxis_repl_persistence_present']!r}"
+        )
+    result["hygiene_probe_readable"] = s2.get("hygiene_probe_readable")
+    if result["hygiene_probe_readable"] is not True:
+        failures.append(
+            f"AC-14 hygiene_probe_readable: expected True, got {result['hygiene_probe_readable']!r}"
+        )
+
+    # -- AC-10 (S4: L2 by content) ---------------------------------------------
+    for key in (
+        "mirror_after_choose_matches",
+        "mirror_after_resave_matches",
+        "rehydrated_without_picker",
+        "rehydrated_folder_name_matches",
+    ):
+        result[key] = s4.get(key)
+        if result[key] is not True:
+            failures.append(f"AC-10 S4 {key}: expected True, got {result[key]!r}")
+    result["picker_calls_s4"] = s4.get("picker_calls")
+
+    # -- AC-10 (S5: differs-on-disk exclusion) ---------------------------------
+    for key in ("differs_excluded", "differs_disk_untouched_after_save", "replace_writes"):
+        result[key] = s5.get(key)
+        if result[key] is not True:
+            failures.append(f"AC-10 S5 {key}: expected True, got {result[key]!r}")
+
+    # -- AC-10 (S6: paused save, persisted pending set, no gate) ---------------
+    result["tier_on_prompt"] = s6.get("tier_on_prompt")
+    if result["tier_on_prompt"] != "L2-paused":
+        failures.append(f"AC-10 S6 tier_on_prompt: expected 'L2-paused', got {result['tier_on_prompt']!r}")
+    for key in (
+        "paused_save_not_written",
+        "pending_survives_reload",
+        "reconnect_flushed_matches",
+        "gate_never_opened_s6",
+    ):
+        result[key] = s6.get(key)
+        if result[key] is not True:
+            failures.append(f"AC-10 S6 {key}: expected True, got {result[key]!r}")
+
+    # -- AC-10 (S7: restore) ---------------------------------------------------
+    for key in ("restore_matches", "restore_skipped_dotfile", "restore_did_not_overwrite"):
+        result[key] = s7.get(key)
+        if result[key] is not True:
+            failures.append(f"AC-10 S7 {key}: expected True, got {result[key]!r}")
+
+    # -- AC-11 (S8: first-save gate -- Escape, backdrop, choose) ---------------
+    for key in (
+        "modal_open",
+        "modal_focus_inside",
+        "save_landed_before_modal",
+        "modal_survives_double_escape",
+        "modal_survives_backdrop_click",
+        "modal_closed",
+    ):
+        result[key] = s8.get(key)
+        if result[key] is not True:
+            failures.append(f"AC-11 S8 {key}: expected True, got {result[key]!r}")
+    result["modal_reopened"] = s8.get("modal_reopened")
+    if result["modal_reopened"] is not False:
+        failures.append(f"AC-11 S8 modal_reopened: expected False, got {result['modal_reopened']!r}")
+
+    # -- AC-11 (S9: untitled rename then the gate) -----------------------------
+    for key in ("rename_dialog_before_gate", "gate_after_rename", "renamed_file_saved"):
+        result[key] = s9.get(key)
+        if result[key] is not True:
+            failures.append(f"AC-11 S9 {key}: expected True, got {result[key]!r}")
+
+    # -- AC-12 (S10: native Download/Upload) -----------------------------------
+    for key in ("download_matches", "upload_matches"):
+        result[key] = s10.get(key)
+        if result[key] is not True:
+            failures.append(f"AC-12 S10 {key}: expected True, got {result[key]!r}")
+    if s10.get("download_error"):
+        result["download_error"] = s10["download_error"]
+    if s10.get("upload_error"):
+        result["upload_error"] = s10["upload_error"]
+
+    for label, scenario in (
+        ("S1", s1),
+        ("S2", s2),
+        ("S3", s3),
+        ("S4", s4),
+        ("S5", s5),
+        ("S6", s6),
+        ("S7", s7),
+        ("S8", s8),
+        ("S9", s9),
+        ("S10", s10),
+    ):
+        if scenario.get("error"):
+            failures.append(f"{label} scenario raised an exception: {scenario['error']}")
+
+    result["passed"] = not failures
+    return result
+
+
 #: Runs ONE cell by index via `notebook:run-cell` and reads its outputs back
 #: from the notebook MODEL (never the DOM -- JupyterLab 4 windows the
 #: notebook, so an off-screen cell's output is not in the DOM at all).
@@ -2498,6 +4168,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--persistence-check",
+        action="store_true",
+        help=(
+            "T8a+T8b browser gate (spec 260922_repl-persistence-ladder.md): scenarios "
+            "S1-S10 (AC-8 through AC-14, AC-17) -- the indicator/L1 tier on a fresh "
+            "lab/ load, real-click gesture-synchrony proof for persist()/"
+            "showDirectoryPicker()/requestPermission(), the non-FSA degraded panel, "
+            "IndexedDB storage hygiene, L2 folder mirroring and rehydration by "
+            "content, differs-on-disk exclusion, paused/reload/reconnect with a "
+            "persisted pending set, restore from folder, the first-save disclosure "
+            "gate (including an untitled-file rename), and native JupyterLab "
+            "Download/Upload round-tripping by content. Needs a freshly built "
+            "web-repl/dist (see --serve-dir) and --base-path /praxis/ to match CI. "
+            "Exits nonzero if any scenario key fails; see the printed JSON's "
+            "'failures' list."
+        ),
+    )
+    p.add_argument(
         "--typeahead-check",
         action="store_true",
         help=(
@@ -2668,12 +4356,14 @@ def main(argv: list[str] | None = None) -> int:
         and not args.fresh_boot_check
         and not args.autosetup_fault_check
         and not args.restart_check
+        and not args.persistence_check
         and not args.expect_fail
     ):
         LOG.error(
             "nothing to do: pass --probe, --viz-check, --notebook-check, "
             "--completion-check, --typeahead-check, --fresh-boot-check, "
-            "--autosetup-fault-check, --restart-check, and/or --expect-fail"
+            "--autosetup-fault-check, --restart-check, --persistence-check, "
+            "and/or --expect-fail"
         )
         return 2
 
@@ -3130,6 +4820,66 @@ def main(argv: list[str] | None = None) -> int:
         LOG.info(
             "restart-check PASSED: kernel_nonce changed (%s -> %s), AC-1 held again",
             before.get("kernel_nonce"), after.get("kernel_nonce"),
+        )
+        return 0
+
+    if args.persistence_check:
+        serve_dir = args.serve_dir.resolve()
+        if not serve_dir.is_dir():
+            LOG.error("--serve-dir does not exist or is not a directory: %s", serve_dir)
+            return 2
+        try:
+            result = run_persistence_check(
+                serve_dir=serve_dir,
+                base_path=args.base_path,
+                chrome_path=str(chrome_path),
+                timeout_s=args.timeout,
+                offline=args.offline,
+            )
+        except Exception as e:
+            LOG.error("persistence-check run failed: %s: %s", type(e).__name__, e)
+            LOG.error(
+                "If this is a Chromium launch failure ('apply-seccomp: unshare(CLONE_NEWUSER)'), "
+                "this script must be invoked with the Bash sandbox disabled "
+                "(dangerouslyDisableSandbox=true) — see plan section 5.6."
+            )
+            return 1
+
+        output = json.dumps(result, indent=2, sort_keys=True)
+        print(output)
+        if args.out:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(output)
+            LOG.info("wrote result to %s", args.out)
+
+        LOG.info(
+            "persistence-check: indicator_present_before_save=%s initial_tier=%s "
+            "repl_entry_has_chip=%s picker_calls=%s tier_after_persist=%s "
+            "nofsa_l2_controls=%s nofsa_modal_choose_absent=%s "
+            "mirror_after_choose_matches=%s tier_on_prompt=%s "
+            "gate_never_opened_s6=%s modal_open=%s gate_after_rename=%s "
+            "download_matches=%s upload_matches=%s",
+            result.get("indicator_present_before_save"),
+            result.get("initial_tier"),
+            result.get("repl_entry_has_chip"),
+            result.get("picker_calls"),
+            result.get("tier_after_persist"),
+            result.get("nofsa_l2_controls"),
+            result.get("nofsa_modal_choose_absent"),
+            result.get("mirror_after_choose_matches"),
+            result.get("tier_on_prompt"),
+            result.get("gate_never_opened_s6"),
+            result.get("modal_open"),
+            result.get("gate_after_rename"),
+            result.get("download_matches"),
+            result.get("upload_matches"),
+        )
+        if not result["passed"]:
+            for f in result["failures"]:
+                LOG.error("FAIL: %s", f)
+            return 1
+        LOG.info(
+            "persistence-check PASSED (S1-S10: AC-8 through AC-14, AC-17)"
         )
         return 0
 

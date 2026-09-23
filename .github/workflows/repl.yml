@@ -127,6 +127,11 @@ jobs:
           uv run python web-repl/scripts/check_wheel_coherence.py --check-untracked
           uv run python web-repl/scripts/check_wheel_contract.py
 
+      - name: Gesture invariant (no await/async before gesture calls, D6)
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python web-repl/scripts/check_gesture_invariant.py
+
       - name: Probe the kernel
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
@@ -201,6 +206,12 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --typeahead-check --base-path /praxis/
 
+      # Persistence (L1 storage.persist(), L2 FSA working folder, first-save gate, L3 download/upload)
+      - name: Persistence — L1/L2/L3 end-to-end
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --persistence-check --base-path /praxis/
+
       # Not prefixed: --viz-check serves the vendored renderer tree directly, with
       # no JupyterLite app and no base path involved.
       - name: Visualizer render + praxis_viz channel
@@ -220,11 +231,13 @@ jobs:
           uv run python -m pytest web-repl/tests/test_browser_visualizer.py -q
           uv run python -m pytest web-repl/tests/test_build_manifest.py -q
           uv run python -m pytest web-repl/tests/test_build_manifest_coxswain.py -q
+          uv run python -m pytest web-repl/tests/test_check_gesture_invariant.py -q
           uv run python -m pytest web-repl/tests/test_check_wheel_coherence.py -q
           uv run python -m pytest web-repl/tests/test_contract_covers_imports.py -q
           uv run python -m pytest web-repl/tests/test_d1_praxis_git_sha.py -q
           uv run python -m pytest web-repl/tests/test_fetch_vendored_wheels.py -q
           uv run python -m pytest web-repl/tests/test_inject_shell_coxswain.py -q
+          uv run python -m pytest web-repl/tests/test_persistence_staging.py -q
           uv run python -m pytest web-repl/tests/test_plr_contract.py -q
           uv run python -m pytest web-repl/tests/test_praxis_boot_autosetup.py -q
           uv run python -m pytest web-repl/tests/test_praxis_bootstrap_loader.py -q
@@ -298,3 +311,6 @@ jobs:
 
       - name: Coxswain JS harness
         run: bun test web-repl/shell/coxswain
+
+      - name: Persistence JS harness
+        run: bun test web-repl/shell/persistence
