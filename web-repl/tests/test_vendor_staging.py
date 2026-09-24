@@ -115,10 +115,17 @@ def test_vendor_manifest_pins_all_runtime_files() -> None:
         for p in vendor.rglob("*")
         if p.is_file() and p.name != "VENDOR_MANIFEST.json"
     }
-    assert set(pinned) == on_disk
+    # The untracked binary is gitignored and only lands via `fetch_models.py --runtime`,
+    # so a fresh checkout (CI) legitimately lacks it; pin it when present, never require it.
+    absent_untracked = {
+        rel for rel, e in pinned.items() if not e["tracked"] and not (vendor / rel).is_file()
+    }
+    assert set(pinned) - absent_untracked == on_disk
     import hashlib
 
     for rel, entry in pinned.items():
+        if rel in absent_untracked:
+            continue
         data = (vendor / rel).read_bytes()
         assert len(data) == entry["bytes"], rel
         assert hashlib.sha256(data).hexdigest() == entry["sha256"], rel

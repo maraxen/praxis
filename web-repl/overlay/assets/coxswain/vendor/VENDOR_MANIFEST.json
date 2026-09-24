@@ -24,8 +24,8 @@
   "files": [
     {
       "path": "model_integrity.js",
-      "sha256": "8411efce516361625e0c56c75ced393a6771b89016ee9d23ee5e4758b2f22c4c",
-      "bytes": 11127,
+      "sha256": "a44bf0fc081946802e3306642453c3f42e8d380f26aa67dc0f0c8f08545aa42d",
+      "bytes": 11233,
       "tracked": true,
       "role": "hand-authored"
     },

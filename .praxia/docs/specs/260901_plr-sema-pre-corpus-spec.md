@@ -2348,7 +2348,7 @@ structured data.
 
 | id | surface | metric | baseline | status | trigger → DERIVED |
 |---|---|---|---|---|---|
-| HM-1 | `PLR_RESOURCE_TYPES` class-name set (`praxis/common/type_inspection.py:14-56`) | entries | **34** | DERIVABLE_NOT_YET | Point `plr_survey_common.collect_all_classes` + the `exception_name_closure` fixpoint at `Resource`/`Machine` instead of `Exception`. The machinery already exists and is proven on 132 exception classes. |
+| HM-1 | `PLR_RESOURCE_TYPES` class-name set (`praxis/common/type_inspection.py:14-77`) | entries | **53** | DERIVABLE_NOT_YET | Point `plr_survey_common.collect_all_classes` + the `exception_name_closure` fixpoint at `Resource`/`Machine` instead of `Exception`. The machinery already exists and is proven on 132 exception classes. |
 | HM-2 | `infer_category_from_name` substring rules (`plr_category.py:129+`, 186 LOC, self-documented "BRITTLE") | branches | **MEASURE** | DERIVABLE_NOT_YET | PLR classes carry a real `category` attribute; the function is documented as a fallback for when the class object is unavailable. Derive by AST-reading the attribute per class into a table. |
 | HM-3 | validator-name prefixes in `_is_validation_looking` (`survey_plr_preconditions.py:149-151`) | prefixes | **6** | CAPPED (8) | None known — a heuristic over PLR's naming. |
 | HM-4 | PLR test-file stem heuristic (`plr_survey_common.py:35-40`) | rules | **3** | CAPPED (4) | None known. |
