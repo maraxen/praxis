@@ -241,6 +241,7 @@ jobs:
           uv run python -m pytest web-repl/tests/test_browser_visualizer.py -q
           uv run python -m pytest web-repl/tests/test_build_manifest.py -q
           uv run python -m pytest web-repl/tests/test_build_manifest_coxswain.py -q
+          uv run python -m pytest web-repl/tests/test_build_manifest_models.py -q
           uv run python -m pytest web-repl/tests/test_check_gesture_invariant.py -q
           uv run python -m pytest web-repl/tests/test_check_wheel_coherence.py -q
           uv run python -m pytest web-repl/tests/test_contract_covers_imports.py -q
@@ -259,6 +260,7 @@ jobs:
           uv run python -m pytest web-repl/tests/test_stamp_loader_shas.py -q
           uv run python -m pytest web-repl/tests/test_theme_staging.py -q
           uv run python -m pytest web-repl/tests/test_transport.py -q
+          uv run python -m pytest web-repl/tests/test_vendor_staging.py -q
           uv run python -m pytest web-repl/tests/test_viz_highlight_staging.py -q
 
       - name: Upload diagnostics on failure

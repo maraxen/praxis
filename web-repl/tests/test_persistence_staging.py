@@ -160,6 +160,12 @@ def test_assert_dist_complete_requires_persistence_modules(tmp_path: Path) -> No
     (dist / "assets" / "visualizer" / "index.html").write_text("<html></html>")
     (dist / "assets" / "visualizer-augmentations").mkdir(parents=True)
     (dist / "assets" / "visualizer-augmentations" / "index.js").write_text("// aug\n")
+    (dist / "assets" / "theme" / "fonts").mkdir(parents=True)
+    (dist / "assets" / "theme" / "praxis-theme.css").write_text("/* theme */\n")
+    (dist / "assets" / "theme" / "praxis-mark.svg").write_text("<svg></svg>")
+    (dist / "assets" / "theme" / "praxis-favicon.svg").write_text("<svg></svg>")
+    (dist / "assets" / "theme" / "fonts" / "RobotoFlex-Variable.woff2").write_bytes(b"font")
+    (dist / "assets" / "theme" / "fonts" / "JetBrainsMono-Variable.woff2").write_bytes(b"font")
     (dist / "bootstrap").mkdir(parents=True)
     (dist / "bootstrap" / "praxis_bootstrap.py").write_text("# bootstrap\n")
     (dist / "bootstrap" / "stages.py").write_text("# stages\n")
@@ -181,7 +187,7 @@ def test_assert_dist_complete_requires_persistence_modules(tmp_path: Path) -> No
     # Note: panel.js is intentionally missing
 
     # assert_dist_complete should raise because panel.js is missing
-    with pytest.raises(build_repl.BuildAssertionError, match="missing required staged path"):
+    with pytest.raises(build_repl.BuildAssertionError, match=r"missing required staged path[\s\S]*panel\.js"):
         build_repl.assert_dist_complete(dist, with_coxswain=False)
 
 
@@ -208,6 +214,12 @@ def test_assert_dist_complete_passes_with_all_persistence_modules(tmp_path: Path
     (dist / "assets" / "visualizer" / "index.html").write_text("<html></html>")
     (dist / "assets" / "visualizer-augmentations").mkdir(parents=True)
     (dist / "assets" / "visualizer-augmentations" / "index.js").write_text("// aug\n")
+    (dist / "assets" / "theme" / "fonts").mkdir(parents=True)
+    (dist / "assets" / "theme" / "praxis-theme.css").write_text("/* theme */\n")
+    (dist / "assets" / "theme" / "praxis-mark.svg").write_text("<svg></svg>")
+    (dist / "assets" / "theme" / "praxis-favicon.svg").write_text("<svg></svg>")
+    (dist / "assets" / "theme" / "fonts" / "RobotoFlex-Variable.woff2").write_bytes(b"font")
+    (dist / "assets" / "theme" / "fonts" / "JetBrainsMono-Variable.woff2").write_bytes(b"font")
     (dist / "bootstrap").mkdir(parents=True)
     (dist / "bootstrap" / "praxis_bootstrap.py").write_text("# bootstrap\n")
     (dist / "bootstrap" / "stages.py").write_text("# stages\n")
