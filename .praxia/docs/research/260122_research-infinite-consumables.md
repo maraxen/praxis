@@ -1,3 +1,7 @@
+---
+title: 'Research Report: Infinite Consumables & Resource Depletion'
+---
+
 # Research Report: Infinite Consumables & Resource Depletion
 
 ## 1. Executive Summary

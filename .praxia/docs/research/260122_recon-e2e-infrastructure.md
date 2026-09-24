@@ -1,3 +1,7 @@
+---
+title: 'RECON Report: E2E Test Infrastructure'
+---
+
 # RECON Report: E2E Test Infrastructure
 
 This report details the findings of the reconnaissance mission to audit the Playwright E2E test infrastructure.

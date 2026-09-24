@@ -1,3 +1,7 @@
+---
+title: '**Architecting the Glass Box: Progressive Disclosure and Complexity Management in Scientific Software Ecosystems**'
+---
+
 # **Architecting the Glass Box: Progressive Disclosure and Complexity Management in Scientific Software Ecosystems**
 
 ## **1\. The Interface Paradox in Scientific Computing**

@@ -1,3 +1,7 @@
+---
+title: 'Praxis Development Roadmap'
+---
+
 # Praxis Development Roadmap
 
 **Last Updated**: 2026-01-13

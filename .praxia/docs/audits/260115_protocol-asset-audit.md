@@ -1,3 +1,7 @@
+---
+title: 'Protocol Asset Audit'
+---
+
 # Protocol Asset Audit
 
 **Date:** 2026-01-15

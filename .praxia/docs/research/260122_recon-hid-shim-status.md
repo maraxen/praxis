@@ -1,3 +1,7 @@
+---
+title: 'Reconnaissance Report: WebHID Transport Shim Status'
+---
+
 # Reconnaissance Report: WebHID Transport Shim Status
 
 ## 1. Current Implementation Status: Complete

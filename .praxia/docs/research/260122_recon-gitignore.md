@@ -1,3 +1,7 @@
+---
+title: 'Reconnaissance Report: .gitignore Audit'
+---
+
 # Reconnaissance Report: .gitignore Audit
 
 ## 1. Executive Summary

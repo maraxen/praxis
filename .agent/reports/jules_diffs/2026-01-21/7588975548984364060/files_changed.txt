@@ -1,5 +1,0 @@
-praxis/backend/models/orm/plr_sync.py
-praxis/backend/tests/api/conftest.py
-praxis/backend/tests/api/test_hardware.py
-praxis/backend/utils/db.py
-tests/factories.py

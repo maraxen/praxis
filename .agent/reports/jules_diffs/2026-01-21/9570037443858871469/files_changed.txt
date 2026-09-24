@@ -1,6 +1,0 @@
-praxis/backend/models/pydantic_internals/filters.py
-praxis/backend/services/utils/crud_base.py
-praxis/backend/services/utils/query_builder.py
-praxis/backend/tests/api/test_resource_filtering.py
-praxis/web-client/src/app/features/assets/components/resource-dialog.component.ts
-praxis/web-client/src/app/features/assets/services/asset.service.ts

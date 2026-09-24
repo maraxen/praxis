@@ -1,3 +1,7 @@
+---
+title: 'RECON Report: Theme CSS Variable Audit'
+---
+
 # RECON Report: Theme CSS Variable Audit
 
 ## 1. Hardcoded Color Inventory & Theme Variable Mapping

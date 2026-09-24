@@ -1,3 +1,7 @@
+---
+title: 'Audit: praxis/web-client/src/app/core/services/hardware-discovery.service.ts'
+---
+
 diff --git a/.agent/audits/hardware_discovery.md b/.agent/audits/hardware_discovery.md
 new file mode 100644
 index 0000000..1edc4b7

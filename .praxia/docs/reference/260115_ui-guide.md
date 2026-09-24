@@ -1,3 +1,7 @@
+---
+title: 'Frontend UI/UX Guide & Style System'
+---
+
 # Frontend UI/UX Guide & Style System
 
 > **Framework**: Angular v21 + Angular Material 3

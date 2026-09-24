@@ -1,3 +1,7 @@
+---
+title: 'FINAL MERGE PLAN - v0.1-alpha (Praxis)'
+---
+
 # FINAL MERGE PLAN - v0.1-alpha (Praxis)
 
 **Status**: APPROVED

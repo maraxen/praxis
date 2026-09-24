@@ -21,14 +21,12 @@ Some VSCode Extensions I'd recommend:
 
 ## Agentic Development Workflow
 
-This project uses the `.agent/` directory for AI-assisted development:
+Internal, agent-facing documentation (plans, specs, audits, research, handoffs) lives
+under `.praxia/docs/<category>/YYMMDD_slug.md`, indexed by the generated
+`.praxia/docs/INDEX.md`. Agent working rules are in `CLAUDE.md`.
 
-- **DEVELOPMENT_MATRIX.md**: Central priority/status tracking
-- **backlog/**: Detailed work item specifications
-- **prompts/**: Agent dispatch prompts organized by date
-- **codestyles/**: Language-specific conventions
-
-See `.agent/README.md` for full documentation.
+The older `.agent/` directory is retired; see
+`.praxia/docs/archive/agent-dirs-retired.md` to find or restore anything that was in it.
 
 ## Running Tests
 

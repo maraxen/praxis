@@ -209,13 +209,46 @@ def _clean_builtin_shims():
     monkeypatch cannot unwind. Without this cleanup the leak reaches
     test_rid_invariant's defensive precondition (builtins must be shim-free)
     whenever both modules run in one process -- a cross-module pollution bug,
-    fixed here at the only module that causes it."""
+    fixed here at the only module that causes it. Also clean up the
+    _PRAXIS_BOOT_DONE guard flag."""
     yield
     import builtins
 
-    for name in ("WebSerial", "WebUSB", "WebHID", "WebFTDI"):
+    for name in ("WebSerial", "WebUSB", "WebHID", "WebFTDI", "_PRAXIS_BOOT_DONE"):
         if hasattr(builtins, name):
             delattr(builtins, name)
+
+
+def _install_success_routes(monkeypatch, installed_wheels: list) -> None:
+    """Helper to install the standard success-path routes (shims, web_bridge,
+    manifest with pylabrobot wheel entry) for tests that exercise a full
+    successful bootstrap. Reuses _ROUTES_HOLDER pattern.
+    """
+    routes = _bootstrap_self_fetch_routes()
+    sources = []
+    for filename, text in _SHIM_SOURCES.items():
+        path = f"assets/shims/{filename}"
+        sources.append({"path": path, "sha256": _sha(text)})
+        routes[HOST_ROOT + path] = (200, text)
+    sources.append({"path": "assets/python/web_bridge.py", "sha256": _sha(_WEB_BRIDGE_SOURCE)})
+    routes[HOST_ROOT + "assets/python/web_bridge.py"] = (200, _WEB_BRIDGE_SOURCE)
+
+    manifest = {
+        "praxis_git_sha": "dev",
+        "wheels": [
+            {
+                "package": "pylabrobot",
+                "filename": "pylabrobot-0.1.6+gdeadbeef-py3-none-any.whl",
+                "version": "0.1.6",
+                "source_sha": "deadbeef",
+                "sha256": "0" * 64,
+                "bytes": 0,
+            }
+        ],
+        "sources": sources,
+    }
+    routes[HOST_ROOT + "assets/wheels/manifest.json"] = (200, json.dumps(manifest))
+    _ROUTES_HOLDER["routes"] = routes
 
 
 @pytest.fixture()
@@ -341,32 +374,7 @@ def test_ready_reached_on_full_success(loader, monkeypatch) -> None:
     installed_wheels: list[str] = []
     _install_fake_micropip(monkeypatch, installed_wheels)
     _install_fake_pylabrobot(monkeypatch, source_sha="deadbeef")
-
-    routes = _bootstrap_self_fetch_routes()
-    sources = []
-    for filename, text in _SHIM_SOURCES.items():
-        path = f"assets/shims/{filename}"
-        sources.append({"path": path, "sha256": _sha(text)})
-        routes[HOST_ROOT + path] = (200, text)
-    sources.append({"path": "assets/python/web_bridge.py", "sha256": _sha(_WEB_BRIDGE_SOURCE)})
-    routes[HOST_ROOT + "assets/python/web_bridge.py"] = (200, _WEB_BRIDGE_SOURCE)
-
-    manifest = {
-        "praxis_git_sha": "dev",
-        "wheels": [
-            {
-                "package": "pylabrobot",
-                "filename": "pylabrobot-0.1.6+gdeadbeef-py3-none-any.whl",
-                "version": "0.1.6",
-                "source_sha": "deadbeef",
-                "sha256": "0" * 64,
-                "bytes": 0,
-            }
-        ],
-        "sources": sources,
-    }
-    routes[HOST_ROOT + "assets/wheels/manifest.json"] = (200, json.dumps(manifest))
-    _ROUTES_HOLDER["routes"] = routes
+    _install_success_routes(monkeypatch, installed_wheels)
 
     asyncio.run(loader.praxis_main(HOST_ROOT))
 
@@ -448,6 +456,237 @@ def test_r_id_double_exec_is_observed_failing(monkeypatch) -> None:
 
     with pytest.raises(stages.PraxisDriftError, match="single-class-object invariant"):
         stages.assert_identity(fake_module, "Serial", class_b, "WebSerial")  # "class B" staged after
+
+
+def test_positional_call_still_swallows(loader, monkeypatch) -> None:
+    """Default raise_on_error=False: positional callers (legacy cells) behave
+    exactly as before -- exceptions are caught and posted as praxis:error,
+    not re-raised. This is backward-compatible behavior.
+    """
+    channel = _install_fake_js(monkeypatch, pong_sha="dev")
+    _install_fake_micropip(monkeypatch, installed=[])
+    routes = _bootstrap_self_fetch_routes()
+    # Missing manifest to force an exception in the try block
+    _ROUTES_HOLDER["routes"] = routes
+
+    # Call with positional arg only (no raise_on_error kwarg)
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+
+    types_posted = [m["type"] for m in channel.posted]
+    assert "praxis:error" in types_posted
+    # Verify it did NOT re-raise (test would have failed if it did)
+
+
+def test_raise_on_error_reraises_after_posting_error(loader, monkeypatch) -> None:
+    """With raise_on_error=True, the exception is re-raised AFTER posting
+    praxis:error. This allows callers who need the exception to catch it.
+    """
+    channel = _install_fake_js(monkeypatch, pong_sha="dev")
+    _install_fake_micropip(monkeypatch, installed=[])
+    routes = _bootstrap_self_fetch_routes()
+    # Missing manifest to force an exception
+    _ROUTES_HOLDER["routes"] = routes
+
+    # Call with raise_on_error=True
+    with pytest.raises(Exception, match="manifest"):
+        asyncio.run(loader.praxis_main(HOST_ROOT, raise_on_error=True))
+
+    # Verify praxis:error was still posted before the re-raise
+    types_posted = [m["type"] for m in channel.posted]
+    assert "praxis:error" in types_posted
+
+
+def test_once_guard_skips_stages_and_reposts_ready(loader, monkeypatch) -> None:
+    """Once-guard: a second call after success skips all stages and
+    re-posts praxis:ready without re-running any stage logic.
+    """
+    channel = _install_fake_js(monkeypatch, pong_sha="dev")
+    installed_wheels: list[str] = []
+    _install_fake_micropip(monkeypatch, installed_wheels)
+    _install_fake_pylabrobot(monkeypatch, source_sha="deadbeef")
+    _install_success_routes(monkeypatch, installed_wheels)
+
+    # First call: successful bootstrap
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+    types_posted_1 = [m["type"] for m in channel.posted]
+    assert types_posted_1[-1] == "praxis:ready"
+    assert installed_wheels == [HOST_ROOT + "assets/wheels/pylabrobot-0.1.6+gdeadbeef-py3-none-any.whl"]
+
+    # Reset for second call
+    channel.posted = []
+    installed_wheels.clear()
+
+    # Second call: should skip all stages and just re-post ready
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+    types_posted_2 = [m["type"] for m in channel.posted]
+    # Only praxis:ready should be posted
+    assert types_posted_2 == ["praxis:ready"]
+    # No wheels should be installed on the second call
+    assert installed_wheels == []
+
+
+def test_failed_sequence_does_not_set_guard(loader, monkeypatch) -> None:
+    """A failed sequence does NOT set the guard, so a retry re-runs the
+    stages. This allows recovery after a failure.
+    """
+    channel = _install_fake_js(monkeypatch, pong_sha="dev")
+    _install_fake_micropip(monkeypatch, installed=[])
+    routes = _bootstrap_self_fetch_routes()
+    # Missing manifest to force an exception
+    _ROUTES_HOLDER["routes"] = routes
+
+    # First call: fails (manifest missing)
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+    types_posted_1 = [m["type"] for m in channel.posted]
+    assert "praxis:error" in types_posted_1
+
+    # Verify guard is NOT set after failure
+    import builtins
+    assert not getattr(builtins, "_PRAXIS_BOOT_DONE", False)
+
+    # Now set up routes for success
+    channel.posted = []
+    installed_wheels: list[str] = []
+    _install_fake_micropip(monkeypatch, installed_wheels)
+    _install_fake_pylabrobot(monkeypatch, source_sha="deadbeef")
+
+    routes = _bootstrap_self_fetch_routes()
+    sources = []
+    for filename, text in _SHIM_SOURCES.items():
+        path = f"assets/shims/{filename}"
+        sources.append({"path": path, "sha256": _sha(text)})
+        routes[HOST_ROOT + path] = (200, text)
+    sources.append({"path": "assets/python/web_bridge.py", "sha256": _sha(_WEB_BRIDGE_SOURCE)})
+    routes[HOST_ROOT + "assets/python/web_bridge.py"] = (200, _WEB_BRIDGE_SOURCE)
+
+    manifest = {
+        "praxis_git_sha": "dev",
+        "wheels": [
+            {
+                "package": "pylabrobot",
+                "filename": "pylabrobot-0.1.6+gdeadbeef-py3-none-any.whl",
+                "version": "0.1.6",
+                "source_sha": "deadbeef",
+                "sha256": "0" * 64,
+                "bytes": 0,
+            }
+        ],
+        "sources": sources,
+    }
+    routes[HOST_ROOT + "assets/wheels/manifest.json"] = (200, json.dumps(manifest))
+    _ROUTES_HOLDER["routes"] = routes
+
+    # Second call: should run the stages (NOT skip due to guard) and succeed
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+    types_posted_2 = [m["type"] for m in channel.posted]
+    assert "praxis:error" not in types_posted_2
+    assert types_posted_2[-1] == "praxis:ready"
+    # Wheels should be installed (confirming stages actually ran)
+    assert len(installed_wheels) > 0
+
+
+def test_guard_flag_is_set_before_ready_is_posted(loader, monkeypatch) -> None:
+    """ORDERING TEST: The once-guard flag must be set BEFORE the final
+    praxis:ready is posted, not after. This ensures that if a listener
+    processes the ready message, the flag is already in place.
+
+    This test wraps the fake channel's postMessage to capture the state
+    of builtins._PRAXIS_BOOT_DONE at the exact moment each message is
+    posted.
+    """
+    channel = _install_fake_js(monkeypatch, pong_sha="dev")
+    installed_wheels: list[str] = []
+    _install_fake_micropip(monkeypatch, installed_wheels)
+    _install_fake_pylabrobot(monkeypatch, source_sha="deadbeef")
+    _install_success_routes(monkeypatch, installed_wheels)
+
+    import builtins
+
+    # Track the flag state at the moment each message is posted
+    flag_states_at_post: dict[str, bool] = {}
+    original_postMessage = channel.postMessage
+
+    def wrapped_postMessage(js_obj) -> None:
+        msg_type = js_obj.get("type", "unknown")
+        # Capture the flag state at this exact moment
+        flag_states_at_post[msg_type] = getattr(builtins, "_PRAXIS_BOOT_DONE", False)
+        # Call the original postMessage
+        return original_postMessage(js_obj)
+
+    channel.postMessage = wrapped_postMessage
+
+    # Run bootstrap successfully
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+
+    # Verify praxis:ready was posted
+    assert "praxis:ready" in flag_states_at_post, f"praxis:ready not found in {flag_states_at_post}"
+
+    # THE KEY ASSERTION: The flag was True when praxis:ready was posted
+    assert (
+        flag_states_at_post["praxis:ready"] is True
+    ), "Flag must be set BEFORE praxis:ready is posted"
+
+
+def test_old_saved_notebook_calling_main_twice_is_harmless(tmp_path, monkeypatch) -> None:
+    """AC-6: an old saved notebook with a legacy bootstrap cell that calls
+    praxis_main twice is harmless. The second call skips via the once-guard.
+    This is the key behavior that makes auto-setup safe with old notebooks.
+
+    CRUCIALLY: This test uses TWO FRESH, INDEPENDENT copies of praxis_bootstrap
+    (via separate imports after clearing sys.modules), because the spec says
+    builtins is used "because every caller exec's a fresh copy of this file".
+    """
+    import importlib
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.syspath_prepend(str(tmp_path))
+
+    channel = _install_fake_js(monkeypatch, pong_sha="dev")
+    installed_wheels: list[str] = []
+    _install_fake_micropip(monkeypatch, installed_wheels)
+    _install_fake_pylabrobot(monkeypatch, source_sha="deadbeef")
+    _install_success_routes(monkeypatch, installed_wheels)
+
+    # First exec: load the first fresh copy of praxis_bootstrap
+    for mod_name in ("praxis_bootstrap", "stages", "transport"):
+        sys.modules.pop(mod_name, None)
+    loader1 = importlib.import_module("praxis_bootstrap")
+    loader1._LOADER_MODULE_SHA256 = {
+        name: hashlib.sha256((_BOOTSTRAP_DIR / name).read_bytes()).hexdigest()
+        for name in loader1._LOADER_MODULE_FILES
+    }
+
+    # Run first bootstrap successfully
+    asyncio.run(loader1.praxis_main(HOST_ROOT))
+    wheel_count_after_first = len(installed_wheels)
+    assert wheel_count_after_first > 0
+
+    # Verify the guard flag was set
+    import builtins
+    assert getattr(builtins, "_PRAXIS_BOOT_DONE", False) is True
+
+    # Reset for second exec
+    channel.posted = []
+    installed_wheels.clear()
+
+    # Second exec: load a FRESH, INDEPENDENT copy of praxis_bootstrap
+    # (simulating the old notebook cell running in a fresh exec() namespace)
+    for mod_name in ("praxis_bootstrap", "stages", "transport"):
+        sys.modules.pop(mod_name, None)
+    loader2 = importlib.import_module("praxis_bootstrap")
+    loader2._LOADER_MODULE_SHA256 = {
+        name: hashlib.sha256((_BOOTSTRAP_DIR / name).read_bytes()).hexdigest()
+        for name in loader2._LOADER_MODULE_FILES
+    }
+
+    # Second call: the fresh module sees the builtins guard and skips stages
+    asyncio.run(loader2.praxis_main(HOST_ROOT))
+
+    # Verify it skipped via the once-guard
+    types_posted_2 = [m["type"] for m in channel.posted]
+    assert types_posted_2 == ["praxis:ready"]
+    # No wheels installed on second call (all stages skipped)
+    assert installed_wheels == []
 
 
 # ---------------------------------------------------------------------------

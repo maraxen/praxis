@@ -1,3 +1,7 @@
+---
+title: 'RECON Report: Playwright Usage for Jules'
+---
+
 # RECON Report: Playwright Usage for Jules
 
 This report documents the current Playwright setup in the `praxis/web-client` application and provides a recommended approach for Jules to run end-to-end tests.

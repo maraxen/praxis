@@ -1,1 +1,0 @@
-.agent/references/hardware_testing_guide.md

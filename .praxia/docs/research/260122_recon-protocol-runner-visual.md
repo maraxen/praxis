@@ -1,3 +1,7 @@
+---
+title: 'RECON Report: Protocol Runner Visual Audit'
+---
+
 # RECON Report: Protocol Runner Visual Audit
 
 ## 1. Component Hierarchy Map

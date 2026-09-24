@@ -1,3 +1,7 @@
+---
+title: 'RECON - CHANGELOG.md Setup Research'
+---
+
 # RECON - CHANGELOG.md Setup Research
 
 This report details the research and recommendations for establishing a `CHANGELOG.md` for the Praxis project.

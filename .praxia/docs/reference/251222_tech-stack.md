@@ -1,3 +1,7 @@
+---
+title: 'Technology Stack: PyLabPraxis'
+---
+
 # Technology Stack: PyLabPraxis
 
 ## Backend

@@ -1,3 +1,7 @@
+---
+title: 'Machine Simulation Architecture Audit & Refactor Proposal'
+---
+
 # Machine Simulation Architecture Audit & Refactor Proposal
 
 **Status:** Draft / Inspection Complete

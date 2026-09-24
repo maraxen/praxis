@@ -3,7 +3,7 @@ title: GATE G2 — spike battery verdict
 description: Adjudication of the five G2 criteria from spikes S-A/S-B/S-C/S-D/S-E/S-F, with independent spot-check output; overall PARTIAL-GO.
 category: research
 task_id: 260817_praxis_repl_refocus
-status: final
+status: complete
 date: 260817
 ---
 

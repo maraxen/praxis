@@ -30,6 +30,7 @@ import asyncio
 import hashlib
 import json
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -331,3 +332,74 @@ def test_shell_ping_no_pong_times_out_raises_unavailable() -> None:
     channel = FakeChannel(pong_sha=None)
     with pytest.raises(stages.PraxisUnavailableError, match="shell-ping timed out"):
         asyncio.run(transport.shell_ping(channel.register, channel.post, timeout_s=0.05))
+
+
+class MultiShellChannel:
+    """Every same-origin tab's shell answers a ping on the shared
+    ``praxis_repl`` BroadcastChannel, so one ping can draw several pongs --
+    e.g. a still-open tab from an older deploy AND this tab's own shell.
+    Replays *pong_shas* in order, each as its own pong (debt #1858).
+    """
+
+    def __init__(self, pong_shas: list[str]):
+        self.pong_shas = pong_shas
+        self._handler = None
+
+    def register(self, cb) -> None:
+        self._handler = cb
+
+    def post(self, msg: dict) -> None:
+        if msg.get("type") == "praxis:shell-ping" and self._handler:
+            for sha in self.pong_shas:
+                self._handler({"type": "praxis:shell-pong", "praxis_git_sha": sha})
+
+
+STALE_SHA = "0000000000000000000000000000000000000001"
+CURRENT_SHA = "c3a95c1eeb9701a1085f85940d68690b32b0079a"
+
+
+def test_shell_ping_skips_stale_tab_pong_when_expected_sha_given() -> None:
+    """Debt #1858: a stale tab's pong arriving FIRST must not win. With the
+    manifest's sha supplied, the matching pong is the answer."""
+    channel = MultiShellChannel([STALE_SHA, CURRENT_SHA])
+    result = asyncio.run(
+        transport.shell_ping(channel.register, channel.post, expected_sha=CURRENT_SHA)
+    )
+    assert result == CURRENT_SHA
+
+
+def test_shell_ping_matching_pong_returns_without_waiting_for_timeout() -> None:
+    channel = MultiShellChannel([CURRENT_SHA])
+    start = time.monotonic()
+    result = asyncio.run(
+        transport.shell_ping(
+            channel.register, channel.post, timeout_s=5.0, expected_sha=CURRENT_SHA
+        )
+    )
+    assert result == CURRENT_SHA
+    assert time.monotonic() - start < 1.0
+
+
+def test_shell_ping_only_stale_pongs_returns_first_seen_so_d1_still_fails_closed() -> None:
+    """No matching shell answered but some shell did: return what was seen
+    (not a timeout error), so the caller's assert_praxis_git_sha raises the
+    real sha-mismatch diagnosis exactly as before this fix."""
+    channel = MultiShellChannel([STALE_SHA, "0000000000000000000000000000000000000002"])
+    result = asyncio.run(
+        transport.shell_ping(
+            channel.register, channel.post, timeout_s=0.05, expected_sha=CURRENT_SHA
+        )
+    )
+    assert result == STALE_SHA
+    with pytest.raises(stages.PraxisDriftError, match=STALE_SHA):
+        stages.assert_praxis_git_sha(CURRENT_SHA, result)
+
+
+def test_shell_ping_expected_sha_no_pong_still_times_out() -> None:
+    channel = MultiShellChannel([])
+    with pytest.raises(stages.PraxisUnavailableError, match="shell-ping timed out"):
+        asyncio.run(
+            transport.shell_ping(
+                channel.register, channel.post, timeout_s=0.05, expected_sha=CURRENT_SHA
+            )
+        )

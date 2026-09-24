@@ -1,2 +1,0 @@
-praxis/web-client/src/app/shared/components/workcell/workcell-explorer/workcell-group/workcell-group.component.ts:import { WorkcellGroup, MachineWithRuntime } from '../../../../../features/workcell/models/workcell-view.models';
-praxis/web-client/src/app/shared/components/workcell/workcell-explorer/machine-tree-node/machine-tree-node.component.ts:import { MachineWithRuntime } from '../../../../../features/workcell/models/workcell-view.models';

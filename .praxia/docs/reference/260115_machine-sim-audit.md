@@ -1,3 +1,7 @@
+---
+title: 'Machine Simulation Architecture Audit'
+---
+
 # Machine Simulation Architecture Audit
 
 **Date:** 2026-01-15

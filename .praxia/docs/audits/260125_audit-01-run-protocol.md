@@ -1,3 +1,7 @@
+---
+title: 'AUDIT-01: Run Protocol & Wizard'
+---
+
 # AUDIT-01: Run Protocol & Wizard
 
 This audit analyzes the user journey, component architecture, and test coverage for the "Run Protocol" feature in the Praxis web client.
