@@ -25,7 +25,7 @@ dependencies = [
     "pwdlib[bcrypt]>=0.2.0",
     "bcrypt",
     "python-jose[cryptography]>=3.3.0",
-    "python-keycloak>=5.8.1",
+    "python-keycloak>=7.1.1",
     "libcst>=1.1.0",
     "aiosqlite>=0.20.0", # SQLite async driver for lite mode KV store
     "zeroconf>=0.131.0", # mDNS device discovery
