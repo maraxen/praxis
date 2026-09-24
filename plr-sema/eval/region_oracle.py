@@ -104,7 +104,12 @@ from typing import Any
 
 sys.path.insert(0, str(_EVAL_DIR))
 
-from oracle_common import DEFAULT_CONTRACTS, param_names_from_contracts  # noqa: E402
+from oracle_common import (  # noqa: E402
+    DEFAULT_CONTRACTS,
+    excuse_by_frame,
+    observation_env_members,
+    param_names_from_contracts,
+)
 from region_recorder import (  # noqa: E402
     DuplicateCallSiteError,
     RegionRecorder,
@@ -149,6 +154,40 @@ def _shape_of(stem: str) -> str:
         if stem.startswith(prefix):
             return shape
     return "other"
+
+
+def _site_key(plr_site: Any) -> str:
+    """``"file:line:qualname"`` for a :class:`plr_sema.verdict.PlrSite`, or
+    ``"<none>"`` -- the tier-2b twin of ``oracle_replay.py``'s own
+    ``_site_key`` (#4979, T32), kept as an independent copy for the same
+    reason that module's own docstring gives.
+    """
+    if plr_site is None:
+        return "<none>"
+    return f"{plr_site.file}:{plr_site.lineno}:{plr_site.qualname}"
+
+
+def _error_frames(exc: BaseException) -> list[dict[str, Any]]:
+    """260909 (spec §16.7 F1/F4, fence increment, T45, backlog #5025): the
+    tier-2b twin of ``training.verify.verifier._error_frames`` -- kept as
+    an independent copy (same rationale this module's own ``_join_key``/
+    ``_site_key``-shaped precedents in this codebase give: `training/`
+    and `plr-sema/eval/` never import each other's harness internals) but
+    IDENTICAL in behaviour: the whole frame chain, outermost first, one
+    dict per frame with ``file``/``lineno``/``qualname`` (``co_qualname``,
+    the ``Class.method`` form ``PlrSite.qualname`` uses).
+    """
+    frames: list[dict[str, Any]] = []
+    tb = exc.__traceback__
+    while tb is not None:
+        code = tb.tb_frame.f_code
+        frames.append({
+            "file": code.co_filename,
+            "lineno": tb.tb_lineno,
+            "qualname": getattr(code, "co_qualname", code.co_name),
+        })
+        tb = tb.tb_next
+    return frames
 
 
 def parse_iteration(detail: str) -> int | None:
@@ -353,18 +392,40 @@ def _verdict_at(static: StaticVerdicts, join_fn, op_id: str, iteration: int):
 
 def _static_report(
     payload: dict[str, Any], contracts_payload: dict[str, Any], param_names, ir_mod, check_mod,
-    *, env: frozenset[str] = frozenset(),
+    *, env: frozenset[str] = frozenset(), excludes_sites: "list[Any] | None" = None,
 ):
+    """``excludes_sites`` (spec 260909 §16.7 F4, fence increment, T45,
+    backlog #5025): threaded verbatim to :func:`plr_sema.check.check_ir`'s
+    own collector -- the tier-2b twin of `oracle_common.run_static_calls`'s
+    identically-named kwarg (#4979, T32). ``None`` (the default) reproduces
+    every pre-T45 caller's behaviour byte-identically.
+    """
     injected = _inject_setup_op(payload)
     bytecode = ir_mod.lower_graph(injected, param_names=param_names)
     contracts = contracts_payload.get("contracts", {})
     receiver_states = contracts_payload.get("receiver_state", {})
-    raw_findings = check_mod.check_ir(bytecode, contracts, receiver_states, env=env)
+    raw_findings = check_mod.check_ir(
+        bytecode, contracts, receiver_states, env=env, excludes_sites=excludes_sites,
+    )
     findings = ir_mod.relabel_findings(raw_findings, bytecode.sideband.get("origin", {}))
     join_map = _build_join_map(bytecode, ir_mod)
     static = _group_static_findings(findings)
+    # 260909 (spec §16.7 F4, T45): the scoped counterpart of `static` --
+    # the SAME grouping, over the sub-multiset of `findings` whose site is
+    # not in `excludes_sites` (this call's own collector, once populated
+    # above -- `check_ir` mutates it during the `raw_findings` call).
+    # `None` whenever `excludes_sites` is `None` (mirrors
+    # `oracle_common.run_static_calls`'s own "`None` for every operation
+    # whenever `excludes_sites` is `None`" rule).
+    if excludes_sites is not None:
+        scoped_set = set(excludes_sites)
+        static_scoped = _group_static_findings(
+            [f for f in findings if f.plr_site not in scoped_set]
+        )
+    else:
+        static_scoped = None
     proved_trips = _proved_trip_loops(injected)
-    return bytecode, findings, join_map, static, proved_trips
+    return bytecode, findings, join_map, static, static_scoped, proved_trips
 
 
 def _proved_trip_loops(payload: dict[str, Any]) -> dict[str, tuple[int, tuple[str, ...]]]:
@@ -398,23 +459,38 @@ def _load_fixture_module(path: Path):
 
 async def _run_fixture_execution(
     protocol_fn, layout_dict: dict[str, Any], supported_tools,
-) -> tuple[list[VisitRecord], str | None, bool]:
-    """Returns ``(records, raised, volume_tracking_observed)``. 260903
-    (spec §14.6, volume increment 5, round-1 O5, T27, backlog #4959): the
-    third element is the `does_volume_tracking()` hypothesis, observed from
-    INSIDE the window `set_volume_tracking(True)` opens below -- never from
-    outside it, which is what a later process-wide observation would have
-    raced (the very non-determinism O5 found: the OLD `finally` below
-    restored strictness only, so the tracking flags leaked and a
-    process-wide read after the first fixture returned `True` regardless of
-    which env this fixture's OWN static side should get). The `finally` now
-    restores the tracking flags it sets, closing that leak.
+) -> tuple[list[VisitRecord], str | None, bool, dict[str, Any] | None, list[dict[str, Any]] | None]:
+    """Returns ``(records, raised, volume_tracking_observed,
+    plr_observation, error_frames)``. 260903 (spec §14.6, volume increment
+    5, round-1 O5, T27, backlog #4959): the third element is the
+    `does_volume_tracking()` hypothesis, observed from INSIDE the window
+    `set_volume_tracking(True)` opens below -- never from outside it,
+    which is what a later process-wide observation would have raced (the
+    very non-determinism O5 found: the OLD `finally` below restored
+    strictness only, so the tracking flags leaked and a process-wide read
+    after the first fixture returned `True` regardless of which env this
+    fixture's OWN static side should get). The `finally` now restores the
+    tracking flags it sets, closing that leak.
+
+    260909 (spec §16.2.1, observation increment, T40, backlog #5023): the
+    fourth element is the §16.2 four-field observation record, captured at
+    the SAME ONE window `training/verify/verifier.py` uses -- after
+    ``await setup.machine.setup()``, before real execution begins (here,
+    before `recorder.install()`/the protocol call) -- via the SAME
+    `verify.deck.capture_observation` helper, inside an identical
+    fail-closed guard. `None` on any raising read; never partial.
+
+    260909 (spec §16.7 F1/F4, fence increment, T45, backlog #5025): the
+    fifth element is the identical `error_frames` capture
+    `training/verify/verifier.py` performs -- the whole frame chain,
+    outermost first, from the ONE exception this function may catch below.
+    `None` when the protocol never raised.
     """
     from pylabrobot.liquid_handling.strictness import Strictness, get_strictness, set_strictness
     from pylabrobot.resources import set_tip_tracking, set_volume_tracking
     from pylabrobot.resources.tip_tracker import does_tip_tracking
     from pylabrobot.resources.volume_tracker import does_volume_tracking
-    from verify.deck import DeckLayout, build_setup
+    from verify.deck import DeckLayout, build_setup, capture_observation
 
     layout = DeckLayout(**layout_dict) if layout_dict else DeckLayout()
     setup = build_setup("LiquidHandlerChatterboxBackend", layout)
@@ -425,6 +501,8 @@ async def _run_fixture_execution(
     recorder = RegionRecorder(setup.machine, supported_tools)
     raised: str | None = None
     volume_tracking_observed = False
+    plr_observation: dict[str, Any] | None = None
+    error_frames: list[dict[str, Any]] | None = None
     buf = io.StringIO()
     try:
         set_strictness(Strictness.STRICT)
@@ -435,6 +513,12 @@ async def _run_fixture_execution(
         volume_tracking_observed = does_volume_tracking()
         with contextlib.redirect_stdout(buf):
             await setup.machine.setup()
+            # 260909 (spec §16.2.1, T40): the ONE observation capture
+            # point -- after `machine.setup()`, before real execution.
+            try:
+                plr_observation = capture_observation(setup)
+            except Exception:  # noqa: BLE001 - fail-closed observation window
+                plr_observation = None
             recorder.install()
             try:
                 import inspect
@@ -449,6 +533,7 @@ async def _run_fixture_execution(
                     await protocol_fn(setup.machine, **kwargs)
                 except Exception as e:
                     raised = f"{type(e).__name__}: {e}"
+                    error_frames = _error_frames(e)
             finally:
                 recorder.uninstall()
                 with contextlib.suppress(Exception):
@@ -458,7 +543,7 @@ async def _run_fixture_execution(
         set_volume_tracking(old_volume_tracking)
         set_tip_tracking(old_tip_tracking)
 
-    return recorder.records, raised, volume_tracking_observed
+    return recorder.records, raised, volume_tracking_observed, plr_observation, error_frames
 
 
 # ---------------------------------------------------------------------------
@@ -492,6 +577,19 @@ class FixtureOutcome:
     trip_checks: list[dict[str, Any]] = dataclasses.field(default_factory=list)
     n_operations: int = 0
     n_findings: int = 0
+    # 260909 (spec §16.7 F1/F4, fence increment, T45, backlog #5025): tier-2b
+    # parity with `oracle_common.RuntimeOutcome.error_frames`/`compare`'s
+    # `excludes_sites` -- the whole captured frame chain for this fixture's
+    # ONE possible exception, the tier-(iii) guard sites visited anywhere in
+    # this fixture's lowered graph (mirrors `RowResult.excludes_sites`), the
+    # SCOPED-and-unnarrowed unsound rows, and the subset of those excused by
+    # F2's frame match. `unsound_rows` above (the UNSCOPED predicate) is
+    # UNMODIFIED by any of this -- F3's own "unmodified" rule, extended to
+    # this lane.
+    error_frames: list[dict[str, Any]] | None = None
+    excludes_sites: list[str] = dataclasses.field(default_factory=list)
+    unsound_scoped_rows: list[UnsoundRow] = dataclasses.field(default_factory=list)
+    excused_by_frame_rows: list[UnsoundRow] = dataclasses.field(default_factory=list)
 
 
 def _volume_slice_summary(outcomes: list[FixtureOutcome]) -> dict[str, int]:
@@ -556,7 +654,7 @@ def run_fixture(
     protocol_fn = module.protocol
 
     try:
-        records, raised, volume_tracking_observed = asyncio.run(
+        records, raised, volume_tracking_observed, plr_observation, error_frames = asyncio.run(
             _run_fixture_execution(protocol_fn, layout_dict, supported_tools)
         )
     except Exception as e:  # pragma: no cover - defensive, a harness-level failure
@@ -573,10 +671,21 @@ def run_fixture(
     from pylabrobot.resources.volume_tracker import does_volume_tracking
 
     env = frozenset({does_volume_tracking.__name__}) if volume_tracking_observed else frozenset()
+    # 260909 (spec §16.2.3, observation increment, T40, backlog #5023):
+    # folded in alongside the volume member, from the SAME fixture's own
+    # `LAYOUT["resources"]` declaration -- this harness's own per-slot
+    # RESOURCE map (the `oracle_common.resources_from_example` counterpart
+    # for a graph-payload fixture rather than a call-sequence example).
+    env = env | observation_env_members(plr_observation, layout_dict.get("resources") or {})
 
+    # 260909 (spec §16.7 F4, T45): one collector per fixture, threaded to
+    # `_static_report`'s new `excludes_sites` kwarg -- the tier-2b twin of
+    # `oracle_replay.py`'s own `row_excludes_sites` (#4979, T32).
+    fixture_excludes_sites: list[Any] = []
     try:
-        bytecode, findings, join_map, static, proved_trips = _static_report(
+        bytecode, findings, join_map, static, static_scoped, proved_trips = _static_report(
             payload, contracts_payload, param_names, ir_mod, check_mod, env=env,
+            excludes_sites=fixture_excludes_sites,
         )
     except DuplicateCallSiteError as e:
         return FixtureOutcome(name, shape, "harness_error", detail=f"duplicate_call_site:{e}")
@@ -590,6 +699,8 @@ def run_fixture(
     outcome = FixtureOutcome(
         name, shape, "compared", raised=raised,
         n_operations=len(payload.get("operations") or ()), n_findings=len(findings),
+        error_frames=error_frames,
+        excludes_sites=sorted({_site_key(s) for s in fixture_excludes_sites}),
     )
 
     for join_key, key_records in executed_by_key.items():
@@ -606,6 +717,8 @@ def run_fixture(
             if verdict is None:
                 outcome.uncovered_keys.append(real_key)
                 continue
+            # 260909 (spec §16.7 F3, T45): `unsound`/`unsound_rows` --
+            # UNMODIFIED, over the UNSCOPED `verdict` exactly as before.
             unsound = (
                 (verdict == safe_verdict and record.outcome.startswith("raised:"))
                 or (verdict == will_fail_verdict and record.outcome == "ran_ok")
@@ -617,6 +730,30 @@ def run_fixture(
                         record.outcome, verdict.value,
                     )
                 )
+            # 260909 (spec §16.7 F4, T45): the scoped counterpart, narrowed
+            # by F2's frame match -- the SAME `excuse_by_frame` helper
+            # `oracle_common.compare` uses, over THIS fixture's own
+            # `error_frames`/`fixture_excludes_sites`. Only the
+            # `safe`+`raised` shape is a candidate (F2's condition (1));
+            # `will_fail`+`ran_ok` is never excused.
+            if static_scoped is not None:
+                scoped_verdict = _verdict_at(static_scoped, join_fn, op_id, record.visit_index)
+                if scoped_verdict is not None:
+                    unsound_scoped_unnarrowed = (
+                        (scoped_verdict == safe_verdict and record.outcome.startswith("raised:"))
+                        or (scoped_verdict == will_fail_verdict and record.outcome == "ran_ok")
+                    )
+                    excused = False
+                    if unsound_scoped_unnarrowed and scoped_verdict == safe_verdict and record.outcome.startswith("raised:"):
+                        excused, _matched = excuse_by_frame(error_frames, fixture_excludes_sites)
+                    row = UnsoundRow(
+                        name, record.method, record.lineno, record.visit_index, op_id,
+                        record.outcome, scoped_verdict.value,
+                    )
+                    if unsound_scoped_unnarrowed and not excused:
+                        outcome.unsound_scoped_rows.append(row)
+                    elif unsound_scoped_unnarrowed and excused:
+                        outcome.excused_by_frame_rows.append(row)
             if record.outcome.startswith("raised:"):
                 outcome.raised_key = real_key
                 outcome.static_verdict_at_raised = verdict.value
@@ -680,6 +817,11 @@ def main(argv: list[str] | None = None) -> int:
 
     region_unsound = sum(len(o.unsound_rows) for o in outcomes)
     region_will_fail_fired = sum(1 for o in outcomes if o.will_fail_at_raised)
+    # 260909 (spec §16.7 F4, fence increment, T45, backlog #5025): tier-2b's
+    # own scoped/narrowed counters -- additive, no gate effect (`ok` below
+    # is still computed from `region_unsound` alone, F3's own rule).
+    region_unsound_scoped = sum(len(o.unsound_scoped_rows) for o in outcomes)
+    region_rows_excused_by_frame = sum(len(o.excused_by_frame_rows) for o in outcomes)
     volume_slice = _volume_slice_summary(outcomes)
     volume_fixtures = volume_slice["volume_fixtures"]
     volume_unsound = volume_slice["volume_unsound"]
@@ -724,6 +866,9 @@ def main(argv: list[str] | None = None) -> int:
         "volume_fixtures": volume_fixtures,
         "volume_unsound": volume_unsound,
         "volume_will_fail_fired": volume_will_fail_fired,
+        # 260909 (spec §16.7 F4, T45): additive, no gate effect.
+        "region_unsound_scoped": region_unsound_scoped,
+        "region_rows_excused_by_frame": region_rows_excused_by_frame,
     }
 
     report = {
@@ -733,6 +878,14 @@ def main(argv: list[str] | None = None) -> int:
         "harness_errors": [{"fixture": o.name, "detail": o.detail} for o in harness_errors],
         "unsound_rows": [
             dataclasses.asdict(row) for o in outcomes for row in o.unsound_rows
+        ],
+        # 260909 (spec §16.7 F4, T45): every excused row's full frame list
+        # published beside it (AC-16.8's own requirement, extended to this
+        # lane).
+        "rows_excused_by_frame": [
+            {**dataclasses.asdict(row), "error_frames": o.error_frames}
+            for o in outcomes
+            for row in o.excused_by_frame_rows
         ],
         "fixtures": [
             {
@@ -748,6 +901,11 @@ def main(argv: list[str] | None = None) -> int:
                 "trip_checks": o.trip_checks,
                 "n_operations": o.n_operations,
                 "n_findings": o.n_findings,
+                # 260909 (spec §16.7 F1/F4, T45): additive.
+                "error_frames": o.error_frames,
+                "excludes_sites": o.excludes_sites,
+                "n_unsound_scoped": len(o.unsound_scoped_rows),
+                "n_excused_by_frame": len(o.excused_by_frame_rows),
             }
             for o in outcomes
         ],

@@ -32,9 +32,11 @@ from oracle_common import (
     calls_from_plr_kwargs,
     compare,
     content_digest,
+    excuse_by_frame,
     extract_first_call,
     ir_value_of,
     lower_row_calls,
+    normalize_plr_path,
     param_names_from_contracts,
     resources_from_example,
     row_to_verifier_inputs,
@@ -500,7 +502,12 @@ class TestPLRNamedArguments:
         contracts_json = json.dumps({"contracts": {}})
         st, not_planned = run_static_calls(example, plr_kwargs, contracts_json)
         assert not_planned == [1]
-        assert st["op_1"] == {"verdict": "unknown", "n_findings": 0, "reasons": []}
+        # 260904 (spec §15.10/§16.6, T32/T44): `scoped_verdict` is additive
+        # to every entry `run_static_calls` publishes, not-planned included
+        # -- `None` here since this caller never threads `excludes_sites`.
+        assert st["op_1"] == {
+            "verdict": "unknown", "n_findings": 0, "reasons": [], "scoped_verdict": None,
+        }
 
 
 class TestSetupPrepend:
@@ -1422,3 +1429,370 @@ class TestT32AdditiveReportFields:
         # the documented formula still holds with the new fields present.
         expected_rc = 1 if (report["summary_flat"]["unsound"] > 0 or report["summary_flat"]["check_graph_exceptions"] > 0) else 0
         assert rc == expected_rc
+
+
+class TestT46ObservationThreading:
+    """260909 (spec §16.10, increment 7, T46): `run_row`'s own wiring gap --
+    `RuntimeOutcome.plr_observation` (T40, landed) and T43's resolution
+    rules (landed in `check/predicate.py`) were never connected before this
+    row, so `:409`/`:514` stayed `guard_env_dependent` through T43-T45
+    despite both halves existing. This class is the regression test for
+    the one-line fix (`plr_observation=rt.plr_observation` threaded into
+    `run_static_calls`) plus the `compare()` `excludes_sites` wiring and
+    the derived per-rule/gate publication built on top of it."""
+
+    def _run_main(self, tmp_path, rows):
+        import oracle_replay
+
+        corpus_path = tmp_path / "corpus.jsonl"
+        corpus_path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+        report_path = tmp_path / "report.json"
+        rc = oracle_replay.main(["--corpus", str(corpus_path), "--report", str(report_path)])
+        return rc, json.loads(report_path.read_text())
+
+    def test_observation_flips_head_and_const_sites_to_decided(self, tmp_path):
+        """A clean `pick_up_tips` row, run through `main()` end-to-end:
+        `:409` (R-HEAD, `_make_sure_channels_exist`) and `:514` (R-CONST,
+        `can_pick_up_tip`) must both appear in `n_findings_decided_by_site`
+        once `plr_observation` is threaded -- pre-fix, neither site was
+        ever decided (`n_resolved_by_rule` would be all zero, exactly
+        §16.10.4's own falsification-map counter for "the observation
+        alone flips nothing without §16.5" WITH §16.5 landed but unwired)."""
+        row = _chat_row(
+            "pick_up_tips",
+            {"at": ["tip_rack.A1"]},
+            utterance="pick up a tip",
+        )
+        rc, report = self._run_main(tmp_path, [row])
+
+        by_site = report["n_findings_decided_by_site"]
+        assert any(k.endswith(":409:LiquidHandler._make_sure_channels_exist") for k in by_site), by_site
+        assert any(k.endswith(":514:LiquidHandler.pick_up_tips") for k in by_site), by_site
+        assert report["n_resolved_by_rule"]["R-HEAD"] >= 1
+        assert report["n_resolved_by_rule"]["R-CONST"] >= 1
+        assert report["n_resolved_by_rule"]["R-ATTR"] == 0
+        assert report["n_membership_decided"]["total"] >= 1
+        assert report["n_quantifier_decided_by_qmono"]["total"] >= 1
+
+    def test_gate_block_present_and_well_typed(self, tmp_path):
+        """§16.10.2's gate, computed and published, whether or not it
+        actually reaches GO on this row (AC-16.11: reproducible from the
+        JSON alone)."""
+        row = _chat_row(
+            "pick_up_tips",
+            {"at": ["tip_rack.A1"]},
+            utterance="pick up a tip",
+        )
+        rc, report = self._run_main(tmp_path, [row])
+
+        gate = report["gate"]
+        assert isinstance(gate["go"], bool)
+        assert isinstance(gate["n_operations_scope_verdict_safe"], int)
+        assert gate["unsound"] == report["summary_flat"]["unsound"]
+        assert gate["unsound_scoped"] == report["summary_flat"]["unsound_scoped"]
+        assert gate["n_findings_decided"] == report["n_findings_decided"]
+        assert gate["n_findings_decided_floor"] == 2009
+        assert gate["n_findings_decided_target"] == 2170
+        assert report["summary_flat"]["gate_go"] == gate["go"]
+        # T49 (the D5b `_check_args` site rules, backlog #5026) has now
+        # LANDED alongside T48's `:321` rule -- on this ONE clean
+        # `pick_up_tips` row, `backend_class` observes as chatterbox, whose
+        # `pick_up_tips` row in §16.3's surface has `params` a subset of
+        # the caller-side `default` and `has_var_keyword` True, so BOTH
+        # `:375` and `:383` decide `SAFE` (`n_check_args_decided.total`
+        # moves 0 -> 2, one per site); combined with T48's `:321` (`n_
+        # assert_resources_decided` 0 -> 1, this row's own `resources`
+        # `tip_rack` resolves cleanly and the harness's own aggregate deck
+        # fact is `True`) and T43's already-landed `:409`/`:514`, every
+        # non-excluded site on this operation is `SAFE`, so `scope_verdict`
+        # itself reaches `SAFE` and the gate says GO -- AC-16.14's own
+        # "requires AC-16.13 to have landed too" conjunction is now
+        # satisfied on BOTH halves.
+        assert gate["go"] is True
+        assert gate["n_operations_scope_verdict_safe"] == 1
+        assert report["n_check_args_decided"]["total"] == 2
+        assert report["n_assert_resources_decided"]["total"] == 1
+
+    def test_unsound_scoped_and_rows_excused_by_frame_present_and_zero_on_clean_row(self, tmp_path):
+        """The fence's second counter pair (§16.7 F3, T45) -- wired to
+        `compare()`'s `excludes_sites` by this row -- stays 0 on a row with
+        no unsound finding at all, and the report shape matches
+        `rows_excused_by_scope`'s own (count + examples)."""
+        row = _chat_row(
+            "pick_up_tips",
+            {"at": ["tip_rack.A1"]},
+            utterance="pick up a tip",
+        )
+        rc, report = self._run_main(tmp_path, [row])
+
+        assert report["summary_flat"]["unsound"] == 0
+        assert report["summary_flat"]["unsound_scoped"] == 0
+        assert isinstance(report["rows_excused_by_frame"], dict)
+        assert report["rows_excused_by_frame"]["count"] == 0
+        assert report["rows_excused_by_frame"]["examples"] == []
+        assert rc == 0
+
+    def test_exit_code_fails_on_nonzero_unsound_scoped(self, tmp_path, monkeypatch):
+        """§16.7 F3: `unsound_scoped` joins `unsound`/`check_graph_exceptions`
+        as a hard exit-code failure -- simulated by monkeypatching `compare`
+        to return one unsound_scoped row, since no shipped fixture actually
+        produces a false SAFE-within-scope today (the fence is there to
+        catch a defect, not to demonstrate one)."""
+        import oracle_replay
+
+        real_compare = oracle_replay.compare
+
+        def _fake_compare(example, rt, st, **kwargs):
+            rows = real_compare(example, rt, st, **kwargs)
+            if rows:
+                rows[0] = {**rows[0], "unsound_scoped": True}
+            return rows
+
+        monkeypatch.setattr(oracle_replay, "compare", _fake_compare)
+        row = _chat_row(
+            "pick_up_tips",
+            {"at": ["tip_rack.A1"]},
+            utterance="pick up a tip",
+        )
+        rc, report = self._run_main(tmp_path, [row])
+        assert report["summary_flat"]["unsound_scoped"] >= 1
+        assert rc == 1
+
+
+# ---------------------------------------------------------------------------
+# §16.7 (fence increment, T45, backlog #5025): F1's frame-list capture, F2's
+# any-frame narrowing with the outermost tie-break, F2a's ONE normalisation
+# helper -- AC-16.8. Every `PlrSite` used below is READ off the shipped
+# `derived_contracts.json`, never hand-written (AC-16.8's own requirement).
+# ---------------------------------------------------------------------------
+
+
+def _load_real_site(contract_key: str, lineno: int):
+    """A REAL `PlrSite`, read off the shipped contract table -- the guard
+    record for ``contract_key``'s method whose ``site.lineno == lineno``.
+    AC-16.8 asserts every fence match is against a site loaded this way,
+    never against a hand-written tuple.
+    """
+    sys.path.insert(0, str(REPO_ROOT / "plr-sema" / "src"))
+    from plr_sema.verdict import PlrSite
+
+    payload = json.loads(CONTRACTS_PATH.read_text(encoding="utf-8"))
+    guards = payload["contracts"][contract_key]["guards"]
+    for g in guards:
+        if g["site"]["lineno"] == lineno:
+            return PlrSite(**g["site"])
+    raise AssertionError(f"no guard at {contract_key}:{lineno} in {CONTRACTS_PATH}")
+
+
+def _pick_up_tips_example(record_id: str, positions: list[str]) -> dict:
+    return {
+        "call_sequence": [{"name": "pick_up_tips", "params": {"at": positions}}],
+        "intent_record": {"record_id": record_id, "utterance": "pick up tips"},
+    }
+
+
+class TestFenceFrameCapture:
+    """F1: `run_runtime`'s `RuntimeOutcome.error_frames`, read off `verify()`'s
+    own additive `error_frames` result key."""
+
+    def test_error_frames_none_on_success(self):
+        example = _pick_up_tips_example("fence_ok", ["tip_rack.A1", "tip_rack.B1"])
+        rt = run_runtime(example)
+        assert rt.error is None
+        assert rt.error_frames is None
+
+    def test_error_frames_outermost_first_on_direct_raise(self):
+        """The direct-raise case (spec_version 1's own): 9 tip spots on an
+        8-channel backend overflows `_make_sure_channels_exist`'s channel
+        check (`external/pylabrobot/pylabrobot/liquid_handling/
+        liquid_handler.py:409`), raised directly -- no capture/re-raise in
+        between."""
+        positions = [f"tip_rack.{r}1" for r in "ABCDEFGH"] + ["tip_rack.A2"]
+        example = _pick_up_tips_example("fence_direct", positions)
+        rt = run_runtime(example)
+        assert rt.error is not None and "Invalid channels" in rt.error
+        assert rt.error_frames
+        site = _load_real_site("LiquidHandler.pick_up_tips", 409)
+        matches = [
+            f for f in rt.error_frames
+            if f["lineno"] == site.lineno and normalize_plr_path(f["file"]) == normalize_plr_path(site.file)
+        ]
+        assert matches, rt.error_frames
+        assert matches[0]["qualname"] == "LiquidHandler._make_sure_channels_exist"
+
+
+class TestFenceNarrowing:
+    """F2/F2a: `excuse_by_frame`'s any-frame match, outermost tie-break, and
+    the shared `normalize_plr_path` helper -- exercised through REAL
+    `error_frames` (captured from an actual PLR raise, never fabricated)
+    against REAL `PlrSite`s (read off the shipped contract table)."""
+
+    def test_reraise_case_is_excused_c5(self, monkeypatch):
+        """C5's own defect case: an exception raised INSIDE the backend,
+        caught at `liquid_handler.py:551-556`, re-raised at `:575-576`.
+        spec_version 1's `extract_tb(...)[-1]` match (the INNERMOST frame,
+        which is the backend's own original raise site) could never equal
+        this excluded site -- this is the fixture that would fail under
+        that implementation and must pass under this one.
+        """
+        from pylabrobot.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend
+
+        async def _raising(self, *a, **kw):
+            raise RuntimeError("synthetic backend failure")
+
+        monkeypatch.setattr(LiquidHandlerChatterboxBackend, "pick_up_tips", _raising)
+
+        example = _pick_up_tips_example("fence_reraise", ["tip_rack.A1", "tip_rack.B1"])
+        rt = run_runtime(example)
+        assert rt.error is not None and "synthetic backend failure" in rt.error
+        assert rt.error_frames
+
+        site = _load_real_site("LiquidHandler.pick_up_tips", 576)
+
+        # The defect this row fixes, made concrete: the INNERMOST frame is
+        # NOT the excluded site (it is deep inside the monkeypatched
+        # backend) -- an implementation matching only `error_frames[-1]`
+        # excuses nothing here.
+        innermost = rt.error_frames[-1]
+        assert not (
+            innermost["lineno"] == site.lineno
+            and normalize_plr_path(innermost["file"]) == normalize_plr_path(site.file)
+        )
+
+        excused, matched = excuse_by_frame(rt.error_frames, [site])
+        assert excused is True
+        assert matched is not None and matched["lineno"] == 576
+
+        # compare()'s own narrowing sees the same result: a synthetic
+        # `safe`+`raised` row is excused (`unsound_scoped` -> False).
+        st = {"op_0": {"verdict": "unknown", "n_findings": 1, "reasons": [], "scoped_verdict": "safe"}}
+        rows = compare(example, rt, st, excludes_sites=[site])
+        assert rows[0]["unsound_scoped"] is False
+        assert rows[0]["excused_by_frame"] is True
+
+    def test_direct_raise_case_is_excused_spec_version_1(self):
+        """spec_version 1's OWN direct case, kept as a regression fixture:
+        a raise inside `_make_sure_channels_exist` with no re-raise in
+        between -- the innermost frame already IS the excluded site, so
+        this shape was never the defect and must keep passing.
+        """
+        positions = [f"tip_rack.{r}1" for r in "ABCDEFGH"] + ["tip_rack.A2"]
+        example = _pick_up_tips_example("fence_direct2", positions)
+        rt = run_runtime(example)
+        assert rt.error_frames
+
+        site = _load_real_site("LiquidHandler.pick_up_tips", 409)
+        excused, matched = excuse_by_frame(rt.error_frames, [site])
+        assert excused is True
+        assert matched is not None
+        assert matched["qualname"] == "LiquidHandler._make_sure_channels_exist"
+
+    def test_outermost_match_decides_the_tie(self):
+        """When several frames match (against two DIFFERENT excluded
+        sites), the OUTERMOST one -- earliest in `error_frames` -- decides,
+        never the innermost."""
+        liquid_handler_py = str(
+            REPO_ROOT / "external" / "pylabrobot" / "pylabrobot" / "liquid_handling" / "liquid_handler.py"
+        )
+        frames = [
+            {"file": liquid_handler_py, "lineno": 409, "qualname": "LiquidHandler._make_sure_channels_exist"},
+            {"file": liquid_handler_py, "lineno": 576, "qualname": "LiquidHandler.pick_up_tips"},
+        ]
+        site_409 = _load_real_site("LiquidHandler.pick_up_tips", 409)
+        site_576 = _load_real_site("LiquidHandler.pick_up_tips", 576)
+
+        excused, matched = excuse_by_frame(frames, [site_409, site_576])
+        assert excused is True
+        assert matched is not None and matched["lineno"] == 409  # the OUTERMOST (first) match
+
+        # Reversed frame order flips which match is outermost.
+        excused2, matched2 = excuse_by_frame(list(reversed(frames)), [site_409, site_576])
+        assert excused2 is True
+        assert matched2 is not None and matched2["lineno"] == 576
+
+    def test_safe_row_with_no_excluded_frame_is_unsound_scoped_not_excused(self):
+        """The failure this increment introduces for the first time (§16.7's
+        own normative box): a `scope_verdict == "safe"` row NONE of whose
+        frames is an excluded site is counted `unsound_scoped` and is NOT
+        excused -- here, the direct-raise's frames never touch `:576`."""
+        positions = [f"tip_rack.{r}1" for r in "ABCDEFGH"] + ["tip_rack.A2"]
+        example = _pick_up_tips_example("fence_not_excused", positions)
+        rt = run_runtime(example)
+        assert rt.error_frames
+
+        site_576 = _load_real_site("LiquidHandler.pick_up_tips", 576)
+        excused, matched = excuse_by_frame(rt.error_frames, [site_576])
+        assert excused is False
+        assert matched is None
+
+        st = {"op_0": {"verdict": "unknown", "n_findings": 1, "reasons": [], "scoped_verdict": "safe"}}
+        rows = compare(example, rt, st, excludes_sites=[site_576])
+        assert rows[0]["unsound_scoped"] is True
+        assert rows[0]["excused_by_frame"] is False
+
+    def test_will_fail_ran_ok_is_never_excused(self):
+        """F2's condition (1) requires `outcome.startswith("raised")` --
+        a `will_fail`+`ran_ok` row is never a candidate for excusal, even
+        when `excludes_sites` is populated and error_frames is `None`."""
+        example = _pick_up_tips_example("fence_willfail", ["tip_rack.A1", "tip_rack.B1"])
+        rt = RuntimeOutcome(
+            error=None, exc_class=None, failing_index=None, planned_indices=[0], passed=True,
+        )
+        site = _load_real_site("LiquidHandler.pick_up_tips", 576)
+        st = {"op_0": {"verdict": "will_fail", "n_findings": 1, "reasons": ["too_much_volume"], "scoped_verdict": "will_fail"}}
+        rows = compare(example, rt, st, excludes_sites=[site])
+        assert rows[0]["unsound_scoped"] is True
+        assert rows[0]["excused_by_frame"] is False
+
+    def test_exc_class_absent_from_comparison_path(self):
+        """§16.7's own normative box: `exc_class` is used only to LABEL the
+        row (the `outcome` string), never compared against a `PlrSite` --
+        an AST scan confirms `excuse_by_frame`/`_frame_matches_site` never
+        reference `exc_class` at all.
+        """
+        import ast
+        import inspect
+
+        import oracle_common
+
+        src = inspect.getsource(oracle_common.excuse_by_frame) + inspect.getsource(oracle_common._frame_matches_site)
+        tree = ast.parse(src)
+        names = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+        attrs = {node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)}
+        assert "exc_class" not in names
+        assert "exc_class" not in attrs
+
+
+class TestNormalizePlrPath:
+    """F2a: the ONE normalisation helper, applied identically to a captured
+    frame's absolute `__file__` and a `PlrSite.file`'s repo-relative form."""
+
+    def test_pins_the_real_path_identity(self):
+        """Drives both sides through the SAME helper: a REAL captured frame
+        (an actual raise inside `_make_sure_channels_exist`) and a REAL
+        `PlrSite.file` read from the contract table normalise to the SAME
+        string, even though their raw forms differ (one absolute, one
+        repo-relative) -- PLR is resolved from `external/pylabrobot/` in
+        this checkout, F2a's second identity's positive case.
+        """
+        positions = [f"tip_rack.{r}1" for r in "ABCDEFGH"] + ["tip_rack.A2"]
+        example = _pick_up_tips_example("fence_normalize", positions)
+        rt = run_runtime(example)
+        site = _load_real_site("LiquidHandler.pick_up_tips", 409)
+        frame = next(f for f in rt.error_frames if f["lineno"] == 409)
+
+        # The raw strings differ -- one is absolute, one is repo-relative.
+        assert frame["file"] != site.file
+        # Normalised, they are identical.
+        assert normalize_plr_path(frame["file"]) == normalize_plr_path(site.file)
+
+    def test_path_outside_the_live_package_does_not_unify(self):
+        """§16.7 F2a's documented limitation: a path that resolves OUTSIDE
+        the live `pylabrobot` package (here, simulated with a path under a
+        different, non-PLR subtree) never normalises to the same string as
+        a real `PlrSite.file` -- the helper is asked to unify two
+        identities that genuinely coincide, not to force a match.
+        """
+        foreign = str(REPO_ROOT / "training" / "verify" / "verifier.py")
+        site = _load_real_site("LiquidHandler.pick_up_tips", 409)
+        assert normalize_plr_path(foreign) != normalize_plr_path(site.file)

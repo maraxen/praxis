@@ -456,7 +456,7 @@ and AC-13.1 asserts the `resource.*` case directly so the correction cannot regr
 `requires-python`, main spec §1.1) and is a fact about **Python**, not about PLR — so it cannot go
 stale when PLR changes, which is the `breaks_when` question §9.1 makes every hand-maintained row
 answer. The same is true of `dir(dict)`. **It is a fact about a specific Python, though**, which is why
-the gap ledger's stamp records `derive_python_version` (`plr-sema/data/gap_ledger.json:83`, `"3.14.6"`
+the gap ledger's stamp records `derive_python_version` (`plr-sema/data/gap_ledger.json:100`, `"3.14.6"`
 at the 50063d52 run): the same derivation on a different interpreter can select a different set, and
 that is a provenance fact, not a bug.
 
@@ -487,7 +487,7 @@ re-running this must reproduce them, not re-derive them from scratch:
 - **Newly admitted: `logger.debug` and `logger.warning`, +3 entries whole-surface.** Both are visible
   in the shipped ledger (`plr-sema/data/gap_ledger.json:119` and `:139`), which is the published
   evidence that the typed prefix list is gone and nothing silently replaced it.
-- **The interpreter is stamped.** `derive_python_version` (`plr-sema/data/gap_ledger.json:83`) joins
+- **The interpreter is stamped.** `derive_python_version` (`plr-sema/data/gap_ledger.json:100`) joins
   the existing `plr`/`praxis` provenance in the ledger's stamp block (`:37-59`), so a ledger diff
   caused by a Python upgrade is attributable rather than mysterious.
 
@@ -737,7 +737,7 @@ working as designed.
 > only its stated *reason* was wrong.**]**
 
 **`REASON_VOCABULARY` (HM-14): unchanged at 8 of cap 12** (`plr-sema/src/plr_sema/verdict.py:129-154`;
-the row is `CAPPED` at declared 12, `_hand_maintained.py:650-654`). The draft added
+the row is `CAPPED` at declared 12, `_hand_maintained.py:691-695`). The draft added
 `volume_state_unknown` and `volume_tracking_unasserted`; both belong to the deferred volume family and
 **both move to increment 5**. Round 1's Q6 made the argument that decided it: a vocabulary member
 whose producer does not work on ship day is the same "dead data" problem §13.7 already raises for
@@ -785,7 +785,7 @@ a stub, the stub-defeating half is named.
   **> 0** and including `logger.debug` and `logger.warning`
   (`plr-sema/data/gap_ledger.json:119`, `:139`). (v) `plr-sema/data/derived_contracts.json` is
   **byte-identical** before and after, and the ledger's stamp carries `derive_python_version`
-  (`plr-sema/data/gap_ledger.json:83`). (ii) and (v) are the stub-defeating halves: a name-coincidence
+  (`plr-sema/data/gap_ledger.json:100`). (ii) and (v) are the stub-defeating halves: a name-coincidence
   rule passes (i) and fails (ii), and a filter that leaked into the derivation passes (i)–(iv) and
   fails (v).
 - **AC-13.2 (the deletion is real and the registry does not grow).** An AST scan of

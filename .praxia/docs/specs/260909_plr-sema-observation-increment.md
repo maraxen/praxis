@@ -492,7 +492,7 @@ are multi-statement. §16.3 publishes the whole-surface count rather than this o
 > - **Before `_execute`**, because a failed operation may leave the trackers rolled back.
 > - **`plr_observation` is `None`, never partial.** It is `None` on the **deck-build early return**
 >   (`training/verify/verifier.py:143-162`, where `setup is None` and no field is obtainable — the same
->   path on which `volume_tracking_observed` returns its default at `training/verify/verifier.py:161`),
+>   path on which `volume_tracking_observed` returns its default at `training/verify/verifier.py:234`),
 >   and `None` whenever **any** field's read raises. `verify()` has **three** return sites, not two, and
 >   spec_version 1's AC-16.1 was unsatisfiable on the third. A `None` observation contributes no `obs:`
 >   member, so §16.5's rules all decline — which is exactly §16.5.1's partial-record refusal, now agreed
@@ -585,7 +585,7 @@ program" is sound only if the analyzed graph is the whole world*
 >
 > **Normative (the deck observation ENTERS `env` — D-G3, conceded).** spec_version 1 enumerated three
 > `obs:` members and threaded `deck_resource_names` to the evaluator as a per-slot boolean built by
-> `resources_from_example` (`plr-sema/eval/oracle_common.py:463`), which meant a fact that changes the
+> `resources_from_example` (`plr-sema/eval/oracle_common.py:574`), which meant a fact that changes the
 > verdict might never reach the fifth `cache_key` component — falsifying §16.6's own claim (4). **Under
 > D6 the observation adds a fourth member,
 > `obs:deck_resources=<sha256 of the JSON-encoded per-slot name map>`.** A digest rather than the map
@@ -595,7 +595,7 @@ program" is sound only if the analyzed graph is the whole world*
 > that its digest is in the key**, so no two observations share a verdict.
 >
 > **The `obs:` prefix is load-bearing and is reserved.** `E-UNCOND` way (2) tests a bare zero-argument
-> callee **name** against `env` (`plr-sema/src/plr_sema/check/predicate.py:765-770`). A member
+> callee **name** against `env` (`plr-sema/src/plr_sema/check/predicate.py:1047-1056`). A member
 > containing `:` and `=` can never equal a Python identifier, so no `obs:` member can satisfy way (2)
 > and **no observation can manufacture reachability**. No member without the prefix is ever added by
 > this increment, and `does_volume_tracking` — the one existing member — is untouched.
@@ -716,7 +716,7 @@ T41 publishes the whole-surface counts and this paragraph is a prediction for it
 
 > **Normative (registry: ZERO).** §16.3 adds no registry row, no per-row ceiling, and no vocabulary
 > member. Its derivation is an AST shape test over PLR's own recorded surface, in the same class as
-> `is_dynamic_raise` (`plr-sema/src/plr_sema/derive/__init__.py:516-520`) and `reachability_clear`
+> `is_dynamic_raise` (`plr-sema/src/plr_sema/derive/__init__.py:549-553`) and `reachability_clear`
 > (`plr-sema/src/plr_sema/derive/bindings.py:778-815`), both of which increment 6 established cost
 > nothing. **This is recorded as a NON-decision (`D3`) precisely so the round can attack it**: if a
 > reviewer can name one literal PLR fact this section hand-types, the claim is false and the section
@@ -729,7 +729,7 @@ T41 publishes the whole-surface counts and this paragraph is a prediction for it
 > > C16, second half, rebutted with the precedent named).** §16.2's record does hand-type four literal
 > > PLR access paths on the harness side — `type(backend).__name__`, `backend.num_channels`,
 > > `machine.head`, and the deck tree walk. **They book nothing, and the precedent is increment 5's
-> > `volume_tracking_observed`** (`training/verify/verifier.py:110-128`), which reads a named PLR global
+> > `volume_tracking_observed`** (`training/verify/verifier.py:178-190`), which reads a named PLR global
 > > from inside the window, is normative in increment 6 §14.6's O5 box, and books no registry row. The
 > > registry's own scope statement is *"syntactic patterns over how PLR/its own analyzer is written"*
 > > (`plr-sema/src/plr_sema/_hand_maintained.py:976-983`) — the **analyzer's front end**, not the
@@ -886,7 +886,7 @@ bind and `:409`, `:321` and `:875` are permanently ½.
 > > `["if not resource_from_deck == resource", "for resource in resources"]`
 > > (`plr-sema/data/derived_contracts.json:88819-88822`) — and `_scope_entry_value` gives a `for`/`while`
 > > header ½ and never `F`, because `ast.parse` on a bare header text is a `SyntaxError` and therefore
-> > `Opaque` (`plr-sema/src/plr_sema/check/predicate.py:724-738`). `_entry_satisfies_uncond` then returns
+> > `Opaque` (`plr-sema/src/plr_sema/check/predicate.py:1011-1025`). `_entry_satisfies_uncond` then returns
 > > `False` for such an entry, so `guard_is_unconditional`'s `all(...)` can never pass
 > > (`plr-sema/src/plr_sema/check/predicate.py:773-788`). **An in-loop guard has a non-empty trail with
 > > an unsatisfiable entry and can never emit `WILL_FAIL`, before or after the lift**, and precondition
@@ -1007,7 +1007,7 @@ which §15.8 argues this production is not."*
 >
 > **The invariant holds vacuously across the whole shipped evaluator today**, which is what makes it a
 > real constraint rather than a description: `_eval_is_instance` returns `None` on a non-`Ref`,
-> `_eval_is` requires a `Lit` (`plr-sema/src/plr_sema/check/predicate.py:566-571`), `_eval_cmp` returns
+> `_eval_is` requires a `Lit` (`plr-sema/src/plr_sema/check/predicate.py:817-822`), `_eval_cmp` returns
 > `None` on every membership operator and on any unresolved `Len`
 > (`plr-sema/src/plr_sema/check/predicate.py:535-558`), `_maybe_setof_uniqueness` requires a `Seq` of
 > hashable `Lit`s, and `_eval_alpha_existential` returns `None` unless the iterand is a concrete `Seq`
@@ -1079,7 +1079,7 @@ conditions. Each is discharged here, in order, and none is waived.
 >
 > **A-C13 is therefore untouched.** A name bound by a genuine `AllOf`/`AnyOf` comprehension target
 > still resolves to ⊤ and is still never resolved against `call.kwargs`, exactly as increment 6 states
-> and as `_resolve_var` implements (`plr-sema/src/plr_sema/check/predicate.py:228-233`). G8(1)'s
+> and as `_resolve_var` implements (`plr-sema/src/plr_sema/check/predicate.py:400-412`). G8(1)'s
 > "no node gains a field" sentence stands, unamended.
 
 **One clause survives, it is the load-bearing novelty of §16.5, and it decides `:514`.**
@@ -1098,7 +1098,7 @@ conditions. Each is discharged here, in order, and none is waived.
 > `False`, so an unknown length cannot falsify either. The two ½ cells are the ones the empty sequence
 > falsifies — `AllOf` over an empty ⊤ seq with an `F` body is `T`, not `F` — and they stay ½ **by
 > rule**. A `seq` that resolves to a concrete `Seq` is governed by the shipped
-> `_eval_allof_anyof` path unchanged (`plr-sema/src/plr_sema/check/predicate.py:597-606`); the two do
+> `_eval_allof_anyof` path unchanged (`plr-sema/src/plr_sema/check/predicate.py:875-884`); the two do
 > not overlap. Q-MONO is an instance of §16.5.3's E-INV invariant and is named there.
 >
 > **This is the clause that decides `:514`**, and it decides it without resolving the `Zip`: `p` is
@@ -1153,7 +1153,7 @@ conditions. Each is discharged here, in order, and none is waived.
 ## 16.6 Q1 — the scoped joined verdict
 
 Increment 6 §15.5 established the representation's two halves and left the third. Tier (iii) is derived
-from `is_dynamic_raise` (`plr-sema/src/plr_sema/check/predicate.py:796-800`); it emits **one**
+from `is_dynamic_raise` (`plr-sema/src/plr_sema/check/predicate.py:1121-1125`); it emits **one**
 `Finding`, `UNKNOWN`/`guard_env_dependent`, and folds its site into `AnalysisReport.scope.excludes_sites`
 (`plr-sema/src/plr_sema/check/__init__.py:409-470` collects them, `:920-955` constructs the report,
 `plr-sema/src/plr_sema/verdict.py:261-275` is the `SoundnessScope` type and `:298-310` the optional
@@ -1302,7 +1302,7 @@ exception-class-keyed narrowing excuses precisely the rows the fence exists to c
 > two identities checkable rather than believed.
 
 > **Normative (F3 — the unscoped fence is untouched, and its untouchedness is asserted rather than
-> assumed).** `unsound` stays exactly `plr-sema/eval/oracle_common.py:767-786`, over `verdict`, with no
+> assumed).** `unsound` stays exactly `plr-sema/eval/oracle_common.py:1072-1074`, over `verdict`, with no
 > narrowing, no excuse and no frame test. `rows_excused_by_scope` — increment 6's pure annotation,
 > measured **0** at T36 (`outputs/plr-sema/oracle_replay_260909_inc6.json:2-21`) — keeps its definition
 > and gains a sibling, `rows_excused_by_frame`, for F2's own count. AC-16.8 asserts that the two
@@ -1357,7 +1357,7 @@ at `declared` 12 in every branch. **New rows: zero under D6 declined, ONE under 
 the arithmetic round 1 changed, and it is the difference between a ceiling spend and a cap
 conversation.
 
-- **D6 declined.** `live_rows()` (`plr-sema/src/plr_sema/_hand_maintained.py:1015-1019`) is **24**
+- **D6 declined.** `live_rows()` (`plr-sema/src/plr_sema/_hand_maintained.py:1152-1156`) is **24**
   against `BUDGET_CAP = 24` (`plr-sema/src/plr_sema/_hand_maintained.py:43`) before and after;
   headroom **0**, unchanged. One per-row ceiling unit, HM-25 `declared` 9 → 10.
 - **D6 taken.** `live_rows()` **24 → 25** and `BUDGET_CAP` **24 → 25**, plus the same HM-25 unit. The
@@ -2051,7 +2051,7 @@ precondition guard the analyzer evaluated, outside the excluded sites, fires aga
 the recorded observation; it asserts nothing about completion (A-COMPLETES,
 `.praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md:752`), nothing about the backend, and
 nothing under a different observation. `compare` scores it with a **second** counter, `unsound_scoped`,
-beside the unmodified `unsound` (`plr-sema/eval/oracle_common.py:767-786`), and neither replaces the
+beside the unmodified `unsound` (`plr-sema/eval/oracle_common.py:1072-1074`), and neither replaces the
 other. **The alternative considered and rejected: emitting tier (iii) as `SAFE` with a marker** —
 increment 6 §15.5 already rejected it as unsound and must-not-implement, and nothing here reopens it.
 
@@ -2129,7 +2129,7 @@ five numbered claims so the round can attack them individually rather than the p
 > so control reaches `G`, whose predicate is `T`, so `G` fires and the operation raises.
 >
 > **R1-C5.** `WILL_FAIL` is a claim about the **operation**, not the site: `join` propagates one
-> `WILL_FAIL` finding to the whole report (`plr-sema/src/plr_sema/verdict.py:313-323`) and `compare`
+> `WILL_FAIL` finding to the whole report (`plr-sema/src/plr_sema/verdict.py:383-386`) and `compare`
 > scores the operation's index, `verdict == "will_fail"` against `outcome == "ran_ok"`, never the
 > identity of the raising statement (`plr-sema/eval/oracle_common.py:767-786`). Therefore, by R1-C3 and
 > R1-C4, the published claim is true in both branches and no hypothesis about `R` is taken.
@@ -2177,7 +2177,7 @@ operation-level claim and would not be for a site-level one.
 | **D3** | *(a NON-decision, recorded so the round can attack it)* §16.3's derived backend surface introduces **no** hand-typed PLR fact and therefore needs no row | nothing | — | **No decision is asked, and it SURVIVED round 1** — the harness-side literal PLR paths ride increment 5's `volume_tracking_observed` precedent and the registry's scope is the analyzer's own front end, which §16.3 now states with the citation. **One thing changed:** the selection rule's undefined second clause is deleted and replaced by one closed rule with published counts (C16), because an unfalsifiable "complete measured selection" is a worse defect than a hand-typed fact would have been |
 | **D4** | HM-25 `declared` **9 → 10**, for §16.5's `EnvRef` path table (**three** shapes after R-DECK's withdrawal) | one per-row ceiling unit; `live_rows()` and `BUDGET_CAP` both unchanged at 24; no cap conversation | §16.5 cannot ship, and with it `:409` and `:514`; the increment reduces to plumbing | **YES, unchanged after round 1** — the unit buys the pattern regardless of instance count, so R-DECK's withdrawal does not reduce the ask and C25's R-ATTR point is a presentation improvement, now surfaced as an explicit sub-note (§16.5.2). HM-25 is the loud-failure row, §16.10's per-rule counters are the loud test, and increment 6 spent 8 → 9 on this row for this reason |
 | **D5** | Model `_check_args` — **repriced as three options after round 1** | **D5a** the general model, ~350 LOC, five productions. **D5b** two `SAFE`-direction site rules, ~100–130 LOC plus the D6 registry row, C15's absence rule as its precondition. **D5c** neither | under D5c the headline slips a second time, to increment 8 | **D5b, IF D6 IS TAKEN** — the recommendation moves from NO. C1's arithmetic holds at the pin, the `SAFE` direction needs neither the set-difference term nor the `**kwargs` key set, and **D-G6 shows the discharge is one-directional by construction**: both guards carry `reachability_clear` false and `fires is False` returns `SAFE` unguarded by depth, so it can add `SAFE` and can never emit a false `WILL_FAIL`. **D5a stays increment 8's** |
-| **D6** (NEW) | **Accept site-keyed semantic models of named PLR function bodies as a class of hand-maintained fact** — one new registry row against a full `BUDGET_CAP` 24, i.e. a cap conversation | one registry row and a cap raised 24 → 25; the loud half must be a published count (`n_check_args_decided`, `n_assert_resources_decided`) rather than an import-the-symbol measure, because that measure cannot see PLR renaming a local; C15's absence rule becomes a soundness precondition for both rules | **the increment's own gate becomes unwinnable** — `scope_verdict` stays `UNKNOWN` on all 544 operations and the increment is measured against §16.10.2's conjunctive NO-GO-side criterion instead | **YES.** It is the single fact **both** the repaired D2 and D5b need, so asking twice would be dishonest. It is genuinely **not** HM-25's kind — every entry there is keyed on a *shape*, and `why_not_derived` says so in those terms (`plr-sema/src/plr_sema/_hand_maintained.py:976-983`) — so filing it as a ceiling unit would be the cheaper-looking and wrong answer. Its anti-gaming property is strong: each rule is keyed on one `(qualname, lineno)` pair and its reach is a published integer. **Total cost ~250 LOC across T48 and T49**, and it is the only way the headline lands this increment |
+| **D6** (NEW) | **Accept site-keyed semantic models of named PLR function bodies as a class of hand-maintained fact** — one new registry row against a full `BUDGET_CAP` 24, i.e. a cap conversation | one registry row and a cap raised 24 → 25; the loud half must be a published count (`n_check_args_decided`, `n_assert_resources_decided`) rather than an import-the-symbol measure, because that measure cannot see PLR renaming a local; C15's absence rule becomes a soundness precondition for both rules | **the increment's own gate becomes unwinnable** — `scope_verdict` stays `UNKNOWN` on all 544 operations and the increment is measured against §16.10.2's conjunctive NO-GO-side criterion instead | **YES.** It is the single fact **both** the repaired D2 and D5b need, so asking twice would be dishonest. It is genuinely **not** HM-25's kind — every entry there is keyed on a *shape*, and `why_not_derived` says so in those terms (`plr-sema/src/plr_sema/_hand_maintained.py:444-446`) — so filing it as a ceiling unit would be the cheaper-looking and wrong answer. Its anti-gaming property is strong: each rule is keyed on one `(qualname, lineno)` pair and its reach is a published integer. **Total cost ~250 LOC across T48 and T49**, and it is the only way the headline lands this increment |
 
 ---
 

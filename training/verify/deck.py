@@ -38,6 +38,7 @@ __all__ = [
     "DeckLayout",
     "SetupHandle",
     "build_setup",
+    "capture_observation",
     "infer_layout",
     "load_chatterbox_runner",
 ]
@@ -161,6 +162,26 @@ class SetupHandle:
     def free_volume(self, obj: Any) -> float:
         """Free volume of a well/container per AC-2.2.2 measurement rule."""
         return float(obj.tracker.get_free_volume())
+
+    def deck_resource_names(self) -> list[str]:
+        """§16.2.1 (spec 260909, observation increment, T40): the deck's
+        own ``name`` plus the ``name`` of every descendant, reached by the
+        SAME recursion PLR's own ``Resource.get_resource`` uses
+        (``external/pylabrobot/pylabrobot/resources/resource.py:566-589``)
+        -- read directly off the LIVE ``self.deck`` tree, the same
+        stack-walk shape :meth:`iter_tracked` already uses, rather than by
+        re-parsing ``snapshot()["topology"]``'s serialisation (which would
+        have to reproduce ``get_resource``'s recursion a second time).
+        """
+        names: list[str] = []
+        stack = [self.deck]
+        while stack:
+            node = stack.pop()
+            name = getattr(node, "name", None)
+            if name:
+                names.append(name)
+            stack.extend(getattr(node, "children", []))
+        return names
 
 
 def _prefix_classification(name: str) -> tuple[str, str]:
@@ -363,6 +384,35 @@ def _has_tail(ref: str) -> bool:
     than naming its base resource bare."""
     head = ref.split("[", 1)[0]
     return "." in head
+
+
+def capture_observation(setup: SetupHandle) -> dict[str, Any]:
+    """§16.2.1 (spec 260909, observation increment, T40): the four-field
+    observation record -- ``backend_class``, ``num_channels``,
+    ``head_channels``, ``deck_resource_names`` -- read off the LIVE
+    ``setup`` at whatever instant the caller invokes this function.  This
+    function does no fail-closed handling of its own: it either returns a
+    complete record or raises, and the ONE capture-point guard (spec
+    §16.2.1's normative box; ``training/verify/verifier.py`` and
+    ``plr-sema/eval/region_oracle.py``, both after ``await
+    setup.machine.setup()`` and before real execution) is the caller's
+    responsibility to wrap in ``try/except -> None``, never this helper's.
+
+    ``backend_class``/``num_channels`` come off the single ``backend``
+    attribute PLR assigns once at construction
+    (``external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:
+    155-158``); ``head_channels`` is the SORTED key set of ``machine.head``
+    -- populated only after ``machine.setup()`` runs
+    (``external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:
+    187-197``), which is why the capture point is defined to sit after it.
+    """
+    machine = setup.machine
+    return {
+        "backend_class": type(machine.backend).__name__,
+        "num_channels": machine.backend.num_channels,
+        "head_channels": sorted(machine.head),
+        "deck_resource_names": setup.deck_resource_names(),
+    }
 
 
 def build_setup(

@@ -618,7 +618,16 @@ class TestLoweredSinkNotPlannedIndex:
 
         assert not_planned == [1]
         assert set(st) == {"op_0", "op_1"}
-        assert st["op_1"] == {"verdict": "unknown", "n_findings": 0, "reasons": []}
+        # 260909 (spec §16.6, increment 7, T44, Q1): `scoped_verdict` is
+        # ADDITIVE on every `run_static_calls` entry (including a
+        # not-planned index's contentless placeholder) -- `None` here
+        # because this call never threads an `excludes_sites` collector,
+        # mirroring `AnalysisReport.scope_verdict`'s own "`None` whenever
+        # `scope` is `None`" rule. T45's fixer flagged this assertion as a
+        # pre-existing gap (T44 added the field without updating it).
+        assert st["op_1"] == {
+            "verdict": "unknown", "n_findings": 0, "reasons": [], "scoped_verdict": None,
+        }
 
         assert len(collected_findings) == 1
         _row_id, findings = collected_findings[0]

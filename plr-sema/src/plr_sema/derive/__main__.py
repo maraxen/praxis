@@ -58,13 +58,19 @@ from plr_sema.derive import (
     scan_dropped_receiver_calls,
 )
 from plr_sema.derive.bindings import param_defaults_from_function
+from plr_sema.derive.predicate_ast import EnvRef
+from plr_sema.derive.predicate_ast import from_json as predicate_from_json
 from plr_sema.derive.predicate_ast import to_json as predicate_to_json
+from plr_sema.derive.predicate_ast import walk as predicate_walk
 from plr_sema.derive.receiver_state import (
     FunctionIndex,
     ReceiverState,
     VolumeAnchor,
+    backend_surface_entry_to_json,
+    build_backend_surface,
     build_plr_class_index,
     build_plr_function_index,
+    collect_env_ref_method_names,
     compute_channel_bridge,
     compute_tip_families,
     compute_volume_anchors,
@@ -72,6 +78,7 @@ from plr_sema.derive.receiver_state import (
     compute_volume_state_exceptions,
     derive_receiver_states,
     lid_typestate_anchor_evidence,
+    probe_method_definitions,
     receiver_state_to_json,
 )
 
@@ -113,6 +120,22 @@ def _guard_to_json(guard: InlinedGuard) -> dict[str, Any]:
     # already treats as fail-closed (unchanged from before this field
     # existed).
     payload["reachability_clear"] = guard.reachability_clear
+    # 260909 (spec §16.4, T42): additive `caller_args`/
+    # `caller_reachability_clear`/`caller_scope_trail`. `caller_args` is
+    # ALREADY a plain JSON-safe dict (each value is `predicate_to_json`'s
+    # own output, per `compute_caller_args`) -- no further encoding step,
+    # unlike `bindings`/`predicate` which wrap dataclasses. All three stay
+    # `None` (key still present) for a depth-0/depth->=2 guard, or for a
+    # depth-1 guard whose `(K, D)` pair M1 refused -- same "computed,
+    # found nothing" vs. "field never existed" additive-field discipline
+    # every other field on this dataclass already uses; a reader on an
+    # un-regenerated pre-T42 artifact tolerates absence via
+    # `.get("caller_args")` returning `None`, which
+    # `check.predicate.evaluate_guard`'s resolution already treats as
+    # fail-closed (unchanged from before this field existed).
+    payload["caller_args"] = guard.caller_args
+    payload["caller_reachability_clear"] = guard.caller_reachability_clear
+    payload["caller_scope_trail"] = None if guard.caller_scope_trail is None else list(guard.caller_scope_trail)
     return payload
 
 
@@ -280,6 +303,64 @@ def build_derived_contracts_payload(
         ):
             entry["is_volume_setter"] = True
         contracts[out_key] = entry
+    # 260909 (spec 260909_plr-sema-observation-increment.md §16.3, T41,
+    # backlog #5023): the additive FIFTH top-level key, `backend_surface`.
+    # Fail-closed to an empty block (candidates=0, absent=0, rows={}) when
+    # `function_index` was not supplied -- same discipline `param_defaults`
+    # already uses, and specifically what the `--gap-ledger`-only reuse of
+    # this function (no `function_index=` kwarg passed) degrades to. An
+    # additive top-level key participates in `contracts_sha` automatically
+    # (§16.3's own normative box), so regenerating cools the cache by
+    # design -- no separate plumbing needed for that.
+    if function_index is not None:
+        selected_method_names = collect_env_ref_method_names(contracts)
+        surface_rows, n_surface_candidates, n_surface_absent_by_c15 = build_backend_surface(
+            function_index, selected_method_names
+        )
+        backend_surface: dict[str, Any] = {
+            "n_surface_candidates": n_surface_candidates,
+            "n_surface_absent_by_c15": n_surface_absent_by_c15,
+            "n_surface_rows": len(surface_rows),
+            "rows": {key: backend_surface_entry_to_json(e) for key, e in sorted(surface_rows.items())},
+        }
+        # 260909 (spec 260909_plr-sema-observation-increment.md §16.5, T43,
+        # backlog #5024): R-CONST's own lookup table -- `check/predicate.py`
+        # never touches PLR source and never sees the top-level `contracts`
+        # payload directly (only ONE contract entry at a time, via
+        # `evaluate_guard`'s own `contract` parameter), so the rows R-CONST
+        # needs are attached HERE, as an additive `entry["backend_surface"]`
+        # sub-object, on every contract entry whose OWN guards carry a
+        # `self.backend.<method>(...)` EnvRef (a CALL -- `args is not None`;
+        # `self.backend.<attr>` reads, R-ATTR's shape, need no PLR-derived
+        # lookup at all, only the observation). Filtered rather than
+        # attached unconditionally to every entry: only 10 of 4,770 entries
+        # carry this shape at this pin, and duplicating the (small) `rows`
+        # table onto every one of the rest would be pure JSON bloat for a
+        # fact no guard there reads. The SAME `rows` dict object is shared
+        # across every entry that gets it -- no per-entry recomputation.
+        for entry in contracts.values():
+            for guard in entry.get("guards", ()):
+                predicate_json = guard.get("predicate")
+                if predicate_json is None:
+                    continue
+                node = predicate_from_json(predicate_json)
+                if any(
+                    isinstance(sub, EnvRef)
+                    and sub.args is not None
+                    and len(sub.path) >= 2
+                    and sub.path[0] == "self"
+                    and sub.path[1] == "backend"
+                    for sub in predicate_walk(node)
+                ):
+                    entry["backend_surface"] = {"rows": backend_surface["rows"]}
+                    break
+    else:
+        backend_surface = {
+            "n_surface_candidates": 0,
+            "n_surface_absent_by_c15": 0,
+            "n_surface_rows": 0,
+            "rows": {},
+        }
     return {
         "schema_version": SCHEMA_VERSION,
         "stamp": _stamp_to_dict(stamp),
@@ -288,6 +369,7 @@ def build_derived_contracts_payload(
         # closed -- degrades to today's all-`channel_guards`-free table).
         "receiver_state": {name: receiver_state_to_json(rs) for name, rs in sorted(receiver_states.items())},
         "contracts": contracts,
+        "backend_surface": backend_surface,
     }
 
 
@@ -412,6 +494,20 @@ def main(argv: list[str] | None = None) -> int:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"wrote {args.out}", file=sys.stderr)
+        # 260909 (T41, AC-16.2): "the complete measured selection published,
+        # including the whole-tree can_pick_up_tip count against the
+        # predicted 2 of 8". `probe_method_definitions` itself takes
+        # `method_name` as a parameter -- the literal "can_pick_up_tip"
+        # lives HERE, in the CLI's own reporting glue, never inside
+        # `receiver_state.py`'s selection/derivation logic.
+        n_cput_defs, n_cput_const = probe_method_definitions(function_index, "can_pick_up_tip")
+        print(
+            f"backend_surface: n_surface_candidates={payload['backend_surface']['n_surface_candidates']} "
+            f"n_surface_absent_by_c15={payload['backend_surface']['n_surface_absent_by_c15']} "
+            f"n_surface_rows={payload['backend_surface']['n_surface_rows']} "
+            f"can_pick_up_tip whole-tree: {n_cput_const}/{n_cput_defs} definitions have a constant_return",
+            file=sys.stderr,
+        )
         if receiver_states:
             for name, rs in sorted(receiver_states.items()):
                 print(

@@ -49,6 +49,7 @@ job) -- two independent facts about the same tree.
                 | Opaque(text)
     Term      ::= Len(Term) | SetOf(Term) | Var(name) | Lit(json) | Attr(Term, name)
                 | Filtered(Term, Predicate)    # the comprehension of §15.3(alpha), as a TERM
+                | SetLit(values)                # an `ast.Set` display of `ast.Constant`s (G9, T49)
 
 ``AllOf``/``AnyOf``'s first field is typed as a general ``Term`` (not
 restricted to a bare ``Var``) because G3 below constructs it by reusing
@@ -126,6 +127,23 @@ propagates via the existing totality machinery to `Opaque` at the smallest
 enclosing predicate construction) -- self-rooted attribute/call chains are
 intercepted BEFORE reaching that branch, via `_self_rooted_path`, so a
 legitimate `self.<x>` never touches it.
+
+**G9 -- ``SetLit``, the one further Term production T49 needs (260909
+spec 260909_plr-sema-observation-increment.md S16.1.1/S16.9 D6).** An
+``ast.Set`` display all of whose elements are ``ast.Constant``s --
+``default={"ops", "use_channels"}`` at
+``external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:541-546``
+is the one call-site shape this production exists to make parseable, so
+``derive/bindings.py``'s ``compute_caller_args`` (T42, unmodified by this
+production) can bind D5b's site rules their own `default` caller-arg. An
+element that is not a JSON-safe ``ast.Constant`` makes the WHOLE display
+fail to parse -- the ordinary Term-parse-failure path, never a partial
+``SetLit`` (the same "no partial admission" discipline G7/G8 state for
+``EnvRef``/``Zip``). ``values`` is deduplicated and ordered by first
+occurrence in source: set membership does not depend on element order, so
+pinning ONE canonical order keeps `to_json` a pure function of the parsed
+tree rather than of Python's own set iteration order (unstable across a
+process for non-numeric elements).
 """
 
 from __future__ import annotations
@@ -155,6 +173,7 @@ __all__ = [
     "Attr",
     "Filtered",
     "Zip",
+    "SetLit",
     # type aliases
     "Predicate",
     "Term",
@@ -248,6 +267,21 @@ class Zip:
 
 
 @dataclass(frozen=True, slots=True)
+class SetLit:
+    """G9 (T49, spec 260909_plr-sema-observation-increment.md S16.1.1/
+    S16.9 D6): an ``ast.Set`` display all of whose elements are
+    ``ast.Constant``s -- ``default={"ops", "use_channels"}`` is the one
+    call-site shape this production exists for. Deliberately the NARROWEST
+    shape that decides D5b's arithmetic: any non-``Constant`` element fails
+    the WHOLE display's parse (no partial ``SetLit``). ``values`` is
+    deduplicated and ordered by first occurrence in source -- a set's own
+    membership is order-independent, so this is a canonicalisation, not a
+    loss of information."""
+
+    values: tuple[bool | int | float | str | None, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class EnvRef:
     """G7 (260907 amendment, T35): an expression rooted at the literal name
     ``self`` -- an attribute chain (``args is None``, e.g. ``self.head`` ->
@@ -269,7 +303,7 @@ class EnvRef:
     args: tuple["Term", ...] | None
 
 
-Term = Union[Len, SetOf, Var, Lit, Attr, Filtered, Zip, EnvRef]
+Term = Union[Len, SetOf, Var, Lit, Attr, Filtered, Zip, EnvRef, SetLit]
 
 
 # ---------------------------------------------------------------------------
@@ -691,6 +725,8 @@ def _unparse_term_text(term: "Term") -> str:
         return f"{_unparse_term_text(term.term)}.{term.name}"
     if isinstance(term, Filtered):
         return f"[... for ... in {_unparse_term_text(term.seq)} if ...]"
+    if isinstance(term, SetLit):
+        return "{" + ", ".join(repr(v) for v in term.values) + "}"
     return "<term>"
 
 
@@ -735,7 +771,24 @@ def _parse_term(node: ast.expr) -> "Term | None":
         return None
     if isinstance(node, ast.ListComp):
         return _parse_filtered(node)
+    if isinstance(node, ast.Set):
+        return _parse_set_lit(node)
     return None
+
+
+def _parse_set_lit(node: ast.Set) -> "SetLit | None":
+    """G9: every element must be an ``ast.Constant`` of a JSON-safe scalar
+    type -- ANY other element (a name, a call, a nested display) fails the
+    WHOLE display's parse, never a partial ``SetLit``."""
+    values: list[Any] = []
+    for elt in node.elts:
+        if not isinstance(elt, ast.Constant):
+            return None
+        v = elt.value
+        if not (v is None or isinstance(v, (bool, int, float, str))):
+            return None
+        values.append(v)
+    return SetLit(tuple(dict.fromkeys(values)))
 
 
 def _parse_filtered(node: ast.ListComp) -> "Term | None":
@@ -769,7 +822,7 @@ def contains_opaque(node: "Predicate | Term") -> bool:
     it still evaluates under Kleene (T31's job, not this function's)."""
     if isinstance(node, Opaque):
         return True
-    if isinstance(node, (TRUE, Var, Lit)):
+    if isinstance(node, (TRUE, Var, Lit, SetLit)):
         return False
     if isinstance(node, Not):
         return contains_opaque(node.predicate)
@@ -807,7 +860,7 @@ def contains_env_ref(node: "Predicate | Term") -> bool:
     :func:`plr_sema.derive.bindings.substitute` builds that tree)."""
     if isinstance(node, EnvRef):
         return True
-    if isinstance(node, (TRUE, Opaque, Var, Lit)):
+    if isinstance(node, (TRUE, Opaque, Var, Lit, SetLit)):
         return False
     if isinstance(node, Not):
         return contains_env_ref(node.predicate)
@@ -839,7 +892,7 @@ def walk(node: "Predicate | Term") -> "list[Predicate | Term]":
     are built from, so each of those is a one-line filter over ONE
     recursion rather than a fourth hand-written walk."""
     out: list["Predicate | Term"] = [node]
-    if isinstance(node, (TRUE, Opaque, Var, Lit)):
+    if isinstance(node, (TRUE, Opaque, Var, Lit, SetLit)):
         pass
     elif isinstance(node, Not):
         out.extend(walk(node.predicate))
@@ -933,6 +986,8 @@ def to_json(node: "Predicate | Term") -> dict[str, Any]:
         return {"node": "Filtered", "seq": to_json(node.seq), "predicate": to_json(node.predicate)}
     if isinstance(node, Zip):
         return {"node": "Zip", "items": [to_json(i) for i in node.items]}
+    if isinstance(node, SetLit):
+        return {"node": "SetLit", "values": list(node.values)}
     if isinstance(node, EnvRef):
         return {
             "node": "EnvRef",
@@ -942,7 +997,7 @@ def to_json(node: "Predicate | Term") -> dict[str, Any]:
     raise TypeError(f"to_json: unrecognized predicate/term node type {type(node)!r}")
 
 
-_TERM_KINDS = {"Len", "SetOf", "Var", "Lit", "Attr", "Filtered", "Zip", "EnvRef"}
+_TERM_KINDS = {"Len", "SetOf", "Var", "Lit", "Attr", "Filtered", "Zip", "EnvRef", "SetLit"}
 #: EnvRef is deliberately in BOTH sets -- the one node inhabiting both
 #: `Term` and `Predicate` (round 2, A-C12: a break of the previously
 #: disjoint partition, recorded so it is not discovered as a surprise).
@@ -989,6 +1044,8 @@ def from_json(data: dict[str, Any]) -> "Predicate | Term":
         return Filtered(from_json(data["seq"]), from_json(data["predicate"]))
     if kind == "Zip":
         return Zip(tuple(from_json(i) for i in data["items"]))
+    if kind == "SetLit":
+        return SetLit(tuple(data["values"]))
     if kind == "EnvRef":
         args_json = data.get("args")
         args = None if args_json is None else tuple(from_json(a) for a in args_json)

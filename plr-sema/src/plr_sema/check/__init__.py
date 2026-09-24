@@ -941,17 +941,30 @@ def _check(
     origin = bytecode.sideband.get("origin", {})
     findings = ir.relabel_findings(raw_findings, origin)
 
+    # 260904 (spec §15.5, increment 6, T31-2): a pure annotation -- `join`
+    # above already ran over the flat finding multiset and never reads
+    # this. `None` (not an empty `SoundnessScope`) when nothing this
+    # analysis run visited was tier (iii), so an old reader that never
+    # heard of `scope` sees exactly what it always saw.
+    scope = SoundnessScope(excludes_sites=tuple(excludes_sites)) if excludes_sites else None
+    # 260909 (spec §16.6, increment 7, T44, Q1): `scope_verdict` is a
+    # SECOND, additive call to the UNCHANGED `join()` -- `join` itself is
+    # not modified, overloaded or called with a flag. `None` whenever
+    # `scope` is `None`; otherwise the sub-multiset of `findings` whose
+    # `plr_site` is not in `scope.excludes_sites`.
+    scope_verdict = (
+        join(tuple(f for f in findings if f.plr_site not in scope.excludes_sites))
+        if scope is not None
+        else None
+    )
+
     report = AnalysisReport(
         protocol_fqn=protocol_fqn,
         verdict=join(findings),
         findings=findings,
         stamp=stamp,
-        # 260904 (spec §15.5, increment 6, T31-2): a pure annotation --
-        # `join` above already ran over the flat finding multiset and never
-        # reads this. `None` (not an empty `SoundnessScope`) when nothing
-        # this analysis run visited was tier (iii), so an old reader that
-        # never heard of `scope` sees exactly what it always saw.
-        scope=SoundnessScope(excludes_sites=tuple(excludes_sites)) if excludes_sites else None,
+        scope=scope,
+        scope_verdict=scope_verdict,
     )
     # Round-4 remediation (M2): check_graph now actually emits telemetry --
     # previously nothing under check/ ever called plr_sema.telemetry.emit*,

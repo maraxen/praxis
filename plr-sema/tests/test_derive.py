@@ -48,6 +48,9 @@ from plr_sema.derive.__main__ import build_derived_contracts_payload, _guard_to_
 from plr_sema.derive.bindings import (
     build_qualname_index,
     compute_all_local_bindings,
+    compute_caller_args,
+    compute_caller_call_lineno,
+    compute_caller_scope_trail,
     compute_local_bindings_for_guard,
     compute_reachability_clear,
     demote_refused_env_refs,
@@ -70,10 +73,15 @@ from plr_sema.derive.predicate_ast import (
     contains_opaque,
     count_var_self,
     parse as parse_predicate,
+    to_json as predicate_to_json,
 )
 from plr_sema.derive.receiver_state import (
+    BackendSurfaceEntry,
+    backend_surface_entry_to_json,
+    build_backend_surface,
     build_plr_class_index,
     build_plr_function_index,
+    collect_env_ref_method_names,
     compute_delegate_channel_bindings,
     compute_volume_anchors,
     compute_volume_bridge,
@@ -83,6 +91,7 @@ from plr_sema.derive.receiver_state import (
     derive_receiver_states,
     for_over_comprehension_output,
     operand_pairing_idiom,
+    probe_method_definitions,
     reset_rule_candidates,
     volume_guard_is_unconditional,
 )
@@ -1001,11 +1010,14 @@ def test_ac_13_2_registry_unchanged_at_24_live() -> None:
     """AC-13.2, second half: the hand-maintained registry does not grow --
     #4883 adds no row, retires no row (§13.4.3: the frozensets were never
     registered in the first place, so there is no row to retire either).
-    `live_rows()` stays 24 against `BUDGET_CAP == 24`, asserted AFTER this
-    change, so the item cannot be satisfied by registering the deleted
-    surface instead of deriving it."""
-    assert BUDGET_CAP == 24
-    assert len(live_rows()) == 24
+    `live_rows() == BUDGET_CAP` is what #4883 itself left true (this change
+    fills the registry to its own cap exactly, whatever that cap is at the
+    time this test runs) -- NOT a frozen `== 24` literal: 260909 (spec
+    §16.15 D6, T48, backlog #5026) is a LATER, separate decision that
+    raises `BUDGET_CAP` 24 -> 25 and adds HM-26, and asserting the stale
+    literal here would make this row's own regression test fail on every
+    future registry-row addition, which is not what AC-13.2 claims."""
+    assert len(live_rows()) == BUDGET_CAP
 
 
 # ---------------------------------------------------------------------------
@@ -2954,3 +2966,675 @@ def test_substitute_recurses_into_env_ref_args() -> None:
     substituted = substitute(pred, bindings_by_name)
     assert isinstance(substituted, EnvRef)
     assert substituted.args == (Filtered(Var("items"), TRUE()),)
+
+
+# ---------------------------------------------------------------------------
+# T41 (spec 260909_plr-sema-observation-increment.md §16.3, backlog #5023):
+# the derived backend surface -- AC-16.2.
+# ---------------------------------------------------------------------------
+
+_BACKEND_SURFACE_SHAPE_SOURCE = '''
+class Backend:
+    def method_return_true(self, ops, use_channels, extra=1):
+        return True
+
+    def method_docstring_return(self, ops):
+        """A docstring counts as a statement (§16.3's own point)."""
+        return True
+
+    def method_two_statement(self, ops):
+        x = 1
+        return True
+
+    def method_return_name(self, y):
+        return y
+
+    def method_var_args(self, ops, *args, **kwargs):
+        return None
+'''
+
+_BACKEND_SURFACE_ABSENCE_SOURCE = '''
+def _some_wrapper(fn):
+    return fn
+
+
+class Backend:
+    @_some_wrapper
+    def method_decorated(self, ops):
+        return True
+
+    @property
+    def method_property(self):
+        return True
+
+    def method_duplicate(self, ops):
+        return True
+
+    def method_duplicate(self, ops, extra=1):
+        return False
+'''
+
+
+def test_ac_16_2_constant_return_shape_fixtures(tmp_path: Path) -> None:
+    """AC-16.2's four shape fixtures, one apiece: a single `return True`
+    body is admitted; a docstring-plus-return body is not; a two-statement
+    body is not; a `return <Name>` body is not. All five methods here
+    survive the absence rule (no decorator, unique lineno), so every one
+    becomes a ROW -- only `method_return_true`'s row carries a
+    `constant_return` key. `method_return_true`'s `params` column also
+    checks the non-default-after-self rule: `extra` carries a default and
+    is excluded, `ops`/`use_channels` are not."""
+    (tmp_path / "synth_backend.py").write_text(_BACKEND_SURFACE_SHAPE_SOURCE, encoding="utf-8")
+    function_index = build_plr_function_index(tmp_path)
+    selected = frozenset(
+        {
+            "method_return_true",
+            "method_docstring_return",
+            "method_two_statement",
+            "method_return_name",
+            "method_var_args",
+        }
+    )
+    rows, n_candidates, n_absent = build_backend_surface(function_index, selected)
+    assert n_candidates == 5
+    assert n_absent == 0
+    assert n_candidates - n_absent == len(rows) == 5
+
+    assert rows["Backend.method_return_true"].has_constant_return is True
+    assert rows["Backend.method_return_true"].constant_return is True
+    assert rows["Backend.method_return_true"].params == ("ops", "use_channels")
+
+    assert rows["Backend.method_docstring_return"].has_constant_return is False
+    assert rows["Backend.method_two_statement"].has_constant_return is False
+    assert rows["Backend.method_return_name"].has_constant_return is False
+
+    var_args_row = rows["Backend.method_var_args"]
+    assert var_args_row.has_var_positional is True
+    assert var_args_row.has_var_keyword is True
+    assert var_args_row.params == ("ops",)
+
+    # JSON encoding: the key is present iff has_constant_return.
+    assert backend_surface_entry_to_json(rows["Backend.method_return_true"])["constant_return"] is True
+    assert "constant_return" not in backend_surface_entry_to_json(rows["Backend.method_docstring_return"])
+
+
+def test_ac_16_2_absence_rule_fixtures(tmp_path: Path) -> None:
+    """AC-16.2's three C15 absence fixtures: a `@some_wrapper`-decorated
+    body that is otherwise a perfect `return True` yields an absent row
+    (clause 1); a `property` yields an absent row (clause 2, subsumed by
+    clause 1's decorator test as §16.3's own normative box states); and a
+    qualname defined at two linenos yields an absent row for BOTH
+    definitions (clause 3)."""
+    (tmp_path / "synth_backend.py").write_text(_BACKEND_SURFACE_ABSENCE_SOURCE, encoding="utf-8")
+    function_index = build_plr_function_index(tmp_path)
+    selected = frozenset({"method_decorated", "method_property", "method_duplicate"})
+    rows, n_candidates, n_absent = build_backend_surface(function_index, selected)
+    # 1 decorated + 1 property + 2 duplicate-lineno definitions of the same
+    # qualname = 4 candidates, all 4 absent, 0 rows.
+    assert n_candidates == 4
+    assert n_absent == 4
+    assert rows == {}
+
+
+def test_ac_16_2_can_pick_up_tip_whole_tree_probe(plr_function_index) -> None:
+    """AC-16.2: 'the whole-tree count of `can_pick_up_tip` definitions and
+    the count of those with a `constant_return`, asserted 2 at this pin
+    with the two files named' -- `probe_method_definitions` takes
+    `method_name` as a parameter (never a literal inside `receiver_state.py`
+    itself; see that function's own docstring), and this test is where the
+    literal `"can_pick_up_tip"` legitimately lives."""
+    n_definitions, n_constant_return = probe_method_definitions(plr_function_index, "can_pick_up_tip")
+    assert n_definitions == 8
+    assert n_constant_return == 2
+
+    constant_return_modules = sorted(
+        module
+        for (module, qualname, _lineno), node in plr_function_index.items()
+        if qualname.endswith(".can_pick_up_tip")
+        for has_const in [_constant_return_shape_for_test(node)]
+        if has_const
+    )
+    assert constant_return_modules == [
+        "pylabrobot.liquid_handling.backends.chatterbox",
+        "pylabrobot.liquid_handling.backends.serializing_backend",
+    ]
+
+
+def _constant_return_shape_for_test(node: ast.AST) -> bool:
+    """Local re-derivation of the shape test, kept independent of
+    `receiver_state._constant_return_shape` on purpose -- this is a
+    cross-check, not a re-import of the thing under test."""
+    body = node.body
+    if len(body) != 1:
+        return False
+    (stmt,) = body
+    return (
+        isinstance(stmt, ast.Return)
+        and stmt.value is not None
+        and isinstance(stmt.value, ast.Constant)
+        and isinstance(stmt.value.value, (bool, int, float, str, type(None)))
+    )
+
+
+def test_ac_16_2_abstract_base_can_pick_up_tip_absent_by_name(plr_function_index) -> None:
+    """AC-16.2: the abstract base's `@abstractmethod` `can_pick_up_tip`
+    (`external/pylabrobot/pylabrobot/liquid_handling/backends/backend.py:183-187`)
+    is asserted absent BY NAME -- the rule is shown biting on real PLR
+    source, not only on a synthetic fixture."""
+    rows, _n_candidates, _n_absent = build_backend_surface(plr_function_index, frozenset({"can_pick_up_tip"}))
+    assert "LiquidHandlerBackend.can_pick_up_tip" not in rows
+    # Confirmed present-but-absent, not simply never-a-candidate: the real
+    # node's decorator_list is non-empty.
+    node = next(
+        node
+        for (module, qualname, _lineno), node in plr_function_index.items()
+        if qualname == "LiquidHandlerBackend.can_pick_up_tip"
+        and module == "pylabrobot.liquid_handling.backends.backend"
+    )
+    assert node.decorator_list != []
+    # And the surface still selected other classes' definitions of the
+    # same method name.
+    assert "LiquidHandlerChatterboxBackend.can_pick_up_tip" in rows
+    assert "SerializingBackend.can_pick_up_tip" in rows
+
+
+def test_ac_16_2_no_hand_typed_base_class_name_ast_scan() -> None:
+    """§16.3's D3 box / C16: a grep-equivalent AST literal scan (docstrings
+    excluded, same mechanism `test_ac_14_2_iii_iv_no_hand_typed_volume_
+    names_ast_scan` already uses) over the three files T41 modifies finds
+    the literal string `LiquidHandlerBackend` NOWHERE -- the surface is
+    keyed on PLR's own function index, never on the base class name."""
+    scan_modules = (
+        REPO_ROOT / "plr-sema" / "src" / "plr_sema" / "derive" / "__init__.py",
+        REPO_ROOT / "plr-sema" / "src" / "plr_sema" / "derive" / "receiver_state.py",
+        REPO_ROOT / "plr-sema" / "src" / "plr_sema" / "derive" / "__main__.py",
+    )
+    offenders: list[str] = []
+    for path in scan_modules:
+        source = path.read_text(encoding="utf-8")
+        offenders.extend(_scan_volume_forbidden_literals(source, str(path), frozenset({"LiquidHandlerBackend"})))
+    assert offenders == [], f"hand-typed base-class name found: {offenders}"
+
+
+def test_ac_16_2_shipped_table_candidates_absent_rows_reconcile() -> None:
+    """The shipped, regenerated `derived_contracts.json`'s own
+    `backend_surface` block satisfies `candidates - absent == rows` -- the
+    published counts, checked against the real artifact rather than only
+    against a synthetic fixture."""
+    contracts_path = REPO_ROOT / "plr-sema" / "data" / "derived_contracts.json"
+    payload = json.loads(contracts_path.read_text(encoding="utf-8"))
+    surface = payload["backend_surface"]
+    assert surface["n_surface_candidates"] - surface["n_surface_absent_by_c15"] == surface["n_surface_rows"]
+    assert surface["n_surface_rows"] == len(surface["rows"])
+    assert surface["n_surface_candidates"] > 0
+    assert surface["n_surface_absent_by_c15"] > 0
+
+
+def test_ac_16_2_backend_surface_is_additive_fifth_top_level_key(
+    survey_records: list[SurveyRecord],
+    survey_index: dict[tuple[str, str], SurveyRecord],
+    real_stamp: SurveyStamp,
+    plr_function_index,
+) -> None:
+    """§16.3: `backend_surface` is the additive FIFTH top-level key of the
+    payload `build_derived_contracts_payload` returns, alongside the four
+    that already existed (`contracts`, `receiver_state`, `schema_version`,
+    `stamp`)."""
+    payload = build_derived_contracts_payload(
+        survey_records, survey_index, real_stamp, function_index=plr_function_index
+    )
+    assert set(payload.keys()) == {"schema_version", "stamp", "receiver_state", "contracts", "backend_surface"}
+    surface = payload["backend_surface"]
+    assert set(surface.keys()) == {"n_surface_candidates", "n_surface_absent_by_c15", "n_surface_rows", "rows"}
+    assert surface["n_surface_rows"] > 0
+
+
+def test_ac_16_2_backend_surface_degrades_when_function_index_omitted(
+    survey_records: list[SurveyRecord],
+    survey_index: dict[tuple[str, str], SurveyRecord],
+    real_stamp: SurveyStamp,
+) -> None:
+    """Degrade discipline (same convention `test_ac_14_2_bridge_absent_
+    when_volume_args_omitted` already establishes for `volume_guards`): a
+    caller that does not supply `function_index` gets `backend_surface`
+    present but empty, never a crash and never a stale/guessed table."""
+    payload = build_derived_contracts_payload(survey_records, survey_index, real_stamp)
+    assert payload["backend_surface"] == {
+        "n_surface_candidates": 0,
+        "n_surface_absent_by_c15": 0,
+        "n_surface_rows": 0,
+        "rows": {},
+    }
+
+
+def test_ac_16_2_collect_env_ref_method_names_walks_nested_predicates() -> None:
+    """`collect_env_ref_method_names` finds an `EnvRef`'s last path segment
+    regardless of how deeply it is nested inside `And`/`Cmp`/`Not` -- it
+    reads the regenerated contract table via `predicate_ast.from_json` +
+    `predicate_ast.walk`, not a hand-written partial JSON walk."""
+    nested_predicate = parse_predicate("self.head is not None and not len(self.backend.get_ids()) == 0")
+    contracts = {
+        "Some.method": {
+            "guards": [
+                {"predicate": predicate_to_json(nested_predicate)},
+                {"predicate": None},  # a guard the writer never populated -- tolerated.
+            ]
+        },
+        "Other.method": {"guards": []},
+    }
+    names = collect_env_ref_method_names(contracts)
+    assert names == frozenset({"head", "get_ids"})
+
+
+def test_ac_16_2_collect_env_ref_method_names_also_walks_caller_args() -> None:
+    """T49 (spec 260909 §16.1.1/§16.3): `collect_env_ref_method_names` ALSO
+    scans each guard's `caller_args` map -- D5b's site rules read the
+    delegate's runtime `method` identity from THERE, never from the
+    guard's own `predicate` (`_check_args`'s `:375`/`:383` predicates
+    reference `missing`/`vars_keyword`/`strictness`, never the method
+    itself). Without this half, `pick_up_tips` would never become a
+    surface candidate at all -- it occurs NOWHERE as an `EnvRef` path
+    segment in any guard's own `"predicate"` JSON at this pin (measured 0
+    before this half existed)."""
+    contracts = {
+        "LiquidHandler._check_args": {
+            "guards": [
+                {
+                    "predicate": {"node": "Cmp", "left": {"node": "Var", "name": "missing"}, "op": ">", "right": {"node": "Lit", "value": 0}},
+                    "caller_args": {
+                        "method": {"node": "EnvRef", "path": ["self", "backend", "pick_up_tips"], "args": None},
+                        "default": {"node": "SetLit", "values": ["ops", "use_channels"]},
+                    },
+                },
+                {"predicate": None, "caller_args": None},  # an un-mapped guard -- tolerated.
+                {"predicate": None},  # a guard with no caller_args key at all -- tolerated.
+            ]
+        },
+    }
+    names = collect_env_ref_method_names(contracts)
+    assert names == frozenset({"pick_up_tips"})
+
+
+# ---------------------------------------------------------------------------
+# T42 (260909, spec 260909_plr-sema-observation-increment.md §16.4,
+# increment 7): the delegate->caller argument map, `compute_caller_args`'s
+# M1 six conditions, `compute_caller_scope_trail`, and their wiring into
+# `derive_contract`/`InlinedGuard`/the JSON writer.
+# ---------------------------------------------------------------------------
+
+
+def test_compute_caller_args_clause1_module_level_delegate_binds_nothing() -> None:
+    """M1 clause 1: `helper(x)` called BARE (no `self.` receiver) never
+    matches the self-rooted call shape at all -- `None`, not an empty
+    dict."""
+    K = _func_node("def K(self, x):\n    helper(x)\n")
+    D = _func_node("def helper(self, y):\n    pass\n")
+    assert compute_caller_args(K, D) is None
+
+
+def test_compute_caller_args_clause2_delegate_called_twice_binds_nothing() -> None:
+    """M1 clause 2: two call sites have two argument vectors and one guard
+    record -- binding either would be a choice the record cannot
+    express."""
+    K = _func_node("def K(self, x):\n    self.helper(x)\n    self.helper(x)\n")
+    D = _func_node("def helper(self, y):\n    pass\n")
+    assert compute_caller_args(K, D) is None
+
+
+def test_compute_caller_args_clause4_starred_call_arg_binds_nothing() -> None:
+    """M1 clause 4: an `ast.Starred` call-side argument is positionally
+    ambiguous -- fail-closed on the WHOLE map, never a partial one."""
+    K = _func_node("def K(self, xs):\n    self.helper(*xs)\n")
+    D = _func_node("def helper(self, y):\n    pass\n")
+    assert compute_caller_args(K, D) is None
+
+
+def test_compute_caller_args_clause4_call_side_double_star_binds_nothing() -> None:
+    """M1 clause 4, the call-side `**` unpacking half (distinct from D's
+    own `**kwargs` below)."""
+    K = _func_node("def K(self, kw):\n    self.helper(**kw)\n")
+    D = _func_node("def helper(self, y):\n    pass\n")
+    assert compute_caller_args(K, D) is None
+
+
+def test_compute_caller_args_clause4_delegate_with_kwargs_binds_nothing() -> None:
+    """M1 clause 4: `D` itself declaring `**kwargs` refuses the WHOLE map,
+    even though the call site is perfectly ordinary."""
+    K = _func_node("def K(self, x):\n    self.helper(x)\n")
+    D = _func_node("def helper(self, y, **kwargs):\n    pass\n")
+    assert compute_caller_args(K, D) is None
+
+
+def test_compute_caller_args_clause4_delegate_with_star_args_binds_nothing() -> None:
+    """M1 clause 4: `D` itself declaring `*args` refuses the WHOLE map."""
+    K = _func_node("def K(self, x):\n    self.helper(x)\n")
+    D = _func_node("def helper(self, y, *args):\n    pass\n")
+    assert compute_caller_args(K, D) is None
+
+
+def test_compute_caller_args_clause5_unparseable_argument_binds_only_that_param() -> None:
+    """M1 clause 5, the stub-defeating half: an argument that does not
+    parse as a `Term` (`get_strictness()`, a non-`self`-rooted call) binds
+    ONLY that parameter to nothing -- the OTHER parameter, whose argument
+    IS a Term, still binds. A whole-map refusal here (returning `None`)
+    would be wrong -- clause 5 is explicitly a per-argument rule."""
+    K = _func_node("def K(self, x):\n    self.helper(x, get_strictness())\n")
+    D = _func_node("def helper(self, a, b):\n    pass\n")
+    result = compute_caller_args(K, D)
+    assert result == {"a": {"node": "Var", "name": "x"}}
+    assert "b" not in result
+
+
+def test_compute_caller_args_keyword_arguments_map_by_name() -> None:
+    """M1 clause 3's keyword half: a keyword call argument binds by NAME
+    against D's own parameter, independent of positional order."""
+    K = _func_node("def K(self, x, y):\n    self.helper(b=y, a=x)\n")
+    D = _func_node("def helper(self, a, b):\n    pass\n")
+    result = compute_caller_args(K, D)
+    assert result == {"a": {"node": "Var", "name": "x"}, "b": {"node": "Var", "name": "y"}}
+
+
+def test_compute_caller_args_positional_arguments_map_by_index_after_self() -> None:
+    """M1 clause 3's positional half: index against D's OWN
+    `ast.arguments`, after `self` -- the call never spells `self`."""
+    K = _func_node("def K(self, x, y):\n    self.helper(x, y)\n")
+    D = _func_node("def helper(self, first, second):\n    pass\n")
+    result = compute_caller_args(K, D)
+    assert result == {
+        "first": {"node": "Var", "name": "x"},
+        "second": {"node": "Var", "name": "y"},
+    }
+
+
+def test_compute_caller_args_c10_position_gates_on_the_call_statement_not_the_guard() -> None:
+    """C10 (§16.4's own normative box): a delegate defined BELOW its
+    caller, with the mapped name's ALPHA rebinding written AFTER the
+    delegate call, does NOT get folded into the stored Term -- "binds the
+    pre-call value and not the rebinding". `K`'s call happens at line 3,
+    BEFORE `x`'s only alpha-shaped assignment at line 5; gating on the
+    delegate CALL STATEMENT's own lineno (3) correctly excludes it (the
+    binding search finds `first_stmt.lineno(5) < 3` false). A guard-lineno
+    reading (D's own raise sits far below, at a much larger lineno) would
+    WRONGLY admit it -- the unsoundness this fixture exists to catch."""
+    K = _func_node(
+        "def K(self, x, seq):\n"
+        "    self.helper(x)\n"
+        "    x = [e for e in seq if e > 0]\n"
+    )
+    D = _func_node(
+        "def helper(self, y):\n"
+        "    if y:\n"
+        "        raise ValueError('y')\n"
+    )
+    result = compute_caller_args(K, D)
+    assert result == {"y": {"node": "Var", "name": "x"}}, (
+        "the call-lineno-gated alpha binding must NOT have been folded in "
+        "-- the stored term should still be the bare pre-rebinding Var(x)"
+    )
+
+
+def test_compute_caller_args_c10_alpha_binding_before_the_call_is_folded_in() -> None:
+    """The positive control for C10: the SAME alpha assignment, now BEFORE
+    the call, at a lineno less than the call statement's own -- the
+    binding correctly applies and `substitute` folds it into the stored
+    Term."""
+    K = _func_node(
+        "def K(self, x, seq):\n"
+        "    x = [e for e in seq if e > 0]\n"
+        "    self.helper(x)\n"
+    )
+    D = _func_node(
+        "def helper(self, y):\n"
+        "    if y:\n"
+        "        raise ValueError('y')\n"
+    )
+    result = compute_caller_args(K, D)
+    assert result == {
+        "y": {
+            "node": "Filtered",
+            "seq": {"node": "Var", "name": "seq"},
+            "predicate": {
+                "node": "Cmp",
+                "left": {"node": "Var", "name": "e"},
+                "op": ">",
+                "right": {"node": "Lit", "value": 0},
+            },
+        }
+    }
+
+
+def test_compute_caller_args_clause6_is_the_callers_job_not_this_functions() -> None:
+    """M1 clause 6 ("one level only") has no `depth` parameter on this
+    function at all -- `compute_caller_args` itself binds a perfectly
+    ordinary `(K, D)` pair regardless of what depth the CALLER intends to
+    use it at; enforcement lives in `derive_contract` alone (the dedicated
+    end-to-end fixture below, `test_derive_contract_depth2_never_gets_
+    caller_args`, confirms the enforcement side)."""
+    K = _func_node("def K(self, x):\n    self.helper(x)\n")
+    D = _func_node("def helper(self, y):\n    pass\n")
+    assert compute_caller_args(K, D) == {"y": {"node": "Var", "name": "x"}}
+
+
+def test_compute_caller_call_lineno_matches_the_call_statement() -> None:
+    K = _func_node("def K(self, x):\n    pass\n    self.helper(x)\n")
+    D = _func_node("def helper(self, y):\n    pass\n")
+    assert compute_caller_call_lineno(K, D) == 3
+
+
+def test_compute_caller_call_lineno_none_when_call_is_ambiguous() -> None:
+    K = _func_node("def K(self, x):\n    self.helper(x)\n    self.helper(x)\n")
+    D = _func_node("def helper(self, y):\n    pass\n")
+    assert compute_caller_call_lineno(K, D) is None
+
+
+def test_compute_caller_scope_trail_empty_for_a_straight_line_call() -> None:
+    K = _func_node("def K(self, x):\n    self.helper(x)\n")
+    assert compute_caller_scope_trail(K, 2) == ()
+
+
+def test_compute_caller_scope_trail_none_when_lineno_absent() -> None:
+    K = _func_node("def K(self, x):\n    self.helper(x)\n")
+    assert compute_caller_scope_trail(K, 999) is None
+
+
+def test_compute_caller_scope_trail_nearest_first_if_and_for() -> None:
+    """Nearest-first, matching `scope_trail`'s own convention (survey
+    `_BodyScanner`): the innermost `for` entry sorts BEFORE the outer
+    `if`."""
+    K = _func_node(
+        "def K(self, cond, xs):\n"
+        "    if cond:\n"
+        "        for x in xs:\n"
+        "            self.helper(x)\n"
+    )
+    assert compute_caller_scope_trail(K, 4) == ("for x in xs", "if cond")
+
+
+def test_compute_caller_scope_trail_else_branch() -> None:
+    K = _func_node(
+        "def K(self, cond, x):\n"
+        "    if cond:\n"
+        "        pass\n"
+        "    else:\n"
+        "        self.helper(x)\n"
+    )
+    assert compute_caller_scope_trail(K, 5) == ("else of: if cond",)
+
+
+def test_compute_caller_scope_trail_ignores_try_but_still_descends() -> None:
+    """A `Try`/`With` ancestor contributes NO entry of its own (mirrors the
+    survey scanner, which has no `visit_Try`/`visit_With` override), but a
+    target nested inside one is still found."""
+    K = _func_node(
+        "def K(self, x):\n"
+        "    try:\n"
+        "        self.helper(x)\n"
+        "    except Exception:\n"
+        "        pass\n"
+    )
+    assert compute_caller_scope_trail(K, 3) == ()
+
+
+# ---- The real corpus: pick_up_tips's own two mapped delegates -------------
+
+
+def test_real_compute_caller_args_pick_up_tips_make_sure_channels_exist(plr_function_index) -> None:
+    """AC-16.3's own named assertion: `self._make_sure_channels_exist(use_
+    channels)` (`external/pylabrobot/.../liquid_handler.py:520-522`) maps
+    `channels` -> `Var("use_channels")`, by NAME."""
+    k_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
+    d_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler._make_sure_channels_exist")
+    K = plr_function_index[(*k_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == k_key))]
+    D = plr_function_index[(*d_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == d_key))]
+    assert compute_caller_args(K, D) == {"channels": {"node": "Var", "name": "use_channels"}}
+    call_lineno = compute_caller_call_lineno(K, D)
+    assert compute_reachability_clear(K, call_lineno) is True
+    assert compute_caller_scope_trail(K, call_lineno) == ()
+
+
+def test_real_compute_caller_args_pick_up_tips_assert_resources_exist(plr_function_index) -> None:
+    """AC-16.3's second named assertion: `self._assert_resources_exist(tip_
+    spots)` maps `resources` -> `Var("tip_spots")`, by NAME."""
+    k_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
+    d_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler._assert_resources_exist")
+    K = plr_function_index[(*k_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == k_key))]
+    D = plr_function_index[(*d_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == d_key))]
+    assert compute_caller_args(K, D) == {"resources": {"node": "Var", "name": "tip_spots"}}
+    call_lineno = compute_caller_call_lineno(K, D)
+    assert compute_reachability_clear(K, call_lineno) is True
+    assert compute_caller_scope_trail(K, call_lineno) == ()
+
+
+def test_real_compute_caller_args_check_args_strictness_not_parseable(plr_function_index) -> None:
+    """AC-16.3(b) / C9's own named claim: `:383`'s `strictness` carries NO
+    `caller_args` entry, because the real call site's own argument
+    (`strictness=get_strictness()`) does not parse as a `Term` (M1 clause
+    5, the partial-admission rule) -- `strictness` IS a parameter of
+    `_check_args`, so its absence from the map is a Term-parse refusal,
+    never a "not a parameter" non-issue. `method`/`backend_kwargs`, whose
+    own call-side expressions DO parse (`self.backend.pick_up_tips` -- a
+    self-rooted `EnvRef`, and `backend_kwargs`, a bare `Var`), still bind."""
+    k_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
+    d_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler._check_args")
+    K = plr_function_index[(*k_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == k_key))]
+    D = plr_function_index[(*d_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == d_key))]
+    param_names = {a.arg for a in D.args.posonlyargs} | {a.arg for a in D.args.args}
+    assert "strictness" in param_names
+    result = compute_caller_args(K, D)
+    assert result is not None
+    assert "strictness" not in result
+    assert "method" in result
+    assert "backend_kwargs" in result
+
+
+def test_real_compute_caller_args_check_args_default_setlit_parses(plr_function_index) -> None:
+    """T49 (spec 260909_plr-sema-observation-increment.md §16.1.1, G9): the
+    real call site's `default={"ops", "use_channels"}`
+    (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:541-546`)
+    now parses as a `Term` -- an `ast.Set` display of `ast.Constant`s, G9's
+    ONE further production -- so `"default"` binds in `caller_args` even
+    though it never did before this production existed. This is the exact
+    fact D5b's `:375`/`:383` site rules read."""
+    k_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
+    d_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler._check_args")
+    K = plr_function_index[(*k_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == k_key))]
+    D = plr_function_index[(*d_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == d_key))]
+    result = compute_caller_args(K, D)
+    assert result is not None
+    assert result["default"] == {"node": "SetLit", "values": ["ops", "use_channels"]}
+
+
+# ---- derive_contract wiring: depth == 1 populated, depth >= 2 never is ----
+
+
+def test_derive_contract_depth1_gets_caller_args_depth2_never_does() -> None:
+    """M1 clause 6, enforced end to end: a THREE-level synthetic closure
+    (A -> B -> C, A the entry point) -- B's own guard (depth 1, reached
+    directly from A) gets `caller_args`/`caller_reachability_clear`/
+    `caller_scope_trail` populated; C's own guard (depth 2, reached via
+    B) gets `None` for all three, UNCONDITIONALLY, even though B's own
+    call to C would otherwise qualify under M1 on its own terms."""
+    a_node = _func_node("def A(self, x):\n    self.B(x)\n")
+    b_node = _func_node(
+        "def B(self, p):\n"
+        "    if p < 0:\n"
+        "        raise ValueError('neg')\n"
+        "    self.C(p)\n"
+    )
+    c_node = _func_node(
+        "def C(self, q):\n"
+        "    if q > 0:\n"
+        "        raise ValueError('pos')\n"
+    )
+    rec_a = _synthetic_record("Foo.A", class_name="Foo", delegates_to=("B",))
+    rec_b = _synthetic_record("Foo.B", class_name="Foo", delegates_to=("C",), findings=(_synthetic_finding(3),))
+    rec_c = _synthetic_record("Foo.C", class_name="Foo", findings=(_synthetic_finding(3),))
+    index = build_index([rec_a, rec_b, rec_c])
+    function_index = {
+        ("synthetic.module", "Foo.A", 1): a_node,
+        ("synthetic.module", "Foo.B", 1): b_node,
+        ("synthetic.module", "Foo.C", 1): c_node,
+    }
+
+    contract = derive_contract("synthetic.module", "Foo.A", index, function_index=function_index)
+
+    (guard1,) = [g for g in contract.guards if g.depth == 1]
+    assert guard1.caller_args == {"p": {"node": "Var", "name": "x"}}
+    assert guard1.caller_reachability_clear is True
+    assert guard1.caller_scope_trail == ()
+
+    (guard2,) = [g for g in contract.guards if g.depth == 2]
+    assert guard2.caller_args is None
+    assert guard2.caller_reachability_clear is None
+    assert guard2.caller_scope_trail is None
+
+
+def test_derive_contract_without_function_index_leaves_caller_args_none(
+    survey_index: dict[tuple[str, str], SurveyRecord],
+) -> None:
+    """Backward-compatibility default, identical in spirit to `bindings`/
+    `reachability_clear`'s own: no `function_index` -> every guard's
+    `caller_args`/`caller_reachability_clear`/`caller_scope_trail` stays
+    `None`, regardless of depth."""
+    contract = derive_contract(
+        "pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips", survey_index
+    )
+    assert all(g.caller_args is None for g in contract.guards)
+    assert all(g.caller_reachability_clear is None for g in contract.guards)
+    assert all(g.caller_scope_trail is None for g in contract.guards)
+
+
+def test_guard_to_json_emits_caller_args_keys(
+    survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index
+) -> None:
+    contract = derive_contract(
+        "pylabrobot.liquid_handling.liquid_handler",
+        "LiquidHandler.pick_up_tips",
+        survey_index,
+        function_index=plr_function_index,
+    )
+    (guard_409,) = [g for g in contract.guards if g.site.lineno == 409]
+    payload = _guard_to_json(guard_409)
+    assert payload["caller_args"] == {"channels": {"node": "Var", "name": "use_channels"}}
+    assert payload["caller_reachability_clear"] is True
+    assert payload["caller_scope_trail"] == []
+
+
+def test_guard_to_json_caller_args_absent_for_depth0_guard(
+    survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index
+) -> None:
+    """A depth-0 guard's own `_guard_to_json` payload still carries the
+    three keys (additive-field discipline: present, `None`, never simply
+    missing), matching `bindings`/`reachability_clear`'s own convention."""
+    contract = derive_contract(
+        "pylabrobot.liquid_handling.liquid_handler",
+        "LiquidHandler.pick_up_tips",
+        survey_index,
+        function_index=plr_function_index,
+    )
+    (guard_502,) = [g for g in contract.guards if g.site.lineno == 502]
+    assert guard_502.depth == 0
+    payload = _guard_to_json(guard_502)
+    assert payload["caller_args"] is None
+    assert payload["caller_reachability_clear"] is None
+    assert payload["caller_scope_trail"] is None

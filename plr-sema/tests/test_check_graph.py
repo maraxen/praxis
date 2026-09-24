@@ -20,6 +20,7 @@ lookup` below for the direct confirmation.
 
 from __future__ import annotations
 
+import ast
 import copy
 import json
 import subprocess
@@ -311,6 +312,9 @@ def _report_from_dict(d: dict) -> AnalysisReport:
         stamp=_stamp_from_dict(d["stamp"]),
         schema_version=d["schema_version"],
         scope=_scope_from_dict(d.get("scope")),
+        # 260909 (spec §16.6, increment 7, T44, Q1): additive, `None` unless
+        # `scope` produced one too.
+        scope_verdict=Verdict(d["scope_verdict"]) if d.get("scope_verdict") is not None else None,
     )
 
 
@@ -326,6 +330,90 @@ def test_full_pipeline_report_round_trips_json(report: AnalysisReport) -> None:
     payload = json.loads(json.dumps(dataclasses.asdict(report)))
     rebuilt = _report_from_dict(payload)
     assert rebuilt == report
+
+
+# ---------------------------------------------------------------------------
+# §16.6, T44, Q1 -- the scoped joined verdict (AC-16.7)
+# ---------------------------------------------------------------------------
+
+
+def test_scope_verdict_equals_join_over_the_excluded_subset(report: AnalysisReport) -> None:
+    """§16.6: `scope_verdict` is `None` iff `scope` is `None`; otherwise it
+    is exactly `join()` -- the SAME function `verdict` itself is built
+    from -- over the sub-multiset of `report.findings` whose `plr_site` is
+    not in `report.scope.excludes_sites`. Re-derived independently here
+    rather than trusting `_check`'s own computation. The fixture protocol
+    (`pick_up_tips`/`aspirate`/`dispense`/`drop_tips`) is known (§16.6) to
+    carry a tier-(iii) re-raise on every operation, so this also confirms
+    `report.scope` is actually populated on this fixture -- the assertion
+    is not vacuously true over an empty exclusion set."""
+    from plr_sema.verdict import join
+
+    assert report.scope is not None
+    assert report.scope.excludes_sites
+    expected = join(
+        tuple(f for f in report.findings if f.plr_site not in report.scope.excludes_sites)
+    )
+    assert report.scope_verdict == expected
+    # verdict itself (the UNSCOPED join) is untouched by scope_verdict's
+    # existence.
+    assert report.verdict == join(report.findings)
+
+
+def test_scope_verdict_none_when_scope_none() -> None:
+    """`scope_verdict` is `None` whenever `scope` is `None` -- exercised
+    directly (not just via the fixture, which always populates `scope`)
+    against `check_ir`'s own no-collector default."""
+    # A bytecode with zero CALL instructions visits zero guards, so
+    # `check_ir`'s own `excludes_sites` collector (never passed here, the
+    # default) never matters -- this exercises the "`_check` never passed a
+    # collector" half rather than the "collector came back empty" half,
+    # which the fixture-based test above cannot reach (it always threads
+    # one).
+    bytecode = ir.lower_graph({"operations": []}, param_names={})
+    from plr_sema.check import _check
+
+    report = _check(bytecode, "empty.protocol", {"contracts": {}, "receiver_state": {}, "stamp": _minimal_stamp_dict()})
+    assert report.scope is None
+    assert report.scope_verdict is None
+
+
+def _minimal_stamp_dict() -> dict:
+    return {
+        "plr": {"hash": "a" * 40, "branch": "main", "dirty": False},
+        "praxis": {"hash": "b" * 40, "branch": "main", "dirty": False},
+        "pylabrobot_version": "0.1.0",
+        "stamped_at": "2026-09-09T00:00:00+00:00",
+        "schema_version": 1,
+    }
+
+
+def test_check_call_site_calls_join_without_a_flag() -> None:
+    """§16.6's normative box, AST-scanned: `join` is not modified, not
+    overloaded and not called with a flag at the ONE `_check` call site
+    that computes `scope_verdict`. Every `join(...)` call inside `_check`'s
+    body takes exactly one positional argument and zero keyword arguments
+    -- there is no boolean/scope parameter threaded into `join` itself."""
+    tree = ast.parse(
+        (PLR_SEMA_ROOT / "src" / "plr_sema" / "check" / "__init__.py").read_text(),
+        filename="check/__init__.py",
+    )
+    check_fn = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name == "_check"
+    )
+    join_calls = [
+        node
+        for node in ast.walk(check_fn)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "join"
+    ]
+    # Two calls: `verdict=join(findings)` and `scope_verdict`'s own
+    # `join(tuple(...))` over the filtered sub-multiset.
+    assert len(join_calls) == 2
+    for call in join_calls:
+        assert len(call.args) == 1
+        assert not call.keywords
 
 
 # ---------------------------------------------------------------------------
@@ -799,3 +887,849 @@ def test_ac_14_6_use_channels_length_mismatch_widens(contracts_json: str) -> Non
     assert pair_findings[0].verdict is Verdict.UNKNOWN
     assert pair_findings[0].reason == "volume_state_unknown"
     assert _no_volume_will_fail(report)
+
+
+# ---------------------------------------------------------------------------
+# AC-16.4 (spec 260909 §16.4, D1, T42): the depth-1 `WILL_FAIL` lift, tested
+# against a SYNTHETIC guard swapped into the real `pick_up_tips` contract's
+# `:409` slot -- the SAME `_synthetic_*_contracts_json` pattern
+# `test_ac_14_6_*` already uses above. A synthetic predicate is necessary
+# rather than the real `_make_sure_channels_exist` guard: its own emptiness
+# test bottoms out in `c not in self.head`, a MEMBERSHIP `Cmp` that G8(2)
+# evaluates 1/2 UNCONDITIONALLY until T43 lands `E-ENV`'s R-HEAD rule, so
+# the real site cannot reach `fires is True` at this pin -- exactly why
+# spec's own §16.4 box states this increment adds no WILL_FAIL population
+# at all without a synthetic exerciser. The synthetic predicate references
+# TWO of D's own parameters -- `channels` (mapped, via the REAL
+# `caller_args` this contract's own `pick_up_tips`/`_make_sure_channels_
+# exist` pair derives, to `Var("use_channels")`) and `flag` (mapped to a
+# bare `Lit(True)`, so it resolves with no dependency on `K`'s own state at
+# all) -- so perturbation 5 ("one free name resolving to Top") has a second
+# name to unmap without collapsing the whole guard to Opaque.
+# ---------------------------------------------------------------------------
+
+_T42_GUARD_PREDICATE = {
+    "node": "And",
+    "predicates": [
+        {
+            "node": "Cmp",
+            "left": {"node": "Len", "term": {"node": "Var", "name": "channels"}},
+            "op": ">",
+            "right": {"node": "Lit", "value": 0},
+        },
+        {"node": "Is", "term": {"node": "Var", "name": "flag"}, "negated": True},
+    ],
+}
+
+
+def _pick_up_tips_use_channels_graph(use_channels_literal: str) -> str:
+    return json.dumps(
+        {
+            "protocol_fqn": "test.t42_depth1_lift",
+            "operations": [
+                {
+                    "id": "op_1",
+                    "method_name": "pick_up_tips",
+                    "receiver_variable": "lh",
+                    "receiver_type": "LiquidHandler",
+                    "arguments": {"use_channels": use_channels_literal},
+                }
+            ],
+            "resources": {},
+        }
+    )
+
+
+def _t42_synthetic_contracts_json(contracts_json: str, guard_overrides: dict) -> str:
+    """Real `contracts_json`, with `LiquidHandler.pick_up_tips`'s own
+    `guards` list replaced by ONE synthetic guard -- the real `:409` site
+    (file/lineno/qualname) so the finding is still `plr_site`-addressable,
+    but a hand-built `predicate`/`caller_args` triple so the fixture is
+    deterministic and self-contained (never depends on `self.head`)."""
+    payload = json.loads(contracts_json)
+    real_contract = payload["contracts"]["LiquidHandler.pick_up_tips"]
+    (real_409,) = [g for g in real_contract["guards"] if g["site"]["lineno"] == 409]
+    guard = {
+        "condition": "len(channels) > 0 and flag is not None",
+        "predicate": _T42_GUARD_PREDICATE,
+        "scope_trail": [],
+        "raises": "ValueError",
+        "kind": "raise_guard",
+        "free_vars": ["channels", "flag"],
+        "site": real_409["site"],
+        "depth": 1,
+        "bindings": [],
+        "reachability_clear": True,
+        "caller_args": {"channels": {"node": "Var", "name": "use_channels"}, "flag": {"node": "Lit", "value": True}},
+        "caller_reachability_clear": True,
+        "caller_scope_trail": [],
+    }
+    guard.update(guard_overrides)
+    new_contract = dict(real_contract)
+    new_contract["guards"] = [guard]
+    payload["contracts"] = dict(payload["contracts"])
+    payload["contracts"]["LiquidHandler.pick_up_tips"] = new_contract
+    return json.dumps(payload)
+
+
+_T42_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=409,
+    qualname="LiquidHandler._make_sure_channels_exist",
+)
+
+
+def _t42_report(contracts_json: str, guard_overrides: dict, *, use_channels: str = "[0, 1]") -> AnalysisReport:
+    synthetic = _t42_synthetic_contracts_json(contracts_json, guard_overrides)
+    return check_graph(_pick_up_tips_use_channels_graph(use_channels), synthetic)
+
+
+def test_ac_16_4_depth1_will_fail_under_all_three_preconditions(contracts_json: str) -> None:
+    """All three D1 preconditions hold (`reachability_clear`,
+    `caller_reachability_clear` + a satisfied `caller_scope_trail`, and a
+    total map -- implied here by `fires is True`) -> `WILL_FAIL` with
+    `category == "precondition_state"`."""
+    report = _t42_report(contracts_json, {})
+    findings = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert len(findings) == 1
+    (finding,) = findings
+    assert finding.verdict is Verdict.WILL_FAIL
+    assert finding.category == "precondition_state"
+
+
+def test_ac_16_4_reachability_clear_false_blocks(contracts_json: str) -> None:
+    """Perturbation 1: the delegate's own body is not clear ->
+    `UNKNOWN`/`guard_env_dependent`, never `WILL_FAIL`."""
+    report = _t42_report(contracts_json, {"reachability_clear": False})
+    (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_4_caller_reachability_clear_false_blocks(contracts_json: str) -> None:
+    """Perturbation 2: the call site is not reached (`caller_reachability_
+    clear is False`) -> blocked."""
+    report = _t42_report(contracts_json, {"caller_reachability_clear": False})
+    (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_4_caller_reachability_clear_absent_blocks(contracts_json: str) -> None:
+    """Perturbation 3: `caller_reachability_clear` is ABSENT (=> `None` =>
+    blocked), the stub-defeating half distinguishing `is False` from
+    `is None` -- an implementation checking only the former would pass
+    perturbation 2 and fail this one."""
+    report = _t42_report(contracts_json, {"caller_reachability_clear": None})
+    (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_4_unsatisfied_caller_scope_trail_entry_blocks(contracts_json: str) -> None:
+    """Perturbation 4: an unsatisfied `caller_scope_trail` entry (an `if
+    <unhypothesised-name>()` with the default empty `env`) -> blocked."""
+    report = _t42_report(contracts_json, {"caller_scope_trail": ["if some_undeclared_flag()"]})
+    (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_4_one_free_name_resolving_to_top_blocks(contracts_json: str) -> None:
+    """Perturbation 5: `flag` loses its `caller_args` entry -> resolves to
+    Top with `origin == "env"` -> the predicate can no longer decide `T`,
+    landing at the `guard_env_dependent` catch-all (not `guard_operand_
+    unknown`, since an "env"-origin Top is precisely what AC-16.3(b) names
+    as the OTHER class)."""
+    report = _t42_report(
+        contracts_json, {"caller_args": {"channels": {"node": "Var", "name": "use_channels"}}}
+    )
+    (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_4_depth_two_still_forbidden_unconditionally(contracts_json: str) -> None:
+    """The sixth fixture: `depth == 2` stays forbidden UNCONDITIONALLY,
+    even with every other field left at its all-preconditions-satisfied
+    value and an unconditionally-true predicate (`TRUE()`, so `fires is
+    True` regardless of any resolution -- depth >= 1 already blocks every
+    name from resolving via `caller_args` except at depth == 1
+    specifically, so a depth-2 guard needs a vacuous predicate to even
+    reach `guard_is_unconditional` at all)."""
+    report = _t42_report(
+        contracts_json,
+        {"predicate": {"node": "TRUE"}, "depth": 2},
+    )
+    (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_3_b_caller_args_top_yields_operand_unknown_not_env_dependent(contracts_json: str) -> None:
+    """AC-16.3(b) / C9's origin clause, the FIRST half: a `caller_args`-
+    resolved name whose caller-side `Term` itself resolves to Top yields
+    `guard_operand_unknown` -- NOT `guard_env_dependent` (that catch-all is
+    for a name with NO `caller_args` entry at all, AC-16.3(b)'s second
+    half / `test_ac_16_4_one_free_name_resolving_to_top_blocks` above). A
+    single-free-var predicate over `channels`, mapped to `Var("use_channels")`,
+    with NEITHER `use_channels` NOR `tip_spots` (the P3a default-arity
+    fallback) supplied by the operation -- `channels_for_call` returns
+    `None`, so the recursive K-context resolution itself lands on Top, but
+    `origin` stays `"operand"` (C9: unconditional, regardless of whether
+    the resolved value is concrete or Top)."""
+    report = _t42_report(
+        contracts_json,
+        {
+            "predicate": {
+                "node": "Cmp",
+                "left": {"node": "Len", "term": {"node": "Var", "name": "channels"}},
+                "op": ">",
+                "right": {"node": "Lit", "value": 0},
+            },
+            "free_vars": ["channels"],
+            "caller_args": {"channels": {"node": "Var", "name": "use_channels"}},
+        },
+        use_channels="None",
+    )
+    (finding,) = _site_findings(report, _T42_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_operand_unknown"
+
+
+# ---------------------------------------------------------------------------
+# AC-16.5/AC-16.6 (spec 260909 §16.5, T43): `E-ENV` resolution -- R-HEAD,
+# R-ATTR, R-CONST, the reopened membership case, and Q-MONO. The `:409`/
+# `:514` tests below exercise the REAL, un-modified `pick_up_tips` contract
+# end to end -- exactly the site the T42 comment above (`_T42_GUARD_PREDICATE`'s
+# own docstring) names as unreachable until this row lands.
+# ---------------------------------------------------------------------------
+
+_T43_HEAD_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=409,
+    qualname="LiquidHandler._make_sure_channels_exist",
+)
+_T43_CONST_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=514,
+    qualname="LiquidHandler.pick_up_tips",
+)
+
+
+def _t43_obs_env(*, backend_class: str = "LiquidHandlerChatterboxBackend", num_channels: int = 8, head_channels=(0, 1, 2, 3, 4, 5, 6, 7)) -> "frozenset[str]":
+    return frozenset(
+        {
+            f'obs:backend_class="{backend_class}"',
+            f"obs:num_channels={num_channels}",
+            f"obs:head_channels={list(head_channels)}".replace(" ", ""),
+        }
+    )
+
+
+def test_ac_16_5_16_6_head_and_const_sites_flip_safe_under_observation(contracts_json: str) -> None:
+    """The real `:409`/`:514` guards, unmodified -- both `UNKNOWN` before
+    T43 (the T42 comment's own claim), both `SAFE` once R-HEAD/§16.5.4's
+    membership reopening (`:409`) and R-CONST/Q-MONO (`:514`) resolve the
+    observation. `:409` is reached through the shipped `len(Filtered) == 0`
+    alpha idiom end to end -- no hand-built quantifier node (AC-16.6's
+    stub-defeating half)."""
+    report = check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), contracts_json, env=_t43_obs_env())
+    (head_finding,) = _site_findings(report, _T43_HEAD_SITE, operation_id="op_1")
+    assert head_finding.verdict is Verdict.SAFE
+    (const_finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert const_finding.verdict is Verdict.SAFE
+
+
+def test_ac_16_5_no_observation_stays_env_dependent(contracts_json: str) -> None:
+    """§16.2.3's fail-closed default, restated for T43: with no `obs:`
+    member in `env`, both sites stay exactly where increment 6 left them."""
+    report = check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), contracts_json)
+    (head_finding,) = _site_findings(report, _T43_HEAD_SITE, operation_id="op_1")
+    assert head_finding.verdict is Verdict.UNKNOWN
+    assert head_finding.reason == "guard_env_dependent"
+    (const_finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert const_finding.verdict is Verdict.UNKNOWN
+
+
+def test_ac_16_5_partial_observation_declines(contracts_json: str) -> None:
+    """R-HEAD's own decline clause (§16.5.1): `backend_class` present but
+    `head_channels` absent still declines to ⊤ -- a partial observation is
+    refused wholesale, not read as \"no information about this one field\"."""
+    partial_env = frozenset({'obs:backend_class="LiquidHandlerChatterboxBackend"'})
+    report = check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), contracts_json, env=partial_env)
+    (head_finding,) = _site_findings(report, _T43_HEAD_SITE, operation_id="op_1")
+    assert head_finding.verdict is Verdict.UNKNOWN
+    assert head_finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_5_16_6_channel_outside_head_will_fail_at_head_site_const_site_unaffected(contracts_json: str) -> None:
+    """The false-positive direction, checked positively: a requested
+    channel NOT in `head_channels` makes `:409`'s membership existential
+    find a genuine invalid channel -> `WILL_FAIL`, never a silently-passing
+    `SAFE` (the `ir.Seq`-is-a-lower-bound rule made checkable the OTHER
+    way). `:514` is unaffected -- R-CONST's argument-independence means the
+    channel choice never enters its own resolution at all."""
+    env = _t43_obs_env(head_channels=(0, 1, 2, 3))
+    report = check_graph(_pick_up_tips_use_channels_graph("[5]"), contracts_json, env=env)
+    (head_finding,) = _site_findings(report, _T43_HEAD_SITE, operation_id="op_1")
+    assert head_finding.verdict is Verdict.WILL_FAIL
+    (const_finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert const_finding.verdict is Verdict.SAFE
+
+
+def test_ac_16_5_const_declines_for_unobserved_backend_class(contracts_json: str) -> None:
+    """R-CONST's own decline clause (§16.5.3): a `backend_class` with no
+    row in the derived surface (or no `constant_return` on its row) means
+    the lookup `f\"{backend_class}.{method}\"` misses and R-CONST declines
+    to ⊤ -- never fabricates a value for an unobserved/unknown backend."""
+    env = _t43_obs_env(backend_class="SomeUnknownBackend")
+    report = check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), contracts_json, env=env)
+    (const_finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert const_finding.verdict is Verdict.UNKNOWN
+
+
+# ---------------------------------------------------------------------------
+# R-ATTR and Q-MONO, exercised via a SYNTHETIC guard swapped into the real
+# `:514` site slot (same `_t42_synthetic_contracts_json` pattern) -- R-ATTR
+# decides nothing on the real corpus (§16.5.2's own box; `n_resolved_by_rule`
+# for it is asserted 0 there) and Q-MONO's two VACUITY cells need a body
+# that never depends on any real operand to isolate them from R-CONST.
+# ---------------------------------------------------------------------------
+
+
+def _t43_synthetic_predicate_report(contracts_json: str, predicate: dict, *, env: "frozenset[str]" = frozenset()) -> AnalysisReport:
+    payload = json.loads(contracts_json)
+    real_contract = payload["contracts"]["LiquidHandler.pick_up_tips"]
+    (real_514,) = [g for g in real_contract["guards"] if g["site"]["lineno"] == 514]
+    guard = {
+        "condition": "synthetic T43 probe",
+        "predicate": predicate,
+        "scope_trail": [],
+        "raises": "RuntimeError",
+        "kind": "raise_guard",
+        "free_vars": [],
+        "site": real_514["site"],
+        "depth": 0,
+        "bindings": [],
+        "reachability_clear": True,
+    }
+    new_contract = dict(real_contract)
+    new_contract["guards"] = [guard]
+    payload["contracts"] = dict(payload["contracts"])
+    payload["contracts"]["LiquidHandler.pick_up_tips"] = new_contract
+    synthetic = json.dumps(payload)
+    return check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), synthetic, env=env)
+
+
+def test_ac_16_5_r_attr_resolves_num_channels_positive_and_negative(contracts_json: str) -> None:
+    """R-ATTR (§16.5.2): `self.backend.num_channels` resolves to the
+    observation's `Lit`, whose Kleene truth decides the guard; any OTHER
+    attribute name stays ⊤ regardless of the observation (\"every other `a`
+    resolves ⊤\")."""
+    num_channels_predicate = {"node": "EnvRef", "path": ["self", "backend", "num_channels"], "args": None}
+    report_truthy = _t43_synthetic_predicate_report(contracts_json, num_channels_predicate, env=_t43_obs_env(num_channels=8))
+    (finding,) = _site_findings(report_truthy, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.WILL_FAIL  # 8 is truthy -> the guard fires.
+
+    report_falsy = _t43_synthetic_predicate_report(contracts_json, num_channels_predicate, env=_t43_obs_env(num_channels=0))
+    (finding,) = _site_findings(report_falsy, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.SAFE  # 0 is falsy -> the guard does not fire.
+
+    other_attr_predicate = {"node": "EnvRef", "path": ["self", "backend", "some_other_attr"], "args": None}
+    report_other = _t43_synthetic_predicate_report(contracts_json, other_attr_predicate, env=_t43_obs_env())
+    (finding,) = _site_findings(report_other, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+
+
+_UNRESOLVED_SEQ = {"node": "Var", "name": "some_unresolved_local"}
+_DEFINITE_FALSE_BODY = {"node": "Is", "term": {"node": "Lit", "value": None}, "negated": True}
+_DEFINITE_TRUE_BODY = {"node": "Is", "term": {"node": "Lit", "value": None}, "negated": False}
+
+
+def test_ac_16_6_qmono_vacuity_cells_stay_half(contracts_json: str) -> None:
+    """Q-MONO's two VACUITY cells (§16.5.5): `AllOf(⊤, F)` and `AnyOf(⊤,
+    T)` are the two cells the empty sequence FALSIFIES, so an unknown
+    length must not decide them -- asserted ½ (`UNKNOWN`/`guard_env_
+    dependent`), never `F`/`T`, the stub-defeating half distinguishing Q-
+    MONO from a blanket \"a ⊤ seq with a definite body always decides\" bug."""
+    allof_f = {"node": "AllOf", "seq": _UNRESOLVED_SEQ, "predicate": _DEFINITE_FALSE_BODY}
+    report = _t43_synthetic_predicate_report(contracts_json, allof_f)
+    (finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+    anyof_t = {"node": "AnyOf", "seq": _UNRESOLVED_SEQ, "predicate": _DEFINITE_TRUE_BODY}
+    report = _t43_synthetic_predicate_report(contracts_json, anyof_t)
+    (finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_6_qmono_decided_cells(contracts_json: str) -> None:
+    """Q-MONO's two DECIDED cells, both directions: `AllOf(⊤, T)` (the real
+    `:514` shape, covered end to end above) and, here, `AnyOf(⊤, F)` --
+    both are the cells the empty sequence ALSO satisfies, so an unknown
+    length cannot falsify them."""
+    anyof_f = {"node": "AnyOf", "seq": _UNRESOLVED_SEQ, "predicate": _DEFINITE_FALSE_BODY}
+    report = _t43_synthetic_predicate_report(contracts_json, anyof_f)
+    (finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.SAFE  # AnyOf + F body decides False -> guard never fires.
+
+    allof_t = {"node": "AllOf", "seq": _UNRESOLVED_SEQ, "predicate": _DEFINITE_TRUE_BODY}
+    report = _t43_synthetic_predicate_report(contracts_json, allof_t)
+    (finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.WILL_FAIL  # AllOf + T body decides True -> the guard fires.
+
+
+def test_ac_16_6_membership_against_general_seq_stays_half_not_true(contracts_json: str) -> None:
+    """The `ir.Seq`-is-a-lower-bound rule (§16.5.4(ii)), made checkable the
+    OTHER way: a `not in` against a `Var` resolving to an ORDINARY `ir.Seq`
+    (not an R-HEAD-shaped `EnvRef`) is ½, asserted NOT `T` -- a general
+    `Seq` never decides a membership `Cmp` to `T`, even when the value is
+    concretely absent from it."""
+    predicate = {
+        "node": "Cmp",
+        "left": {"node": "Lit", "value": 99},
+        "op": "not in",
+        "right": {"node": "Var", "name": "some_kwarg_seq"},
+    }
+    payload = json.loads(contracts_json)
+    real_contract = payload["contracts"]["LiquidHandler.pick_up_tips"]
+    (real_514,) = [g for g in real_contract["guards"] if g["site"]["lineno"] == 514]
+    guard = {
+        "condition": "synthetic T43 membership probe",
+        "predicate": predicate,
+        "scope_trail": [],
+        "raises": "RuntimeError",
+        "kind": "raise_guard",
+        "free_vars": ["some_kwarg_seq"],
+        "site": real_514["site"],
+        "depth": 0,
+        "bindings": [],
+        "reachability_clear": True,
+    }
+    new_contract = dict(real_contract)
+    new_contract["guards"] = [guard]
+    payload["contracts"] = dict(payload["contracts"])
+    payload["contracts"]["LiquidHandler.pick_up_tips"] = new_contract
+    synthetic = json.dumps(payload)
+    graph = json.dumps(
+        {
+            "protocol_fqn": "test.t43_membership_probe",
+            "operations": [
+                {
+                    "id": "op_1",
+                    "method_name": "pick_up_tips",
+                    "receiver_variable": "lh",
+                    "receiver_type": "LiquidHandler",
+                    "arguments": {"some_kwarg_seq": "[1, 2, 3]"},
+                }
+            ],
+            "resources": {},
+        }
+    )
+    report = check_graph(graph, synthetic, env=_t43_obs_env())
+    (finding,) = _site_findings(report, _T43_CONST_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+# ---------------------------------------------------------------------------
+# AC-16.13 (spec 260909 §16.1.3/§16.15 D6, T48, backlog #5026): the `:321`
+# site rule (`LiquidHandler._assert_resources_exist`). This is a DIFFERENT
+# dispatch shape from R-HEAD/R-ATTR/R-CONST above -- `:321`'s own guard
+# predicate has no `EnvRef` at all (§16.1.3's Q2) and neither of its two
+# free names (`resource`/`resource_from_deck`) binds through any idiom this
+# module implements, so `plr_sema.check.predicate.D6_SITE_RULES` REPLACES
+# `evaluate_predicate` outright for the matched `(qualname, lineno)` rather
+# than resolving one sub-expression inside it.
+# ---------------------------------------------------------------------------
+
+_T48_ASSERT_RESOURCES_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=321,
+    qualname="LiquidHandler._assert_resources_exist",
+)
+
+
+def _t48_env(*, verified: bool) -> "frozenset[str]":
+    return frozenset({f"obs:deck_resources_verified={'true' if verified else 'false'}"})
+
+
+def _pick_up_tips_resources_graph(
+    tip_spots_literal: str = "[tip_rack_1]",
+    *,
+    resources: "dict[str, Any] | None" = None,
+) -> str:
+    return json.dumps(
+        {
+            "protocol_fqn": "test.t48_assert_resources",
+            "operations": [
+                {
+                    "id": "op_1",
+                    "method_name": "pick_up_tips",
+                    "receiver_variable": "lh",
+                    "receiver_type": "LiquidHandler",
+                    "arguments": {"tip_spots": tip_spots_literal, "use_channels": "[0]"},
+                }
+            ],
+            "resources": resources if resources is not None else {"tip_rack_1": {}},
+        }
+    )
+
+
+def test_ac_16_13_321_site_rule_flips_safe_under_verified_observation(contracts_json: str) -> None:
+    """The real `:321` guard, unmodified -- through T43 there is no rule
+    matching this site at all, so `evaluate_predicate` runs against
+    `resource`/`resource_from_deck` (both unbindable, §16.1.3's Q2) and
+    stays `UNKNOWN` regardless of `env` (see the no-observation test right
+    below). Once `D6_SITE_RULES` dispatches AND the harness's own aggregate
+    deck fact (`obs:deck_resources_verified`) says `True`, the SAME real
+    guard -- reached via T42's `caller_args` (`resources` -> `tip_spots`,
+    the real derived contract table's own entry) -- flips `SAFE`."""
+    report = check_graph(_pick_up_tips_resources_graph(), contracts_json, env=_t48_env(verified=True))
+    (finding,) = _site_findings(report, _T48_ASSERT_RESOURCES_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.SAFE
+
+
+def test_ac_16_13_321_no_observation_stays_env_dependent(contracts_json: str) -> None:
+    """§16.2.3's fail-closed default: with no `obs:` member in `env`, the
+    site rule declines (no `deck_resources_verified` key in the decoded
+    observation) exactly like every other §16.5 rule."""
+    report = check_graph(_pick_up_tips_resources_graph(), contracts_json)
+    (finding,) = _site_findings(report, _T48_ASSERT_RESOURCES_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_13_321_unverified_deck_declines(contracts_json: str) -> None:
+    """`obs:deck_resources_verified=false` (some row-declared deck-parented
+    name is NOT a member of the observed `deck_resource_names`) declines,
+    never falsifies -- the rule has no `T`-producing branch at all, so a
+    `False` aggregate fact and a `True` one both land in the SAME ½
+    outcome, distinguished only by which one CAN later decide `F`."""
+    report = check_graph(_pick_up_tips_resources_graph(), contracts_json, env=_t48_env(verified=False))
+    (finding,) = _site_findings(report, _T48_ASSERT_RESOURCES_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.UNKNOWN
+    assert finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_13_321_site_rule_never_returns_true() -> None:
+    """§16.1.3 Fact 1: an absent name raises at `:318`, not `:321`, so the
+    positive branch is never established -- asserted directly against
+    `_eval_assert_resources_site_rule`'s own Kleene range, exhaustively
+    over every branch its own docstring names. The stub-defeating half:
+    a rule that always returned `None` would also pass every `check_graph`
+    test above (`UNKNOWN` either way), so branch (b) here is what proves
+    the `False`-producing path is actually implemented, not merely
+    defaulted away."""
+    from plr_sema.check.predicate import _Ctx, _eval_assert_resources_site_rule
+
+    def _ctx(*, kwargs: dict, resources_by_slot: dict, env: "frozenset[str]") -> _Ctx:
+        return _Ctx(
+            call=ir.Call(receiver=0, receiver_type="LiquidHandler", method="_assert_resources_exist", kwargs=kwargs),
+            resources_by_slot=resources_by_slot,
+            param_defaults={},
+            bindings_by_name={},
+            depth=0,
+            channel_kwarg=None,
+            channels=None,
+            env=env,
+            class_hierarchy=None,
+        )
+
+    declared = {
+        0: ir.Resource(
+            slot=0, type=None, element_type=None, is_container=False, is_parameter=True, parents=("Deck",), grid=None
+        )
+    }
+    verified_true = frozenset({"obs:deck_resources_verified=true"})
+    verified_false = frozenset({"obs:deck_resources_verified=false"})
+
+    # (a) `resources` unresolved (`ir.Top()`, no kwarg at all) -> ½, never T.
+    assert _eval_assert_resources_site_rule(_ctx(kwargs={}, resources_by_slot=declared, env=verified_true)) is None
+    # (b) a concrete Seq of declared Refs, verified True -> F, the ONE decided branch.
+    assert (
+        _eval_assert_resources_site_rule(
+            _ctx(kwargs={"resources": ir.Seq((ir.Ref(0, None),))}, resources_by_slot=declared, env=verified_true)
+        )
+        is False
+    )
+    # (c) same Seq, verified False -> ½, never T.
+    assert (
+        _eval_assert_resources_site_rule(
+            _ctx(kwargs={"resources": ir.Seq((ir.Ref(0, None),))}, resources_by_slot=declared, env=verified_false)
+        )
+        is None
+    )
+    # (d) a non-Ref element -> ½, never T.
+    assert (
+        _eval_assert_resources_site_rule(
+            _ctx(kwargs={"resources": ir.Seq((ir.Lit(1),))}, resources_by_slot=declared, env=verified_true)
+        )
+        is None
+    )
+    # (e) a Ref to an undeclared slot -> ½, never T.
+    assert (
+        _eval_assert_resources_site_rule(
+            _ctx(kwargs={"resources": ir.Seq((ir.Ref(1, None),))}, resources_by_slot=declared, env=verified_true)
+        )
+        is None
+    )
+
+
+def test_ac_16_13_a_deck_object_adversarial_duplicate_name_mismatched_geometry(contracts_json: str) -> None:
+    """AC-16.13's HAND-BUILT adversarial fixture (C18): a second
+    `pylabrobot.resources.Resource`, constructed DIRECTLY (never through
+    the kwarg-mutator API) with the SAME name as an existing deck resource
+    but a MISMATCHED geometry. PLR's own `Resource.__eq__` (name, all three
+    absolute sizes, location, category and children, §16.1.3 Fact 2) says
+    these are NOT equal despite the name match -- the exact residual
+    A-DECK-OBJECT accepts, given a NAME witness alone.
+
+    The STATIC site rule, told only that the name is verified
+    (`obs:deck_resources_verified=true` -- exactly what the harness's own
+    `deck_map` would say: it is built from `deck_resource_names`, a NAME
+    list, with no notion of geometry at all), still predicts `SAFE` -- it
+    CANNOT see this gap, by construction (§16.1.3's own normative box: "no
+    derivation establishes it at all"). Were this fed through the full
+    runtime harness (`training/verify/`, `plr-sema/eval/region_oracle.py`
+    -- both outside this row's own file list), PLR's real
+    `_assert_resources_exist` would raise on the genuine object at runtime
+    while the static side predicts `SAFE`, exactly what the tier-1 fence's
+    `unsound` counter (`plr-sema/eval/oracle_common.py`'s `compare`,
+    unmodified) exists to catch; this test proves the STATIC half of that
+    gap directly and in-process, since re-deriving the runtime harness is
+    outside this row's own file scope."""
+    from pylabrobot.resources import Resource
+
+    deck_resource = Resource("tip_rack_1", size_x=10, size_y=10, size_z=10, category="resource")
+    duplicate_resource = Resource("tip_rack_1", size_x=999, size_y=999, size_z=999, category="resource")
+    assert deck_resource.name == duplicate_resource.name
+    assert deck_resource != duplicate_resource  # A-DECK-OBJECT's own residual (§16.1.3 Fact 2).
+
+    report = check_graph(_pick_up_tips_resources_graph(), contracts_json, env=_t48_env(verified=True))
+    (finding,) = _site_findings(report, _T48_ASSERT_RESOURCES_SITE, operation_id="op_1")
+    assert finding.verdict is Verdict.SAFE
+
+
+def test_ac_16_13_a_deck_object_assumption_table_has_five_rows() -> None:
+    """AC-16.13: A-DECK-OBJECT is added to increment 1's §10.6.3
+    named-assumption table with its own breakage column, taking the table
+    from FOUR rows to FIVE -- asserted directly against the spec file
+    rather than trusted from prose."""
+    spec_path = REPO_ROOT / ".praxia" / "docs" / "specs" / "260902_plr-sema-tip-typestate-increment.md"
+    text = spec_path.read_text(encoding="utf-8")
+    start = text.index("### 10.6.3 The assumptions, named")
+    header_idx = text.index("| id | assumption", start)
+    end = text.index("\n\n", header_idx)
+    table = text[start:end]
+    rows = [line for line in table.splitlines() if line.startswith("| **A-")]
+    assert len(rows) == 5, f"expected 5 named-assumption rows, found {len(rows)}: {rows}"
+    assert any(row.startswith("| **A-DECK-OBJECT**") for row in rows), rows
+
+
+# ---------------------------------------------------------------------------
+# AC-16.14 (spec 260909 §16.1.1/§16.15 D6, T49, backlog #5026): the
+# `:375`/`:383` site rules (D5b). SAME `D6_SITE_RULES` dict, SAME dispatch
+# shape as `:321` above -- each REPLACES `evaluate_predicate` outright for
+# its own matched guard. Unlike `:321`, both read `ctx.caller_args`
+# directly (`"method"`'s `EnvRef` last path segment, `"default"`'s G9
+# `SetLit`) rather than through `_resolve_var`'s ordinary E-CALL steps,
+# because `missing`/`vars_keyword` are LOCALS of `_check_args`, never its
+# parameters.
+# ---------------------------------------------------------------------------
+
+_T49_MISSING_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=375,
+    qualname="LiquidHandler._check_args",
+)
+_T49_STRICT_SITE = PlrSite(
+    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+    lineno=383,
+    qualname="LiquidHandler._check_args",
+)
+
+
+def test_ac_16_14_375_383_site_rules_flip_safe_under_observation(contracts_json: str) -> None:
+    """The real `:375`/`:383` guards, unmodified -- through T48 there is no
+    rule matching either site at all, so both stay `UNKNOWN` regardless of
+    `env` (see the no-observation test right below). Once `D6_SITE_RULES`
+    dispatches AND the observed `backend_class` (chatterbox, the pin) has a
+    `pick_up_tips` row in §16.3's surface -- reached via T42's `caller_args`
+    (`method` -> `self.backend.pick_up_tips`, `default` -> G9's `SetLit`,
+    the real derived contract table's own entries) -- both flip `SAFE`."""
+    report = check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), contracts_json, env=_t43_obs_env())
+    (missing_finding,) = _site_findings(report, _T49_MISSING_SITE, operation_id="op_1")
+    assert missing_finding.verdict is Verdict.SAFE
+    (strict_finding,) = _site_findings(report, _T49_STRICT_SITE, operation_id="op_1")
+    assert strict_finding.verdict is Verdict.SAFE
+
+
+def test_ac_16_14_no_observation_stays_env_dependent(contracts_json: str) -> None:
+    """§16.2.3's fail-closed default: with no `obs:` member in `env`, both
+    sites decline (no `backend_class` in the decoded observation, so
+    `_check_args_surface_row` cannot even look up a row) exactly like every
+    other §16.5/D6 rule."""
+    report = check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), contracts_json)
+    (missing_finding,) = _site_findings(report, _T49_MISSING_SITE, operation_id="op_1")
+    assert missing_finding.verdict is Verdict.UNKNOWN
+    assert missing_finding.reason == "guard_env_dependent"
+    (strict_finding,) = _site_findings(report, _T49_STRICT_SITE, operation_id="op_1")
+    assert strict_finding.verdict is Verdict.UNKNOWN
+    assert strict_finding.reason == "guard_env_dependent"
+
+
+def test_ac_16_14_unobserved_backend_class_declines(contracts_json: str) -> None:
+    """A `backend_class` with no row in the derived surface -- the SAME
+    decline clause R-CONST's own AC-16.5 test exercises (§16.5.3) --
+    declines to ½, never fabricates a value for an unobserved/unknown
+    backend/method pair. This is also the observable proxy for C15's
+    absence rule: a decorated or multiply-defined `(class, method)` is
+    likewise simply ABSENT from the surface, which this function cannot
+    distinguish from "never a candidate at all" -- and is not meant to,
+    §16.3's own selection box makes both cases the identical decline."""
+    env = _t43_obs_env(backend_class="SomeUnknownBackend")
+    report = check_graph(_pick_up_tips_use_channels_graph("[0, 1]"), contracts_json, env=env)
+    (missing_finding,) = _site_findings(report, _T49_MISSING_SITE, operation_id="op_1")
+    assert missing_finding.verdict is Verdict.UNKNOWN
+    (strict_finding,) = _site_findings(report, _T49_STRICT_SITE, operation_id="op_1")
+    assert strict_finding.verdict is Verdict.UNKNOWN
+
+
+def _t49_ctx(*, caller_args: "dict[str, Any] | None", env: "frozenset[str]", backend_surface: "dict[str, Any]") -> "Any":
+    from plr_sema.check.predicate import _Ctx
+
+    return _Ctx(
+        call=ir.Call(receiver=0, receiver_type="LiquidHandler", method="_check_args", kwargs={}),
+        resources_by_slot={},
+        param_defaults={},
+        bindings_by_name={},
+        depth=1,
+        channel_kwarg=None,
+        channels=None,
+        env=env,
+        class_hierarchy=None,
+        caller_args=caller_args,
+        backend_surface=backend_surface,
+    )
+
+
+_T49_METHOD_ENVREF = {"node": "EnvRef", "path": ["self", "backend", "pick_up_tips"], "args": None}
+_T49_DEFAULT_SETLIT = {"node": "SetLit", "values": ["ops", "use_channels"]}
+_T49_SURFACE = {
+    "LiquidHandlerChatterboxBackend.pick_up_tips": {
+        "params": ["ops", "use_channels"],
+        "has_var_keyword": True,
+        "has_var_positional": False,
+    }
+}
+_T49_ENV = frozenset({'obs:backend_class="LiquidHandlerChatterboxBackend"'})
+
+
+def test_ac_16_14_missing_site_rule_never_returns_true() -> None:
+    """§16.1.1's own arithmetic: the rule only ever proves the MINUEND
+    (`missing`) empty, never the SUBTRAHEND non-empty -- asserted directly
+    against `_eval_check_args_missing_site_rule`'s own Kleene range,
+    exhaustively over every branch its own docstring names. The
+    stub-defeating half: a rule that always returned `None` would also
+    pass the `check_graph` no-observation test above, so branch (b) here
+    is what proves the `False`-producing path is actually implemented."""
+    from plr_sema.check.predicate import _eval_check_args_missing_site_rule
+
+    # (a) no caller_args at all -> decline, never T.
+    ctx = _t49_ctx(caller_args=None, env=_T49_ENV, backend_surface=_T49_SURFACE)
+    assert _eval_check_args_missing_site_rule(ctx) is None
+    # (b) method + default present, params subset of default -> F, the ONE decided branch.
+    ctx = _t49_ctx(
+        caller_args={"method": _T49_METHOD_ENVREF, "default": _T49_DEFAULT_SETLIT},
+        env=_T49_ENV,
+        backend_surface=_T49_SURFACE,
+    )
+    assert _eval_check_args_missing_site_rule(ctx) is False
+    # (c) no backend_class observed -> decline, never T.
+    ctx = _t49_ctx(
+        caller_args={"method": _T49_METHOD_ENVREF, "default": _T49_DEFAULT_SETLIT},
+        env=frozenset(),
+        backend_surface=_T49_SURFACE,
+    )
+    assert _eval_check_args_missing_site_rule(ctx) is None
+    # (d) no surface row for this (class, method) -> decline, never T.
+    ctx = _t49_ctx(
+        caller_args={"method": _T49_METHOD_ENVREF, "default": _T49_DEFAULT_SETLIT},
+        env=_T49_ENV,
+        backend_surface={},
+    )
+    assert _eval_check_args_missing_site_rule(ctx) is None
+    # (e) no "default" caller-arg -> decline, never T.
+    ctx = _t49_ctx(caller_args={"method": _T49_METHOD_ENVREF}, env=_T49_ENV, backend_surface=_T49_SURFACE)
+    assert _eval_check_args_missing_site_rule(ctx) is None
+    # (f) params NOT a subset of default -> decline, never T (the surface
+    # row's own params exceed what the caller declared as default).
+    surface_superset = {
+        "LiquidHandlerChatterboxBackend.pick_up_tips": {
+            "params": ["ops", "use_channels", "extra_required_param"],
+            "has_var_keyword": True,
+            "has_var_positional": False,
+        }
+    }
+    ctx = _t49_ctx(
+        caller_args={"method": _T49_METHOD_ENVREF, "default": _T49_DEFAULT_SETLIT},
+        env=_T49_ENV,
+        backend_surface=surface_superset,
+    )
+    assert _eval_check_args_missing_site_rule(ctx) is None
+
+
+def test_ac_16_14_strict_site_rule_never_returns_true() -> None:
+    """The SAME Kleene-range proof for `:383`: the rule decides `F` iff
+    `has_var_keyword` is exactly `True` on the observed surface row, and
+    NEVER resolves `strictness` at all (§16.1.1's own box) -- so a
+    `has_var_keyword=False` row declines exactly like a missing one, never
+    falsifying to `T` in either case."""
+    from plr_sema.check.predicate import _eval_check_args_strict_site_rule
+
+    # (a) no caller_args at all -> decline, never T.
+    ctx = _t49_ctx(caller_args=None, env=_T49_ENV, backend_surface=_T49_SURFACE)
+    assert _eval_check_args_strict_site_rule(ctx) is None
+    # (b) has_var_keyword True -> F, the ONE decided branch.
+    ctx = _t49_ctx(caller_args={"method": _T49_METHOD_ENVREF}, env=_T49_ENV, backend_surface=_T49_SURFACE)
+    assert _eval_check_args_strict_site_rule(ctx) is False
+    # (c) no backend_class observed -> decline, never T.
+    ctx = _t49_ctx(caller_args={"method": _T49_METHOD_ENVREF}, env=frozenset(), backend_surface=_T49_SURFACE)
+    assert _eval_check_args_strict_site_rule(ctx) is None
+    # (d) no surface row -> decline, never T.
+    ctx = _t49_ctx(caller_args={"method": _T49_METHOD_ENVREF}, env=_T49_ENV, backend_surface={})
+    assert _eval_check_args_strict_site_rule(ctx) is None
+    # (e) has_var_keyword False -> decline, never T.
+    surface_no_var_keyword = {
+        "LiquidHandlerChatterboxBackend.pick_up_tips": {
+            "params": ["ops", "use_channels"],
+            "has_var_keyword": False,
+            "has_var_positional": False,
+        }
+    }
+    ctx = _t49_ctx(
+        caller_args={"method": _T49_METHOD_ENVREF}, env=_T49_ENV, backend_surface=surface_no_var_keyword
+    )
+    assert _eval_check_args_strict_site_rule(ctx) is None
+
+
+def test_ac_16_14_set_lit_parses_and_round_trips() -> None:
+    """G9's own narrow shape test (T49): an `ast.Set` display of
+    `ast.Constant`s parses to `SetLit`, round-trips through `to_json`/
+    `from_json`, and a display containing ANY non-`Constant` element fails
+    the WHOLE display's parse (no partial `SetLit`) -- collapsing the
+    enclosing `Cmp` to `Opaque`, the ordinary Term-parse-failure path."""
+    from plr_sema.derive.predicate_ast import Cmp, Opaque, SetLit, from_json, parse, to_json
+
+    parsed = parse('x == {"a", "b", "a"}')
+    assert isinstance(parsed, Cmp)
+    assert isinstance(parsed.right, SetLit)
+    assert parsed.right.values == ("a", "b")  # deduplicated, first-occurrence order.
+    assert from_json(to_json(parsed)) == parsed
+
+    mixed = parse("x == {1, f()}")
+    assert isinstance(mixed, Opaque)  # one non-Constant element -> the WHOLE display fails to parse.

@@ -41,6 +41,10 @@
       ],
       "check_no_lid_guards": [
         {
+          "bindings": [],
+          "caller_args": null,
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
           "condition": "lidded is resource",
           "depth": 0,
           "free_vars": [
@@ -48,7 +52,12 @@
             "resource"
           ],
           "kind": "raise_guard",
+          "predicate": {
+            "node": "Opaque",
+            "text": "lidded is resource"
+          },
           "raises": "ValueError",
+          "reachability_clear": false,
           "scope_trail": [
             "if lidded is resource"
           ],
@@ -59,6 +68,10 @@
           }
         },
         {
+          "bindings": [],
+          "caller_args": null,
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
           "condition": null,
           "depth": 0,
           "free_vars": [
@@ -66,7 +79,11 @@
             "resource"
           ],
           "kind": "raise_guard",
+          "predicate": {
+            "node": "TRUE"
+          },
           "raises": "ValueError",
+          "reachability_clear": false,
           "scope_trail": [],
           "site": {
             "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
@@ -83,23 +100,23 @@
     "derive_python_version": "3.14.6",
     "plr": {
       "branch": "HEAD",
-      "dirty": true,
-      "dirty_content_id": "2ca7d1248dfd68c0312a93b490f3bd6211afc043",
+      "dirty": false,
+      "dirty_content_id": null,
       "hash": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
       "provenance_source": "git",
-      "toplevel": "/home/marielle/projects/praxis/external/pylabrobot"
+      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/external/pylabrobot"
     },
     "praxis": {
-      "branch": "coxswain-p2-pipeline",
+      "branch": "wt-20260909-172820",
       "dirty": true,
-      "dirty_content_id": "e93da113160a7cd67dd447cb62ed31a326791514155ec098d4f09db571e1d79e",
-      "hash": "92776b8e1f5f962b63d06f746a12bbb89bcf679c",
+      "dirty_content_id": "beb0b1e1127910893f01ef430fe500a46971dc9f9bef7c487964d799daa53686",
+      "hash": "ae0bd2d789afe8ada7553f04db7ddc82f79cb2b3",
       "provenance_source": "git",
-      "toplevel": "/home/marielle/projects/praxis"
+      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820"
     },
     "pylabrobot_version": "0.2.2",
     "schema_version": 1,
-    "stamped_at": "2026-09-04T14:03:32.240106+00:00",
+    "stamped_at": "2026-09-09T18:33:53.829886+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   },
