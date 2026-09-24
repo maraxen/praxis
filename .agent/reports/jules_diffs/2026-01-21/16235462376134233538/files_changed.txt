@@ -1,2 +1,0 @@
-praxis/backend/services/plate_viz.py
-tests/services/test_plate_viz.py

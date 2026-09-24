@@ -1,3 +1,7 @@
+---
+title: 'JupyterLite GH-Pages Simulation Audit'
+---
+
 # JupyterLite GH-Pages Simulation Audit
 
 *Jules Session: JLITE-01 (`3622468687667268403`)*

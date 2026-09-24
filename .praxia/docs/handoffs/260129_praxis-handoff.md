@@ -1,3 +1,7 @@
+---
+title: 'Praxis E2E Remediation Handoff'
+---
+
 # Praxis E2E Remediation Handoff
 
 **Session:** 2026-01-29 12:00 - 13:28  

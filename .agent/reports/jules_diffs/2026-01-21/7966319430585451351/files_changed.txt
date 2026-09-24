@@ -1,7 +1,0 @@
-praxis/web-client/src/app/features/run-protocol/components/live-dashboard.component.ts
-praxis/web-client/src/app/features/run-protocol/models/execution.models.ts
-praxis/web-client/src/app/features/run-protocol/services/execution.service.spec.ts
-praxis/web-client/src/app/features/run-protocol/services/execution.service.ts
-praxis/web-client/src/app/features/run-protocol/services/python-runtime.service.spec.ts
-praxis/web-client/src/app/features/run-protocol/services/python-runtime.service.ts
-praxis/web-client/src/app/features/run-protocol/services/python.worker.ts

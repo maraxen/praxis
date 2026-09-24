@@ -1,3 +1,7 @@
+---
+title: 'Project Roadmap'
+---
+
 # Project Roadmap
 
 For immediate post-release plans, see [POST_SHIP.md](./POST_SHIP.md). For known issues and smaller improvements, see [TECHNICAL_DEBT.md](./TECHNICAL_DEBT.md).

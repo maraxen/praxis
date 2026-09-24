@@ -1,9 +1,0 @@
-praxis/web--client/e2e/specs/deck-setup.spec.ts
-praxis/web-client/.gitignore
-praxis/web-client/angular.json
-praxis/web-client/e2e/example.spec.ts
-praxis/web-client/e2e/specs/deck-setup.spec.ts
-praxis/web-client/e2e/tsconfig.json
-praxis/web-client/package-lock.json
-praxis/web-client/package.json
-praxis/web-client/playwright.config.ts

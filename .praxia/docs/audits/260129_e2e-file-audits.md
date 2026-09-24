@@ -1,3 +1,7 @@
+---
+title: 'E2E File Audits'
+---
+
 # E2E File Audits
 
 ## File: `praxis/web-client/e2e/specs/02-asset-management.spec.ts`

@@ -1,3 +1,7 @@
+---
+title: 'v0.1-alpha Debug Handoff'
+---
+
 # v0.1-alpha Debug Handoff
 
 **Created**: 2026-01-21 18:04

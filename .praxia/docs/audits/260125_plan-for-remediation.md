@@ -1,3 +1,7 @@
+---
+title: 'Handoff: Addressing Critical Audit Blockers'
+---
+
 # Handoff: Addressing Critical Audit Blockers
 
 **Date**: 2026-01-25  

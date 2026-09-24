@@ -4,7 +4,7 @@ import pytest
 # external interactive imports. Skip them in backend CI — they should be
 # exercised in the frontend/integration test matrix instead.
 pytest.skip(
-    "REPL tests are frontend-only; skipped in backend test runs. See .agent/TECHNICAL_DEBT.md",
+    "REPL tests are frontend-only; skipped in backend test runs. See .praxia/docs/audits/251225_technical-debt.md",
     allow_module_level=True,
 )
 

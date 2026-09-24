@@ -1,3 +1,7 @@
+---
+title: 'Ship Work Plan'
+---
+
 # Ship Work Plan
 
 > **Generated**: 2026-01-31T10:15
