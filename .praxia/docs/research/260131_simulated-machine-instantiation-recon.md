@@ -1,3 +1,7 @@
+---
+title: 'Simulated Machine Instantiation Recon Report'
+---
+
 # Simulated Machine Instantiation Recon Report
 
 ## Executive Summary

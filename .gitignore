@@ -100,61 +100,11 @@ debug_*.py
 
 
 
-!.agent/archive/archive.tar.gz
-
-.agent/skills/loki-mode/benchmarks/*
-
-# Agent infrastructure (per-workspace state)
-.agent/agent.db
-.agent/workspace.id
-.agent/legacy_markdown/
-
-# Symlinked skills from global store (don't track duplicates)
-.agent/skills/AWS Penetration Testing/
-.agent/skills/Ethical Hacking Methodology/
-.agent/skills/Linux Production Shell Scripts/
-.agent/skills/Pentest Checklist/
-.agent/skills/Top 100 Web Vulnerabilities Reference/
-.agent/skills/agent-modes/
-.agent/skills/algorithmic-art/
-.agent/skills/app-store-optimization/
-.agent/skills/aws-penetration-testing/
-.agent/skills/brainstorming/
-.agent/skills/brand-guidelines*/
-.agent/skills/canvas-design/
-.agent/skills/claude-d3js-skill/
-.agent/skills/content-creator/
-.agent/skills/core-components/
-.agent/skills/d3-viz/
-.agent/skills/dev-matrix/
-.agent/skills/dispatching-parallel-agents/
-.agent/skills/doc-coauthoring/
-.agent/skills/docx*/
-.agent/skills/ethical-hacking-methodology/
-.agent/skills/executing-plans/
-.agent/skills/file-organizer/
-.agent/skills/finishing-a-development-branch/
-.agent/skills/gemini-cli-headless/
-.agent/skills/internal-comms*/
-.agent/skills/kaizen/
-.agent/skills/linux-shell-scripting/
-.agent/skills/mcp-builder/
-.agent/skills/notebooklm/
-.agent/skills/orchestration/
-.agent/skills/pdf*/
-.agent/skills/pentest-checklist/
-.agent/skills/planning-with-files/
-.agent/skills/pptx*/
-.agent/skills/product-manager-toolkit/
-.agent/skills/receiving-code-review/
-.agent/skills/requesting-code-review/
-.agent/skills/skill-linker/
-.agent/skills/subagent-driven-development/
-.agent/skills/technical-debt*/
-.agent/skills/top-web-vulnerabilities/
-.agent/skills/using-superpowers/
-.agent/skills/writing-skills/
-.agent/skills/xlsx*/
+# Legacy .agent/ directories, retired 2026-09-22 (debt #1293). Ignored so they are not
+# recreated by accident; see .praxia/docs/archive/agent-dirs-retired.md to restore content.
+/.agent/
+praxis/.agent/
+praxis/web-client/.agent/
 
 # Temp files
 test-results/
@@ -164,7 +114,6 @@ session-*.md
 *.db
 
 # Ignore compiled binaries
-.agent/scripts/jules-diff-tool/jules-diff-tool.worktrees/
 .worktrees/
 .jupyterlite.doit.db
 .fastembed_cache/

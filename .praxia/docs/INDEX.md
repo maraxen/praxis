@@ -1,35 +1,54 @@
-# wt-20260909-172820 Internal Docs
+# praxis Internal Docs
 
 ## Daily
+- [260912_overnight-decisions](daily/260912_overnight-decisions.md) — Every decision the 260912 L5 loop made without a human gate: the REPL-refocus staleness dispositions, the #5110 selection, and the praxia debt filings.
 - [260825_p22_verify_harness_landed](daily/260825_p22_verify_harness_landed.md)
+- [260121_jules-session-triage](daily/260121_jules-session-triage.md) — Jules Session Triage - 2026-01-21 11:10 AM
+- [260121_orchestrator-session-summary-20260121](daily/260121_orchestrator-session-summary-20260121.md) — Orchestrator Session Summary - 2026-01-21
+- [260121_summary](daily/260121_summary.md) — Jules Diff Extraction - 2026-01-21
+- [260121_v01alpha-status-20260121](daily/260121_v01alpha-status-20260121.md) — V0.1-Alpha Merge Status Report
+- [260120_orchestration](daily/260120_orchestration.md) — Orchestration Learning Log
+- [260101_development-matrix](daily/260101_development-matrix.md) — Development Matrix
 
 ## Handoffs
-- [260131_e2e-autonomous-handoff](handoffs/260131_e2e-autonomous-handoff.md)
-- [260131_ship-coordination-handoff](handoffs/260131_ship-coordination-handoff.md)
-- [260129_praxis-handoff](handoffs/260129_praxis-handoff.md)
-- [260128_e2e-database-seeding-handoff](handoffs/260128_e2e-database-seeding-handoff.md)
+- [260131_e2e-autonomous-handoff](handoffs/260131_e2e-autonomous-handoff.md) — Autonomous E2E Stabilization Handoff
+- [260131_ship-coordination-handoff](handoffs/260131_ship-coordination-handoff.md) — Praxis Ship Readiness - Coordination Handoff
+- [260129_jules-stage1-prompts](handoffs/260129_jules-stage1-prompts.md) — Jules Stage 1 Dispatch Prompts
+- [260129_praxis-handoff](handoffs/260129_praxis-handoff.md) — Praxis E2E Remediation Handoff
+- [260128_e2e-database-seeding-handoff](handoffs/260128_e2e-database-seeding-handoff.md) — E2E Database Seeding Issue - Handoff
 - [260128_e2e-stabilization-handoff](handoffs/260128_e2e-stabilization-handoff.md) — E2E Test Suite Stabilization - Session Handoff
-- [260122_v01alpha-debug-handoff-20260121](handoffs/260122_v01alpha-debug-handoff-20260121.md)
-- [260122_v01alpha-orchestrator-handoff-20260121-1845](handoffs/260122_v01alpha-orchestrator-handoff-20260121-1845.md)
-- [260121_final-merge-handoff](handoffs/260121_final-merge-handoff.md)
+- [260122_v01alpha-debug-handoff-20260121](handoffs/260122_v01alpha-debug-handoff-20260121.md) — v0.1-alpha Debug Handoff
+- [260122_v01alpha-orchestrator-handoff-20260121-1845](handoffs/260122_v01alpha-orchestrator-handoff-20260121-1845.md) — v0.1-Alpha Orchestrator Handoff
+- [260121_final-merge-handoff](handoffs/260121_final-merge-handoff.md) — FINAL MERGE HANDOFF - v0.1-alpha
+- [260121_jules-handover-20260121](handoffs/260121_jules-handover-20260121.md) — Jules Integration Handover - 2026-01-21
 
 ## Plans
+- [260912_repl-gate-manifest-scope-sprint136](plans/260912_repl-gate-manifest-scope-sprint136.md) — Sprint 136 plan and record: the repl.yml GATE G7 false positive that skipped all ten browser gates on the 4-PR stack, its two-defect root cause, the surface-dispatch fixer run, and the differential verification.
 - [260909_plr-sema-sprint130-observation](plans/260909_plr-sema-sprint130-observation.md) — Sprint plan for 260909_sema-observation: Band A the increment 7 spec (tier (ii) observation record, derived backend surface, delegate->caller argument map, scope_verdict, site-keyed fence) drafted and taken through adversarial round 1 to reviewed-round-1 (DONE 260909); Band B foundations T40-T42; Band C E-ENV resolution + scope_verdict T43-T44 (needs D4); Band D fence + oracle + gate T45-T47; Band E CONDITIONAL on D6 -- the :321 and _check_args site rules that are the whole remaining distance to the headline. Six user decision hooks D1-D6 with the round's recommendations; the headline (first joined SAFE within scope on a real op) is reachable this sprint iff D6 is taken.
 - [260904_plr-sema-sprint127-predicates](plans/260904_plr-sema-sprint127-predicates.md) — Sprint plan for 260904_sema-predicates: Band B0 the UNKNOWN ledger (root-cause clusters on the frozen tier-1 benchmark, deferred (f) shape) as the instrument; Band A increment 6 spec (deferred row (c), the predicate language) draft + adversarial round 1; Band B the derive-side parsed predicate and local-binding idioms with published measured sets as the gate; Band C the three-valued evaluator, reason refinements, tier-1 re-measure and ledger delta; Band D measurement debts (check-only elapsed for #4923, tips_dirty precision cost). Headline target: the first joined SAFE on a real executed operation. Decision hooks, baselines, exclusions.
 - [260903_plr-sema-sprint123-volume](plans/260903_plr-sema-sprint123-volume.md) — Sprint plan for 260903_sema-volume: Band A adversarial round on increment 5 (spec_version 13) -> reviewed-round-1; Band B the derivation proof T24/T25 as the go/no-go gate (user decision 260903: build the volume family if it is firable); Band C T26-T29 domain, env gate, registry HM-24 1->2 / HM-25 6->8, mutants v1/v2, tier-2b volume fixtures, lint; Band D the carried #4881a landmine test and #4952 build_setup limits. Baselines to hold, exclusions (#4923/#4924 NO-GO, #4956), dispatch conventions.
 - [260902_plr-sema-oracle-harness](plans/260902_plr-sema-oracle-harness.md) — Design for catching plr-sema bugs by comparing static verdicts against PLR's chatterbox simulator (STRICT + tip/volume tracking) as ground-truth oracle: four input tiers (corpus replay, source-rendered corpus, mutation/metamorphic, wire-format fuzz), the soundness contract each verdict must satisfy, metrics, and phasing.
 - [260824_repl-autocomplete-scope](plans/260824_repl-autocomplete-scope.md) — Scope and outcome for as-you-type completion in the JupyterLite PLR REPL; the planned jedi preload proved unnecessary
 - [260817_praxis-repl-refocus-execution-plan](plans/260817_praxis-repl-refocus-execution-plan.md) — Dependency-ordered 8-phase execution plan composed from three adversarially-reviewed specs and five executed spikes, with per-phase gates, audit strategy, rollback, and an unproven-assumptions ledger.
-- [260210_final-protocol-execution-fix-plan](plans/260210_final-protocol-execution-fix-plan.md)
-- [260210_protocol-playground-fix-plan](plans/260210_protocol-playground-fix-plan.md)
-- [260131_ship-work-plan](plans/260131_ship-work-plan.md)
-- [260128_e2e-test-suite-hardening-plan](plans/260128_e2e-test-suite-hardening-plan.md)
-- [260122_web-hid-shim](plans/260122_web-hid-shim.md)
-- [260121_final-merge-plan](plans/260121_final-merge-plan.md)
-- [260121_jules-integration-plan](plans/260121_jules-integration-plan.md)
-- [260115_test-plan-v1](plans/260115_test-plan-v1.md)
+- [260210_final-mvp-implementation-strategy](plans/260210_final-mvp-implementation-strategy.md) — FINAL MVP IMPLEMENTATION STRATEGY
+- [260210_final-protocol-execution-fix-plan](plans/260210_final-protocol-execution-fix-plan.md) — FINAL PROTOCOL EXECUTION & PLAYGROUND FIX PLAN
+- [260210_protocol-playground-fix-plan](plans/260210_protocol-playground-fix-plan.md) — Protocol Execution & Playground Fix Plan
+- [260209_asset-wizard-deck-selector](plans/260209_asset-wizard-deck-selector.md) — Plan for adding a deck-selection step to the asset wizard, written ahead of the Feb 2026 E2E debugging wave
+- [260131_ship-work-plan](plans/260131_ship-work-plan.md) — Ship Work Plan
+- [260128_e2e-test-suite-hardening-plan](plans/260128_e2e-test-suite-hardening-plan.md) — E2E Test Suite Debug & Realistic User Interaction Plan
+- [260126_opfs-only-refactor](plans/260126_opfs-only-refactor.md) — Plan to make OPFS the only browser-mode persistence layer, removing the legacy sql.js + IndexedDB path
+- [260122_post-merge-checklist](plans/260122_post-merge-checklist.md) — Post-Merge Checklist
+- [260122_post-ship](plans/260122_post-ship.md) — Post-Ship Roadmap (v0.1-Alpha+)
+- [260122_web-hid-shim](plans/260122_web-hid-shim.md) — WebHID Shim Implementation Plan
+- [260121_connection-persistence-tests](plans/260121_connection-persistence-tests.md) — Browser Mode Connection Persistence Tests
+- [260121_final-merge-plan](plans/260121_final-merge-plan.md) — FINAL MERGE PLAN - v0.1-alpha (Praxis)
+- [260121_jules-integration-plan](plans/260121_jules-integration-plan.md) — Jules Integration Plan - 2026-01-21
+- [260116_runway](plans/260116_runway.md) — 🛫 Launch Runway: Project "Praxis"
+- [260115_test-plan-v1](plans/260115_test-plan-v1.md) — Interaction Test Plan v1
 
 ## Specs
+- [260922_repl-persistence-ladder](specs/260922_repl-persistence-ladder.md) — Spec for making REPL notebooks durable beyond best-effort IndexedDB. The design stays correct whatever the browser decides on persist() and FSA permission, so it does not wait on the U16/U17 spikes.
+- [260914_first-run-auto-setup](specs/260914_first-run-auto-setup.md) — Spec for bootstrapping PyLabRobot automatically on every Pyodide kernel start, fail-closed and visible, with no user-typed setup
 - [260909_plr-sema-observation-increment](specs/260909_plr-sema-observation-increment.md) — Seventh post-corpus increment to the plr-sema pre-corpus specification, taking increment 6 section 15.13's deferred tier-(ii) row and section 15.6's Q2 defer. The headline the user substituted into this increment on 260907 -- **the first joined SAFE on a real executed operation of the frozen tier-1 benchmark** -- is measured against the after-ledger and reported as **NOT REACHABLE in increment 7**, for a reason this document names, sizes and site-identifies rather than discovers at a gate: `_check_args`'s two guards, liquid_handler.py lines 375 and 383, sit on ALL 544 executed operations, and deciding either requires modelling five comprehensions over `inspect.signature`, a set-difference term, a set-display term and the residual `**kwargs` key set -- five productions and a per-row ceiling spend, sized at ~350 LOC and refused here as increment 8's. What increment 7 DOES ship, stated as narrowly as the ledger forces: the observation record (backend class, num_channels, head channel key set), taken inside the verifier's window and returned by the executed side on increment 5 section 14.6's O5 pattern, entering the cache key as `obs:key=value` members of the existing fifth `env` component; the derived backend surface (per (class, method) parameter names, has-var-keyword, has-var-positional, constant-return value), derived over the derive package's own PLR function index with NO hand-typed base-class name; the delegate->caller argument map at depth 1, `self.`-receiver-only, singleton-call-only, fail-closed to Top on every other shape; four E-ENV resolution rules that turn `self.head`, `self.backend.<attr>` and `self.backend.<method>` from unconditional half/Top into real values; the reopening of increment 6 section 15.13's membership deciding case under all three of its stated conditions; a refinement of A-C13 that binds a single-name quantifier target element-wise over a concrete Seq (additive `target` field on Filtered/AllOf/AnyOf, absent => None => today's behaviour); a monotonic quantifier clause that decides AllOf over a Top seq when the body is T under Top-bound targets; the LIFT of E-UNCOND(4)'s depth >= 1 WILL_FAIL forbiddance under three new normative preconditions; Q1's scoped joined verdict as a second, additive `scope_verdict` report field computed by the UNCHANGED join over the findings whose site is not in `scope.excludes_sites`, with the unscoped `verdict` staying UNKNOWN and `schema_version` staying 1; and the fence's site-keyed narrowing, built on a ~3-line `traceback.extract_tb(...)[-1]` frame capture, publishing a SECOND counter `unsound_scoped` beside the unmodified `unsound` whose definition does not change. Measured prediction, per site, for the gate candidate `pick_up_tips` (223 ops): liquid_handler.py line 409 flips to SAFE on 223 (and on up to 384 across five methods), line 514 flips to SAFE on 223 via the constant-return derivation, line 321 flips to SAFE ONLY under user decision D2 (a deck-membership observation plus a fifth named assumption A-DECK-OBJECT, recommended YES on the argument that the tier-1 fence checks it on 288 real operations), :375 and :383 do NOT flip, :576 stays tier (iii) and annotated. So `pick_up_tips`'s residual falls from SIX guard_env_dependent sites to TWO (three without D2), `n_findings_decided` is predicted 1,563 -> >= 2,170, and `scope_verdict` is predicted UNKNOWN on every one of the 544 executed operations -- **GATE: predicted NO-GO, with the obstruction named in advance**. Five user decision hooks are surfaced with recommendations and never spent in the text: D1 (lift E-UNCOND(4), recommend YES), D2 (A-DECK-OBJECT + the deck observation, recommend YES), D3 (nothing -- the derived surface introduces no hand-typed fact, recorded as a non-decision so the round can attack it), D4 (HM-25 declared 9 -> 10 for the E-ENV path-shape table, recommend YES), D5 (model `_check_args` in this increment, recommend NO). REASON_VOCABULARY stays 12 of 12 and `live_rows()` stays 24 of BUDGET_CAP 24; no registry row is added and no thirteenth reason is proposed. Increment 6 section 15.16.3 R1's owed adversarial review is restated here as five numbered claims (R1-C1..R1-C5) so the round can attack them, together with the interaction between the refined E-UNCOND(5) and this increment's depth-1 WILL_FAIL. REVISED 260909 (spec_version 2) after adversarial round 1 -- challenger C1-C26 (5 blockers, 14 must-fix, 6 should-fix, 1 note) and defender (13 conceded, 13 partial, 0 clean rebuttals, six defender gaps D-G1..D-G6, a 14-step ordered remediation list), both verdicts needs_revision; section 16.17 records the disposition of every objection. What round 1 changed, in the order it matters. (1) THE HEADLINE REVERSES from unreachable to reachable, and now rests on ONE user decision. C1's arithmetic was reproduced at the pin: the SAFE direction of line 375 needs only that `params` for the observed backend method is a subset of the call site's `default`, so `missing` is empty whatever `backend_kws` is; and line 383 falls to E-SCOPE over the RECORDED scope entry once `has_var_keyword` is known -- both columns section 16.3 already derives, and neither needs the set-difference term, the keys() term or the residual kwargs key set. The five-production refusal is withdrawn and D5 is repriced as D5a (the general model, ~350 LOC, increment 8's) / D5b (two SAFE-direction site rules, ~100-130 LOC) / D5c (no). C22's reconciliation is paid: increment 6 section 15.6 was RIGHT that AST-deriving the backend signatures is the condition, and spec_version 1 shipped that derivation and then declared the sites undecidable on a different ground without noticing. (2) A NEW decision hook D6 -- accept site-keyed semantic models of named PLR function bodies as a class of hand-maintained fact, one new registry row against a full BUDGET_CAP 24, i.e. a cap conversation -- because the repaired line-321 rule and D5b are the SAME ask and the gate needs BOTH (D-G2). Recommendation YES; total cost ~250 LOC across T48 and T49; D-G6's one-directionality (both `_check_args` guards carry `reachability_clear` false, and a false `fires` returns SAFE unguarded by depth) is its strongest argument. Section 16.10.2 states the conjunction and section 16.10.3 predicts every site BOTH WAYS. (3) R-DECK IS WITHDRAWN as an EnvRef shape (C3): the shipped guard record for line 321 carries no EnvRef and empty bindings, and `resource` is a for-target nothing binds; the 2,458 floor and the 50-cluster cell go with it, and line 321 is respecified as a site rule over the caller-bound `resources` plus the deck-name observation. (4) Q-BIND IS WITHDRAWN in full as dead machinery (D-G1): line 409 is evaluated by `_maybe_alpha_emptiness` and `_eval_alpha_existential`, which already bind element-wise, so the additive `target` field on Filtered/AllOf/AnyOf, its parse half and its counter are all deleted and T43 shrinks ~200 to ~150 LOC. Q-MONO survives, now stated as an EXPLICIT amendment of increment 6 G8(1)/A-C3 with the increment-6 file in T43's list (C6), and C7's evaluator invariant E-INV is stated normatively with R-CONST and Q-MONO as its two named instances. (5) THE FENCE WAS BROKEN AND IS FIXED (C5): `traceback.extract_tb` returns frames outermost-first, so the last-frame capture was the backend's original raise and could never match the re-raise site -- F2 excused nothing. `error_frames` is now a list, F2 excuses on ANY frame with the outermost-PLR-match tie-break, one normalisation helper carries both stated identities (C20), and AC-16.8 gains the re-raise fixture the innermost version could never pass. (6) The gated floor moves 2,170 to 2,009 (C4) with 2,170 published as target and every aggregate split 223-certain / up-to-384, because the 384 was the exact number section 16.10.3 declined to claim. (7) The gate becomes a conjunction the increment can fail on its own terms (C2) when D6 is declined. Also: one fail-closed capture point after `machine.setup()` with a None observation on the deck-build early return and on any raising read (C13, C17); recursive deck-name extraction (C14); JSON-encoded env values with numeric int sort (C12) and the deck map's digest entering env (D-G3); the C15 decorator/property/multi-lineno absence rule as R-CONST's and D5b's shared soundness gate; one closed section 16.3 selection rule with published counts (C16); M2's origin clause and the caller-side call-statement lineno (C9, C10); C19's blocking half REBUTTED on the evidence (`scope_trail` records for headers, unsatisfiable under ways 1-3) with one normative sentence and no fourth precondition; `scope_verdict` threaded into the unknown ledger (D-G4); `t30_measure` re-run or explicitly retired (D-G5); p2a published as achieved over attempted (C23); the lane asymmetry disclosed for all rules with tier-2b's attribution corrected (C24); R-ATTR kept as an explicit sub-note under D4 (C25); T42's spurious T41 dependency dropped with the D1-decline withdrawal list stated exactly (C26). D1, D3 and D4 are unchanged after adjudication.
 - [260904_plr-sema-predicate-increment](specs/260904_plr-sema-predicate-increment.md) — Sixth post-corpus increment to the plr-sema pre-corpus specification, taking the main spec's deferred row (c), revised after adversarial round 1 (C1-C18 + D1-D3). What it ships, narrowed as round 1 forced: **per-finding SAFE on real executed operations plus a legible residual** -- NO joined SAFE this increment. Round-1 changes carried here: E-UNCOND gains clauses (4) no WILL_FAIL at depth >= 1, (5) a depth-0 empty scope_trail is not vacuously unconditional, (6) the raise_guard's own condition entry at scope_trail[0] is excluded from both scope tests; the tier-1 soundness fence is left UNMODIFIED (the exc_class -> site narrowing is deleted) and rows_excused_by_scope becomes a pure annotation; tier (iii) is DERIVED as guard.is_dynamic_raise and emits one Finding, UNKNOWN/guard_env_dependent, plus an excludes_sites annotation; the GO gate is restated over REASONS (zero guard_predicate_unparsed and zero guard_operand_unknown on >= 1 executed op) rather than over tiers, which would have been self-satisfying; E-TYPE is restated T iff is-or-subclass-of / F iff hierarchy-disjoint AND exact, with _generic_plr_type_name declarations normatively never exact; E-CALL gains param_defaults (D1), the beta truthiness interaction, the parameter-rebinding clause and the depth->=1 forbiddance; beta gains the length-preserving-rebinding exception (population 8, measured) and the iterand single-write clause; AC-15.8's >= 1,000 floor is replaced by n_findings_decided >= 223. Four decisions were left at round 1 as pending user approval with this round's recommendation (all four APPROVED 260907; see the amendment note below): HM-25 declared 8 -> 9 for alpha+beta (recommend yes), the headline substitution to increment 7 (recommend yes), gamma (recommend no, increment 7), and REASON_VOCABULARY 10 -> 12 of cap 12 (recommend yes, one-member fallback described). Ledger re-run under positional (row_idx, op_id) keying: 544 executed ops, unresolved_delegate cluster 93, :375/:383 at 544, consistency ok, n_row_id_collisions 12 all move_*. AMENDED 260907 (spec_version 18) after band B measured the gate NO-GO. All five sprint decisions are APPROVED by the user: HM-25 declared 8 -> 9 (AC-15.7 asserts 9), the headline substitution, gamma NOT adopted, REASON_VOCABULARY 10 -> 12, and this amendment itself. The amendment adds three productions to section 15.2: EnvRef(path, args) for an expression rooted at the literal name self (an attribute chain, optionally the callee of a call whose arguments all parse as Terms); Zip(items) as a Term usable as the seq of AllOf/AnyOf; and the membership comparators in/not in as Cmp ops. All three evaluate to half/top unconditionally (section 15.4 E-ENV) and carry guard_env_dependent rather than guard_predicate_unparsed when no Opaque node remains (section 15.7), which reconciles the section 15.7 / section 15.9 disagreement over line 409 that the measurement exposed. Re-predicted: pick_up_tips' two blockers (liquid_handler.py:409 and :514) both flip, giving {decidable, guard_env_dependent} = GO; every other candidate method's blocker is NOT self-rooted and does not flip (:657 rooted at a local, :116 an is-comparison with a non-None RHS, :2030 tuple displays, :2211 a BinOp, :2226 an is-comparison). Section 15.9 gains a published n_env_ref per cluster and per op, a top-10 EnvRef path list, a normative no-Var(self) invariant, and a T35 task row (grammar amendment, contract regeneration, the t30_measure population and family-dispatch fix-ups, re-measure) before T31. REVISED 260907 (spec_version 19) after the amendment's short adversarial pass (A-C1..A-C13, verdict needs_revision, revise-and-advance; no objection changed the GO prediction). What round 2 changed: G7 shape (2) now admits a self-rooted CALL only when the callee path has length >= 3 or its length-2 name is ABSENT from the derive package's own PLR function index -- a derived test, no list -- so PLR-layer helper calls (self._is_error_tail, self._check_96_head_fits_in_container, self._find_available_sites_sorted) stay Opaque as the coverage gaps they are, the stamp row's :1778/:1940 no longer flip, and n_env_ref_refused_plr_layer is published; the withdrawn narrowness claim is replaced by the measured 210/41 absorption counts. 'The amendment decides nothing' is now a THEOREM rather than a prediction: a Zip resolves to top unless every item resolves to a concrete Seq (then the positional zip truncated to the shortest), AllOf/AnyOf over a top seq is half and never vacuously T, and the membership deciding case is DELETED -- every in/not in Cmp is half unconditionally this increment, recorded as a refused production in section 15.13. Both contains_opaque and contains_env_ref range over the alpha/beta-SUBSTITUTED predicate, which the shipped classifier already assumes. Section 15.7's clauses are reordered so the operand test precedes contains_env_ref. The registry point is conceded: EnvRef/Zip/in are named inside the alpha+beta HM-25 entry and _measure_hm25 must import the production symbols. n_env_ref is split into n_env_ref_nodes (block 3) and n_env_ref_guards (block 4); the re-prediction table restates every cell as an exact guards/nodes pair. T30c is renamed T35 so the cross-reference lint can see it, and the amendment's ACs are gated on T35 directly. Its output is outputs/plr-sema/t30_measured_260908.json or later; the population fix-up already landed as t30_measured_260907.json (commit 15b84d31). REFINED 260908 (spec_version 20) after band C landed T35, T31 and T32 -- a POST-ROUND REFINEMENT, NOT adversarially reviewed, which is why status stays reviewed-round-2. T35 (a2cd0499, 100ab273) measured the gate GO: pick_up_tips 223/223 with residual {decidable, guard_env_dependent}, 386 guard sites carrying EnvRef over 417 nodes, n_env_ref_refused_plr_layer 12, n_var_self 0, n_zip 1, n_membership_cmp 48, and every method matching section 15.9's re-prediction table exactly incl. stamp at 0/0. T31 (1a58b337, 436c0edb) landed check/predicate.py with E-CALL/E-TYPE/E-SCOPE/E-VERDICT/E-UNCOND(1)-(6)/E-ENV and the section 15.7 clause order, REASON_VOCABULARY 12 of 12, HM-25 declared 9 measured as one collective probe, live_rows 24. T32 (e3970b3a, f63b3ff8) measured tier 1 at 0 unsound, crosscheck 191/191, n_findings_decided 1,563 against a floor of 223, guard_predicate_unparsed 5,656 -> 495, the after-ledger at 54 -> 53 clusters and 6,036 -> 5,157 findings with pick_up_tips residual exactly {guard_env_dependent} on all 223, unknown_rate still 1.0 as section 15.5 predicted, and non-regression exact at m1 199/199, m2 289/289, v1 67/67, tier 2b 16/0/7/3. ONE acceptance criterion failed: AC-15.10's predicate-mutant floor, 0 achieved on all three mutators, and the cause was E-UNCOND(5) itself -- pick_up_tips' :502 and :522 are depth-0 empty-trail guards standing below the conditional raise TypeError at :498, and C1's remedy blocked on any earlier ast.Raise. What spec_version 20 changes: E-UNCOND(5) is REFINED so that a depth-0 empty-trail guard may emit WILL_FAIL iff K has no earlier ast.Return, the guard is not lexically enclosed by an ast.Try or ast.With, and there is no earlier ast.Break/ast.Continue -- an earlier ast.Raise or assert NO LONGER blocks, on the argument (now normative, with C1's stronger wording recorded as superseded) that if the earlier raise fires the operation fails there and if it does not, control reaches the guard, which fires, so the operation fails either way and WILL_FAIL is a claim about the operation rather than the site, which is how join propagates it and how oracle_common.compare scores it. A new additive derived boolean reachability_clear (not has_return_before and not enclosed_by_try_or_with and not has_break_continue_before, absent means None means fail-closed) carries the clause to the evaluator, whose k_reachability_clear T31 shipped with every production caller passing None. AC-15.10's floor is RETAINED and re-measured; AC-15.6 gains four fixtures (earlier conditional raise allows WILL_FAIL, earlier conditional return blocks, enclosing try or with blocks, absent field blocks). A new task row T36 (~80 LOC, Sonnet, depends on T32) derives, regenerates, wires and re-runs p1 plus tier 1 plus non-regression; AC-15.6 moves off T31's gate cell and AC-15.10 off T32's onto T36's, so every AC stays gated exactly once. Section 15.15 is filled for T35/T31/T32 and section 15.16.3 is added: R1 the clause-(5) refinement, R2 T31's three narrower-than-spec implementation choices recorded as deviations rather than spec changes (E-CALL(5) via the beta mechanism only; E-TYPE's class_hierarchy None in production so the T clause is exact-name equality; E-UNCOND way (3) unsatisfiable for an InlinedGuard, which has no for_span field), R3 O1 found unwired in oracle_replay.main and enabled there with zero measured effect. Section 15.10 additionally publishes the measured static-vs-evaluator agreement, 254/544 at 46.7 percent with 2 of 10 methods exact, and fixes the T30/T35 structural classifier's status as a prediction instrument only.
 - [260903_plr-sema-families-cache-increment](specs/260903_plr-sema-families-cache-increment.md) — Fourth post-corpus increment to the plr-sema pre-corpus specification, as revised after adversarial round 1. Three items ship and two families do not. (1) #4922 lands the content-addressed cache on increment 2's existing key, storing the PRE-relabel `Finding` tuple -- post-relabel storage is unsound because `sideband.origin` is excluded from `bytecode_hash`, so two graphs differing only in operation ids share a hash -- with read-through hooked in `check_graph`, which is the only function holding the raw `contracts_json` string the key needs (round-1 O5). (2) #4883 derives the dropped-receiver inert-name filter, and its registry finding is the opposite of the one the dispatch predicted: it retires NO row, because `_INERT_RECEIVER_PREFIXES`/`_INERT_CALL_SUFFIXES` were never registered -- unregistered discovery under section 9.4, whose one re-baseline is spent -- so headroom stays 0. Clause 1 is import-resolved only and per-file (round-1 O6 plus a second correction found in implementation): a head counts as stdlib ONLY when that file's own module-level import table binds the name to a `sys.stdlib_module_names` member, because bare coincidence with a stdlib name wrongly filtered 280 whole-surface calls on `resource.*`. (3) #4946 binds a delegate-inherited guard's channel set from the caller's literal call-site argument, the only item that moves an already-missed gate. The LID family is specified and NOT adopted, on four verified structural blockers, with the `null`-condition landmine pinned by a regression test. The VOLUME family is DEFERRED whole to increment 5 (`260903_plr-sema-volume-increment.md`): round 1 established that its bridge does not match on real PLR at the pin and that its `env` gate cannot reach a bridged guard, which would have shipped an unsound default-`env` `WILL_FAIL`. Zero new registry rows, zero retired, ONE per-row ceiling bump (HM-25 5 -> 6, for P9 alone); HM-24 stays 1 and `REASON_VOCABULARY` stays 8 of 12 -- increment 5 carries the rest. No wire-format change, no `IR_VERSION` bump. Go/no-go: #4923 NO-GO (workload unmeasured; #4922 absorbs the case it targets); #4924 NO-GO (re-planning a liquid move needs an over-fill verdict that is undecidable until `max_volume` reaches the wire).
@@ -46,15 +65,16 @@
 - [260825_p25_provisional_thresholds](specs/260825_p25_provisional_thresholds.md) — Numeric anchor proposal for the P2.6 three-number promotion gate (D8), derived from the P2.1 recorded-artifact baseline spread and the assembled P2.5 eval slice sizes. PROVISIONAL PER D8: exactly ONE revision permitted at P2.6 fine-tune eval, with recorded justification.
 - [260825_p25_slice_gate](specs/260825_p25_slice_gate.md) — Blocking gate doc (backlog 480), rev 260901: full-scale corpus (812 rows) + live baseline on the whole 228-row eval split; verdict CONDITIONAL GO for P2.6 spend under three recipe/measurement conditions.
 - [260824_coxswain-mvp-ux-spec](specs/260824_coxswain-mvp-ux-spec.md) — Implementable specification for the Coxswain propose/confirm, clarification, FFT-gate-extension and audit-trail surfaces: formalizes the eight negotiable UX axes (N1-N8) resolved in brainstorm session 48789b43 against the locked architecture (F1-F10), with fixer-ready work-item decomposition, correlation-ID contract, structural safety constraints mandated by the pre-mortem, and a risk table. Revised 260824 to close the adversarial review cycle (audits 260824_coxswain_spec_challenge / _defense) — see the Revision Log.
-- [260824_coxswain-ux-open-design-axes-task-id-260](specs/260824_coxswain-ux-open-design-axes-task-id-260.md)
+- [260824_coxswain-ux-open-design-axes-task-id-260](specs/260824_coxswain-ux-open-design-axes-task-id-260.md) — Brainstorm: Coxswain UX open design axes (task_id 260824_coxswain_spec_design): eight negotiable design decisions for the FunctionGemma-270m-it-powered voice/text-to-PyLabRobot copilot injected into web-repl — confirmation-friction tiering (N1), editable propose/confirm cards (N2), staleness handling / handshake-hash formalization (N3), sandbox pre-simulation reuse from praxis/backend/core/simulation (N4), propose/confirm card disclosure depth (N5), FFT gate audit-trail format (N6), expert-override escape hatch (N7), and visual disambiguation ghosting on the Visualizer (N8). Architecture (F1-F10) is locked; this session covers only the negotiable UX/behavior axes given the hidden constraints (H1-H4: inline-edit responsiveness budget, automation-bias tiebreak toward friction/disclosure, N4 reuse is a genuine unknown requiring an explicit recon-check-or-defer choice, and copy/interaction/accessibility discipline).
 - [260817_spec-visualizer-transport-shim](specs/260817_spec-visualizer-transport-shim.md) — Adversarially-reviewed spec for the praxis REPL refocus (visualizer); converged=True after 1 round(s), verdict REVISE.
 - [260817_spec-web-repl-extraction](specs/260817_spec-web-repl-extraction.md) — Adversarially-reviewed spec for the praxis REPL refocus (web-repl); converged=True after 1 round(s), verdict REVISE.
 - [260817_spec-wheel-build-plr-upgrade](specs/260817_spec-wheel-build-plr-upgrade.md) — Adversarially-reviewed spec for the praxis REPL refocus (build-pipeline); converged=True after 2 round(s), verdict ACCEPT.
-- [260122_inventory-wizard-design-spec](specs/260122_inventory-wizard-design-spec.md)
+- [260122_inventory-wizard-design-spec](specs/260122_inventory-wizard-design-spec.md) — Inventory Wizard Redesign Spec
 
 ## Actuation Surfaces
 
 ## Audits
+- [260912_sprint136-audit](audits/260912_sprint136-audit.md) — Sonnet praxia:reviewer report for commit e995de31, persisted verbatim: soundness answer, six-dimension scores, and the two non-blocking staleness suggestions with their resolution.
 - [260909_plr-sema-observation-round1-challenger](audits/260909_plr-sema-observation-round1-challenger.md) — Challenger pass (praxia:spec-challenger, Opus) on the increment 7 draft: C1-C26 -- 5 blockers (C1 the :375/:383 SAFE-direction discharge is computable from the derived signature table so D5 is a false binary and the NO-GO is not established; C2 the gate is predicted NO-GO by construction; C3 R-DECK matches a shape absent from the contract table and `resource` is a for-target nothing binds; C4 the gated floor 2,170 assumes the uncertain 384 reach; C5 extract_tb[-1] is the innermost frame so F2 excuses nothing on a :576 re-raise), 14 must-fix (Q-MONO overturns a shipped G8(1) statement; Q-BIND soundness needs an evaluator invariant; G3-constructed quantifiers need target inheritance; caller_args origin unspecified; caller-side lineno; byte-identical claim over-scoped; cache-key encoding not injective; verify() third return site; topology extraction; decorated constant_return; selection rule undefined; capture placement; A-DECK-OBJECT fence claim is not evidence; in-loop guards for the depth-1 lift), 6 should-fix, 1 note. Verdict needs_revision (revise-and-advance). Objections changing the gate: C1 C2 C3 C4 C5 C21; changing user decisions: D5 (C1 C2 C22), D2 (C3 C14 C18), D1 (C19 C10 C11 C26), D3 (C15 C16), D4 (C25).
 - [260909_plr-sema-observation-round1-defender](audits/260909_plr-sema-observation-round1-defender.md) — Defender pass (praxia:spec-defender, Opus) adjudicating challenger C1-C26: 13 conceded (C3 C4 C5 C6 C9 C11 C13 C14 C15 C20 C22 C23 C24), 13 partial, 0 rebutted outright. C1 arithmetic confirmed at the pin but D5b repriced as a site-keyed semantic model of a named PLR function body -- a NEW kind of hand-maintained fact needing a new row against a full BUDGET_CAP, not HM-25 units; C3 confirmed against the shipped contract table (:321 predicate carries no EnvRef, `resource` is a for-target); C5 confirmed on traceback order (extract_tb[-1] is the backend frame); C19 rebutted on the mechanism (scope_trail records for headers, unsatisfiable under ways 1-3) with a one-sentence remedy. Six defender gaps: D-G1 Q-BIND is dead machinery (:409 goes through _eval_alpha_existential, already element-wise); D-G2 the gate needs D5b AND a repaired D2 together; D-G3 the deck observation may bypass the cache key; D-G4 unknown_ledger does not carry scope_verdict; D-G5 t30_measure prediction role unmaintained; D-G6 :375/:383 carry reachability_clear=false so the D5b discharge is one-directional by construction. NEW user decision D6: accept site-keyed semantic models of named PLR function bodies as a hand-maintained class (a cap conversation). 14-step ordered remediation list. Verdict needs_revision.
 - [260907_plr-sema-predicate-amendment-challenger](audits/260907_plr-sema-predicate-amendment-challenger.md) — Scoped challenger pass (praxia:spec-challenger, Opus) on the increment 6 amendment delta only: A-C1..A-C13 (3 blockers: EnvRef shape (2) absorbs PLR-layer helper calls so the narrowness claim is false; Zip vacuous-quantification and membership open definite-verdict paths the anti-gaming counter cannot see; Zip sequence resolution unspecified at the gate site), 5 must-fix (alpha-substituted walk, clause ordering vs guard_operand_unknown, registry fallback needs measured symbols, in/not-in is a scope expansion, n_env_ref units), 3 should-fix, 2 notes. GO prediction for pick_up_tips survives every objection; not gaming the gate; verdict needs_revision (revise-and-advance).
@@ -74,42 +94,78 @@
 - [260902_plr-sema-tip-typestate-round1-challenger](audits/260902_plr-sema-tip-typestate-round1-challenger.md) — Challenger report on .praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md (spec_version 9 draft): 3 BLOCKER (A-COMMIT false via clear_head_state/update_head_state commit=False; conflicting depth-0 bridges unruled; tip_state taxonomy category has 5 members not 2), 2 MAJOR, 4 MINOR; verdict not_ready.
 - [260902_plr-sema-tip-typestate-round1-defender](audits/260902_plr-sema-tip-typestate-round1-defender.md) — Defender adjudication of the round-1 challenger report on the spec_version 9 tip-typestate increment: O1 PARTIAL (counterexample does not reproduce under depth semantics; A-COMMIT text must narrow), O2 CONCEDE sharpened (conflicting depth-0 bridges must WIDEN — "no effect" is unsound), O3 CONCEDE (module filter on the taxonomy artifact), O4/O5 CONCEDE, O6–O9 trivial; 2 blockers survive, all text-only; verdict needs_revision, design intact.
 - [260901_p26-promotion](audits/260901_p26-promotion.md) — Mechanical application of the pre-registered P2.6 promotion rule to arms A/B/C: all eligible, all marginal, A selected, NOT PROMOTED. Failure breakdown separates two scorer artifacts and one gold-set defect from genuine misses; the single D8 revision is proposed AGAINST spending now.
-- [260206_hardware-discovery-audit](audits/260206_hardware-discovery-audit.md)
-- [260206_python-worker-audit](audits/260206_python-worker-audit.md)
-- [260131_comprehensive-logic-audit](audits/260131_comprehensive-logic-audit.md)
-- [260129_code-smells-audit](audits/260129_code-smells-audit.md)
-- [260129_complexity-audit](audits/260129_complexity-audit.md)
-- [260129_dead-code-audit](audits/260129_dead-code-audit.md)
-- [260129_e2e-coverage-audit](audits/260129_e2e-coverage-audit.md)
-- [260129_e2e-failures-audit-260129](audits/260129_e2e-failures-audit-260129.md)
-- [260129_e2e-file-audits](audits/260129_e2e-file-audits.md)
-- [260129_feature-architecture-audit](audits/260129_feature-architecture-audit.md)
-- [260129_service-layer-audit](audits/260129_service-layer-audit.md)
-- [260125_audit-01-run-protocol](audits/260125_audit-01-run-protocol.md)
-- [260125_audit-03-protocol-execution](audits/260125_audit-03-protocol-execution.md)
-- [260125_audit-06-persistence](audits/260125_audit-06-persistence.md)
-- [260125_audit-07-jupyterlite](audits/260125_audit-07-jupyterlite.md)
-- [260125_audit-08-ghpages-config](audits/260125_audit-08-ghpages-config.md)
-- [260125_audit-09-direct-control](audits/260125_audit-09-direct-control.md)
-- [260125_build-errors](audits/260125_build-errors.md)
-- [260125_index](audits/260125_index.md)
-- [260125_plan-for-remediation](audits/260125_plan-for-remediation.md)
-- [260123_jupyterlite-ghpages-audit](audits/260123_jupyterlite-ghpages-audit.md)
-- [260123_opfs-pyodide-audit](audits/260123_opfs-pyodide-audit.md)
-- [260123_visual-audit-data-playground](audits/260123_visual-audit-data-playground.md)
-- [260123_visual-audit-run-protocol](audits/260123_visual-audit-run-protocol.md)
-- [260123_visual-audit-settings-workcell](audits/260123_visual-audit-settings-workcell.md)
-- [260122_css-theming-audit](audits/260122_css-theming-audit.md)
-- [260122_io-transport-audit](audits/260122_io-transport-audit.md)
-- [260121_component-audit-assets](audits/260121_component-audit-assets.md)
-- [260121_component-audit-playground](audits/260121_component-audit-playground.md)
-- [260121_dependency-audit](audits/260121_dependency-audit.md)
-- [260121_extracted-plr-audit](audits/260121_extracted-plr-audit.md)
-- [260115_machine-sim-audit](audits/260115_machine-sim-audit.md)
-- [260115_protocol-asset-audit](audits/260115_protocol-asset-audit.md)
-- [260115_styling-audit-report](audits/260115_styling-audit-report.md)
-- [260115_workcell-ui-audit](audits/260115_workcell-ui-audit.md)
-- [251222_pyodide-integration-audit](audits/251222_pyodide-integration-audit.md)
+- [260209_web-client-technical-debt](audits/260209_web-client-technical-debt.md) — Web-client debt entries from Feb 2026, starting with replacing DeckCatalogService's hardcoded deck-type matching with programmatic PyLabRobot detection
+- [260206_e2e-diff-report](audits/260206_e2e-diff-report.md) — File-by-file report of the 32-file E2E change set from the Feb 2026 Jules sessions
+- [260206_e2e-jules-session-review](audits/260206_e2e-jules-session-review.md) — Final status review of the Jules E2E sessions for backlog #380/#426
+- [260206_e2e-verification-feb03](audits/260206_e2e-verification-feb03.md) — E2E Verification Report - Feb 03, 2026 (Run 2)
+- [260206_hardware-discovery-audit](audits/260206_hardware-discovery-audit.md) — Audit: praxis/web-client/src/app/core/services/hardware-discovery.service.ts
+- [260206_jules-audit-asset-wizards](audits/260206_jules-audit-asset-wizards.md) — Jules deep audit of the asset wizards (Feb 3, 2026; quality score 4/10)
+- [260206_jules-audit-core-components](audits/260206_jules-audit-core-components.md) — Jules deep audit of the Docs and StateInspector core components (Feb 3, 2026; quality score 6.5/10)
+- [260206_jules-audit-core-services](audits/260206_jules-audit-core-services.md) — Jules deep audit of the web-client core services (Feb 3, 2026; quality score 6/10)
+- [260206_jules-audit-resource-index](audits/260206_jules-audit-resource-index.md) — Jules deep audit of the resource and index components (Feb 3, 2026; quality score 4/10)
+- [260206_jules-audit-run-protocol](audits/260206_jules-audit-run-protocol.md) — Jules deep audit of the run-protocol feature (Feb 3, 2026; quality score 4/10)
+- [260206_python-worker-audit](audits/260206_python-worker-audit.md) — Audit: python_runtime
+- [260206_web-client-deep-audit-synthesis](audits/260206_web-client-deep-audit-synthesis.md) — Synthesis of 15+ Jules deep-audit sessions over the Angular web client (Feb 3, 2026)
+- [260131_01-data-models](audits/260131_01-data-models.md) — Data Models Audit
+- [260131_02-asset-wizard](audits/260131_02-asset-wizard.md) — Asset Wizard Audit
+- [260131_03-protocol-execution](audits/260131_03-protocol-execution.md) — Protocol Execution Audit
+- [260131_04-constraints](audits/260131_04-constraints.md) — Constraint Validation Audit
+- [260131_05-github-pages](audits/260131_05-github-pages.md) — GitHub Pages Pathing Audit
+- [260131_06-jupyterlite](audits/260131_06-jupyterlite.md) — JupyterLite Bootstrap Audit
+- [260131_07-hardware-discovery](audits/260131_07-hardware-discovery.md) — Hardware Discovery Audit
+- [260131_08-serialization](audits/260131_08-serialization.md) — Serialization Audit
+- [260131_09-recommendations](audits/260131_09-recommendations.md) — Recommendations & Future Audits
+- [260131_10-import-export](audits/260131_10-import-export.md) — Import/Export & OPFS VFS Audit
+- [260131_11-error-handling](audits/260131_11-error-handling.md) — Error Boundary Handling Audit
+- [260131_12-session-recovery](audits/260131_12-session-recovery.md) — Session & Run Recovery Audit
+- [260131_13-memory-management](audits/260131_13-memory-management.md) — Pyodide Memory Management Audit
+- [260131_14-port-persistence](audits/260131_14-port-persistence.md) — WebSerial Port Persistence Audit
+- [260131_15-storage-quotas](audits/260131_15-storage-quotas.md) — Storage Quotas Audit
+- [260131_comprehensive-logic-audit](audits/260131_comprehensive-logic-audit.md) — Comprehensive Logic Audit Report
+- [260131_critical-features](audits/260131_critical-features.md) — Critical Features Inventory
+- [260131_e2e-persistent-bugs](audits/260131_e2e-persistent-bugs.md) — E2E Persistent Bugs - Full Audit
+- [260131_e2e-static-analysis](audits/260131_e2e-static-analysis.md) — E2E Static Analysis - Redundant/Outdated Tests
+- [260131_final-ship](audits/260131_final-ship.md) — Praxis Ship-Ready Verification Results
+- [260129_code-smells-audit](audits/260129_code-smells-audit.md) — Code Smells Audit: praxis/web-client/src/
+- [260129_complexity-audit](audits/260129_complexity-audit.md) — Code Complexity Analysis
+- [260129_dead-code-audit](audits/260129_dead-code-audit.md) — Dead Code Audit: `praxis/web-client/src`
+- [260129_e2e-coverage-audit](audits/260129_e2e-coverage-audit.md) — E2E Spec Coverage Audit
+- [260129_e2e-failures-audit-260129](audits/260129_e2e-failures-audit-260129.md) — E2E Test Failure Audit Report (260129)
+- [260129_e2e-file-audits](audits/260129_e2e-file-audits.md) — E2E File Audits
+- [260129_feature-architecture-audit](audits/260129_feature-architecture-audit.md) — Feature Module Architecture Audit
+- [260129_service-layer-audit](audits/260129_service-layer-audit.md) — Service Layer Audit
+- [260128_e2e-status](audits/260128_e2e-status.md) — E2E Test Status Report - Praxis
+- [260125_audit-01-run-protocol](audits/260125_audit-01-run-protocol.md) — AUDIT-01: Run Protocol & Wizard
+- [260125_audit-03-protocol-execution](audits/260125_audit-03-protocol-execution.md) — AUDIT-03: Protocol Library & Execution Monitor
+- [260125_audit-06-persistence](audits/260125_audit-06-persistence.md) — AUDIT-06: Browser Persistence (OPFS/SQLite)
+- [260125_audit-07-jupyterlite](audits/260125_audit-07-jupyterlite.md) — AUDIT-07: JupyterLite Integration
+- [260125_audit-08-ghpages-config](audits/260125_audit-08-ghpages-config.md) — AUDIT-08: GitHub Pages Deployment Configuration
+- [260125_audit-09-direct-control](audits/260125_audit-09-direct-control.md) — AUDIT-09: Direct Control Feature
+- [260125_build-errors](audits/260125_build-errors.md) — Build Error Report - 2026-01-24
+- [260125_index](audits/260125_index.md) — Praxis GH-Pages Shipping Readiness Audits
+- [260125_plan-for-remediation](audits/260125_plan-for-remediation.md) — Handoff: Addressing Critical Audit Blockers
+- [260123_jupyterlite-ghpages-audit](audits/260123_jupyterlite-ghpages-audit.md) — JupyterLite GH-Pages Simulation Audit
+- [260123_opfs-pyodide-audit](audits/260123_opfs-pyodide-audit.md) — OPFS + Pyodide Integration Audit
+- [260123_visual-audit-data-playground](audits/260123_visual-audit-data-playground.md) — Visual Audit Report: Data & Playground
+- [260123_visual-audit-run-protocol](audits/260123_visual-audit-run-protocol.md) — Visual Audit - Run Protocol Pages
+- [260123_visual-audit-settings-workcell](audits/260123_visual-audit-settings-workcell.md) — Visual Audit - Settings & Workcell
+- [260122_css-theming-audit](audits/260122_css-theming-audit.md) — Hardcoded CSS Audit Report
+- [260122_io-transport-audit](audits/260122_io-transport-audit.md) — Recon Report: pylabrobot.io Transport Audit for Browser Mode
+- [260121_component-audit-assets](audits/260121_component-audit-assets.md) — Component Audit: Assets & Protocols
+- [260121_component-audit-playground](audits/260121_component-audit-playground.md) — Component Audit: Playground & Run Protocol
+- [260121_dependency-audit](audits/260121_dependency-audit.md) — Dependency Audit Report
+- [260121_extracted-plr-audit](audits/260121_extracted-plr-audit.md) — PLR Category Architecture Audit - Extraction Report
+- [260121_v01alpha-final-review-20260121](audits/260121_v01alpha-final-review-20260121.md) — V0.1-Alpha Final Review - 2026-01-21 14:15
+- [260120_verification-report](audits/260120_verification-report.md) — Final System Verification Report
+- [260115_machine-sim-audit](audits/260115_machine-sim-audit.md) — Machine Simulation Architecture Audit & Refactor Proposal
+- [260115_protocol-asset-audit](audits/260115_protocol-asset-audit.md) — Protocol Asset Audit
+- [260115_resource-error-log](audits/260115_resource-error-log.md) — Resource Management Error Log & Audit
+- [260115_state-gap-analysis](audits/260115_state-gap-analysis.md) — State Inspection & Simulation Reporting Gap Analysis
+- [260115_styling-audit-report](audits/260115_styling-audit-report.md) — Styling Audit Report
+- [260115_suite-comprehensiveness-analysis](audits/260115_suite-comprehensiveness-analysis.md) — Test Suite Comprehensiveness Analysis
+- [260115_workcell-ui-audit](audits/260115_workcell-ui-audit.md) — Workcell Interface & Deck View Audit
+- [260107_technical-debt](audits/260107_technical-debt.md) — Technical Debt / Missing Features
+- [251225_technical-debt](audits/251225_technical-debt.md) — Technical Debt
 
 ## Research
 - [260903_p2-6-eval-revision-jury-brief-unknown-verb-abstention-vague-span-policy-golden-id-grammar](research/260903_p2-6-eval-revision-jury-brief-unknown-verb-abstention-vague-span-policy-golden-id-grammar.md) — Quantifies three candidate eval-revision policies (J1 unknown-verb-as-abstention, J2 ambiguous-referent vague-span comparison, J3 golden id grammar transform) against checkpoints A/A2/A3 on the frozen 228-row eval split; scorer untouched, revisions not applied.
@@ -125,34 +181,55 @@
 - [260824_gemma-finetuned-plr-voice-text-copilot-scoping](research/260824_gemma-finetuned-plr-voice-text-copilot-scoping.md) — Scoping assessment for a Gemma model fine-tuned to translate voice/text lab instructions into validated PyLabRobot calls inside the JupyterLite Playground rebase: training-data sourcing, browser deployment feasibility, clarification UX, and build-location recommendation.
 - [260817_g2-spike-battery-verdict](research/260817_g2-spike-battery-verdict.md) — Adjudication of the five G2 criteria from spikes S-A/S-B/S-C/S-D/S-E/S-F, with independent spot-check output; overall PARTIAL-GO.
 - [260817_spike-evidence-repl-refocus](research/260817_spike-evidence-repl-refocus.md) — Five executed browser/CPython spikes grounding the refocus specs; every finding tagged ran/read with verbatim commands and output.
-- [260817_standalone-web-repl-extraction-shell-and-brainstorm](research/260817_standalone-web-repl-extraction-shell-and-brainstorm.md)
-- [260817_visualizer-transport-shim-and-augmentati-2-brainstorm](research/260817_visualizer-transport-shim-and-augmentati-2-brainstorm.md)
-- [260817_visualizer-transport-shim-and-augmentati-brainstorm](research/260817_visualizer-transport-shim-and-augmentati-brainstorm.md)
-- [260817_wheel-build-plr-upgrade-and-version-cohe-2-brainstorm](research/260817_wheel-build-plr-upgrade-and-version-cohe-2-brainstorm.md)
-- [260817_wheel-build-plr-upgrade-and-version-cohe-brainstorm](research/260817_wheel-build-plr-upgrade-and-version-cohe-brainstorm.md)
-- [260131_asset-wizard-filtering-logic-recon](research/260131_asset-wizard-filtering-logic-recon.md)
-- [260131_simulated-machine-instantiation-recon](research/260131_simulated-machine-instantiation-recon.md)
-- [260122_inventory-wizard-recon](research/260122_inventory-wizard-recon.md)
-- [260122_jules-dispatch-recon-20260122](research/260122_jules-dispatch-recon-20260122.md)
-- [260122_recon-asset-wizard-visual](research/260122_recon-asset-wizard-visual.md)
-- [260122_recon-changelog-setup](research/260122_recon-changelog-setup.md)
-- [260122_recon-documentation](research/260122_recon-documentation.md)
-- [260122_recon-e2e-coverage](research/260122_recon-e2e-coverage.md)
-- [260122_recon-e2e-infrastructure](research/260122_recon-e2e-infrastructure.md)
-- [260122_recon-gitignore](research/260122_recon-gitignore.md)
-- [260122_recon-global-shimming-status](research/260122_recon-global-shimming-status.md)
-- [260122_recon-guided-setup-states](research/260122_recon-guided-setup-states.md)
-- [260122_recon-hid-shim-status](research/260122_recon-hid-shim-status.md)
-- [260122_recon-logo-branding](research/260122_recon-logo-branding.md)
-- [260122_recon-playwright-jules](research/260122_recon-playwright-jules.md)
-- [260122_recon-protocol-runner-visual](research/260122_recon-protocol-runner-visual.md)
-- [260122_recon-repo-cleanup](research/260122_recon-repo-cleanup.md)
-- [260122_recon-root-markdown](research/260122_recon-root-markdown.md)
-- [260122_recon-socket-shim-status](research/260122_recon-socket-shim-status.md)
-- [260122_recon-theme-variables](research/260122_recon-theme-variables.md)
-- [260122_recon-versioning-strategy](research/260122_recon-versioning-strategy.md)
-- [260122_relative-paths-recon-20260122](research/260122_relative-paths-recon-20260122.md)
-- [260122_research-infinite-consumables](research/260122_research-infinite-consumables.md)
+- [260817_standalone-web-repl-extraction-shell-and-brainstorm](research/260817_standalone-web-repl-extraction-shell-and-brainstorm.md) — Brainstorm: Standalone web-repl extraction, shell, and notebook persistence for praxis REPL refocus (task_id 260817_praxis_repl_refocus): what is the right boundary for a standalone PyLabRobot JupyterLite artifact, what replaces the Angular shell (theme + device-auth user-gesture dialog + iframe host), how to make savable notebooks actually true, whether a build step is still needed, and what happens to Direct Control.
+- [260817_visualizer-transport-shim-and-augmentati-2-brainstorm](research/260817_visualizer-transport-shim-and-augmentati-2-brainstorm.md) — Brainstorm: Visualizer transport shim and augmentation API for the praxis JupyterLite/PLR REPL refocus: design the Python-side transport seam, the augmentation API shape, CDN vendoring, the first concrete augmentation, and upstream-drift detection.
+- [260817_visualizer-transport-shim-and-augmentati-brainstorm](research/260817_visualizer-transport-shim-and-augmentati-brainstorm.md) — Brainstorm: Visualizer transport shim and augmentation API for the praxis JupyterLite REPL refocus: how to drive the PyLabRobot Konva visualizer from an in-browser Pyodide kernel with no websocket server, and what shape the augmentation API should take, given proven-by-execution spike results (renderer is a pure function of injected JSON; 4 vis.js spans are the entire network coupling; a second Konva overlay layer attaches with zero lib.js edits).
+- [260817_wheel-build-plr-upgrade-and-version-cohe-2-brainstorm](research/260817_wheel-build-plr-upgrade-and-version-cohe-2-brainstorm.md) — Brainstorm: Wheel build, PLR upgrade, and version coherence for the praxis JupyterLite REPL refocus: what mechanism makes version drift between the PLR submodule pin, the built browser wheel, the hardcoded TypeScript/Python filenames, and the jupyterlite piplite index structurally impossible; who builds the wheel and when (local dev vs CI vs committed artifact); what the three-Python policy should be (venv 3.14.6 / ty 3.12 / pyodide 3.13); and how to shape the PLR import surface so the next upstream reorg is localized.
+- [260817_wheel-build-plr-upgrade-and-version-cohe-brainstorm](research/260817_wheel-build-plr-upgrade-and-version-cohe-brainstorm.md) — Brainstorm: Wheel build, PLR upgrade, and version coherence for the praxis JupyterLite REPL refocus: what mechanism makes drift between the PLR submodule pin, the built browser wheel, the hardcoded TypeScript filenames, and the piplite/wheel index structurally impossible; who builds the wheel and when (local dev vs CI vs committed artifact); and what the Python-version policy should be across venv 3.14.6 / ty 3.12 / package.json pyodide ^0.29.0 / in-browser CPython 3.14.2.
+- [260131_asset-wizard-filtering-logic-recon](research/260131_asset-wizard-filtering-logic-recon.md) — Asset Wizard Definition Filtering Logic Audit
+- [260131_e2e-timeout-investigation](research/260131_e2e-timeout-investigation.md) — E2E Timeout Cluster Investigation
+- [260131_file-splitting-report](research/260131_file-splitting-report.md) — web-client File Splitting Candidates Report
+- [260131_simulated-machine-instantiation-recon](research/260131_simulated-machine-instantiation-recon.md) — Simulated Machine Instantiation Recon Report
+- [260129_data-viz-e2e-investigation](research/260129_data-viz-e2e-investigation.md) — Data Visualization E2E Investigation
+- [260123_opfs-hardware-review](research/260123_opfs-hardware-review.md) — Hardware Discovery Under OPFS
+- [260122_asset-selection-analysis](research/260122_asset-selection-analysis.md) — Asset Selection Logic & Status Report
+- [260122_backend-categories-investigation](research/260122_backend-categories-investigation.md) — Investigation Report: Backend Categories in Inventory
+- [260122_deck-layout-coming-soon-investigation](research/260122_deck-layout-coming-soon-investigation.md) — Found the coming-soon message for non-Hamilton decks intentional: slot-based layout editing was unimplemented
+- [260122_docs-404-investigation](research/260122_docs-404-investigation.md) — Docs 404 Investigation
+- [260122_frontend-backend-type-architecture](research/260122_frontend-backend-type-architecture.md) — Research Report: Frontend and Backend Type Architecture
+- [260122_inventory-search-investigation](research/260122_inventory-search-investigation.md) — Inventory Search Logic Investigation - Root Cause Analysis
+- [260122_inventory-wizard-recon](research/260122_inventory-wizard-recon.md) — Recon Report: Inventory Wizard Analysis
+- [260122_investigation-selective-transfer-params](research/260122_investigation-selective-transfer-params.md) — Investigation Report: Selective Transfer Parameter Persistence
+- [260122_jules-dispatch-recon-20260122](research/260122_jules-dispatch-recon-20260122.md) — Jules Dispatch Log - Recon-Based Tasks
+- [260122_machine-args-configuration-investigation](research/260122_machine-args-configuration-investigation.md) — Investigation Report: Per-Machine Argument Configuration
+- [260122_machine-type-filtering-investigation](research/260122_machine-type-filtering-investigation.md) — Machine Type Filtering Investigation Report
+- [260122_on-the-fly-definitions-investigation](research/260122_on-the-fly-definitions-investigation.md) — Investigation: On-the-Fly Simulation Definition Creation
+- [260122_oracle-asset-wizard-investigation](research/260122_oracle-asset-wizard-investigation.md) — Oracle Advisory: Asset Wizard Investigation Report
+- [260122_recon-asset-wizard-visual](research/260122_recon-asset-wizard-visual.md) — Recon report: asset wizard visual grid sizing
+- [260122_recon-changelog-setup](research/260122_recon-changelog-setup.md) — RECON - CHANGELOG.md Setup Research
+- [260122_recon-documentation](research/260122_recon-documentation.md) — Documentation Reconnaissance Report
+- [260122_recon-e2e-coverage](research/260122_recon-e2e-coverage.md) — E2E Test Coverage Reconnaissance Report
+- [260122_recon-e2e-infrastructure](research/260122_recon-e2e-infrastructure.md) — RECON Report: E2E Test Infrastructure
+- [260122_recon-gitignore](research/260122_recon-gitignore.md) — Reconnaissance Report: .gitignore Audit
+- [260122_recon-global-shimming-status](research/260122_recon-global-shimming-status.md) — RECON Report: Global Module Shimming Status
+- [260122_recon-guided-setup-states](research/260122_recon-guided-setup-states.md) — Reconnaissance Report: Guided Setup Visual State Transitions
+- [260122_recon-hid-shim-status](research/260122_recon-hid-shim-status.md) — Reconnaissance Report: WebHID Transport Shim Status
+- [260122_recon-logo-branding](research/260122_recon-logo-branding.md) — RECONNAISSANCE REPORT: Praxis Logo and Gradient Branding
+- [260122_recon-playwright-jules](research/260122_recon-playwright-jules.md) — RECON Report: Playwright Usage for Jules
+- [260122_recon-protocol-runner-visual](research/260122_recon-protocol-runner-visual.md) — RECON Report: Protocol Runner Visual Audit
+- [260122_recon-repo-cleanup](research/260122_recon-repo-cleanup.md) — RECON - Repository Cleanup Audit
+- [260122_recon-root-markdown](research/260122_recon-root-markdown.md) — Root Markdown Files Audit Report
+- [260122_recon-socket-shim-status](research/260122_recon-socket-shim-status.md) — RECON Report: Socket/TCP Transport Shim Status
+- [260122_recon-theme-variables](research/260122_recon-theme-variables.md) — RECON Report: Theme CSS Variable Audit
+- [260122_recon-versioning-strategy](research/260122_recon-versioning-strategy.md) — Reconnaissance Report: Versioning Strategy and Roadmap
+- [260122_relative-paths-recon-20260122](research/260122_relative-paths-recon-20260122.md) — Web Client Relative Path Audit Report
+- [260122_research-infinite-consumables](research/260122_research-infinite-consumables.md) — Research Report: Infinite Consumables & Resource Depletion
+- [260122_resource-vs-machine-flow-investigation](research/260122_resource-vs-machine-flow-investigation.md) — Investigation: Add Resource vs. Add Machine Flow in Playground
+- [260122_simulation-backend-dropdown-bug](research/260122_simulation-backend-dropdown-bug.md) — Report: Simulation Backend Dropdown Bug Fix
+- [260122_simulation-selection-investigation](research/260122_simulation-selection-investigation.md) — Simulation Selection Investigation
+- [260121_extracted-browser-interrupt](research/260121_extracted-browser-interrupt.md) — Browser Interrupt Logic Extraction (TD-801)
+- [260121_extracted-geometry-heuristics](research/260121_extracted-geometry-heuristics.md) — Extracted Geometry Heuristics Code (TD-702)
+- [260121_extracted-machine-registration](research/260121_extracted-machine-registration.md) — Backend Machine Registration Work Extraction Report
 
 ## Decisions
 - [260827_teacher-backend-gemini-3-7-flash-for-full-scale-floor_gen-overlay_gen-pass](decisions/260827_teacher-backend-gemini-3-7-flash-for-full-scale-floor_gen-overlay_gen-pass.md) — Resolves the 260827 full-scale-generation backend blocker: Gemini 3.7 Flash chosen over titanix-vllm-primary, shelled via the local agy CLI (no API key) with batched, guided-decoding-enforced teacher calls. Covers PLR task-type/contract coverage strategy (incl. the chory-lab/plr-cookbook 91-recipe source), batching rationale (measured), version-brittleness mitigations, and empirical guided-decoding null-handling caveats.
@@ -166,152 +243,91 @@
 - [260901_p26-finetune-prereg](preregistration/260901_p26-finetune-prereg.md) — Pre-registration for the Coxswain P2.6 fine-tune (backlog 4848): fixed D5 recipe with one recorded deviation, three mixing arms (A raw / B 50% / C 33% negatives) after train-side dedup, the promotion rule applied mechanically against baseline v2 on the same 228-row eval split, what would count as the single D8 threshold revision, and where checkpoints live.
 
 ## Reference
-- [260121_alembic-migration-guide](reference/260121_alembic-migration-guide.md)
-- [260121_hardware-testing-guide](reference/260121_hardware-testing-guide.md)
-- [260115_machine-sim-audit](reference/260115_machine-sim-audit.md)
-- [260115_state-gap-analysis](reference/260115_state-gap-analysis.md)
-- [260115_ui-guide](reference/260115_ui-guide.md)
-- [260107_hardware-matrix](reference/260107_hardware-matrix.md)
-- [260101_architecture](reference/260101_architecture.md)
-- [251230_cli-commands](reference/251230_cli-commands.md)
-- [251230_cmms-interface-design-research](reference/251230_cmms-interface-design-research.md)
-- [251230_configuration](reference/251230_configuration.md)
-- [251230_lims-ux-pattern-analysis](reference/251230_lims-ux-pattern-analysis.md)
-- [251230_scientific-software-complexity-abstraction](reference/251230_scientific-software-complexity-abstraction.md)
-- [251230_troubleshooting](reference/251230_troubleshooting.md)
-- [251222_product-guidelines](reference/251222_product-guidelines.md)
-- [251222_product](reference/251222_product.md)
-- [251222_tech-stack](reference/251222_tech-stack.md)
-- [251222_workflow](reference/251222_workflow.md)
+- [260130_playwright-angular-best-practices-2026](reference/260130_playwright-angular-best-practices-2026.md) — Playwright + Angular Best Practices (2026)
+- [260122_shared-array-buffer](reference/260122_shared-array-buffer.md) — Known Issue: SharedArrayBuffer is not defined
+- [260121_alembic-migration-guide](reference/260121_alembic-migration-guide.md) — Alembic Migration Workflow Guide
+- [260121_hardware-testing-guide](reference/260121_hardware-testing-guide.md) — WebSerial Hardware-in-the-Loop (HITL) Testing Guide
+- [260118_frontend-polish](reference/260118_frontend-polish.md) — Frontend Polish Pipeline
+- [260115_machine-sim-audit](reference/260115_machine-sim-audit.md) — Machine Simulation Architecture Audit
+- [260115_qa-interaction-checklist](reference/260115_qa-interaction-checklist.md) — QA Interaction Checklist
+- [260115_state-gap-analysis](reference/260115_state-gap-analysis.md) — State Inspection & Simulation Reporting Gap Analysis
+- [260115_ui-guide](reference/260115_ui-guide.md) — Frontend UI/UX Guide & Style System
+- [260114_installation-browser](reference/260114_installation-browser.md) — Browser Mode Installation
+- [260114_installation-lite](reference/260114_installation-lite.md) — Lite Mode Installation
+- [260114_installation-production](reference/260114_installation-production.md) — Production Mode Installation
+- [260114_update-archive](reference/260114_update-archive.md) — Update Archive Workflow
+- [260107_hardware-matrix](reference/260107_hardware-matrix.md) — PyLabRobot Hardware Communication Matrix
+- [260107_notes](reference/260107_notes.md) — Development Notes
+- [260105_protocol-inference-sharp-bits](reference/260105_protocol-inference-sharp-bits.md) — Protocol Inference: Sharp Bits & Gotchas
+- [260102_browser-script](reference/260102_browser-script.md) — Praxis Demo Script
+- [260101_architecture](reference/260101_architecture.md) — Application Architecture: Runtime Modes
+- [251230_assets](reference/251230_assets.md) — Assets
+- [251230_backend](reference/251230_backend.md) — Backend Components
+- [251230_browser-mode](reference/251230_browser-mode.md) — Browser Mode
+- [251230_cli-commands](reference/251230_cli-commands.md) — CLI Commands
+- [251230_cmms-interface-design-research](reference/251230_cmms-interface-design-research.md) — **The Interface of Reliability: A Comprehensive Analysis of Industrial Asset Management UI/UX Paradigms (2025 Edition)**
+- [251230_code-style](reference/251230_code-style.md) — Code Style Guide
+- [251230_configuration](reference/251230_configuration.md) — Configuration
+- [251230_contributing](reference/251230_contributing.md) — Contributing
+- [251230_data-visualization](reference/251230_data-visualization.md) — Data Visualization
+- [251230_execution-flow](reference/251230_execution-flow.md) — Execution Flow
+- [251230_frontend](reference/251230_frontend.md) — Frontend Components
+- [251230_hardware-discovery](reference/251230_hardware-discovery.md) — Hardware Discovery
+- [251230_installation](reference/251230_installation.md) — Installation Overview
+- [251230_lims-ux-pattern-analysis](reference/251230_lims-ux-pattern-analysis.md) — **Comparative Analysis of User Experience Architectures in Leading Laboratory Information Management Systems (2024-2025)**
+- [251230_overview](reference/251230_overview.md) — Architecture Overview
+- [251230_protocols](reference/251230_protocols.md) — Protocols
+- [251230_quickstart](reference/251230_quickstart.md) — Quick Start
+- [251230_rest-api](reference/251230_rest-api.md) — REST API Reference
+- [251230_scientific-software-complexity-abstraction](reference/251230_scientific-software-complexity-abstraction.md) — **Architecting the Glass Box: Progressive Disclosure and Complexity Management in Scientific Software Ecosystems**
+- [251230_services](reference/251230_services.md) — Service Layer Reference
+- [251230_state-management](reference/251230_state-management.md) — State Management
+- [251230_testing](reference/251230_testing.md) — Testing Guide
+- [251230_troubleshooting](reference/251230_troubleshooting.md) — Troubleshooting
+- [251230_websocket-api](reference/251230_websocket-api.md) — WebSocket API
+- [251222_general](reference/251222_general.md) — General Code Style Principles
+- [251222_html-css](reference/251222_html-css.md) — Google HTML/CSS Style Guide Summary
+- [251222_javascript](reference/251222_javascript.md) — Google JavaScript Style Guide Summary
+- [251222_product-guidelines](reference/251222_product-guidelines.md) — Product Guidelines: PyLabPraxis
+- [251222_product](reference/251222_product.md) — Product Guide: PyLabPraxis
+- [251222_python](reference/251222_python.md) — Google Python Style Guide Summary
+- [251222_tech-stack](reference/251222_tech-stack.md) — Technology Stack: PyLabPraxis
+- [251222_typescript](reference/251222_typescript.md) — Google TypeScript Style Guide Summary
+- [251222_workflow](reference/251222_workflow.md) — Project Workflow
 
 ## Roadmaps
 
 ### awesomation
-- [260122_post-ship-roadmap](roadmaps/awesomation/260122_post-ship-roadmap.md)
-- [251230_roadmap](roadmaps/awesomation/251230_roadmap.md)
+- [260122_post-ship-roadmap](roadmaps/awesomation/260122_post-ship-roadmap.md) — Post-Ship Roadmap - v0.1-alpha
+- [251230_roadmap](roadmaps/awesomation/251230_roadmap.md) — Praxis Development Roadmap
 
 ### pre-ship-cleanup
-- [260120_roadmap](roadmaps/pre-ship-cleanup/260120_roadmap.md)
+- [260120_roadmap](roadmaps/pre-ship-cleanup/260120_roadmap.md) — Project Roadmap
 
 ## Archive
+- [agent-dirs-retired](archive/agent-dirs-retired.md) — Manifest of the 740 files removed or relocated when the three legacy .agent/ directories were retired, with the git commit to restore them from
 
 ## Misc
 - [260825_daily_jsonl_truncation_incident](misc/260825_daily_jsonl_truncation_incident.md)
-- [260210_final-mvp-implementation-strategy](misc/260210_final-mvp-implementation-strategy.md)
-- [260206_e2e-verification-feb03](misc/260206_e2e-verification-feb03.md)
-- [260131_01-data-models](misc/260131_01-data-models.md)
-- [260131_02-asset-wizard](misc/260131_02-asset-wizard.md)
-- [260131_03-protocol-execution](misc/260131_03-protocol-execution.md)
-- [260131_04-constraints](misc/260131_04-constraints.md)
-- [260131_05-github-pages](misc/260131_05-github-pages.md)
-- [260131_06-jupyterlite](misc/260131_06-jupyterlite.md)
-- [260131_07-hardware-discovery](misc/260131_07-hardware-discovery.md)
-- [260131_08-serialization](misc/260131_08-serialization.md)
-- [260131_09-recommendations](misc/260131_09-recommendations.md)
-- [260131_10-import-export](misc/260131_10-import-export.md)
-- [260131_11-error-handling](misc/260131_11-error-handling.md)
-- [260131_12-session-recovery](misc/260131_12-session-recovery.md)
-- [260131_13-memory-management](misc/260131_13-memory-management.md)
-- [260131_14-port-persistence](misc/260131_14-port-persistence.md)
-- [260131_15-storage-quotas](misc/260131_15-storage-quotas.md)
-- [260131_critical-features](misc/260131_critical-features.md)
-- [260131_e2e-persistent-bugs](misc/260131_e2e-persistent-bugs.md)
-- [260131_e2e-static-analysis](misc/260131_e2e-static-analysis.md)
-- [260131_e2e-timeout-investigation](misc/260131_e2e-timeout-investigation.md)
-- [260131_file-splitting-report](misc/260131_file-splitting-report.md)
-- [260131_final-ship](misc/260131_final-ship.md)
-- [260130_playwright-angular-best-practices-2026](misc/260130_playwright-angular-best-practices-2026.md)
-- [260129_data-viz-e2e-investigation](misc/260129_data-viz-e2e-investigation.md)
-- [260129_jules-stage1-prompts](misc/260129_jules-stage1-prompts.md)
-- [260128_e2e-status](misc/260128_e2e-status.md)
-- [260126_e2e-new-02](misc/260126_e2e-new-02.md)
-- [260126_e2e-new-03](misc/260126_e2e-new-03.md)
-- [260126_e2e-viz-01](misc/260126_e2e-viz-01.md)
-- [260126_e2e-viz-02](misc/260126_e2e-viz-02.md)
-- [260126_e2e-viz-03](misc/260126_e2e-viz-03.md)
-- [260126_e2e-viz-04](misc/260126_e2e-viz-04.md)
-- [260126_jlite-01](misc/260126_jlite-01.md)
-- [260126_jlite-03](misc/260126_jlite-03.md)
-- [260126_opfs-01](misc/260126_opfs-01.md)
-- [260126_opfs-03](misc/260126_opfs-03.md)
-- [260126_refactor-01](misc/260126_refactor-01.md)
-- [260126_refactor-02](misc/260126_refactor-02.md)
-- [260126_refactor-03](misc/260126_refactor-03.md)
-- [260126_split-01](misc/260126_split-01.md)
-- [260126_split-02](misc/260126_split-02.md)
-- [260126_split-04](misc/260126_split-04.md)
-- [260126_split-05](misc/260126_split-05.md)
-- [260126_split-06](misc/260126_split-06.md)
-- [260123_opfs-hardware-review-1](misc/260123_opfs-hardware-review-1.md)
-- [260123_opfs-hardware-review](misc/260123_opfs-hardware-review.md)
-- [260122_asset-selection-analysis](misc/260122_asset-selection-analysis.md)
-- [260122_backend-categories-investigation](misc/260122_backend-categories-investigation.md)
-- [260122_docs-404-investigation](misc/260122_docs-404-investigation.md)
-- [260122_frontend-backend-type-architecture](misc/260122_frontend-backend-type-architecture.md)
-- [260122_inventory-search-investigation](misc/260122_inventory-search-investigation.md)
-- [260122_investigation-selective-transfer-params](misc/260122_investigation-selective-transfer-params.md)
-- [260122_machine-args-configuration-investigation](misc/260122_machine-args-configuration-investigation.md)
-- [260122_machine-type-filtering-investigation](misc/260122_machine-type-filtering-investigation.md)
-- [260122_on-the-fly-definitions-investigation](misc/260122_on-the-fly-definitions-investigation.md)
-- [260122_oracle-asset-wizard-investigation](misc/260122_oracle-asset-wizard-investigation.md)
-- [260122_post-merge-checklist](misc/260122_post-merge-checklist.md)
-- [260122_post-ship](misc/260122_post-ship.md)
-- [260122_resource-vs-machine-flow-investigation](misc/260122_resource-vs-machine-flow-investigation.md)
-- [260122_shared-array-buffer](misc/260122_shared-array-buffer.md)
-- [260122_simulation-backend-dropdown-bug](misc/260122_simulation-backend-dropdown-bug.md)
-- [260122_simulation-selection-investigation](misc/260122_simulation-selection-investigation.md)
-- [260121_connection-persistence-tests](misc/260121_connection-persistence-tests.md)
-- [260121_extracted-browser-interrupt](misc/260121_extracted-browser-interrupt.md)
-- [260121_extracted-geometry-heuristics](misc/260121_extracted-geometry-heuristics.md)
-- [260121_extracted-machine-registration](misc/260121_extracted-machine-registration.md)
-- [260121_jules-handover-20260121](misc/260121_jules-handover-20260121.md)
-- [260121_jules-session-triage](misc/260121_jules-session-triage.md)
-- [260121_orchestrator-session-summary-20260121](misc/260121_orchestrator-session-summary-20260121.md)
-- [260121_summary](misc/260121_summary.md)
-- [260121_v01alpha-final-review-20260121](misc/260121_v01alpha-final-review-20260121.md)
-- [260121_v01alpha-status-20260121](misc/260121_v01alpha-status-20260121.md)
-- [260120_orchestration](misc/260120_orchestration.md)
-- [260120_verification-report](misc/260120_verification-report.md)
-- [260118_frontend-polish](misc/260118_frontend-polish.md)
-- [260116_runway](misc/260116_runway.md)
-- [260115_qa-interaction-checklist](misc/260115_qa-interaction-checklist.md)
-- [260115_resource-error-log](misc/260115_resource-error-log.md)
-- [260115_state-gap-analysis](misc/260115_state-gap-analysis.md)
-- [260115_suite-comprehensiveness-analysis](misc/260115_suite-comprehensiveness-analysis.md)
-- [260114_compressed-archive](misc/260114_compressed-archive.md)
-- [260114_installation-browser](misc/260114_installation-browser.md)
-- [260114_installation-lite](misc/260114_installation-lite.md)
-- [260114_installation-production](misc/260114_installation-production.md)
-- [260114_update-archive](misc/260114_update-archive.md)
-- [260107_notes](misc/260107_notes.md)
-- [260107_technical-debt](misc/260107_technical-debt.md)
-- [260105_protocol-inference-sharp-bits](misc/260105_protocol-inference-sharp-bits.md)
-- [260102_browser-script](misc/260102_browser-script.md)
-- [260101_development-matrix](misc/260101_development-matrix.md)
-- [251230_assets](misc/251230_assets.md)
-- [251230_backend](misc/251230_backend.md)
-- [251230_browser-mode](misc/251230_browser-mode.md)
-- [251230_code-style](misc/251230_code-style.md)
-- [251230_contributing](misc/251230_contributing.md)
-- [251230_data-visualization](misc/251230_data-visualization.md)
-- [251230_execution-flow](misc/251230_execution-flow.md)
-- [251230_frontend](misc/251230_frontend.md)
-- [251230_hardware-discovery](misc/251230_hardware-discovery.md)
-- [251230_installation](misc/251230_installation.md)
-- [251230_overview](misc/251230_overview.md)
-- [251230_protocols](misc/251230_protocols.md)
-- [251230_quickstart](misc/251230_quickstart.md)
-- [251230_rest-api](misc/251230_rest-api.md)
-- [251230_services](misc/251230_services.md)
-- [251230_state-management](misc/251230_state-management.md)
-- [251230_testing](misc/251230_testing.md)
-- [251230_websocket-api](misc/251230_websocket-api.md)
-- [251225_technical-debt](misc/251225_technical-debt.md)
-- [251222_general](misc/251222_general.md)
-- [251222_html-css](misc/251222_html-css.md)
-- [251222_javascript](misc/251222_javascript.md)
-- [251222_python](misc/251222_python.md)
-- [251222_typescript](misc/251222_typescript.md)
+- [260126_e2e-new-02](misc/260126_e2e-new-02.md) — Jules session diff E2E-NEW-02 (session 16282140182043530519)
+- [260126_e2e-new-03](misc/260126_e2e-new-03.md) — Jules session diff E2E-NEW-03 (session 8998018472489986175)
+- [260126_e2e-viz-01](misc/260126_e2e-viz-01.md) — Jules session diff E2E-VIZ-01 (session 14797227623251883605)
+- [260126_e2e-viz-02](misc/260126_e2e-viz-02.md) — Jules session diff E2E-VIZ-02 (session 12590817473184387784)
+- [260126_e2e-viz-03](misc/260126_e2e-viz-03.md) — Jules session diff E2E-VIZ-03 (session 16182069641460709376)
+- [260126_e2e-viz-04](misc/260126_e2e-viz-04.md) — Jules session diff E2E-VIZ-04 (session 9885909361909918124)
+- [260126_jlite-01](misc/260126_jlite-01.md) — Jules session diff JLITE-01 (session 3622468687667268403)
+- [260126_jlite-03](misc/260126_jlite-03.md) — Jules session diff JLITE-03 (session 14542845870678146245)
+- [260126_opfs-01](misc/260126_opfs-01.md) — Jules session diff OPFS-01 (session 9221878143682473760)
+- [260126_opfs-03](misc/260126_opfs-03.md) — Jules session diff OPFS-03 (session 14808794888910746056)
+- [260126_refactor-01](misc/260126_refactor-01.md) — Jules session diff REFACTOR-01 (session 235373965227071886)
+- [260126_refactor-02](misc/260126_refactor-02.md) — Jules session diff REFACTOR-02 (session 3806881592450903343)
+- [260126_refactor-03](misc/260126_refactor-03.md) — Jules session diff REFACTOR-03 (session 13019827227538808257)
+- [260126_split-01](misc/260126_split-01.md) — Jules session diff SPLIT-01 (session 9828431918057321321)
+- [260126_split-02](misc/260126_split-02.md) — Jules session diff SPLIT-02 (session 1174395877673969907)
+- [260126_split-04](misc/260126_split-04.md) — Jules session diff SPLIT-04 (session 8806860709165683043)
+- [260126_split-05](misc/260126_split-05.md) — Jules session diff SPLIT-05 (session 7027017935549180084)
+- [260126_split-06](misc/260126_split-06.md) — Jules session diff SPLIT-06 (session 2939224647793981217)
+- [260114_compressed-archive](misc/260114_compressed-archive.md) — Compressed Archive Index
 
 ## Superpowers
 > Skill outputs live in `.praxia/docs/superpowers/plans/` and `.praxia/docs/superpowers/specs/.

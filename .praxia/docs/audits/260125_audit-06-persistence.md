@@ -1,3 +1,7 @@
+---
+title: 'AUDIT-06: Browser Persistence (OPFS/SQLite)'
+---
+
 # AUDIT-06: Browser Persistence (OPFS/SQLite)
 
 This audit analyzes the browser-based persistence layer, which leverages SQLite via WebAssembly (WASM) with an Origin Private File System (OPFS) backend.

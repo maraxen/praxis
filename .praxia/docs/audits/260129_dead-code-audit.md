@@ -1,3 +1,7 @@
+---
+title: 'Dead Code Audit: `praxis/web-client/src`'
+---
+
 # Dead Code Audit: `praxis/web-client/src`
 
 This report details the findings of a dead code audit conducted on the `praxis/web-client/src` directory.

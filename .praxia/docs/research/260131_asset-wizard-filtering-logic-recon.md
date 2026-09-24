@@ -1,3 +1,7 @@
+---
+title: 'Asset Wizard Definition Filtering Logic Audit'
+---
+
 # Asset Wizard Definition Filtering Logic Audit
 
 > **Status**: ✅ Logic Appears Sound with Minor Concerns  

@@ -475,3 +475,40 @@
     throw err;
   });
 })();
+
+// ---------------------------------------------------------------------
+// T6 -- REPL persistence ladder loader (backlog #4296, spec
+// .praxia/docs/specs/260922_repl-persistence-ladder.md D2, D5, the module
+// plan's praxis-shell.js row, and T6). This is the ONLY change this spec
+// makes to this file: one appended IIFE, confining the whole persistence
+// feature's footprint here to this block so a later P5.6 merge (D2) stays
+// trivial. The two IIFEs above are untouched.
+//
+// `document.currentScript` is captured SYNCHRONOUSLY, as the very first
+// statement -- it reads `null` from inside any async callback (including a
+// `.then()`), so capturing it any later would break the relative
+// `persistence/panel.js` URL resolution below. Persistence only ever mounts
+// on the `lab/` entry (D2: "the repl/ entry and the other entries get no
+// chip"); every other entry returns immediately. A failed dynamic import or
+// mount is logged and never breaks the shell -- the REPL keeps working
+// without persistence (see the risk table's `import()`/`currentScript` row).
+(function () {
+  "use strict";
+
+  var thisScript = document.currentScript;
+  if (!/\/lab\/(index\.html)?$/.test(location.pathname)) {
+    return;
+  }
+  if (!thisScript || !thisScript.src) {
+    console.error("praxis-shell.js: persistence loader could not resolve its own script src.");
+    return;
+  }
+
+  import(new URL("persistence/panel.js", thisScript.src).href)
+    .then(function (mod) {
+      return mod.mount(window);
+    })
+    .catch(function (err) {
+      console.error("praxis-shell.js: failed to load/mount the persistence panel:", err);
+    });
+})();

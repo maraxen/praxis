@@ -1,3 +1,7 @@
+---
+title: 'Visual Audit Report: Data & Playground'
+---
+
 # Visual Audit Report: Data & Playground
 
 *Jules Session: E2E-VIZ-03 (`16182069641460709376`)*

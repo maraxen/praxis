@@ -1,3 +1,7 @@
+---
+title: 'E2E Test Suite Debug & Realistic User Interaction Plan'
+---
+
 # E2E Test Suite Debug & Realistic User Interaction Plan
 
 > **Session Recovery**: If interrupted, resume by reading this file and continuing from the Progress Tracker below.

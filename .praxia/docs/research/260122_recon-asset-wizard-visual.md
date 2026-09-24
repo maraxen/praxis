@@ -1,3 +1,7 @@
+---
+title: 'Recon report: asset wizard visual grid sizing'
+---
+
 <recon_report>
 <grid_analysis>
   <current_sizing>

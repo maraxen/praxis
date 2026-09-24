@@ -437,7 +437,7 @@ private async ensureReady(): Promise<void> {
 - `asset-wizard.spec.ts` - Stale selectors (layout drift)
 - `playground-direct-control.spec.ts` - Infrastructure issue
 
-**Active Handoff:** `.agent/staging/e2e_autonomous_handoff.md`
+**Handoff (2026-01-31, historical):** `.praxia/docs/handoffs/260131_e2e-autonomous-handoff.md`
 
 **Recent Fixes:**
 - health-check.spec.ts: Replaced dynamic RxJS import with inline toPromise()

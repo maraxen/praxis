@@ -1,3 +1,7 @@
+---
+title: 'Praxis Ship Readiness - Coordination Handoff'
+---
+
 # Praxis Ship Readiness - Coordination Handoff
 
 > Generated: 2026-01-31T09:40

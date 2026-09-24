@@ -1,3 +1,7 @@
+---
+title: 'Jules Dispatch Log - Recon-Based Tasks'
+---
+
 # Jules Dispatch Log - Recon-Based Tasks
 
 # Date: 2026-01-22T15:25:00-05:00

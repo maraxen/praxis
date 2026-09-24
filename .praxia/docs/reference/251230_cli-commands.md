@@ -1,3 +1,7 @@
+---
+title: 'CLI Commands'
+---
+
 # CLI Commands
 
 Common commands for development and operations.

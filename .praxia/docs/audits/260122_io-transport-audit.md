@@ -1,3 +1,7 @@
+---
+title: 'Recon Report: pylabrobot.io Transport Audit for Browser Mode'
+---
+
 # Recon Report: pylabrobot.io Transport Audit for Browser Mode
 
 **Target:** pylabrobot.io transport abstraction layer

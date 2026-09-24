@@ -211,6 +211,4 @@ Serve with any static file server or integrate with backend static file serving.
 
 ## Need Help?
 
-- **Frontend Issues**: Check `.agent/FRONTEND_STATUS.md`
-- **Backend Issues**: Check `.agent/BACKEND_STATUS.md`
-- **Architecture**: Check `.agent/ANGULAR_FRONTEND_ROADMAP.md`
+- Internal plans, audits and investigations: `.praxia/docs/INDEX.md` (repo root)

@@ -113,10 +113,9 @@ jobs:
           uv run playwright install --with-deps chromium
 
       # --base-path /praxis/ matches the Pages project-site URL
-      # (https://maraxen.github.io/praxis/). This is the ONLY place the subpath
-      # deploy is exercised before users see it: welcome.ipynb's HOST_ROOT is
-      # rewritten at build time and cannot be derived at runtime (the kernel is a
-      # Web Worker with no document location).
+      # (https://maraxen.github.io/praxis/). It sets the served prefix only; nothing
+      # in the build rewrites notebooks for it any more. The site root is derived at
+      # runtime by praxis_boot.derive_host_root() from the kernel worker's own URL.
       - name: Build the site
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
@@ -127,6 +126,11 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python web-repl/scripts/check_wheel_coherence.py --check-untracked
           uv run python web-repl/scripts/check_wheel_contract.py
+
+      - name: Gesture invariant (no await/async before gesture calls, D6)
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python web-repl/scripts/check_gesture_invariant.py
 
       - name: Probe the kernel
         run: |
@@ -148,16 +152,31 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --notebook-check --base-path /praxis/
 
-      # A brand-new notebook is not covered by --notebook-check: that runs
-      # welcome.ipynb, which carries its own build-stamped HOST_ROOT and its own
-      # fetch-and-exec cell. This runs the two lines a user is actually told to
-      # type in a notebook they created, in a bare kernel, and then checks BOTH
-      # that pylabrobot imports and that its Serial is the browser shim --
-      # praxis_main() never re-raises, so awaiting it proves nothing on its own.
-      - name: Fresh notebook bootstraps in two lines
+      # Every kernel sets PyLabRobot up automatically on startup via PYTHONSTARTUP
+      # (web-repl/jupyter-lite.json -> web-repl/files/praxis_startup.py). This gate
+      # proves a bare first cell gets a ready kernel with no setup code, that the gate
+      # waits for setup to complete, and that playground names (LiquidHandler, STAR)
+      # are available without imports. A 15s delay on the wheel fetch ensures the wait
+      # is observed, not masked by fast setup. Covers AC-1 and AC-2.
+      - name: Fresh kernel auto-setup (zero-action first cell)
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --fresh-boot-check --base-path /praxis/
+
+      - name: Auto-setup failure is visible in the cell (loader 404)
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --autosetup-fault-check --fault 404:bootstrap/stages.py --base-path /praxis/
+
+      - name: Auto-setup failure is visible in the cell (tampered loader)
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --autosetup-fault-check --fault tamper:bootstrap/stages.py --base-path /praxis/
+
+      - name: Auto-setup re-runs after a kernel restart
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --restart-check --base-path /praxis/
 
       # Completion has three tiers and they see different things. build_repl.py's
       # assert_completion_autocompletion already covered tier 1 (the setting reached
@@ -187,6 +206,12 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --typeahead-check --base-path /praxis/
 
+      # Persistence (L1 storage.persist(), L2 FSA working folder, first-save gate, L3 download/upload)
+      - name: Persistence — L1/L2/L3 end-to-end
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --persistence-check --base-path /praxis/
+
       # Not prefixed: --viz-check serves the vendored renderer tree directly, with
       # no JupyterLite app and no base path involved.
       - name: Visualizer render + praxis_viz channel
@@ -211,19 +236,30 @@ jobs:
       - name: Tests
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python -m pytest web-repl/tests/test_autosetup_build_assertions.py -q
           uv run python -m pytest web-repl/tests/test_base_path.py -q
           uv run python -m pytest web-repl/tests/test_browser_visualizer.py -q
           uv run python -m pytest web-repl/tests/test_build_manifest.py -q
+          uv run python -m pytest web-repl/tests/test_build_manifest_coxswain.py -q
+          uv run python -m pytest web-repl/tests/test_check_gesture_invariant.py -q
+          uv run python -m pytest web-repl/tests/test_check_wheel_coherence.py -q
           uv run python -m pytest web-repl/tests/test_contract_covers_imports.py -q
           uv run python -m pytest web-repl/tests/test_d1_praxis_git_sha.py -q
           uv run python -m pytest web-repl/tests/test_fetch_vendored_wheels.py -q
           uv run python -m pytest web-repl/tests/test_inject_branding.py -q
+          uv run python -m pytest web-repl/tests/test_inject_shell_coxswain.py -q
+          uv run python -m pytest web-repl/tests/test_persistence_staging.py -q
           uv run python -m pytest web-repl/tests/test_plr_contract.py -q
+          uv run python -m pytest web-repl/tests/test_praxis_boot_autosetup.py -q
           uv run python -m pytest web-repl/tests/test_praxis_bootstrap_loader.py -q
+          uv run python -m pytest web-repl/tests/test_praxis_startup.py -q
+          uv run python -m pytest web-repl/tests/test_prune_pyodide.py -q
+          uv run python -m pytest web-repl/tests/test_repl_workflow_covers_tests.py -q
           uv run python -m pytest web-repl/tests/test_rid_invariant.py -q
           uv run python -m pytest web-repl/tests/test_stamp_loader_shas.py -q
           uv run python -m pytest web-repl/tests/test_theme_staging.py -q
           uv run python -m pytest web-repl/tests/test_transport.py -q
+          uv run python -m pytest web-repl/tests/test_viz_highlight_staging.py -q
 
       - name: Upload diagnostics on failure
         if: failure()
@@ -287,3 +323,6 @@ jobs:
 
       - name: Coxswain JS harness
         run: bun test web-repl/shell/coxswain
+
+      - name: Persistence JS harness
+        run: bun test web-repl/shell/persistence

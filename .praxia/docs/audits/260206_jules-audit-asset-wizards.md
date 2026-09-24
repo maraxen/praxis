@@ -1,0 +1,40 @@
+---
+title: 'Jules Audit: Asset Wizards'
+description: 'Jules deep audit of the asset wizards (Feb 3, 2026; quality score 4/10)'
+status: archived
+task_id: 260922_debt-1293-docs-migration
+---
+# Jules Audit: Asset Wizards
+**Session ID**: 6546155916196685132
+**Date**: Feb 3, 2026
+**Quality Score**: 4/10
+
+## Key Findings
+
+### AssetService Brittleness
+- **Overall**: Fragile
+- 40+ instances of `as any` or `as unknown as`
+- Browser-mode reimplements backend logic (facets, FQNs)
+- Risk of behavioral divergence
+
+### Fragile Locations
+- `asset.service.ts:98` - manual serial number using Math.random()
+- `machine-list.component.ts:413` - global window event listener
+- `category-inference.ts:25` - regex-like FQN string matching
+
+## Test Coverage
+- Covered: Basic CRUD (HTTP & Browser), basic facet inference
+- Missing: MachineListComponent filtering/sorting, error paths
+- Score: 2/5
+
+## Hacky Patterns
+- 40+ type assertions in AssetService
+- Hardcoded status colors in template
+- TODOs for Edit/Duplicate features
+
+## Recommendations
+1. [P1] Align models with API generated types
+2. [P1] Test MachineListComponent signal-based filtering
+3. [P2] Replace window event with Angular Subject
+4. [P2] Implement Edit/Duplicate placeholders
+5. [P3] Centralize facet logic in SqliteService
