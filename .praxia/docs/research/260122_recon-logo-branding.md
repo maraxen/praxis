@@ -1,3 +1,7 @@
+---
+title: 'RECONNAISSANCE REPORT: Praxis Logo and Gradient Branding'
+---
+
 # RECONNAISSANCE REPORT: Praxis Logo and Gradient Branding
 
 ## 1. Executive Summary

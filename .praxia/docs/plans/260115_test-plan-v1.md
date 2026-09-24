@@ -1,3 +1,7 @@
+---
+title: 'Interaction Test Plan v1'
+---
+
 # Interaction Test Plan v1
 
 **Date:** 2026-01-15

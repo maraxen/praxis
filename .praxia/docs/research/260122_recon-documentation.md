@@ -1,3 +1,7 @@
+---
+title: 'Documentation Reconnaissance Report'
+---
+
 # Documentation Reconnaissance Report
 
 ## 1. Broken Link Inventory

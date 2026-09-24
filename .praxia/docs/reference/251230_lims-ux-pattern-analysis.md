@@ -1,3 +1,7 @@
+---
+title: '**Comparative Analysis of User Experience Architectures in Leading Laboratory Information Management Systems (2024-2025)**'
+---
+
 # **Comparative Analysis of User Experience Architectures in Leading Laboratory Information Management Systems (2024-2025)**
 
 ## **Executive Summary**

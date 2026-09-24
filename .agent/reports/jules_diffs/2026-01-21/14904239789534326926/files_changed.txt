@@ -1,4 +1,0 @@
-praxis/web-client/src/app/features/assets/components/asset-list.component.ts
-praxis/web-client/src/app/features/assets/components/direct-control.component.spec.ts
-praxis/web-client/src/app/features/assets/components/direct-control.component.ts
-praxis/web-client/src/app/features/assets/services/asset.service.ts

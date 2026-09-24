@@ -1,3 +1,7 @@
+---
+title: 'Dependency Audit Report'
+---
+
 # Dependency Audit Report
 
 ## Frontend Dependencies

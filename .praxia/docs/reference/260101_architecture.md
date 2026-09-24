@@ -1,3 +1,7 @@
+---
+title: 'Application Architecture: Runtime Modes'
+---
+
 # Application Architecture: Runtime Modes
 
 This document outlines the architectural differences between the various runtime modes of PyLabPraxis.

@@ -8,9 +8,11 @@ This is specifically for backends like Inheco that use HID:
     self.io = HID(vid=vid, pid=pid)
 
 Usage in JupyterLite/Pyodide:
-    # Auto-patched by pyodide_io_patch.py
-    import pylabrobot.io.hid as hid
-    hid.HID = WebHID
+    Nothing to do by hand. web-repl/bootstrap/praxis_bootstrap.py imports this
+    module exactly once, as the bare top-level module ``web_hid_shim``, via
+    ``stages.import_shim_class()`` and stages ``WebHID`` onto builtins. Do not
+    re-import it under another name: a second module object means a second,
+    distinct ``WebHID`` class (see the R-ID note in web_bridge.py).
 """
 
 import asyncio

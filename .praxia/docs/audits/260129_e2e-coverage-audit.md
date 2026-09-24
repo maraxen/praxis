@@ -1,3 +1,7 @@
+---
+title: 'E2E Spec Coverage Audit'
+---
+
 # E2E Spec Coverage Audit
 
 ## 1. Spec to Feature Mapping

@@ -1,3 +1,7 @@
+---
+title: 'Styling Audit Report'
+---
+
 # Styling Audit Report
 
 **Date:** 2026-01-15

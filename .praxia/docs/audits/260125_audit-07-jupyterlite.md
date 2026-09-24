@@ -1,3 +1,7 @@
+---
+title: 'AUDIT-07: JupyterLite Integration'
+---
+
 # AUDIT-07: JupyterLite Integration
 
 This report provides a detailed analysis of the JupyterLite integration within the Praxis web client.

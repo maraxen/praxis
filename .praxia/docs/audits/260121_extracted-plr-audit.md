@@ -1,3 +1,7 @@
+---
+title: 'PLR Category Architecture Audit - Extraction Report'
+---
+
 # PLR Category Architecture Audit - Extraction Report
 
 ## Summary

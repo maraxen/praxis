@@ -1,3 +1,7 @@
+---
+title: 'Visual Audit - Settings & Workcell'
+---
+
 # Visual Audit - Settings & Workcell
 
 *Jules Session: E2E-VIZ-04 (`9885909361909918124`)*

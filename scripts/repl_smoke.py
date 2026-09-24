@@ -62,14 +62,18 @@ Hard constraints (verified 2026-08-17, see plan section 5.6):
 from __future__ import annotations
 
 import argparse
+import base64
+import dataclasses
 import json
 import logging
 import os
 import re
 import subprocess
 import sys
+import tempfile
 import textwrap
 import threading
+import time
 import urllib.parse
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -187,6 +191,125 @@ def chromium_launch_args(*, offline: bool) -> list[str]:
 PROBE_START = "===PRAXIS_PROBE_JSON_START==="
 PROBE_END = "===PRAXIS_PROBE_JSON_END==="
 
+#: Shared forbidden-list (spec .praxia/docs/specs/260914_first-run-auto-setup.md,
+#: AC-10 / section 8.3 / section 8.4 trap 1): a probe or shipped notebook code
+#: cell that calls any of these itself would make auto-setup gates pass even
+#: with auto-setup entirely broken. Deliberately excludes a bare `setup(` so
+#: PyLabRobot's own `await lh.setup()` stays allowed. The build-side copy of
+#: this same list lives in web-repl/scripts/build_repl.py (T5, out of this
+#: task's scope) and web-repl/tests/test_base_path.py (T5/T6) -- kept as a
+#: separate literal there rather than imported, since repl_smoke.py is not on
+#: the build's import path.
+FORBIDDEN_BOOTSTRAP_CALLS: tuple[str, ...] = ("praxis_main(", "praxis_boot.setup(", "HOST_ROOT =")
+
+#: Import lines that would make AC-1's playground-names clause pass vacuously
+#: (spec section 8.3, --fresh-boot-check row, T3b): the whole point of that
+#: clause is that LiquidHandler/STAR are resolvable with NO import.
+PLAYGROUND_NAME_IMPORT_NEEDLES: tuple[str, ...] = (
+    "import LiquidHandler",
+    "from pylabrobot.liquid_handling",
+)
+
+
+def find_forbidden_bootstrap_call(source: str) -> str | None:
+    """Return the first shared-forbidden-list substring found in *source*, or None."""
+    for needle in FORBIDDEN_BOOTSTRAP_CALLS:
+        if needle in source:
+            return needle
+    return None
+
+
+def probe_imports_playground_names(source: str) -> bool:
+    """True if *source* imports LiquidHandler/STAR itself (spec section 8.3, T3b)."""
+    return any(needle in source for needle in PLAYGROUND_NAME_IMPORT_NEEDLES)
+
+
+@dataclasses.dataclass
+class Fault:
+    """One ServedDir fault (spec section 8.3, --autosetup-fault-check row).
+
+    kind:
+      - "404"    -- answer with an HTTP 404 instead of serving the file.
+      - "tamper" -- serve the real file with corrupted bytes appended, so a
+        sha256 pin over the served content mismatches.
+      - "delay"  -- sleep `delay_s` in the handler thread, then serve the file
+        unmodified. **Never put this on a sync-XHR asset**
+        (`bootstrap/praxis_bootstrap.py`, `bootstrap/stages.py`,
+        `bootstrap/transport.py`, `assets/wheels/manifest.json`, the
+        `assets/python`/`assets/shims` sources): a sync XHR blocks the worker
+        thread and would delay kernel-ready itself, so a probe cell would
+        never observe `state == "running"` (test-design trap 8). Delays only
+        ever target the async micropip wheel fetch.
+
+    `suffix` is matched against `urllib.parse.unquote(urllib.parse.urlsplit(self.path).path)`
+    (C-17: `unquote`, not `unquote_plus`, so a literal `+` in a wheel filename
+    survives). `max_hits` bounds how many of the FIRST matching requests are
+    actually faulted (`--fault-count`, default 1); every match beyond that is
+    served normally, which is what makes a post-fault retry succeed
+    (--autosetup-fault-check cell 3). `hits` is the running counter the harness
+    reads back to prove the fault path was actually exercised (test-design
+    trap 5).
+    """
+
+    kind: str
+    suffix: str
+    delay_s: float = 0.0
+    max_hits: int = 1
+    hits: int = 0
+
+    def __post_init__(self) -> None:
+        if self.kind not in ("404", "tamper", "delay"):
+            raise ValueError(
+                f"unknown fault kind {self.kind!r}; expected one of 404, tamper, delay"
+            )
+
+
+def parse_fault(spec: str, *, max_hits: int) -> Fault:
+    """Parse a `--fault` value: `404:<suffix>`, `tamper:<suffix>`, or `delay:<suffix>:<seconds>`.
+
+    The delay form is split with `rsplit(":", 1)` (spec section 8.3) so a
+    `suffix` containing colons (none of ours do, but paths are not guaranteed
+    not to) still parses; only the LAST colon-separated field is the seconds.
+    """
+    kind, _, rest = spec.partition(":")
+    if kind == "delay":
+        try:
+            suffix, seconds_s = rest.rsplit(":", 1)
+            delay_s = float(seconds_s)
+        except ValueError as e:
+            raise ValueError(
+                f"bad delay fault {spec!r}: expected delay:<path-suffix>:<seconds>"
+            ) from e
+        return Fault(kind="delay", suffix=suffix, delay_s=delay_s, max_hits=max_hits)
+    if not rest:
+        raise ValueError(f"bad fault {spec!r}: expected <kind>:<path-suffix>")
+    return Fault(kind=kind, suffix=rest, max_hits=max_hits)
+
+
+#: --fresh-boot-check's always-on wheel-delay fault (spec section 8.3, R2-1).
+#: S0 E2 measured kernel boot ~9.8s with setup starting ~3.9s in; the wheel
+#: fetch comes after D1/D2, so holding it 15s keeps state=="running" for at
+#: least ~9s past first idle (and still covers a CI runner twice as slow)
+#: while staying well inside the cell timeout.
+FRESH_BOOT_WHEEL_DELAY_S = 15.0
+
+
+def read_wheel_filename(serve_dir: Path, package: str) -> str:
+    """Read a wheel's served filename from assets/wheels/manifest.json.
+
+    Never hardcode a wheel filename (spec section 8.3): the pylabrobot wheel's
+    +g<sha> local version segment changes on every rebuild.
+    """
+    manifest_path = serve_dir / "assets" / "wheels" / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except OSError as e:
+        raise RuntimeError(f"could not read {manifest_path}: {e}") from e
+    for entry in manifest.get("wheels", []):
+        if entry.get("package") == package and entry.get("filename"):
+            return entry["filename"]
+    raise RuntimeError(f"no {package!r} entry with a filename in {manifest_path}")
+
 
 def find_repo_root(start: Path) -> Path:
     """Search upward from `start` for the directory containing pyproject.toml.
@@ -238,8 +361,11 @@ def _normalize_base_path(base_path: str) -> str:
     return base_path
 
 
-def make_handler(serve_dir: Path, base_path: str, coi: bool) -> type[SimpleHTTPRequestHandler]:
+def make_handler(
+    serve_dir: Path, base_path: str, coi: bool, faults: list[Fault] | None = None
+) -> type[SimpleHTTPRequestHandler]:
     prefix = _normalize_base_path(base_path)
+    fault_list = faults if faults is not None else []
 
     class Handler(SimpleHTTPRequestHandler):
         def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -252,6 +378,58 @@ def make_handler(serve_dir: Path, base_path: str, coi: bool) -> type[SimpleHTTPR
             elif prefix != "/" and p == prefix[:-1]:
                 p = "/"
             return super().translate_path(p)
+
+        def _matching_fault(self) -> Fault | None:
+            # C-17: unquote (never unquote_plus) so a literal '+' in a wheel
+            # filename survives, and match on the parsed URL PATH only --
+            # translate_path above already strips the query string, but
+            # urlsplit().path is used here directly since faults are matched
+            # BEFORE translate_path runs.
+            req_path = urllib.parse.unquote(urllib.parse.urlsplit(self.path).path)
+            for fault in fault_list:
+                if fault.hits < fault.max_hits and req_path.endswith(fault.suffix):
+                    return fault
+            return None
+
+        def _serve_tampered(self) -> None:
+            fs_path = self.translate_path(self.path)
+            try:
+                with open(fs_path, "rb") as fh:
+                    data = fh.read()
+            except OSError:
+                self.send_error(404, "praxis fault injection: tamper source missing")
+                return
+            tampered = data + b"\n# praxis-fault-injected-tamper\n"
+            self.send_response(200)
+            ctype = self.guess_type(fs_path)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(tampered)))
+            self.end_headers()
+            self.wfile.write(tampered)
+
+        def do_GET(self) -> None:
+            fault = self._matching_fault()
+            if fault is not None:
+                fault.hits += 1
+                LOG.info(
+                    "fault injected: kind=%s suffix=%s hit=%d/%d path=%s",
+                    fault.kind, fault.suffix, fault.hits, fault.max_hits, self.path,
+                )
+                if fault.kind == "404":
+                    self.send_error(404, "praxis fault injection: 404")
+                    return
+                if fault.kind == "tamper":
+                    self._serve_tampered()
+                    return
+                if fault.kind == "delay":
+                    # Holds only THIS request/thread: ThreadingHTTPServer gives
+                    # every connection its own thread, so the rest of the site
+                    # (and the kernel-ready path) stays responsive while this
+                    # one sleeps (spec section 8.3, trap 8).
+                    time.sleep(fault.delay_s)
+                    super().do_GET()
+                    return
+            super().do_GET()
 
         def end_headers(self) -> None:
             if coi:
@@ -269,8 +447,11 @@ def make_handler(serve_dir: Path, base_path: str, coi: bool) -> type[SimpleHTTPR
 class ServedDir:
     """Context manager wrapping a background ThreadingHTTPServer."""
 
-    def __init__(self, serve_dir: Path, base_path: str, coi: bool) -> None:
-        handler_cls = make_handler(serve_dir, base_path, coi)
+    def __init__(
+        self, serve_dir: Path, base_path: str, coi: bool, faults: list[Fault] | None = None
+    ) -> None:
+        self.faults = faults if faults is not None else []
+        handler_cls = make_handler(serve_dir, base_path, coi, self.faults)
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler_cls)
         self.port = self.httpd.server_address[1]
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
@@ -315,15 +496,19 @@ def build_probe_code(host_root: str, expect_praxis_sha: str | None) -> str:
 
 
         async def _main():
-            # --- 1. fetch + exec the bootstrap, then await praxis_main ---
+            # --- 1. auto-setup already ran via PYTHONSTARTUP + the cleanup_transforms
+            # gate before this cell was ever dispatched (spec 260914_first-run-auto-setup.md
+            # section 8.3, --probe/--probe --offline/--completion-check row); this call is
+            # therefore a no-op guarded by praxis_boot's once-guard/lock, not a second run
+            # (AC-6). Kept (rather than removed outright) so this probe still measures
+            # `praxis_boot.state` end to end, and still works standalone if ever run
+            # against a kernel where PYTHONSTARTUP did not fire.
             try:
-                xhr = js.XMLHttpRequest.new()
-                xhr.open("GET", HOST_ROOT + "bootstrap/praxis_bootstrap.py", False)
-                xhr.send(None)
-                bootstrap_src = str(xhr.responseText)
-                exec(compile(bootstrap_src, "praxis_bootstrap.py", "exec"), globals())
-                await praxis_main(HOST_ROOT)  # noqa: F821 - injected by exec above
-                RESULT["praxis_ready"] = True
+                import praxis_boot
+                await praxis_boot.setup()
+                RESULT["praxis_ready"] = praxis_boot.state == "ready"
+                RESULT["praxis_boot_state"] = praxis_boot.state
+                RESULT["autostart_origin"] = getattr(praxis_boot, "autostart_origin", None)
             except Exception as e:  # noqa: BLE001 - probe must never die silently
                 RESULT["praxis_ready"] = False
                 RESULT["bootstrap_error"] = f"{{type(e).__name__}}: {{e}}"
@@ -626,14 +811,15 @@ def build_completion_probe_code(host_root: str) -> str:
 
 
         async def _main():
-            # --- 1. boot praxis so pylabrobot is importable at all ---
+            # --- 1. auto-setup already ran via PYTHONSTARTUP + the gate; this is a
+            # no-op retry through the once-guard/lock (AC-6), not a second run --
+            # kept only so pylabrobot is importable and praxis_boot.state is measured
+            # even if PYTHONSTARTUP did not fire (spec section 8.3, --completion-check row) ---
             try:
-                xhr = js.XMLHttpRequest.new()
-                xhr.open("GET", HOST_ROOT + "bootstrap/praxis_bootstrap.py", False)
-                xhr.send(None)
-                exec(compile(str(xhr.responseText), "praxis_bootstrap.py", "exec"), globals())
-                await praxis_main(HOST_ROOT)  # noqa: F821 - injected by exec above
-                RESULT["praxis_ready"] = True
+                import praxis_boot
+                await praxis_boot.setup()
+                RESULT["praxis_ready"] = praxis_boot.state == "ready"
+                RESULT["praxis_boot_state"] = praxis_boot.state
             except Exception as e:  # noqa: BLE001 - probe must never die silently
                 RESULT["praxis_ready"] = False
                 RESULT["bootstrap_error"] = f"{{type(e).__name__}}: {{e}}"
@@ -755,6 +941,7 @@ def run_probe(
     entry: str = "lab",
     offline: bool = False,
     code_override: str | None = None,
+    faults: list[Fault] | None = None,
 ) -> dict[str, Any]:
     # `code_override` lets a caller drive this same browser/serve/sentinel
     # machinery with a DIFFERENT in-kernel payload. It exists so --completion-check
@@ -762,6 +949,10 @@ def run_probe(
     # --offline (both CI gates), and its f-string + textwrap.dedent + split-sentinel
     # construction is the path that silently produced a mis-dedented payload once
     # already. A new payload is a new function; this is the seam that allows it.
+    # `faults` (spec section 8.3) lets --fresh-boot-check always hold the async
+    # pylabrobot wheel fetch so AC-2's wait is deterministic, and lets --autosetup-
+    # fault-check/--fault inject 404/tamper/delay faults at the harness's static
+    # server, never via page.route() (trap 5: route() does not see Worker requests).
     try:
         from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
         from playwright.sync_api import sync_playwright
@@ -771,7 +962,7 @@ def run_probe(
     prefix = _normalize_base_path(base_path)
     timeout_ms = timeout_s * 1000
 
-    with ServedDir(serve_dir, base_path, coi) as served:
+    with ServedDir(serve_dir, base_path, coi, faults=faults) as served:
         url = (
             f"http://127.0.0.1:{served.port}{prefix}{entry}/index.html"
         )
@@ -785,6 +976,8 @@ def run_probe(
         )
         full_url = f"{url}?{params}"
         LOG.info("navigating to %s (url length %d)", url, len(full_url))
+        probe_wall_start = time.monotonic()
+        probe_wall_s: float | None = None
 
         request_log: list[dict[str, Any]] = []
         http_errors: list[dict[str, Any]] = []
@@ -851,7 +1044,7 @@ def run_probe(
                         arg=PROBE_END,
                         timeout=timeout_ms,
                     )
-                except Exception as wait_exc:  # noqa: BLE001
+                except Exception as wait_exc:
                     # A bare "Timeout 120000ms exceeded" tells you NOTHING about why the
                     # boot never finished, and the page is about to be closed in the
                     # `finally` below -- so everything diagnostic has to be harvested
@@ -860,7 +1053,7 @@ def run_probe(
                     # a slow kernel are the same message.
                     try:
                         stuck_body = page.evaluate("() => document.body.innerText")
-                    except Exception:  # noqa: BLE001
+                    except Exception:
                         stuck_body = "<unavailable>"
                     def _entry_url(entry: Any) -> str | None:
                         if isinstance(entry, dict):
@@ -886,6 +1079,14 @@ def run_probe(
                         f"{json.dumps(console_messages[-40:], indent=2)}\n"
                         f"  page text (last 1500 chars): {stuck_body[-1500:]!r}"
                     ) from wait_exc
+
+                # Approximates "wall time from sending the execute request to its
+                # execute_reply" (spec section 8.3's --fresh-boot-check row): this is
+                # actually navigation-start-to-sentinel-found, a superset that also
+                # includes full kernel boot -- precise execute-request timing would
+                # need frontend instrumentation of kernel status transitions, which
+                # this harness does not have. Recorded for evidence, not thresholded.
+                probe_wall_s = time.monotonic() - probe_wall_start
 
                 body_text = page.evaluate("() => document.body.innerText")
                 cross_origin_isolated = page.evaluate("() => window.crossOriginIsolated")
@@ -968,6 +1169,8 @@ def run_probe(
         "serve_dir": str(serve_dir),
         "offline": offline,
         "offline_blackhole_hosts": list(OFFLINE_BLACKHOLE_HOSTS) if offline else [],
+        "probe_wall_s": probe_wall_s,
+        "faults": [dataclasses.asdict(f) for f in (faults or [])],
     }
     return result
 
@@ -986,24 +1189,34 @@ class VizCheckError(RuntimeError):
 
 
 def build_fresh_boot_probe_code() -> str:
-    """In-kernel payload for the fresh-notebook bootstrap (gate T4).
+    """In-kernel payload for AC-1/AC-2 fresh-boot auto-setup (spec
+    260914_first-run-auto-setup.md section 8.3, --fresh-boot-check row).
 
-    Runs EXACTLY what a user is told to type in a brand-new notebook -- `import
-    praxis_boot` then `await praxis_boot.setup()` -- and nothing else. It
-    deliberately does NOT fetch the loader itself or pass a host root, because
-    those two omissions are the whole claim being tested: that a fresh kernel
-    can reach the loader with no URL and no base path typed by hand.
+    PREMISE REPLACED (was gate T4's "type two lines"): auto-setup already ran
+    via PYTHONSTARTUP + the `cleanup_transforms` gate by the time this cell was
+    ever dispatched to the kernel, so this probe must NOT import or call
+    `praxis_boot.setup()` (nor `praxis_main()`, nor set `HOST_ROOT`) itself --
+    doing so would make the gate pass even if auto-setup were entirely broken
+    (test-design trap 1). It only READS `praxis_boot` state and then imports
+    pylabrobot. Two static checks the HARNESS makes on THIS SOURCE STRING
+    before it is ever sent to the kernel close the rest of that gap:
+    `setup_called_by_probe` (none of the shared forbidden list
+    `praxis_main(`/`praxis_boot.setup(`/`HOST_ROOT =` appear below --
+    `find_forbidden_bootstrap_call`) and the playground-names import-free
+    check (no `import LiquidHandler`/`from pylabrobot.liquid_handling` line
+    below -- `probe_imports_playground_names`); AC-1's playground-names clause
+    (T3b) is only meaningful if the names were never imported by the probe.
 
-    Records sys.path and cwd unconditionally. `import praxis_boot` only works
-    because the kernel mounts the JupyterLite contents drive at /drive and runs
-    there; if that ever stops being true the import fails, and the failure would
-    be indistinguishable from "the file was not shipped" without these fields.
+    Records sys.path/cwd unconditionally, same reasoning as before: `import
+    praxis_boot` only works because the kernel mounts the JupyterLite contents
+    drive at /drive and runs there, and a failure there would otherwise be
+    indistinguishable from "the file was not shipped".
     """
     start_a, start_b = PROBE_START[: len(PROBE_START) // 2], PROBE_START[len(PROBE_START) // 2 :]
     end_a, end_b = PROBE_END[: len(PROBE_END) // 2], PROBE_END[len(PROBE_END) // 2 :]
     return textwrap.dedent(
         f"""
-        import json, os, sys, traceback
+        import builtins, json, os, sys
         RESULT: dict = {{}}
 
         RESULT["cwd"] = os.getcwd()
@@ -1011,14 +1224,6 @@ def build_fresh_boot_probe_code() -> str:
         RESULT["drive_listing"] = (
             sorted(os.listdir("/drive")) if os.path.isdir("/drive") else None
         )
-
-        # Baseline: a fresh kernel must NOT already have pylabrobot, or this
-        # gate would pass without the bootstrap doing anything.
-        try:
-            import pylabrobot as _pre
-            RESULT["plr_before"] = getattr(_pre, "__version__", "present")
-        except Exception as e:  # noqa: BLE001
-            RESULT["plr_before"] = f"{{type(e).__name__}}"
 
         try:
             import praxis_boot
@@ -1028,22 +1233,17 @@ def build_fresh_boot_probe_code() -> str:
             RESULT["import_error"] = f"{{type(e).__name__}}: {{e}}"
 
         if RESULT.get("import_praxis_boot"):
+            RESULT["state"] = getattr(praxis_boot, "state", None)
+            RESULT["gate_waited"] = getattr(praxis_boot, "gate_waited", None)
+            RESULT["autostart_origin"] = getattr(praxis_boot, "autostart_origin", None)
+            RESULT["kernel_nonce"] = getattr(praxis_boot, "kernel_nonce", None)
+            RESULT["derived_host_root"] = getattr(praxis_boot, "host_root", None)
             try:
-                RESULT["derived_host_root"] = praxis_boot.derive_host_root()
-            except Exception as e:  # noqa: BLE001
-                RESULT["derived_host_root"] = None
-                RESULT["derive_error"] = f"{{type(e).__name__}}: {{e}}"
+                RESULT["failure"] = repr(getattr(praxis_boot, "failure", None))
+            except Exception:  # noqa: BLE001 - a bad __repr__ must not sink the probe
+                RESULT["failure"] = "<unprintable exception>"
 
             try:
-                RESULT["setup_returned"] = await praxis_boot.setup()
-                RESULT["setup_ok"] = True
-            except Exception as e:  # noqa: BLE001
-                RESULT["setup_ok"] = False
-                RESULT["setup_error"] = f"{{type(e).__name__}}: {{e}}"
-                RESULT["setup_traceback"] = traceback.format_exc()
-
-            try:
-                import builtins
                 import pylabrobot
                 from pylabrobot.io.serial import Serial
                 RESULT["plr_after"] = getattr(pylabrobot, "__version__", None)
@@ -1052,6 +1252,22 @@ def build_fresh_boot_probe_code() -> str:
                 RESULT["plr_after"] = None
                 RESULT["serial_is_shim"] = None
                 RESULT["post_import_error"] = f"{{type(e).__name__}}: {{e}}"
+
+            # Playground names (AC-1's last sentence, T3b): the legacy welcome
+            # bootstrap cell exec'd the loader into the NOTEBOOK globals, so
+            # LiquidHandler/STAR landed in the user namespace with no import.
+            # Evaluated with NO import of either name anywhere in this probe --
+            # the harness checks that statically (probe_imports_playground_names)
+            # before this source is ever sent.
+            try:
+                RESULT["playground_names_ok"] = bool(
+                    "LiquidHandler" in globals()
+                    and LiquidHandler.__name__ == "LiquidHandler"  # noqa: F821
+                    and "STAR" in globals()
+                )
+            except Exception as e:  # noqa: BLE001
+                RESULT["playground_names_ok"] = False
+                RESULT["playground_names_error"] = f"{{type(e).__name__}}: {{e}}"
 
         print({start_a!r} + {start_b!r})
         print(json.dumps(RESULT))
@@ -1179,7 +1395,7 @@ def run_typeahead_check(
                     result["completer_sample"] = [
                         items.nth(i).inner_text().strip() for i in range(min(6, items.count()))
                     ]
-                except Exception:  # noqa: BLE001 - sample is diagnostics, not the assertion
+                except Exception:
                     result["completer_sample"] = None
                 if not result["completer_item_count"]:
                     result["failures"].append(
@@ -1213,10 +1429,31 @@ DEFAULT_NOTEBOOK = "welcome.ipynb"
 #: them, and that coupling is deliberate: it is what makes this a test OF the
 #: notebook rather than a test that some notebook ran.
 NOTEBOOK_EXPECTED = (
-    "bootstrap complete",
+    "praxis auto-setup state: ready",
     "PyLabRobot 0.2.2+g",
     "Serial is the browser shim: True",
 )
+
+
+def find_forbidden_bootstrap_in_notebook(nb_path: Path) -> list[str]:
+    """Scan a staged notebook's CODE cells only for the shared forbidden list (AC-10).
+
+    Markdown cells may still mention `praxis_boot.setup()` (spec section 8.3,
+    --notebook-check row); only `cell_type == "code"` cells are scanned, same
+    scope as the AC-10 unit test and the fresh-boot static probe-source check.
+    """
+    nb = json.loads(nb_path.read_text())
+    hits: list[str] = []
+    for cell in nb.get("cells", []):
+        if cell.get("cell_type") != "code":
+            continue
+        source = cell.get("source", "")
+        if isinstance(source, list):
+            source = "".join(source)
+        needle = find_forbidden_bootstrap_call(source)
+        if needle:
+            hits.append(needle)
+    return hits
 
 
 class NotebookCheckError(RuntimeError):
@@ -1254,6 +1491,15 @@ def run_notebook_check(
     timeout_ms = timeout_s * 1000
     console_messages: list[dict[str, Any]] = []
     pageerrors: list[str] = []
+
+    # AC-10 static check, made BEFORE the notebook is ever run (spec section
+    # 8.3, --notebook-check row): a shipped code cell calling praxis_main(/
+    # praxis_boot.setup(/HOST_ROOT = would make this gate pass even with
+    # auto-setup entirely broken.
+    nb_path = serve_dir / "files" / notebook
+    forbidden_bootstrap_hits = (
+        find_forbidden_bootstrap_in_notebook(nb_path) if nb_path.is_file() else None
+    )
 
     with ServedDir(serve_dir, base_path, coi=False) as served:
         url = (
@@ -1420,12 +1666,2082 @@ def run_notebook_check(
                     "tracebacks": tracebacks,
                     "pageerrors": pageerrors,
                     "offline": offline,
+                    "forbidden_bootstrap_hits": forbidden_bootstrap_hits,
                 }
                 if not result["all_found"]:
                     result["outputs_text"] = outputs_text[-3000:]
                     result["body_text_tail"] = body_text[-2000:]
                     result["console"] = console_messages
                 return result
+            finally:
+                browser.close()
+
+
+# ---------------------------------------------------------------------------
+# --autosetup-fault-check / --restart-check (spec 260914_first-run-auto-setup.md
+# section 8.3). Both drive a HARNESS-CREATED blank notebook in the real lab app
+# (never welcome.ipynb), because the S0 spike found `notebook:run-all-cells`
+# halts at the first raising cell (section 5.1) -- a gated setup failure would
+# stop a run-all at cell 1, which is fine for --notebook-check (a failure there
+# SHOULD fail loudly) but wrong for a check that needs cells 2-4 to run
+# regardless of cell 1's outcome. Cells are therefore run ONE AT A TIME via
+# `notebook:run-cell` on an explicit active-cell index.
+#
+# NOT independently browser-verified in this task: there is no local browser
+# run available here (the built site is stale; CI runs the browser gates on
+# the PR). The JupyterLab/jupyterlite command and shared-model surface used
+# below (`docmanager:open` with an explicit kernel, `notebook:run-cell`,
+# `model.sharedModel.insertCell`/`deleteCell`, `cell.sharedModel.setSource`,
+# `sessionContext.session.kernel.restart()`) is written from the pinned
+# jupyterlite-core 0.8.1 API as documented, mirroring the ALREADY-VERIFIED
+# patterns in run_notebook_check (kernel-selection dialog handling, reading
+# outputs from the model rather than the DOM -- repl_smoke.py:1342-1353 in the
+# pre-change file). Every step's own return value is checked before the next
+# step runs, so a wrong API name surfaces as a `dispatched: False` / raised
+# result in CI rather than a silent false pass.
+# ---------------------------------------------------------------------------
+
+#: Cell 1/2 of --autosetup-fault-check: a side-effect sentinel that must be
+#: ABSENT from the cell's own output if the gate blocked it (spec section 8.3).
+#: Built from two literals, like the split-sentinel convention used by
+#: build_probe_code, so the contiguous string exists only in printed output.
+AUTOSETUP_FAULT_SIDE_EFFECT_CELL = (
+    "_S = 'side' + 'effect'; import builtins; builtins.__praxis_cell_ran = True; print(_S)"
+)
+AUTOSETUP_FAULT_SIDE_EFFECT_NEEDLE = "side" + "effect"
+
+#: Cell 3: the fault count is spent by the time this runs (PYTHONSTARTUP's own
+#: auto-setup attempt already consumed it), so this manual retry succeeds.
+#: Also records gate_waited for AC-2 measurement.
+AUTOSETUP_FAULT_RETRY_CELL = (
+    "import praxis_boot\nawait praxis_boot.setup()\n"
+    "import json; print(json.dumps({\"gate_waited\": praxis_boot.gate_waited}))"
+)
+
+#: AC-1's literal zero-action cell (spec section 3): used verbatim as cell 4
+#: of --autosetup-fault-check and as the pre/post-restart cell of
+#: --restart-check by wrapping it in the same sentinel-JSON shape as
+#: build_fresh_boot_probe_code so kernel_nonce/state are readable too.
+AC1_ZERO_ACTION_LINE = (
+    "import builtins, pylabrobot; from pylabrobot.io.serial import Serial; "
+    "print(Serial is builtins.WebSerial)"
+)
+
+#: Substring expected in a gate-blocked cell's traceback text for each fault
+#: kind (spec section 8.3/failure modes 1-3), read off praxis_bootstrap.py's
+#: own error text (`HTTP {status}` / `loader module sha256 mismatch`).
+FAULT_REASON_NEEDLE: dict[str, str] = {
+    "404": "HTTP 404",
+    "tamper": "sha256 mismatch",
+}
+
+#: Regex to match the exact success line printed by praxis_boot.setup() when
+#: setup completes normally (spec section 6.2 _run_setup step 6, trap 2).
+#: The line is: `PyLabRobot {version} ready (site root {root}); Serial is the browser shim`
+#: This pattern matches the stable parts that are independent of version and root.
+AUTOSETUP_SUCCESS_LINE_PATTERN = re.compile(
+    r"PyLabRobot\s+\S+\s+ready\s+\(site\s+root\s+[^)]*\);\s+Serial\s+is\s+the\s+browser\s+shim"
+)
+
+
+def build_restart_probe_cell() -> str:
+    """AC-1 + nonce probe cell for --restart-check, run before and after a
+    kernel restart. Deliberately does not call setup()/praxis_main() itself
+    (same trap-1 reasoning as build_fresh_boot_probe_code): auto-setup must
+    already have completed via PYTHONSTARTUP by the time this cell runs.
+    """
+    start_a, start_b = PROBE_START[: len(PROBE_START) // 2], PROBE_START[len(PROBE_START) // 2 :]
+    end_a, end_b = PROBE_END[: len(PROBE_END) // 2], PROBE_END[len(PROBE_END) // 2 :]
+    return textwrap.dedent(
+        f"""
+        import builtins, json
+        RESULT: dict = {{}}
+        try:
+            import praxis_boot
+            RESULT["state"] = getattr(praxis_boot, "state", None)
+            RESULT["kernel_nonce"] = getattr(praxis_boot, "kernel_nonce", None)
+            import pylabrobot
+            from pylabrobot.io.serial import Serial
+            RESULT["serial_is_shim"] = Serial is getattr(builtins, "WebSerial", None)
+        except Exception as e:  # noqa: BLE001
+            RESULT["error"] = f"{{type(e).__name__}}: {{e}}"
+        print({start_a!r} + {start_b!r})
+        print(json.dumps(RESULT))
+        print({end_a!r} + {end_b!r})
+        """
+    ).strip()
+
+
+def _extract_sentinel_json(text: str) -> dict[str, Any]:
+    """Pull the PROBE_START/PROBE_END-delimited JSON blob out of *text*.
+
+    Shared by --restart-check/--autosetup-fault-check cell output, which is
+    read from the notebook MODEL (a cell's stdout stream text), not the DOM --
+    same reasoning as run_probe's page-text sentinel search.
+    """
+    match = re.search(
+        re.escape(PROBE_START) + r"\s*(.*?)\s*" + re.escape(PROBE_END), text, re.DOTALL
+    )
+    if not match:
+        raise NotebookCheckError(
+            f"no sentinel-delimited JSON found in cell output; last 500 chars: {text[-500:]!r}"
+        )
+    return json.loads(match.group(1))
+
+
+def _open_blank_notebook(page: Any, *, timeout_ms: float) -> str:
+    """Create a blank notebook via the contents API and open it with an
+    explicit Python kernel, handling the Select Kernel dialog if it appears
+    (same trap as run_notebook_check: a notebook with no saved kernel
+    preference prompts and silently blocks every later dispatch until
+    accepted). Returns the notebook's server-side path.
+    """
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+    created = page.evaluate(
+        """async () => {
+            try {
+                const model = await window.jupyterapp.serviceManager.contents.newUntitled(
+                    {type: "notebook", path: ""});
+                return {ok: true, path: model.path};
+            } catch (e) {
+                return {ok: false, error: String(e)};
+            }
+        }"""
+    )
+    if not created.get("ok"):
+        raise NotebookCheckError(f"could not create a blank notebook: {created.get('error')!r}")
+    notebook_path = created["path"]
+    LOG.info("harness-created blank notebook at %s", notebook_path)
+
+    opened = page.evaluate(
+        """async (path) => {
+            try {
+                await window.jupyterapp.commands.execute("docmanager:open", {
+                    path, factory: "Notebook", kernel: {name: "python"}});
+                return {ok: true};
+            } catch (e) {
+                return {ok: false, error: String(e)};
+            }
+        }""",
+        notebook_path,
+    )
+    if not opened.get("ok"):
+        raise NotebookCheckError(f"could not open the blank notebook: {opened.get('error')!r}")
+
+    page.wait_for_function(
+        "() => !!document.querySelector('.jp-Notebook')", timeout=timeout_ms
+    )
+    try:
+        page.wait_for_selector(".jp-Dialog", timeout=10_000)
+        LOG.info("kernel-selection dialog present; accepting")
+        page.click(".jp-Dialog .jp-mod-accept")
+        page.wait_for_selector(".jp-Dialog", state="detached", timeout=timeout_ms)
+    except PlaywrightTimeoutError:
+        LOG.info("no kernel-selection dialog appeared")
+
+    page.wait_for_function(
+        """() => {
+            const w = window.jupyterapp?.shell?.currentWidget;
+            return w?.sessionContext?.session?.kernel?.status === 'idle';
+        }""",
+        timeout=timeout_ms,
+    )
+    return notebook_path
+
+
+# ---------------------------------------------------------------------------
+# --persistence-check (spec .praxia/docs/specs/260922_repl-persistence-ladder.md).
+# T8a below: S1-S3 (AC-8, AC-9, AC-13, AC-14, AC-17). T8b (further down,
+# scenarios S4-S10, AC-10/11/12) builds on this same harness.
+#
+# Each scenario runs in its OWN fresh browser context (spec A-8/B-6: "Every
+# scenario starts in a fresh browser context, so IndexedDB, OPFS and
+# localStorage all start empty unless the scenario seeds them"). The harness
+# never uses page.dispatch_event -- every gesture-bound interaction goes
+# through a real page.click() or page.keyboard, because the whole point of
+# D6/AC-9 is proving the product's gesture calls are reachable from REAL
+# user-activation-carrying clicks, not synthetic DOM events (which a headless
+# browser would happily deliver even through an `await`).
+#
+# Stable selectors this harness depends on (T6, panel.js header comment):
+#   #praxis-persistence[data-praxis-tier][data-praxis-excluded]
+#   [data-praxis-action=protect|choose-folder|reconnect|restore|keep-browser-only|toggle-panel]
+#   dialog#praxis-persistence-first-save
+# ---------------------------------------------------------------------------
+
+#: Installed on every persistence-check context (S1-S3 alike). Wraps
+#: `navigator.storage.persist`/`.persisted`, calling through to the real
+#: implementation, and installs the capture/bubble click listeners that
+#: `inClickDispatch` reads (D6 table, browser level). Activation and the
+#: in-click-dispatch flag are captured SYNCHRONOUSLY at call time, before the
+#: wrapped call's promise settles -- a call made after even a short `await`
+#: would still read `userActivation: true` (Chromium's transient activation
+#: lasts seconds), so capturing it post-resolution would prove nothing.
+PERSISTENCE_BASE_INIT_SCRIPT = r"""
+(() => {
+  window.__praxisGestureLog = [];
+  window.__praxisInClickDispatch = false;
+  window.addEventListener('click', () => { window.__praxisInClickDispatch = true; }, true);
+  window.addEventListener('click', () => { window.__praxisInClickDispatch = false; }, false);
+
+  function activation() {
+    return !!(window.navigator.userActivation && window.navigator.userActivation.isActive);
+  }
+
+  const storage = window.navigator && window.navigator.storage;
+  if (storage) {
+    if (typeof storage.persist === 'function') {
+      const origPersist = storage.persist.bind(storage);
+      storage.persist = function () {
+        const userActivation = activation();
+        const inClickDispatch = !!window.__praxisInClickDispatch;
+        return origPersist().then((result) => {
+          window.__praxisGestureLog.push({ api: 'persist', userActivation, inClickDispatch, result });
+          return result;
+        });
+      };
+    }
+    if (typeof storage.persisted === 'function') {
+      const origPersisted = storage.persisted.bind(storage);
+      storage.persisted = function () {
+        const userActivation = activation();
+        const inClickDispatch = !!window.__praxisInClickDispatch;
+        return origPersisted().then((result) => {
+          window.__praxisGestureLog.push({ api: 'persisted', userActivation, inClickDispatch, result });
+          return result;
+        });
+      };
+    }
+  }
+})();
+"""
+
+#: S2 only. Stubs `showDirectoryPicker` with a REAL OPFS subdirectory handle
+#: (AC-10's picker-stub shape, reused here since D6's gesture proof needs a
+#: real FileSystemDirectoryHandle, not a mock) and wraps
+#: `FileSystemHandle.prototype.{queryPermission,requestPermission}` -- adding
+#: them if the browser's OPFS handles don't implement the permission API at
+#: all (`permission_methods_polyfilled`, spec risk table) -- with the
+#: forced-"prompt" test switch. That switch lives ONLY here, never in product
+#: code (B-11): `queryPermission` returns "prompt" while
+#: `localStorage["__praxis_test_force_prompt"] === "1"`, until
+#: `requestPermission` is called, which clears the flag.
+PERSISTENCE_PICKER_STUB_INIT_SCRIPT = r"""
+(() => {
+  window.__praxisPermissionMethodsPolyfilled = false;
+  const proto = window.FileSystemHandle && window.FileSystemHandle.prototype;
+
+  function activation() {
+    return !!(window.navigator.userActivation && window.navigator.userActivation.isActive);
+  }
+
+  if (proto) {
+    if (typeof proto.queryPermission !== 'function') {
+      proto.queryPermission = function () { return Promise.resolve('granted'); };
+      window.__praxisPermissionMethodsPolyfilled = true;
+    }
+    if (typeof proto.requestPermission !== 'function') {
+      proto.requestPermission = function () { return Promise.resolve('granted'); };
+      window.__praxisPermissionMethodsPolyfilled = true;
+    }
+
+    const origQueryPermission = proto.queryPermission;
+    const origRequestPermission = proto.requestPermission;
+
+    proto.queryPermission = function (...args) {
+      const userActivation = activation();
+      const inClickDispatch = !!window.__praxisInClickDispatch;
+      if (window.localStorage.getItem('__praxis_test_force_prompt') === '1') {
+        window.__praxisGestureLog.push({
+          api: 'queryPermission', userActivation, inClickDispatch, result: 'prompt', forced: true,
+        });
+        return Promise.resolve('prompt');
+      }
+      return origQueryPermission.apply(this, args).then((result) => {
+        window.__praxisGestureLog.push({ api: 'queryPermission', userActivation, inClickDispatch, result });
+        return result;
+      });
+    };
+
+    proto.requestPermission = function (...args) {
+      const userActivation = activation();
+      const inClickDispatch = !!window.__praxisInClickDispatch;
+      return origRequestPermission.apply(this, args).then((result) => {
+        window.localStorage.removeItem('__praxis_test_force_prompt');
+        window.__praxisGestureLog.push({ api: 'requestPermission', userActivation, inClickDispatch, result });
+        return result;
+      });
+    };
+  }
+
+  window.showDirectoryPicker = function () {
+    const userActivation = activation();
+    const inClickDispatch = !!window.__praxisInClickDispatch;
+    window.__praxisGestureLog.push({ api: 'showDirectoryPicker', userActivation, inClickDispatch });
+    if (typeof window.__praxisPickerCalled === 'function') {
+      window.__praxisPickerCalled();
+    }
+    return window.navigator.storage.getDirectory().then((root) =>
+      root.getDirectoryHandle('praxis-persist-probe', { create: true }));
+  };
+})();
+"""
+
+#: S3 only. Added AFTER PERSISTENCE_BASE_INIT_SCRIPT so it wins: feature
+#: detection is `window.isSecureContext && typeof win.showDirectoryPicker ===
+#: "function"` (panel.js D5), so deleting the function is enough to make
+#: `fsaSupported` false with no user-agent sniffing involved.
+PERSISTENCE_NO_FSA_INIT_SCRIPT = r"""
+(() => { window.showDirectoryPicker = undefined; })();
+"""
+
+#: How long to wait to prove a selector is ABSENT (S1's repl_entry_has_chip).
+#: Short relative to --timeout: the loader IIFE's pathname check is a
+#: synchronous early return (D2/T6), so if the chip were going to appear it
+#: would within milliseconds, not seconds.
+_PERSISTENCE_ABSENCE_TIMEOUT_MS = 5000
+
+
+def _persistence_seed_notebook_js(path: str) -> str:
+    return (
+        """async () => {
+            try {
+                await window.jupyterapp.serviceManager.contents.save(%s, {
+                    type: "notebook", format: "json",
+                    content: { cells: [], metadata: {}, nbformat: 4, nbformat_minor: 5 },
+                });
+                return { ok: true };
+            } catch (e) {
+                return { ok: false, error: String(e) };
+            }
+        }"""
+        % json.dumps(path)
+    )
+
+
+def _run_persistence_scenario_s1(browser: Any, served: ServedDir, prefix: str, timeout_ms: float) -> dict[str, Any]:
+    """S1 (AC-8): fresh context, no seeding. Chip appears on lab/ before any
+    save, `initial_tier` is read off the `persisted()` wrapper's own log (not
+    just the DOM, per T8a), and repl/ never gets a chip."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    context = browser.new_context()
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        try:
+            page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+            out["indicator_present_before_save"] = True
+        except PlaywrightTimeoutError:
+            out["indicator_present_before_save"] = False
+
+        if out["indicator_present_before_save"]:
+            try:
+                page.wait_for_function(
+                    "() => (window.__praxisGestureLog||[]).some(e => e.api === 'persisted')",
+                    timeout=timeout_ms,
+                )
+            except PlaywrightTimeoutError:
+                pass
+            gesture_log = page.evaluate("() => window.__praxisGestureLog || []")
+            persisted_entries = [e for e in gesture_log if e.get("api") == "persisted"]
+            out["initial_tier"] = (
+                ("L1" if persisted_entries[-1].get("result") is True else "L0")
+                if persisted_entries
+                else None
+            )
+            out["s1_persisted_log"] = persisted_entries
+        else:
+            out["initial_tier"] = None
+
+        repl_url = f"http://127.0.0.1:{served.port}{prefix}repl/index.html"
+        page2 = context.new_page()
+        page2.goto(repl_url, wait_until="load", timeout=timeout_ms)
+        try:
+            page2.wait_for_selector(
+                "#praxis-persistence", state="attached", timeout=_PERSISTENCE_ABSENCE_TIMEOUT_MS
+            )
+            out["repl_entry_has_chip"] = True
+        except PlaywrightTimeoutError:
+            out["repl_entry_has_chip"] = False
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s2(browser: Any, served: ServedDir, prefix: str, timeout_ms: float) -> dict[str, Any]:
+    """S2 (AC-9, AC-14): fresh context with the OPFS picker stub, drive seeded
+    with persist-probe.ipynb. Clicks Protect, then Choose working folder;
+    sets the forced-prompt flag, reloads, and clicks Reconnect. No content
+    assertions (that is T8b's job) -- only gesture-synchrony and storage
+    hygiene."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    picker_calls = {"n": 0}
+    context = browser.new_context()
+
+    def _on_picker_called() -> None:
+        picker_calls["n"] += 1
+
+    context.expose_function("__praxisPickerCalled", _on_picker_called)
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    context.add_init_script(PERSISTENCE_PICKER_STUB_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+        seeded = page.evaluate(_persistence_seed_notebook_js("persist-probe.ipynb"))
+        out["seed_ok"] = bool(seeded.get("ok"))
+        out["seed_error"] = seeded.get("error")
+
+        # -- Protect ----------------------------------------------------
+        page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click("[data-praxis-action=protect]", timeout=timeout_ms)
+        try:
+            page.wait_for_function(
+                "() => (window.__praxisGestureLog||[]).some(e => e.api === 'persist')",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        page.wait_for_timeout(300)  # let core.js's own .then()/notify()/render() land
+
+        log_before_choose = page.evaluate("() => window.__praxisGestureLog || []")
+        persist_entries = [e for e in log_before_choose if e.get("api") == "persist"]
+        out["persist_returned"] = persist_entries[-1].get("result") if persist_entries else None
+        out["tier_after_persist"] = page.get_attribute("#praxis-persistence", "data-praxis-tier")
+
+        # -- Choose working folder ---------------------------------------
+        page.click("[data-praxis-action=choose-folder]", timeout=timeout_ms)
+        try:
+            page.wait_for_function(
+                "() => (window.__praxisGestureLog||[]).some(e => e.api === 'showDirectoryPicker')",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        try:
+            page.wait_for_function(
+                "() => document.querySelector('#praxis-persistence')"
+                "?.getAttribute('data-praxis-tier') === 'L2'",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+
+        out["permission_methods_polyfilled"] = page.evaluate(
+            "() => !!window.__praxisPermissionMethodsPolyfilled"
+        )
+        log_before_reload = page.evaluate("() => window.__praxisGestureLog || []")
+
+        # -- Force prompt, reload, Reconnect -----------------------------
+        page.evaluate("() => window.localStorage.setItem('__praxis_test_force_prompt', '1')")
+        page.reload(wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        try:
+            page.wait_for_function(
+                "() => document.querySelector('#praxis-persistence')"
+                "?.getAttribute('data-praxis-tier') === 'L2-paused'",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        out["tier_on_prompt"] = page.get_attribute("#praxis-persistence", "data-praxis-tier")
+
+        page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click("[data-praxis-action=reconnect]", timeout=timeout_ms)
+        try:
+            page.wait_for_function(
+                "() => (window.__praxisGestureLog||[]).some(e => e.api === 'requestPermission')",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        page.wait_for_timeout(300)
+
+        log_after_reload = page.evaluate("() => window.__praxisGestureLog || []")
+        # __praxisGestureLog is a page-realm global: page.reload() replaces the
+        # JS realm, so the array (and anything logged before it) is gone --
+        # merge the pre- and post-reload halves here, in Python, rather than
+        # trying to smuggle state across the reload inside the page.
+        out["gesture_log"] = log_before_reload + log_after_reload
+        out["picker_calls"] = picker_calls["n"]
+
+        # -- AC-14 storage hygiene, evaluated at the end of S2 ------------
+        db_names = page.evaluate(
+            "async () => (await indexedDB.databases()).map((d) => d.name)"
+        )
+        out["indexeddb_names"] = db_names
+        out["hygiene_no_legacy_jupyterlite_dbs"] = not any(
+            re.match(r"^JupyterLite Storage - ", n or "") for n in (db_names or [])
+        )
+        out["hygiene_one_praxis_repl_contents"] = (db_names or []).count("praxis-repl-contents") == 1
+        out["hygiene_praxis_repl_persistence_present"] = "praxis-repl-persistence" in (db_names or [])
+
+        probe = page.evaluate(
+            """async () => {
+                try {
+                    const model = await window.jupyterapp.serviceManager.contents.get(
+                        "persist-probe.ipynb", { content: true });
+                    return { ok: true, has_content: model.content !== undefined && model.content !== null };
+                } catch (e) {
+                    return { ok: false, error: String(e) };
+                }
+            }"""
+        )
+        out["hygiene_probe_readable"] = bool(probe.get("ok") and probe.get("has_content"))
+        out["hygiene_probe_error"] = probe.get("error")
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s3(browser: Any, served: ServedDir, prefix: str, timeout_ms: float) -> dict[str, Any]:
+    """S3 (AC-13): fresh context whose init script deletes
+    `window.showDirectoryPicker` -- the non-FSA / D5 degraded-browser path.
+    Also drives a real explicit save (via the harness's own
+    `_open_blank_notebook`, already used by --autosetup-fault-check /
+    --restart-check) to prove the first-save gate's modal model excludes the
+    "Choose working folder" option when `pickDirectory === null`."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    context = browser.new_context()
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    context.add_init_script(PERSISTENCE_NO_FSA_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        try:
+            page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+            out["nofsa_indicator_present"] = True
+        except PlaywrightTimeoutError:
+            out["nofsa_indicator_present"] = False
+
+        if out["nofsa_indicator_present"]:
+            out["nofsa_l2_controls"] = page.locator("[data-praxis-action=choose-folder]").count()
+            panel_text = page.eval_on_selector("#praxis-persistence", "(el) => el.textContent") or ""
+            out["nofsa_message_mentions_chromium"] = "Chromium" in panel_text
+        else:
+            out["nofsa_l2_controls"] = None
+            out["nofsa_message_mentions_chromium"] = None
+
+        modal_choose_absent = None
+        if out["nofsa_indicator_present"]:
+            try:
+                _open_blank_notebook(page, timeout_ms=timeout_ms)
+                page.evaluate(
+                    """async () => {
+                        try {
+                            await window.jupyterapp.commands.execute("docmanager:save");
+                        } catch (e) {
+                            /* the gate is driven by evt.result settling either way (D4) */
+                        }
+                    }"""
+                )
+                page.wait_for_selector(
+                    "dialog#praxis-persistence-first-save[open]", timeout=timeout_ms
+                )
+                modal_choose_absent = (
+                    page.locator(
+                        "dialog#praxis-persistence-first-save [data-praxis-action=choose-folder]"
+                    ).count()
+                    == 0
+                )
+            except (PlaywrightTimeoutError, NotebookCheckError) as e:
+                out["s3_modal_trigger_error"] = f"{type(e).__name__}: {e}"
+        out["nofsa_modal_choose_absent"] = modal_choose_absent
+    finally:
+        context.close()
+    return out
+
+
+# ---------------------------------------------------------------------------
+# T8b: scenarios S4-S10 (AC-10, AC-11, AC-12), built on T8a's harness above.
+#
+# Same discipline as T8a (D6/AC-9, and the T8b dispatch's own instruction):
+# every gesture-bound or UI interaction is a real page.click() / page.keyboard
+# call, never page.dispatch_event. Every storage/content assertion compares
+# BY CONTENT (parsed notebook `.cells`, or exact bytes where the assertion is
+# specifically about bytes staying unchanged), never by presence alone.
+# ---------------------------------------------------------------------------
+
+
+def _persistence_seed_notebook_with_source_js(path: str, source: str) -> str:
+    """JS to seed *path* as a notebook with exactly ONE code cell whose
+    source is *source*. S1-S3's `_persistence_seed_notebook_js` seeds an
+    empty-cells notebook, which is enough for hygiene/gesture checks that
+    never edit anything -- T8b scenarios open, EDIT and re-save a cell, so
+    they need something to click into and replace.
+    """
+    content = {
+        "cells": [
+            {
+                "cell_type": "code",
+                "source": [source],
+                "metadata": {},
+                "outputs": [],
+                "execution_count": None,
+            }
+        ],
+        "metadata": {},
+        "nbformat": 4,
+        "nbformat_minor": 5,
+    }
+    return (
+        """async () => {
+            try {
+                await window.jupyterapp.serviceManager.contents.save(%s, {
+                    type: "notebook", format: "json",
+                    content: %s,
+                });
+                return { ok: true };
+            } catch (e) {
+                return { ok: false, error: String(e) };
+            }
+        }"""
+        % (json.dumps(path), json.dumps(content))
+    )
+
+
+#: Seed arbitrary files (by TEXT content) into the picker stub's real OPFS
+#: subdirectory (`praxis-persist-probe`, the same one
+#: `PERSISTENCE_PICKER_STUB_INIT_SCRIPT`'s `showDirectoryPicker` stub hands
+#: back). Called with `page.evaluate(_PERSISTENCE_OPFS_WRITE_FILES_JS,
+#: {"sub/a.ipynb": "...", ".hidden": "..."})` -- BEFORE the picker/choose
+#: click, so the seeded bytes are already "on disk" the moment core.js binds
+#: the folder. Creates parent directories and dot-prefixed entries alike;
+#: dot-prefixed SKIPPING is the product's job (D1), not the seed's.
+_PERSISTENCE_OPFS_WRITE_FILES_JS = r"""
+async (files) => {
+    try {
+        const root = await navigator.storage.getDirectory();
+        const probeDir = await root.getDirectoryHandle('praxis-persist-probe', { create: true });
+        for (const [path, text] of Object.entries(files)) {
+            const segments = path.split('/');
+            const fileName = segments.pop();
+            let dir = probeDir;
+            for (const seg of segments) {
+                dir = await dir.getDirectoryHandle(seg, { create: true });
+            }
+            const fileHandle = await dir.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(text);
+            await writable.close();
+        }
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, error: String(e) };
+    }
+}
+"""
+
+#: Read one file's TEXT back out of the same OPFS probe directory. Called
+#: with `page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "sub/a.ipynb")`.
+#: Returns `{exists: false, text: null}` for a genuinely absent path (never
+#: raises), so callers can compare "before" vs "after" without special-casing
+#: a first read.
+_PERSISTENCE_OPFS_READ_FILE_JS = r"""
+async (path) => {
+    try {
+        const root = await navigator.storage.getDirectory();
+        const probeDir = await root.getDirectoryHandle('praxis-persist-probe', { create: true });
+        const segments = path.split('/');
+        const fileName = segments.pop();
+        let dir = probeDir;
+        for (const seg of segments) {
+            dir = await dir.getDirectoryHandle(seg, { create: false });
+        }
+        const fileHandle = await dir.getFileHandle(fileName, { create: false });
+        const file = await fileHandle.getFile();
+        const text = await file.text();
+        return { exists: true, text };
+    } catch (e) {
+        if (e && (e.name === 'NotFoundError' || e.name === 'InvalidStateError')) {
+            return { exists: false, text: null };
+        }
+        return { exists: false, text: null, error: String(e) };
+    }
+}
+"""
+
+#: Read the DRIVE's copy of a path through the real contents API (never the
+#: DOM). Called with `page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "a.ipynb")`.
+_PERSISTENCE_DRIVE_GET_JS = r"""
+async (path) => {
+    try {
+        const model = await window.jupyterapp.serviceManager.contents.get(path, { content: true });
+        return { exists: true, content: model.content, format: model.format };
+    } catch (e) {
+        return { exists: false, content: null, error: String(e) };
+    }
+}
+"""
+
+
+def _notebook_json_text(source: str) -> str:
+    """Build standalone notebook JSON text used to seed OPFS "on-disk" bytes
+    directly (S5, S7). This is NOT necessarily byte-identical to what the
+    product's `codec.js` would emit for the same cells -- scenarios that need
+    that never compare raw bytes across the OPFS/drive boundary; they compare
+    parsed `.cells` (`_cells_match`) instead. The one place raw-byte equality
+    matters (S5's `differs_disk_untouched_after_save`) compares this
+    function's own output against itself before/after a skipped mirror
+    write, never against the product's serialization.
+    """
+    content = {
+        "cells": [
+            {
+                "cell_type": "code",
+                "source": [source],
+                "metadata": {},
+                "outputs": [],
+                "execution_count": None,
+            }
+        ],
+        "metadata": {},
+        "nbformat": 4,
+        "nbformat_minor": 5,
+    }
+    return json.dumps(content, indent=1) + "\n"
+
+
+def _cells_match(opfs_text: str | None, drive_content: Any) -> bool:
+    """Compare a notebook BY CONTENT (`.cells`), the comparison every T8b
+    scenario uses except S5's byte-exact "unchanged" check."""
+    if opfs_text is None or not isinstance(drive_content, dict):
+        return False
+    try:
+        disk = json.loads(opfs_text)
+    except (TypeError, ValueError):
+        return False
+    if not isinstance(disk, dict):
+        return False
+    return disk.get("cells") == drive_content.get("cells")
+
+
+def _decode_notebook_content(content: Any, fmt: str | None) -> dict[str, Any] | None:
+    """Normalize whatever `contents.get(..., {content:true})` returns for a
+    notebook into a parsed dict, regardless of which `format` the backend
+    chose. Measured empirically (S10): our own save/mirror paths return
+    `format="json"` with `content` already parsed, but JupyterLite's OWN
+    file-browser Upload path returns `format="base64"` with `content` as a
+    base64 string for a freshly-uploaded .ipynb -- so a caller that assumes
+    "json" and does `content.get(...)` crashes on a plain str. This decodes
+    either shape (and a bare "text" JSON string) before comparing, which is
+    still an exact-content comparison, just format-agnostic."""
+    if isinstance(content, dict):
+        return content
+    if not isinstance(content, str):
+        return None
+    raw = content
+    if fmt == "base64":
+        try:
+            raw = base64.b64decode(content).decode("utf-8")
+        except Exception:
+            return None
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _cell_source_text(cells: list[dict[str, Any]] | None, index: int = 0) -> str:
+    """nbformat allows a cell's `source` to be a string OR a list of
+    strings -- normalize either shape to one string for marker checks."""
+    if not cells or index >= len(cells):
+        return ""
+    source = cells[index].get("source")
+    if isinstance(source, list):
+        return "".join(source)
+    return source or ""
+
+
+def _dialog_open(page: Any) -> bool:
+    """Whether the first-save gate `<dialog>` is currently open. Polled after
+    EVERY step of S6 (`gate_never_opened_s6`) and used directly by S8/S9."""
+    return bool(
+        page.evaluate(
+            "() => { const d = document.querySelector('dialog#praxis-persistence-first-save');"
+            " return !!(d && d.open); }"
+        )
+    )
+
+
+def _poll_until(fn: Any, *, timeout_s: float = 10.0, interval_s: float = 0.25) -> Any:
+    """Poll `fn()` until truthy or *timeout_s* elapses; returns the last
+    value. Used wherever a T8b assertion depends on core.js's single ordered
+    write chain (D7) settling asynchronously, with no DOM signal to
+    `wait_for_selector` on (e.g. a disk write landing after `contents.save`).
+    """
+    deadline = time.monotonic() + timeout_s
+    result = fn()
+    while not result and time.monotonic() < deadline:
+        time.sleep(interval_s)
+        result = fn()
+    return result
+
+
+def _poll_drive_cell_source_contains(
+    page: Any, path: str, marker: str, *, timeout_s: float
+) -> dict[str, Any]:
+    """Poll `contents.get(path)` until its first cell's source contains
+    *marker*, or timeout. Returns the last drive-get result either way, so a
+    timeout still leaves callers something to inspect/report rather than a
+    bare None."""
+    last: dict[str, Any] = {}
+
+    def _check() -> bool:
+        nonlocal last
+        last = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, path)
+        content = last.get("content") or {}
+        return marker in _cell_source_text(content.get("cells"))
+
+    _poll_until(_check, timeout_s=timeout_s)
+    return last
+
+
+def _open_existing_notebook(page: Any, path: str, *, timeout_ms: float) -> None:
+    """Open an ALREADY-SEEDED notebook at *path* via `docmanager:open` (the
+    same real JupyterLab command `_open_blank_notebook` uses after creation),
+    handling the Select Kernel dialog if it appears. Never creates the file:
+    callers seed it first via `_persistence_seed_notebook_with_source_js` /
+    `_persistence_seed_notebook_js`. Does not wait for kernel-idle -- T8b only
+    ever edits cell TEXT and saves, never runs a cell, so there is nothing to
+    wait for a live kernel for."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+    opened = page.evaluate(
+        """async (path) => {
+            try {
+                await window.jupyterapp.commands.execute("docmanager:open", {
+                    path, factory: "Notebook", kernel: {name: "python"}});
+                return {ok: true};
+            } catch (e) {
+                return {ok: false, error: String(e)};
+            }
+        }""",
+        path,
+    )
+    if not opened.get("ok"):
+        raise NotebookCheckError(f"could not open {path!r}: {opened.get('error')!r}")
+    page.wait_for_function("() => !!document.querySelector('.jp-Notebook')", timeout=timeout_ms)
+    try:
+        page.wait_for_selector(".jp-Dialog", timeout=10_000)
+        LOG.info("kernel-selection dialog present for %s; accepting", path)
+        page.click(".jp-Dialog .jp-mod-accept")
+        page.wait_for_selector(".jp-Dialog", state="detached", timeout=timeout_ms)
+    except PlaywrightTimeoutError:
+        LOG.info("no kernel-selection dialog appeared for %s", path)
+
+
+def _replace_first_cell_source(page: Any, new_source: str, *, timeout_ms: float) -> None:
+    """Click into the notebook's first cell editor and replace its whole
+    source with *new_source* -- real page.click() + page.keyboard only,
+    never dispatchEvent (same discipline as D6/AC-9)."""
+    loc = page.locator(".jp-Notebook .jp-CodeCell .cm-content").first
+    loc.wait_for(state="visible", timeout=timeout_ms)
+    loc.click()
+    page.keyboard.press("Control+a")
+    page.keyboard.type(new_source)
+
+
+def _run_persistence_scenario_s4(
+    browser: Any, served: ServedDir, prefix: str, timeout_ms: float
+) -> dict[str, Any]:
+    """S4 (AC-10): fresh context, drive seeded with persist-probe.ipynb (one
+    editable cell), OPFS starts empty. Binds via a real panel click, checks
+    the mirror BY CONTENT right after the bind and again after a real
+    Control+S resave, then reloads and proves rehydration needs no new
+    picker call (and rebinds to the SAME folder name)."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    picker_calls = {"n": 0}
+    context = browser.new_context()
+
+    def _on_picker_called() -> None:
+        picker_calls["n"] += 1
+
+    context.expose_function("__praxisPickerCalled", _on_picker_called)
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    context.add_init_script(PERSISTENCE_PICKER_STUB_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+        seeded = page.evaluate(_persistence_seed_notebook_with_source_js("persist-probe.ipynb", "s4-before"))
+        out["seed_ok"] = bool(seeded.get("ok"))
+        out["seed_error"] = seeded.get("error")
+
+        page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click("[data-praxis-action=choose-folder]", timeout=timeout_ms)
+        page.wait_for_function(
+            "() => document.querySelector('#praxis-persistence')"
+            "?.getAttribute('data-praxis-tier') === 'L2'",
+            timeout=timeout_ms,
+        )
+
+        disk = page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb")
+        drive = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "persist-probe.ipynb")
+        out["mirror_after_choose_matches"] = _cells_match(disk.get("text"), drive.get("content"))
+        out["mirror_after_choose_disk_exists"] = disk.get("exists")
+        out["mirror_after_choose_drive_exists"] = drive.get("exists")
+
+        _open_existing_notebook(page, "persist-probe.ipynb", timeout_ms=timeout_ms)
+        _replace_first_cell_source(page, "s4-after", timeout_ms=timeout_ms)
+        page.keyboard.press("Control+s")
+        drive_after_resave = _poll_drive_cell_source_contains(
+            page, "persist-probe.ipynb", "s4-after", timeout_s=timeout_ms / 1000
+        )
+
+        def _resave_mirrored() -> bool:
+            d = page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb")
+            return _cells_match(d.get("text"), drive_after_resave.get("content"))
+
+        out["mirror_after_resave_matches"] = bool(
+            _poll_until(_resave_mirrored, timeout_s=timeout_ms / 1000)
+        )
+
+        chip_text_before_reload = (
+            page.eval_on_selector("[data-praxis-action=toggle-panel]", "(el) => el.textContent") or ""
+        )
+        out["folder_name_before_reload"] = chip_text_before_reload
+
+        page.reload(wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        try:
+            page.wait_for_function(
+                "() => document.querySelector('#praxis-persistence')"
+                "?.getAttribute('data-praxis-tier') === 'L2'",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        out["tier_after_reload"] = page.get_attribute("#praxis-persistence", "data-praxis-tier")
+        out["picker_calls"] = picker_calls["n"]
+        chip_text_after_reload = (
+            page.eval_on_selector("[data-praxis-action=toggle-panel]", "(el) => el.textContent") or ""
+        )
+        out["folder_name_after_reload"] = chip_text_after_reload
+        out["rehydrated_without_picker"] = picker_calls["n"] == 1 and out["tier_after_reload"] == "L2"
+        out["rehydrated_folder_name_matches"] = (
+            "praxis-persist-probe" in chip_text_before_reload
+            and "praxis-persist-probe" in chip_text_after_reload
+        )
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s5(
+    browser: Any, served: ServedDir, prefix: str, timeout_ms: float
+) -> dict[str, Any]:
+    """S5 (AC-10, D7 "differs on disk"): fresh context. Before choosing a
+    folder, OPFS praxis-persist-probe/ is seeded with persist-probe.ipynb
+    holding DIFFERENT content from the drive's own seeded version, so bulk
+    sync must exclude it (never overwrite it). A real, forced explicit save
+    of the drive file afterwards must still leave the disk bytes untouched;
+    only a real click on Replace disk copy may write them."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    context = browser.new_context()
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    context.add_init_script(PERSISTENCE_PICKER_STUB_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+        opfs_before = _notebook_json_text("s5-on-disk-before-choose")
+        seed_opfs = page.evaluate(_PERSISTENCE_OPFS_WRITE_FILES_JS, {"persist-probe.ipynb": opfs_before})
+        out["seed_opfs_ok"] = bool(seed_opfs.get("ok"))
+        out["seed_opfs_error"] = seed_opfs.get("error")
+
+        seeded = page.evaluate(
+            _persistence_seed_notebook_with_source_js("persist-probe.ipynb", "s5-drive-version")
+        )
+        out["seed_drive_ok"] = bool(seeded.get("ok"))
+        out["seed_drive_error"] = seeded.get("error")
+
+        page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click("[data-praxis-action=choose-folder]", timeout=timeout_ms)
+
+        def _excluded_one() -> bool:
+            return page.get_attribute("#praxis-persistence", "data-praxis-excluded") == "1"
+
+        _poll_until(_excluded_one, timeout_s=timeout_ms / 1000)
+        out["excluded_after_choose"] = page.get_attribute("#praxis-persistence", "data-praxis-excluded")
+        chip_text = page.eval_on_selector("[data-praxis-action=toggle-panel]", "(el) => el.textContent") or ""
+        out["differs_excluded"] = out["excluded_after_choose"] == "1" and "(1 not mirrored)" in chip_text
+
+        disk_before_save = page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb")
+
+        _open_existing_notebook(page, "persist-probe.ipynb", timeout_ms=timeout_ms)
+        # Force real dirtiness (a no-op net edit) so the explicit save below
+        # is a genuine content-changing save, not a skipped no-op save --
+        # the exclusion must hold even though a real fileChanged "save"
+        # fires.
+        cell = page.locator(".jp-Notebook .jp-CodeCell .cm-content").first
+        cell.wait_for(state="visible", timeout=timeout_ms)
+        cell.click()
+        page.keyboard.press("End")
+        page.keyboard.type(" ")
+        page.keyboard.press("Backspace")
+        page.keyboard.press("Control+s")
+        page.wait_for_timeout(800)  # give the (must-be-skipped) mirror chain a chance to run
+
+        disk_after_save = page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb")
+        out["differs_disk_untouched_after_save"] = (
+            disk_after_save.get("text") == disk_before_save.get("text") == opfs_before
+        )
+
+        panel_hidden = page.eval_on_selector("#praxis-persistence > div", "(el) => el.hidden")
+        if panel_hidden:
+            page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click(
+            '[data-praxis-action=replace-disk-copy][data-praxis-path="persist-probe.ipynb"]',
+            timeout=timeout_ms,
+        )
+
+        def _excluded_zero() -> bool:
+            return page.get_attribute("#praxis-persistence", "data-praxis-excluded") == "0"
+
+        _poll_until(_excluded_zero, timeout_s=timeout_ms / 1000)
+        out["excluded_after_replace"] = page.get_attribute("#praxis-persistence", "data-praxis-excluded")
+
+        disk_after_replace = page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb")
+        drive_after_replace = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "persist-probe.ipynb")
+        out["replace_writes"] = out["excluded_after_replace"] == "0" and _cells_match(
+            disk_after_replace.get("text"), drive_after_replace.get("content")
+        )
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s6(
+    browser: Any, served: ServedDir, prefix: str, timeout_ms: float
+) -> dict[str, Any]:
+    """S6 (AC-10, B-1/B-3): fresh context, drive seeded with
+    persist-probe.ipynb. Binds through the PANEL's Choose working folder
+    before any save (B-3: this alone sets the ack to "folder"), forces
+    queryPermission to "prompt", reloads, makes a real explicit Control+S
+    save while paused (the pending set must persist it), reloads again with
+    the flag still set, then Reconnects with a real click. The first-save
+    gate dialog is polled after EVERY step -- it must never open
+    (gate_never_opened_s6), because the ack was already set by the bind."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    dialog_checks: list[bool] = []
+    context = browser.new_context()
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    context.add_init_script(PERSISTENCE_PICKER_STUB_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+        dialog_checks.append(_dialog_open(page))
+
+        seeded = page.evaluate(_persistence_seed_notebook_with_source_js("persist-probe.ipynb", "s6-initial"))
+        out["seed_ok"] = bool(seeded.get("ok"))
+        out["seed_error"] = seeded.get("error")
+
+        # -- bind through the panel, before any save (B-3) --------------------
+        page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click("[data-praxis-action=choose-folder]", timeout=timeout_ms)
+        page.wait_for_function(
+            "() => document.querySelector('#praxis-persistence')"
+            "?.getAttribute('data-praxis-tier') === 'L2'",
+            timeout=timeout_ms,
+        )
+        dialog_checks.append(_dialog_open(page))
+
+        disk_before_edit = page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb")
+        out["disk_after_bind_exists"] = disk_before_edit.get("exists")
+
+        # -- force "prompt", reload --------------------------------------------
+        page.evaluate("() => window.localStorage.setItem('__praxis_test_force_prompt', '1')")
+        page.reload(wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        try:
+            page.wait_for_function(
+                "() => document.querySelector('#praxis-persistence')"
+                "?.getAttribute('data-praxis-tier') === 'L2-paused'",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        out["tier_on_prompt"] = page.get_attribute("#praxis-persistence", "data-praxis-tier")
+        dialog_checks.append(_dialog_open(page))
+
+        # -- explicit Control+S save while paused ------------------------------
+        _open_existing_notebook(page, "persist-probe.ipynb", timeout_ms=timeout_ms)
+        _replace_first_cell_source(page, "s6-edited", timeout_ms=timeout_ms)
+        page.keyboard.press("Control+s")
+        drive_after_edit_save = _poll_drive_cell_source_contains(
+            page, "persist-probe.ipynb", "s6-edited", timeout_s=timeout_ms / 1000
+        )
+        dialog_checks.append(_dialog_open(page))  # right after Control+S (D4)
+
+        out["paused_save_not_written"] = (
+            page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb").get("text")
+            == disk_before_edit.get("text")
+        )
+
+        # -- reload again, flag still set: pending survives ---------------------
+        page.reload(wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        try:
+            page.wait_for_function(
+                "() => document.querySelector('#praxis-persistence')"
+                "?.getAttribute('data-praxis-tier') === 'L2-paused'",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        out["tier_after_second_reload"] = page.get_attribute("#praxis-persistence", "data-praxis-tier")
+        out["pending_survives_reload"] = out["tier_after_second_reload"] == "L2-paused"
+        dialog_checks.append(_dialog_open(page))
+
+        # -- real click Reconnect -----------------------------------------------
+        page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click("[data-praxis-action=reconnect]", timeout=timeout_ms)
+        dialog_checks.append(_dialog_open(page))  # right after the click, during the flush
+        try:
+            page.wait_for_function(
+                "() => document.querySelector('#praxis-persistence')"
+                "?.getAttribute('data-praxis-tier') === 'L2'",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        out["tier_after_reconnect"] = page.get_attribute("#praxis-persistence", "data-praxis-tier")
+        dialog_checks.append(_dialog_open(page))
+
+        disk_after_reconnect = page.evaluate(_PERSISTENCE_OPFS_READ_FILE_JS, "persist-probe.ipynb")
+        out["reconnect_flushed_matches"] = out["tier_after_reconnect"] == "L2" and _cells_match(
+            disk_after_reconnect.get("text"), drive_after_edit_save.get("content")
+        )
+
+        out["dialog_checks"] = dialog_checks
+        out["gate_never_opened_s6"] = not any(dialog_checks)
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s7(
+    browser: Any, served: ServedDir, prefix: str, timeout_ms: float
+) -> dict[str, Any]:
+    """S7 (AC-10, restore): fresh context with a bound folder. OPFS is seeded
+    with sub/restore-me.ipynb and a dot-prefixed .hidden file (both absent
+    from the drive); the drive holds persist-probe.ipynb whose content
+    differs from the disk copy (bulk sync excludes it -- restore must still
+    never overwrite a drive-present path, excluded or not)."""
+    out: dict[str, Any] = {}
+    context = browser.new_context()
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    context.add_init_script(PERSISTENCE_PICKER_STUB_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+        restore_me_text = _notebook_json_text("restore-me-content")
+        opfs_probe_text = _notebook_json_text("s7-on-disk")
+        seed_opfs = page.evaluate(
+            _PERSISTENCE_OPFS_WRITE_FILES_JS,
+            {
+                "sub/restore-me.ipynb": restore_me_text,
+                ".hidden": "should not restore",
+                "persist-probe.ipynb": opfs_probe_text,
+            },
+        )
+        out["seed_opfs_ok"] = bool(seed_opfs.get("ok"))
+        out["seed_opfs_error"] = seed_opfs.get("error")
+
+        seeded = page.evaluate(_persistence_seed_notebook_with_source_js("persist-probe.ipynb", "s7-drive"))
+        out["seed_drive_ok"] = bool(seeded.get("ok"))
+        drive_probe_before = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "persist-probe.ipynb")
+
+        # -- bind (starting state: "fresh context with a bound folder") --------
+        page.click("[data-praxis-action=toggle-panel]", timeout=timeout_ms)
+        page.click("[data-praxis-action=choose-folder]", timeout=timeout_ms)
+
+        def _excluded_one() -> bool:
+            return page.get_attribute("#praxis-persistence", "data-praxis-excluded") == "1"
+
+        _poll_until(_excluded_one, timeout_s=timeout_ms / 1000)
+        out["excluded_after_choose"] = page.get_attribute("#praxis-persistence", "data-praxis-excluded")
+
+        # -- real click Restore ---------------------------------------------------
+        page.click("[data-praxis-action=restore]", timeout=timeout_ms)
+
+        def _restored() -> bool:
+            d = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "sub/restore-me.ipynb")
+            return bool(d.get("exists"))
+
+        _poll_until(_restored, timeout_s=timeout_ms / 1000)
+
+        drive_restored = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "sub/restore-me.ipynb")
+        out["restore_matches"] = _cells_match(restore_me_text, drive_restored.get("content"))
+
+        drive_hidden = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, ".hidden")
+        out["restore_skipped_dotfile"] = drive_hidden.get("exists") is False
+
+        drive_probe_after = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "persist-probe.ipynb")
+        out["restore_did_not_overwrite"] = drive_probe_after.get("content") == drive_probe_before.get("content")
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s8(
+    browser: Any, served: ServedDir, prefix: str, timeout_ms: float
+) -> dict[str, Any]:
+    """S8 (AC-11): fresh context, drive seeded with persist-probe.ipynb (one
+    editable cell). A real click into the notebook plus a real Control+S
+    opens the first-save gate modal. Proves Escape (twice -- Chromium's
+    CloseWatcher makes the SECOND consecutive Escape non-cancelable) and a
+    backdrop click do NOT close it, and that a real choose-folder click
+    does."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    context = browser.new_context()
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    context.add_init_script(PERSISTENCE_PICKER_STUB_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+        seeded = page.evaluate(_persistence_seed_notebook_with_source_js("persist-probe.ipynb", ""))
+        out["seed_ok"] = bool(seeded.get("ok"))
+
+        _open_existing_notebook(page, "persist-probe.ipynb", timeout_ms=timeout_ms)
+        _replace_first_cell_source(page, "s8-marker", timeout_ms=timeout_ms)
+        page.keyboard.press("Control+s")
+
+        page.wait_for_selector("dialog#praxis-persistence-first-save[open]", timeout=timeout_ms)
+        out["modal_open"] = bool(
+            page.evaluate(
+                "() => document.querySelector('dialog#praxis-persistence-first-save')?.open === true"
+            )
+        )
+        out["modal_focus_inside"] = bool(
+            page.evaluate(
+                "() => { const d = document.querySelector('dialog#praxis-persistence-first-save');"
+                " return !!(d && d.contains(document.activeElement)); }"
+            )
+        )
+
+        drive_after_first_save = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "persist-probe.ipynb")
+        out["save_landed_before_modal"] = "s8-marker" in _cell_source_text(
+            (drive_after_first_save.get("content") or {}).get("cells")
+        )
+
+        # -- Escape x2: the SECOND press is non-cancelable (CloseWatcher); the
+        # dialog must re-arm itself on `close` when no choice is recorded.
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(200)
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(200)
+        out["modal_survives_double_escape"] = bool(
+            page.evaluate(
+                "() => { const d = document.querySelector('dialog#praxis-persistence-first-save');"
+                " return !!(d && d.open && d.contains(document.activeElement)); }"
+            )
+        )
+
+        # -- backdrop click: no listener closes the dialog on it -----------------
+        page.mouse.click(2, 2)
+        page.wait_for_timeout(200)
+        out["modal_survives_backdrop_click"] = bool(
+            page.evaluate(
+                "() => document.querySelector('dialog#praxis-persistence-first-save')?.open === true"
+            )
+        )
+
+        # -- choosing a folder (real click) closes it -----------------------------
+        page.click(
+            "dialog#praxis-persistence-first-save [data-praxis-action=choose-folder]",
+            timeout=timeout_ms,
+        )
+        try:
+            page.wait_for_selector(
+                "dialog#praxis-persistence-first-save[open]", state="detached", timeout=timeout_ms
+            )
+            out["modal_closed"] = True
+        except PlaywrightTimeoutError:
+            out["modal_closed"] = not bool(
+                page.evaluate(
+                    "() => document.querySelector('dialog#praxis-persistence-first-save')?.open === true"
+                )
+            )
+
+        # -- a second explicit save must NOT reopen it -----------------------------
+        try:
+            page.wait_for_function(
+                "() => document.querySelector('#praxis-persistence')"
+                "?.getAttribute('data-praxis-tier') === 'L2'",
+                timeout=timeout_ms,
+            )
+        except PlaywrightTimeoutError:
+            pass
+        page.click(".jp-Notebook .jp-CodeCell .cm-content", timeout=timeout_ms)
+        page.keyboard.press("Control+s")
+        page.wait_for_timeout(500)
+        out["modal_reopened"] = bool(
+            page.evaluate(
+                "() => document.querySelector('dialog#praxis-persistence-first-save')?.open === true"
+            )
+        )
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s9(
+    browser: Any, served: ServedDir, prefix: str, timeout_ms: float
+) -> dict[str, Any]:
+    """S9 (AC-11): fresh context. Create Untitled.ipynb via File -> New ->
+    Notebook (real menu clicks, not the harness's contents.newUntitled
+    shortcut used elsewhere), type a marker into the first cell, and press a
+    real Control+S. JupyterLab's rename-untitled-on-save dialog must appear
+    BEFORE the gate modal (D4: the command's `evt.result` only resolves once
+    that dialog is answered and the save completes); the gate then opens, and
+    the RENAMED file holds the marker by content."""
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    out: dict[str, Any] = {}
+    context = browser.new_context()
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+        # -- File -> New -> Notebook, real menu clicks -----------------------------
+        page.click(".lm-MenuBar-item:has-text('File')", timeout=timeout_ms)
+        page.click(".lm-Menu-itemLabel:has-text('New')", timeout=timeout_ms)
+        page.click(".lm-Menu-itemLabel:text-is('Notebook')", timeout=timeout_ms)
+
+        # A kernel-selection dialog may appear before the notebook is usable.
+        try:
+            page.wait_for_selector(".jp-Dialog", timeout=10_000)
+            page.click(".jp-Dialog .jp-mod-accept")
+            page.wait_for_selector(".jp-Dialog", state="detached", timeout=timeout_ms)
+        except PlaywrightTimeoutError:
+            pass
+
+        page.wait_for_function("() => !!document.querySelector('.jp-Notebook')", timeout=timeout_ms)
+        _replace_first_cell_source(page, "s9-marker", timeout_ms=timeout_ms)
+
+        page.keyboard.press("Control+s")
+
+        # -- JupyterLab's rename-untitled dialog ------------------------------------
+        page.wait_for_selector(".jp-Dialog", timeout=timeout_ms)
+        out["rename_dialog_before_gate"] = not _dialog_open(page)
+        name_input = page.locator(".jp-Dialog input[type=text], .jp-Dialog .jp-mod-styled input").first
+        name_input.wait_for(state="visible", timeout=timeout_ms)
+        name_input.click()
+        page.keyboard.press("Control+a")
+        page.keyboard.type("renamed-probe.ipynb")
+        page.click(".jp-Dialog .jp-mod-accept", timeout=timeout_ms)
+        page.wait_for_selector(".jp-Dialog", state="detached", timeout=timeout_ms)
+
+        # -- gate then opens ----------------------------------------------------------
+        page.wait_for_selector("dialog#praxis-persistence-first-save[open]", timeout=timeout_ms)
+        out["gate_after_rename"] = _dialog_open(page)
+
+        drive = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "renamed-probe.ipynb")
+        out["renamed_file_saved"] = "s9-marker" in _cell_source_text((drive.get("content") or {}).get("cells"))
+        out["renamed_drive_exists"] = drive.get("exists")
+    finally:
+        context.close()
+    return out
+
+
+def _run_persistence_scenario_s10(
+    browser: Any, served: ServedDir, prefix: str, timeout_ms: float
+) -> dict[str, Any]:
+    """S10 (AC-12): fresh context, drive seeded with persist-probe.ipynb.
+    Proves native JupyterLab Download and Upload round-trip BY CONTENT, using
+    Playwright's download/filechooser events fired from real UI clicks -- no
+    praxis export code exists (D3): this scenario is what decides whether
+    T10's contingent Download button is actually needed."""
+    out: dict[str, Any] = {}
+    context = browser.new_context(accept_downloads=True)
+    context.add_init_script(PERSISTENCE_BASE_INIT_SCRIPT)
+    try:
+        page = context.new_page()
+        lab_url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        page.goto(lab_url, wait_until="load", timeout=timeout_ms)
+        page.wait_for_selector("#praxis-persistence", state="attached", timeout=timeout_ms)
+        page.wait_for_function("() => !!window.jupyterapp", timeout=timeout_ms)
+
+        seeded = page.evaluate(_persistence_seed_notebook_with_source_js("persist-probe.ipynb", "s10-drive"))
+        out["seed_ok"] = bool(seeded.get("ok"))
+
+        drive_before = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "persist-probe.ipynb")
+
+        # -- Download: right-click the file row in the file browser, click Download --
+        try:
+            row = page.locator(".jp-DirListing-item", has_text="persist-probe.ipynb").first
+            row.wait_for(state="visible", timeout=timeout_ms)
+            row.click(button="right")
+            page.wait_for_selector(".lm-Menu-itemLabel:text-is('Download')", timeout=timeout_ms)
+            with page.expect_download(timeout=timeout_ms) as download_info:
+                page.click(".lm-Menu-itemLabel:text-is('Download')", timeout=timeout_ms)
+            download = download_info.value
+            tmp_path = Path(tempfile.mkdtemp()) / "downloaded-persist-probe.ipynb"
+            download.save_as(str(tmp_path))
+            downloaded_text = tmp_path.read_text()
+            out["download_matches"] = _cells_match(downloaded_text, drive_before.get("content"))
+        except Exception as e:  # noqa: BLE001 -- report, don't crash the whole run
+            out["download_matches"] = False
+            out["download_error"] = f"{type(e).__name__}: {e}"
+
+        # -- Upload: real click on Upload, real file chooser --------------------------
+        try:
+            upload_marker = "s10-upload-marker"
+            upload_text = _notebook_json_text(upload_marker)
+            upload_content = json.loads(upload_text)
+            tmp_upload_dir = Path(tempfile.mkdtemp())
+            tmp_upload_path = tmp_upload_dir / "upload-probe.ipynb"
+            tmp_upload_path.write_text(upload_text)
+
+            upload_button = page.locator("[title='Upload Files'], [title='Upload']").first
+            upload_button.wait_for(state="visible", timeout=timeout_ms)
+            with page.expect_file_chooser(timeout=timeout_ms) as fc_info:
+                upload_button.click(timeout=timeout_ms)
+            file_chooser = fc_info.value
+            file_chooser.set_files(str(tmp_upload_path))
+
+            def _uploaded() -> bool:
+                d = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "upload-probe.ipynb")
+                return bool(d.get("exists"))
+
+            _poll_until(_uploaded, timeout_s=timeout_ms / 1000)
+            drive_uploaded = page.evaluate(_PERSISTENCE_DRIVE_GET_JS, "upload-probe.ipynb")
+            decoded = _decode_notebook_content(
+                drive_uploaded.get("content"), drive_uploaded.get("format")
+            )
+            out["upload_matches"] = decoded is not None and decoded.get("cells") == upload_content.get(
+                "cells"
+            )
+            out["upload_drive_format"] = drive_uploaded.get("format")
+        except Exception as e:  # noqa: BLE001
+            out["upload_matches"] = False
+            out["upload_error"] = f"{type(e).__name__}: {e}"
+    finally:
+        context.close()
+    return out
+
+
+def _ensure_persistence_browser(
+    p: Any, browser: Any, *, chrome_path: str, offline: bool, scenario_label: str
+) -> Any:
+    """Relaunch the shared `--persistence-check` browser if it died under a
+    PRIOR scenario, instead of letting one browser-process crash cascade into
+    every remaining scenario reporting a misleading "browser has been closed"
+    (masking which scenario, if any, actually broke). Observed root cause
+    (260922): a genuine Chromium-level crash -- not anything in this harness or
+    in the product's persistence JS -- see the `playwright` pin comment in
+    pyproject.toml for the full diagnosis. This function does not change what
+    any scenario asserts; it only decides which browser instance a scenario
+    runs against.
+    """
+    if browser.is_connected():
+        return browser
+    LOG.warning(
+        "persistence-check: browser was disconnected before %s -- relaunching",
+        scenario_label,
+    )
+    return p.chromium.launch(
+        executable_path=chrome_path,
+        headless=True,
+        args=chromium_launch_args(offline=offline),
+    )
+
+
+def run_persistence_check(
+    *,
+    serve_dir: Path,
+    base_path: str,
+    chrome_path: str,
+    timeout_s: float,
+    offline: bool = False,
+) -> dict[str, Any]:
+    """--persistence-check: T8a (S1-S3 / AC-8, AC-9, AC-13, AC-14, AC-17) plus
+    T8b (S4-S10 / AC-10, AC-11, AC-12).
+
+    Follows the existing check shape (ServedDir, chromium_launch_args, a
+    `result` dict with `failures`) -- see `run_typeahead_check` above.
+    """
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as e:  # pragma: no cover - environment problem
+        raise RuntimeError(f"playwright is not importable: {e}") from e
+
+    prefix = _normalize_base_path(base_path)
+    timeout_ms = timeout_s * 1000
+    result: dict[str, Any] = {"failures": []}
+
+    with ServedDir(serve_dir, base_path, coi=False) as served:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                executable_path=chrome_path,
+                headless=True,
+                args=chromium_launch_args(offline=offline),
+            )
+            try:
+                try:
+                    s1 = _run_persistence_scenario_s1(browser, served, prefix, timeout_ms)
+                except Exception as e:  # keep going -- AC-17 needs a partial result, not a crash
+                    LOG.warning("persistence-check S1 raised: %s: %s", type(e).__name__, e)
+                    s1 = {"error": f"{type(e).__name__}: {e}"}
+                result["s1"] = s1
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S2"
+                )
+                try:
+                    s2 = _run_persistence_scenario_s2(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S2 raised: %s: %s", type(e).__name__, e)
+                    s2 = {"error": f"{type(e).__name__}: {e}"}
+                result["s2"] = s2
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S3"
+                )
+                try:
+                    s3 = _run_persistence_scenario_s3(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S3 raised: %s: %s", type(e).__name__, e)
+                    s3 = {"error": f"{type(e).__name__}: {e}"}
+                result["s3"] = s3
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S4"
+                )
+                try:
+                    s4 = _run_persistence_scenario_s4(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S4 raised: %s: %s", type(e).__name__, e)
+                    s4 = {"error": f"{type(e).__name__}: {e}"}
+                result["s4"] = s4
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S5"
+                )
+                try:
+                    s5 = _run_persistence_scenario_s5(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S5 raised: %s: %s", type(e).__name__, e)
+                    s5 = {"error": f"{type(e).__name__}: {e}"}
+                result["s5"] = s5
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S6"
+                )
+                try:
+                    s6 = _run_persistence_scenario_s6(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S6 raised: %s: %s", type(e).__name__, e)
+                    s6 = {"error": f"{type(e).__name__}: {e}"}
+                result["s6"] = s6
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S7"
+                )
+                try:
+                    s7 = _run_persistence_scenario_s7(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S7 raised: %s: %s", type(e).__name__, e)
+                    s7 = {"error": f"{type(e).__name__}: {e}"}
+                result["s7"] = s7
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S8"
+                )
+                try:
+                    s8 = _run_persistence_scenario_s8(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S8 raised: %s: %s", type(e).__name__, e)
+                    s8 = {"error": f"{type(e).__name__}: {e}"}
+                result["s8"] = s8
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S9"
+                )
+                try:
+                    s9 = _run_persistence_scenario_s9(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S9 raised: %s: %s", type(e).__name__, e)
+                    s9 = {"error": f"{type(e).__name__}: {e}"}
+                result["s9"] = s9
+
+                browser = _ensure_persistence_browser(
+                    p, browser, chrome_path=chrome_path, offline=offline, scenario_label="S10"
+                )
+                try:
+                    s10 = _run_persistence_scenario_s10(browser, served, prefix, timeout_ms)
+                except Exception as e:
+                    LOG.warning("persistence-check S10 raised: %s: %s", type(e).__name__, e)
+                    s10 = {"error": f"{type(e).__name__}: {e}"}
+                result["s10"] = s10
+            finally:
+                # `browser` may already be a dead process (crashed under some
+                # earlier scenario, never relaunched because nothing after S10
+                # needed it) -- closing an already-disconnected browser raises,
+                # which would mask whatever real failures are already in
+                # `result`. Best-effort only.
+                try:
+                    browser.close()
+                except Exception:  # noqa: BLE001 -- see comment above
+                    pass
+
+    failures: list[str] = result["failures"]
+
+    # -- AC-8 -----------------------------------------------------------------
+    indicator_present = s1.get("indicator_present_before_save")
+    result["indicator_present_before_save"] = indicator_present
+    if indicator_present is not True:
+        failures.append(
+            f"AC-8 indicator_present_before_save: expected True, got {indicator_present!r} -- "
+            "the #praxis-persistence chip never appeared on the lab entry before any save"
+        )
+    initial_tier = s1.get("initial_tier")
+    result["initial_tier"] = initial_tier
+    if initial_tier not in ("L0", "L1"):
+        failures.append(f"AC-8 initial_tier: expected 'L0' or 'L1', got {initial_tier!r}")
+    repl_entry_has_chip = s1.get("repl_entry_has_chip")
+    result["repl_entry_has_chip"] = repl_entry_has_chip
+    if repl_entry_has_chip is not False:
+        failures.append(f"AC-8 repl_entry_has_chip: expected False, got {repl_entry_has_chip!r}")
+
+    # -- AC-9 -----------------------------------------------------------------
+    gesture_log = s2.get("gesture_log") or []
+    result["gesture_log"] = gesture_log
+    required_apis = {"persist", "showDirectoryPicker", "requestPermission"}
+    seen_apis = {e.get("api") for e in gesture_log}
+    missing_apis = required_apis - seen_apis
+    if missing_apis:
+        failures.append(f"AC-9 gesture_log: missing entries for {sorted(missing_apis)}")
+    for entry in gesture_log:
+        if entry.get("api") in required_apis and (
+            entry.get("userActivation") is not True or entry.get("inClickDispatch") is not True
+        ):
+            failures.append(f"AC-9 gesture_log entry not gesture-synchronous: {entry}")
+
+    picker_calls = s2.get("picker_calls")
+    result["picker_calls"] = picker_calls
+    if picker_calls != 1:
+        failures.append(f"AC-9 picker_calls: expected 1, got {picker_calls!r}")
+
+    persist_returned = s2.get("persist_returned")
+    tier_after_persist = s2.get("tier_after_persist")
+    result["persist_returned"] = persist_returned  # no assertion on the VALUE (AC-9)
+    result["tier_after_persist"] = tier_after_persist
+    expected_tier_after_persist = "L1" if persist_returned is True else "L0"
+    if tier_after_persist != expected_tier_after_persist:
+        failures.append(
+            f"AC-9 tier_after_persist: persist_returned={persist_returned!r} implies "
+            f"{expected_tier_after_persist!r}, got {tier_after_persist!r}"
+        )
+    result["permission_methods_polyfilled"] = s2.get("permission_methods_polyfilled")
+
+    # -- AC-13 ------------------------------------------------------------
+    result["nofsa_l2_controls"] = s3.get("nofsa_l2_controls")
+    if result["nofsa_l2_controls"] != 0:
+        failures.append(f"AC-13 nofsa_l2_controls: expected 0, got {result['nofsa_l2_controls']!r}")
+    result["nofsa_message_mentions_chromium"] = s3.get("nofsa_message_mentions_chromium")
+    if result["nofsa_message_mentions_chromium"] is not True:
+        failures.append(
+            "AC-13 nofsa_message_mentions_chromium: expected True, got "
+            f"{result['nofsa_message_mentions_chromium']!r}"
+        )
+    result["nofsa_modal_choose_absent"] = s3.get("nofsa_modal_choose_absent")
+    if result["nofsa_modal_choose_absent"] is not True:
+        failures.append(
+            "AC-13 nofsa_modal_choose_absent: expected True, got "
+            f"{result['nofsa_modal_choose_absent']!r}"
+        )
+    result["nofsa_indicator_present"] = s3.get("nofsa_indicator_present")
+    if result["nofsa_indicator_present"] is not True:
+        failures.append(
+            f"AC-13 nofsa_indicator_present: expected True, got {result['nofsa_indicator_present']!r}"
+        )
+
+    # -- AC-14 ------------------------------------------------------------
+    result["indexeddb_names"] = s2.get("indexeddb_names")
+    result["hygiene_no_legacy_jupyterlite_dbs"] = s2.get("hygiene_no_legacy_jupyterlite_dbs")
+    if result["hygiene_no_legacy_jupyterlite_dbs"] is not True:
+        failures.append(
+            "AC-14 hygiene_no_legacy_jupyterlite_dbs: expected True, got "
+            f"{result['hygiene_no_legacy_jupyterlite_dbs']!r}"
+        )
+    result["hygiene_one_praxis_repl_contents"] = s2.get("hygiene_one_praxis_repl_contents")
+    if result["hygiene_one_praxis_repl_contents"] is not True:
+        failures.append(
+            "AC-14 hygiene_one_praxis_repl_contents: expected True, got "
+            f"{result['hygiene_one_praxis_repl_contents']!r}"
+        )
+    result["hygiene_praxis_repl_persistence_present"] = s2.get("hygiene_praxis_repl_persistence_present")
+    if result["hygiene_praxis_repl_persistence_present"] is not True:
+        failures.append(
+            "AC-14 hygiene_praxis_repl_persistence_present: expected True, got "
+            f"{result['hygiene_praxis_repl_persistence_present']!r}"
+        )
+    result["hygiene_probe_readable"] = s2.get("hygiene_probe_readable")
+    if result["hygiene_probe_readable"] is not True:
+        failures.append(
+            f"AC-14 hygiene_probe_readable: expected True, got {result['hygiene_probe_readable']!r}"
+        )
+
+    # -- AC-10 (S4: L2 by content) ---------------------------------------------
+    for key in (
+        "mirror_after_choose_matches",
+        "mirror_after_resave_matches",
+        "rehydrated_without_picker",
+        "rehydrated_folder_name_matches",
+    ):
+        result[key] = s4.get(key)
+        if result[key] is not True:
+            failures.append(f"AC-10 S4 {key}: expected True, got {result[key]!r}")
+    result["picker_calls_s4"] = s4.get("picker_calls")
+
+    # -- AC-10 (S5: differs-on-disk exclusion) ---------------------------------
+    for key in ("differs_excluded", "differs_disk_untouched_after_save", "replace_writes"):
+        result[key] = s5.get(key)
+        if result[key] is not True:
+            failures.append(f"AC-10 S5 {key}: expected True, got {result[key]!r}")
+
+    # -- AC-10 (S6: paused save, persisted pending set, no gate) ---------------
+    result["tier_on_prompt"] = s6.get("tier_on_prompt")
+    if result["tier_on_prompt"] != "L2-paused":
+        failures.append(f"AC-10 S6 tier_on_prompt: expected 'L2-paused', got {result['tier_on_prompt']!r}")
+    for key in (
+        "paused_save_not_written",
+        "pending_survives_reload",
+        "reconnect_flushed_matches",
+        "gate_never_opened_s6",
+    ):
+        result[key] = s6.get(key)
+        if result[key] is not True:
+            failures.append(f"AC-10 S6 {key}: expected True, got {result[key]!r}")
+
+    # -- AC-10 (S7: restore) ---------------------------------------------------
+    for key in ("restore_matches", "restore_skipped_dotfile", "restore_did_not_overwrite"):
+        result[key] = s7.get(key)
+        if result[key] is not True:
+            failures.append(f"AC-10 S7 {key}: expected True, got {result[key]!r}")
+
+    # -- AC-11 (S8: first-save gate -- Escape, backdrop, choose) ---------------
+    for key in (
+        "modal_open",
+        "modal_focus_inside",
+        "save_landed_before_modal",
+        "modal_survives_double_escape",
+        "modal_survives_backdrop_click",
+        "modal_closed",
+    ):
+        result[key] = s8.get(key)
+        if result[key] is not True:
+            failures.append(f"AC-11 S8 {key}: expected True, got {result[key]!r}")
+    result["modal_reopened"] = s8.get("modal_reopened")
+    if result["modal_reopened"] is not False:
+        failures.append(f"AC-11 S8 modal_reopened: expected False, got {result['modal_reopened']!r}")
+
+    # -- AC-11 (S9: untitled rename then the gate) -----------------------------
+    for key in ("rename_dialog_before_gate", "gate_after_rename", "renamed_file_saved"):
+        result[key] = s9.get(key)
+        if result[key] is not True:
+            failures.append(f"AC-11 S9 {key}: expected True, got {result[key]!r}")
+
+    # -- AC-12 (S10: native Download/Upload) -----------------------------------
+    for key in ("download_matches", "upload_matches"):
+        result[key] = s10.get(key)
+        if result[key] is not True:
+            failures.append(f"AC-12 S10 {key}: expected True, got {result[key]!r}")
+    if s10.get("download_error"):
+        result["download_error"] = s10["download_error"]
+    if s10.get("upload_error"):
+        result["upload_error"] = s10["upload_error"]
+
+    for label, scenario in (
+        ("S1", s1),
+        ("S2", s2),
+        ("S3", s3),
+        ("S4", s4),
+        ("S5", s5),
+        ("S6", s6),
+        ("S7", s7),
+        ("S8", s8),
+        ("S9", s9),
+        ("S10", s10),
+    ):
+        if scenario.get("error"):
+            failures.append(f"{label} scenario raised an exception: {scenario['error']}")
+
+    result["passed"] = not failures
+    return result
+
+
+#: Runs ONE cell by index via `notebook:run-cell` and reads its outputs back
+#: from the notebook MODEL (never the DOM -- JupyterLab 4 windows the
+#: notebook, so an off-screen cell's output is not in the DOM at all).
+_RUN_ONE_CELL_JS = r"""async (index) => {
+    const w = window.jupyterapp.shell.currentWidget;
+    w.content.activeCellIndex = index;
+    let dispatched = true, dispatch_error = null;
+    try {
+        await window.jupyterapp.commands.execute('notebook:run-cell');
+    } catch (e) {
+        dispatched = false;
+        dispatch_error = String(e);
+    }
+    const cell = w.content.model.cells.get(index);
+    const outs = cell.outputs;
+    const n = outs.length ?? outs.size;
+    const chunks = [];
+    let has_error_output = false;
+    for (let j = 0; j < n; j++) {
+        const o = outs.get ? outs.get(j) : outs[j];
+        const d = o?.toJSON ? o.toJSON() : o;
+        if (!d) continue;
+        if (d.output_type === 'error' || d.ename) has_error_output = true;
+        if (typeof d.text === 'string') chunks.push(d.text);
+        else if (Array.isArray(d.text)) chunks.push(d.text.join(''));
+        if (d.data && typeof d.data['text/plain'] === 'string') {
+            chunks.push(d.data['text/plain']);
+        }
+        if (d.ename) chunks.push(d.ename + ': ' + d.evalue);
+        if (Array.isArray(d.traceback)) chunks.push(d.traceback.join('\n'));
+    }
+    return {
+        dispatched: dispatched,
+        dispatch_error: dispatch_error,
+        output_text: chunks.join('\n'),
+        has_error_output: has_error_output,
+    };
+}"""
+
+
+def run_autosetup_fault_check(
+    *,
+    serve_dir: Path,
+    base_path: str,
+    chrome_path: str,
+    timeout_s: float,
+    faults: list[Fault],
+    offline: bool = False,
+) -> dict[str, Any]:
+    """AC-3/AC-5 fault-injection gate (spec section 8.3, --autosetup-fault-check row).
+
+    Doubles as the negative control the old --fresh-boot-check premise
+    (`plr_before == ModuleNotFoundError`) used to provide: if auto-setup never
+    ran at all, cell 1 would print its side-effect string instead of being
+    blocked, and the assertions below would fail for that reason (spec section
+    8.3, table note).
+
+    Cell sources are written directly into the notebook model
+    (`cell.sharedModel.setSource`), not typed: the harness creates this
+    notebook itself, so there is no pre-existing source worth preserving by
+    typing. See the module docstring above for the browser-verification caveat.
+    """
+    from playwright.sync_api import sync_playwright
+
+    prefix = _normalize_base_path(base_path)
+    timeout_ms = timeout_s * 1000
+    pageerrors: list[str] = []
+
+    cell_sources = [
+        AUTOSETUP_FAULT_SIDE_EFFECT_CELL,
+        AUTOSETUP_FAULT_SIDE_EFFECT_CELL,
+        AUTOSETUP_FAULT_RETRY_CELL,
+        AC1_ZERO_ACTION_LINE,
+    ]
+
+    with ServedDir(serve_dir, base_path, coi=False, faults=faults) as served:
+        url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        LOG.info("navigating to %s", url)
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                executable_path=chrome_path,
+                headless=True,
+                args=chromium_launch_args(offline=offline),
+            )
+            try:
+                page = browser.new_context().new_page()
+                page.on("pageerror", lambda exc: pageerrors.append(str(exc)))
+                page.goto(url, wait_until="load", timeout=timeout_ms)
+
+                notebook_path = _open_blank_notebook(page, timeout_ms=timeout_ms)
+
+                prep = page.evaluate(
+                    """(sources) => {
+                        const w = window.jupyterapp.shell.currentWidget;
+                        const model = w.content.model;
+                        while (model.cells.length < sources.length) {
+                            model.sharedModel.insertCell(model.cells.length,
+                                {cell_type: "code", source: ""});
+                        }
+                        while (model.cells.length > sources.length) {
+                            model.sharedModel.deleteCell(model.cells.length - 1);
+                        }
+                        for (let i = 0; i < sources.length; i++) {
+                            model.cells.get(i).sharedModel.setSource(sources[i]);
+                        }
+                        return {cell_count: model.cells.length};
+                    }""",
+                    cell_sources,
+                )
+                LOG.info("prepared %d cell(s) in the blank notebook", prep.get("cell_count"))
+
+                cell_results: list[dict[str, Any]] = []
+                for i in range(len(cell_sources)):
+                    r = page.evaluate(_RUN_ONE_CELL_JS, i)
+                    LOG.info(
+                        "cell %d: dispatched=%s has_error_output=%s output=%r",
+                        i, r.get("dispatched"), r.get("has_error_output"),
+                        (r.get("output_text") or "")[:200],
+                    )
+                    cell_results.append(r)
+
+                return {
+                    "notebook": notebook_path,
+                    "url": url,
+                    "cells": cell_sources,
+                    "cell_results": cell_results,
+                    "pageerrors": pageerrors,
+                    "offline": offline,
+                    "faults": [dataclasses.asdict(f) for f in faults],
+                }
+            finally:
+                browser.close()
+
+
+def run_restart_check(
+    *,
+    serve_dir: Path,
+    base_path: str,
+    chrome_path: str,
+    timeout_s: float,
+    offline: bool = False,
+) -> dict[str, Any]:
+    """AC-7 gate (spec section 8.3, --restart-check row): after AC-1 passes,
+    restart the kernel via the kernel API (`session.kernel.restart()` -- no
+    command dispatch, so no Select Kernel dialog, S0 finding F7), then run the
+    SAME probe cell again and assert `kernel_nonce` changed. See the module
+    docstring above for the browser-verification caveat.
+    """
+    from playwright.sync_api import sync_playwright
+
+    prefix = _normalize_base_path(base_path)
+    timeout_ms = timeout_s * 1000
+    pageerrors: list[str] = []
+
+    with ServedDir(serve_dir, base_path, coi=False) as served:
+        url = f"http://127.0.0.1:{served.port}{prefix}lab/index.html"
+        LOG.info("navigating to %s", url)
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                executable_path=chrome_path,
+                headless=True,
+                args=chromium_launch_args(offline=offline),
+            )
+            try:
+                page = browser.new_context().new_page()
+                page.on("pageerror", lambda exc: pageerrors.append(str(exc)))
+                page.goto(url, wait_until="load", timeout=timeout_ms)
+
+                notebook_path = _open_blank_notebook(page, timeout_ms=timeout_ms)
+
+                probe_code = build_restart_probe_cell()
+                page.evaluate(
+                    """(source) => {
+                        const w = window.jupyterapp.shell.currentWidget;
+                        const model = w.content.model;
+                        model.cells.get(0).sharedModel.setSource(source);
+                    }""",
+                    probe_code,
+                )
+
+                before = page.evaluate(_RUN_ONE_CELL_JS, 0)
+                before_result = _extract_sentinel_json(before.get("output_text") or "")
+                LOG.info("restart-check: before restart %s", before_result)
+
+                restart_outcome = page.evaluate(
+                    """async () => {
+                        try {
+                            const w = window.jupyterapp.shell.currentWidget;
+                            await w.sessionContext.session.kernel.restart();
+                            return {ok: true};
+                        } catch (e) {
+                            return {ok: false, error: String(e)};
+                        }
+                    }"""
+                )
+                if not restart_outcome.get("ok"):
+                    raise NotebookCheckError(
+                        f"session.kernel.restart() failed: {restart_outcome.get('error')!r}"
+                    )
+
+                page.wait_for_function(
+                    """() => {
+                        const w = window.jupyterapp?.shell?.currentWidget;
+                        return w?.sessionContext?.session?.kernel?.status === 'idle';
+                    }""",
+                    timeout=timeout_ms,
+                )
+
+                after = page.evaluate(_RUN_ONE_CELL_JS, 0)
+                after_result = _extract_sentinel_json(after.get("output_text") or "")
+                LOG.info("restart-check: after restart %s", after_result)
+
+                return {
+                    "notebook": notebook_path,
+                    "url": url,
+                    "before": before_result,
+                    "after": after_result,
+                    "pageerrors": pageerrors,
+                    "offline": offline,
+                }
             finally:
                 browser.close()
 
@@ -1720,27 +4036,26 @@ def run_viz_check(
             measured_layers,
             manifest_path,
         )
+    elif expected.get("shape_count") is None or expected.get("layer_count") is None:
+        failures.append(
+            "shape_count/layer_count have never been recorded for this fixture -- "
+            "run `uv run python scripts/repl_smoke.py --viz-check --record` once "
+            "(with sandbox disabled) before this check can gate anything"
+        )
     else:
-        if expected.get("shape_count") is None or expected.get("layer_count") is None:
+        if measured_shapes != expected["shape_count"]:
             failures.append(
-                "shape_count/layer_count have never been recorded for this fixture -- "
-                "run `uv run python scripts/repl_smoke.py --viz-check --record` once "
-                "(with sandbox disabled) before this check can gate anything"
+                f"shape_count mismatch: measured {measured_shapes}, "
+                f"expected {expected['shape_count']} (pin {live_sha}, recorded "
+                f"{manifest.get('generated_at')}) -- if this is a real upstream "
+                "render change, re-record with --viz-check --record; if it is a "
+                "regression, that is exactly what this gate exists to catch"
             )
-        else:
-            if measured_shapes != expected["shape_count"]:
-                failures.append(
-                    f"shape_count mismatch: measured {measured_shapes}, "
-                    f"expected {expected['shape_count']} (pin {live_sha}, recorded "
-                    f"{manifest.get('generated_at')}) -- if this is a real upstream "
-                    "render change, re-record with --viz-check --record; if it is a "
-                    "regression, that is exactly what this gate exists to catch"
-                )
-            if measured_layers != expected["layer_count"]:
-                failures.append(
-                    f"layer_count mismatch: measured {measured_layers}, "
-                    f"expected {expected['layer_count']} (pin {live_sha})"
-                )
+        if measured_layers != expected["layer_count"]:
+            failures.append(
+                f"layer_count mismatch: measured {measured_layers}, "
+                f"expected {expected['layer_count']} (pin {live_sha})"
+            )
 
     if fill_before_actual != fill_before:
         failures.append(
@@ -1799,11 +4114,75 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--fresh-boot-check",
         action="store_true",
         help=(
-            "Assert a BRAND-NEW notebook can bootstrap with two lines and no hand-typed "
-            "URL (gate T4): `import praxis_boot` then `await praxis_boot.setup()`, then "
-            "check pylabrobot imports AND that its Serial is the browser shim. "
-            "--notebook-check cannot cover this: it runs welcome.ipynb, which carries "
-            "its own stamped HOST_ROOT and its own fetch-and-exec cell."
+            "Assert AC-1/AC-2 zero-action auto-setup (spec 260914_first-run-auto-setup.md "
+            "section 8.3): a first cell that neither imports nor calls praxis_boot.setup() "
+            "itself still gets a ready kernel, `praxis_boot.gate_waited is True`, and "
+            "AC-1's playground names (LiquidHandler/STAR) resolve with no import. Always "
+            "holds the async pylabrobot wheel fetch for 15s so the wait is deterministic. "
+            "--notebook-check cannot cover this: it runs welcome.ipynb, a saved notebook, "
+            "not a first-ever cell dispatched at kernel idle."
+        ),
+    )
+    p.add_argument(
+        "--autosetup-fault-check",
+        action="store_true",
+        help=(
+            "AC-3/AC-5 fault-injection gate (spec section 8.3): inject a --fault at the "
+            "harness's static server, then assert a harness-created blank notebook's "
+            "first two cells are blocked with a PraxisAutoSetupError naming the fault "
+            "(and their own side-effect sentinel does NOT run), a third recovery cell "
+            "(`await praxis_boot.setup()`, fault count spent) succeeds, and a fourth "
+            "cell reproduces AC-1. Requires at least one --fault."
+        ),
+    )
+    p.add_argument(
+        "--restart-check",
+        action="store_true",
+        help=(
+            "AC-7 gate (spec section 8.3): after AC-1 passes, restart the kernel via "
+            "session.kernel.restart() (no command dispatch, so no Select Kernel dialog) "
+            "and assert praxis_boot.kernel_nonce changed, state is 'ready' again, and "
+            "Serial is still the browser shim."
+        ),
+    )
+    p.add_argument(
+        "--fault",
+        action="append",
+        default=[],
+        metavar="KIND:SUFFIX[:SECONDS]",
+        help=(
+            "--autosetup-fault-check only (repeatable). `404:<path-suffix>`, "
+            "`tamper:<path-suffix>`, or `delay:<path-suffix>:<seconds>`. Matched against "
+            "the served request's parsed, unquoted URL path with str.endswith. Example: "
+            "--fault 404:bootstrap/stages.py or --fault tamper:bootstrap/stages.py."
+        ),
+    )
+    p.add_argument(
+        "--fault-count",
+        type=int,
+        default=1,
+        help=(
+            "How many of the FIRST matching requests each --fault actually faults; "
+            "requests after that are served normally, which is what makes the "
+            "post-fault retry cell succeed. Default: 1."
+        ),
+    )
+    p.add_argument(
+        "--persistence-check",
+        action="store_true",
+        help=(
+            "T8a+T8b browser gate (spec 260922_repl-persistence-ladder.md): scenarios "
+            "S1-S10 (AC-8 through AC-14, AC-17) -- the indicator/L1 tier on a fresh "
+            "lab/ load, real-click gesture-synchrony proof for persist()/"
+            "showDirectoryPicker()/requestPermission(), the non-FSA degraded panel, "
+            "IndexedDB storage hygiene, L2 folder mirroring and rehydration by "
+            "content, differs-on-disk exclusion, paused/reload/reconnect with a "
+            "persisted pending set, restore from folder, the first-save disclosure "
+            "gate (including an untitled-file rename), and native JupyterLab "
+            "Download/Upload round-tripping by content. Needs a freshly built "
+            "web-repl/dist (see --serve-dir) and --base-path /praxis/ to match CI. "
+            "Exits nonzero if any scenario key fails; see the printed JSON's "
+            "'failures' list."
         ),
     )
     p.add_argument(
@@ -1975,11 +4354,15 @@ def main(argv: list[str] | None = None) -> int:
         and not args.completion_check
         and not args.typeahead_check
         and not args.fresh_boot_check
+        and not args.autosetup_fault_check
+        and not args.restart_check
+        and not args.persistence_check
         and not args.expect_fail
     ):
         LOG.error(
             "nothing to do: pass --probe, --viz-check, --notebook-check, "
             "--completion-check, --typeahead-check, --fresh-boot-check, "
+            "--autosetup-fault-check, --restart-check, --persistence-check, "
             "and/or --expect-fail"
         )
         return 2
@@ -2005,7 +4388,7 @@ def main(argv: list[str] | None = None) -> int:
                 notebook=args.notebook,
                 offline=args.offline,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             LOG.error("notebook-check failed: %s: %s", type(e).__name__, e)
             LOG.error(
                 "If this is a Chromium launch failure ('apply-seccomp: unshare(CLONE_NEWUSER)'), "
@@ -2021,6 +4404,14 @@ def main(argv: list[str] | None = None) -> int:
             args.out.write_text(output)
             LOG.info("wrote result to %s", args.out)
 
+        if result.get("forbidden_bootstrap_hits"):
+            LOG.error(
+                "notebook-check FAILED (AC-10, static check): %s's code cells contain "
+                "forbidden bootstrap call(s) %s -- this would make the run below pass "
+                "even with auto-setup entirely broken (test-design trap 1)",
+                result["notebook"], result["forbidden_bootstrap_hits"],
+            )
+            return 1
         if result["pageerrors"]:
             LOG.error("notebook-check: %d pageerror(s): %s", len(result["pageerrors"]), result["pageerrors"])
             return 1
@@ -2085,19 +4476,65 @@ def main(argv: list[str] | None = None) -> int:
         if not serve_dir.is_dir():
             LOG.error("--serve-dir does not exist or is not a directory: %s", serve_dir)
             return 2
+
+        probe_code = build_fresh_boot_probe_code()
+
+        # Test-design trap 1 (spec section 8.4): a probe that sets up the kernel
+        # itself would pass even with auto-setup entirely broken. Refuse to run
+        # rather than silently proving nothing.
+        forbidden_hit = find_forbidden_bootstrap_call(probe_code)
+        if forbidden_hit is not None:
+            LOG.error(
+                "fresh-boot-check refused to run: its own probe source contains "
+                "forbidden bootstrap call %r -- this is a harness bug, not a "
+                "product failure", forbidden_hit,
+            )
+            return 2
+        if probe_imports_playground_names(probe_code):
+            LOG.error(
+                "fresh-boot-check refused to run: its own probe source imports "
+                "LiquidHandler/pylabrobot.liquid_handling, which would make "
+                "playground_names_ok pass vacuously (T3b)"
+            )
+            return 2
+
+        # R2-1: ALWAYS delay the async micropip wheel fetch so AC-2's wait is
+        # deterministic, not timing luck. Read the filename from the served
+        # manifest -- never hardcode it, the +g<sha> segment changes per build.
+        try:
+            wheel_filename = read_wheel_filename(serve_dir, "pylabrobot")
+        except RuntimeError as e:
+            LOG.error("fresh-boot-check could not resolve the pylabrobot wheel: %s", e)
+            return 2
+        wheel_delay_fault = Fault(
+            kind="delay",
+            suffix=f"assets/wheels/{wheel_filename}",
+            delay_s=FRESH_BOOT_WHEEL_DELAY_S,
+            max_hits=1,
+        )
+        LOG.info(
+            "fresh-boot-check: always-on delay fault on assets/wheels/%s (%ss)",
+            wheel_filename, FRESH_BOOT_WHEEL_DELAY_S,
+        )
+
+        # Keep well inside the cell timeout (the delay raises how long boot
+        # takes; never shrink the assertion to fit a smaller timeout instead).
+        gate_timeout_s = max(args.timeout, FRESH_BOOT_WHEEL_DELAY_S + 60.0)
+
         try:
             result = run_probe(
                 serve_dir=serve_dir,
                 base_path=args.base_path,
                 coi=args.coi,
                 chrome_path=str(chrome_path),
-                timeout_s=args.timeout,
+                timeout_s=gate_timeout_s,
                 expect_praxis_sha=None,
                 entry=args.entry,
                 offline=args.offline,
-                code_override=build_fresh_boot_probe_code(),
+                code_override=probe_code,
+                faults=[wheel_delay_fault],
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             LOG.error("fresh-boot-check run failed: %s: %s", type(e).__name__, e)
             return 2
 
@@ -2106,26 +4543,35 @@ def main(argv: list[str] | None = None) -> int:
             LOG.info("wrote result to %s", args.out)
 
         expected_root = _normalize_base_path(args.base_path)
+        delay_hits = wheel_delay_fault.hits
+        measured_gate_wait_s = result.get("_meta", {}).get("probe_wall_s")
         LOG.info(
-            "fresh boot: cwd=%s import_praxis_boot=%s derived_host_root=%s (expected %s)",
+            "fresh boot: cwd=%s import_praxis_boot=%s state=%s autostart_origin=%s "
+            "derived_host_root=%s (expected %s)",
             result.get("cwd"),
             result.get("import_praxis_boot"),
+            result.get("state"),
+            result.get("autostart_origin"),
             result.get("derived_host_root"),
             expected_root,
         )
         LOG.info(
-            "fresh boot: plr_before=%s plr_after=%s serial_is_shim=%s",
-            result.get("plr_before"),
+            "fresh boot: plr_after=%s serial_is_shim=%s playground_names_ok=%s "
+            "gate_waited=%s wheel-delay hits=%d/%d measured probe wall=%.2fs",
             result.get("plr_after"),
             result.get("serial_is_shim"),
+            result.get("playground_names_ok"),
+            result.get("gate_waited"),
+            delay_hits, wheel_delay_fault.max_hits,
+            measured_gate_wait_s if measured_gate_wait_s is not None else -1.0,
         )
 
         failures: list[str] = []
-        if result.get("plr_before") != "ModuleNotFoundError":
+        if delay_hits < 1:
             failures.append(
-                f"pylabrobot was ALREADY importable before the bootstrap "
-                f"(plr_before={result.get('plr_before')!r}), so this gate would pass "
-                "without praxis_boot doing anything. The premise is broken, not the fix."
+                f"the always-on wheel-delay fault never fired (hits={delay_hits}); "
+                "the wait this gate depends on was NOT deterministic (test-design "
+                "trap 5)."
             )
         if not result.get("import_praxis_boot"):
             failures.append(
@@ -2136,21 +4582,44 @@ def main(argv: list[str] | None = None) -> int:
                 "-- either the file was not shipped into web-repl/files/ or that "
                 "assumption no longer holds."
             )
+        if result.get("state") != "ready":
+            failures.append(
+                f"praxis_boot.state == {result.get('state')!r}, expected 'ready' "
+                f"(failure={result.get('failure')})"
+            )
+        if result.get("autostart_origin") != "PYTHONSTARTUP":
+            failures.append(
+                f"praxis_boot.autostart_origin == {result.get('autostart_origin')!r}, "
+                "expected 'PYTHONSTARTUP' -- auto-setup did not start from the "
+                "startup file"
+            )
+        plr_after = result.get("plr_after") or ""
+        if not plr_after.startswith("0.2.2+g"):
+            failures.append(
+                f"pylabrobot version {plr_after!r} does not start with '0.2.2+g'"
+            )
         if result.get("derived_host_root") != expected_root:
             failures.append(
-                f"derived host root {result.get('derived_host_root')!r} != expected "
-                f"{expected_root!r} ({result.get('derive_error')}). A wrong root 404s "
-                "the loader fetch, which is the whole failure this removes."
+                f"praxis_boot.host_root {result.get('derived_host_root')!r} != "
+                f"expected {expected_root!r}. A wrong root 404s the loader fetch."
             )
-        if not result.get("setup_ok"):
+        if result.get("serial_is_shim") is not True:
             failures.append(
-                f"praxis_boot.setup() raised: {result.get('setup_error')}"
+                "pylabrobot's Serial is NOT the browser shim after auto-setup, so "
+                "device I/O would silently use desktop pyserial."
             )
-        if not result.get("serial_is_shim"):
+        if result.get("playground_names_ok") is not True:
             failures.append(
-                "pylabrobot's Serial is NOT the browser shim after setup, so device "
-                "I/O would silently use desktop pyserial. Note praxis_main() never "
-                "re-raises, so this can only be caught by checking, not by awaiting."
+                "AC-1's playground-names clause failed: LiquidHandler/STAR are not "
+                f"resolvable with no import ({result.get('playground_names_error')})"
+            )
+        if result.get("gate_waited") is not True:
+            failures.append(
+                "praxis_boot.gate_waited is not True -- this run does not prove "
+                "AC-2's wait: the probe cell never observed state=='running' on "
+                "entry, so either setup finished before the cell was dispatched "
+                "(the always-on wheel delay should prevent this) or the gate "
+                "itself is not wiring gate_waited correctly."
             )
 
         if failures:
@@ -2158,9 +4627,259 @@ def main(argv: list[str] | None = None) -> int:
                 LOG.error("FAIL: %s", f)
             return 1
         LOG.info(
-            "fresh-boot-check PASSED: two lines in a bare kernel produced PyLabRobot %s "
-            "with browser shims bound",
-            result.get("plr_after"),
+            "fresh-boot-check PASSED: a fresh kernel auto-set-up PyLabRobot %s with "
+            "browser shims bound and playground names resolvable, with NO setup "
+            "code typed or run by this probe (gate_waited=%s, wheel-delay hits=%d, "
+            "measured wait=%.2fs)",
+            result.get("plr_after"), result.get("gate_waited"), delay_hits,
+            measured_gate_wait_s if measured_gate_wait_s is not None else -1.0,
+        )
+        return 0
+
+    if args.autosetup_fault_check:
+        serve_dir = args.serve_dir.resolve()
+        if not serve_dir.is_dir():
+            LOG.error("--serve-dir does not exist or is not a directory: %s", serve_dir)
+            return 2
+        if not args.fault:
+            LOG.error(
+                "--autosetup-fault-check requires at least one --fault "
+                "(e.g. --fault 404:bootstrap/stages.py)"
+            )
+            return 2
+        try:
+            faults = [parse_fault(spec, max_hits=args.fault_count) for spec in args.fault]
+        except ValueError as e:
+            LOG.error("bad --fault: %s", e)
+            return 2
+
+        try:
+            result = run_autosetup_fault_check(
+                serve_dir=serve_dir,
+                base_path=args.base_path,
+                chrome_path=str(chrome_path),
+                timeout_s=args.timeout,
+                faults=faults,
+                offline=args.offline,
+            )
+        except Exception as e:
+            LOG.error("autosetup-fault-check run failed: %s: %s", type(e).__name__, e)
+            return 2
+
+        if args.out:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(json.dumps(result, indent=2, sort_keys=True))
+            LOG.info("wrote result to %s", args.out)
+
+        cells = result.get("cell_results") or []
+        failures: list[str] = []
+        if len(cells) < 4:
+            failures.append(f"expected 4 cell results, got {len(cells)}")
+        else:
+            expected_reason = None
+            for f in faults:
+                expected_reason = FAULT_REASON_NEEDLE.get(f.kind)
+                if expected_reason:
+                    break
+
+            for idx in (0, 1):
+                c = cells[idx]
+                out = c.get("output_text") or ""
+                if "PraxisAutoSetupError" not in out:
+                    failures.append(
+                        f"cell {idx + 1}: expected 'PraxisAutoSetupError' in output, "
+                        f"got {out[:300]!r}"
+                    )
+                if expected_reason and expected_reason not in out:
+                    failures.append(
+                        f"cell {idx + 1}: expected fault reason {expected_reason!r} in "
+                        f"output, got {out[:300]!r}"
+                    )
+                if AUTOSETUP_FAULT_SIDE_EFFECT_NEEDLE in out:
+                    failures.append(
+                        f"cell {idx + 1}: its own side-effect sentinel "
+                        f"{AUTOSETUP_FAULT_SIDE_EFFECT_NEEDLE!r} appeared in output -- "
+                        "the cell's code RAN instead of being blocked"
+                    )
+                if not c.get("has_error_output"):
+                    failures.append(f"cell {idx + 1}: expected an error output, found none")
+
+            c3 = cells[2]
+            out3 = c3.get("output_text") or ""
+            if c3.get("has_error_output"):
+                failures.append(
+                    f"cell 3 (retry, fault count spent): expected no error, got {out3[:300]!r}"
+                )
+            if not AUTOSETUP_SUCCESS_LINE_PATTERN.search(out3):
+                failures.append(
+                    f"cell 3 (retry): expected praxis_boot.setup()'s success line "
+                    f"'PyLabRobot <version> ready (site root <root>); Serial is the browser shim', "
+                    f"got {out3[:300]!r}"
+                )
+            # Record gate_waited for AC-2 measurement (not a pass/fail condition):
+            # scan every line for a JSON object carrying it, last one wins.
+            gate_waited = None
+            for line in out3.splitlines():
+                try:
+                    data = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                if isinstance(data, dict) and "gate_waited" in data:
+                    gate_waited = data["gate_waited"]
+            result["gate_waited"] = gate_waited
+
+            c4 = cells[3]
+            out4 = c4.get("output_text") or ""
+            if c4.get("has_error_output") or "True" not in out4 or "False" in out4:
+                failures.append(f"cell 4 (AC-1 probe): expected bare 'True', got {out4[:300]!r}")
+
+            # Check that all faults actually fired (spec trap 5)
+            for i, f in enumerate(faults):
+                if f.hits < 1:
+                    failures.append(
+                        f"fault {i + 1} ({f.kind}:{f.suffix}): never fired (hits={f.hits}); "
+                        "the gate's blocked-cell assertions would be unproven (test-design trap 5)."
+                    )
+
+        if result.get("pageerrors"):
+            failures.append(f"pageerror(s): {result['pageerrors']}")
+
+        LOG.info(
+            "autosetup-fault-check: faults=%s cells=%s",
+            result.get("faults"),
+            [
+                {"has_error_output": c.get("has_error_output"), "dispatched": c.get("dispatched")}
+                for c in cells
+            ],
+        )
+
+        if failures:
+            for f in failures:
+                LOG.error("FAIL: %s", f)
+            return 1
+        LOG.info(
+            "autosetup-fault-check PASSED: every cell was blocked while the fault was "
+            "live, the retry succeeded once it was spent, and AC-1 held afterward"
+        )
+        return 0
+
+    if args.restart_check:
+        serve_dir = args.serve_dir.resolve()
+        if not serve_dir.is_dir():
+            LOG.error("--serve-dir does not exist or is not a directory: %s", serve_dir)
+            return 2
+        try:
+            result = run_restart_check(
+                serve_dir=serve_dir,
+                base_path=args.base_path,
+                chrome_path=str(chrome_path),
+                timeout_s=args.timeout,
+                offline=args.offline,
+            )
+        except Exception as e:
+            LOG.error("restart-check run failed: %s: %s", type(e).__name__, e)
+            return 2
+
+        if args.out:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(json.dumps(result, indent=2, sort_keys=True))
+            LOG.info("wrote result to %s", args.out)
+
+        before = result.get("before") or {}
+        after = result.get("after") or {}
+        LOG.info("restart-check: nonce before=%s after=%s", before.get("kernel_nonce"), after.get("kernel_nonce"))
+
+        failures: list[str] = []
+        if before.get("state") != "ready" or before.get("serial_is_shim") is not True:
+            failures.append(
+                f"AC-1 did not hold BEFORE the restart (state={before.get('state')!r}, "
+                f"serial_is_shim={before.get('serial_is_shim')!r}); this gate only "
+                "proves anything once AC-1 has already passed"
+            )
+        if after.get("state") != "ready":
+            failures.append(f"praxis_boot.state == {after.get('state')!r} after restart, expected 'ready'")
+        if after.get("serial_is_shim") is not True:
+            failures.append("Serial is NOT the browser shim after restart")
+        if not before.get("kernel_nonce") or not after.get("kernel_nonce"):
+            failures.append(
+                f"could not read kernel_nonce on both sides (before={before.get('kernel_nonce')!r}, "
+                f"after={after.get('kernel_nonce')!r})"
+            )
+        elif before.get("kernel_nonce") == after.get("kernel_nonce"):
+            failures.append(
+                f"kernel_nonce unchanged ({before.get('kernel_nonce')!r}) across the restart -- "
+                "this did not actually get a new interpreter (test-design trap 4)"
+            )
+        if result.get("pageerrors"):
+            failures.append(f"pageerror(s): {result['pageerrors']}")
+
+        if failures:
+            for f in failures:
+                LOG.error("FAIL: %s", f)
+            return 1
+        LOG.info(
+            "restart-check PASSED: kernel_nonce changed (%s -> %s), AC-1 held again",
+            before.get("kernel_nonce"), after.get("kernel_nonce"),
+        )
+        return 0
+
+    if args.persistence_check:
+        serve_dir = args.serve_dir.resolve()
+        if not serve_dir.is_dir():
+            LOG.error("--serve-dir does not exist or is not a directory: %s", serve_dir)
+            return 2
+        try:
+            result = run_persistence_check(
+                serve_dir=serve_dir,
+                base_path=args.base_path,
+                chrome_path=str(chrome_path),
+                timeout_s=args.timeout,
+                offline=args.offline,
+            )
+        except Exception as e:
+            LOG.error("persistence-check run failed: %s: %s", type(e).__name__, e)
+            LOG.error(
+                "If this is a Chromium launch failure ('apply-seccomp: unshare(CLONE_NEWUSER)'), "
+                "this script must be invoked with the Bash sandbox disabled "
+                "(dangerouslyDisableSandbox=true) — see plan section 5.6."
+            )
+            return 1
+
+        output = json.dumps(result, indent=2, sort_keys=True)
+        print(output)
+        if args.out:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(output)
+            LOG.info("wrote result to %s", args.out)
+
+        LOG.info(
+            "persistence-check: indicator_present_before_save=%s initial_tier=%s "
+            "repl_entry_has_chip=%s picker_calls=%s tier_after_persist=%s "
+            "nofsa_l2_controls=%s nofsa_modal_choose_absent=%s "
+            "mirror_after_choose_matches=%s tier_on_prompt=%s "
+            "gate_never_opened_s6=%s modal_open=%s gate_after_rename=%s "
+            "download_matches=%s upload_matches=%s",
+            result.get("indicator_present_before_save"),
+            result.get("initial_tier"),
+            result.get("repl_entry_has_chip"),
+            result.get("picker_calls"),
+            result.get("tier_after_persist"),
+            result.get("nofsa_l2_controls"),
+            result.get("nofsa_modal_choose_absent"),
+            result.get("mirror_after_choose_matches"),
+            result.get("tier_on_prompt"),
+            result.get("gate_never_opened_s6"),
+            result.get("modal_open"),
+            result.get("gate_after_rename"),
+            result.get("download_matches"),
+            result.get("upload_matches"),
+        )
+        if not result["passed"]:
+            for f in result["failures"]:
+                LOG.error("FAIL: %s", f)
+            return 1
+        LOG.info(
+            "persistence-check PASSED (S1-S10: AC-8 through AC-14, AC-17)"
         )
         return 0
 
@@ -2178,7 +4897,7 @@ def main(argv: list[str] | None = None) -> int:
                 entry=args.entry,
                 offline=args.offline,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             LOG.error("typeahead-check run failed: %s: %s", type(e).__name__, e)
             return 2
 
@@ -2219,7 +4938,7 @@ def main(argv: list[str] | None = None) -> int:
                     _normalize_base_path(args.base_path)
                 ),
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             LOG.error("completion-check run failed: %s: %s", type(e).__name__, e)
             LOG.error(
                 "If this is a Chromium launch failure ('apply-seccomp: "

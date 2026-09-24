@@ -1,3 +1,7 @@
+---
+title: 'Protocol Execution & Playground Fix Plan'
+---
+
 # Protocol Execution & Playground Fix Plan
 
 **Date**: 2026-02-09

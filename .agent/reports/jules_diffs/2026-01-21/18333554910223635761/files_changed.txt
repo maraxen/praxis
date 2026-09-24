@@ -1,1 +1,0 @@
-.agent/research/labware_library_schema.md

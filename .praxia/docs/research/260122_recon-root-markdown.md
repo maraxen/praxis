@@ -1,3 +1,7 @@
+---
+title: 'Root Markdown Files Audit Report'
+---
+
 # Root Markdown Files Audit Report
 
 This report provides an audit of the root-level markdown files in the repository.

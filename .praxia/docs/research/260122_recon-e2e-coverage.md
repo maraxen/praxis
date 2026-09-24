@@ -1,3 +1,7 @@
+---
+title: 'E2E Test Coverage Reconnaissance Report'
+---
+
 # E2E Test Coverage Reconnaissance Report
 
 ## 1. Test Inventory

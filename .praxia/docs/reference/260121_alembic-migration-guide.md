@@ -1,3 +1,7 @@
+---
+title: 'Alembic Migration Workflow Guide'
+---
+
 # Alembic Migration Workflow Guide
 
 ## Quick Reference

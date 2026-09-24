@@ -1,7 +1,7 @@
 ---
 title: 260912 autonomous loop decisions (L5)
 description: 'Every decision the 260912 L5 loop made without a human gate: the REPL-refocus staleness dispositions, the #5110 selection, and the praxia debt filings.'
-status: completed
+status: complete
 task_id: 260912_repl-gate-manifest-scope
 date: '260912'
 ---

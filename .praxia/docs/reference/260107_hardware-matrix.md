@@ -1,3 +1,7 @@
+---
+title: 'PyLabRobot Hardware Communication Matrix'
+---
+
 # PyLabRobot Hardware Communication Matrix
 
 **Last Updated**: 2026-01-07

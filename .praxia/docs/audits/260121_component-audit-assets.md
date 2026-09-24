@@ -1,3 +1,7 @@
+---
+title: 'Component Audit: Assets & Protocols'
+---
+
 # Component Audit: Assets & Protocols
 
 ## Mock Data / Hardcoded Values
