@@ -3,15 +3,14 @@
 Tests the transformation of PyLabRobot state format to frontend StateSnapshot format.
 """
 
-import pytest
 
 from praxis.backend.core.state_transform import (
-    extract_tip_state,
-    extract_liquid_volumes,
-    get_on_deck_resources,
-    transform_plr_state,
     _infer_parent_name,
     _infer_well_id,
+    extract_liquid_volumes,
+    extract_tip_state,
+    get_on_deck_resources,
+    transform_plr_state,
 )
 
 

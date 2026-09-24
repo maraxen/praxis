@@ -1,0 +1,9 @@
+{
+ "cache_key": "bbd006632a0ac93fa5b81acc9bba0fcd1277d53c48d808d932b5a38042c68dc3",
+ "fetched_at": "2026-09-01T21:18:46.209971+00:00",
+ "input_hash": "565340ec02f366ad37557ccf9ad21cf827a21e1eab2b6c9805a4386a99b5d5de",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the absorbance of well A1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

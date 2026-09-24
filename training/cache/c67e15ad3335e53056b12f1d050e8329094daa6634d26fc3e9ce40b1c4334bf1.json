@@ -1,0 +1,9 @@
+{
+ "cache_key": "c67e15ad3335e53056b12f1d050e8329094daa6634d26fc3e9ce40b1c4334bf1",
+ "fetched_at": "2026-09-01T21:11:09.068360+00:00",
+ "input_hash": "a5b6e735662e74efc7c01a37ccf2d2e5d15b19835b80967bd589f7e18ee035fb",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer liquid from plate_2 F9 into the destination well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,13 +1,10 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
-import uuid
-import inspect
-from typing import Awaitable, Callable
+
+import pytest
 
 from praxis.backend.core.workcell_runtime.machine_manager import MachineManagerMixin
-from praxis.backend.models import Machine, MachineDefinition, DeckDefinition, MachineStatusEnum
-from praxis.backend.utils.errors import WorkcellRuntimeError
+from praxis.backend.models import DeckDefinition, Machine, MachineDefinition
 
 
 class MockSetup(MagicMock):

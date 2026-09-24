@@ -1,0 +1,9 @@
+{
+ "cache_key": "00a237a281ab18eb3a5c609e486358dd0047f435faf6e701d441cb45c0e0d8f7",
+ "fetched_at": "2026-09-03T15:10:04.030313+00:00",
+ "input_hash": "62df067395df97b53d0d88c07ffd2ef33ab165115669971e10b20106e0c7e0fc",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you go ahead and order lunch for our lab team?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

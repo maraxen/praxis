@@ -1,0 +1,9 @@
+{
+ "cache_key": "2b27299443b79ed2757a5805f13fa224b02fb6584520db270df4fa58f1b95aaa",
+ "fetched_at": "2026-09-03T15:07:32.267505+00:00",
+ "input_hash": "548bf34ff1443f1b38c16a7ef5505089ef65467361ea34143095fe6ea8574eab",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Stop shaking on the heater shaker.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

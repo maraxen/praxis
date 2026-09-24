@@ -1,0 +1,9 @@
+{
+ "cache_key": "bc41870fd36981335f63ee2affeadb857f82c82621ef25a1e78e5844c9dc7bba",
+ "fetched_at": "2026-09-02T15:33:56.810609+00:00",
+ "input_hash": "38e35a559630c7a1e822abc09d13e57c1f767e9aa310730b3187e490b5be58d0",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Replicate the layout of plate 1 onto plate 2 using 15 microliters.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

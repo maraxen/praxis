@@ -1,0 +1,9 @@
+{
+ "cache_key": "f44eade12b2a25cb565873b2b33c91fed3b8cef7e564cd2caed220d0f653009e",
+ "fetched_at": "2026-09-02T20:34:40.601750+00:00",
+ "input_hash": "cfcd37927dd0a89748290b13a8a525aadd462d161e2da2383c3f1f7fd85c2802",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure the luminescence in wells C5 and E4 of the loaded plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

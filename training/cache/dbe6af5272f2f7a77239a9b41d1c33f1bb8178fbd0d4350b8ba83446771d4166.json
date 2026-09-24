@@ -1,0 +1,9 @@
+{
+ "cache_key": "dbe6af5272f2f7a77239a9b41d1c33f1bb8178fbd0d4350b8ba83446771d4166",
+ "fetched_at": "2026-09-01T21:12:48.707179+00:00",
+ "input_hash": "7d99dd8421836c672899ba3370532d1b9c5739c4a3f8cbd75bac1290517af3b6",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and pick up some tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

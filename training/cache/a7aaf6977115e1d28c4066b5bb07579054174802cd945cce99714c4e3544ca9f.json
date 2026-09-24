@@ -1,0 +1,9 @@
+{
+ "cache_key": "a7aaf6977115e1d28c4066b5bb07579054174802cd945cce99714c4e3544ca9f",
+ "fetched_at": "2026-09-03T15:03:34.772569+00:00",
+ "input_hash": "f50c474bd377124827e2b048eeaf013121ee0ea6806111525bca8bb28e41ded7",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you empty plate 1 by dumping its volume straight into the liquid waste?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

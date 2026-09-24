@@ -1,0 +1,9 @@
+{
+ "cache_key": "2ee2b6daa4296b799b9d55e24bb709557290f0871d34b7b6a351881b529450d0",
+ "fetched_at": "2026-09-02T15:17:12.230790+00:00",
+ "input_hash": "2a047d8df1e06306afaf495ac43a9caaa246565a0445e7485b1ef768ae43399a",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Bring liquid over into well A1 of plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

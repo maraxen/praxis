@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:47Z",
+ "key": "01587690abeb3ba9ed0707137a00107bb385557642c531f99ac9ea1b4056ab72",
+ "prompt_sha256": "01587690abeb3ba9ed0707137a00107bb385557642c531f99ac9ea1b4056ab72",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Aspirate 15 uL from plate A1\nPlease draw 15 uL out of well A1 on the plate\nTake 15 uL from plate A1",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

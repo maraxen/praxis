@@ -1,0 +1,9 @@
+{
+ "cache_key": "65120b9b1f0409d6cce2715f5164449540b29beb76fbd952c55edcff42b60776",
+ "fetched_at": "2026-09-02T16:21:53.471529+00:00",
+ "input_hash": "4f73acaf447cea0257cdf3298b560c23c137fe61d67699e65d04d090d6804767",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Copy the full well map from plate 1 onto the plate using 100 microliters per well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "5692978c7ee7afdafaa35ec83c4bdbd52b1bd4fcfc249c9459930ba999c386ce",
+ "fetched_at": "2026-09-02T16:49:00.371745+00:00",
+ "input_hash": "c025aa01b20c04ae18b59442ab53d506820c182f57346ff7fe36f8f455ec9976",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Take the lid over to scale station 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

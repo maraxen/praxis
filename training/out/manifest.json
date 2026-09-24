@@ -1,0 +1,108 @@
+{
+ "accepted": 805,
+ "cache_hits": 805,
+ "cache_misses": 0,
+ "examples_total": 805,
+ "execution_rejected": 0,
+ "execution_rejected_by_category": {},
+ "execution_skipped": 662,
+ "format_validation_pass_rate": 1.0,
+ "generator_version": "0.2.1",
+ "matrix_version": "3",
+ "per_class": {
+  "ambiguous-referent": 150,
+  "missing-slot": 180,
+  "none": 195,
+  "out-of-surface": 280
+ },
+ "pipeline": "p23_coverage_floor",
+ "plr_submodule_sha": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+ "prompt_version": "p23_nlify_v1",
+ "rejected": 0,
+ "selected_cell_ids": [
+  "aspirate__none",
+  "aspirate__missing-slot",
+  "aspirate__ambiguous-referent",
+  "mix__out-of-surface",
+  "dispense__none",
+  "dispense__missing-slot",
+  "dispense__ambiguous-referent",
+  "blow_out__out-of-surface",
+  "transfer__none",
+  "transfer__missing-slot",
+  "transfer__ambiguous-referent",
+  "touch_tip__out-of-surface",
+  "stamp__none",
+  "stamp__missing-slot",
+  "stamp__ambiguous-referent",
+  "dispense_to_waste__out-of-surface",
+  "pick_up_tips__none",
+  "pick_up_tips__missing-slot",
+  "pick_up_tips__ambiguous-referent",
+  "set_temperature__out-of-surface",
+  "drop_tips__none",
+  "drop_tips__missing-slot",
+  "drop_tips__ambiguous-referent",
+  "shake__out-of-surface",
+  "discard_tips__none",
+  "move_resource__missing-slot",
+  "discard_tips__ambiguous-referent",
+  "stop_shaking__out-of-surface",
+  "move_resource__none",
+  "move_plate__missing-slot",
+  "move_resource__ambiguous-referent",
+  "generic__out-of-surface",
+  "move_plate__none",
+  "move_lid__missing-slot",
+  "move_plate__ambiguous-referent",
+  "move_lid__none",
+  "read_absorbance__missing-slot",
+  "move_lid__ambiguous-referent",
+  "read_absorbance__none",
+  "read_fluorescence__missing-slot",
+  "read_fluorescence__none",
+  "read_luminescence__missing-slot",
+  "read_luminescence__none",
+  "tip_inventory__out-of-surface",
+  "consumables_ordering__out-of-surface",
+  "deck_display__out-of-surface",
+  "sample_value_query__out-of-surface",
+  "scheduling_logging__out-of-surface",
+  "run_status__out-of-surface"
+ ],
+ "supervision_kinds": {
+  "nl_clarification": "nl_clarification",
+  "tool_call": "tool_call"
+ },
+ "teacher_model_version": "gemini-3.7-flash-medium",
+ "value_format_conventions": {
+  "ambiguous_references": {
+   "examples": [
+    "the plate",
+    "the same well",
+    "the source well",
+    "the destination well"
+   ],
+   "style": "short vague noun phrases; only in ambiguous-referent cells"
+  },
+  "deck_resource_names": {
+   "examples": [
+    "plate_1_A3",
+    "tip_rack_2_A4",
+    "reservoir_1"
+   ],
+   "style": "lowercase snake_case stable ids resolvable by grounding"
+  },
+  "volumes": {
+   "example": 50.0,
+   "json_type": "float",
+   "rule": "positive finite floats; spoken/written as 'microliters' in utterances",
+   "unit": "uL"
+  },
+  "well_references": {
+   "example": "B3",
+   "regex": "^([A-H])(10|11|12|[1-9])$",
+   "style": "uppercase <row A-H><col 1-12>, e.g. A1 / B12"
+  }
+ }
+}

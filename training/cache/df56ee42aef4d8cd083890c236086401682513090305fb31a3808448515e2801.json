@@ -1,0 +1,9 @@
+{
+ "cache_key": "df56ee42aef4d8cd083890c236086401682513090305fb31a3808448515e2801",
+ "fetched_at": "2026-09-02T16:07:16.082135+00:00",
+ "input_hash": "ca250bb734cdc3de5a45e2bfcf5426abdc6f2e698117a4b865e9d5b40e90893a",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put down at hotel stack 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

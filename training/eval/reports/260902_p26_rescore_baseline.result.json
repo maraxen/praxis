@@ -1,0 +1,17 @@
+{
+  "model": "baseline",
+  "n_eval": 228,
+  "prediction_holds": 1,
+  "clarify_identical": 1,
+  "tripwire_ok": 1,
+  "successes_old": 37,
+  "successes_new": 45,
+  "accuracy_old": 0.16228070175438597,
+  "accuracy_new": 0.19736842105263158,
+  "artifact_rows_predicted": 8,
+  "flips_miss_to_hit": 8,
+  "flips_hit_to_miss": 0,
+  "flips_miss_to_hit_unpredicted": 0,
+  "predicted_but_still_missed": 0,
+  "tripwire_new": 13
+}

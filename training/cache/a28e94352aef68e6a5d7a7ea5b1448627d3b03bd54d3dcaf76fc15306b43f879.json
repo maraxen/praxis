@@ -1,0 +1,9 @@
+{
+ "cache_key": "a28e94352aef68e6a5d7a7ea5b1448627d3b03bd54d3dcaf76fc15306b43f879",
+ "fetched_at": "2026-09-02T15:12:17.406722+00:00",
+ "input_hash": "7e700369be34e8eadc8f0ab598b223cab92171744cb5da75ef9d4c2e463cb422",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and deliver to well C4 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

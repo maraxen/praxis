@@ -1,0 +1,665 @@
+{
+  "contracts": {
+    "LiquidHandler.aspirate": {
+      "gaps": [],
+      "guards": [
+        {
+          "condition": "len(set(use_channels)) == len(use_channels)",
+          "depth": 0,
+          "free_vars": [
+            "use_channels"
+          ],
+          "kind": "assert",
+          "raises": null,
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 959,
+            "qualname": "LiquidHandler.aspirate"
+          }
+        },
+        {
+          "condition": "len(p) != len(use_channels)",
+          "depth": 0,
+          "free_vars": [
+            "use_channels"
+          ],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [
+            "if len(p) != len(use_channels)",
+            "for (n, p) in [('resources', resources), ('vols', vols), ('offsets', offsets), ('flow_rates', flow_rates), ('liquid_height', liquid_height), ('blow_out_air_volume', blow_out_air_volume)]"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 990,
+            "qualname": "LiquidHandler.aspirate"
+          }
+        },
+        {
+          "condition": "error is not None",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "<dynamic:error>",
+          "scope_trail": [
+            "if error is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 1067,
+            "qualname": "LiquidHandler.aspirate"
+          }
+        },
+        {
+          "condition": "not len(invalid_channels) == 0",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [
+            "if not len(invalid_channels) == 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 409,
+            "qualname": "LiquidHandler._make_sure_channels_exist"
+          }
+        },
+        {
+          "condition": "lidded is resource",
+          "depth": 1,
+          "free_vars": [
+            "action",
+            "resource"
+          ],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [
+            "if lidded is resource"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 116,
+            "qualname": "_check_no_lid"
+          }
+        },
+        {
+          "condition": null,
+          "depth": 1,
+          "free_vars": [
+            "action",
+            "resource"
+          ],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 117,
+            "qualname": "_check_no_lid"
+          }
+        },
+        {
+          "condition": "len(not_containers) > 0",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "TypeError",
+          "scope_trail": [
+            "if len(not_containers) > 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 875,
+            "qualname": "LiquidHandler._check_containers"
+          }
+        },
+        {
+          "condition": "len(missing) > 0",
+          "depth": 1,
+          "free_vars": [
+            "method"
+          ],
+          "kind": "raise_guard",
+          "raises": "TypeError",
+          "scope_trail": [
+            "if len(missing) > 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 375,
+            "qualname": "LiquidHandler._check_args"
+          }
+        },
+        {
+          "condition": "strictness == Strictness.STRICT",
+          "depth": 1,
+          "free_vars": [
+            "method"
+          ],
+          "kind": "raise_guard",
+          "raises": "TypeError",
+          "scope_trail": [
+            "if strictness == Strictness.STRICT",
+            "if len(extra) > 0 and len(vars_keyword) == 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 383,
+            "qualname": "LiquidHandler._check_args"
+          }
+        }
+      ]
+    },
+    "LiquidHandler.dispense": {
+      "gaps": [],
+      "guards": [
+        {
+          "condition": "len(set(use_channels)) == len(use_channels)",
+          "depth": 0,
+          "free_vars": [
+            "use_channels"
+          ],
+          "kind": "assert",
+          "raises": null,
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 1153,
+            "qualname": "LiquidHandler.dispense"
+          }
+        },
+        {
+          "condition": "self._blow_out_air_volume is None",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "BlowOutVolumeError",
+          "scope_trail": [
+            "if self._blow_out_air_volume is None",
+            "if any((bav is not None and bav != 0.0 for bav in blow_out_air_volume))",
+            "if does_volume_tracking()"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 1185,
+            "qualname": "LiquidHandler.dispense"
+          }
+        },
+        {
+          "condition": "requested_bav is not None and done_bav is not None and (requested_bav > done_bav)",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "BlowOutVolumeError",
+          "scope_trail": [
+            "if requested_bav is not None and done_bav is not None and (requested_bav > done_bav)",
+            "for (requested_bav, done_bav) in zip(blow_out_air_volume, self._blow_out_air_volume)",
+            "if any((bav is not None and bav != 0.0 for bav in blow_out_air_volume))",
+            "if does_volume_tracking()"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 1188,
+            "qualname": "LiquidHandler.dispense"
+          }
+        },
+        {
+          "condition": "len(p) != len(use_channels)",
+          "depth": 0,
+          "free_vars": [
+            "use_channels"
+          ],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [
+            "if len(p) != len(use_channels)",
+            "for (n, p) in [('resources', resources), ('vols', vols), ('offsets', offsets), ('flow_rates', flow_rates), ('liquid_height', liquid_height), ('blow_out_air_volume', blow_out_air_volume)]"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 1202,
+            "qualname": "LiquidHandler.dispense"
+          }
+        },
+        {
+          "condition": "error is not None",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "<dynamic:error>",
+          "scope_trail": [
+            "if error is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 1271,
+            "qualname": "LiquidHandler.dispense"
+          }
+        },
+        {
+          "condition": "lidded is resource",
+          "depth": 1,
+          "free_vars": [
+            "action",
+            "resource"
+          ],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [
+            "if lidded is resource"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 116,
+            "qualname": "_check_no_lid"
+          }
+        },
+        {
+          "condition": null,
+          "depth": 1,
+          "free_vars": [
+            "action",
+            "resource"
+          ],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 117,
+            "qualname": "_check_no_lid"
+          }
+        },
+        {
+          "condition": "len(not_containers) > 0",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "TypeError",
+          "scope_trail": [
+            "if len(not_containers) > 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 875,
+            "qualname": "LiquidHandler._check_containers"
+          }
+        },
+        {
+          "condition": "len(missing) > 0",
+          "depth": 1,
+          "free_vars": [
+            "method"
+          ],
+          "kind": "raise_guard",
+          "raises": "TypeError",
+          "scope_trail": [
+            "if len(missing) > 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 375,
+            "qualname": "LiquidHandler._check_args"
+          }
+        },
+        {
+          "condition": "strictness == Strictness.STRICT",
+          "depth": 1,
+          "free_vars": [
+            "method"
+          ],
+          "kind": "raise_guard",
+          "raises": "TypeError",
+          "scope_trail": [
+            "if strictness == Strictness.STRICT",
+            "if len(extra) > 0 and len(vars_keyword) == 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 383,
+            "qualname": "LiquidHandler._check_args"
+          }
+        }
+      ]
+    },
+    "LiquidHandler.drop_tips": {
+      "gaps": [],
+      "guards": [
+        {
+          "condition": "len(not_tip_spots) > 0",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "TypeError",
+          "scope_trail": [
+            "if len(not_tip_spots) > 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 647,
+            "qualname": "LiquidHandler.drop_tips"
+          }
+        },
+        {
+          "condition": "len(set(use_channels)) == len(use_channels)",
+          "depth": 0,
+          "free_vars": [
+            "use_channels"
+          ],
+          "kind": "assert",
+          "raises": null,
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 651,
+            "qualname": "LiquidHandler.drop_tips"
+          }
+        },
+        {
+          "condition": "tip.tracker.get_used_volume() > 0 and (not allow_nonzero_volume)",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if tip.tracker.get_used_volume() > 0 and (not allow_nonzero_volume)",
+            "for channel in use_channels"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 657,
+            "qualname": "LiquidHandler.drop_tips"
+          }
+        },
+        {
+          "condition": "len(tip_spots) == len(offsets) == len(use_channels) == len(tips)",
+          "depth": 0,
+          "free_vars": [
+            "offsets",
+            "tip_spots",
+            "use_channels"
+          ],
+          "kind": "assert",
+          "raises": null,
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 666,
+            "qualname": "LiquidHandler.drop_tips"
+          }
+        },
+        {
+          "condition": "error is not None",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "<dynamic:error>",
+          "scope_trail": [
+            "if error is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 726,
+            "qualname": "LiquidHandler.drop_tips"
+          }
+        },
+        {
+          "condition": "not len(invalid_channels) == 0",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [
+            "if not len(invalid_channels) == 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 409,
+            "qualname": "LiquidHandler._make_sure_channels_exist"
+          }
+        },
+        {
+          "condition": "len(missing) > 0",
+          "depth": 1,
+          "free_vars": [
+            "method"
+          ],
+          "kind": "raise_guard",
+          "raises": "TypeError",
+          "scope_trail": [
+            "if len(missing) > 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 375,
+            "qualname": "LiquidHandler._check_args"
+          }
+        },
+        {
+          "condition": "strictness == Strictness.STRICT",
+          "depth": 1,
+          "free_vars": [
+            "method"
+          ],
+          "kind": "raise_guard",
+          "raises": "TypeError",
+          "scope_trail": [
+            "if strictness == Strictness.STRICT",
+            "if len(extra) > 0 and len(vars_keyword) == 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 383,
+            "qualname": "LiquidHandler._check_args"
+          }
+        },
+        {
+          "condition": "not resource_from_deck == resource",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [
+            "if not resource_from_deck == resource",
+            "for resource in resources"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 321,
+            "qualname": "LiquidHandler._assert_resources_exist"
+          }
+        }
+      ]
+    },
+    "LiquidHandler.pick_up_tips": {
+      "gaps": [],
+      "guards": [
+        {
+          "condition": "len(not_tip_spots) > 0",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "TypeError",
+          "scope_trail": [
+            "if len(not_tip_spots) > 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 498,
+            "qualname": "LiquidHandler.pick_up_tips"
+          }
+        },
+        {
+          "condition": "len(set(use_channels)) == len(use_channels)",
+          "depth": 0,
+          "free_vars": [
+            "use_channels"
+          ],
+          "kind": "assert",
+          "raises": null,
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 502,
+            "qualname": "LiquidHandler.pick_up_tips"
+          }
+        },
+        {
+          "condition": "not all((self.backend.can_pick_up_tip(channel, tip) for channel, tip in zip(use_channels, tips)))",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if not all((self.backend.can_pick_up_tip(channel, tip) for channel, tip in zip(use_channels, tips)))"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 514,
+            "qualname": "LiquidHandler.pick_up_tips"
+          }
+        },
+        {
+          "condition": "len(tip_spots) == len(offsets) == len(use_channels)",
+          "depth": 0,
+          "free_vars": [
+            "offsets",
+            "tip_spots",
+            "use_channels"
+          ],
+          "kind": "assert",
+          "raises": null,
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 522,
+            "qualname": "LiquidHandler.pick_up_tips"
+          }
+        },
+        {
+          "condition": "self.head[channel].has_tip",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "HasTipError",
+          "scope_trail": [
+            "if self.head[channel].has_tip",
+            "for (channel, op) in zip(use_channels, pickups)"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 535,
+            "qualname": "LiquidHandler.pick_up_tips"
+          }
+        },
+        {
+          "condition": "error is not None",
+          "depth": 0,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "<dynamic:error>",
+          "scope_trail": [
+            "if error is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 576,
+            "qualname": "LiquidHandler.pick_up_tips"
+          }
+        },
+        {
+          "condition": "not len(invalid_channels) == 0",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [
+            "if not len(invalid_channels) == 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 409,
+            "qualname": "LiquidHandler._make_sure_channels_exist"
+          }
+        },
+        {
+          "condition": "len(missing) > 0",
+          "depth": 1,
+          "free_vars": [
+            "method"
+          ],
+          "kind": "raise_guard",
+          "raises": "TypeError",
+          "scope_trail": [
+            "if len(missing) > 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 375,
+            "qualname": "LiquidHandler._check_args"
+          }
+        },
+        {
+          "condition": "strictness == Strictness.STRICT",
+          "depth": 1,
+          "free_vars": [
+            "method"
+          ],
+          "kind": "raise_guard",
+          "raises": "TypeError",
+          "scope_trail": [
+            "if strictness == Strictness.STRICT",
+            "if len(extra) > 0 and len(vars_keyword) == 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 383,
+            "qualname": "LiquidHandler._check_args"
+          }
+        },
+        {
+          "condition": "not resource_from_deck == resource",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [
+            "if not resource_from_deck == resource",
+            "for resource in resources"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 321,
+            "qualname": "LiquidHandler._assert_resources_exist"
+          }
+        }
+      ]
+    }
+  },
+  "schema_version": 1,
+  "stamp": {
+    "plr": {
+      "branch": "HEAD",
+      "dirty": true,
+      "dirty_content_id": "2ca7d1248dfd68c0312a93b490f3bd6211afc043",
+      "hash": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+      "provenance_source": "git",
+      "toplevel": "/home/marielle/projects/praxis/external/pylabrobot"
+    },
+    "praxis": {
+      "branch": "coxswain-p2-pipeline",
+      "dirty": true,
+      "dirty_content_id": "6c937ba0608e986f525dbff40cb5681b0cf6aa66",
+      "hash": "bbe7da51665f8e1bcf898a0c174ff20379efecf5",
+      "provenance_source": "git",
+      "toplevel": "/home/marielle/projects/praxis"
+    },
+    "pylabrobot_version": "0.2.2",
+    "schema_version": 1,
+    "stamped_at": "2026-09-02T19:28:24.639346+00:00",
+    "surface": "legacy_pinned",
+    "surface_pin": null
+  }
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "2d9a14cee96d86844a9f5c096fbade1babf890c46b42ebe8e8bb303bee759567",
+ "fetched_at": "2026-08-28T18:03:36.519299+00:00",
+ "input_hash": "3dc8fb90e0e8ddbee946258541950dca20413ece1e8243ac7a8225d30f0d8327",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Move the reservoir to scale_station_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "27efc03881670f8e680f913e7cc3ab30f319fefa4bb34d537de95b8428c0a3af",
+ "fetched_at": "2026-09-02T15:42:05.026770+00:00",
+ "input_hash": "31a469073bd50773009bc2e1df39260965654127b11010ac7817a2e69d3eb7b2",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you replicate the well layout of plate 2 onto plate 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

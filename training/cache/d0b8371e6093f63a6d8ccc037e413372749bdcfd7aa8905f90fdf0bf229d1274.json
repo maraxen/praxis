@@ -1,0 +1,9 @@
+{
+ "cache_key": "d0b8371e6093f63a6d8ccc037e413372749bdcfd7aa8905f90fdf0bf229d1274",
+ "fetched_at": "2026-09-02T17:10:41.814041+00:00",
+ "input_hash": "c26963a20e88bc47c0bb67ae431e6d280fc45a0d64b98be6739c74c5c1189009",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you throw away the tips at the tip rack?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

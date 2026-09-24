@@ -11,7 +11,6 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums import ScheduleStatusEnum
 from praxis.backend.models.domain.protocol import (
     FunctionProtocolDefinition,
     ProtocolRun,
@@ -21,6 +20,7 @@ from praxis.backend.models.domain.protocol_source import (
     ProtocolSourceRepository,
 )
 from praxis.backend.models.domain.schedule import ScheduleEntry
+from praxis.backend.models.enums import ScheduleStatusEnum
 from praxis.backend.utils.uuid import uuid7
 
 # ============================================================================

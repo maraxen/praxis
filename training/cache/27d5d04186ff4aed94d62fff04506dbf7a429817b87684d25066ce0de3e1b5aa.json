@@ -1,0 +1,9 @@
+{
+ "cache_key": "27d5d04186ff4aed94d62fff04506dbf7a429817b87684d25066ce0de3e1b5aa",
+ "fetched_at": "2026-09-03T15:02:17.575050+00:00",
+ "input_hash": "f9877ff373aedd75096bf7aaf2c67f6d5d217afc7dfd41639a67f7d643f2564f",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Touch the tips off against the side walls of the vessels so no droplets stay stuck to them.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

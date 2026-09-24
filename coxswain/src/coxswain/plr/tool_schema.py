@@ -12,6 +12,14 @@ import-boundary tests enforce that structurally.
 
 Effect strings reuse the ported method_contracts EffectType vocabulary so
 cue-3 precondition evaluation can join both tables without translation.
+
+P2.0 reconciliation (backlog 4475, spec rev2 AC-2.0.x): every entry carries an
+``experimental`` flag and a ``phase2_included`` flag. Entries with
+``phase2_included=False`` are OUT of the copilot generation surface; the full
+include/exclude decision record (with per-entry rationale) lives next to the
+canonical namespace table in ``coxswain/plr/param_namespace.py``. Tier
+metadata is retained for ALL entries -- exclusion changes what gets
+generated, never how a call is confirmed.
 """
 
 from __future__ import annotations
@@ -21,7 +29,7 @@ from typing import Any, Final
 
 from coxswain.schema.types import RiskTier
 
-__all__ = ["TOOL_SCHEMA", "ToolSpec", "tier_of"]
+__all__ = ["PHASE2_TOOL_NAMES", "TOOL_SCHEMA", "ToolSpec", "tier_of"]
 
 
 @dataclass(frozen=True)
@@ -36,6 +44,14 @@ class ToolSpec:
     effects: frozenset[str] = frozenset()
     #: Destination is waste -> irreversible family (AC-14 assertion 2).
     to_waste: bool = False
+    #: P2.0 (D13/R5 reconciliation): true for entries kept only as tiered
+    #: metadata -- phantom verbs absent from vendored PLR and verbs whose
+    #: praxis backend does not exist yet. Experimental entries are never in
+    #: the phase-2 generation surface.
+    experimental: bool = False
+    #: In the phase-2 copilot surface (schema-driven generation P2.3/P2.4).
+    #: Exclusions are recorded decisions -- see param_namespace.py.
+    phase2_included: bool = True
 
 
 def _spec(
@@ -45,6 +61,7 @@ def _spec(
     tier: RiskTier,
     effects: tuple[str, ...] = (),
     to_waste: bool = False,
+    experimental: bool = False,
 ) -> ToolSpec:
     return ToolSpec(
         name=name,
@@ -53,6 +70,10 @@ def _spec(
         risk_tier=tier,
         effects=frozenset(effects),
         to_waste=to_waste,
+        experimental=experimental,
+        # experimental=True implies phase-2 exclusion; explicit here so the
+        # table reads as data, not as a rule to re-derive.
+        phase2_included=not experimental,
     )
 
 
@@ -87,6 +108,8 @@ TOOL_SCHEMA: Final[dict[str, ToolSpec]] = {
             RiskTier.IRREVERSIBLE,
             ("dispenses",),
             to_waste=True,
+            # Phantom vs vendored HEAD dd79c4c89 (recon §1.4): no such method.
+            experimental=True,
         ),
         # --- reversible mutators ---------------------------------------------
         _spec(
@@ -106,9 +129,27 @@ TOOL_SCHEMA: Final[dict[str, ToolSpec]] = {
             "liquid_handler",
             RiskTier.REVERSIBLE,
             ("aspirates", "dispenses"),
+            # Phantom vs vendored HEAD dd79c4c89 (recon §1.4); upstream models
+            # mixing as aspirate/dispense ``mix`` kwarg lists instead.
+            experimental=True,
         ),
-        _spec("blow_out", "blow out", "liquid_handler", RiskTier.REVERSIBLE),
-        _spec("touch_tip", "touch", "liquid_handler", RiskTier.REVERSIBLE),
+        _spec(
+            "blow_out",
+            "blow out",
+            "liquid_handler",
+            RiskTier.REVERSIBLE,
+            # Phantom vs vendored HEAD dd79c4c89 (recon §1.4); modeled via
+            # blow_out_air_volume kwargs on aspirate/dispense.
+            experimental=True,
+        ),
+        _spec(
+            "touch_tip",
+            "touch",
+            "liquid_handler",
+            RiskTier.REVERSIBLE,
+            # Phantom vs vendored HEAD dd79c4c89 (recon §1.4).
+            experimental=True,
+        ),
         _spec(
             "move_resource",
             "move",
@@ -124,11 +165,35 @@ TOOL_SCHEMA: Final[dict[str, ToolSpec]] = {
             "heater_shaker",
             RiskTier.REVERSIBLE,
             ("sets_temperature",),
+            # Defender R5: methods exist on vendored HeaterShaker but no praxis
+            # backend wiring exists yet -- excluded until it does.
+            experimental=True,
         ),
-        _spec("shake", "start", "heater_shaker", RiskTier.REVERSIBLE, ("starts_shaking",)),
-        _spec("stop_shaking", "stop", "heater_shaker", RiskTier.REVERSIBLE, ("stops_shaking",)),
+        _spec(
+            "shake",
+            "start",
+            "heater_shaker",
+            RiskTier.REVERSIBLE,
+            ("starts_shaking",),
+            experimental=True,
+        ),
+        _spec(
+            "stop_shaking",
+            "stop",
+            "heater_shaker",
+            RiskTier.REVERSIBLE,
+            ("stops_shaking",),
+            experimental=True,
+        ),
     )
 }
+
+#: The phase-2 copilot generation surface: exactly the entries with
+#: ``phase2_included=True`` (13 of 20). Everything else is tiered metadata
+#: only. See param_namespace.py for the full include/exclude record.
+PHASE2_TOOL_NAMES: Final[frozenset[str]] = frozenset(
+    name for name, spec in TOOL_SCHEMA.items() if spec.phase2_included
+)
 
 
 def _call_name(target: str | Any) -> str:

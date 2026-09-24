@@ -1,0 +1,9 @@
+{
+ "cache_key": "00656b904f0bd7a667918514e9898da7ec7163742cdd4696dcf59a9a18e4f69f",
+ "fetched_at": "2026-09-02T15:19:09.187313+00:00",
+ "input_hash": "c9da91cda8480a89bcc3d82773518f0bd96cdba0d77b567ddb1d393a7aff12b0",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Move 150 microliters into well D10 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

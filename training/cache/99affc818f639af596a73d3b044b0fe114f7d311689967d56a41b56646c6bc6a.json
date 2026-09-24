@@ -1,0 +1,9 @@
+{
+ "cache_key": "99affc818f639af596a73d3b044b0fe114f7d311689967d56a41b56646c6bc6a",
+ "fetched_at": "2026-09-03T15:04:51.500816+00:00",
+ "input_hash": "3af46916e0c1e6c183d113488c48902c329982c9adc47d054ae5f8714b9fd314",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can we get the deck's heater-shaker module preheated to 37 degrees Celsius for our incubation?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

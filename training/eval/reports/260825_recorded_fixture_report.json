@@ -1,0 +1,128 @@
+{
+  "report_kind": "praxis-baseline-eval-report",
+  "clarify_scope_note": "clarify_expected/predicted cover OUT-OF-SURFACE (abstention) and MISSING-SLOT (derived missing_required) classes only; ambiguous-referent detection needs live kernel grounding (cue 2, F1-rev2/C-M1) and is verified at P2.9 integration, not in this static harness",
+  "mode": "recorded_artifacts",
+  "labeled_as": "RECORDED ARTIFACTS - NOT LIVE MODEL INFERENCE (mechanics proof / checkpoint re-scoring only) - PARTIAL COVERAGE (mechanics-proof subset, NOT split-representative)",
+  "base_revision": "google/functiongemma-270m-it@gated-repo-no-token-access",
+  "inputs": {
+    "pairs": "/home/marielle/projects/praxis/training/eval/fixtures/recorded_fixture_mechanics_proof.json",
+    "recorded_outputs": "/home/marielle/projects/praxis/training/eval/fixtures/recorded_fixture_mechanics_proof.json",
+    "split": "eval",
+    "extra_record_ids_ignored": [],
+    "coverage": {
+      "in_scope": 62,
+      "recorded": 8,
+      "scored": 8
+    }
+  },
+  "n_examples": 8,
+  "exact_match_accuracy": {
+    "value": 0.75,
+    "successes": 6,
+    "n": 8,
+    "wilson95": [
+      0.40932539399864326,
+      0.9285070703630172
+    ]
+  },
+  "clarify_recall": {
+    "value": 0.5,
+    "successes": 2,
+    "n": 4,
+    "wilson95": [
+      0.1500685161195957,
+      0.8499314838804043
+    ]
+  },
+  "clarify_precision": {
+    "value": 1.0,
+    "successes": 2,
+    "n": 2,
+    "wilson95": [
+      0.34245471019902,
+      1.0
+    ]
+  },
+  "clarify_confusion": {
+    "true_positive": 2,
+    "false_negative": 2,
+    "false_positive": 0,
+    "true_negative": 4
+  },
+  "per_class": {
+    "ambiguous_referent": {
+      "n": 1,
+      "exact_match": {
+        "value": 1.0,
+        "successes": 1,
+        "n": 1,
+        "wilson95": [
+          0.20660353132199377,
+          1.0
+        ]
+      },
+      "clarify_expected": 0,
+      "clarify_predicted": 0
+    },
+    "clean_parse": {
+      "n": 3,
+      "exact_match": {
+        "value": 0.6666666666666666,
+        "successes": 2,
+        "n": 3,
+        "wilson95": [
+          0.20770141759105232,
+          0.9384933876736883
+        ]
+      },
+      "clarify_expected": 0,
+      "clarify_predicted": 0
+    },
+    "missing_slot": {
+      "n": 2,
+      "exact_match": {
+        "value": 0.5,
+        "successes": 1,
+        "n": 2,
+        "wilson95": [
+          0.09455416829094782,
+          0.9054458317090521
+        ]
+      },
+      "clarify_expected": 2,
+      "clarify_predicted": 1
+    },
+    "out_of_surface": {
+      "n": 2,
+      "exact_match": {
+        "value": 1.0,
+        "successes": 2,
+        "n": 2,
+        "wilson95": [
+          0.34245471019902,
+          1.0
+        ]
+      },
+      "clarify_expected": 2,
+      "clarify_predicted": 1
+    }
+  },
+  "exact_match_failures": [
+    {
+      "record_id": "golden-clean-dispense-03",
+      "class": "clean_parse",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'waste_plate_A1', 'volume_ul': 50} != intended {'destination': 'waste_plate_A1', 'volume_ul': 15}"
+      ]
+    },
+    {
+      "record_id": "golden-missing-slot-03",
+      "class": "missing_slot",
+      "reasons": [
+        "params mismatch: 0: predicted {'destination': 'waste_plate_A1', 'volume_ul': 100} != intended {'volume_ul': 100}",
+        "0: missing_required derived () != intended ('destination',)",
+        "0: unresolved_slots derived (DerivedSlot(arg_name='destination', reference='waste_plate_A1', resource_type='container'),) != intended ()"
+      ]
+    }
+  ]
+}

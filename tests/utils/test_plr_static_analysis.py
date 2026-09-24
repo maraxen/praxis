@@ -517,7 +517,7 @@ def my_protocol(
 
     assert len(visitor.definitions) == 1
     info = visitor.definitions[0]
-    
+
     # Check start_well (Single Well)
     p1 = info.parameters[0]
     assert p1.name == "start_well"
@@ -530,13 +530,13 @@ def my_protocol(
     assert p2.name == "dest_wells"
     assert p2.field_type == "index_selector"
     assert p2.is_itemized is True
-    
+
     # Check tips (Sequence[TipSpot])
     p3 = info.parameters[2]
     assert p3.name == "tips"
     assert p3.field_type == "index_selector"
     assert p3.is_itemized is True
-    
+
     # Check other (str)
     p4 = info.parameters[3]
     assert p4.name == "other"
@@ -559,7 +559,7 @@ def my_protocol(wells: tuple[Well, ...]):
 
     assert len(visitor.definitions) == 1
     info = visitor.definitions[0]
-    
+
     p1 = info.parameters[0]
     assert p1.name == "wells"
     assert p1.field_type == "index_selector"
@@ -582,7 +582,7 @@ def my_protocol(well: Optional[Well]):
 
     assert len(visitor.definitions) == 1
     info = visitor.definitions[0]
-    
+
     p1 = info.parameters[0]
     assert p1.name == "well"
     assert p1.field_type == "index_selector"
@@ -605,7 +605,7 @@ def my_protocol(well: Well | None):
 
     assert len(visitor.definitions) == 1
     info = visitor.definitions[0]
-    
+
     p1 = info.parameters[0]
     assert p1.name == "well"
     assert p1.field_type == "index_selector"
@@ -620,7 +620,7 @@ class TestTypeAnnotationAnalyzer:
     from praxis.backend.utils.plr_static_analysis.type_annotation_analyzer import (
       analyze_type_hint_string,
     )
-    
+
     result = analyze_type_hint_string("Well")
     assert result is not None
     assert result.element_type == "Well"
@@ -631,7 +631,7 @@ class TestTypeAnnotationAnalyzer:
     from praxis.backend.utils.plr_static_analysis.type_annotation_analyzer import (
       analyze_type_hint_string,
     )
-    
+
     result = analyze_type_hint_string("list[Well]")
     assert result is not None
     assert result.element_type == "Well"
@@ -642,7 +642,7 @@ class TestTypeAnnotationAnalyzer:
     from praxis.backend.utils.plr_static_analysis.type_annotation_analyzer import (
       analyze_type_hint_string,
     )
-    
+
     result = analyze_type_hint_string("Sequence[TipSpot]")
     assert result is not None
     assert result.element_type == "TipSpot"
@@ -653,13 +653,13 @@ class TestTypeAnnotationAnalyzer:
     from praxis.backend.utils.plr_static_analysis.type_annotation_analyzer import (
       analyze_type_hint_string,
     )
-    
+
     result = analyze_type_hint_string("str")
     assert result is None
-    
+
     result = analyze_type_hint_string("int")
     assert result is None
-    
+
     result = analyze_type_hint_string("Plate")
     assert result is None
 
@@ -667,24 +667,23 @@ class TestTypeAnnotationAnalyzer:
     """Test ANSI/SBS plate dimension constants."""
     from praxis.backend.utils.plr_static_analysis.type_annotation_analyzer import (
       get_standard_dimensions,
-      ANSI_SBS_PLATE_DIMENSIONS,
     )
-    
+
     # 96-well plate
     x, y = get_standard_dimensions(96)
     assert x == 12
     assert y == 8
-    
+
     # 384-well plate
     x, y = get_standard_dimensions(384)
     assert x == 24
     assert y == 16
-    
+
     # Default (None)
     x, y = get_standard_dimensions()
     assert x == 12
     assert y == 8
-    
+
     # Unknown returns default
     x, y = get_standard_dimensions(999)
     assert x == 12

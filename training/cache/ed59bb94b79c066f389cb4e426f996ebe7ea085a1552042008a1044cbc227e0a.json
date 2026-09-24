@@ -1,0 +1,9 @@
+{
+ "cache_key": "ed59bb94b79c066f389cb4e426f996ebe7ea085a1552042008a1044cbc227e0a",
+ "fetched_at": "2026-09-01T21:14:12.175647+00:00",
+ "input_hash": "56db00d33ce5280ccb8f39962d41af7c639d48ad46f32bf11e4a25466059da1c",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Release the mounted tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

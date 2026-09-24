@@ -1,0 +1,9 @@
+{
+ "cache_key": "d58d119920a652112d2c4fab156c572fc1e93536b8dbec77cd23af4e2c43ea12",
+ "fetched_at": "2026-09-02T15:12:17.407315+00:00",
+ "input_hash": "6d0534a4c4968e6ef6f5bc34d90f29c11e37c68f39a3de370ecde1fdfe6eb866",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Add 15 microliters to the destination well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "8841a509bed30928ba85245e8ce7730ee5e1428c15dd00792de9b9ec955d8088",
+ "fetched_at": "2026-09-02T16:12:20.841399+00:00",
+ "input_hash": "79d3b63f10ef5e31d2c9fcec5dc718281e80da5d6f102d537a693928c466914b",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Place lid 1 over reservoir 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "c50a76dd8c1535ef2abecede27c389e64d712aef303da3b4749a0983ef564f59",
+ "fetched_at": "2026-09-01T21:14:12.175217+00:00",
+ "input_hash": "b2eeae4a13b7f7b1b5d5c6ab67628f9d977b47c5414654967353746bbacb4f6c",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please eject the mounted tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "548090371585f53ff0d7c1f0ebe638186cc9bde8850e55e23f8180587a59669c",
+ "fetched_at": "2026-09-02T16:24:40.407890+00:00",
+ "input_hash": "042366701d9f43412d033afcc96da429bc6e631e8551fb290b1f55bfcc5d54b9",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Load a tip from the A12 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "a4850fc3ed3ea7e25a7cc69902c141974f05ff390ebaa082a9c85d7d3043614e",
+ "fetched_at": "2026-09-03T15:10:49.178962+00:00",
+ "input_hash": "c35bf3dcf542c70f2343fcf1326c8ed6c32d0a6f0437d5961409fb426af48175",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you book me a flight to Chicago for next Monday?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

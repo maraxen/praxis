@@ -1,0 +1,9 @@
+{
+ "cache_key": "b3a4b88686713bec4f5db638ee9386752286bdfdeeddf5029b61d50c28918a5b",
+ "fetched_at": "2026-08-28T18:03:20.316688+00:00",
+ "input_hash": "ce410e3ab4ce5bf32464e611acf0d1bed30fc0799b810af053500397c36428a6",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"Stopping or controlling the heater shaker module is outside my capabilities. If you need, I can assist with operations like transfer, aspirate, dispense, or moving deck resources.\", \"utterance\": \"Halt the shaking of the heater shaker.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

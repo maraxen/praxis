@@ -1,0 +1,9 @@
+{
+ "cache_key": "d484da56c37edd721f9b0029e3e9de23c829b0b6667fb5c3486c2ef354d8cd02",
+ "fetched_at": "2026-08-25T22:07:07.994828+00:00",
+ "input_hash": "bbe25fecdbe3784e7fedd4fe0cc518f9d9c04647160822b603e855cc1359be92",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Please aspirate 10 microliters from each of the two channels.\",\n\"clarification\": null\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "9a26638d6d112220d8d53a70a5eddefebe8a6c2a186b068c72e1a5f2904a608e",
+ "fetched_at": "2026-09-02T15:12:06.520697+00:00",
+ "input_hash": "0a5124d8601ed2d0206ba7aaaf09d21fbea94e66dab1b3dc316e8e7511b0a626",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Deliver what's in the tips into well E3 of plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

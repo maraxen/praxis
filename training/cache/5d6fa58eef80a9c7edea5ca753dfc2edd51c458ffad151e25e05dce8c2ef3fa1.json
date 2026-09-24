@@ -1,0 +1,9 @@
+{
+ "cache_key": "5d6fa58eef80a9c7edea5ca753dfc2edd51c458ffad151e25e05dce8c2ef3fa1",
+ "fetched_at": "2026-09-02T15:13:31.696291+00:00",
+ "input_hash": "8cb9046cae30396d0960d9987eed95cd2f6feb92f67d44942e054e59242d2033",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Deliver 100 microliters into the destination well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

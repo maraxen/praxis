@@ -1,0 +1,9 @@
+{
+ "cache_key": "7499417307008f5ae9112860587dbcebd7a3b1494a27f5d8aa58df77b60092bd",
+ "fetched_at": "2026-09-02T16:28:47.761270+00:00",
+ "input_hash": "77440c2f1a7ab751370398c8082d155c449ebf86b8a09d1ddb3556b4ffc41b75",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Grab new tips before we start.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

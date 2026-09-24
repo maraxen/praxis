@@ -1,0 +1,9 @@
+{
+ "cache_key": "4fff8a857b952e728b32c50053eccc2d4882e2414462f52a7ab063da06a382d1",
+ "fetched_at": "2026-09-01T21:18:46.210651+00:00",
+ "input_hash": "664c15b6dd3b98867faef0d55eb53ed20cd16a813a1a1ea08e95ddd879add104",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please measure the absorbance at well A1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

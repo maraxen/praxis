@@ -1,0 +1,9 @@
+{
+ "cache_key": "9d67dca1157925641efdb3c75533d932d5c85a266f0d69f950a8295ced01ced6",
+ "fetched_at": "2026-09-02T20:20:54.786004+00:00",
+ "input_hash": "4723c51fb4231ba9d646be39a337981c7d52453028cc67ed1306e0632d9be8ac",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put the plate on scale station 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

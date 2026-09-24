@@ -1,0 +1,9 @@
+{
+ "cache_key": "a8d980ab4c6d197d82600727c97a212ed321eea96306cd680e253223bbf3396f",
+ "fetched_at": "2026-08-28T18:01:45.298839+00:00",
+ "input_hash": "650693d09df8027c0d095c3acff9aa92f478baef15c38f1de5fd47d293011e6d",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Copy the full well map from plate_2 onto plate_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

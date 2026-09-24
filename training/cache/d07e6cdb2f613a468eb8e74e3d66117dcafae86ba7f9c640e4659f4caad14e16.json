@@ -1,0 +1,9 @@
+{
+ "cache_key": "d07e6cdb2f613a468eb8e74e3d66117dcafae86ba7f9c640e4659f4caad14e16",
+ "fetched_at": "2026-09-02T16:30:53.773447+00:00",
+ "input_hash": "0ff1ae8b0c1772830ecd0a0f376ff8b9434f924568be17607313d57e558a94d2",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and get a new set of tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

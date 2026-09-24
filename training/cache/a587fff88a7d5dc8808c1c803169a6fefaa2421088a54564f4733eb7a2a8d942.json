@@ -1,0 +1,9 @@
+{
+ "cache_key": "a587fff88a7d5dc8808c1c803169a6fefaa2421088a54564f4733eb7a2a8d942",
+ "fetched_at": "2026-08-28T18:01:28.974847+00:00",
+ "input_hash": "8022663b0e7e4c5562fbe88c32126a0e64d61a0f3c6c7fa04031235da9b2baee",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Transfer 15 microliters from plate_2.D2 to the source well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

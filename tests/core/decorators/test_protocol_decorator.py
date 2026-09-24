@@ -316,7 +316,6 @@ class TestSetupInstructions:
 
     def test_protocol_function_with_dict_setup_instructions(self) -> None:
         """Test protocol function with dict setup instructions."""
-        from praxis.backend.core.decorators import SetupInstruction
 
         @protocol_function(
             setup_instructions=[

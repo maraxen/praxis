@@ -1,0 +1,64 @@
+# Pre-registration sidecar for P2.6d (task 260903_p26d_near_surface, backlog 4940):
+# six near-surface out-of-surface cells appended to the ambiguity matrix (v3),
+# arm-A recipe retrained ONCE on the frozen 228-row eval split, arm A3 (P2.6c)
+# as control. Prereg doc: .praxia/docs/preregistration/260903_p26d-near-surface-prereg.md
+# Written BEFORE generation and training. Rule and anchors unchanged.
+
+[experiment]
+hypothesis = "P2.6c showed the three tripwire rows (golden-out-surface-05/10/11) are near-surface TOPICAL confusions -- a surface object (sample, deck, tips) named inside an unsupported request -- and that no floor matrix cell has that shape (the 8 out-of-surface cells are topically far from the surface, and A/A2/A3 already abstain 32/32 on them). Adding six near-surface out-of-surface cells (tip inventory, consumables ordering, deck display, sample value query, scheduling/logging, run status; 20 rows each, nl_clarification supervision, base prompt unchanged) teaches abstention on exactly that shape: on the FROZEN 228-row eval split (pin sha 8e023a33...) arm A4 brings the tripwire to <= 1 and recovers >= 2 of the 3 A3 tripwire rows (P1) without regressing vs A3 (exact >= 0.671, clarify recall >= 0.705, hit->miss flips <= 5; P2) and while keeping the surface gains (surface6 >= 4/6, verb22 >= 11/22, in-surface probe >= 0.80; P3); on the 24-row near-surface probe abstention rises by >= 0.10 over A3 unless A3 is already >= 0.90 there (P4, secondary, checked locally on CPU before submission). Ceiling 0.732 < T_acc 0.80: NOT PROMOTED expected."
+stage_name = "validation"
+novel = true
+
+[reproduction]
+reproduces_run = "1387da1c-3b4c-4204-be9c-c23b7044ec69"
+tolerance_pct = 0.0
+
+# P1, P2 and P3 all hold (P4 is secondary and reported, not gated).
+[outcomes.pass]
+condition = "n_eval = 228 AND tripwire_out_of_surface_tool_calls <= 1 AND tripwire3_recovered >= 2 AND exact_match_accuracy >= 0.671 AND clarify_recall >= 0.705 AND flips_hit_to_miss <= 5 AND surface6_recovered >= 4 AND verb_category_migrated >= 11 AND in_surface_probe_exact_match_accuracy >= 0.80"
+decision = "Shape confirmed: report A3 vs A4 with Wilson intervals and every flip; feed A4 to promotion.py beside A, A2, A3; next lever is the user's call (eval-revision jury items from the brief, or the recipe sweep)"
+reasoning = "The tripwire rows were a matrix coverage gap at the surface boundary, not a phrasing or capacity problem: cells of the right shape fix them while the surface mapping survives"
+is_residual = false
+adversarial_check = "exact_match_accuracy >= 0.671 AND global_steps >= 400 AND n_train > 1250 AND probe_n >= 100"
+
+# The tripwire is fixed and nothing regressed, but a retention or flip bound
+# slipped by a small margin: the data moved the model more than pre-registered.
+[outcomes.marginal]
+condition = "n_eval = 228 AND tripwire_out_of_surface_tool_calls <= 1 AND tripwire3_recovered >= 2 AND clarify_recall >= 0.705 AND flips_hit_to_miss <= 8 AND exact_match_accuracy >= 0.608 AND (exact_match_accuracy < 0.671 OR flips_hit_to_miss > 5 OR surface6_recovered < 4 OR verb_category_migrated < 11 OR in_surface_probe_exact_match_accuracy < 0.80)"
+decision = "Report per-prediction; list every flip by class; do not add cells post hoc -- a second cell set is a new pre-registration"
+reasoning = "Abstention on the near-surface shape was learned at some cost to the surface rows or to exact match within A3's Wilson interval [0.608, 0.729]; one seed cannot separate that from shuffle noise"
+is_residual = false
+
+# The tripwire did not come back down, or the run regressed outright.
+[outcomes.fail]
+condition = "n_eval <> 228 OR tripwire_out_of_surface_tool_calls > 1 OR tripwire3_recovered < 2 OR clarify_recall < 0.705 OR exact_match_accuracy < 0.608 OR flips_hit_to_miss > 8"
+decision = "Do not promote; diagnose the tripwire rows from the dumps against the near-surface probe; if A4 abstains on the probe but not on the golden rows the residual is golden phrasing, a scorer/runtime question (jury item a), not data"
+reasoning = "Either the near-surface cells did not transfer to the golden phrasing, or teaching abstention near the surface moved the model off in-surface rows"
+is_residual = true
+
+[result_schema]
+arm = "str"
+seed = "int"
+recipe_version = "str"
+mode = "str"
+n_train = "int"
+negative_fraction = "float"
+max_length = "int"
+global_steps = "int"
+train_loss = "float"
+checkpoint_sha256 = "str"
+n_eval = "int"
+exact_match_accuracy = "float"
+clarify_recall = "float"
+clarify_precision = "float"
+tripwire_out_of_surface_tool_calls = "int"
+surface6_recovered = "int"
+verb_category_migrated = "int"
+flips_hit_to_miss = "int"
+tripwire3_recovered = "int"
+probe_n = "int"
+probe_exact_match_accuracy = "float"
+in_surface_probe_n = "int"
+in_surface_probe_exact_match_accuracy = "float"
+oos_probe_n = "int"
+oos_probe_exact_match_accuracy = "float"

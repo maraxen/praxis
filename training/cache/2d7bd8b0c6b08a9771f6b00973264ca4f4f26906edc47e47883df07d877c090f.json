@@ -1,0 +1,9 @@
+{
+ "cache_key": "2d7bd8b0c6b08a9771f6b00973264ca4f4f26906edc47e47883df07d877c090f",
+ "fetched_at": "2026-08-25T22:08:04.976474+00:00",
+ "input_hash": "9ba3cb8aebb33e1fc3e02c7fc7c16eed095910d79a0c523b405411ab362c373a",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Please aspirate 15.0 and 100.0 microliters from the source well.\",\n\"clarification\": null\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "38492391cdfcb7415b9d85f7516b82591a43598172723128862638a928184526",
+ "fetched_at": "2026-09-02T20:29:29.117479+00:00",
+ "input_hash": "59566da12f22fdd22966c6d9f59a97f71dfe6cf16b726be16c58499c5f073695",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you scan fluorescence in wells B7 and H1 using an excitation wavelength of 535 nm, emission wavelength of 520 nm, and a focal height of 12.5 mm?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

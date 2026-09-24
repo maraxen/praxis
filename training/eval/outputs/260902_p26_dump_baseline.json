@@ -1,0 +1,927 @@
+{
+  "artifact_kind": "praxis-recorded-model-outputs",
+  "base_revision": "google/functiongemma-270m-it@39eccb091651513a5dfb56892d3714c1b5b8276c",
+  "recorded_by": "praxis_training.baseline_eval.runner.run_local",
+  "model_label": null,
+  "inputs": {
+    "device": "cpu",
+    "dtype": "model-default",
+    "dtype_resolved": "torch.float32",
+    "split": "eval",
+    "max_new_tokens": 128
+  },
+  "outputs": [
+    {
+      "record_id": "cov-0012-aspirate__none-12",
+      "raw_output": "<start_function_call>call:aspirate{volume_ul:25,source:<escape>plate_2.C3<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0013-aspirate__none-13",
+      "raw_output": "<start_function_call>call:aspirate{source:<escape>plate_2.H10<escape>,volume_ul:15}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0014-aspirate__none-14",
+      "raw_output": "<start_function_call>call:aspirate{volume_ul:150,source:<escape>plate_1.H3<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0028-aspirate__missing-slot-13",
+      "raw_output": "<start_function_call>call:aspirate{volume_ul:150,source:<escape>well:well:well:well<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0061-mix__out-of-surface-16",
+      "raw_output": "<start_function_call>call:aspirate{source:<escape>well G3<escape>,volume_ul:10}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0062-mix__out-of-surface-17",
+      "raw_output": "I need the volume of fluid in well B1 before I can perform this calculation. Could you please provide the volume of fluid in well B1?"
+    },
+    {
+      "record_id": "cov-0063-mix__out-of-surface-18",
+      "raw_output": "<start_function_call>call:aspirate{source:<escape>well E5<escape>,volume_ul:12}<end_function_call><start_function_call>call:dispense{destination:<escape>row C<escape>,volume_ul:12}<end_function_call><start_function_call>call:transfer{destination:<escape>row C<escape>,source:<escape>well E5<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0064-mix__out-of-surface-19",
+      "raw_output": "<start_function_call>call:aspirate{source:<escape>well D2<escape>,volume_ul:80}<end_function_call><start_function_call>call:dispense{destination:<escape>well D3<escape>,volume_ul:80}<end_function_call><start_function_call>call:transfer{destination:<escape>well D3<escape>,source:<escape>well D2<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0077-dispense__none-12",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>plate_1.H7<escape>,volume_ul:75}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0078-dispense__none-13",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>plate_1.C6<escape>,volume_ul:50}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0079-dispense__none-14",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>plate_2.H7<escape>,volume_ul:10}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0092-dispense__missing-slot-12",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>plate 1 well D1<escape>,volume_ul:100}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0093-dispense__missing-slot-13",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>well A10<escape>,volume_ul:10}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0094-dispense__missing-slot-14",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>plate 1<escape>,volume_ul:100}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0126-blow_out__out-of-surface-16",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>current_tips_destination<escape>,destination:<escape>current_tips_destination<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0127-blow_out__out-of-surface-17",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>trash<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0128-blow_out__out-of-surface-18",
+      "raw_output": "I am sorry, but I cannot assist with this request. My current capabilities are limited to assisting with specific functions such as dispensing liquids, transferring liquids, and managing resource movements. I cannot generate or manage tips for ebbing or flushing."
+    },
+    {
+      "record_id": "cov-0129-blow_out__out-of-surface-19",
+      "raw_output": "I need the specific container, well, or plate you wish to use for blowing out the remaining liquid droplets. Could you please provide the container or plate?"
+    },
+    {
+      "record_id": "cov-0143-transfer__none-13",
+      "raw_output": "<start_function_call>call:transfer{destination:<escape>plate_1.H5<escape>,source:<escape>plate_1.D10<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0144-transfer__none-14",
+      "raw_output": "<start_function_call>call:transfer{destination:<escape>plate_2.A5<escape>,source:<escape>plate_2A6<escape>,volume_ul:50}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0158-transfer__missing-slot-13",
+      "raw_output": "<start_function_call>call:transfer{destination:<escape>plate_2.D10<escape>,source:<escape>plate_2<escape>,volume_ul:150}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0172-transfer__ambiguous-referent-12",
+      "raw_output": "<start_function_call>call:transfer{destination:<escape>source_well<escape>,source:<escape>plate_2<escape>,volume_ul:10}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0173-transfer__ambiguous-referent-13",
+      "raw_output": "I need the volume of liquid in plate\\_1 A1 to perform the transfer. Could you please provide the volume?"
+    },
+    {
+      "record_id": "cov-0174-transfer__ambiguous-referent-14",
+      "raw_output": "<start_function_call>call:transfer{destination:<escape>plate_2 C3<escape>,source:<escape>plate_2<escape>,volume_ul:100}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0191-touch_tip__out-of-surface-16",
+      "raw_output": "I am sorry, but I cannot assist with cleaning tip ends. My current tools are designed for handling liquid transfer and dispensing, and I cannot remove tip ends."
+    },
+    {
+      "record_id": "cov-0192-touch_tip__out-of-surface-17",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>vessel walls<escape>,destination:<escape>vessel walls<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0193-touch_tip__out-of-surface-18",
+      "raw_output": "I am sorry, but I cannot assist with this request. My current capabilities are limited to assisting with specific data management and transfer functions such as managing pipet tips, dispensing liquids, and transferring plates. I cannot generate or interpret scientific or technical advice on topics like scraping, grasping, or clearing hanging drops."
+    },
+    {
+      "record_id": "cov-0194-touch_tip__out-of-surface-19",
+      "raw_output": "I need the volume of pipetting tips in column 1 to perform the wall touch. Could you please provide the volume?"
+    },
+    {
+      "record_id": "cov-0207-stamp__none-12",
+      "raw_output": "<start_function_call>call:stamp{destination:<escape>plate_1<escape>,volume_ul:150,source:<escape>plate_2<escape>,volume_ul:150}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0208-stamp__none-13",
+      "raw_output": "<start_function_call>call:stamp{destination:<escape>plate_2<escape>,volume_ul:75,source:<escape>plate_1<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0209-stamp__none-14",
+      "raw_output": "<start_function_call>call:stamp{destination:<escape>plate_1<escape>,volume_ul:10.0,source:<escape>plate_2<escape>,volume_ul:10}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0222-stamp__missing-slot-12",
+      "raw_output": "I need the destination container, well, or plate to execute the stamp operation. Could you please provide the container or plate?"
+    },
+    {
+      "record_id": "cov-0223-stamp__missing-slot-13",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>plate_1<escape>,destination:<escape>plate_2<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0224-stamp__missing-slot-14",
+      "raw_output": "<start_function_call>call:stamp{destination:<escape>plate_2<escape>,volume_ul:100,source:<escape>plate_1<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0237-stamp__ambiguous-referent-12",
+      "raw_output": "<start_function_call>call:stamp{destination:<escape>plate_1<escape>,volume_ul:10,source:<escape>plate_1<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0238-stamp__ambiguous-referent-13",
+      "raw_output": "<start_function_call>call:stamp{destination:<escape>plate_1<escape>,volume_ul:100,source:<escape>plate_1<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0239-stamp__ambiguous-referent-14",
+      "raw_output": "<start_function_call>call:stamp{destination:<escape>plate_1<escape>,volume_ul:25,source:<escape>plate_1<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0256-dispense_to_waste__out-of-surface-16",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>waste bin<escape>,plate:<escape>plate_2<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0257-dispense_to_waste__out-of-surface-17",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>waste<escape>,destination:<escape>waste<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0258-dispense_to_waste__out-of-surface-18",
+      "raw_output": "I cannot directly assist with tipping a plate over. My current capabilities are limited to calling specific tools for liquid transfer, dispensing, and managing pipetting operations like transferring liquids. I cannot provide assistance with handling or dropping hazardous materials like waste containers."
+    },
+    {
+      "record_id": "cov-0259-dispense_to_waste__out-of-surface-19",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>96-well plate<escape>,destination:<escape>liquid waste<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0272-pick_up_tips__none-12",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>tip_rack.C5<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0273-pick_up_tips__none-13",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>tip_rack.E10<escape>]}<end_function_call><start_function_call>call:pick_up_tips{at:[<escape>tip_rack.E8<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0274-pick_up_tips__none-14",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>tip_rack<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0287-pick_up_tips__missing-slot-12",
+      "raw_output": "I can certainly help with that. To pick up fresh tips, could you please specify the type of tip you are looking for?"
+    },
+    {
+      "record_id": "cov-0288-pick_up_tips__missing-slot-13",
+      "raw_output": "I can certainly assist with picking up new tips. To do that, could you please provide the specific tip spots you wish to pick up?"
+    },
+    {
+      "record_id": "cov-0289-pick_up_tips__missing-slot-14",
+      "raw_output": "I can certainly assist with tipping tips. To mount them, could you please specify the tip spots or well positions you wish to use?"
+    },
+    {
+      "record_id": "cov-0321-set_temperature__out-of-surface-16",
+      "raw_output": "I apologize, but I cannot assist with designing or listing specific heater-shaker module sets. My current capabilities are limited to calling specific tools for managing liquid transfer, dispensing pipettes, and transferring plates. I cannot generate or retrieve detailed module specifications or configurations."
+    },
+    {
+      "record_id": "cov-0322-set_temperature__out-of-surface-17",
+      "raw_output": "I cannot assist with adjusting heater shaker settings. My current capabilities are limited to calling specific tools for managing liquid transfer, dispensing pipettes, and handling plate moves. I cannot provide technical advice or recommendations for adjusting heater shaker controls."
+    },
+    {
+      "record_id": "cov-0323-set_temperature__out-of-surface-18",
+      "raw_output": "I apologize, but I cannot assist with setting specific temperature control parameters like the heater shaker module. My current capabilities are limited to calling specific tools for liquid transfer, dispensing, and managing plate operations like picking up tips. I cannot generate or manage complex temperature settings for equipment like a heater shaker module."
+    },
+    {
+      "record_id": "cov-0324-set_temperature__out-of-surface-19",
+      "raw_output": "I apologize, but I cannot assist with setting a thermostat. My current capabilities are limited to calling specific tools for managing liquid transfer, dispensing pipettes, and transferring plates. I cannot generate or manage thermostat settings."
+    },
+    {
+      "record_id": "cov-0338-drop_tips__none-13",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>tip_rack<escape>,destination:<escape>H7<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0339-drop_tips__none-14",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>tip_rackC6<escape>,destination:<escape>tip_rackC6<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0352-drop_tips__missing-slot-12",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>container<escape>,destination:<escape>container<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0353-drop_tips__missing-slot-13",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>trash<escape>,what:<escape>tips<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0354-drop_tips__missing-slot-14",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>container<escape>,destination:<escape>container<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0367-drop_tips__ambiguous-referent-12",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>box<escape>,destination:<escape>box<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0368-drop_tips__ambiguous-referent-13",
+      "raw_output": "<start_function_call>call:move_resource{destination:<escape>container<escape>,resource:<escape>pipette tips<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0369-drop_tips__ambiguous-referent-14",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>rack<escape>,plate:<escape>plate<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0386-shake__out-of-surface-16",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:[],focal_height_mm:500}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0387-shake__out-of-surface-17",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:[],focal_height_mm:500}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0388-shake__out-of-surface-18",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:[],focal_height_mm:500}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0389-shake__out-of-surface-19",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>container<escape>,plate:<escape>microplate<escape>,plate:<escape>microplate<escape>}<end_function_call><start_function_call>call:read_luminescence{at:[],focal_height_mm:500}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0402-discard_tips__none-12",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>tip_rackC9<escape>,destination:<escape>tip_rackC9<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0403-discard_tips__none-13",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>G12<escape>,destination:<escape>G12<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0404-discard_tips__none-14",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>tip_rack<escape>,destination:<escape>H2<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0417-move_resource__missing-slot-12",
+      "raw_output": "I need to know the destination container or well you wish to move to. Could you please provide the container or well location?"
+    },
+    {
+      "record_id": "cov-0418-move_resource__missing-slot-13",
+      "raw_output": "I need to know the location of the loaded plate to move it to hotel_stack_1. Could you please provide the location?"
+    },
+    {
+      "record_id": "cov-0419-move_resource__missing-slot-14",
+      "raw_output": "I need to know the destination reservoir to move the plate. Could you please provide the container or reservoir location?"
+    },
+    {
+      "record_id": "cov-0432-discard_tips__ambiguous-referent-12",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>the container<escape>,destination:<escape>the container<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0433-discard_tips__ambiguous-referent-13",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>the container<escape>,destination:<escape>the container<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0434-discard_tips__ambiguous-referent-14",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>trash<escape>,destination:<escape>trash<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0451-stop_shaking__out-of-surface-16",
+      "raw_output": "I am sorry, but I cannot assist with this request. My current capabilities are limited to calling specific tools for managing liquid transfer, dispensing pipettes, and transferring plates. I cannot generate or manage assistance for tasks related to handling or shaking equipment."
+    },
+    {
+      "record_id": "cov-0452-stop_shaking__out-of-surface-17",
+      "raw_output": "I am sorry, but I cannot assist with troubleshooting or stopping shaking motion on a heater shaker. My current capabilities are limited to assisting with specific functions such as transferring liquids, dispensing tips, picking up tips, and reading luminescence. I cannot troubleshoot mechanical issues like shaking or stopping motion."
+    },
+    {
+      "record_id": "cov-0453-stop_shaking__out-of-surface-18",
+      "raw_output": "I am sorry, but I cannot assist with troubleshooting heating systems. My current capabilities are limited to assisting with specific data retrieval and manipulation tasks such as transferring liquids, dispensing tips, and managing plate movements. I cannot troubleshoot heating systems or diagnose technical issues like heater shaking."
+    },
+    {
+      "record_id": "cov-0454-stop_shaking__out-of-surface-19",
+      "raw_output": "I am sorry, but I cannot assist with this request. My current capabilities are limited to calling specific tools for managing liquid transfer, such as dispensing liquids and transferring them. I cannot deactivate safety features or functionalities like shaking on a heater shaker."
+    },
+    {
+      "record_id": "cov-0467-move_resource__none-12",
+      "raw_output": "I need to know the destination location or the load of the stack to move it. Could you please provide the destination location or the load of the stack?"
+    },
+    {
+      "record_id": "cov-0468-move_resource__none-13",
+      "raw_output": "I need to know the destination container for the hotel stack. Could you please provide the destination container?"
+    },
+    {
+      "record_id": "cov-0469-move_resource__none-14",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>reservoir_1<escape>,plate:<escape>scale_station_1<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0482-move_plate__missing-slot-12",
+      "raw_output": "I need to know the destination reservoir to move the plate. Could you please provide the container or reservoir location?"
+    },
+    {
+      "record_id": "cov-0483-move_plate__missing-slot-13",
+      "raw_output": "I need to know the destination container for the reservoir to move it. Could you please provide the container?"
+    },
+    {
+      "record_id": "cov-0484-move_plate__missing-slot-14",
+      "raw_output": "I need to know the location of the loaded plate to move it to hotel_stack_1. Could you please provide the location?"
+    },
+    {
+      "record_id": "cov-0497-move_resource__ambiguous-referent-12",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>reservoir_1<escape>,plate:<escape>reservoir<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0498-move_resource__ambiguous-referent-13",
+      "raw_output": "I need the container, well, or plate to transport the carrier to scale_station_1. Could you please provide the container or plate?"
+    },
+    {
+      "record_id": "cov-0499-move_resource__ambiguous-referent-14",
+      "raw_output": "I need to know the reservoir's location or the capacity of the scale station to put it on scale. Could you please provide that information?"
+    },
+    {
+      "record_id": "cov-0516-generic__out-of-surface-16",
+      "raw_output": "I am sorry, but I cannot assist with translating German text. My current capabilities are focused on calling specific tools for managing liquid transfer, such as dispensing liquids and transferring them. I cannot translate between languages."
+    },
+    {
+      "record_id": "cov-0517-generic__out-of-surface-17",
+      "raw_output": "I am sorry, but I cannot assist with booking flights. My current capabilities are limited to assisting with specific functions such as transferring liquids, dispensing tips, and managing resources. I cannot connect with flight booking services or provide personalized travel recommendations."
+    },
+    {
+      "record_id": "cov-0518-generic__out-of-surface-18",
+      "raw_output": "I am sorry, but I cannot assist with answering this question. My current capabilities are limited to assisting with specific functions such as transferring liquids, dispensing tips, picking up tips, and managing resources. I cannot provide information about mountain ranges or their tallest peaks."
+    },
+    {
+      "record_id": "cov-0519-generic__out-of-surface-19",
+      "raw_output": "I am sorry, but I cannot assist with creating or recommending recipes. My current capabilities are focused on assisting with tasks such as managing resources, transferring liquids, and performing data manipulation. I cannot provide recipe ideas or culinary advice."
+    },
+    {
+      "record_id": "cov-0532-move_plate__none-12",
+      "raw_output": "I need to know the destination of the reservoir plate to move. Could you please provide the container or location where the reservoir plate should be moved?"
+    },
+    {
+      "record_id": "cov-0533-move_plate__none-13",
+      "raw_output": "I need to know the destination location for the plate_1 move to hotel_stack_1. Could you please provide the container or location?"
+    },
+    {
+      "record_id": "cov-0534-move_plate__none-14",
+      "raw_output": "I need to know the destination of the reservoir plate to move. Could you please provide the container or location where the reservoir plate should be moved?"
+    },
+    {
+      "record_id": "cov-0547-move_lid__missing-slot-12",
+      "raw_output": "I need to know the location of the scale station to move the plate. Could you please provide the location?"
+    },
+    {
+      "record_id": "cov-0548-move_lid__missing-slot-13",
+      "raw_output": "I need to know the location of the reservoir to move the plate. Could you please provide the container or plate where the reservoir is located?"
+    },
+    {
+      "record_id": "cov-0549-move_lid__missing-slot-14",
+      "raw_output": "I need to know the location of the reservoir to move the plate. Could you please provide the container or plate where the reservoir is located?"
+    },
+    {
+      "record_id": "cov-0562-move_plate__ambiguous-referent-12",
+      "raw_output": "I need the destination location or the plate to move to order this. Could you please provide the destination location or the plate?"
+    },
+    {
+      "record_id": "cov-0563-move_plate__ambiguous-referent-13",
+      "raw_output": "I need the destination location or the plate to be moved to to perform the transport. Could you please provide the destination location or the plate?"
+    },
+    {
+      "record_id": "cov-0564-move_plate__ambiguous-referent-14",
+      "raw_output": "I need the destination location to move the plate. Could you please specify the location?"
+    },
+    {
+      "record_id": "cov-0577-move_lid__none-12",
+      "raw_output": "I need to know the location of the container or reservoir to move the lid. Could you please provide the container or reservoir location?"
+    },
+    {
+      "record_id": "cov-0578-move_lid__none-13",
+      "raw_output": "I need the destination container, well, or plate to transfer the lid to. Could you please provide the destination container?"
+    },
+    {
+      "record_id": "cov-0579-move_lid__none-14",
+      "raw_output": "<start_function_call>call:move_lid{lid:<escape>lid_1<escape>,destination:<escape>hotel_stack_1<escape>}<end_function_call><start_function_call>call:move_plate{plate:<escape>lid_1<escape>,destination:<escape>hotel_stack_1<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0592-read_absorbance__missing-slot-12",
+      "raw_output": "To perform the absorbance read, I need the tip spots or well positions you wish to read. Could you please provide the tip spots or well positions?"
+    },
+    {
+      "record_id": "cov-0593-read_absorbance__missing-slot-13",
+      "raw_output": "I need the wavelength of light being absorbed to read the absorbance of well A7. Could you please provide the wavelength?"
+    },
+    {
+      "record_id": "cov-0594-read_absorbance__missing-slot-14",
+      "raw_output": "I need the tip spots or well positions to act on to measure the absorbance. Could you please provide the tip spots or well positions?"
+    },
+    {
+      "record_id": "cov-0607-move_lid__ambiguous-referent-12",
+      "raw_output": "I need to know the location of the reservoir to move the plate. Could you please provide the container or plate where the reservoir is located?"
+    },
+    {
+      "record_id": "cov-0608-move_lid__ambiguous-referent-13",
+      "raw_output": "I need to know the location of the scale station to move the plate. Could you please provide the location?"
+    },
+    {
+      "record_id": "cov-0609-move_lid__ambiguous-referent-14",
+      "raw_output": "I need to know the destination container for the plate lid to move. Could you please provide the container?"
+    },
+    {
+      "record_id": "cov-0622-read_absorbance__none-12",
+      "raw_output": "<start_function_call>call:read_absorbance{at:<escape>405.0 nm<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0623-read_absorbance__none-13",
+      "raw_output": "<start_function_call>call:read_absorbance{at:450,wavelength_nm:280}<end_function_call><start_function_call>call:read_absorbance{at:450,wavelength_nm:280}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0624-read_absorbance__none-14",
+      "raw_output": "<start_function_call>call:read_absorbance{at:540}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0637-read_fluorescence__missing-slot-12",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:{focal_height_mm:7.5,emission_nm:535,excitation_nm:110},focal_height_mm:7.5}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0638-read_fluorescence__missing-slot-13",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:{emission_nm:560,excitation_nm:560,focal_height_mm:15},focal_height_mm:15}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0639-read_fluorescence__missing-slot-14",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:{emission_nm:485,excitation_nm:800,focal_height_mm:15},focal_height_mm:1500}<end_function_call><start_function_call>call:read_luminescence{at:{focal_height_mm:1500,excitation_nm:800,focal_height_mm:15},focal_height_mm:1500}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0652-read_fluorescence__none-12",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:{emission_nm:620,excitation_nm:535,focal_height_mm:15},focal_height_mm:15}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0653-read_fluorescence__none-13",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:{emission_nm:520,excitation_nm:535,focal_height_mm:12.5},focal_height_mm:12.5}<end_function_call><start_function_call>call:read_luminescence{at:{focal_height_mm:12.5,excitation_nm:535,emission_nm:520},focal_height_mm:12.5}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0654-read_fluorescence__none-14",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:{emission_nm:535,excitation_nm:590,focal_height_mm:5},focal_height_mm:5000}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0667-read_luminescence__missing-slot-12",
+      "raw_output": "<start_function_call>call:read_luminescence{at:[],focal_height_mm:100}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0668-read_luminescence__missing-slot-13",
+      "raw_output": "I need the focal height of the plate to read the luminescence reading. Could you please provide the focal height?"
+    },
+    {
+      "record_id": "cov-0669-read_luminescence__missing-slot-14",
+      "raw_output": "<start_function_call>call:read_luminescence{at:[],focal_height_mm:10}<end_function_call><start_function_call>call:read_luminescence{at:[],focal_height_mm:10}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0682-read_luminescence__none-12",
+      "raw_output": "<start_function_call>call:read_luminescence{at:[],focal_height_mm:7.5}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0683-read_luminescence__none-13",
+      "raw_output": "<start_function_call>call:read_luminescence{at:[],focal_height_mm:12.5}<end_function_call>"
+    },
+    {
+      "record_id": "cov-0684-read_luminescence__none-14",
+      "raw_output": "<start_function_call>call:read_luminescence{at:[],focal_height_mm:15}<end_function_call>"
+    },
+    {
+      "record_id": "golden-ambig-ref-01",
+      "raw_output": "I need the container, well, or plate to transfer liquid from to one or more destinations. Could you please provide the container, well, or plate?"
+    },
+    {
+      "record_id": "golden-ambig-ref-02",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>there<escape>,volume_ul:80}<end_function_call>"
+    },
+    {
+      "record_id": "golden-ambig-ref-03",
+      "raw_output": "I need the location of the reader station to move the plate. Could you please provide the location?"
+    },
+    {
+      "record_id": "golden-ambig-ref-04",
+      "raw_output": "I can certainly help with that. To pick up tips, could you please specify the tip spots or well positions you wish to act on?"
+    },
+    {
+      "record_id": "golden-ambig-ref-05",
+      "raw_output": "<start_function_call>call:aspirate{source:<escape>well:1<escape>,volume_ul:30}<end_function_call>"
+    },
+    {
+      "record_id": "golden-ambig-ref-06",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>source<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-ambig-ref-07",
+      "raw_output": "<start_function_call>call:stamp{destination:<escape>plate_to_stamp_on<escape>,volume_ul:35,source:<escape>plate_to_stamp_on<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-ambig-ref-08",
+      "raw_output": "I need to know the location of the plate to move it. Could you please provide the container or plate where the lid should be moved?"
+    },
+    {
+      "record_id": "golden-ambig-ref-09",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>plate<escape>,volume_ul:45}<end_function_call>"
+    },
+    {
+      "record_id": "golden-ambig-ref-10",
+      "raw_output": "<start_function_call>call:transfer{destination:<escape>column 2<escape>,source:<escape>column 2<escape>,volume_ul:10}<end_function_call>"
+    },
+    {
+      "record_id": "golden-ambig-ref-11",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>the usual spot<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-ambig-ref-12",
+      "raw_output": "I need to know the destination container, well, or plate you wish to move the leftover tubes to. Could you please provide the destination container, well, or plate?"
+    },
+    {
+      "record_id": "golden-clean-aspirate-01",
+      "raw_output": "<start_function_call>call:aspirate{source:<escape> reagent_reservoir_1<escape>,volume_ul:50}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-aspirate-02",
+      "raw_output": "<start_function_call>call:aspirate{source:<escape>source_plate_well_A1<escape>,volume_ul:25}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-aspirate-03",
+      "raw_output": "I cannot directly assist with retrieving or pulling out specific data like the volume of fluid out of a reservoir. My current capabilities are limited to assisting with the execution of specific functions like data transfer, dispense, and spill management. I cannot access or manage fluid containment systems or reservoir data."
+    },
+    {
+      "record_id": "golden-clean-aspirate-04",
+      "raw_output": "<start_function_call>call:aspirate{source:<escape>tube rack position B3<escape>,volume_ul:10}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-discard_tips-01",
+      "raw_output": "<start_function_call>call:drop_tips{at:<escape>nothing<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-discard_tips-02",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>trash<escape>,destination:<escape>trash<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-discard_tips-03",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>trash<escape>,what:<escape>tips<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-discard_tips-04",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>container<escape>,destination:<escape>container<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-dispense-01",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>destination<escape>,volume_ul:50}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-dispense-02",
+      "raw_output": "<start_function_call>call:aspirate{source:<escape>well:1<escape>,volume_ul:200}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-dispense-03",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>waste plate position A1<escape>,volume_ul:15}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-dispense-04",
+      "raw_output": "<start_function_call>call:aspirate{volume_ul:75,source:<escape>microplate C6<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-drop_tips-01",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>trash<escape>,destination:<escape>trash<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-drop_tips-02",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>tip rack 3<escape>,destination:<escape>tip rack 3<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-drop_tips-03",
+      "raw_output": "I am sorry, but I cannot assist with this request. My current capabilities are limited to assisting with specific functions such as transferring liquids, dispensing tips, and managing resources. I cannot generate or manage waste disposal or bin management tasks."
+    },
+    {
+      "record_id": "golden-clean-drop_tips-04",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>disposal rack slot 2<escape>,destination:<escape>disposal rack slot 2<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-move_lid-01",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:[],focal_height_mm:1}<end_function_call><start_function_call>call:move_plate{plate:<escape>plate 1<escape>,destination:<escape>plate 1<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-move_lid-02",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>parking stand<escape>,plate:<escape>lid<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-move_lid-03",
+      "raw_output": "<start_function_call>call:read_absorance{at:[],wavelength_nm:180}<end_function_call><start_function_call>call:read_fluorescence{at:[],focal_height_mm:100}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-move_lid-04",
+      "raw_output": "<start_function_call>call:move_plate{plate:<escape>plate 4<escape>,destination:<escape>bench pad<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-move_plate-01",
+      "raw_output": "What is the destination of the plate 2?"
+    },
+    {
+      "record_id": "golden-clean-move_plate-02",
+      "raw_output": "I need the container, well, or plate to place onto the shaker platform. Could you please provide the container or plate?"
+    },
+    {
+      "record_id": "golden-clean-move_plate-03",
+      "raw_output": "<start_function_call>call:read_absorance{at:[],wavelength_nm:180}<end_function_call><start_function_call>call:move_plate{destination:<escape>stack<escape>,plate:<escape>waste plate<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-move_plate-04",
+      "raw_output": "I need to know the location of the PCR plate to move it. Could you please provide the location?"
+    },
+    {
+      "record_id": "golden-clean-move_resource-01",
+      "raw_output": "I need to know the location of the reagent reservoir to move it. Could you please provide the container or plate where the reagent reservoir should be placed?"
+    },
+    {
+      "record_id": "golden-clean-move_resource-02",
+      "raw_output": "I cannot assist with this request. My current capabilities are limited to calling specific tools for managing liquid transfer, such as dispensing pipettes and transferring liquids. I cannot perform complex structural or logistical tasks like shifting tube racks."
+    },
+    {
+      "record_id": "golden-clean-move_resource-03",
+      "raw_output": "I need the container, well, or plate to carry the tip boxes over to shelf B. Could you please provide the container or plate?"
+    },
+    {
+      "record_id": "golden-clean-move_resource-04",
+      "raw_output": "I need to know the location of the reservoir to move. Could you please provide the container or reservoir location?"
+    },
+    {
+      "record_id": "golden-clean-pick_up_tips-01",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>A1<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-pick_up_tips-02",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>96 tip spots or well positions to act on<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-pick_up_tips-03",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>D<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-pick_up_tips-04",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>box C4<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-read_absorbance-01",
+      "raw_output": "<start_function_call>call:read_absorbance{at:<escape>600<escape>,wavelength_nm:1800}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-read_absorbance-02",
+      "raw_output": "<start_function_call>call:read_absorance{at:[],wavelength_nm:450}<end_function_call><start_function_call>call:read_luminescence{at:[],focal_height_mm:100}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-read_absorbance-03",
+      "raw_output": "I need the wavelength of light being measured to accurately calculate the absorbance. Could you please provide the wavelength of light you are interested in?"
+    },
+    {
+      "record_id": "golden-clean-read_absorbance-04",
+      "raw_output": "<start_function_call>call:read_absorbance{at:<escape>340<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-read_fluorescence-01",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:{emission_nm:528,excitation_nm:485,focal_height_mm:20},focal_height_mm:20}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-read_fluorescence-02",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:[],focal_height_mm:18.5,emission_nm:488,excitation_nm:533}<end_function_call><start_function_call>call:read_fluorescence{at:[],focal_height_mm:18.5,emission_nm:533,excitation_nm:488}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-read_fluorescence-03",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:{emission_nm:590,excitation_nm:540,focal_height_mm:15},focal_height_mm:15000}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-read_fluorescence-04",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:[],focal_height_mm:10}<end_function_call><start_function_call>call:read_luminescence{focal_height_mm:10,focal_height_mm:465}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-read_luminescence-01",
+      "raw_output": "<start_function_call>call:read_luminescence{at:[],focal_height_mm:10}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-read_luminescence-02",
+      "raw_output": "<start_function_call>call:read_luminescence{at:{focal_height_mm:12.5},focal_height_mm:12.5}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-read_luminescence-03",
+      "raw_output": "<start_function_call>call:read_luminescence{at:{focal_height_mm:9,focal_height_mm:12},focal_height_mm:12}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-read_luminescence-04",
+      "raw_output": "<start_function_call>call:read_luminescence{at:{focal_height_mm:7500,focal_height_mm:5000}}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-stamp-01",
+      "raw_output": "<start_function_call>call:stamp{destination:<escape>copy plate<escape>,volume_ul:40,source:<escape>master plate<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-stamp-02",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape> Assay plate at 30 uL<escape>,plate:<escape>daughter plate layout<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-stamp-03",
+      "raw_output": "<start_function_call>call:transfer{destination:<escape>target plate<escape>,source:<escape>source plate<escape>,volume_ul:25}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-stamp-04",
+      "raw_output": "<start_function_call>call:stamp{destination:<escape>test plate<escape>,volume_ul:60,source:<escape>test plate<escape>,volume_ul:60}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-transfer-01",
+      "raw_output": "<start_function_call>call:transfer{destination:<escape>plate B<escape>,source:<escape>plate A<escape>,volume_ul:20}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-transfer-02",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>receiver plate<escape>,plate:<escape>donor plate<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-transfer-03",
+      "raw_output": "<start_function_call>call:transfer{destination:<escape>standards plate position A1<escape>,source:<escape>calibrator 1<escape>,volume_ul:50}<end_function_call>"
+    },
+    {
+      "record_id": "golden-clean-transfer-04",
+      "raw_output": "<start_function_call>call:transfer{destination:<escape>12 uL from sample tube eight to the qPCR plate<escape>,source:<escape>sample tube eight<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-missing-slot-01",
+      "raw_output": "<start_function_call>call:aspirate{volume_ul:50,source:<escape>well:well:well:well<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-missing-slot-02",
+      "raw_output": "I need the specific volume of lysis buffer you wish to use for aspirating. Could you please provide the volume in microliters?"
+    },
+    {
+      "record_id": "golden-missing-slot-03",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>well_end<escape>,volume_ul:100}<end_function_call>"
+    },
+    {
+      "record_id": "golden-missing-slot-04",
+      "raw_output": "<start_function_call>call:transfer{destination:<escape>plate A well H12<escape>,source:<escape>plate A well H12<escape>,volume_ul:25}<end_function_call>"
+    },
+    {
+      "record_id": "golden-missing-slot-05",
+      "raw_output": "I need the source container, well, or plate to transfer liquid or material from to one or more destinations. Could you please provide the container and well?"
+    },
+    {
+      "record_id": "golden-missing-slot-06",
+      "raw_output": "I need the destination container, well, or plate to stamp the master plate onto. Could you please provide the container or plate?"
+    },
+    {
+      "record_id": "golden-missing-slot-07",
+      "raw_output": "I need to know the destination location or container you wish to move the plate to. Could you please provide the destination?"
+    },
+    {
+      "record_id": "golden-missing-slot-08",
+      "raw_output": "I can certainly help with picking up tips. To do that, could you please provide the specific tip spots or well positions you wish to pick up?"
+    },
+    {
+      "record_id": "golden-missing-slot-09",
+      "raw_output": "I need the tip spots or well positions to act on to read the absorbance. Could you please provide the tip spots or well positions?"
+    },
+    {
+      "record_id": "golden-missing-slot-10",
+      "raw_output": "<start_function_call>call:read_fluorescence{at:{emission_nm:528,excitation_nm:485,focal_height_mm:528}}<end_function_call>"
+    },
+    {
+      "record_id": "golden-missing-slot-11",
+      "raw_output": "I need the focal height of the loaded plate to measure its luminescence. Could you please provide the focal height?"
+    },
+    {
+      "record_id": "golden-missing-slot-12",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>container<escape>,destination:<escape>container<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "golden-out-surface-01",
+      "raw_output": "I apologize, but I cannot assist with turning on or starting a heater shaker. My current capabilities are limited to calling specific tools for liquid transfer, dispensing pipettes, and managing plate moves. I cannot generate or manage advanced engineering or safety protocols for heating equipment."
+    },
+    {
+      "record_id": "golden-out-surface-02",
+      "raw_output": "I cannot assist with mixing samples for 30 seconds. My current capabilities are limited to assisting with specific data manipulation tasks such as transferring liquid, dispensing tips, picking up tips, and reading luminescence. I cannot generate or manage mixed chemical or biological processes."
+    },
+    {
+      "record_id": "golden-out-surface-03",
+      "raw_output": "I cannot assist with blowing out tips. My current capabilities are limited to calling specific tools for liquid handling, dispensing, and transferring. I cannot generate or manage tips."
+    },
+    {
+      "record_id": "golden-out-surface-04",
+      "raw_output": "I am sorry, but I cannot assist with running PCR thermal cycling protocols. My current capabilities are limited to assisting with specific data management and transfer functions such as data entry, dispensing, and picking up tips. I cannot perform complex scientific operations or troubleshoot PCR protocols."
+    },
+    {
+      "record_id": "golden-out-surface-05",
+      "raw_output": "I apologize, but I cannot assist with retrieving or analyzing sample concentration data. My current tools are designed for specific data management tasks such as transferring liquid, dispensing tips, picking up tips, and reading luminescence. I cannot connect to external databases or analytical services for this type of information."
+    },
+    {
+      "record_id": "golden-out-surface-06",
+      "raw_output": "I cannot assist with this request. My current capabilities are limited to calling specific tools for managing liquid transfer, such as dispensing pipettes and transferring liquids. I cannot perform complex centrifuge analyses or calculations related to fluid transfer."
+    },
+    {
+      "record_id": "golden-out-surface-07",
+      "raw_output": "I cannot assist with incubation. My current capabilities are limited to calling specific tools for liquid handling, transfer, and data management. I cannot generate or advise on incubation protocols for biological assays."
+    },
+    {
+      "record_id": "golden-out-surface-08",
+      "raw_output": "I am sorry, but I cannot assist with opening a robot door. My current capabilities are limited to assisting with tasks such as transferring liquid, dispensing tips, picking up tips, and reading luminescence. I cannot access or control physical robot doors."
+    },
+    {
+      "record_id": "golden-out-surface-09",
+      "raw_output": "I cannot assist with calibrating pipette channels. My current capabilities are limited to calling specific tools for managing pipette operations such as dispensing liquids and transferring them. I cannot troubleshoot device issues or provide expert advice on pipetting calibration."
+    },
+    {
+      "record_id": "golden-out-surface-10",
+      "raw_output": "I can certainly help with deck layout. To do that, could you please specify the type of deck you are interested in?"
+    },
+    {
+      "record_id": "golden-out-surface-11",
+      "raw_output": "I can certainly assist with ordering tips. To do that, could you please specify the type of tip you are looking for?"
+    },
+    {
+      "record_id": "golden-out-surface-12",
+      "raw_output": "I apologize, but I cannot assist with email management or retrieving past absorbance data. My current capabilities are limited to assisting with specific data management tasks such as transferring liquid, dispensing tips, picking up tips, and reading luminescence. I cannot access or retrieve sensitive or confidential business email communication."
+    },
+    {
+      "record_id": "ovl-6f09dc4472",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>target_tip_spots<escape>,destination:<escape>target_tip_spots<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-c1b96d6ed1",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>tr20uL 95<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-d1d9108c74",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>plate A1<escape>,volume_ul:100}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-d3bf9bf1c1",
+      "raw_output": "I need the tip spots or well positions to act on to pick them up. Could you please provide the tip spots or well positions you wish to pick up?"
+    },
+    {
+      "record_id": "ovl-dd18218e57",
+      "raw_output": "<start_function_call>call:read_absorance{at:[],wavelength_nm:180}<end_function_call><start_function_call>call:read_fluorescence{at:[],focal_height_mm:100}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-e0281f6bb6",
+      "raw_output": "<start_function_call>call:read_absorance{at:[],wavelength_nm:350}<end_function_call><start_function_call>call:read_fluorescence{at:[],focal_height_mm:100}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-e7609730e1",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>tr0 A1<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-eabc7d3819",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>plate well<escape>,destination:<escape>plate<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-eb7216381e",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[],at:[]}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-ed1a23a555",
+      "raw_output": "<start_function_call>call:move_plate{destination:<escape>A1<escape>,plate:<escape>A1<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-f05a5f93c4",
+      "raw_output": "<start_function_call>call:read_absorbance{at:[],wavelength_nm:180}<end_function_call><start_function_call>call:read_fluorescence{at:[],focal_height_mm:100}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-f33ef17438",
+      "raw_output": "<start_function_call>call:transfer{destination:<escape>trough<escape>,source:<escape>diluent_trough<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-f38dc0780c",
+      "raw_output": "<start_function_call>call:drop_tips{destination:<escape>plate dst_well<escape>,destination:<escape>plate dst_well<escape>}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-f59ec0d3c0",
+      "raw_output": "<start_function_call>call:read_absorbance{at:[],wavelength_nm:180}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-f8f0e3ae8e",
+      "raw_output": "<start_function_call>call:transfer{destination:<escape>dst_well<escape>,source:<escape>plate_dst_well<escape>,volume_ul:0.8}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-fa4010f376",
+      "raw_output": "<start_function_call>call:pick_up_tips{at:[<escape>tip_rack A1<escape>]}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-fed79047c4",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>dest_plate<escape>,volume_ul:100}<end_function_call>"
+    },
+    {
+      "record_id": "ovl-ff8c67a07d",
+      "raw_output": "<start_function_call>call:dispense{destination:<escape>plate dst_well<escape>,volume_ul:100}<end_function_call>"
+    }
+  ]
+}

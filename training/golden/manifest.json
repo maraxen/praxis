@@ -1,0 +1,83 @@
+{
+  "artifact": "praxis-copilot-golden-pair-set",
+  "counts": {
+    "by_ambiguity_class": {
+      "ambiguous_referent": 12,
+      "clean_parse": 52,
+      "missing_slot": 12,
+      "out_of_surface": 12
+    },
+    "by_class_and_split": {
+      "ambiguous_referent": {
+        "eval": 12,
+        "train": 0
+      },
+      "clean_parse": {
+        "eval": 26,
+        "train": 26
+      },
+      "missing_slot": {
+        "eval": 12,
+        "train": 0
+      },
+      "out_of_surface": {
+        "eval": 12,
+        "train": 0
+      }
+    },
+    "by_split": {
+      "eval": 62,
+      "train": 26
+    },
+    "calls_per_tool_eval": {
+      "aspirate": 5,
+      "discard_tips": 3,
+      "dispense": 5,
+      "drop_tips": 4,
+      "move_lid": 3,
+      "move_plate": 4,
+      "move_resource": 3,
+      "pick_up_tips": 4,
+      "read_absorbance": 3,
+      "read_fluorescence": 3,
+      "read_luminescence": 3,
+      "stamp": 4,
+      "transfer": 6
+    },
+    "calls_per_tool_train": {
+      "aspirate": 2,
+      "discard_tips": 2,
+      "dispense": 2,
+      "drop_tips": 2,
+      "move_lid": 2,
+      "move_plate": 2,
+      "move_resource": 2,
+      "pick_up_tips": 2,
+      "read_absorbance": 2,
+      "read_fluorescence": 2,
+      "read_luminescence": 2,
+      "stamp": 2,
+      "transfer": 2
+    },
+    "eval_clarify_total": 36,
+    "total_rows": 88
+  },
+  "developer_content_verbatim": "You are a model that can do function calling with the following functions\n",
+  "gap_fields_policy": "missing_required/unresolved_slots derived deterministically via coxswain.plr.slot_derivation (D11); NEVER authored or model-predicted",
+  "pair_linkage": "sidecar line N <-> pairs line N; utterance equality asserted in tests",
+  "phase2_tool_count": 13,
+  "plr_source_sha": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+  "provenance": "human-authored golden corpus (D9 regeneration-exempt); generator re-derives byte-for-byte for drift detection",
+  "scaffold": "functiongemma-native/research-s2a-developer-scaffold/no-date-injection(D6-rev2)",
+  "sizing_rule": {
+    "clarify_classes": [
+      "missing_slot",
+      "ambiguous_referent",
+      "out_of_surface"
+    ],
+    "clarify_per_class": 12,
+    "clarify_split_policy": "all eval (held-out) per D8 >=30 held-out sizing; train negative mixing is P2.5 assembly's job",
+    "positives_per_tool": 4
+  },
+  "version": 1
+}

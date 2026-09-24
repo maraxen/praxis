@@ -1,0 +1,9 @@
+{
+ "cache_key": "9ff2292c4e1c43f77b8d41d3342f78bce3535c1bd0d9a8a9c51eced4da40771f",
+ "fetched_at": "2026-09-02T15:33:56.810240+00:00",
+ "input_hash": "a06896c02deca5cba1233fbe018981d8ef33b85bcc058065d004415f75f28099",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please copy plate 1 onto plate 2 with 20 microliters.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

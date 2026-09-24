@@ -1,0 +1,9 @@
+{
+ "cache_key": "59395e11fc4043a75840ef9026c5edcbf9d8bf499331822a681b39f78ca288bc",
+ "fetched_at": "2026-09-03T15:10:49.178345+00:00",
+ "input_hash": "ae75e1aff4790579ffb749cf5d5130e10a6d494658b8d3e6628b2f7bb21c1ce8",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Hey, do you know what Tesla's stock price is at right now?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

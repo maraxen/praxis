@@ -1,0 +1,9 @@
+{
+ "cache_key": "e4fea915586855fb4d78aedcb7cadcab55edab378f311e3f450c69978045431e",
+ "fetched_at": "2026-09-03T15:05:46.538695+00:00",
+ "input_hash": "d278f7c6ddbddd73d93897e9cc5cc29fa28f154e0eeb24181045cefecd59a9ea",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Let's shake the microplate at 500 RPM for 5 mins to mix the reagents.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

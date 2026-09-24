@@ -1,0 +1,9 @@
+{
+ "cache_key": "68cdde03bc445bb9f344d3b5405bacd32f7cbb8752fc027a3c29652dceecc698",
+ "fetched_at": "2026-09-02T17:25:17.739642+00:00",
+ "input_hash": "5b59fe40c9fdd5f2185e759472b47b7e4c0ddcd20ef2662adbeeed60af304ba1",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you take the lid over to hotel stack 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

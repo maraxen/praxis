@@ -1,0 +1,9 @@
+{
+ "cache_key": "1b2fcb47b608b5877c6c387c908f993c9e77acb5bd62cd7b5abc36fbcf6f50b2",
+ "fetched_at": "2026-09-01T21:15:51.551902+00:00",
+ "input_hash": "4cd25d2ac21a4e7ad36a6a59e2c3f0c097c9f75c89998a544b8602d89c1b5f3e",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I'm unable to control the heater shaker or turn off shaking. I can, however, assist with moving plates or handling liquid transfers.\", \"utterance\": \"Can you turn off the shaker on the heater shaker module?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

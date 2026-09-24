@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:56Z",
+ "key": "90c75c6273ad5874404f17f90f83e39f130573825770305be5f749a846e367ed",
+ "prompt_sha256": "90c75c6273ad5874404f17f90f83e39f130573825770305be5f749a846e367ed",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Please dispense sample_volume_ul uL into plate dst_well.\nDispense sample_volume_ul uL to plate dst_well.\nAdd sample_volume_ul uL of sample to plate dst_well.",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

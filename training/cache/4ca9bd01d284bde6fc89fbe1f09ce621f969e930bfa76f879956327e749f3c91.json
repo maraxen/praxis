@@ -1,0 +1,9 @@
+{
+ "cache_key": "4ca9bd01d284bde6fc89fbe1f09ce621f969e930bfa76f879956327e749f3c91",
+ "fetched_at": "2026-09-03T15:01:28.523423+00:00",
+ "input_hash": "6c42ff1f3c73a740c368b9fa2cba26d22fe23b9ce825cdad42a52c97a6dd54f5",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Touch the pipette tips against the well walls to knock off any hanging drops.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

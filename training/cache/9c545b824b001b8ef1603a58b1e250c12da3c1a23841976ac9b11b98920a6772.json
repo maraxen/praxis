@@ -1,0 +1,9 @@
+{
+ "cache_key": "9c545b824b001b8ef1603a58b1e250c12da3c1a23841976ac9b11b98920a6772",
+ "fetched_at": "2026-09-02T16:53:21.147075+00:00",
+ "input_hash": "db51cd1a82d62c9b26fb1935e8b8cbbf34856871a766a3129b80481de50300bc",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you measure absorbance at 600 nm?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

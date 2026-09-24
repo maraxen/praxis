@@ -1,0 +1,9 @@
+{
+ "cache_key": "246c652561796e3a4c28c7b849cc0611eee0681ef09bddff6a4283e509db83f4",
+ "fetched_at": "2026-09-01T21:14:12.175265+00:00",
+ "input_hash": "604695e33ec72113650680b705c3b55f45c7b41c08f85080f3613572c3458ff3",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Drop the current tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

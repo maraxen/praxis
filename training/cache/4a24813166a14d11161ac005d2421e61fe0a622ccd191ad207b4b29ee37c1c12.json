@@ -1,0 +1,9 @@
+{
+ "cache_key": "4a24813166a14d11161ac005d2421e61fe0a622ccd191ad207b4b29ee37c1c12",
+ "fetched_at": "2026-09-02T20:50:06.201778+00:00",
+ "input_hash": "b33c5b82f2d8716cf709bb7af9e2d4b35e83b86dce32c0b29983e14df05fb69f",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Scan luminescence in wells A3, C1, D1, and H5 of the loaded plate at a focal height of 5.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

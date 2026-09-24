@@ -1,0 +1,9 @@
+{
+ "cache_key": "611a56cbb314f5f20d2e6c3135eea52fe95082bddcc79a5941eb6cc4113fd25e",
+ "fetched_at": "2026-09-02T16:16:20.949261+00:00",
+ "input_hash": "eb6889c1b081e6a58e5f3b9a251d716100e87fa80f70e9ed795d9acf64214376",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please measure absorbance for wells G6 and H12 on the plate in the reader.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

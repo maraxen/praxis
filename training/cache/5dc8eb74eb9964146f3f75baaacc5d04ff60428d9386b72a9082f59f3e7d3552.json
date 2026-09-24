@@ -1,0 +1,9 @@
+{
+ "cache_key": "5dc8eb74eb9964146f3f75baaacc5d04ff60428d9386b72a9082f59f3e7d3552",
+ "fetched_at": "2026-09-01T21:14:12.175695+00:00",
+ "input_hash": "c5f02c73fdd0328df3309e702d16849d339f2eb5b3048d0b3837dd6504ede6ef",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Drop the pipette tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

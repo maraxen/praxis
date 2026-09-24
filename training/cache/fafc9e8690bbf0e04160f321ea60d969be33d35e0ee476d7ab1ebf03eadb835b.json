@@ -1,0 +1,9 @@
+{
+ "cache_key": "fafc9e8690bbf0e04160f321ea60d969be33d35e0ee476d7ab1ebf03eadb835b",
+ "fetched_at": "2026-09-02T14:57:20.607991+00:00",
+ "input_hash": "6882a3f5c1f40c401e1e46a0f373a2e19d3eef5394e4d73373aa6a62a1a77d18",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Load pipette tips from the box.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

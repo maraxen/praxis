@@ -1,0 +1,9 @@
+{
+ "cache_key": "8b55d1bfeae8d656c162286584854a7066731f450e2fd2ec95f3292031749f59",
+ "fetched_at": "2026-09-02T15:01:41.017228+00:00",
+ "input_hash": "facdc6bc8177888addabaad131c89e48c73f3c89abb425d79fb50a2a0c2e48ef",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please pull 25 microliters from plate 2, well A3.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

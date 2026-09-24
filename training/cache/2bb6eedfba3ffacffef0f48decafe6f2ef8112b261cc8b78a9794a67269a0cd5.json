@@ -1,0 +1,9 @@
+{
+ "cache_key": "2bb6eedfba3ffacffef0f48decafe6f2ef8112b261cc8b78a9794a67269a0cd5",
+ "fetched_at": "2026-08-25T22:08:05.876559+00:00",
+ "input_hash": "bf3aa15b120cd86e85e376163c47c6f9f2513326fb4c00dfb47cc6a4c4617c01",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Aspirate 200 microliters from the same well.\",\n\"clarification\": null\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

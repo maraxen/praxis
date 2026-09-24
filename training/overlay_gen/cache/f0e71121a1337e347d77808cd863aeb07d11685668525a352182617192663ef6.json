@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:15:27Z",
+ "key": "f0e71121a1337e347d77808cd863aeb07d11685668525a352182617192663ef6",
+ "prompt_sha256": "f0e71121a1337e347d77808cd863aeb07d11685668525a352182617192663ef6",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Aspirate volume_ul uL from source_plate src.\nPlease draw up volume_ul uL from source_plate src.\nPull volume_ul uL from source_plate src.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

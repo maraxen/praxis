@@ -1,0 +1,9 @@
+{
+ "cache_key": "79f5894a42038efcb502ac3272e8a44efd46264991e6442e22aae911563aef0b",
+ "fetched_at": "2026-09-02T20:11:28.930462+00:00",
+ "input_hash": "71bea976bd2134796c3f8447bd7225d5cf09364a328f88f5c4e4613397324b3d",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Grab fresh tips from the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

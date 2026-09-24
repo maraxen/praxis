@@ -1,0 +1,9 @@
+{
+ "cache_key": "e18d1849caca46ddc945346bfc265e8a4cedf60eae4b3b8de099f391e2db42dd",
+ "fetched_at": "2026-09-02T15:29:38.766761+00:00",
+ "input_hash": "e1ba4f1c82025f514e26fb7faad807a9394435c62538a758c3e99a0246493174",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please move the liquid from well C7 of plate 2 into the destination well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

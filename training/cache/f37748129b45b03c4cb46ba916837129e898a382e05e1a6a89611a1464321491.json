@@ -1,0 +1,9 @@
+{
+ "cache_key": "f37748129b45b03c4cb46ba916837129e898a382e05e1a6a89611a1464321491",
+ "fetched_at": "2026-09-02T14:57:20.607594+00:00",
+ "input_hash": "bc15346724a33147d9053cf27d4529d949ed9ac4f3321c6d37606afef17b10a3",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you pick up tips from that tip rack?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "d156b967b0967ca5e21e9b26f71f6811d7936123de5fddc05aac620f235afa4a",
+ "fetched_at": "2026-09-02T16:22:20.318107+00:00",
+ "input_hash": "5b8d5fd545e819027281888f9dd3d7b3bc8499e2a95e8741e69bcbacd42712f3",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Load tips from the C5 and C9 spots on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

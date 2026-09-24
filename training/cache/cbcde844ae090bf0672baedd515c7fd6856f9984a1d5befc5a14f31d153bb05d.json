@@ -1,0 +1,9 @@
+{
+ "cache_key": "cbcde844ae090bf0672baedd515c7fd6856f9984a1d5befc5a14f31d153bb05d",
+ "fetched_at": "2026-08-28T18:02:31.404049+00:00",
+ "input_hash": "f08ded53f265f262312c741f1bb49234d50f640657e879b2872395e1cdbd35c3",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Discard the tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "f0b327e3bf585944f2902b59792174ce50cc5615cc7d45a818c3babfa8958890",
+ "fetched_at": "2026-09-02T15:10:59.366728+00:00",
+ "input_hash": "40a386d2a6baae452ee9af9e86d3a9d4ea17bdc2cb86e0f89779f19e6b3cda24",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Deliver 150 microliters into well D5 of plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

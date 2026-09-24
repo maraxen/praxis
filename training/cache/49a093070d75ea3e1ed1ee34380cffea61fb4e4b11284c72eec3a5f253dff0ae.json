@@ -1,0 +1,9 @@
+{
+ "cache_key": "49a093070d75ea3e1ed1ee34380cffea61fb4e4b11284c72eec3a5f253dff0ae",
+ "fetched_at": "2026-09-01T21:11:59.055560+00:00",
+ "input_hash": "4f61daaff27596518ab74cdc15ff33e2991d7f09414386cb5f0caff03cc86fcc",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please stamp plate_1 into plate_2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

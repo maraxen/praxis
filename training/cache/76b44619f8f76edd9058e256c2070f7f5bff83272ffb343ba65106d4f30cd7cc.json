@@ -1,0 +1,9 @@
+{
+ "cache_key": "76b44619f8f76edd9058e256c2070f7f5bff83272ffb343ba65106d4f30cd7cc",
+ "fetched_at": "2026-09-02T17:14:32.838013+00:00",
+ "input_hash": "f728e6e7be83b87ffab6dfc4e47c4fd9f9f9bbe7e7894cf7f3bc8a426ca7d2ee",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Bring reservoir 1 over to the scale station.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

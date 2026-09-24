@@ -1,0 +1,30 @@
+{
+  "lineage_contract_version": "1",
+  "known_keys": [
+    "authoring_note",
+    "cell_id",
+    "gap_fields",
+    "generator_version",
+    "golden_internal_split",
+    "matrix_ambiguity_class",
+    "matrix_version",
+    "origin",
+    "pair_line",
+    "pairs_file",
+    "prompt_version",
+    "receiver_type",
+    "sidecar_file",
+    "sidecar_split_tag",
+    "source_file",
+    "source_notebook_or_protocol",
+    "teacher_model_version"
+  ],
+  "reserved_cookbook_keys": [
+    "source_id",
+    "recipe_path"
+  ],
+  "note": "Any lineage key outside these two sets fails G5. Adding a key is a reviewed diff to this file; that diff is the moment someone must decide whether the new field carries cookbook attribution.",
+  "vocabulary_collisions": {
+    "receiver_type": "The naturalness rows' lineage carries a key literally named receiver_type. It is UNRELATED to ingest.recipes.ReceiverType (§3.2), which is a closed enum over cookbook DOTTED receivers. Same word, different vocabularies, no conversion between them."
+  }
+}

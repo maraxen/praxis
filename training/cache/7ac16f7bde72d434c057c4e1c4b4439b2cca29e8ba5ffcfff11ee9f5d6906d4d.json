@@ -1,0 +1,9 @@
+{
+ "cache_key": "7ac16f7bde72d434c057c4e1c4b4439b2cca29e8ba5ffcfff11ee9f5d6906d4d",
+ "fetched_at": "2026-09-01T21:12:48.707121+00:00",
+ "input_hash": "affad827ee916da05bccef199036f21180eb768965e2bec57b6ef0435f444c4f",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Pick up tips for the next step.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

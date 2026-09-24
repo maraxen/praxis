@@ -1,0 +1,9 @@
+{
+ "cache_key": "039a72c81725d1b160a2962e6673c463196f34f59cc7391fb264ce220b193be3",
+ "fetched_at": "2026-09-02T15:40:23.562510+00:00",
+ "input_hash": "d507ca69a0149bf78d09a34279c18833a0c292584a7b20cac6a438cf88241dd1",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Copy the layout of plate 2 onto plate 1 with 150 microliters per well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

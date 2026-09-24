@@ -1,0 +1,87 @@
+{
+  "protocol_fqn": "fixtures.branchy.branchy_protocol",
+  "protocol_name": "branchy_protocol",
+  "has_loops": false,
+  "has_conditionals": true,
+  "machine_types": ["LiquidHandler"],
+  "resource_types": ["LiquidHandler", "Plate"],
+  "execution_order": ["op_1", "op_2", "op_3"],
+  "preconditions": [],
+  "resources": {
+    "lh": {
+      "variable_name": "lh",
+      "declared_type": "LiquidHandler",
+      "element_type": null,
+      "is_container": false,
+      "is_parameter": true,
+      "parental_chain": [],
+      "source_expression": null,
+      "items_x": null,
+      "items_y": null
+    },
+    "plate": {
+      "variable_name": "plate",
+      "declared_type": "Plate",
+      "element_type": "Well",
+      "is_container": true,
+      "is_parameter": true,
+      "parental_chain": ["PlateCarrier", "Deck"],
+      "source_expression": null,
+      "items_x": null,
+      "items_y": null
+    }
+  },
+  "operations": [
+    {
+      "id": "op_1",
+      "line_number": 1,
+      "method_name": "aspirate",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {"resources": "plate[\"A1\"]", "vols": "50"},
+      "node_type": "conditional",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": null,
+      "foreach_body": [],
+      "condition_expr": "plate_is_full(plate)",
+      "true_branch": ["op_2"],
+      "false_branch": ["op_3"]
+    },
+    {
+      "id": "op_2",
+      "line_number": 2,
+      "method_name": "dispense",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {},
+      "node_type": "static",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": null,
+      "foreach_body": [],
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    },
+    {
+      "id": "op_3",
+      "line_number": 3,
+      "method_name": "drop_tips",
+      "receiver_variable": "lh",
+      "receiver_type": "LiquidHandler",
+      "arguments": {},
+      "node_type": "static",
+      "preconditions": [],
+      "creates_state": [],
+      "depends_on_params": [],
+      "foreach_source": null,
+      "foreach_body": [],
+      "condition_expr": null,
+      "true_branch": [],
+      "false_branch": []
+    }
+  ]
+}

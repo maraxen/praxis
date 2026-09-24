@@ -1,0 +1,9 @@
+{
+ "cache_key": "75b664e0a4214a77793571be0a8d922ad4afcfb36262eeed23e579905b8f9b94",
+ "fetched_at": "2026-09-02T20:18:54.177314+00:00",
+ "input_hash": "1c29f6eddb946c6da4b5d691bf4f92f1e7e97e067085825fac11b90cf5c038b0",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you place the plate in hotel stack 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

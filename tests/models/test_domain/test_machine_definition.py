@@ -4,14 +4,16 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums import MachineCategoryEnum
 from praxis.backend.models.domain.machine import (
     MachineDefinition,
     MachineDefinitionBase,
     MachineDefinitionCreate,
-    MachineDefinitionRead as MachineDefinitionResponse,
     MachineDefinitionUpdate,
 )
+from praxis.backend.models.domain.machine import (
+    MachineDefinitionRead as MachineDefinitionResponse,
+)
+from praxis.backend.models.enums import MachineCategoryEnum
 
 
 @pytest.mark.asyncio

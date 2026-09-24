@@ -1,0 +1,9 @@
+{
+ "cache_key": "e5f4b740d09a27349ecfce1cbb03e49e400e4593c81af6463b60c9effb820425",
+ "fetched_at": "2026-09-02T16:47:35.895111+00:00",
+ "input_hash": "7be806d72249c0fd7db2b7ed2edd28d2daa2d6db0c65208e91aeeb231088b133",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please bring the reservoir over to the hotel stack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

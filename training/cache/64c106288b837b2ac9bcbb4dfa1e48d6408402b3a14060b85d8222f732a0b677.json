@@ -1,0 +1,9 @@
+{
+ "cache_key": "64c106288b837b2ac9bcbb4dfa1e48d6408402b3a14060b85d8222f732a0b677",
+ "fetched_at": "2026-09-02T15:36:39.272849+00:00",
+ "input_hash": "e5907401382ffdf4184a68af4ceceef0c9a9f600e9b35e6791b23d61c28f628c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Replicate the plate layout from plate 2 to plate 1, transferring 50 microliters into each well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "85ee1e851efbbeed52308edaa6824ad6736f3f32d4ab7aa2c340becf1bde9db4",
+ "fetched_at": "2026-09-03T15:02:17.575106+00:00",
+ "input_hash": "d3cda997b537eb4fbffb79b70f40e1fa9900317b4d169130b39a74e7f9c3f945",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"After drawing up the sample, drag the ends of the tips lightly against the side wall to clear off any hanging drops.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

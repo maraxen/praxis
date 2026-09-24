@@ -1,10 +1,16 @@
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-from praxis.backend.models.domain.protocol import ProtocolRun, FunctionCallLog, FunctionProtocolDefinition
+
 from praxis.backend.models.domain.outputs import FunctionDataOutput
+from praxis.backend.models.domain.protocol import (
+    FunctionCallLog,
+    FunctionProtocolDefinition,
+    ProtocolRun,
+)
 from praxis.backend.models.enums import DataOutputTypeEnum, SpatialContextEnum
 from praxis.backend.utils.uuid import uuid7
+
 
 @pytest.mark.asyncio
 async def test_debug_orm_relationships(db_session: AsyncSession):
@@ -13,7 +19,7 @@ async def test_debug_orm_relationships(db_session: AsyncSession):
     # ProtocolRun requires "top_level_protocol_definition_accession_id"?
     # Let's check definition.
     # Assuming minimal valid object.
-    
+
     fpd = FunctionProtocolDefinition(
         name="test_fpd",
         fqn="test_fpd",
@@ -21,7 +27,7 @@ async def test_debug_orm_relationships(db_session: AsyncSession):
     )
     db_session.add(fpd)
     await db_session.flush()
-    
+
     pr = ProtocolRun(
         name="test_pr",
         top_level_protocol_definition_accession_id=fpd.accession_id,
@@ -29,7 +35,7 @@ async def test_debug_orm_relationships(db_session: AsyncSession):
     )
     db_session.add(pr)
     await db_session.flush()
-    
+
     fcl = FunctionCallLog(
         name="test_fcl",
         protocol_run_accession_id=pr.accession_id,
@@ -39,7 +45,7 @@ async def test_debug_orm_relationships(db_session: AsyncSession):
     )
     db_session.add(fcl)
     await db_session.flush()
-    
+
     # 2. Create FunctionDataOutput
     fdo = FunctionDataOutput(
         name="test_fdo",
@@ -52,5 +58,5 @@ async def test_debug_orm_relationships(db_session: AsyncSession):
     )
     db_session.add(fdo)
     await db_session.flush()
-    
+
     assert fdo.accession_id is not None

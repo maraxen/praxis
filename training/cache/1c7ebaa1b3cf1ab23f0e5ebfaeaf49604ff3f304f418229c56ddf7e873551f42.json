@@ -1,0 +1,9 @@
+{
+ "cache_key": "1c7ebaa1b3cf1ab23f0e5ebfaeaf49604ff3f304f418229c56ddf7e873551f42",
+ "fetched_at": "2026-09-01T21:15:51.554400+00:00",
+ "input_hash": "8d971dd40993a4ac0320024dffa73fe6bcbd96e8d2276f5f491dbd658c80575a",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I cannot adjust or stop heater shaker agitation. I can assist with moving plates, reading luminescence or absorbance, or transferring liquids.\", \"utterance\": \"Can you stop the heater shaker agitation?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

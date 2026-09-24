@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:15:05Z",
+ "key": "ee5241706ac06c70741c5d93bdc27f63ea907c5263bf5e850abcd10d11123996",
+ "prompt_sha256": "ee5241706ac06c70741c5d93bdc27f63ea907c5263bf5e850abcd10d11123996",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Eject the tips.\nPlease dispose of the tips.\nDrop the tips in the waste.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

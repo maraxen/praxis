@@ -1,0 +1,9 @@
+{
+ "cache_key": "bed2e470bcd2f93593866f985b21a3afe2a5c40bc14b9c90009697237bbc3807",
+ "fetched_at": "2026-09-02T20:31:02.916442+00:00",
+ "input_hash": "45b5f1cfad1f08db87bef7a560157ca5e82bcf2577dd10f0a423dd5a8ad0b077",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the signal from the loaded plate with an excitation wavelength of 535 nm, an emission wavelength of 620 nm, and a focal height of 15 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

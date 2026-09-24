@@ -2,7 +2,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 # Remove xfail if we expect it to pass, or keep it if we know it's broken.
-# Given the user said "feature is not yet implemented" but we see the code, 
+# Given the user said "feature is not yet implemented" but we see the code,
 # we'll write the test but might need to keep xfail if it fails.
 # For now, let's assume we want to TRY to make it pass, but acknowledge it might be flaky/unimplemented in env.
 # We will use strict=False so it passes if it works, and xfails if it fails (flaky/missing).
@@ -45,4 +45,3 @@ class TestBrowserModeExport:
         'continuous export/backup'.
         """
         # Placeholder for future implementation
-        pass

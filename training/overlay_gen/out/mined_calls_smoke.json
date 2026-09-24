@@ -1,0 +1,185 @@
+{
+ "generated_utc": "2026-08-27T15:14:19Z",
+ "mining": {
+  "by_source": {
+   "external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb": {
+    "excluded": 3,
+    "exclusion_detail": {
+     "setup: machine lifecycle, not a copilot verb": 1,
+     "stop: machine lifecycle, not a copilot verb": 1,
+     "summary: introspection, not a copilot verb": 1
+    },
+    "kept_calls": 6,
+    "parse_errors": 0,
+    "skip_reason": null,
+    "unextractable": 0,
+    "units": 17,
+    "verbs": {
+     "aspirate": 2,
+     "dispense": 2,
+     "drop_tips": 1,
+     "pick_up_tips": 1
+    }
+   },
+   "external/pylabrobot/docs/user_guide/00_liquid-handling/mixing.ipynb": {
+    "excluded": 3,
+    "exclusion_detail": {
+     "return_tips: tip-return family excluded (implicit head state)": 1,
+     "setup: machine lifecycle, not a copilot verb": 1,
+     "stop: machine lifecycle, not a copilot verb": 1
+    },
+    "kept_calls": 3,
+    "parse_errors": 0,
+    "skip_reason": null,
+    "unextractable": 0,
+    "units": 6,
+    "verbs": {
+     "aspirate": 1,
+     "dispense": 1,
+     "pick_up_tips": 1
+    }
+   },
+   "external/pylabrobot/docs/user_guide/00_liquid-handling/moving-channels-around.ipynb": {
+    "excluded": 8,
+    "exclusion_detail": {
+     "move_channel_x: manual channel ops are maintenance context": 1,
+     "move_channel_y: manual channel ops are maintenance context": 1,
+     "move_channel_z: manual channel ops are maintenance context": 3,
+     "prepare_for_manual_channel_operation: manual channel ops are maintenance context": 1,
+     "return_tips: tip-return family excluded (implicit head state)": 1,
+     "setup: machine lifecycle, not a copilot verb": 1
+    },
+    "kept_calls": 1,
+    "parse_errors": 0,
+    "skip_reason": null,
+    "unextractable": 0,
+    "units": 7,
+    "verbs": {
+     "pick_up_tips": 1
+    }
+   },
+   "external/pylabrobot/docs/user_guide/00_liquid-handling/opentrons/ot2/hello-world.ipynb": {
+    "excluded": 3,
+    "exclusion_detail": {
+     "home: machine lifecycle, not a copilot verb": 1,
+     "return_tips: tip-return family excluded (implicit head state)": 1,
+     "setup: machine lifecycle, not a copilot verb": 1
+    },
+    "kept_calls": 4,
+    "parse_errors": 0,
+    "skip_reason": null,
+    "unextractable": 0,
+    "units": 11,
+    "verbs": {
+     "aspirate": 1,
+     "discard_tips": 1,
+     "dispense": 1,
+     "pick_up_tips": 1
+    }
+   },
+   "external/pylabrobot/docs/user_guide/00_liquid-handling/opentrons/ot2/ot2-simulator.ipynb": {
+    "excluded": 6,
+    "exclusion_detail": {
+     "return_tips: tip-return family excluded (implicit head state)": 2,
+     "setup: machine lifecycle, not a copilot verb": 2,
+     "stop: machine lifecycle, not a copilot verb": 2
+    },
+    "kept_calls": 6,
+    "parse_errors": 0,
+    "skip_reason": null,
+    "unextractable": 0,
+    "units": 13,
+    "verbs": {
+     "aspirate": 2,
+     "dispense": 2,
+     "pick_up_tips": 2
+    }
+   },
+   "external/pylabrobot/docs/user_guide/00_liquid-handling/tutorial_tip_inventory_consolidation.ipynb": {
+    "excluded": 4,
+    "exclusion_detail": {
+     "consolidate_tip_inventory: state/query surface, not a copilot verb": 1,
+     "probe_tip_inventory: state/query surface, not a copilot verb": 1,
+     "setup: machine lifecycle, not a copilot verb": 2
+    },
+    "kept_calls": 2,
+    "parse_errors": 0,
+    "skip_reason": null,
+    "unextractable": 0,
+    "units": 12,
+    "verbs": {
+     "drop_tips": 1,
+     "pick_up_tips": 1
+    }
+   },
+   "praxis/protocol/protocols/serial_dilution.py": {
+    "excluded": 2,
+    "exclusion_detail": {
+     "return_tips: tip-return family excluded (implicit head state)": 2
+    },
+    "kept_calls": 8,
+    "parse_errors": 0,
+    "skip_reason": null,
+    "unextractable": 0,
+    "units": 1,
+    "verbs": {
+     "aspirate": 3,
+     "dispense": 3,
+     "pick_up_tips": 2
+    }
+   },
+   "praxis/protocol/protocols/simple_transfer.py": {
+    "excluded": 1,
+    "exclusion_detail": {
+     "return_tips: tip-return family excluded (implicit head state)": 1
+    },
+    "kept_calls": 3,
+    "parse_errors": 0,
+    "skip_reason": null,
+    "unextractable": 0,
+    "units": 1,
+    "verbs": {
+     "aspirate": 1,
+     "dispense": 1,
+     "pick_up_tips": 1
+    }
+   }
+  },
+  "exclusions_total": {
+   "consolidate_tip_inventory: state/query surface, not a copilot verb": 1,
+   "home: machine lifecycle, not a copilot verb": 1,
+   "move_channel_x: manual channel ops are maintenance context": 1,
+   "move_channel_y: manual channel ops are maintenance context": 1,
+   "move_channel_z: manual channel ops are maintenance context": 3,
+   "prepare_for_manual_channel_operation: manual channel ops are maintenance context": 1,
+   "probe_tip_inventory: state/query surface, not a copilot verb": 1,
+   "return_tips: tip-return family excluded (implicit head state)": 8,
+   "setup: machine lifecycle, not a copilot verb": 8,
+   "stop: machine lifecycle, not a copilot verb": 4,
+   "summary: introspection, not a copilot verb": 1
+  },
+  "total_kept": 33,
+  "verbs_total": {
+   "aspirate": 10,
+   "discard_tips": 1,
+   "dispense": 10,
+   "drop_tips": 2,
+   "pick_up_tips": 10
+  }
+ },
+ "subset": {
+  "notebooks": [
+   "external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb",
+   "external/pylabrobot/docs/user_guide/00_liquid-handling/opentrons/ot2/hello-world.ipynb",
+   "external/pylabrobot/docs/user_guide/00_liquid-handling/opentrons/ot2/ot2-simulator.ipynb",
+   "external/pylabrobot/docs/user_guide/00_liquid-handling/mixing.ipynb",
+   "external/pylabrobot/docs/user_guide/00_liquid-handling/moving-channels-around.ipynb",
+   "external/pylabrobot/docs/user_guide/00_liquid-handling/tutorial_tip_inventory_consolidation.ipynb"
+  ],
+  "protocols": [
+   "praxis/protocol/protocols/simple_transfer.py",
+   "praxis/protocol/protocols/serial_dilution.py"
+  ]
+ },
+ "tag": "smoke"
+}

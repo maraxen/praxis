@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:45Z",
+ "key": "ede7d9b72b78cc9432cdbd67e678af3af93a0df4f71ca063709e71da8f4ab920",
+ "prompt_sha256": "ede7d9b72b78cc9432cdbd67e678af3af93a0df4f71ca063709e71da8f4ab920",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Aspirate 20 uL from plate 0.\nPlease draw 20 uL out of plate 0.\nTake 20 uL from plate 0.",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

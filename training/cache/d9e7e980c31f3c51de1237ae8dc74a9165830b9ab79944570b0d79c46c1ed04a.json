@@ -1,0 +1,9 @@
+{
+ "cache_key": "d9e7e980c31f3c51de1237ae8dc74a9165830b9ab79944570b0d79c46c1ed04a",
+ "fetched_at": "2026-09-02T15:08:07.909760+00:00",
+ "input_hash": "12dbadf12477578de4387eb7bb74cbb87ac34e7d7b4c678221a0ae70b8031d4f",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Take up 100 microliters.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

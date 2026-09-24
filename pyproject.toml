@@ -41,7 +41,7 @@ dependencies = [
 pylabrobot = { path = "external/pylabrobot", editable = true }
 
 [tool.uv.workspace]
-members = ["coxswain"]
+members = ["coxswain", "training", "plr-sema"]
 
 [project.optional-dependencies]
 fw = [
@@ -217,7 +217,7 @@ line-length = 100
 indent-width = 2
 fix = true
 target-version = "py310"
-exclude = ["praxis/backend/commons", "tests", "alembic", "alembic_old", "scripts", "docs", "dependency_analysis.py", "web-repl/overlay", "web-repl/bootstrap"]
+exclude = ["praxis/backend/commons", "tests", "alembic", "alembic_old", "scripts", "docs", "dependency_analysis.py", "web-repl/overlay", "web-repl/bootstrap", "plr-sema"]
 
 [tool.ruff.lint]
 select = ["ALL"]

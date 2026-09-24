@@ -1,0 +1,9 @@
+{
+ "cache_key": "ec39cc4ad2ec785a046cb2734e0ea366b2bca2a7c65b1e640884c0b9876c6b45",
+ "fetched_at": "2026-09-01T21:19:08.654013+00:00",
+ "input_hash": "04c3ceaa74bc79d33019b20b06139291b5ba585450ccf4a60ea5ab41a547ae4a",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the fluorescence with an excitation wavelength of 485.0 nm and a focal height of 12.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "60edc116fbb835141ff83059cd81be3baabe141b9e0820a175895a6621fcf079",
+ "fetched_at": "2026-09-04T00:13:20.811039+00:00",
+ "input_hash": "1fd7579051c73a4addf62b49a99d7b0bf03cb3f28252df04ab8950a99ab64223",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I cannot query or calculate sample concentrations directly. If you want to acquire optical data to calculate concentration, I can perform a plate measurement using `read_absorbance` or `read_fluorescence`.\", \"utterance\": \"Can you tell me the current DNA concentration of the sample in well B2?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "df0194fac74e328d7ed461339a3b51137af38834dc20111d4817878ec825c9ee",
+ "fetched_at": "2026-09-03T15:01:46.237309+00:00",
+ "input_hash": "1ec72c169ddae73aaea5958cc4b1a69af0d04825164fdd034f041493e0abca3f",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you touch the ends of the tips to the sides of the wells to wipe off clinging drops?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

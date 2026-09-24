@@ -23,12 +23,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums import (
-    AssetReservationStatusEnum,
-    AssetType,
-    ScheduleHistoryEventEnum,
-    ScheduleStatusEnum,
-)
+from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.machine import Machine
 from praxis.backend.models.domain.protocol import (
     FunctionProtocolDefinition,
@@ -38,13 +33,14 @@ from praxis.backend.models.domain.protocol_source import (
     FileSystemProtocolSource,
     ProtocolSourceRepository,
 )
-from praxis.backend.models.domain.filters import SearchFilters
 from praxis.backend.models.domain.schedule import (
-    CancelScheduleRequest,
-    ResourceReservationStatus,
     ScheduleEntryCreate,
-    ScheduleListFilters,
-    ScheduleProtocolRequest,
+)
+from praxis.backend.models.enums import (
+    AssetReservationStatusEnum,
+    AssetType,
+    ScheduleHistoryEventEnum,
+    ScheduleStatusEnum,
 )
 from praxis.backend.services.scheduler import (
     cleanup_expired_reservations,
@@ -296,7 +292,7 @@ async def test_schedule_entry_service_update_status(
 
     assert updated is not None
     assert updated.status == ScheduleStatusEnum.EXECUTING
-    
+
     # Handle SQLite potentially returning naive datetime
     updated_started_at = updated.execution_started_at
     if updated_started_at and updated_started_at.tzinfo is None:
@@ -457,7 +453,7 @@ async def test_create_asset_reservation_with_custom_lock(
     assert reservation.redis_lock_value == custom_lock_value
     assert reservation.required_capabilities_json == {"temperature_control": True, "shaking": True}
     assert reservation.estimated_usage_duration_ms == 3600000
-    
+
     # Handle SQLite potentially returning naive datetime
     res_expires_at = reservation.expires_at
     if res_expires_at and res_expires_at.tzinfo is None:
@@ -656,7 +652,7 @@ async def test_update_asset_reservation_status(
 
     assert updated is not None
     assert updated.status == AssetReservationStatusEnum.RESERVED
-    
+
     # Handle SQLite potentially returning naive datetime
     updated_reserved_at = updated.reserved_at
     if updated_reserved_at and updated_reserved_at.tzinfo is None:
@@ -674,7 +670,7 @@ async def test_update_asset_reservation_status(
 
     assert updated is not None
     assert updated.status == AssetReservationStatusEnum.RELEASED
-    
+
     # Handle SQLite potentially returning naive datetime
     updated_released_at = updated.released_at
     if updated_released_at and updated_released_at.tzinfo is None:

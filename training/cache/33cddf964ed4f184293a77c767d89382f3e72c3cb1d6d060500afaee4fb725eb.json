@@ -1,0 +1,9 @@
+{
+ "cache_key": "33cddf964ed4f184293a77c767d89382f3e72c3cb1d6d060500afaee4fb725eb",
+ "fetched_at": "2026-09-03T15:10:04.029728+00:00",
+ "input_hash": "cbf2a95f6bf5b24789399d1428030882979ef6b647b0df94fe72a2c722e3272a",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Hey, could you put on some music on Spotify while I work at the bench?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

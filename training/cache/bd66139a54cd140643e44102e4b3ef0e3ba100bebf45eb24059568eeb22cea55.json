@@ -1,0 +1,9 @@
+{
+ "cache_key": "bd66139a54cd140643e44102e4b3ef0e3ba100bebf45eb24059568eeb22cea55",
+ "fetched_at": "2026-08-28T18:04:21.177272+00:00",
+ "input_hash": "e3cc00114410afeb215833e49bcb67c5a1c9d07b1bd2123f161c364d82f50cee",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the absorbance of the plate loaded in the reader.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

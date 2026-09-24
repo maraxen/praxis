@@ -1,0 +1,59 @@
+{
+  "by_class": {
+    "p1a_duplicate_use_channels": {
+      "n_achieved_will_fail_at_raised_index": 288,
+      "n_construction_skipped": 0,
+      "n_error": 0,
+      "n_raised_as_expected": 288,
+      "n_ran": 288,
+      "n_total": 288,
+      "n_unsound": 0,
+      "static_verdict_at_raising_index": {
+        "none": 0,
+        "safe": 0,
+        "unknown": 0,
+        "will_fail": 288
+      },
+      "unsound_safe_where_simulator_raised": [],
+      "unsound_will_fail_where_simulator_ran_clean": []
+    },
+    "p1b_short_offsets": {
+      "n_achieved_will_fail_at_raised_index": 16,
+      "n_construction_skipped": 272,
+      "n_error": 272,
+      "n_raised_as_expected": 16,
+      "n_ran": 16,
+      "n_total": 288,
+      "n_unsound": 0,
+      "static_verdict_at_raising_index": {
+        "none": 0,
+        "safe": 0,
+        "unknown": 0,
+        "will_fail": 16
+      },
+      "unsound_safe_where_simulator_raised": [],
+      "unsound_will_fail_where_simulator_ran_clean": []
+    },
+    "p1c_non_tipspot_element": {
+      "n_achieved_will_fail_at_raised_index": 0,
+      "n_construction_skipped": 0,
+      "n_error": 0,
+      "n_raised_as_expected": 288,
+      "n_ran": 288,
+      "n_total": 288,
+      "n_unsound": 0,
+      "static_verdict_at_raising_index": {
+        "none": 0,
+        "safe": 0,
+        "unknown": 288,
+        "will_fail": 0
+      },
+      "unsound_safe_where_simulator_raised": [],
+      "unsound_will_fail_where_simulator_ran_clean": []
+    }
+  },
+  "gate_passed": true,
+  "hard_violations": [],
+  "n_corpus_bases": 285,
+  "n_example_bases": 3
+}

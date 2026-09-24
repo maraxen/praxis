@@ -1,0 +1,9 @@
+{
+ "cache_key": "aea36f0772861791af7fce1eb34c126440fb0f9c08c9036c94c7f1be525b214b",
+ "fetched_at": "2026-09-02T16:37:24.720946+00:00",
+ "input_hash": "61d525704da88a3cc70c89fdb0ed528c879b3d102a7cd403ab44d6a0c35bc649",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Can you transport over to reservoir 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

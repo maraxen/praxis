@@ -1,0 +1,9 @@
+{
+ "cache_key": "a3c420791f4fe4c20401726efdb576b8326dc493b85b2c354a20a6bd4363ad88",
+ "fetched_at": "2026-09-01T21:17:54.669705+00:00",
+ "input_hash": "af64f79dd8d37519f907ba8198782806b14d51653ed951d8e49466dd469b0a48",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Move the lid to reservoir_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "250102b529ba7b7746b2583893025a5024f0c56875e32006b9596536e3aaa0a6",
+ "fetched_at": "2026-08-28T18:04:51.261785+00:00",
+ "input_hash": "5556050af34363be6ce825206e83dcf3a736c34ee073abf58692a903d6a03498",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please read the fluorescence of the plate using an excitation wavelength of 485 nm at a focal height of 15 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

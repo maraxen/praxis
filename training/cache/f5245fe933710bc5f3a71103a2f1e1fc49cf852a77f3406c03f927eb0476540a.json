@@ -1,0 +1,9 @@
+{
+ "cache_key": "f5245fe933710bc5f3a71103a2f1e1fc49cf852a77f3406c03f927eb0476540a",
+ "fetched_at": "2026-09-01T21:19:08.653915+00:00",
+ "input_hash": "3a75d82f9486174bf6781aadef5e2aafca4289a5ad7fbcc49e8035724fdadee3",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the absorbance at 450.0 nm at wells H1 and H4.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

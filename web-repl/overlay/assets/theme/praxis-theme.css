@@ -1,0 +1,367 @@
+/*
+ * praxis-theme.css -- the praxis design language, applied to JupyterLite.
+ *
+ * WHY THIS IS A TOKEN OVERRIDE AND NOT A LABEXTENSION
+ * ---------------------------------------------------
+ * JupyterLab consumes `--jp-brand-color1` 225x and `--jp-layout-color0` 223x
+ * inside the shipped bundle. Redefining that token set retints the entire app
+ * from one plain stylesheet -- no npm, no TypeScript, no fork. There is no
+ * build toolchain under web-repl/ and this file deliberately does not add one.
+ *
+ * SPECIFICITY IS LOAD-BEARING
+ * ---------------------------
+ * JupyterLab's own themes define these tokens on `:root`, in CSS that is
+ * injected AT RUNTIME (build/themes/@jupyterlab/theme-*-extension/index.css),
+ * i.e. AFTER this static <link>. At equal specificity the later rule wins, so
+ * a `:root` block here would lose every time. Every override below is scoped
+ * to `body[data-jp-theme-name=...]` -- specificity (0,1,1), which beats
+ * `:root`'s (0,1,0) regardless of document order.
+ *
+ * WHY SCOPED BY THEME NAME AND NOT `data-jp-theme-light`
+ * ------------------------------------------------------
+ * "JupyterLab Dark High Contrast" also reports data-jp-theme-light="false".
+ * Repainting it in the praxis palette would quietly destroy the contrast
+ * guarantee that is the entire point of that theme. It is left alone.
+ *
+ * NO ANIMATION, DELIBERATELY
+ * --------------------------
+ * Same posture as overlay/assets/coxswain/coxswain.css: this file adds zero
+ * transitions and zero keyframes, so the NFR-6 accessibility floor is met by
+ * construction and `prefers-reduced-motion` needs no exceptions. praxis's
+ * aurora fade, card lift and logo pulse are intentionally NOT ported.
+ *
+ * Token values trace to praxis/web-client/src/styles.scss (the canonical
+ * source of the design language). Fonts are vendored -- see fonts/ and
+ * scripts/vendor_fonts.py; a CDN <link> would break offline boot and GATE G5.
+ */
+
+/* --- vendored brand faces -------------------------------------------------- */
+/* Latin subset only. Ranges copied verbatim from fonts/VENDOR_MANIFEST.json. */
+
+@font-face {
+  font-family: 'Roboto Flex';
+  font-style: normal;
+  font-weight: 100 1000;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url(./fonts/RobotoFlex-Variable.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url(./fonts/JetBrainsMono-Variable.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: italic;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url(./fonts/JetBrainsMono-Italic-Variable.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* --- brand constants ------------------------------------------------------- */
+/*
+ * Declared on :root because nothing in JupyterLab defines these names, so
+ * there is no cascade fight to win. The --jp-* overrides below are the ones
+ * that need the higher-specificity body selector.
+ */
+:root {
+  --praxis-rose: #ED7A9B;        /* $rose-pompadour  -- styles.scss:13 */
+  --praxis-rose-light: #ff8fa8;  /* gradient midpoint */
+  --praxis-rose-dark: #d85a7f;
+  --praxis-moonstone: #73A9C2;   /* $moonstone-blue  -- styles.scss:14 */
+
+  /* The 135deg diagonal is the single most repeated motif in the praxis UI. */
+  --praxis-gradient: linear-gradient(135deg, var(--praxis-rose) 0%, var(--praxis-moonstone) 100%);
+
+  --praxis-ui-font: 'Roboto Flex', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, sans-serif;
+  --praxis-code-font: 'JetBrains Mono', 'Fira Code', ui-monospace, menlo, consolas,
+    monospace;
+}
+
+/* --- shared: typography, shape, brand ramp --------------------------------- */
+/*
+ * Applies to both retinted themes AND to the pre-theme first paint (no
+ * data-jp-theme-name attribute yet), so the fonts never flash system-ui.
+ */
+body[data-jp-theme-name='JupyterLab Dark'],
+body[data-jp-theme-name='JupyterLab Light'],
+body:not([data-jp-theme-name]) {
+  --jp-ui-font-family: var(--praxis-ui-font);
+  --jp-content-font-family: var(--praxis-ui-font);
+  /* JupyterLab resolves --jp-code-font-family THROUGH --jp-code-font-family-default,
+     so both are set: overriding only one leaves a stale path behind. */
+  --jp-code-font-family-default: var(--praxis-code-font);
+  --jp-code-font-family: var(--praxis-code-font);
+
+  --jp-border-radius: 8px;             /* praxis control radius */
+
+  --jp-brand-color0: var(--praxis-rose-dark);
+  --jp-brand-color1: var(--praxis-rose);
+  --jp-brand-color2: var(--praxis-rose-light);
+  --jp-brand-color3: #f2a2b9;
+  --jp-brand-color4: #f8cddb;
+
+  --jp-accent-color0: #5a8ea3;
+  --jp-accent-color1: var(--praxis-moonstone);
+  --jp-accent-color2: #9dc3d4;
+  --jp-accent-color3: #c3dde7;
+
+  --jp-focus-outline-color: var(--praxis-rose);
+
+  /* Retire the Jupyter orange in file/notebook icons -- it is the loudest
+     remaining piece of upstream branding. */
+  --jp-jupyter-icon-color: var(--praxis-rose);
+  --jp-notebook-icon-color: var(--praxis-rose);
+
+  /* Primary ("accept") actions -- the filebrowser New button and dialog
+     confirms. These do NOT read --jp-brand-color1: the upstream themes define
+     them straight off --md-blue-700, so overriding the brand ramp alone left
+     them Material blue. Verified in-browser: the New button computed
+     rgb(25,118,210) with the brand ramp already rose.
+
+     Deliberately the DARKER rose, not --praxis-rose: these carry white
+     foreground, and #ED7A9B/white is 2.7:1 -- below even the 3:1 floor for UI
+     components. #d85a7f/white is 3.7:1, and it is the same shade praxis's own
+     CTA gradient lands on (splash.component.ts). */
+  --jp-accept-color-normal: var(--praxis-rose-dark);
+  --jp-accept-color-hover: #c44e70;
+  --jp-accept-color-active: #b04463;
+
+  --jp-console-icon-background-color: var(--praxis-moonstone);
+  --jp-switch-true-position-color: var(--praxis-rose);
+}
+
+/* --- dark (default) -------------------------------------------------------- */
+/*
+ * :not([data-jp-theme-name]) is repeated here so the very first paint -- before
+ * the theme extension has applied -- is praxis dark rather than a white flash.
+ * praxis defaults to dark at :root (styles.scss:126).
+ */
+body[data-jp-theme-name='JupyterLab Dark'],
+body:not([data-jp-theme-name]) {
+  --jp-layout-color0: #12121e;   /* bg gradient stop 1 */
+  --jp-layout-color1: #1a1a2e;   /* --mat-sys-surface-container-low */
+  --jp-layout-color2: #1e1e2d;   /* --mat-sys-surface */
+  --jp-layout-color3: #2a2a3c;   /* --mat-sys-surface-container-high */
+  --jp-layout-color4: #33334a;
+
+  --jp-inverse-layout-color0: #ffffff;
+  --jp-inverse-layout-color1: #f5f5fa;
+  --jp-inverse-layout-color2: #d7d7e2;
+  --jp-inverse-layout-color3: #b4b4c4;
+  --jp-inverse-layout-color4: #8f8fa3;
+
+  --jp-ui-font-color0: rgba(255, 255, 255, 0.95);  /* --theme-text-primary */
+  --jp-ui-font-color1: rgba(255, 255, 255, 0.7);   /* 8.8:1 on #1a1a2e */
+  --jp-ui-font-color2: rgba(255, 255, 255, 0.5);
+  --jp-ui-font-color3: rgba(255, 255, 255, 0.32);
+
+  --jp-content-font-color0: rgba(255, 255, 255, 0.95);
+  --jp-content-font-color1: rgba(255, 255, 255, 0.92);
+  --jp-content-font-color2: rgba(255, 255, 255, 0.7);
+  --jp-content-font-color3: rgba(255, 255, 255, 0.5);
+
+  /* praxis --theme-border is rgba(255,255,255,.08); color1 is nudged to .12
+     because JupyterLab leans on it for structural splitters and panel edges,
+     where .08 reads as no border at all. */
+  --jp-border-color0: rgba(255, 255, 255, 0.2);
+  --jp-border-color1: rgba(255, 255, 255, 0.12);
+  --jp-border-color2: rgba(255, 255, 255, 0.08);
+  --jp-border-color3: rgba(255, 255, 255, 0.05);
+  --jp-inverse-border-color: rgba(255, 255, 255, 0.28);
+
+  --jp-success-color0: #22c55e;
+  --jp-success-color1: #4ade80;
+  --jp-success-color2: #86efac;
+  --jp-success-color3: #bbf7d0;
+
+  --jp-warn-color0: #eab308;
+  --jp-warn-color1: #facc15;
+  --jp-warn-color2: #fde047;
+  --jp-warn-color3: #fef08a;
+
+  --jp-error-color0: #b4485a;
+  --jp-error-color1: #cf6679;   /* --mat-sys-error (dark) */
+  --jp-error-color2: #e08e9c;
+  --jp-error-color3: #f2c4cc;
+
+  --jp-info-color0: #1565c0;
+  --jp-info-color1: #1976d2;
+  --jp-info-color2: #64b5f6;
+  --jp-info-color3: #bbdefb;
+
+  --jp-content-link-color: var(--praxis-moonstone);
+  --jp-content-link-hover-color: #9dc3d4;
+
+  --jp-cell-inprompt-font-color: var(--praxis-moonstone);
+  --jp-cell-outprompt-font-color: var(--praxis-rose);
+
+  --jp-dialog-background: rgba(9, 9, 16, 0.72);
+  --jp-rendermime-error-background: rgba(207, 102, 121, 0.18);
+
+  /* NOTE: this token is a BARE RGB TRIPLET, consumed inside rgba(). Quoting it
+     as a hex colour silently disables the scrollbar thumb. */
+  --jp-scrollbar-thumb-color: 120, 120, 145;
+  --jp-scrollbar-background-color: #1a1a2e;
+}
+
+/* --- light: praxis "premium light" is CREAM, not white --------------------- */
+/* styles.scss:124 -- "Light theme is now a premium light aesthetic (not plain white)" */
+body[data-jp-theme-name='JupyterLab Light'] {
+  --jp-layout-color0: #fffdf5;   /* --mat-sys-surface-container */
+  --jp-layout-color1: #fffdf5;
+  --jp-layout-color2: #fbf9e6;   /* --mat-sys-surface-container-high */
+  --jp-layout-color3: #f5f2d1;   /* --mat-sys-surface-container-highest */
+  --jp-layout-color4: #ece9c4;
+
+  --jp-inverse-layout-color0: #12121e;
+  --jp-inverse-layout-color1: #1a1a2e;
+  --jp-inverse-layout-color2: #2a2a3c;
+  --jp-inverse-layout-color3: #475569;
+  --jp-inverse-layout-color4: #64748b;
+
+  --jp-ui-font-color0: #020617;  /* slate-950 */
+  --jp-ui-font-color1: #1e293b;  /* slate-800 */
+  --jp-ui-font-color2: #475569;  /* slate-600 */
+  --jp-ui-font-color3: #64748b;
+
+  --jp-content-font-color0: #020617;
+  --jp-content-font-color1: #0f172a;
+  --jp-content-font-color2: #1e293b;
+  --jp-content-font-color3: #475569;
+
+  --jp-border-color0: rgba(0, 0, 0, 0.28);
+  --jp-border-color1: rgba(0, 0, 0, 0.18);
+  --jp-border-color2: rgba(0, 0, 0, 0.1);
+  --jp-border-color3: rgba(0, 0, 0, 0.06);
+  --jp-inverse-border-color: rgba(0, 0, 0, 0.32);
+
+  --jp-success-color0: #15803d;
+  --jp-success-color1: #16a34a;
+  --jp-success-color2: #4ade80;
+  --jp-success-color3: #bbf7d0;
+
+  --jp-warn-color0: #a16207;
+  --jp-warn-color1: #ca8a04;
+  --jp-warn-color2: #facc15;
+  --jp-warn-color3: #fef08a;
+
+  --jp-error-color0: #8f1414;
+  --jp-error-color1: #ba1a1a;   /* --mat-sys-error (light) */
+  --jp-error-color2: #e57373;
+  --jp-error-color3: #ffdad6;
+
+  --jp-info-color0: #0369a1;
+  --jp-info-color1: #0284c7;
+  --jp-info-color2: #38bdf8;
+  --jp-info-color3: #bae6fd;
+
+  --jp-content-link-color: #2f7793;
+  --jp-content-link-hover-color: #1f5f79;
+
+  --jp-cell-inprompt-font-color: #2f7793;
+  --jp-cell-outprompt-font-color: var(--praxis-rose-dark);
+
+  --jp-dialog-background: rgba(2, 6, 23, 0.4);
+
+  --jp-scrollbar-thumb-color: 150, 146, 120;
+  --jp-scrollbar-background-color: #fbf9e6;
+}
+
+/* --- the mark ------------------------------------------------------------- */
+/*
+ * praxis paints its logo as a CSS MASK over the brand gradient rather than
+ * shipping a coloured raster -- see unified-shell.component.ts:274-281. The
+ * same technique is reproduced here so the mark tracks the palette exactly.
+ *
+ * The mask lives on ::before, NOT on #jp-MainLogo itself: a mask applies to an
+ * element's pseudo-elements too, so masking the container would also punch the
+ * wordmark in ::after into the logo silhouette.
+ */
+#jp-MainLogo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  /* Lumino sizes this slot from the icon it expected to hold (measured: 33px),
+     which clips the wordmark. max-content lets it grow to fit; the top panel is
+     a flex row, so the menubar shifts right rather than being overlapped. */
+  min-width: max-content;
+  overflow: visible;
+}
+
+/* Hide the upstream Jupyter mark that JupyterLab renders inside the slot. */
+#jp-MainLogo > svg,
+#jp-MainLogo > .jp-JupyterIcon {
+  display: none;
+}
+
+#jp-MainLogo::before {
+  content: '';
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  background: var(--praxis-gradient);
+  -webkit-mask: url(./praxis-mark.svg) no-repeat center;
+  mask: url(./praxis-mark.svg) no-repeat center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+/* Wordmark. background-clip:text over the brand gradient is the same motif
+   praxis uses for nav icons and headings (filter-chip-bar, splash, login). */
+#jp-MainLogo::after {
+  content: 'praxis';
+  font-family: var(--praxis-ui-font);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  background: var(--praxis-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* --- chrome accents ------------------------------------------------------- */
+
+#jp-top-panel {
+  border-bottom: 1px solid var(--jp-border-color1);
+}
+
+/* Current dock tab gets the 135deg brand edge. ::after (not ::before) to stay
+   clear of the rules JupyterLab already attaches to tab pseudo-elements. */
+.lm-DockPanel-tabBar .lm-TabBar-tab {
+  position: relative;
+}
+
+.lm-DockPanel-tabBar .lm-TabBar-tab.lm-mod-current::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--praxis-gradient);
+  pointer-events: none;
+}
+
+/* Keyboard focus reads as praxis rose rather than the upstream blue. */
+body[data-jp-theme-name='JupyterLab Dark'] :focus-visible,
+body[data-jp-theme-name='JupyterLab Light'] :focus-visible {
+  outline-color: var(--praxis-rose);
+}

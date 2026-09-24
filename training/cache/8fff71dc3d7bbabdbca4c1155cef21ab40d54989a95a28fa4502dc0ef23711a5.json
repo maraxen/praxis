@@ -1,0 +1,9 @@
+{
+ "cache_key": "8fff71dc3d7bbabdbca4c1155cef21ab40d54989a95a28fa4502dc0ef23711a5",
+ "fetched_at": "2026-09-02T15:29:38.767023+00:00",
+ "input_hash": "9f64e4f19dbee5b4f40ff5c94ab54c149bf873b2e40d3321bee4934d12c0f146",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Shuttle 100 microliters from well C3 of plate 2 into the same well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

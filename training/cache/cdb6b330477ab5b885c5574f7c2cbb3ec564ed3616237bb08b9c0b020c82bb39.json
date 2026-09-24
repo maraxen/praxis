@@ -1,0 +1,9 @@
+{
+ "cache_key": "cdb6b330477ab5b885c5574f7c2cbb3ec564ed3616237bb08b9c0b020c82bb39",
+ "fetched_at": "2026-09-01T21:19:40.787073+00:00",
+ "input_hash": "445ba604310f37d59866ea03d5c7ecc83ac26e5cf9298a52b6533c2997b8b825",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read fluorescence of the plate with 485 nm excitation, 620 nm emission, and a focal height of 7.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

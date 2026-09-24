@@ -1,0 +1,9 @@
+{
+ "cache_key": "620a2ac3e494bbf7dce0cc72f70d607413c3e4775fbffe5d7a7a991df569979b",
+ "fetched_at": "2026-09-02T20:18:26.709937+00:00",
+ "input_hash": "1a05658c0e481dd4f88b307587c417eafac9da0ae8fbe0d37c6c22890fbf92f6",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you cover reservoir 1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

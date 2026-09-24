@@ -1,0 +1,112 @@
+{
+  "task_id": "260903_sema-volume",
+  "backlog_id": "4958",
+  "row": "T25",
+  "spec": ".praxia/docs/specs/260903_plr-sema-volume-increment.md",
+  "spec_version": 14,
+  "survey_regeneration_diff": {
+    "records_base": 4770,
+    "records_new": 4770,
+    "non_additive_diffs": 0,
+    "non_additive_meta_diffs": [],
+    "new_record_level_keys": [],
+    "records_with_dropped_calls": 1961,
+    "total_dropped_calls_entries_base_deduplicated_set": 4717,
+    "total_dropped_calls_entries_new_multiplicity_preserved": 5769,
+    "dropped_calls_entry_shape_base": "bare str, e.g. 'datetime.datetime.now'",
+    "dropped_calls_entry_shape_new": "{expr, lineno, scope_trail} record"
+  },
+  "four_caller_scopes": [
+    {
+      "entry": "LiquidHandler.aspirate",
+      "via": "op.resource.tracker.remove_liquid",
+      "raises": "TooLittleLiquidError",
+      "caller_lineno": 1034,
+      "caller_scope": [
+        "if not op.resource.tracker.is_disabled",
+        "if does_volume_tracking()",
+        "for op in aspirations"
+      ],
+      "scope_trail": [
+        "if volume - self.get_used_volume() > 1e-06"
+      ],
+      "for_span": [
+        1031,
+        1035
+      ],
+      "recognized_under_env": {
+        "empty": false,
+        "does_volume_tracking": false
+      }
+    },
+    {
+      "entry": "LiquidHandler.aspirate",
+      "via": "op.tip.tracker.add_liquid",
+      "raises": "TooLittleVolumeError",
+      "caller_lineno": 1035,
+      "caller_scope": [
+        "if does_volume_tracking()",
+        "for op in aspirations"
+      ],
+      "scope_trail": [
+        "if volume - self.get_free_volume() > 1e-06"
+      ],
+      "for_span": [
+        1031,
+        1035
+      ],
+      "recognized_under_env": {
+        "empty": false,
+        "does_volume_tracking": true
+      }
+    },
+    {
+      "entry": "LiquidHandler.dispense",
+      "via": "op.resource.tracker.add_liquid",
+      "raises": "TooLittleVolumeError",
+      "caller_lineno": 1234,
+      "caller_scope": [
+        "if not op.resource.tracker.is_disabled",
+        "if does_volume_tracking()",
+        "for op in dispenses"
+      ],
+      "scope_trail": [
+        "if volume - self.get_free_volume() > 1e-06"
+      ],
+      "for_span": [
+        1231,
+        1235
+      ],
+      "recognized_under_env": {
+        "empty": false,
+        "does_volume_tracking": false
+      }
+    },
+    {
+      "entry": "LiquidHandler.dispense",
+      "via": "op.tip.tracker.remove_liquid",
+      "raises": "TooLittleLiquidError",
+      "caller_lineno": 1235,
+      "caller_scope": [
+        "if does_volume_tracking()",
+        "for op in dispenses"
+      ],
+      "scope_trail": [
+        "if volume - self.get_used_volume() > 1e-06"
+      ],
+      "for_span": [
+        1231,
+        1235
+      ],
+      "recognized_under_env": {
+        "empty": false,
+        "does_volume_tracking": true
+      }
+    }
+  ],
+  "r1_function_location": "plr_sema.derive.receiver_state.volume_guard_is_unconditional (+ private helper _caller_scope_entry_recognized), same module as compute_volume_bridge -- T25's own file scope only touches derive/, not a new check/volumescope.py",
+  "go_no_go_evidence": {
+    "question": "is :1235 (dispense's tip-side op.tip.tracker.remove_liquid) unconditional under env={\"does_volume_tracking\"}?",
+    "answer": true
+  }
+}

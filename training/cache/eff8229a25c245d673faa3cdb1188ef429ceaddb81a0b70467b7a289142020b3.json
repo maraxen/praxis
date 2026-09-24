@@ -1,0 +1,9 @@
+{
+ "cache_key": "eff8229a25c245d673faa3cdb1188ef429ceaddb81a0b70467b7a289142020b3",
+ "fetched_at": "2026-09-03T15:04:11.185094+00:00",
+ "input_hash": "ad547715a1a2bac3052440dce3d038be7a5ee851c0ceb7647ca11a2fd3f8792d",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please heat up the heater-shaker unit to 37 \\u00b0C.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

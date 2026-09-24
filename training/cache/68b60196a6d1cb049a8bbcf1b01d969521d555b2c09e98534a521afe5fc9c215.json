@@ -1,0 +1,9 @@
+{
+ "cache_key": "68b60196a6d1cb049a8bbcf1b01d969521d555b2c09e98534a521afe5fc9c215",
+ "fetched_at": "2026-08-28T18:00:55.329616+00:00",
+ "input_hash": "1c1e7c77f0f994b9d52a3397a7d799f88bf0697e56a1b4a7a6ba062df921ab60",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Dispense the liquid into well G9 on plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

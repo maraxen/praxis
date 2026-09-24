@@ -1,0 +1,9 @@
+{
+ "cache_key": "d88b50231c1f6b770f07108352951b529bec4353440d917129bd4d1ebc0b5562",
+ "fetched_at": "2026-09-01T21:17:54.669787+00:00",
+ "input_hash": "fd88ab2dcbc6780ebfb5303acf3f627c676d65765fe22d956de8cd417c1e90d6",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Move the lid to scale_station_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

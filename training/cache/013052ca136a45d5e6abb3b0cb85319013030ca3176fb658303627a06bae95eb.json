@@ -1,0 +1,9 @@
+{
+ "cache_key": "013052ca136a45d5e6abb3b0cb85319013030ca3176fb658303627a06bae95eb",
+ "fetched_at": "2026-09-01T21:17:08.525746+00:00",
+ "input_hash": "dbaa96915ac5443bd8db467b2bbd358a0453e4333ff4c267226efe554f434842",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please move plate_1 to hotel_stack_1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

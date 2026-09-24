@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:47:00Z",
+ "key": "3435ea4c1c369947db18184a1c806d36030d705dbb65540a46d2535ff2266202",
+ "prompt_sha256": "3435ea4c1c369947db18184a1c806d36030d705dbb65540a46d2535ff2266202",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Aspirate volume_ul microliters from source_plate src.\nPlease draw volume_ul uL from source_plate src.\nI need to take volume_ul uL out of source_plate src.",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "a9d86678e9dcd6799cc24692f511c7829de721a511da925b588a08cabd5feb23",
+ "fetched_at": "2026-09-02T17:14:32.838437+00:00",
+ "input_hash": "5c18b429c0582d8aa3770e4d3e449ebd44bd192c36888f776c0fcab17b2dd26c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Carry the scale station over to the hotel stack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

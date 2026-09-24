@@ -1,0 +1,9 @@
+{
+ "cache_key": "26637131afafd6953627cfc240263249233fe417f2a22956125ebd005a948f0d",
+ "fetched_at": "2026-09-02T16:47:35.894578+00:00",
+ "input_hash": "c7d3417eed76e64379fdbf62f994f5ddef7416210c0088529fb81fb02a3ef1de",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please transport the reservoir to the scale station.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

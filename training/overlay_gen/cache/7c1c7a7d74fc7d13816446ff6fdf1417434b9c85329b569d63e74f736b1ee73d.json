@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:15:15Z",
+ "key": "7c1c7a7d74fc7d13816446ff6fdf1417434b9c85329b569d63e74f736b1ee73d",
+ "prompt_sha256": "7c1c7a7d74fc7d13816446ff6fdf1417434b9c85329b569d63e74f736b1ee73d",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Aspirate diluent_volume_ul uL from the diluent_trough.\nDraw up diluent_volume_ul uL from diluent_trough.\nPlease aspirate diluent_volume_ul uL from diluent_trough.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

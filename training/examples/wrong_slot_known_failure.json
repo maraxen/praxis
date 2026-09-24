@@ -1,0 +1,40 @@
+{
+  "_comment": "KNOWN-FAILURE example demonstrating the AC-2.2.3 axis: the executed call runs CLEANLY and its own volume post-conditions pass, but the destination binding contradicts the intent record (C3 vs B1) -- execution success alone cannot catch a wrong-slot reading.",
+  "intent_record": {
+    "record_id": "ex_wrong_slot",
+    "utterance": "transfer 30 microliters from source plate A1 to dest plate B1",
+    "source": "golden",
+    "calls": [
+      {
+        "name": "pick_up_tips",
+        "params": {"at": ["tip_rack.A1"]}
+      },
+      {
+        "name": "transfer",
+        "params": {
+          "source": "source_plate.A1",
+          "destination": "dest_plate.B1",
+          "volume_ul": 30
+        }
+      }
+    ],
+    "expected_effects": [
+      {"effect": "transfers", "target_ref": "dest_plate.B1"}
+    ]
+  },
+  "call_sequence": [
+    {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1"]}},
+    {"name": "transfer", "params": {
+      "source": "source_plate.A1",
+      "destination": "dest_plate.C3",
+      "volume_ul": 30
+    }}
+  ],
+  "deck_layout": {
+    "resources": {
+      "source_plate": "Plate",
+      "dest_plate": "Plate"
+    },
+    "seed_volumes": {"source_plate.A1": 100}
+  }
+}

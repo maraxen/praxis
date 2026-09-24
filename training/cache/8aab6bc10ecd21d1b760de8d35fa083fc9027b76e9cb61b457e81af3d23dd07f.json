@@ -1,0 +1,9 @@
+{
+ "cache_key": "8aab6bc10ecd21d1b760de8d35fa083fc9027b76e9cb61b457e81af3d23dd07f",
+ "fetched_at": "2026-08-28T18:04:51.262558+00:00",
+ "input_hash": "9e29ffce3eaed8386a9d9c42ae7781a87a78f0d3dd4ae53629a8b1f73f2e5aa3",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read fluorescence in well E5 at an excitation wavelength of 535 nm, emission wavelength of 590 nm, and a focal height of 4.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

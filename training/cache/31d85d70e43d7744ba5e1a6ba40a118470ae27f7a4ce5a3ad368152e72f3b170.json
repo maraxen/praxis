@@ -1,0 +1,9 @@
+{
+ "cache_key": "31d85d70e43d7744ba5e1a6ba40a118470ae27f7a4ce5a3ad368152e72f3b170",
+ "fetched_at": "2026-09-02T15:43:31.048639+00:00",
+ "input_hash": "93376685b5ddfa0420b318ba99e36690894fe683b1bfbd57d9229032efc097d0",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Duplicate plate 1 to the plate using 10 microliters per well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

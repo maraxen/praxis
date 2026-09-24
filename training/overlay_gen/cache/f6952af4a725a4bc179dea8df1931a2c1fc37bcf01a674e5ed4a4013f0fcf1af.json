@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:15:39Z",
+ "key": "f6952af4a725a4bc179dea8df1931a2c1fc37bcf01a674e5ed4a4013f0fcf1af",
+ "prompt_sha256": "f6952af4a725a4bc179dea8df1931a2c1fc37bcf01a674e5ed4a4013f0fcf1af",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Dispense volume_ul uL into dest_plate dst.\nPlease add volume_ul uL to dest_plate dst.\nDeliver volume_ul uL to dest_plate dst.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "2ede45460de95f48414a173c7af3528abc138c5f2fd2622f65c84f862ecac2de",
+ "fetched_at": "2026-09-02T14:53:49.354485+00:00",
+ "input_hash": "ca0074572f5c5514ff87fb4f3776a0aa2da5d8aad9cf243b5b201355120edb93",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Draw 200 microliters from the destination well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

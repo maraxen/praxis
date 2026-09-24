@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:14:40Z",
+ "key": "4a3c4ce137d5e55fd27aa39460e68f38f2034cd2e1ec45661310ef030ceb7951",
+ "prompt_sha256": "4a3c4ce137d5e55fd27aa39460e68f38f2034cd2e1ec45661310ef030ceb7951",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Draw 100+50+200 uL from plate A1:C1.\nPlease aspirate 100+50+200 uL from plate A1:C1.\nTake up 100+50+200 uL from plate A1:C1.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

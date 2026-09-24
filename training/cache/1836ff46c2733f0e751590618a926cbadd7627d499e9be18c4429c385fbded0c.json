@@ -1,0 +1,9 @@
+{
+ "cache_key": "1836ff46c2733f0e751590618a926cbadd7627d499e9be18c4429c385fbded0c",
+ "fetched_at": "2026-09-01T21:15:51.554613+00:00",
+ "input_hash": "09c840a0781f5c8ee6ab4790f27294b10c925e4e1fcf3f2c1b38a1ab4978ac96",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"Controlling the heater shaker is outside what I can do. I can assist with deck actions like moving plates, stamping, or transferring liquids.\", \"utterance\": \"Can we stop the heater shaker from shaking now?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

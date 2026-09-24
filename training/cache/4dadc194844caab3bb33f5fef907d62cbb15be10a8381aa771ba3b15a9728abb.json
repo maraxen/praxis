@@ -1,0 +1,9 @@
+{
+ "cache_key": "4dadc194844caab3bb33f5fef907d62cbb15be10a8381aa771ba3b15a9728abb",
+ "fetched_at": "2026-09-01T21:15:51.553941+00:00",
+ "input_hash": "a83d92975db2520a9bfeff6bcefc6f76f0d534335b605a7a8387909fcb35b2a5",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"Controlling heater shaker speed or shaking is not supported. I can help you move the plate or carry out pipetting tasks like aspirate, dispense, or transfer.\", \"utterance\": \"Please pause or stop the heater shaker shaking.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

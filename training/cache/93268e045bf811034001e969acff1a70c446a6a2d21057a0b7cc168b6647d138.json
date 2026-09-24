@@ -1,0 +1,9 @@
+{
+ "cache_key": "93268e045bf811034001e969acff1a70c446a6a2d21057a0b7cc168b6647d138",
+ "fetched_at": "2026-09-02T14:57:20.607684+00:00",
+ "input_hash": "febb34f5fc118fcba33883909730493935b7c793b4b71db29a10d6073d88500e",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Grab new tips from the tip box.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

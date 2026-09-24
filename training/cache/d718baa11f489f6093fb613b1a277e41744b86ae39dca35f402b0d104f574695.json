@@ -1,0 +1,9 @@
+{
+ "cache_key": "d718baa11f489f6093fb613b1a277e41744b86ae39dca35f402b0d104f574695",
+ "fetched_at": "2026-08-25T22:08:30.006862+00:00",
+ "input_hash": "f94780c6c40e7a4a2dea5d398b77901b265059dda763929d308bfefa4d2758df",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Please transfer 10 microliters to plate_1_B7 and plate_2_D11.\",\n\"clarification\": null\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

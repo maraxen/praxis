@@ -1,0 +1,9 @@
+{
+ "cache_key": "fdc540a8c9e9b3f979e15280a125b22a575cfd5facd5a9f33ce3d57369f2008a",
+ "fetched_at": "2026-09-01T21:15:51.552080+00:00",
+ "input_hash": "29c68d35ed3ee37f6ee36b6ce84f58b8ceddf1b194cffb9e97102d2d183d6a56",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I don't have the ability to control the heater shaker shaking function. I can assist with liquid handling tasks such as aspirate, dispense, or transfer, or moving items on the deck.\", \"utterance\": \"Stop the heater shaker from shaking right now.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "d65501886981e8eba4d3acb87a776f125972b611d8037f8bcfe881f07aaef97e",
+ "fetched_at": "2026-08-25T22:08:16.500286+00:00",
+ "input_hash": "8e79c4cbf77d31c887d789f8acbc70c39d178627f7f2fce2bd5ba6c000d6f03c",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Please dispense the contents of plate_2_B1 into the destination container.\",\n\"clarification\": \"What volume in microliters should I dispense?\"\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

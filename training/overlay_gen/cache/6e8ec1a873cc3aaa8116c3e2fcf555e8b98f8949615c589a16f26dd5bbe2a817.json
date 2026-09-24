@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-27T15:14:52Z",
+ "key": "6e8ec1a873cc3aaa8116c3e2fcf555e8b98f8949615c589a16f26dd5bbe2a817",
+ "prompt_sha256": "6e8ec1a873cc3aaa8116c3e2fcf555e8b98f8949615c589a16f26dd5bbe2a817",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Deliver 100 uL into plate A1.\nPlease dispense 100 uL to plate A1.\nRelease 100 uL into plate A1.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

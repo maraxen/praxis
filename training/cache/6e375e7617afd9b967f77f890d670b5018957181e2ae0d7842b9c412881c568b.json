@@ -1,0 +1,9 @@
+{
+ "cache_key": "6e375e7617afd9b967f77f890d670b5018957181e2ae0d7842b9c412881c568b",
+ "fetched_at": "2026-09-02T15:12:17.407116+00:00",
+ "input_hash": "517a6438eccb53f1b94e6c348eb5227ac09e28b75dd806a16647a956525c2d92",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put the liquid into well D1 of plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

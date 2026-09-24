@@ -1,0 +1,7406 @@
+{
+  "by_category": {
+    "harness_internal": null,
+    "postcondition_mismatch": null,
+    "precondition_state": null,
+    "shape_mismatch": null,
+    "ungroundable_reference": null,
+    "unsupported_tool": null
+  },
+  "by_category_status": "not_applicable_v1",
+  "by_reason": {
+    "no_contract_derived": 0,
+    "unresolved_delegate": 610
+  },
+  "contract_table": {
+    "disambiguated_keys": 52,
+    "distinct_bare_qualnames": 4744,
+    "total_entries": 4770
+  },
+  "dropped_receiver_calls_by_method": {
+    "aspirate": 21,
+    "discard_tips": 26,
+    "dispense": 21,
+    "drop_tips": 24,
+    "move_lid": 58,
+    "move_plate": 58,
+    "move_resource": 58,
+    "pick_up_tips": 23,
+    "stamp": 42,
+    "transfer": 27
+  },
+  "index_key_collisions": {
+    "all_records": 12,
+    "finding_bearing_records": 8
+  },
+  "lid_state": {
+    "Liddable": {
+      "anchor": "absent",
+      "anchor_candidates": [
+        "has_lid"
+      ],
+      "check_no_lid_guards": [
+        {
+          "condition": "lidded is resource",
+          "depth": 0,
+          "free_vars": [
+            "action",
+            "resource"
+          ],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [
+            "if lidded is resource"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 116,
+            "qualname": "_check_no_lid"
+          }
+        },
+        {
+          "condition": null,
+          "depth": 0,
+          "free_vars": [
+            "action",
+            "resource"
+          ],
+          "kind": "raise_guard",
+          "raises": "ValueError",
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
+            "lineno": 117,
+            "qualname": "_check_no_lid"
+          }
+        }
+      ],
+      "state_fields": []
+    }
+  },
+  "schema_version": 1,
+  "stamp": {
+    "derive_python_version": "3.14.6",
+    "plr": {
+      "branch": "HEAD",
+      "dirty": true,
+      "dirty_content_id": "2ca7d1248dfd68c0312a93b490f3bd6211afc043",
+      "hash": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+      "provenance_source": "git",
+      "toplevel": "/home/marielle/projects/praxis/external/pylabrobot"
+    },
+    "praxis": {
+      "branch": "coxswain-p2-pipeline",
+      "dirty": true,
+      "dirty_content_id": "e93da113160a7cd67dd447cb62ed31a326791514155ec098d4f09db571e1d79e",
+      "hash": "92776b8e1f5f962b63d06f746a12bbb89bcf679c",
+      "provenance_source": "git",
+      "toplevel": "/home/marielle/projects/praxis"
+    },
+    "pylabrobot_version": "0.2.2",
+    "schema_version": 1,
+    "stamped_at": "2026-09-04T14:03:32.240106+00:00",
+    "surface": "legacy_pinned",
+    "surface_pin": null
+  },
+  "supported_tools": {
+    "by_reason": {
+      "no_contract_derived": 0,
+      "unresolved_delegate": 6
+    },
+    "liquid_handler_present": true,
+    "methods_attempted": 10,
+    "methods_with_dropped_receiver_call": 6,
+    "methods_with_gaps": 3,
+    "methods_with_no_recorded_gap": 7
+  },
+  "tip_state": {
+    "LiquidHandler": {
+      "bound_channels": {
+        "LiquidHandler.clear_head_state": "absent",
+        "LiquidHandler.consolidate_tip_inventory": "absent",
+        "LiquidHandler.discard_tips": "absent",
+        "LiquidHandler.move_tips": "absent",
+        "LiquidHandler.probe_tip_presence_via_pickup": "absent",
+        "LiquidHandler.return_tips": "absent",
+        "LiquidHandler.transfer": {
+          "channels": [
+            0
+          ],
+          "delegate": "aspirate",
+          "rule": "arity_default",
+          "site_lineno": 1347
+        },
+        "LiquidHandler.use_tips": "absent"
+      },
+      "entry_reset": {
+        "method": "setup",
+        "post": "no_tip"
+      },
+      "tip_dropping": [
+        "drop_tips"
+      ],
+      "tip_loading": [
+        "clear_head_state",
+        "consolidate_tip_inventory",
+        "load_state",
+        "move_tips",
+        "pick_up_tips",
+        "probe_tip_presence_via_pickup",
+        "update_head_state",
+        "use_tips"
+      ],
+      "tip_requiring": [
+        "aspirate",
+        "clear_head_state",
+        "consolidate_tip_inventory",
+        "discard_tips",
+        "dispense",
+        "drop_tips",
+        "move_tips",
+        "probe_tip_presence_via_pickup",
+        "return_tips",
+        "transfer",
+        "update_head_state",
+        "use_tips"
+      ],
+      "tipstate_anchor": "_pending_tip"
+    },
+    "LiquidHandlerBackend": {
+      "bound_channels": {},
+      "entry_reset": "absent",
+      "tip_dropping": [],
+      "tip_loading": [],
+      "tip_requiring": [],
+      "tipstate_anchor": "_pending_tip"
+    }
+  },
+  "top_unresolved": {
+    "dropped_receiver": [
+      {
+        "blocks_methods": 3,
+        "call": "logger.debug"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.head[channel].get_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "channel.get_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "container.tracker.commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "container.tracker.rollback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "logger.warning"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_all_items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_item"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.backend.request_tip_presence"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip.tracker.commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip.tracker.rollback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "container.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "container.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.compute_plate_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.compute_plate_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_default_child_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_default_child_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_lid_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_lid_location(lid.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_new_child_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_new_child_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lid.rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.tip.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.unassign"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.aspirate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.aspirate96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.can_pick_up_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.dispense"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.dispense96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.drop_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.drop_tips"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.get_channel_spacings"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.move_picked_up_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.pick_up_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.pick_up_tips"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.get_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.get_trash_area"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head[channel].add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head[channel].remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.get_used_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_spot.get_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.tracker.remove_liquid"
+      }
+    ],
+    "dropped_receiver_unfiltered": [
+      {
+        "blocks_methods": 4,
+        "call": "Coordinate.zero"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "logger.debug"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.head[channel].get_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "channel.get_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "container.tracker.commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "container.tracker.rollback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "logger.warning"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_all_items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_item"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.backend.request_tip_presence"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.head96.values"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip.tracker.commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip.tracker.rollback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "', '.join"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "args.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "args.keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "backend_kwargs.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "backend_kwargs.keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "container.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "container.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "default.union"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.compute_plate_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.compute_plate_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_default_child_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_default_child_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_lid_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_lid_location(lid.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_new_child_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_new_child_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "inspect.signature"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "kwargs.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lid.rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.tip.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.unassign"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.aspirate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.aspirate96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.can_pick_up_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.dispense"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.dispense96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.drop_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.drop_tips"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.get_channel_spacings"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.move_picked_up_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.pick_up_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.pick_up_tips"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.get_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.get_trash_area"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head[channel].add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head[channel].remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "sig.parameters.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.get_used_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_spot.get_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tips.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "warnings.warn"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.tracker.remove_liquid"
+      }
+    ],
+    "dropped_receiver_whole_surface": [
+      {
+        "blocks_methods": 42,
+        "call": "logger.debug"
+      },
+      {
+        "blocks_methods": 42,
+        "call": "logger.info"
+      },
+      {
+        "blocks_methods": 36,
+        "call": "self.cr.next_command"
+      },
+      {
+        "blocks_methods": 25,
+        "call": "logger.warning"
+      },
+      {
+        "blocks_methods": 25,
+        "call": "super().__init__"
+      },
+      {
+        "blocks_methods": 22,
+        "call": "capturer.record"
+      },
+      {
+        "blocks_methods": 21,
+        "call": "logger.error"
+      },
+      {
+        "blocks_methods": 20,
+        "call": "logger.log"
+      },
+      {
+        "blocks_methods": 19,
+        "call": "self.io.write"
+      },
+      {
+        "blocks_methods": 15,
+        "call": "super().assign_child_resource"
+      },
+      {
+        "blocks_methods": 14,
+        "call": "self.io.read"
+      },
+      {
+        "blocks_methods": 13,
+        "call": "loop.run_in_executor"
+      },
+      {
+        "blocks_methods": 13,
+        "call": "op.resource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 8,
+        "call": "hlc.compute_corrected_volume"
+      },
+      {
+        "blocks_methods": 8,
+        "call": "self.io.readline"
+      },
+      {
+        "blocks_methods": 8,
+        "call": "self.logger.debug"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "op.resource.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "plate.get_item"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "plate.get_size_y"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "self.io.setup"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "reader.u8"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "self.deck.to_hamilton_coordinate"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "self.io.reset_input_buffer"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "self.logger.info"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "tip_spot.get_tip"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "top_left_well.get_anchor"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "match.group"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "nodemap.GetNode"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "ops[0].resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "plate.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "plate.get_well"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "reader.u16"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "ref_well.get_location_wrt"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self._sila_interface.send_command"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.deck.get_resource"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.io.reset_output_buffer"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.io.stop"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.liha.position_absolute_all_axis"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.liha.set_z_travel_height"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "cls._validate_manifold_xy"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "np.array"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "plate.get_all_items"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "plate.get_size_z"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "r.get_location_wrt"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "resource.get_item"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self._cam.GetNodeMap"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self._driver.get_lid_temperature"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self._driver.get_plate_temperature"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self._executor.shutdown"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self._reader.read"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.head[channel].get_tip"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.interface.send_command"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.liha.set_end_speed_plunger"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.logger.error"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.logger.warning"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.serial.readline"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.serial.write"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "tip_rack.get_all_items"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "tip_spot_a1.get_location_wrt"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "utils.reshape_2d"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "aspiration.container.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "aspiration.container.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "aspiration.container.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "carrier.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "carrier.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "cast(Resource, self.get_resource(resource.name)).unassign"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "channel.get_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "child.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "container.tracker.commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "container.tracker.rollback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "core_grippers.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "dispense.container.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "dispense.container.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "dispense.container.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "drop.resource.get_item"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "f.read"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "loop.time"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "np.sqrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "op.resource.compute_height_from_volume"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "op.resource.compute_volume_from_height"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "ops[i].resource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "payload.iter"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "pickup.resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "pickup.resource.get_item"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "pickup.resource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "plate.get_size_x"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "plate.unassign"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "reader.f32"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "reader.i16"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "reader.u32"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "ref_well.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_all_items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.register_did_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.unassign"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._cam.ExposureTime.GetValue"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._tempfile.flush"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._tempfile.write"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.backend.can_pick_up_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.backend.dispense"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.backend.request_tip_presence"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.backend.send_command"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.barcode_scanner.scan"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.data_packets.popleft"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.dev.get_active_configuration"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.head96[i].commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.head96[i].remove_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.head96[i].rollback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.head[channel].add_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.head[channel].remove_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.io.send_break"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.io.set_baudrate"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.liha.move_plunger_relative"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.liha.move_tracking_relative"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.liha.position_valve_logical"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.liha.set_tracking_distance_z"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.modbus.write_register"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.star.send_command"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.wfile.write"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "serial.tools.list_ports.comports"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "super().check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "super().setup"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "super().unassign_child_resource"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip.tracker.commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip.tracker.get_used_volume"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip.tracker.rollback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip_spot.tracker.commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip_spot.tracker.rollback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tlc.compute_corrected_volume"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "usb.util.endpoint_direction"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "usb.util.find_descriptor"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "well.get_absolute_location"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "well.get_column"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "well.get_row"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(len(payload) + 7).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(sum(cmd) & 65535).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(sum(decel_command) - 170 & 255).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_ACK_RE.match"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "alignment_tipspot.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "all_origin_tip_spots[0].tracker.get_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "aspiration.container.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "audio.play_got_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "audio.play_not_found"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "auto_exposure.evaluate_exposure"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "bottom_right_well.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cam.GetTLDeviceNodeMap"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cam_list.Clear"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cam_list.GetByIndex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cam_list.GetSize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "capturer.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cast(Plate, well.parent).index_of_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "checksum.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child._check_naming_conflicts"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child.get_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child_cls.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cmd.fut.set_exception"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cmd.fut.set_result"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.get_log_params"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.interpret_response"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "container.compute_volume_from_height"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "container.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "container.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cr.done"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cr.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cv2.Sobel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "date_match.groups"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_slot"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "decoder.feed"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.compute_plate_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.compute_plate_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_default_child_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_default_child_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_lid_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_lid_location(lid.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_new_child_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_new_child_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dev.detach_kernel_driver"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dev.set_configuration"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dev.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dispense.container.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "driver.get_plate_temperature"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drop.resource.center().rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drop.resource.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drop.resource.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drop.resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drop.resource.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "elapsed_time_match.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "encoded_log_match.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "end.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "end_re.match"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "error_matches.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "errors.groupdict"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "final_position.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "first_well.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "first_well.get_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "fut.result"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "grpc.insecure_channel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "hid.Device"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "hid.enumerate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "holder.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "image_converted.GetNDArray"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "image_result.Release"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int(9.15 * 100 * acceleration).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int(9.15 * 100 * deceleration).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int(focal_height * 100).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int(rpm * 4473.925).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "klass.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "layout_match.end"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lid.rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "loader.load"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lock.acquire"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lock.locked"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lock.release"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "m.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "msg.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "next_datadef.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node.GetValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_device_information.GetFeatures"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_feature.GetName"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_feature.ToString"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_gain.GetMax"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_gain.GetMin"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_gain.SetValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_gain_auto.GetEntryByName"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_gain_auto.SetIntValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_softwaretrigger_cmd.Execute"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.asarray"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.count_nonzero"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer(image_buffer[:expected_16bit], dtype=np.uint16).reshape"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer(image_buffer[:expected_8bit], dtype=np.uint8).reshape"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.max"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.mean"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.var"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "obj.io.serialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "obj.serialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.get_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.tip.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ot_api.modules.list_connected_modules"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "other.get_absolute_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "outer._on_http"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "p.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "par.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "parent.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "parent_plate.get_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pickup.resource.center().rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pickup.resource.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pickup.resource.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pickup.resource.get_all_items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_all_children"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.index_of_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.lid.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate_cols.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate_rows.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "processor.Convert"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "processor.SetColorProcessing"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_frame_start.GetNumericValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_inference_ready.GetNumericValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_trigger_mode.GetEntryByName"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_trigger_mode.SetIntValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_trigger_on.GetNumericValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_trigger_selector.GetEntryByName"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_trigger_selector.SetIntValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_trigger_source.GetEntryByName"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_trigger_source.SetIntValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "q_match.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.groups"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rack.get_free_sites"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reader._read_packet"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reader.dev.get_active_configuration"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reader.setup"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reader.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "recorder.log"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reg_msg.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.centers"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.children[0].get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.children[0].get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_did_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_did_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_will_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_will_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.register_did_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.register_state_update_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_task.cancel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_task.result"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "root_msg.add_registration_option"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "root_msg.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "round(f * 100).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.close"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.connect"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.findall"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.getsockname"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._cam.GetNextImage"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._cam.Init"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._dev.close"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._dev.open"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.close_lid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.deactivate_block"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.deactivate_lid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.get_device_info"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.get_lid_status"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.jog_lid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.lift_plate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.open_lid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.set_lid_temperature"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.set_plate_temperature"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.set_ramp_rate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._logger.error"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.labware.define"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.lh.drop_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.lh.drop_tip_in_place"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.lh.move_arm"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.lh.move_to_addressable_area_for_drop_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.lh.pick_up_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.lh.save_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.set_host"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.set_port"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._reader.readline"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._reader.readuntil"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._shaking_started.set"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._shaking_started.wait"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._spinnaker_system.GetCameras"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._spinnaker_system.GetLibraryVersion"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._tempfile.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._tempfile.seek"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._tempfile.tell"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._writer.drain"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._writer.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.aspirate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.aspirate96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.capture"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.dispense96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.drop_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.drop_tips"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.drop_tips96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.fetch_plate_to_loading_tray"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.get_current_temperature"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.load"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.move_channel_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.move_channel_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.move_channel_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.move_picked_up_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.pick_up_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.pick_up_tips"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.pick_up_tips96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.prepare_for_manual_channel_operation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.run_continuously"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.run_protocol"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.set_deck"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.set_heads"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.set_temperature"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.setup"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.take_in_plate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.unload"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.centrifuge.at_bucket.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.data_control.turn_all_interval_messages_off"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.get_trash_area"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.dev.ctrl_transfer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.dev.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.dev.set_configuration"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.fst.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.get_absolute_rotation().get_rotation_matrix"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.get_anchor(x=x, y=y, z=z).vector"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.get_resource('waste_block').get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head96[0].get_tip_origin"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head96[i].add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head96[i].get_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head96[i].get_tip_origin"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.httpd.serve_forever"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.interface.send_hhs_command"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_dtr"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_flowctrl"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_line_property"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_rts"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.usb_purge_rx_buffer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.usb_purge_tx_buffer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha._drop_disposable_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.get_disposable_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.move_absolute_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.move_detect_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_detection_mode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_search_retract_distance"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_search_speed"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_search_submerge"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_search_z_max"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_search_z_start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_slow_speed_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_stop_speed_plunger"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.loading_tray.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.location.vector"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.logger.log"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.measurement_control.end_measurement"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.measurement_control.measure_range_in_x_pointwise"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.measurement_control.prepare_instrument"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.modbus.close"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.modbus.connect"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_absolute_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_absolute_rotation().get_rotation_matrix"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_child_identifier"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.reader.start_background_read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.rfile.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.action_move_vector_coordinate_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.grip_plate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.position_absolute_g"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.report_z_param"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_fast_speed_r"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_fast_speed_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_fast_speed_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_fast_speed_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_gripper_params"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_smooth_move_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_target_window_class"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_vector_coordinate_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.sites[spot].assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.tracker.register_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.unsafe.get_from_hotel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.unsafe.put_in_hotel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.websocket.send"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ser.send_break"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "serial.Serial"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "site.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "site.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ssl_context.set_ciphers"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "start_match.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stop_event.set"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_item('A1').get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super()._ops_to_fw_positions"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().do_GET"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().end_headers"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "td.total_seconds"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_rack.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_rack.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_rack.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_rack.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_spot.has_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_spot.tracker.add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_spot.tracker.remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_spots[0].get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tipspots_w_tips[0].tracker.get_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tr.empty"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tr.fill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tracker.get_tip_origin"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tracker.register_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "usb.util.dispose_resources"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "usb.util.endpoint_type"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "usb.util.get_string"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "v.strftime"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.finish"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.i8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.raw_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.u16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.u8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "waste_block.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "waste_pos.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.set_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well_a1.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well_a1.get_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well_mask.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "wells[0].get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "year_match.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "year_matches.group"
+      }
+    ],
+    "dropped_receiver_whole_surface_unfiltered": [
+      {
+        "blocks_methods": 57,
+        "call": "asyncio.sleep"
+      },
+      {
+        "blocks_methods": 44,
+        "call": "time.time"
+      },
+      {
+        "blocks_methods": 42,
+        "call": "logger.debug"
+      },
+      {
+        "blocks_methods": 42,
+        "call": "logger.info"
+      },
+      {
+        "blocks_methods": 36,
+        "call": "self.cr.next_command"
+      },
+      {
+        "blocks_methods": 25,
+        "call": "logger.warning"
+      },
+      {
+        "blocks_methods": 25,
+        "call": "super().__init__"
+      },
+      {
+        "blocks_methods": 22,
+        "call": "capturer.record"
+      },
+      {
+        "blocks_methods": 21,
+        "call": "logger.error"
+      },
+      {
+        "blocks_methods": 20,
+        "call": "logger.log"
+      },
+      {
+        "blocks_methods": 19,
+        "call": "data.split"
+      },
+      {
+        "blocks_methods": 19,
+        "call": "self.io.write"
+      },
+      {
+        "blocks_methods": 18,
+        "call": "bytes.fromhex"
+      },
+      {
+        "blocks_methods": 18,
+        "call": "warnings.warn"
+      },
+      {
+        "blocks_methods": 15,
+        "call": "asyncio.get_running_loop"
+      },
+      {
+        "blocks_methods": 15,
+        "call": "super().assign_child_resource"
+      },
+      {
+        "blocks_methods": 14,
+        "call": "self.io.read"
+      },
+      {
+        "blocks_methods": 14,
+        "call": "struct.unpack"
+      },
+      {
+        "blocks_methods": 13,
+        "call": "loop.run_in_executor"
+      },
+      {
+        "blocks_methods": 13,
+        "call": "op.resource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 10,
+        "call": "re.search"
+      },
+      {
+        "blocks_methods": 10,
+        "call": "time.monotonic"
+      },
+      {
+        "blocks_methods": 9,
+        "call": "asyncio.wait_for"
+      },
+      {
+        "blocks_methods": 8,
+        "call": "STARBackend.channel_id"
+      },
+      {
+        "blocks_methods": 8,
+        "call": "data.hex"
+      },
+      {
+        "blocks_methods": 8,
+        "call": "hlc.compute_corrected_volume"
+      },
+      {
+        "blocks_methods": 8,
+        "call": "self.io.readline"
+      },
+      {
+        "blocks_methods": 8,
+        "call": "self.logger.debug"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "' '.join"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "Coordinate.zero"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "data.decode"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "resp.strip"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "asyncio.get_event_loop"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "cmd.encode"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "op.resource.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "plate.get_item"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "plate.get_size_y"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "self.io.setup"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "', '.join"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "asyncio.gather"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "reader.u8"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "resp.split"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "self._find_module().get"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "self.deck.to_hamilton_coordinate"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "self.io.reset_input_buffer"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "self.logger.info"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "tip_spot.get_tip"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "top_left_well.get_anchor"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "''.join"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "(await self.io.read(128)).decode"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "STARBackend.mm_to_z_drive_increment"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "asyncio.create_task"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "logging.warning"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "match.group"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "math.sqrt"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "next_command.data.encode"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "nodemap.GetNode"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "ops[0].resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "plate.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "plate.get_well"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "reader.u16"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "ref_well.center"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "ref_well.get_location_wrt"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "response_data.hex"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self._sila_interface.send_command"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.deck.get_resource"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.head96.values"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.io.reset_output_buffer"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.io.stop"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.liha.position_absolute_all_axis"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "self.liha.set_z_travel_height"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "DEVICE_ENDPOINTS.get"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "PumpCalibration.load_from_dict"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "STARBackend.iswap_gripper_drive_increment_to_mm"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "STARBackend.iswap_z_drive_increment_to_mm"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "asyncio.Lock"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "asyncio.get_event_loop().time"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "asyncio.to_thread"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "buf.extend"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "centers.append"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "cls._validate_manifold_xy"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "framed_message.hex"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "functools.wraps"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "hex(tadm_channel_pattern_num)[2:].upper"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "itertools.product"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "json.dumps"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "logging.debug"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "logging.error"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "logging.getLogger"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "np.array"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "plate.get_all_items"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "plate.get_size_z"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "r.get_location_wrt"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "rack.sites.items"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "res[1].split"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "resource.get_item"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "result.hex"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self._cam.GetNodeMap"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self._driver.get_lid_temperature"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self._driver.get_plate_temperature"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self._executor.shutdown"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self._reader.read"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.head[channel].get_tip"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.interface.send_command"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.liha.set_end_speed_plunger"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.logger.error"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.logger.warning"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.serial.readline"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "self.serial.write"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "spectrum_data.items"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "str(carrier_end_rail).zfill"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "str(round(abs(step_size) * 10)).zfill"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "tip_rack.get_all_items"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "tip_spot_a1.center"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "tip_spot_a1.get_location_wrt"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "utils.reshape_2d"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "wells.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "'\\n'.join"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "COMMAND_TERMINATORS.get"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "ET.Element"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "ET.fromstring"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "EVOArm._pos_cache.items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "EVOArm._pos_cache.setdefault"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "LiquidHandlerBackend.__init__"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "PySpin.CEnumEntryPtr"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "PySpin.CEnumerationPtr"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Reader(resp_header[7:]).u16"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Rotation.deserialize"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "STARBackend._iswap_rotation_drive_increments_to_angle"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "STARBackend._iswap_rotation_drive_resolve_to_increments"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "STARBackend._iswap_wrist_drive_increments_to_angle"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "STARBackend._iswap_wrist_drive_resolve_to_increments"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "STARBackend.dispensing_drive_vol_to_increment"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "STARBackend.iswap_y_drive_increment_to_mm"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "STARBackend.z_drive_increment_to_mm"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Writer().u16"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Writer().u16(7).u8"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Writer().u16(7).u8(0).raw_bytes"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "Writer().u16(7).u8(0).raw_bytes(b'\\x00' * 52).finish"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "all_reads.extend"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "aspiration.container.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "aspiration.container.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "aspiration.container.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "buf.hex"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "c.split"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "c.split(chr(i) + key + chr(j))[1].split"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "carrier.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "carrier.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "cast(Resource, self.get_resource(resource.name)).unassign"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "channel.get_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "child.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "command.encode"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "command.strip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "command_str.encode"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "configuration.decode"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "container.tracker.commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "container.tracker.rollback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "containers.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "core_grippers.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "data.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "data.copy"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "data.pop"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "datetime.date"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "dispense.container.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "dispense.container.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "dispense.container.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "drop.resource.get_item"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "f.read"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "hamilton_liquid_classes.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "hex(int(''.join(channel_pattern_bin_str), 2)).upper"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "hlcs.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "items.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "list(self._ordering.keys()).index"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "logging.info"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "loop.time"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "math.floor"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "math.log10"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "next_command.data.lower"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "np.sqrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "offsets.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "op.resource.compute_height_from_volume"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "op.resource.compute_volume_from_height"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "ops[i].resource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "os.path.dirname"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "os.path.join"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "packet.hex"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "parsed.get"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "payload.iter"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "pickup.resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "pickup.resource.get_item"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "pickup.resource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "plate.get_size_x"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "plate.unassign"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "predefined_increments.items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "raw_response.decode"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "re.compile"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "re.findall"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "reader.f32"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "reader.i16"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "reader.u32"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "ref_well.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_all_items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.get_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.register_did_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resource.unassign"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resp.decode"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "response.decode"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "response.decode('ascii', errors='ignore').strip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "response.hex"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "root.find"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._cam.ExposureTime.GetValue"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._ordering.keys"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._racks.index"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._tempfile.flush"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._tempfile.write"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.backend.can_pick_up_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.backend.dispense"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.backend.request_tip_presence"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.backend.send_command"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.barcode_scanner.scan"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.data_packets.popleft"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.dev.get_active_configuration"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.head.items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.head96[i].commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.head96[i].remove_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.head96[i].rollback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.head[channel].add_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.head[channel].remove_tip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.io.send_break"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.io.set_baudrate"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.liha.move_plunger_relative"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.liha.move_tracking_relative"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.liha.position_valve_logical"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.liha.set_tracking_distance_z"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.modbus.write_register"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.star.send_command"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.wfile.write"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "serial.tools.list_ports.comports"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "str(track).zfill"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "super().check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "super().setup"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "super().unassign_child_resource"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "time.sleep"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip.tracker.commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip.tracker.get_used_volume"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip.tracker.rollback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip_spot.tracker.commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tip_spot.tracker.rollback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tips.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tips.pop"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tlc.compute_corrected_volume"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "usb.util.endpoint_direction"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "usb.util.find_descriptor"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "vals.index"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "well.get_absolute_location"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "well.get_column"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "well.get_row"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "well_bottoms.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "well_bottoms.copy"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "well_drain_offsets.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "write_data.hex"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "x_positions_mm.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "y_positions_mm.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "z_positions_mm.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "' | '.join"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'Coordinates (mm)'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'Rail'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'Resource'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'Type'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "'resetDevice\\r'.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(await self.get_iswap_version()).startswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(cmd + '\\r').encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(command + '\\r\\n').encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(filter_cubes or {}).items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(len(payload) + 7).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(objectives or {}).items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(sum(cmd) & 65535).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(sum(decel_command) - 170 & 255).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(tree_part + '<empty>').ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "(tree_part + resource.name).ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "A4SBackend.Status"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "A4SBackend.Status.HeaterBlockStatus"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "A4SBackend.Status.SensorStatus"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "A4SBackend.Status.SystemStatus"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Barcode.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "CentrifugeBackend.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Deck.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "END_TAG_REGEX.match"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ET.SubElement"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ET.fromstring(any_data_elem.text).findall"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ET.fromstring(raw).find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ET.tostring"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "FIRMWARE_ERROR_MAP.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "HarpPacket.unpack"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "HoiPacket.unpack"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "INTENSITY_TO_BYTE.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "InhecoSiLAInterface._HTTPRequest"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "InhecoSiLAInterface._SiLACommand"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "IpPacket.unpack"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "LETTERS.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "LiquidHandlerBackend.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "MachineBackend.get_all_instances"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "OverviewRegisterState.from_resp"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PACKET_TYPE.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PARAM_REGEX.match"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PILImage.open"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PumpCalibration.load_from_csv"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PumpCalibration.load_from_json"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PumpCalibration.load_from_list"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PumpCalibration.load_from_value"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PySpin.CCategoryPtr"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PySpin.CCommandPtr"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PySpin.CFloatPtr"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PySpin.CValuePtr"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PySpin.ImageProcessor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PySpin.IsReadable"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "PySpin.System.GetInstance"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "RES_TERM_CHAR.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Reader(data).u32"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Reader(header[7:]).u16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Reader(response).u16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Reader(result[2:]).u16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ResourceHolder.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "SOAP_RESPONSE_DataEventResponse.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "SOAP_RESPONSE_ResponseEventResponse.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "SOAP_RESPONSE_StatusEventResponse.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "STAR.mm_to_y_drive_increment"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "STARBackend._iswap_rotation_drive_angle_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "STARBackend.dispensing_drive_increment_to_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "STARBackend.dispensing_drive_mm_to_increment"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "STARBackend.iswap_y_drive_mm_to_increment"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "STARBackend.iswap_z_drive_mm_to_increment"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "START_TAG_REGEX.search"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "TDCL_DATA_TYPE_MAP.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "TRAVEL_RATE_TO_BYTE.keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ThermocyclerDriverFactory.create"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "VSpinBackend._StatusPositionTachometer.from_buffer_copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "VSpinBackend.g_to_rpm"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i16(signal_wl).i16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i16(signal_wl).i16(reference_wl).u8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i16(signal_wl).i16(reference_wl).u8(int(is_reference)).u8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i16(signal_wl).i16(reference_wl).u8(int(is_reference)).u8(0).finish"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i32"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i32(int(integration_time * 1000 * 1000)).raw_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i32(int(integration_time * 1000 * 1000)).raw_bytes(b'\\xff' * 12).u8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i32(int(integration_time * 1000 * 1000)).raw_bytes(b'\\xff' * 12).u8(0).u8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Writer().i32(int(integration_time * 1000 * 1000)).raw_bytes(b'\\xff' * 12).u8(0).u8(0).finish"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "[rack.name for rack in self._racks].index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_ACK_RE.match"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_ALIAS_MAP.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "__version__.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "absolute_heights_measurements.setdefault"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "absolute_heights_measurements.setdefault(orig_idx, []).extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "alignment_tipspot.center"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "alignment_tipspot.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "all_origin_tip_spots.pop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "all_origin_tip_spots[0].tracker.get_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "all_rows.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "args.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "args.keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "aspiration.container.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.Event"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.get_running_loop().create_future"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.run_coroutine_threadsafe"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "atexit.register"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "audio.play_got_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "audio.play_not_found"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "auto_exposure.evaluate_exposure"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "b''.join"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "b64decode(encoded_log).decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "backend_kwargs.keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "batch_measurements.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "bin(resp_decimal)[2:].zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "body.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "body.rindex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "body[start_index:end_index].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "bottom_right_well.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "buckets.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "buckets[math.floor(b.x_position / x_tolerance)].append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "buf.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "buffer.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "buffer.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "bytes(resp).hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "calibration.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "calibration.keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cam.GetTLDeviceNodeMap"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cam_list.Clear"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cam_list.GetByIndex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cam_list.GetSize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "candidates.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "capturer.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "carrier_rails.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cassette.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cast(Plate, well.parent).index_of_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "channel_locations.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "channel_subset.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "channels.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "channels_involved.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "checksum.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child._check_naming_conflicts"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child.get_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child_cls.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "child_data.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "clusters_by_model.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "clusters_by_model.setdefault"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "clusters_by_model.setdefault(current_model, []).append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "clusters_by_x.setdefault"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "clusters_by_x.setdefault(x, []).append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cmd.endswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cmd.fut.set_exception"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cmd.fut.set_result"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cmd.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cmd_part.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cmd_xml.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "color.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cols.reverse"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "columns_set.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.get_log_params"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.interpret_response"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command_output.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration.decode('latin').strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration.decode('latin').strip().split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration.decode().strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration.decode().strip().split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration.rstrip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration.rstrip(b'\\x03').decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "connected_devices_list.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "container.compute_volume_from_height"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "container.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "container.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "content.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "content.replace"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "copy.deepcopy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "corr_trans_vals.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cr.done"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cr.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "csv.reader"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "current_string.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "current_string.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cv2.Sobel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "d.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data.keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data['data']['definitionUri'].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data[4:].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data_blocks.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data_bytes.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "data_copy.pop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "date_match.groups"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "datetime.datetime.now"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "datetime.datetime.now().strftime"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_slot"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "decoder.feed"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "default.union"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.compute_plate_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.compute_plate_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_default_child_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_default_child_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_lid_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_lid_location(lid.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_new_child_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "destination.get_new_child_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dev.detach_kernel_driver"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dev.set_configuration"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dev.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "devices.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "direction.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dispense.container.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "driver.get_plate_temperature"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drop.resource.center"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drop.resource.center().rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drop.resource.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drop.resource.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drop.resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drop.resource.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "e.errors.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "elapsed_time_match.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "element_sizes.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "encoded_log_match.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "encoded_log_match.group(1).strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "end.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "end_re.match"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "error_code_msg.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "error_code_str.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "error_matches.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "errors.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "errors.groupdict"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "errors.groupdict().items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "errors_dict.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "exc.errors.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "expected.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f'({rails})'.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f'53rv1c3{serial_number}'.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f'99{command}{parameter}\\r\\n'.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f'Internal Server Error: {type(e).__name__}: {e}\\n'.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f'T0{stack_index}{command}'.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "f.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "fc.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "final_position.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "first_well.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "first_well.get_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "fmt.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "frame.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "full[:200].hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "full_cmd.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "full_cmd.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "fut.result"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "group[0].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "group[1].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "group[2].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "groups.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "groups[-1].append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "grpc.insecure_channel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "he.errors.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "header.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "height_volume_data.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "hex(int(bit_string, base=2))[2:].upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "hex(int(bit_string, base=2))[2:].upper().zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "hid.Device"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "hid.enumerate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "holder.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "http.server.HTTPServer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "http.server.ThreadingHTTPServer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "hvd.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "hvd.keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "i_resp.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "image_converted.GetNDArray"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "image_result.Release"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "images.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "inconsistent_channels.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "indices.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "info.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "init_response.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "init_status.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "input(prompt).strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "inspect.signature"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int(9.15 * 100 * acceleration).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int(9.15 * 100 * deceleration).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int(focal_height * 100).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "int(rpm * 4473.925).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "intensities.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "io.BytesIO"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "items.copy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "items[i].append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "json.load"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "k.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "klass.__name__.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "klass.deserialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "kwargs.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "kwargs.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "label.capitalize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "label.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "layout_match.end"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "libusb_package.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lid.rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.rstrip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lines.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "liquid_color.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "liquid_color.strip().lstrip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "loader.load"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "location.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lock.acquire"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lock.locked"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "lock.release"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "log_params.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "logging.LoggerAdapter"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "m.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "m.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "marshal.dumps"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "marshal.dumps(obj.__code__).hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "marshal.loads"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "mask_hex.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "matches[0].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "math.ceil"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "math.isnan"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "math.pow"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "measurements[orig_idx].append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "merged.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "message.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "message.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "message.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "message[:-4].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "message[:-4].split('=')[1].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "messages.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "modules.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "msg.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "msg.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "msg_data.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "msg_header.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "msgs.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "multiline.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "new_list.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "new_list[i].append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "next_command.action.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "next_command.data.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "next_datadef.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node.GetValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_device_information.GetFeatures"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_feature.GetName"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_feature.ToString"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_gain.GetMax"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_gain.GetMin"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_gain.SetValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_gain_auto.GetEntryByName"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_gain_auto.SetIntValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "node_softwaretrigger_cmd.Execute"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.asarray"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.count_nonzero"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer(image_buffer[:expected_16bit], dtype=np.uint16).reshape"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.frombuffer(image_buffer[:expected_8bit], dtype=np.uint8).reshape"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.max"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.mean"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "np.var"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "obj.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "obj.io.serialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "obj.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "obj.serialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "od.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "offsets.sort"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.center"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.get_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.resource.tracker.remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.tip.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "op.tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ordered_items.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ordered_items.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "original_line.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "os.path.abspath"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ot_api.modules.list_connected_modules"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ot_profile.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "other.get_absolute_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "outer._on_http"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "over_capacity.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "p.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "p_resp.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "par.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "parent.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "parent_plate.get_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "parsed_config.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "parsed_data.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "part_number.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "partition.sort"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pickup.resource.center"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pickup.resource.center().rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pickup.resource.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pickup.resource.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pickup.resource.get_all_items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pipettes.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_all_children"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.index_of_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.lid.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate_cols.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate_rows.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plates.pop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "positional_args.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "processor.Convert"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "processor.SetColorProcessing"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_frame_start.GetNumericValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_inference_ready.GetNumericValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_trigger_mode.GetEntryByName"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_trigger_mode.SetIntValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_trigger_on.GetNumericValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_trigger_selector.GetEntryByName"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_trigger_selector.SetIntValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_trigger_source.GetEntryByName"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ptr_trigger_source.SetIntValue"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "q_match.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.groups"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "r.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rack.get_free_sites"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rack.model.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rack.sites.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rack_list.sort"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "random.choice"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "range_str.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw.decode('ascii', errors='ignore').strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw.rstrip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw.rstrip(b'\\r\\n').decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw_data.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw_data.decode('ascii').strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw_data.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw_response.decode('utf-8').strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw_response.decode('utf-8').strip().split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw_response.decode('utf-8', errors='replace').strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "raw_response.decode('utf-8', errors='replace').strip().split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "re.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reader._read_packet"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reader.dev.get_active_configuration"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reader.setup"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reader.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "real_chromatic_reading.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "real_reference_reading.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "recorder.log"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reg_msg.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "relative_to_well.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reply.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reply.decode().strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "report_id.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "req.body.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "res.replace"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "res[0].replace"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "res[0].replace('OK', '').split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.__class__.__name__.ljust"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.centers"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.children[0].get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.children[0].get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_did_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_did_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_will_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.deregister_will_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.register_did_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.register_state_update_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.sites.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split('bb/')[-1].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split('cd', 1)[1].strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split('vw')[-1].strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split('vw')[-1].strip().split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.startswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp[1:-1].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp[1:-1].decode().split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp[1:].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp[1:].split(b' ')[0].decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp[:-2].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp[bb_index + 5:].strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp_header.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp_level.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp_raw.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp_raw.split('if')[-1].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response.raw_bytes.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response.strip().split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_event['ResponseEvent'].get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_message.hoi.params.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_task.cancel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response_task.result"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "responses.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "result.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "result_images.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "result_level.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ret.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ret.get('message', '').replace"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "returns.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "root_msg.add_registration_option"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "root_msg.build"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "round(f * 100).to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "row.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rows.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rows.reverse"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rows_set.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.close"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.connect"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.findall"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s.getsockname"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "s[3:-1].split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "scpi_resp.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "scpi_resp.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "seen.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._cam.GetNextImage"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._cam.Init"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._data.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._dev.close"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._dev.open"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.close_lid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.deactivate_block"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.deactivate_lid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.get_device_info"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.get_lid_status"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.jog_lid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.lift_plate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.open_lid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.set_lid_temperature"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.set_plate_temperature"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._driver.set_ramp_rate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._filter_cubes.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._filters.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._handlers.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._keep_alive_thread.join"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._logger.error"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._objectives.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._objectives.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ordering.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.labware.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.labware.define"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.lh.drop_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.lh.drop_tip_in_place"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.lh.move_arm"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.lh.move_to_addressable_area_for_drop_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.lh.pick_up_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.lh.save_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.set_host"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._ot.set_port"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._pending_response_ids.add"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._pending_response_ids.discard"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._reader.readline"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._reader.readuntil"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._shaking_started.set"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._shaking_started.wait"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._spinnaker_system.GetCameras"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._spinnaker_system.GetLibraryVersion"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._tempfile.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._tempfile.seek"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._tempfile.tell"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._writer.drain"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._writer.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.available_blocks.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.aspirate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.aspirate96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.capture"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.dispense96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.drop_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.drop_tips"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.drop_tips96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.fetch_plate_to_loading_tray"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.get_current_temperature"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.load"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.move_channel_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.move_channel_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.move_channel_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.move_picked_up_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.pick_up_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.pick_up_tips"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.pick_up_tips96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.prepare_for_manual_channel_operation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.run_continuously"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.run_protocol"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.set_deck"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.set_heads"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.set_temperature"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.setup"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.take_in_plate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.backend.unload"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.byte_buffer[offset:].hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.centrifuge.at_bucket.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.children.remove"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.data_control.turn_all_interval_messages_off"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.get_trash_area"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.dev.ctrl_transfer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.dev.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.dev.set_configuration"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.fst.start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.get_absolute_rotation().get_rotation_matrix"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.get_anchor(x=x, y=y, z=z).vector"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.get_resource('waste_block').get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head96[0].get_tip_origin"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head96[i].add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head96[i].get_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.head96[i].get_tip_origin"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.header_types.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.headers.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.headers.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.httpd.serve_forever"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.interface.send_hhs_command"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_dtr"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_flowctrl"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_line_property"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.set_rts"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.usb_purge_rx_buffer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.io.usb_purge_tx_buffer"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha._drop_disposable_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.get_disposable_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.move_absolute_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.move_detect_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_detection_mode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_search_retract_distance"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_search_speed"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_search_submerge"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_search_z_max"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_search_z_start"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_slow_speed_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.liha.set_stop_speed_plunger"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.loading_tray.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.loading_trays.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.location.vector"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.logger.log"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.measurement_control.end_measurement"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.measurement_control.measure_range_in_x_pointwise"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.measurement_control.prepare_instrument"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.modbus.close"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.modbus.connect"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.motion_dwell.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.msgs.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_absolute_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_absolute_rotation().get_rotation_matrix"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.parent.get_child_identifier"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.reader.start_background_read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.received.pop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.recently_sampled.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.rfile.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.action_move_vector_coordinate_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.grip_plate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.position_absolute_g"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.report_z_param"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_fast_speed_r"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_fast_speed_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_fast_speed_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_fast_speed_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_gripper_params"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_smooth_move_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_target_window_class"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.roma.set_vector_coordinate_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.sites[spot].assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.tracker.register_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.unit_composition.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.units.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.unsafe.get_from_hotel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.unsafe.put_in_hotel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.websocket.send"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "separator.hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ser.send_break"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "serial.Serial"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "set().union"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "sig.parameters.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "site.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "site.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "sites.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "slots.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "socket.socket"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ssl.SSLContext"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ssl_context.set_ciphers"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stack.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stack.pop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stack[-1]['multiline'].append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "start_match.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "start_match.group(1).strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "state.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stop_event.set"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str((sum(cmd.encode()) + 7) % 100).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str((sum(cmd.encode()) + 73) % 100).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str((sum(cmd.encode()) + 8) % 100).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(emission_wavelength).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(excitation_wavelength).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(focus_integer).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(frequency_value).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(humidity_val).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(int(float(integration_time_milliseconds * 50))).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(integration_time_seconds * 5).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(intensity).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(max_duration).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(no_container_per_carrier).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(rack_idx).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(resp).strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(result).lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(distance_between_containers * 10)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(reading_position_of_first_barcode * 10)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(reading_speed * 10)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(relative_x * 100 * 0.984)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(relative_y * 100 * 0.984)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(width_of_reading_window * 10)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(x * 100 * 0.984)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(round(y * 100 * 0.984)).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(self._column).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(self._row).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(site_idx).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(sum(cmd.encode()) % 100).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(temp_value).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "str(wavelength).zfill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "string_bytes.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "strings.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_item('A1').center"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_item('A1').get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "subresource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "summary_.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super()._ops_to_fw_positions"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().do_GET"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().end_headers"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "syringe.upper"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "sys.stdout.flush"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "sys.stdout.write"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "target_tip_clusters_by_parent_x.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "target_tip_clusters_by_parent_x[key].append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "td.total_seconds"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tempfile.NamedTemporaryFile"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "text.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "threading.Lock"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "threading.Thread"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_rack.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_rack.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_rack.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_rack.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_spot.has_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_spot.tracker.add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_spot.tracker.remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_spots.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_spots[0].get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip_status.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tipspots_w_tips[0].tracker.get_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tmp_message.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tr.empty"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tr.fill"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tracker.get_tip_origin"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tracker.register_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "trans_vals.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "transmittance.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "types.CellType"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "types.FunctionType"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "urllib.parse.urlsplit"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "urllib.request.Request"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "urllib.request.urlopen"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "usb.core.find"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "usb.util.dispose_resources"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "usb.util.endpoint_type"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "usb.util.get_string"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "v.strftime"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "validated.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "value.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "vars(obj).items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.finish"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.i8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.raw_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.u16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "w.u8"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "warnings.catch_warnings"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "warnings.filterwarnings"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "waste_block.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "waste_pos.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "webbrowser.open"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.set_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.tracker.add_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well_0.center"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well_a1.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well_a1.get_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well_dz_set.pop"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "well_mask.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "wells.sort"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "wells[0].get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "wl_parts.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "x.lstrip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "x.lstrip('-').isdigit"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "x_positions.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "y_positions.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "year_match.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "year_matches.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ys.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ys.keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "zs.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "{(-2, True): 1, (-2, False): 2, (0, True): 3, (0, False): 4, (2, True): 5, (2, False): 6, (4, True): 7, (4, False): 8}.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "{96: 12, 384: 24, 1536: 48}.get"
+      }
+    ],
+    "supported_tools_closure": [
+      {
+        "blocks_methods": 2,
+        "call": "_state_updated"
+      }
+    ],
+    "whole_surface": [
+      {
+        "blocks_methods": 750,
+        "call": "send_command"
+      },
+      {
+        "blocks_methods": 12,
+        "call": "assign_child_resource"
+      },
+      {
+        "blocks_methods": 11,
+        "call": "_send_step_command"
+      },
+      {
+        "blocks_methods": 11,
+        "call": "batch"
+      },
+      {
+        "blocks_methods": 9,
+        "call": "get_all_items"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_read_now"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_calibrate"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_carriage_speed"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_clear"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_flashes_per_well"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_mode"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_order"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_pmt"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_set_shake"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_transfer_data"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "_wait_for_idle"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "_callback"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "_set_filter"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "_set_readtype"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "_set_tag"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "get_resource"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_ops_to_fw_positions"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "_set_wavelengths"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "get_item"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "get_or_assign_tip_type_index"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "report_x_param"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_get_cutoff_filter_index_from_wavelength"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_get_liquid_pipette"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_head96_y_drive_increment_to_mm"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_set_tip_state"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "_state_updated"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "end_headers"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "get_child_identifier"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "register_did_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "register_did_unassign_resource_callback"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "send_header"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "send_response"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "stop_shaking"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "unassign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_assemble_command"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_compute_height_from_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_compute_volume_from_height"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_do"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_get_drop_pipette"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_get_pickup_pipette"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_head96_resolve_z_range"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_make_tip_func"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_pipette_id_for_channel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_purge_buffers"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_read_body"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_serialize_ctrl_transfer_request"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "_test_communication"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "check_z_height"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "cleanup_after_protocol"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "column"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "configuration_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deactivate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_absolute_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_container"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "get_overview_register"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "park_iswap"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "register_will_assign_resource_callback"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "reset"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "row"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "set_plate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "start_batch"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "validate_channel_selections"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "validate_intensity"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "validate_storage_location_number"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "wait_for_task_completion"
+      }
+    ]
+  },
+  "totals": {
+    "methods_attempted": 1314,
+    "methods_with_dropped_receiver_call": 671,
+    "methods_with_gaps": 290,
+    "methods_with_no_recorded_gap": 1024
+  },
+  "validation_looking_dropped_receiver_calls_by_method": {
+    "aspirate": 0,
+    "discard_tips": 0,
+    "dispense": 0,
+    "drop_tips": 0,
+    "move_lid": 1,
+    "move_plate": 1,
+    "move_resource": 1,
+    "pick_up_tips": 0,
+    "stamp": 0,
+    "transfer": 0
+  }
+}

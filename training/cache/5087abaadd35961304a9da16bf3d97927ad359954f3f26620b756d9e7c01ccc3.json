@@ -1,0 +1,9 @@
+{
+ "cache_key": "5087abaadd35961304a9da16bf3d97927ad359954f3f26620b756d9e7c01ccc3",
+ "fetched_at": "2026-09-02T20:18:54.175601+00:00",
+ "input_hash": "d23583c1ba4f0ee0a51aa80c90649faa458d81a291952b5edabafcf3608e45a0",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and put the plate into hotel stack 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

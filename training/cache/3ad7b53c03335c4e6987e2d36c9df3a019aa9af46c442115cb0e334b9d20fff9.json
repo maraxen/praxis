@@ -1,0 +1,9 @@
+{
+ "cache_key": "3ad7b53c03335c4e6987e2d36c9df3a019aa9af46c442115cb0e334b9d20fff9",
+ "fetched_at": "2026-09-02T15:12:06.519198+00:00",
+ "input_hash": "df85c93b5cf48e539362613f69dbe6cabebe7cd97dee349dccf5969c2f80cd80",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Drop the liquid into well G9 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

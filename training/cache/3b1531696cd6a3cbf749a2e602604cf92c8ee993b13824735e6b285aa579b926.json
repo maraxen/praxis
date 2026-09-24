@@ -1,0 +1,9 @@
+{
+ "cache_key": "3b1531696cd6a3cbf749a2e602604cf92c8ee993b13824735e6b285aa579b926",
+ "fetched_at": "2026-09-03T15:05:21.458196+00:00",
+ "input_hash": "3c40a99cf6916bd4752068d7982e93be71d94909f00a69946e5c794fc5975fb4",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you give the microplate a 5-minute shake at 500 rpm?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "e40b6165ee61a2228f057602e545cd3ab15f06d09aa23f5d25b925f88e1f7392",
+ "fetched_at": "2026-09-01T21:19:08.653662+00:00",
+ "input_hash": "1c0864d367d8e501dfd88abad2f92a46e1bfb38831212179d18f6a1090e9f160",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the absorbance at 600.0 nm for wells B12, C1, C4, and E7.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

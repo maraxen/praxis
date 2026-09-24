@@ -3,8 +3,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums import ProtocolSourceStatusEnum
 from praxis.backend.models.domain.protocol_source import ProtocolSourceRepository
+from praxis.backend.models.enums import ProtocolSourceStatusEnum
 
 
 @pytest.mark.asyncio

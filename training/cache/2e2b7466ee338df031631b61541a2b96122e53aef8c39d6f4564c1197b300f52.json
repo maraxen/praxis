@@ -1,0 +1,9 @@
+{
+ "cache_key": "2e2b7466ee338df031631b61541a2b96122e53aef8c39d6f4564c1197b300f52",
+ "fetched_at": "2026-09-02T20:24:24.866590+00:00",
+ "input_hash": "cdc2a6f0fe7c7aeb1eb4cd096652a8644d1838a4d6e36ab85d7f17828de2e120",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put lid 2 on the scale station.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

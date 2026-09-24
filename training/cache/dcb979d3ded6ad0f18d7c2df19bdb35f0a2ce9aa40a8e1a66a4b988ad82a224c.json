@@ -1,0 +1,9 @@
+{
+ "cache_key": "dcb979d3ded6ad0f18d7c2df19bdb35f0a2ce9aa40a8e1a66a4b988ad82a224c",
+ "fetched_at": "2026-09-02T15:16:37.272368+00:00",
+ "input_hash": "f7f87f9e1d8236a9518b01e0b2f57e2f82b1cfdc5669729ef7db6850a96f85fd",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Shuttle liquid from well D2 of plate 1 to well B6 of plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

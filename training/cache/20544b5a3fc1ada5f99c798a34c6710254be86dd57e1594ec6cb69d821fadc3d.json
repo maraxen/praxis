@@ -1,0 +1,9 @@
+{
+ "cache_key": "20544b5a3fc1ada5f99c798a34c6710254be86dd57e1594ec6cb69d821fadc3d",
+ "fetched_at": "2026-08-28T18:05:07.428953+00:00",
+ "input_hash": "890ce6deb5c3c4e81ddf7a84a68985636e2218fac72e361e2c664276226e5f21",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the luminescence in wells C1, C10, D4, and H2 at a focal height of 10.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

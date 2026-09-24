@@ -1,0 +1,9 @@
+{
+ "cache_key": "b16eab65b8cbf2d2c6ba061295fc79130a87eac760a402d08d0800ce8476f773",
+ "fetched_at": "2026-09-02T15:11:10.982743+00:00",
+ "input_hash": "d4e9f1d768422f61308e3d327377421b02cac8d192258fe230133d9969d3fd85",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Add 75 microliters to plate 2, well A9.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

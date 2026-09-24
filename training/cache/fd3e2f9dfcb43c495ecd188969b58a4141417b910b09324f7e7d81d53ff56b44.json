@@ -1,0 +1,9 @@
+{
+ "cache_key": "fd3e2f9dfcb43c495ecd188969b58a4141417b910b09324f7e7d81d53ff56b44",
+ "fetched_at": "2026-09-02T15:10:59.366632+00:00",
+ "input_hash": "e871635c56a2f01400e5d0dddb47ad50d3cc2a5137796320414e5647a273465f",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Add 20 microliters to well F1 of plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "b6bdfd163a065e7d5d10c0b6b221dcfb6a2e0bce71fed901ca0a9cf9c144459e",
+ "fetched_at": "2026-09-02T17:16:49.580224+00:00",
+ "input_hash": "05215fd7a1c43f939837cc0f3c2fc6fac41cdc45ab9bd55653a4c09780008ba4",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Go ahead and bring the reservoir to scale station 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "ef488bfa5b5d398603dc9b8bf859b6409a353a963436c320dd7bc863fc134d45",
+ "fetched_at": "2026-09-03T14:58:13.118265+00:00",
+ "input_hash": "3b97b9b5bfaea3128085ade21381b16a84e67092b3825da6476d19e455721d7e",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Mix the sample in well C2 by pipetting up and down 5 times, then transfer 100 microliters to well D2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

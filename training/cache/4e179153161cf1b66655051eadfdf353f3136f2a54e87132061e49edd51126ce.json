@@ -1,0 +1,9 @@
+{
+ "cache_key": "4e179153161cf1b66655051eadfdf353f3136f2a54e87132061e49edd51126ce",
+ "fetched_at": "2026-09-03T14:59:06.832426+00:00",
+ "input_hash": "1aa121d083d4369792d06fe3d4c0c0061227630bb3dc3f153009029934356c49",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please mix the reagent in well F6 up and down before transferring 75 uL into column 1 on plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

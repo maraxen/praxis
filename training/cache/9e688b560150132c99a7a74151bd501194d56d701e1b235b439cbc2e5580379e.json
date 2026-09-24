@@ -1,0 +1,9 @@
+{
+ "cache_key": "9e688b560150132c99a7a74151bd501194d56d701e1b235b439cbc2e5580379e",
+ "fetched_at": "2026-09-02T20:33:43.082056+00:00",
+ "input_hash": "db795bc2b69ac329b6aba788c9b93b71c9fdce218a50c7d39a92e8fcf1c496f8",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you scan luminescence on the loaded plate?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

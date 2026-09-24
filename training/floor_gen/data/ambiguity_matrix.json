@@ -1,0 +1,411 @@
+{
+  "matrix_version": "3",
+  "description": "Coxswain P2.3 coverage-floor matrix: phase-2 copilot verbs x ambiguity classes {none, missing-slot, ambiguous-referent, out-of-surface}. Committed DATA validated against coxswain.plr.param_namespace + TOOL_SCHEMA by floor_gen.matrix.load_matrix. Out-of-surface cells anchor verbs OUTSIDE the generation surface entirely (experimental/excluded entries or off-domain requests); their supervision is an NL clarification turn with NO tool_call (spec rev2 D7/D11). v3 (260903, task 260903_p26d_near_surface): six near-surface out-of-surface cells appended (appended_in_matrix_version \"3\"): a surface object (tips, deck, plate, sample) named inside an unsupported action (inventory, ordering, display, value query, scheduling/logging, run status); iterated after the original cells so existing record ids are unchanged.",
+  "ambiguity_classes": [
+    "none",
+    "missing-slot",
+    "ambiguous-referent",
+    "out-of-surface"
+  ],
+  "cells": [
+    {
+      "cell_id": "aspirate__none",
+      "verb": "aspirate",
+      "ambiguity_class": "none",
+      "examples_per_cell": 15,
+      "notes": "clean parse: all required params present and grounded"
+    },
+    {
+      "cell_id": "dispense__none",
+      "verb": "dispense",
+      "ambiguity_class": "none",
+      "examples_per_cell": 15,
+      "notes": "clean parse"
+    },
+    {
+      "cell_id": "transfer__none",
+      "verb": "transfer",
+      "ambiguity_class": "none",
+      "examples_per_cell": 15,
+      "notes": "clean parse incl. optional volume_ul as dispense target"
+    },
+    {
+      "cell_id": "stamp__none",
+      "verb": "stamp",
+      "ambiguity_class": "none",
+      "examples_per_cell": 15,
+      "notes": "whole-plate copy, scalar volume"
+    },
+    {
+      "cell_id": "pick_up_tips__none",
+      "verb": "pick_up_tips",
+      "ambiguity_class": "none",
+      "examples_per_cell": 15,
+      "notes": "tip lifecycle start"
+    },
+    {
+      "cell_id": "drop_tips__none",
+      "verb": "drop_tips",
+      "ambiguity_class": "none",
+      "examples_per_cell": 15,
+      "notes": "irreversible tier"
+    },
+    {
+      "cell_id": "discard_tips__none",
+      "verb": "discard_tips",
+      "ambiguity_class": "none",
+      "examples_per_cell": 15,
+      "notes": "no required params; phrase noun key what=tips rides along"
+    },
+    {
+      "cell_id": "move_resource__none",
+      "verb": "move_resource",
+      "ambiguity_class": "none",
+      "examples_per_cell": 15,
+      "notes": "gripper transport of arbitrary resource"
+    },
+    {
+      "cell_id": "move_plate__none",
+      "verb": "move_plate",
+      "ambiguity_class": "none",
+      "examples_per_cell": 15,
+      "notes": "gripper transport of a plate"
+    },
+    {
+      "cell_id": "move_lid__none",
+      "verb": "move_lid",
+      "ambiguity_class": "none",
+      "examples_per_cell": 15,
+      "notes": "lid handling"
+    },
+    {
+      "cell_id": "read_absorbance__none",
+      "verb": "read_absorbance",
+      "ambiguity_class": "none",
+      "examples_per_cell": 15,
+      "notes": "read_only tier; positions are LITERAL well refs, never slots"
+    },
+    {
+      "cell_id": "read_fluorescence__none",
+      "verb": "read_fluorescence",
+      "ambiguity_class": "none",
+      "examples_per_cell": 15,
+      "notes": "excitation/emission/focal-height triple"
+    },
+    {
+      "cell_id": "read_luminescence__none",
+      "verb": "read_luminescence",
+      "ambiguity_class": "none",
+      "examples_per_cell": 15,
+      "notes": "focal height + optional wells"
+    },
+    {
+      "cell_id": "aspirate__missing-slot",
+      "verb": "aspirate",
+      "ambiguity_class": "missing-slot",
+      "examples_per_cell": 15,
+      "missing_param": "source",
+      "notes": "utterance omits where to aspirate from"
+    },
+    {
+      "cell_id": "dispense__missing-slot",
+      "verb": "dispense",
+      "ambiguity_class": "missing-slot",
+      "examples_per_cell": 15,
+      "missing_param": "volume_ul",
+      "notes": "utterance omits how much"
+    },
+    {
+      "cell_id": "transfer__missing-slot",
+      "verb": "transfer",
+      "ambiguity_class": "missing-slot",
+      "examples_per_cell": 15,
+      "missing_param": "source",
+      "notes": "no source named"
+    },
+    {
+      "cell_id": "stamp__missing-slot",
+      "verb": "stamp",
+      "ambiguity_class": "missing-slot",
+      "examples_per_cell": 15,
+      "missing_param": "volume_ul",
+      "notes": "per-well volume unstated"
+    },
+    {
+      "cell_id": "pick_up_tips__missing-slot",
+      "verb": "pick_up_tips",
+      "ambiguity_class": "missing-slot",
+      "examples_per_cell": 15,
+      "missing_param": "at",
+      "notes": "tip position unstated"
+    },
+    {
+      "cell_id": "drop_tips__missing-slot",
+      "verb": "drop_tips",
+      "ambiguity_class": "missing-slot",
+      "examples_per_cell": 15,
+      "missing_param": "destination",
+      "notes": "where to drop unstated"
+    },
+    {
+      "cell_id": "move_resource__missing-slot",
+      "verb": "move_resource",
+      "ambiguity_class": "missing-slot",
+      "examples_per_cell": 15,
+      "missing_param": "resource",
+      "notes": "object to move unstated"
+    },
+    {
+      "cell_id": "move_plate__missing-slot",
+      "verb": "move_plate",
+      "ambiguity_class": "missing-slot",
+      "examples_per_cell": 15,
+      "missing_param": "plate",
+      "notes": "which plate unstated"
+    },
+    {
+      "cell_id": "move_lid__missing-slot",
+      "verb": "move_lid",
+      "ambiguity_class": "missing-slot",
+      "examples_per_cell": 15,
+      "missing_param": "lid",
+      "notes": "which lid unstated"
+    },
+    {
+      "cell_id": "read_absorbance__missing-slot",
+      "verb": "read_absorbance",
+      "ambiguity_class": "missing-slot",
+      "examples_per_cell": 15,
+      "missing_param": "wavelength_nm",
+      "notes": "wavelength unstated"
+    },
+    {
+      "cell_id": "read_fluorescence__missing-slot",
+      "verb": "read_fluorescence",
+      "ambiguity_class": "missing-slot",
+      "examples_per_cell": 15,
+      "missing_param": "emission_nm",
+      "notes": "emission wavelength unstated"
+    },
+    {
+      "cell_id": "read_luminescence__missing-slot",
+      "verb": "read_luminescence",
+      "ambiguity_class": "missing-slot",
+      "examples_per_cell": 15,
+      "missing_param": "focal_height_mm",
+      "notes": "focal height unstated"
+    },
+    {
+      "cell_id": "aspirate__ambiguous-referent",
+      "verb": "aspirate",
+      "ambiguity_class": "ambiguous-referent",
+      "examples_per_cell": 15,
+      "slot_param": "source",
+      "notes": "vague source reference -> D11 unresolved slot -> cue-2 clarify"
+    },
+    {
+      "cell_id": "dispense__ambiguous-referent",
+      "verb": "dispense",
+      "ambiguity_class": "ambiguous-referent",
+      "examples_per_cell": 15,
+      "slot_param": "destination",
+      "notes": "vague destination reference"
+    },
+    {
+      "cell_id": "transfer__ambiguous-referent",
+      "verb": "transfer",
+      "ambiguity_class": "ambiguous-referent",
+      "examples_per_cell": 15,
+      "slot_param": "destination",
+      "notes": "'the other plate' style targets"
+    },
+    {
+      "cell_id": "stamp__ambiguous-referent",
+      "verb": "stamp",
+      "ambiguity_class": "ambiguous-referent",
+      "examples_per_cell": 15,
+      "slot_param": "destination",
+      "notes": "vague target plate"
+    },
+    {
+      "cell_id": "pick_up_tips__ambiguous-referent",
+      "verb": "pick_up_tips",
+      "ambiguity_class": "ambiguous-referent",
+      "examples_per_cell": 15,
+      "slot_param": "at",
+      "notes": "'the tip rack' without a rack id"
+    },
+    {
+      "cell_id": "drop_tips__ambiguous-referent",
+      "verb": "drop_tips",
+      "ambiguity_class": "ambiguous-referent",
+      "examples_per_cell": 15,
+      "slot_param": "destination",
+      "notes": "'somewhere safe' style"
+    },
+    {
+      "cell_id": "discard_tips__ambiguous-referent",
+      "verb": "discard_tips",
+      "ambiguity_class": "ambiguous-referent",
+      "examples_per_cell": 15,
+      "slot_param": "at",
+      "notes": "optional symbolic location kept vague"
+    },
+    {
+      "cell_id": "move_resource__ambiguous-referent",
+      "verb": "move_resource",
+      "ambiguity_class": "ambiguous-referent",
+      "examples_per_cell": 15,
+      "slot_param": "resource",
+      "notes": "'the reservoir' without an id"
+    },
+    {
+      "cell_id": "move_plate__ambiguous-referent",
+      "verb": "move_plate",
+      "ambiguity_class": "ambiguous-referent",
+      "examples_per_cell": 15,
+      "slot_param": "plate",
+      "notes": "'the sample plate'"
+    },
+    {
+      "cell_id": "move_lid__ambiguous-referent",
+      "verb": "move_lid",
+      "ambiguity_class": "ambiguous-referent",
+      "examples_per_cell": 15,
+      "slot_param": "lid",
+      "notes": "'its lid' style"
+    },
+    {
+      "cell_id": "mix__out-of-surface",
+      "verb": "mix",
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "excluded-phantom",
+      "off_surface_request": "user asks to mix the liquid in a well up and down before transferring it",
+      "notes": "phantom verb absent from vendored PLR (recon 1.4); outside surface => NL clarification, no tool_call"
+    },
+    {
+      "cell_id": "blow_out__out-of-surface",
+      "verb": "blow_out",
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "excluded-phantom",
+      "off_surface_request": "user asks to blow out the remaining droplets from the tips after dispensing",
+      "notes": "phantom verb; modeled upstream via kwargs, not a method"
+    },
+    {
+      "cell_id": "touch_tip__out-of-surface",
+      "verb": "touch_tip",
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "excluded-phantom",
+      "off_surface_request": "user asks to touch the tip ends against the well walls to shed droplets",
+      "notes": "phantom verb"
+    },
+    {
+      "cell_id": "dispense_to_waste__out-of-surface",
+      "verb": "dispense_to_waste",
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "excluded-phantom",
+      "off_surface_request": "user asks to dump the contents of a plate straight into waste",
+      "notes": "phantom verb"
+    },
+    {
+      "cell_id": "set_temperature__out-of-surface",
+      "verb": "set_temperature",
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "excluded-no-backend",
+      "off_surface_request": "user asks to set the heater-shaker deck module to 37 degrees celsius",
+      "notes": "defender R5: vendored methods exist but no praxis backend wiring yet"
+    },
+    {
+      "cell_id": "shake__out-of-surface",
+      "verb": "shake",
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "excluded-no-backend",
+      "off_surface_request": "user asks to shake the microplate at 500 rpm for five minutes",
+      "notes": "defender R5 exclusion"
+    },
+    {
+      "cell_id": "stop_shaking__out-of-surface",
+      "verb": "stop_shaking",
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "excluded-no-backend",
+      "off_surface_request": "user asks to stop the shaking of the heater shaker",
+      "notes": "defender R5 exclusion"
+    },
+    {
+      "cell_id": "generic__out-of-surface",
+      "verb": null,
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "outside-copilot-domain",
+      "off_surface_request": "user asks something unrelated to lab work, like what the weather is like today or to tell a joke",
+      "notes": "off-domain sentinel: not a lab verb at all; clarification turn must decline without inventing a call"
+    },
+    {
+      "cell_id": "tip_inventory__out-of-surface",
+      "verb": null,
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "near-surface-unsupported-action",
+      "off_surface_request": "user asks how many tips are left in a tip rack, whether a rack still has tips, or to check the tip inventory (a question about stock, not a request to pick up or drop tips)",
+      "notes": "near-surface (P2.6d): nearest supported: pick_up_tips / drop_tips act on tips but never report stock; outside surface => NL clarification, no tool_call",
+      "appended_in_matrix_version": "3"
+    },
+    {
+      "cell_id": "consumables_ordering__out-of-surface",
+      "verb": null,
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "near-surface-unsupported-action",
+      "off_surface_request": "user asks to order, reorder or buy more tips, plates or reagents from a supplier or vendor website (procurement, not a deck operation)",
+      "notes": "near-surface (P2.6d): A2/A3 tripwire shape: golden-out-surface-11 -> pick_up_tips; outside surface => NL clarification, no tool_call",
+      "appended_in_matrix_version": "3"
+    },
+    {
+      "cell_id": "deck_display__out-of-surface",
+      "verb": null,
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "near-surface-unsupported-action",
+      "off_surface_request": "user asks to show, display, describe or list the current deck layout, or where a particular plate or tip rack sits on the deck (a view request, not a move)",
+      "notes": "near-surface (P2.6d): A2/A3 tripwire shape: golden-out-surface-10 -> move_plate; outside surface => NL clarification, no tool_call",
+      "appended_in_matrix_version": "3"
+    },
+    {
+      "cell_id": "sample_value_query__out-of-surface",
+      "verb": null,
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "near-surface-unsupported-action",
+      "off_surface_request": "user asks what the concentration, absorbance, or remaining volume of a specific sample or well is right now (a question about a value, not a request to run a plate read or to aspirate)",
+      "notes": "near-surface (P2.6d): A2/A3 tripwire shape: golden-out-surface-05 -> read_sample (unknown verb); outside surface => NL clarification, no tool_call",
+      "appended_in_matrix_version": "3"
+    },
+    {
+      "cell_id": "scheduling_logging__out-of-surface",
+      "verb": null,
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "near-surface-unsupported-action",
+      "off_surface_request": "user asks to schedule a run for later, set a reminder, or log a note about a plate or a sample in the lab notebook",
+      "notes": "near-surface (P2.6d): plates/samples named, action outside the surface; outside surface => NL clarification, no tool_call",
+      "appended_in_matrix_version": "3"
+    },
+    {
+      "cell_id": "run_status__out-of-surface",
+      "verb": null,
+      "ambiguity_class": "out-of-surface",
+      "examples_per_cell": 20,
+      "surface_status": "near-surface-unsupported-action",
+      "off_surface_request": "user asks how the current run is going, how many steps or how much time remain, or whether the last step finished (a status question, not an instruction)",
+      "notes": "near-surface (P2.6d): status query about the run itself; outside surface => NL clarification, no tool_call",
+      "appended_in_matrix_version": "3"
+    }
+  ]
+}

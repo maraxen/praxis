@@ -3,9 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from praxis.backend.models.domain.deck import (
     DeckDefinition,
-    DeckPositionDefinitionCreate,
     DeckDefinitionCreate,
     DeckDefinitionUpdate,
+    DeckPositionDefinitionCreate,
     PositioningConfig,
 )
 from praxis.backend.services.deck_type_definition import DeckTypeDefinitionService

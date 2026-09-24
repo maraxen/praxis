@@ -1,0 +1,9 @@
+{
+ "cache_key": "1b179daae94249870f415b7f89b791a12948d136d4782a07e3c37dbd91d1de71",
+ "fetched_at": "2026-09-01T21:06:42.752283+00:00",
+ "input_hash": "3e929842ab5e5c0202773cb7187370b17b9e7d874b4324f7e47722593d8c5669",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Aspirate 50, 10, and 150 microliters from the same well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

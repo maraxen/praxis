@@ -1,0 +1,9 @@
+{
+ "cache_key": "9e78e93340659992c12bc1a5cf2fe88546dde4787f4e1a06b6efb4017c7b6879",
+ "fetched_at": "2026-09-03T14:59:45.799840+00:00",
+ "input_hash": "1ef0d409cfb9efc9aadcffbd83a2c737aa556df5ab648fe43bd34e1e74d465fb",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Make sure to blow out any leftover droplets hanging on the tips right after I finish dispensing.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

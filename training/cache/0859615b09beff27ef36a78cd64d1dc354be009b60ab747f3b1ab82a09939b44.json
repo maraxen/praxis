@@ -1,0 +1,9 @@
+{
+ "cache_key": "0859615b09beff27ef36a78cd64d1dc354be009b60ab747f3b1ab82a09939b44",
+ "fetched_at": "2026-09-02T17:18:30.874627+00:00",
+ "input_hash": "f51f40f0fc36a74a95e57de55b56470da70f68413d1aba4c0dced1bd11b49508",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Shift plate 2 over to reservoir 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

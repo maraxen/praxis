@@ -1,0 +1,9 @@
+{
+ "cache_key": "57b12fae56f38fede8fdb0892a02dd66f4df9f69dd1b44a27539eedb80819eb0",
+ "fetched_at": "2026-09-03T15:03:34.772884+00:00",
+ "input_hash": "309ee4c3b691fd98c89dddbf831f1cdd268beb1766a5b7975deffc98058f62bb",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Pour whatever is in plate 2 directly into the waste bin.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

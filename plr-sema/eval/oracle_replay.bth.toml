@@ -1,0 +1,44 @@
+# bathos sidecar for plr-sema/eval/oracle_replay.py (oracle harness tier 1, backlog #4879).
+# Plan: .praxia/docs/plans/260902_plr-sema-oracle-harness.md
+
+[experiment]
+hypothesis = "Replaying the P2.5 corpus (812 rows) + 88 golden pairs through PLR's chatterbox simulator (STRICT, tip+volume tracking) and through plr_sema.check_graph yields ZERO unsound rows (no SAFE where the simulator raised, no WILL_FAIL where it ran clean) and zero check_graph exceptions; every static verdict is UNKNOWN in v1, so unsound == 0 holds trivially today and the run's value is the exception ranking + totality on real inputs."
+stage_name = "calibration"
+novel = true
+
+[outcomes.pass]
+condition = "unsound = 0 AND check_graph_exceptions = 0 AND totality_violations = 0"
+is_residual = false
+decision = "Oracle glue is sound on real inputs; proceed to the tip-typestate emitter (#4888) with this run as its baseline."
+reasoning = "No static verdict contradicted the simulator, check_graph never raised, and totality (findings >= operations) held for every row."
+
+[outcomes.marginal]
+condition = "unsound = 0 AND (check_graph_exceptions > 0 OR totality_violations > 0)"
+is_residual = false
+decision = "Fix check_graph robustness/totality on the offending rows before any emitter work; re-run."
+reasoning = "Verdicts were not contradicted, but the analyzer crashed or emitted fewer findings than operations on real corpus rows — an AC-7.2 totality breach."
+
+[outcomes.fail]
+condition = "unsound > 0"
+is_residual = true
+decision = "Stop: a SAFE or WILL_FAIL contradicts PLR runtime semantics. File as a first-severity bug with the counterexample rows; no emitter work until fixed."
+reasoning = "In v1 every verdict is UNKNOWN so this cannot fire; if it does, either an emitter shipped unannounced or the comparison logic is wrong — both are bugs."
+
+[result_schema]
+rows = "int"
+operations = "int"
+unsound = "int"
+check_graph_exceptions = "int"
+totality_violations = "int"
+unknown_rate = "float"
+crosscheck_agreement = "float"
+# 260903 (#4939 follow-up): rows whose runtime failed before op 0 was ever
+# planned are now bucketed separately (rows_setup_error, oracle_replay.py's
+# summary_flat) rather than folded into totality/unsound/unknown_rate.
+rows_setup_error = "int"
+# #4982 D1 (increment 4 §13.12.1's criterion (a) for #4923): check-only
+# elapsed seconds (run_static_calls only, excludes the runtime simulator
+# and the extractor subprocess), summed over every row that reached the
+# static-check branch of run_row. Compared against the ~60s whole-corpus
+# threshold §13.12.1 names as the incremental-re-check go/no-go criterion.
+check_only_elapsed_s = "float"

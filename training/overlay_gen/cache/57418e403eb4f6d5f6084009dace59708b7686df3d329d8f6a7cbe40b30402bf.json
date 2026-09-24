@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:37Z",
+ "key": "57418e403eb4f6d5f6084009dace59708b7686df3d329d8f6a7cbe40b30402bf",
+ "prompt_sha256": "57418e403eb4f6d5f6084009dace59708b7686df3d329d8f6a7cbe40b30402bf",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Please dispense a total of 100+50+200 uL into the wells from D1 to F1 on the plate.\nDispense 100+50+200 uL to plate D1:F1.\nCould you dispense 100+50+200 uL into plate D1:F1?",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

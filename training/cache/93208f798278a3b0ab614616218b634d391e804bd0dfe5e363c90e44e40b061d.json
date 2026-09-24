@@ -1,0 +1,9 @@
+{
+ "cache_key": "93208f798278a3b0ab614616218b634d391e804bd0dfe5e363c90e44e40b061d",
+ "fetched_at": "2026-09-03T15:00:19.086039+00:00",
+ "input_hash": "5edc20bc54d38d5afc5021c757806007ffc75abd431d6a13a0b2f8e6d3f0a9c9",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Blow out the tips to push out the last few droplets after dispensing.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

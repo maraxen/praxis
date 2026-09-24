@@ -1,0 +1,9 @@
+{
+ "cache_key": "e9dda4e2990c13266ef54540eaf356b96bf9a668c18135b08b9d9a6341b610eb",
+ "fetched_at": "2026-09-03T15:03:18.193978+00:00",
+ "input_hash": "a367974b0821983c8ac44b75d8fe8b7b772b32d6cf7b0ed35eb1e1b0a901e65d",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you dump the buffer plate directly into the waste receptacle?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

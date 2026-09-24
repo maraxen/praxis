@@ -1,0 +1,9 @@
+{
+ "cache_key": "3e8b711510e7e4fe17f068cd6fdc8752796425f72e5c61ac9ed7430de56286ee",
+ "fetched_at": "2026-09-02T20:27:32.436061+00:00",
+ "input_hash": "f22e935f6af284a0a891d7a8299fb4ffe53770c5569736e150c61cd318643b54",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure fluorescence across wells C2, F11, G7, and H3 with an excitation wavelength of 535 nm at a focal height of 4.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

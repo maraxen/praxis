@@ -1,0 +1,9 @@
+{
+ "cache_key": "202a3fe3fcaac6d2453a2838f90d3b256482dcdec4452c7ea50feec730cce953",
+ "fetched_at": "2026-09-02T17:18:30.874866+00:00",
+ "input_hash": "99a932413202bc427ca82b1d449bc354f6a979769c77504b3d9c3a825d0894e6",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Place plate 1 into reservoir 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

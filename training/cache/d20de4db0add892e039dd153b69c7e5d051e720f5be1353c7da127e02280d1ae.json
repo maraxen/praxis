@@ -1,0 +1,9 @@
+{
+ "cache_key": "d20de4db0add892e039dd153b69c7e5d051e720f5be1353c7da127e02280d1ae",
+ "fetched_at": "2026-09-02T20:38:44.176593+00:00",
+ "input_hash": "764cfe12cb95e7dbf9ab042b9b522c63944ce9fb4e77e112a198e23894742bd9",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Return the tips to the G8 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

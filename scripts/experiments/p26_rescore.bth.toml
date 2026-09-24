@@ -1,0 +1,48 @@
+# Pre-registration AMENDMENT for the Coxswain P2.6 re-score (task
+# 260902_p26_rescore, backlog 4861). Amends 260901_p26-finetune-prereg.md:
+# the scorer is fixed (parser list decoding, order-insensitive slot compare)
+# and the gold sidecar's gap fields re-derived; the SAME three checkpoints
+# (sha256 in training/out/p26/<arm>/train_manifest.json) and the untrained
+# baseline are re-scored from saved generations. No retraining, no new seed,
+# promotion rule and D8 anchors unchanged. Prediction registered row by row
+# in training/eval/reports/260902_p26_rescore_prediction.json BEFORE any
+# scorer change (commit order is the proof).
+
+[experiment]
+hypothesis = "Applying the fixed scorer (nested-list decoding in fgml_parser, order-insensitive unresolved_slots comparison, assembler-derived gold gap fields) to the SAME saved generations changes exact-match accuracy ONLY through the rows the failure breakdown pre-classified as measurement artifacts: no row flips hit->miss, every miss->hit row is in the artifact set, clarify recall/precision/tripwire are identical, and the promotion verdict stays NOT PROMOTED (arm A ceiling ~0.636 < T_acc 0.80)."
+stage_name = "validation"
+novel = true
+
+# The prediction held on this model: the fix changed exactly what it was
+# registered to change and nothing else.
+[outcomes.pass]
+condition = "prediction_holds = 1 AND n_eval = 228 AND clarify_identical = 1 AND tripwire_ok = 1 AND flips_hit_to_miss = 0 AND flips_miss_to_hit_unpredicted = 0"
+decision = "Report old vs new numbers with Wilson intervals; feed the new reports to promotion.py under the unchanged rule"
+reasoning = "The scorer fix is a measurement correction: rows that flip are exactly the pre-registered artifact rows; everything the model does (clarify routing, fabricated calls) is untouched"
+is_residual = false
+adversarial_check = "prediction_holds = 1 AND successes_new >= successes_old AND artifact_rows_predicted > 0"
+
+# Anything else: a hit->miss flip, a flip outside the artifact set, or a
+# clarify-metric change means the fix altered more than the artifacts.
+[outcomes.fail]
+condition = "prediction_holds = 0 OR n_eval <> 228 OR clarify_identical = 0"
+decision = "Do NOT feed the reports to promotion.py; list every unpredicted flip by record_id in the decision addendum as a deviation and hand it to the user"
+reasoning = "A scorer fix that moves non-artifact rows is a scoring CHANGE, not a correction, and needs its own pre-registration"
+is_residual = true
+
+[result_schema]
+model = "str"
+n_eval = "int"
+prediction_holds = "int"
+clarify_identical = "int"
+tripwire_ok = "int"
+successes_old = "int"
+successes_new = "int"
+accuracy_old = "float"
+accuracy_new = "float"
+artifact_rows_predicted = "int"
+flips_miss_to_hit = "int"
+flips_hit_to_miss = "int"
+flips_miss_to_hit_unpredicted = "int"
+predicted_but_still_missed = "int"
+tripwire_new = "int"

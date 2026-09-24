@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:55Z",
+ "key": "c97ad7136223bfb611580395b767c57b7f678291d6d42ecfc77e7e10582ec24b",
+ "prompt_sha256": "c97ad7136223bfb611580395b767c57b7f678291d6d42ecfc77e7e10582ec24b",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Aspirate sample_volume_ul uL from plate src_well\nPlease draw up sample_volume_ul uL from plate src_well\nPull sample_volume_ul uL out of plate src_well",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

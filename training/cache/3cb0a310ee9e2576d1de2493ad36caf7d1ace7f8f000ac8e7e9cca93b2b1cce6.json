@@ -1,0 +1,9 @@
+{
+ "cache_key": "3cb0a310ee9e2576d1de2493ad36caf7d1ace7f8f000ac8e7e9cca93b2b1cce6",
+ "fetched_at": "2026-09-03T14:59:28.093208+00:00",
+ "input_hash": "cd1c8f7bd44fe10478c64ccd7a5c3737225b6d633531028e2f0e3d86b69d20c1",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"I need to mix the sample in well B1 up and down 4 times prior to transferring 35 uL to the destination plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

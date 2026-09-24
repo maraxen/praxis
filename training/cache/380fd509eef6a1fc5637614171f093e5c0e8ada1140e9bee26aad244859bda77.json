@@ -1,0 +1,9 @@
+{
+ "cache_key": "380fd509eef6a1fc5637614171f093e5c0e8ada1140e9bee26aad244859bda77",
+ "fetched_at": "2026-09-03T15:01:46.237516+00:00",
+ "input_hash": "490027250fbbff79be19c10a0d21721493bc6cc3a81bdd3f7726fbcae9d4c06d",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please drag the pipette tips against the well walls to clear away the residual droplets.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

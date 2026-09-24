@@ -1,0 +1,9 @@
+{
+ "cache_key": "ee12e6a03581c8de8573a84b04414d22242cab5a089000b85a74fff4580777e3",
+ "fetched_at": "2026-09-02T16:41:29.070928+00:00",
+ "input_hash": "440becb36633f73a94d75a4962286f3fbcfe8a4c67e63d5a85eedd97ce2a2693",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please transport to the scale station.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

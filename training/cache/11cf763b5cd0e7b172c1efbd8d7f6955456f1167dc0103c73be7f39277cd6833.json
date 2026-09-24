@@ -1,0 +1,9 @@
+{
+ "cache_key": "11cf763b5cd0e7b172c1efbd8d7f6955456f1167dc0103c73be7f39277cd6833",
+ "fetched_at": "2026-08-25T22:08:17.643207+00:00",
+ "input_hash": "85b5da9a90c0c0e4e047b88181ee8e348db1a80ff10cfbe245a1efc656bbee45",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\n\"utterance\": \"Please dispense the contents from plate_1_G12 into the waste bin.\",\n\"clarification\": \"What volume in microliters would you like to dispense?\"\n}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

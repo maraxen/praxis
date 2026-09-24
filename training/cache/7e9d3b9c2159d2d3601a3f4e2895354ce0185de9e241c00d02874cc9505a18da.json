@@ -1,0 +1,9 @@
+{
+ "cache_key": "7e9d3b9c2159d2d3601a3f4e2895354ce0185de9e241c00d02874cc9505a18da",
+ "fetched_at": "2026-09-02T16:28:47.760621+00:00",
+ "input_hash": "3f56095d2a5822254c8fb0bebbfbaa12f8cf0427e7bdbeedce4ff933f2b430cf",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Please grab fresh tips.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

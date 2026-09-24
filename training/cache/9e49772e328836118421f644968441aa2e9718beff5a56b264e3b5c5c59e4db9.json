@@ -1,0 +1,9 @@
+{
+ "cache_key": "9e49772e328836118421f644968441aa2e9718beff5a56b264e3b5c5c59e4db9",
+ "fetched_at": "2026-09-03T14:58:13.117969+00:00",
+ "input_hash": "e61eff12b655dfb44e0c6365b68dcd9f3ef72679d7e5bdad481e188d912249a2",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you mix the liquid in well A1 by pipetting up and down three times, then transfer it over to well B1?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

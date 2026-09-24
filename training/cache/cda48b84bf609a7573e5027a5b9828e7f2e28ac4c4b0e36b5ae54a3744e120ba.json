@@ -1,0 +1,9 @@
+{
+ "cache_key": "cda48b84bf609a7573e5027a5b9828e7f2e28ac4c4b0e36b5ae54a3744e120ba",
+ "fetched_at": "2026-09-02T15:43:31.048695+00:00",
+ "input_hash": "bcf8857bd63ff2cb4d289d752128a7f46e9d2992ec752c84e6de7099243ae287",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Replicate the full layout of plate 2 onto the plate with 200 microliters per well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

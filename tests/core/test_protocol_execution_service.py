@@ -435,12 +435,12 @@ class TestCancelProtocolRun:
 
         service.scheduler.cancel_scheduled_run = AsyncMock(return_value=True)
         service.protocol_run_service.update_run_status = AsyncMock(side_effect=Exception("DB error"))
-        
+
         # Mock the locally imported send_control_command
         with pytest.MonkeyPatch.context() as m:
             mock_send_cmd = AsyncMock(return_value=True)
             m.setattr("praxis.backend.utils.run_control.send_control_command", mock_send_cmd)
-        
+
             result = await service.cancel_protocol_run(run_id)
 
             assert result is False

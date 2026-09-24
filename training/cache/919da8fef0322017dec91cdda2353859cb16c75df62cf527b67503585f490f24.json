@@ -1,0 +1,9 @@
+{
+ "cache_key": "919da8fef0322017dec91cdda2353859cb16c75df62cf527b67503585f490f24",
+ "fetched_at": "2026-09-02T16:27:47.196683+00:00",
+ "input_hash": "310bedfd0b822dc1826b96e392956b38eddd8e7c6f1005a55bb210241f715365",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Grab a tip from the A2 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "d435a1e720cd61f23df14a25ea797fe15f17e8133d4373cb155a5ef8eddcecc0",
+ "fetched_at": "2026-09-02T15:40:46.793439+00:00",
+ "input_hash": "4a9a50891225087c1802278c8ed373daac8de1cb9c2153cc6450f50569fca7c8",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Replicate plate 2 onto plate 1.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

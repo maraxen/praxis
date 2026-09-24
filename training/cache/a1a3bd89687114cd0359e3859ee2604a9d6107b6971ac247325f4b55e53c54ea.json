@@ -1,0 +1,9 @@
+{
+ "cache_key": "a1a3bd89687114cd0359e3859ee2604a9d6107b6971ac247325f4b55e53c54ea",
+ "fetched_at": "2026-09-02T16:24:40.408220+00:00",
+ "input_hash": "a7f7a7e88057adb3acbcab8984be324d5c6ce6164a0b6d9d472cb149b506e9a5",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Grab a tip from the E10 spot on the tip rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

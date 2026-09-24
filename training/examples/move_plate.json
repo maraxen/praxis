@@ -1,0 +1,23 @@
+{
+  "intent_record": {
+    "record_id": "ex_move_plate_to_park",
+    "utterance": "move source plate one to the park position",
+    "source": "golden",
+    "calls": [
+      {
+        "name": "move_plate",
+        "params": {"plate": "source_plate", "destination": "park"}
+      }
+    ],
+    "expected_effects": [
+      {"effect": "moves_resource", "target_ref": "park"}
+    ]
+  },
+  "call_sequence": [
+    {"name": "move_plate", "params": {"plate": "source_plate", "destination": "park"}}
+  ],
+  "deck_layout": {
+    "resources": {"source_plate": "Plate"},
+    "holders": ["park"]
+  }
+}

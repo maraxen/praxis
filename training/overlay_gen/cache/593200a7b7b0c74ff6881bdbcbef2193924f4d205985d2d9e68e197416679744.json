@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-28T18:06:18Z",
+ "key": "593200a7b7b0c74ff6881bdbcbef2193924f4d205985d2d9e68e197416679744",
+ "prompt_sha256": "593200a7b7b0c74ff6881bdbcbef2193924f4d205985d2d9e68e197416679744",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Draw volume_ul uL from reagent_trough.\nPlease aspirate volume_ul uL from reagent_trough.\nTake up volume_ul uL from reagent_trough.",
+ "schema_version": 1,
+ "served_model_version": null,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

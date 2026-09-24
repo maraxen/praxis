@@ -1,0 +1,9 @@
+{
+ "cache_key": "6d601c734536f613576b4227b771693f858beea3e99beb7c5dabf6f4ce08e680",
+ "fetched_at": "2026-09-01T21:20:04.905695+00:00",
+ "input_hash": "0dee4bbd42a73853a061f1d16b339e1c66c696973ca0afb880f8d04b15377cdb",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the luminescence in wells D3 and E2 at a focal height of 5.0 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plr-sema"
+version = "0.0.1"
+description = "Semantic analysis of PyLabRobot programs: execution-graph IR, well-formedness, and per-operation SAFE / WILL_FAIL / UNKNOWN verdicts."
+authors = [{name = "Marielle Russo"}]
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# plr-sema has no coverage target of its own: the root pyproject.toml's
+# [tool.pytest.ini_options] sets testpaths = ["tests"] and addopts includes
+# "--cov=praxis". Without a local override, running pytest inside plr-sema/
+# would inherit that addopts, report ~0% coverage of `praxis`, and hard-fail
+# once CI restores --cov-fail-under. Same fix as coxswain/pyproject.toml; see
+# coxswain/pyproject.toml:23-28 and spec 260901 §1.1.
+[dependency-groups]
+dev = ["hypothesis>=6.100"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--no-cov"]

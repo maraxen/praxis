@@ -1,0 +1,9 @@
+{
+ "cache_key": "db7eb35c9053025a41a6c621d970f9d834600be95ed80206369d6bbe52c2da4d",
+ "fetched_at": "2026-09-02T15:01:41.018197+00:00",
+ "input_hash": "8fd0185ffc5e3c2f08b6b56b59a87907a62812c33f68444667da2016ea5d39e9",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Pull 25 microliters from well C3 on plate 2.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

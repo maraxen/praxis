@@ -1,0 +1,9 @@
+{
+ "cache_key": "e8a84d9a805c63e76f7f552d027f2e0dfd8025b5337074ece232a7fe40067560",
+ "fetched_at": "2026-09-02T20:50:06.202052+00:00",
+ "input_hash": "35c72e6321f41d1be9d91d422d97e4956b0850d2a7bb2cdcb0980822f5434665",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Scan luminescence in well D11 on the loaded plate at a focal height of 7.5 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

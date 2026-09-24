@@ -1,0 +1,9 @@
+{
+ "cache_key": "2aba3883188856ba0f74a0c8132e48222db71f282b3f14676d5c9f806d455b20",
+ "fetched_at": "2026-09-02T15:13:31.697278+00:00",
+ "input_hash": "79f07f722c4968b575d788448aebd15aae685388fee9410adc876001c8f06f39",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Add 75 microliters to the same well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

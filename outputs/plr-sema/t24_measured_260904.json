@@ -1,0 +1,1143 @@
+{
+  "b1_tuples": {
+    "count": 2,
+    "description": "Every (K, name, element_class, for_span) tuple B1 binds over the whole PLR class index (build_plr_class_index).",
+    "tuples": [
+      {
+        "K": "LiquidHandler.aspirate",
+        "element_class": "SingleChannelAspiration",
+        "for_span": [
+          1031,
+          1035
+        ],
+        "name": "op"
+      },
+      {
+        "K": "LiquidHandler.dispense",
+        "element_class": "SingleChannelDispense",
+        "for_span": [
+          1231,
+          1235
+        ],
+        "name": "op"
+      }
+    ]
+  },
+  "b2_dataclass_field_annotations": {
+    "aspirate_element_class": {
+      "blow_out_air_volume": "float",
+      "flow_rate": "float",
+      "liquid_height": "float",
+      "mix": "Mix",
+      "offset": "Coordinate",
+      "resource": "Container",
+      "tip": "Tip",
+      "volume": "float"
+    },
+    "class_count": 100,
+    "description": "Every class's complete B2 selection (dataclass_field_annotations), classes with >=1 field only.",
+    "dispense_element_class": {
+      "blow_out_air_volume": "float",
+      "flow_rate": "float",
+      "liquid_height": "float",
+      "mix": "Mix",
+      "offset": "Coordinate",
+      "resource": "Container",
+      "tip": "Tip",
+      "volume": "float"
+    },
+    "full_map": {
+      "ActionRegisterState": {
+        "action": "ActionRegister",
+        "target": "ActionType"
+      },
+      "Address": {
+        "module": "int",
+        "node": "int",
+        "object": "int"
+      },
+      "AutoExposure": {
+        "high": "float",
+        "low": "float",
+        "max_rounds": "int"
+      },
+      "AutoFocus": {
+        "high": "float",
+        "low": "float",
+        "timeout": "float",
+        "tolerance": "float"
+      },
+      "Barcode": {
+        "data": "str",
+        "position_on_resource": "BarcodePosition",
+        "symbology": "str"
+      },
+      "CartesianCoords": {
+        "location": "Coordinate",
+        "rotation": "Rotation"
+      },
+      "ChannelBatch": {
+        "channels": "int",
+        "indices": "int",
+        "x_position": "float",
+        "y_positions": "float"
+      },
+      "Command": {
+        "action": "str",
+        "device_id": "str",
+        "module": "str"
+      },
+      "CommandResponse": {
+        "harp": "HarpPacket",
+        "hoi": "HoiPacket",
+        "ip": "IpPacket",
+        "raw_bytes": "bytes"
+      },
+      "Config": {
+        "logging": "Logging"
+      },
+      "ConfigLoader": {
+        "extension": "str"
+      },
+      "ConfigReader": {
+        "encoding": "str",
+        "open_mode": "str"
+      },
+      "ConfigSaver": {
+        "extension": "str"
+      },
+      "ConfigWriter": {
+        "encoding": "str",
+        "open_mode": "str"
+      },
+      "ConnectionPacket": {
+        "params": "bytes"
+      },
+      "Coordinate": {
+        "x": "float",
+        "y": "float",
+        "z": "float"
+      },
+      "CytationImagingConfig": {
+        "camera_serial_number": "str",
+        "filters": "ImagingMode",
+        "max_image_read_attempts": "int",
+        "objectives": "Objective"
+      },
+      "CytomatIncupationResponse": {
+        "actual_value": "float",
+        "nominal_value": "float"
+      },
+      "CytomatRack": {
+        "num_slots": "int",
+        "pitch": "int"
+      },
+      "DevicePollResult": {
+        "raw_response": "bytes",
+        "state": "int",
+        "status": "int",
+        "validity": "int"
+      },
+      "DriveConfiguration": {
+        "core_96_head_installed": "bool",
+        "dispensing_head_384_installed": "bool",
+        "imaging_channel_installed": "bool",
+        "iswap_installed": "bool",
+        "nano_pipettor_installed": "bool",
+        "pip_installed": "bool",
+        "robotic_channel_installed": "bool",
+        "tube_gripper_installed": "bool",
+        "width": "float",
+        "workspace_range": "float",
+        "x_range": "float",
+        "xl_channels_installed": "bool"
+      },
+      "Drop": {
+        "offset": "Coordinate",
+        "resource": "Resource",
+        "tip": "Tip"
+      },
+      "DropTipRack": {
+        "offset": "Coordinate"
+      },
+      "EL406CommunicationMixin": {
+        "_command_lock": "Lock",
+        "io": "FTDI",
+        "timeout": "float"
+      },
+      "EL406StepsBaseMixin": {
+        "timeout": "float"
+      },
+      "EVOArm": {
+        "_pos_cache": "int"
+      },
+      "EnumInfo": {
+        "enum_id": "int",
+        "name": "str",
+        "values": "int"
+      },
+      "ExperimentalTecanInfinite200ProBackend": {
+        "_MODE_CAPABILITY_COMMANDS": "str"
+      },
+      "ExtendedConfiguration": {
+        "additional_channel_nano_pipettor_installed": "bool",
+        "additional_front_cover_monitoring_installed": "bool",
+        "auto_load_size_slots": "int",
+        "channel_order_ox_first": "bool",
+        "configuration_data_3": "int",
+        "dispensing_head_384_installed": "bool",
+        "imaging_channel_installed": "bool",
+        "instrument_size_slots": "int",
+        "iswap_gripper_wide": "bool",
+        "ka_core_96_head_installed": "bool",
+        "left_arm_min_y_position": "float",
+        "left_cover_installed": "bool",
+        "left_x_arm_width": "float",
+        "left_x_drive": "DriveConfiguration",
+        "left_x_drive_large": "bool",
+        "max_iswap_collision_free_position": "float",
+        "min_iswap_collision_free_position": "float",
+        "min_raster_pitch_pip_channels": "float",
+        "min_raster_pitch_robotic_channels": "float",
+        "min_raster_pitch_xl_channels": "float",
+        "multi_channel_nano_pipettor_installed": "bool",
+        "num_robotic_channels": "int",
+        "num_xl_channels": "int",
+        "park_heads_with_iswap_off": "bool",
+        "pip_maximal_y_position": "float",
+        "pump_station_1_installed": "bool",
+        "pump_station_2_installed": "bool",
+        "pump_station_3_installed": "bool",
+        "right_arm_min_y_position": "float",
+        "right_cover_installed": "bool",
+        "right_x_arm_width": "float",
+        "right_x_drive": "DriveConfiguration",
+        "right_x_drive_large": "bool",
+        "robotic_channel_installed": "bool",
+        "tip_waste_x_position": "float",
+        "tube_gripper_installed": "bool",
+        "wash_station_1_type_cr": "bool",
+        "wash_station_2_type_cr": "bool",
+        "waste_direction_left": "bool",
+        "x0_interface_ham_can": "bool",
+        "xl_channels_installed": "bool"
+      },
+      "FTDICommand": {
+        "data": "str"
+      },
+      "HIDCommand": {
+        "data": "str"
+      },
+      "HamiltonCommand": {
+        "action_code": "int",
+        "command_id": "int",
+        "harp_protocol": "int",
+        "interface_id": "int",
+        "ip_protocol": "int",
+        "protocol": "HamiltonProtocol"
+      },
+      "HamiltonError": {
+        "action_id": "int",
+        "error_code": "int",
+        "error_message": "str",
+        "interface_id": "int"
+      },
+      "HamiltonTask": {
+        "cmd": "str",
+        "fut": "Future",
+        "id_": "int",
+        "loop": "AbstractEventLoop",
+        "timeout_time": "float"
+      },
+      "HarpPacket": {
+        "action_code": "int",
+        "dst": "Address",
+        "options": "bytes",
+        "payload": "bytes",
+        "protocol": "int",
+        "response_required": "bool",
+        "seq": "int",
+        "src": "Address"
+      },
+      "Head96Information": {
+        "dispensing_drive_mm_per_increment": "float",
+        "dispensing_drive_uL_per_increment": "float",
+        "fw_version": "date",
+        "head_type": "HeadType",
+        "instrument_type": "InstrumentType",
+        "squeezer_drive_mm_per_increment": "float",
+        "stop_disc_type": "StopDiscType",
+        "supports_clot_monitoring_clld": "bool",
+        "x_offset": "float",
+        "y_drive_mm_per_increment": "float",
+        "z_acceleration_range": "float",
+        "z_drive_mm_per_increment": "float",
+        "z_range": "float",
+        "z_speed_range": "float"
+      },
+      "HoiPacket": {
+        "action_code": "int",
+        "action_id": "int",
+        "interface_id": "int",
+        "params": "bytes",
+        "response_required": "bool"
+      },
+      "HorizontalAccess": {
+        "approach_distance_mm": "float",
+        "clearance_mm": "float",
+        "gripper_offset_mm": "float",
+        "lift_height_mm": "float"
+      },
+      "ImagingResult": {
+        "exposure_time": "float",
+        "focal_height": "float",
+        "images": "Image"
+      },
+      "InitResponse": {
+        "client_id": "int",
+        "connection_type": "int",
+        "raw_bytes": "bytes",
+        "timeout": "int"
+      },
+      "InstrumentSettings": {
+        "peristaltic_pump_1": "bool",
+        "peristaltic_pump_2": "bool",
+        "syringe_box": "SyringeBoxInfo",
+        "syringe_manifold": "EL406SyringeManifold",
+        "washer_manifold": "EL406WasherManifold"
+      },
+      "InterfaceInfo": {
+        "interface_id": "int",
+        "name": "str",
+        "version": "str"
+      },
+      "IpPacket": {
+        "options": "bytes",
+        "payload": "bytes",
+        "protocol": "int"
+      },
+      "KineticSettings": {
+        "interval": "int",
+        "num_readings": "int"
+      },
+      "LiquidHandlerBackend": {
+        "_num_arms": "int"
+      },
+      "MachineConfiguration": {
+        "auto_load_installed": "bool",
+        "kb_iswap_installed": "bool",
+        "main_front_cover_monitoring_installed": "bool",
+        "num_pip_channels": "int",
+        "pip_type_1000ul": "bool",
+        "temp_controlled_carrier_1_installed": "bool",
+        "temp_controlled_carrier_2_installed": "bool",
+        "wash_station_1_installed": "bool",
+        "wash_station_2_installed": "bool"
+      },
+      "MethodInfo": {
+        "call_type": "int",
+        "interface_id": "int",
+        "method_id": "int",
+        "name": "str",
+        "parameter_labels": "str",
+        "parameter_types": "int",
+        "return_labels": "str",
+        "return_types": "int"
+      },
+      "MicroSpinBackend": {
+        "DEFAULT_PORT": "int",
+        "DEFAULT_SPINDLE_POLL_INTERVAL": "float",
+        "DEFAULT_SPINDLE_STOP_TIMEOUT": "float"
+      },
+      "MicroSpinError": {
+        "TERMINATOR": "str"
+      },
+      "Mix": {
+        "flow_rate": "float",
+        "repetitions": "int",
+        "surface_following_distance": "float",
+        "volume": "float"
+      },
+      "MockState": {
+        "abort_latched": "bool",
+        "at_bucket": "int",
+        "current_motion": "Task",
+        "door_position": "int",
+        "errors": "str",
+        "homed": "bool",
+        "next_command_id": "int",
+        "simulate_low_g_hang": "bool",
+        "spindle_position": "int",
+        "spindle_settled": "Event",
+        "spinning": "bool"
+      },
+      "MolecularDevicesSettings": {
+        "calibrate": "Calibrate",
+        "carriage_speed": "CarriageSpeed",
+        "cutoff_filters": "int",
+        "cuvette": "bool",
+        "emission_wavelengths": "int",
+        "excitation_wavelengths": "int",
+        "flashes_per_well": "int",
+        "kinetic_settings": "KineticSettings",
+        "path_check": "bool",
+        "plate": "Plate",
+        "read_from_bottom": "bool",
+        "read_mode": "ReadMode",
+        "read_order": "ReadOrder",
+        "read_type": "ReadType",
+        "settling_time": "int",
+        "shake_settings": "ShakeSettings",
+        "spectrum_settings": "SpectrumSettings",
+        "speed_read": "bool"
+      },
+      "MultiHeadAspirationContainer": {
+        "blow_out_air_volume": "float",
+        "container": "Container",
+        "flow_rate": "float",
+        "liquid_height": "float",
+        "mix": "Mix",
+        "offset": "Coordinate",
+        "tips": "Tip",
+        "volume": "float"
+      },
+      "MultiHeadAspirationPlate": {
+        "blow_out_air_volume": "float",
+        "flow_rate": "float",
+        "liquid_height": "float",
+        "mix": "Mix",
+        "offset": "Coordinate",
+        "tips": "Tip",
+        "volume": "float",
+        "wells": "Well"
+      },
+      "MultiHeadDispenseContainer": {
+        "blow_out_air_volume": "float",
+        "container": "Container",
+        "flow_rate": "float",
+        "liquid_height": "float",
+        "mix": "Mix",
+        "offset": "Coordinate",
+        "tips": "Tip",
+        "volume": "float"
+      },
+      "MultiHeadDispensePlate": {
+        "blow_out_air_volume": "float",
+        "flow_rate": "float",
+        "liquid_height": "float",
+        "mix": "Mix",
+        "offset": "Coordinate",
+        "tips": "Tip",
+        "volume": "float",
+        "wells": "Well"
+      },
+      "OT2RobotGeometry": {
+        "extents": "Coordinate",
+        "left_mount_offset": "Coordinate",
+        "padding_front": "float",
+        "padding_left": "float",
+        "padding_rear": "float",
+        "padding_right": "float",
+        "right_mount_offset": "Coordinate"
+      },
+      "ObjectInfo": {
+        "address": "Address",
+        "method_count": "int",
+        "name": "str",
+        "subobject_count": "int",
+        "version": "str"
+      },
+      "OverviewRegisterState": {
+        "automatic_gate_open": "bool",
+        "busy_bit_set": "bool",
+        "device_door_open": "bool",
+        "error_register_set": "bool",
+        "handler_occupied": "bool",
+        "ready_bit_set": "bool",
+        "transfer_station_occupied": "bool",
+        "warning_register_set": "bool"
+      },
+      "Pickup": {
+        "offset": "Coordinate",
+        "resource": "TipSpot",
+        "tip": "Tip"
+      },
+      "PickupTipRack": {
+        "offset": "Coordinate",
+        "resource": "TipRack",
+        "tips": "Tip"
+      },
+      "PipChannelInformation": {
+        "channel_type": "ChannelType",
+        "head_type": "HeadType",
+        "pressure_adc": "PressureADC",
+        "stop_disc_type": "StopDiscType"
+      },
+      "PreciseFlexCartesianCoords": {
+        "orientation": "ElbowOrientation"
+      },
+      "Protocol": {
+        "stages": "Stage"
+      },
+      "RegistrationPacket": {
+        "action_code": "int",
+        "options": "bytes",
+        "req_address": "Address",
+        "res_address": "Address",
+        "response_code": "int"
+      },
+      "RegistrationResponse": {
+        "harp": "HarpPacket",
+        "ip": "IpPacket",
+        "raw_bytes": "bytes",
+        "registration": "RegistrationPacket"
+      },
+      "ResourceDrop": {
+        "destination": "Coordinate",
+        "destination_absolute_rotation": "Rotation",
+        "direction": "GripDirection",
+        "offset": "Coordinate",
+        "pickup_direction": "GripDirection",
+        "pickup_distance_from_top": "float",
+        "resource": "Resource",
+        "rotation": "float"
+      },
+      "ResourceMove": {
+        "gripped_direction": "GripDirection",
+        "location": "Coordinate",
+        "offset": "Coordinate",
+        "pickup_distance_from_top": "float",
+        "resource": "Resource"
+      },
+      "ResourcePickup": {
+        "direction": "GripDirection",
+        "offset": "Coordinate",
+        "pickup_distance_from_top": "float",
+        "resource": "Resource"
+      },
+      "STARBackend": {
+        "HEAD96_X_MIN_WITH_LEFT_SIDE_PANEL": "float",
+        "PIP_X_MIN_WITH_LEFT_SIDE_PANEL": "float",
+        "barcode_1d_symbology_dict": "str"
+      },
+      "SelfCheckResult": {
+        "error_code": "int",
+        "message": "str",
+        "success": "bool"
+      },
+      "SensorStates": {
+        "CAROUSEL_POSITION": "bool",
+        "GATE_CLOSED": "bool",
+        "GATE_OPENED": "bool",
+        "HANDLER_POSITIONED_TOWARDS_GATE": "bool",
+        "HANDLER_POSITIONED_TOWARDS_STACKER": "bool",
+        "INIT_SENSOR_CAROUSEL": "bool",
+        "INIT_SENSOR_HEIGHT_MOTOR": "bool",
+        "INNER_DOOR_OPENED": "bool",
+        "SHOVEL_EXTENDED": "bool",
+        "SHOVEL_OCCUPIED": "bool",
+        "SHOVEL_RETRACTED": "bool",
+        "TRANSFER_STATION_OCCUPIED": "bool",
+        "TRANSFER_STATION_POSITION_1": "bool",
+        "TRANSFER_STATION_POSITION_2": "bool",
+        "TRANSFER_STATION_SECOND_PLATE_OCCUPIED": "bool"
+      },
+      "SerialCommand": {
+        "data": "str"
+      },
+      "ShakeSettings": {
+        "before_read": "bool",
+        "before_read_duration": "int",
+        "between_reads": "bool",
+        "between_reads_duration": "int"
+      },
+      "ShakerChatterboxBackend": {
+        "temperature": "float"
+      },
+      "SiLADevice": {
+        "firmware_version": "str",
+        "host": "str",
+        "name": "str",
+        "port": "int",
+        "serial_number": "str",
+        "sila_version": "int"
+      },
+      "SingleChannelAspiration": {
+        "blow_out_air_volume": "float",
+        "flow_rate": "float",
+        "liquid_height": "float",
+        "mix": "Mix",
+        "offset": "Coordinate",
+        "resource": "Container",
+        "tip": "Tip",
+        "volume": "float"
+      },
+      "SingleChannelDispense": {
+        "blow_out_air_volume": "float",
+        "flow_rate": "float",
+        "liquid_height": "float",
+        "mix": "Mix",
+        "offset": "Coordinate",
+        "resource": "Container",
+        "tip": "Tip",
+        "volume": "float"
+      },
+      "SocketCommand": {
+        "data": "str"
+      },
+      "SpectrumSettings": {
+        "num_steps": "int",
+        "start_wavelength": "int",
+        "step": "int"
+      },
+      "Stage": {
+        "repeats": "int",
+        "steps": "Step"
+      },
+      "Step": {
+        "hold_seconds": "float",
+        "rate": "float",
+        "temperature": "float"
+      },
+      "StructInfo": {
+        "fields": "int",
+        "name": "str",
+        "struct_id": "int"
+      },
+      "SwapStationState": {
+        "load_status_at_processor": "LoadStatusAtProcessor",
+        "load_status_front_of_gate": "LoadStatusFrontOfGate",
+        "position": "SwapStationPosition"
+      },
+      "SyringeBoxInfo": {
+        "box_size": "int",
+        "box_type": "int",
+        "installed": "bool"
+      },
+      "TDCLType": {
+        "format": "str",
+        "name": "str",
+        "size": "int"
+      },
+      "ThermocyclerState": {
+        "block_target": "float",
+        "block_temp": "float",
+        "current_step_index": "int",
+        "is_profile_running": "bool",
+        "lid_open": "bool",
+        "lid_target": "float",
+        "lid_temp": "float",
+        "protocol": "Protocol",
+        "total_steps": "int"
+      },
+      "Tip": {
+        "fitting_depth": "float",
+        "has_filter": "bool",
+        "maximal_volume": "float",
+        "name": "str",
+        "nominal_volume": "float",
+        "total_tip_length": "float"
+      },
+      "USBCommand": {
+        "data": "str"
+      },
+      "VerticalAccess": {
+        "approach_height_mm": "float",
+        "clearance_mm": "float",
+        "gripper_offset_mm": "float"
+      },
+      "_AbsorbanceCalibration": {
+        "ex": "int",
+        "items": "_AbsorbanceCalibrationItem"
+      },
+      "_AbsorbanceCalibrationItem": {
+        "meas_bright": "int",
+        "meas_dark": "int",
+        "meas_gain": "int",
+        "ref_bright": "int",
+        "ref_dark": "int",
+        "ref_gain": "int",
+        "ticker_counter": "int",
+        "ticker_overflows": "int"
+      },
+      "_AbsorbanceMeasurement": {
+        "items": "int",
+        "reference": "int",
+        "sample": "int"
+      },
+      "_CommandSpec": {
+        "aliases": "tuple",
+        "description": "str",
+        "name": "str",
+        "params_description": "tuple",
+        "params_signature": "str"
+      },
+      "_FluorescenceCalibration": {
+        "ex": "int",
+        "meas_dark": "int",
+        "ref_bright": "int",
+        "ref_dark": "int"
+      },
+      "_LuminescenceCalibration": {
+        "ref_dark": "int"
+      },
+      "_LuminescenceMeasurement": {
+        "intensity": "int"
+      },
+      "_MeasurementDecoder": {
+        "STATUS_FRAME_LEN": "int"
+      },
+      "_StreamEvent": {
+        "blob": "bytes",
+        "payload_len": "int",
+        "text": "str"
+      },
+      "iSWAPInformation": {
+        "fw_version": "str",
+        "gripper_increment_range": "int",
+        "gripper_mm_per_increment": "float",
+        "link_1_length": "float",
+        "link_2_length": "float",
+        "rotation_deg_per_increment": "float",
+        "rotation_drive_predefined_increments": "int",
+        "rotation_drive_x_offset": "float",
+        "rotation_drive_y_max": "float",
+        "rotation_increment_range": "int",
+        "wrist_deg_per_increment": "float",
+        "wrist_drive_predefined_increments": "int",
+        "wrist_increment_range": "int",
+        "y_increment_range": "int",
+        "y_mm_per_increment": "float",
+        "y_speed_increment_range": "int",
+        "z_acceleration_increment_range": "int",
+        "z_increment_range": "int",
+        "z_mm_per_increment": "float",
+        "z_speed_increment_range": "int"
+      }
+    },
+    "total_attribute_count": 467
+  },
+  "backlog_id": "4958",
+  "bridged_volume_guards": {
+    "LiquidHandler.aspirate": [
+      {
+        "amount_param": "vols",
+        "caller_lineno": null,
+        "caller_scope": null,
+        "cell_param": "resources",
+        "condition": "volume - self.get_used_volume() > 1e-06",
+        "direction": "decreasing",
+        "for_span": [
+          1031,
+          1035
+        ],
+        "free_vars": [
+          "self",
+          "volume"
+        ],
+        "kind": "raise_guard",
+        "raises": "TooLittleLiquidError",
+        "scope_trail": [
+          "if volume - self.get_used_volume() > 1e-06"
+        ],
+        "site": {
+          "file": "external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+          "lineno": 92,
+          "qualname": "VolumeTracker.remove_liquid"
+        },
+        "via": "op.resource.tracker.remove_liquid"
+      },
+      {
+        "amount_param": "vols",
+        "caller_lineno": null,
+        "caller_scope": null,
+        "cell_param": {
+          "local": true,
+          "name": "tips"
+        },
+        "condition": "volume - self.get_free_volume() > 1e-06",
+        "direction": "increasing",
+        "for_span": [
+          1031,
+          1035
+        ],
+        "free_vars": [
+          "self",
+          "volume"
+        ],
+        "kind": "raise_guard",
+        "raises": "TooLittleVolumeError",
+        "scope_trail": [
+          "if volume - self.get_free_volume() > 1e-06"
+        ],
+        "site": {
+          "file": "external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+          "lineno": 105,
+          "qualname": "VolumeTracker.add_liquid"
+        },
+        "via": "op.tip.tracker.add_liquid"
+      }
+    ],
+    "LiquidHandler.dispense": [
+      {
+        "amount_param": "vols",
+        "caller_lineno": null,
+        "caller_scope": null,
+        "cell_param": "resources",
+        "condition": "volume - self.get_free_volume() > 1e-06",
+        "direction": "increasing",
+        "for_span": [
+          1231,
+          1235
+        ],
+        "free_vars": [
+          "self",
+          "volume"
+        ],
+        "kind": "raise_guard",
+        "raises": "TooLittleVolumeError",
+        "scope_trail": [
+          "if volume - self.get_free_volume() > 1e-06"
+        ],
+        "site": {
+          "file": "external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+          "lineno": 105,
+          "qualname": "VolumeTracker.add_liquid"
+        },
+        "via": "op.resource.tracker.add_liquid"
+      },
+      {
+        "amount_param": "vols",
+        "caller_lineno": null,
+        "caller_scope": null,
+        "cell_param": {
+          "local": true,
+          "name": "tips"
+        },
+        "condition": "volume - self.get_used_volume() > 1e-06",
+        "direction": "decreasing",
+        "for_span": [
+          1231,
+          1235
+        ],
+        "free_vars": [
+          "self",
+          "volume"
+        ],
+        "kind": "raise_guard",
+        "raises": "TooLittleLiquidError",
+        "scope_trail": [
+          "if volume - self.get_used_volume() > 1e-06"
+        ],
+        "site": {
+          "file": "external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+          "lineno": 92,
+          "qualname": "VolumeTracker.remove_liquid"
+        },
+        "via": "op.tip.tracker.remove_liquid"
+      }
+    ]
+  },
+  "headline_evidence": {
+    "guard": {
+      "amount_param": "vols",
+      "caller_lineno": null,
+      "caller_scope": null,
+      "cell_param": {
+        "local": true,
+        "name": "tips"
+      },
+      "condition": "volume - self.get_used_volume() > 1e-06",
+      "direction": "decreasing",
+      "for_span": [
+        1231,
+        1235
+      ],
+      "free_vars": [
+        "self",
+        "volume"
+      ],
+      "kind": "raise_guard",
+      "raises": "TooLittleLiquidError",
+      "scope_trail": [
+        "if volume - self.get_used_volume() > 1e-06"
+      ],
+      "site": {
+        "file": "external/pylabrobot/pylabrobot/resources/volume_tracker.py",
+        "lineno": 92,
+        "qualname": "VolumeTracker.remove_liquid"
+      },
+      "via": "op.tip.tracker.remove_liquid"
+    },
+    "note": "dispense's op.tip.tracker.remove_liquid (:1235) is the GO/NO-GO evidence -- it must resolve through Tip.tracker -> VolumeTracker with a for_span."
+  },
+  "p1c_constructor_call_writes": {
+    "class_count": 45,
+    "container": {
+      "tracker": "VolumeTracker"
+    },
+    "description": "Every class's complete P1c selection (constructor_call_writes), whole PLR surface, classes with >=1 admitted write only.",
+    "full_map": {
+      "A4SBackend": {
+        "io": "Serial"
+      },
+      "Access2Backend": {
+        "io": "FTDI"
+      },
+      "BioShake": {
+        "io": "Serial"
+      },
+      "BioTekPlateReaderBackend": {
+        "io": "FTDI"
+      },
+      "ByonoyAbsorbanceBaseUnit": {
+        "illumination_unit_holder": "ResourceHolder",
+        "plate_holder": "_ByonoyAbsorbanceReaderPlateHolder"
+      },
+      "ByonoyLuminescenceBaseUnit": {
+        "plate_holder": "_ByonoyLuminescenceReaderPlateHolder",
+        "reader_unit_holder": "ResourceHolder"
+      },
+      "CLARIOstarBackend": {
+        "io": "FTDI"
+      },
+      "Centrifuge": {
+        "bucket1": "ResourceHolder",
+        "bucket2": "ResourceHolder"
+      },
+      "Container": {
+        "tracker": "VolumeTracker"
+      },
+      "CytomatBackend": {
+        "io": "Serial"
+      },
+      "EVOBackend": {
+        "liha": "LiHa",
+        "mca": "Mca",
+        "roma": "RoMa"
+      },
+      "ExperimentalLiconicBackend": {
+        "io": "Serial"
+      },
+      "ExperimentalODTCBackend": {
+        "_sila_interface": "InhecoSiLAInterface"
+      },
+      "ExperimentalSparkBackend": {
+        "config_control": "ConfigControl",
+        "data_control": "DataControl",
+        "measurement_control": "MeasurementControl",
+        "optics_control": "OpticsControl",
+        "plate_control": "PlateControl",
+        "reader": "SparkReaderAsync",
+        "sensor_control": "SensorControl",
+        "system_control": "SystemControl"
+      },
+      "ExperimentalTecanInfinite200ProBackend": {
+        "_parser": "_StreamParser",
+        "io": "USB"
+      },
+      "HamiltonHeaterShakerBox": {
+        "io": "USB"
+      },
+      "HamiltonHepaFanBackend": {
+        "io": "FTDI"
+      },
+      "HamiltonLiquidHandler": {
+        "io": "USB"
+      },
+      "HamiltonSTARDeck": {
+        "_trash96": "Trash"
+      },
+      "HamiltonTCPBackend": {
+        "client_address": "Address",
+        "io": "Socket"
+      },
+      "HamiltonTiltModuleBackend": {
+        "io": "Serial"
+      },
+      "HeraeusCytomatBackend": {
+        "io": "Serial"
+      },
+      "Incubator": {
+        "loading_tray": "PlateHolder"
+      },
+      "InhecoIncubatorShakerStackBackend": {
+        "io": "Serial"
+      },
+      "InhecoTECControlBox": {
+        "io": "HID"
+      },
+      "KeyenceBarcodeScannerBackend": {
+        "io": "Serial"
+      },
+      "MasterflexBackend": {
+        "io": "Serial"
+      },
+      "MettlerToledoWXS205SDUBackend": {
+        "io": "Serial"
+      },
+      "MicroSpinBackend": {
+        "io": "Socket"
+      },
+      "MolecularDevicesBackend": {
+        "io": "Serial"
+      },
+      "OpentronsOT2ChatterboxBackend": {
+        "_ot": "_OTChatterboxModule"
+      },
+      "PreciseFlexBackend": {
+        "io": "Socket"
+      },
+      "Pump": {
+        "chamber_1": "Resource",
+        "chamber_2": "Resource"
+      },
+      "SCILABackend": {
+        "_sila_interface": "InhecoSiLAInterface"
+      },
+      "STARBackend": {
+        "_head96_information": "Head96Information",
+        "_iswap_information": "iSWAPInformation",
+        "_unsafe": "UnSafe"
+      },
+      "TecanLiquidHandler": {
+        "io": "USB"
+      },
+      "ThermoFisherThermocyclerBackend": {
+        "io": "Socket"
+      },
+      "ThermocyclerChatterboxBackend": {
+        "_state": "ThermocyclerState"
+      },
+      "Tip": {
+        "tracker": "VolumeTracker"
+      },
+      "TipSpot": {
+        "tracker": "TipTracker"
+      },
+      "VSpinBackend": {
+        "io": "FTDI"
+      },
+      "XPeelBackend": {
+        "io": "Serial"
+      },
+      "_ByonoyBase": {
+        "io": "HID"
+      },
+      "_MeasurementDecoder": {
+        "_parser": "_StreamParser"
+      },
+      "_OTChatterboxModule": {
+        "health": "_RecordingNamespace",
+        "labware": "_RecordingNamespace",
+        "lh": "_RecordingNamespace",
+        "modules": "_RecordingNamespace",
+        "requestor": "_RecordingNamespace",
+        "runs": "_RecordingNamespace"
+      }
+    },
+    "tip": {
+      "tracker": "VolumeTracker"
+    },
+    "total_entry_count": 67
+  },
+  "p7_volume_anchors": {
+    "VolumeTracker": {
+      "anchored_field": "pending_volume",
+      "free_volume_accessor": "get_free_volume",
+      "used_volume_accessor": "get_used_volume"
+    }
+  },
+  "p8_operand_pairing": {
+    "aspirate": {
+      "aspirations": {
+        "element_class": "SingleChannelAspiration",
+        "lineno": 1007,
+        "pairings": {
+          "blow_out_air_volume": {
+            "is_local": false,
+            "zip_name": "blow_out_air_volume"
+          },
+          "flow_rate": {
+            "is_local": false,
+            "zip_name": "flow_rates"
+          },
+          "liquid_height": {
+            "is_local": false,
+            "zip_name": "liquid_height"
+          },
+          "offset": {
+            "is_local": false,
+            "zip_name": "offsets"
+          },
+          "resource": {
+            "is_local": false,
+            "zip_name": "resources"
+          },
+          "tip": {
+            "is_local": true,
+            "zip_name": "tips"
+          },
+          "volume": {
+            "is_local": false,
+            "zip_name": "vols"
+          }
+        }
+      }
+    },
+    "dispense": {
+      "dispenses": {
+        "element_class": "SingleChannelDispense",
+        "lineno": 1207,
+        "pairings": {
+          "blow_out_air_volume": {
+            "is_local": false,
+            "zip_name": "blow_out_air_volume"
+          },
+          "flow_rate": {
+            "is_local": false,
+            "zip_name": "flow_rates"
+          },
+          "liquid_height": {
+            "is_local": false,
+            "zip_name": "liquid_height"
+          },
+          "offset": {
+            "is_local": false,
+            "zip_name": "offsets"
+          },
+          "resource": {
+            "is_local": false,
+            "zip_name": "resources"
+          },
+          "tip": {
+            "is_local": true,
+            "zip_name": "tips"
+          },
+          "volume": {
+            "is_local": false,
+            "zip_name": "vols"
+          }
+        }
+      }
+    }
+  },
+  "plr_pin": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+  "row": "T24",
+  "spec": ".praxia/docs/specs/260903_plr-sema-volume-increment.md",
+  "spec_version": 14,
+  "task_id": "260903_sema-volume",
+  "volume_state_taxonomy_filter": {
+    "filtered": [
+      "TooLittleLiquidError",
+      "TooLittleVolumeError"
+    ],
+    "unfiltered_category_volume_state": [
+      "BlowOutVolumeError",
+      "LiquidLevelError",
+      "TooLittleLiquidError",
+      "TooLittleVolumeError"
+    ],
+    "unfiltered_count": 4
+  }
+}

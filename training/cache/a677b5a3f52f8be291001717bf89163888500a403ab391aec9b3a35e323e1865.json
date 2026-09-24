@@ -1,0 +1,9 @@
+{
+ "cache_key": "a677b5a3f52f8be291001717bf89163888500a403ab391aec9b3a35e323e1865",
+ "fetched_at": "2026-09-02T15:13:31.696968+00:00",
+ "input_hash": "32f3ce3e0a386f5421f2fcf5c1c356f6063d86d36d68906e8e560d19804e3df3",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Add 100 microliters to the source well.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

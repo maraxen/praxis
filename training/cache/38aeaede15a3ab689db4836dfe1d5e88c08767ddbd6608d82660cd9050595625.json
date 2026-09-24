@@ -1,0 +1,9 @@
+{
+ "cache_key": "38aeaede15a3ab689db4836dfe1d5e88c08767ddbd6608d82660cd9050595625",
+ "fetched_at": "2026-09-02T16:55:03.922026+00:00",
+ "input_hash": "cb124ed79f4da63ff3b421c27ce85fc54b96ec7943462bd632c7bec0fdb2955c",
+ "prompt_version": "p23_nlify_v2_natural",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure absorbance at 450 nm in wells H1 and H4.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "4aa609cbca863dd7edf3937ed37c7f943dfabfe3fe04f4671968f2c7275e287e",
+ "fetched_at": "2026-08-25T22:05:11.163652+00:00",
+ "input_hash": "7daff26345074091cb096e513e0b26e3256411b0e164c047bed8c18ec992f8c0",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "\n\n{\"utterance\": \"Please aspirate 10.0 microliters from plate_2_A3.\", \"clarification\": null}",
+ "schema_version": 1,
+ "teacher_model_version": "titanix-vllm-primary@Vishva007/Qwen3.8-27B-W4A16-AutoRound-GPTQ"
+}

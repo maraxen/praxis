@@ -1,0 +1,9 @@
+{
+ "cache_key": "7235d45b111781cf986ea3197762e4380a464ee7f6bd610ec20561bfc4557b28",
+ "fetched_at": "2026-09-01T21:14:33.230061+00:00",
+ "input_hash": "56f169111f82e3893b6b7621de15e10069989712355a83f7f90041c53f2386bc",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Put the mounted tips back in the rack.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,0 +1,9 @@
+{
+ "cache_key": "81a22a9f07ad272abb37230a48b02f253a4cc09401ae11b50ae7a729660fb923",
+ "fetched_at": "2026-09-01T21:19:40.786892+00:00",
+ "input_hash": "a07cf2122fa0a02a4e7c1764c682952a09a192c9f5cfc9e750a9a4e8a66451eb",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read the fluorescence of the plate at an excitation wavelength of 560 nm and a focal height of 15 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

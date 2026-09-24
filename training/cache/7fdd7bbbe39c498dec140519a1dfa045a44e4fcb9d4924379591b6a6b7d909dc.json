@@ -1,0 +1,9 @@
+{
+ "cache_key": "7fdd7bbbe39c498dec140519a1dfa045a44e4fcb9d4924379591b6a6b7d909dc",
+ "fetched_at": "2026-08-28T18:04:21.177309+00:00",
+ "input_hash": "60c1574afd0c96dba7f6ebf9a60a827addc7b6d13de31bc4ede786a84758d140",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Measure the absorbance of the loaded plate.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

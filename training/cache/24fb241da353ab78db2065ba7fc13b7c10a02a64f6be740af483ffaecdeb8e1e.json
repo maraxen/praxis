@@ -1,0 +1,9 @@
+{
+ "cache_key": "24fb241da353ab78db2065ba7fc13b7c10a02a64f6be740af483ffaecdeb8e1e",
+ "fetched_at": "2026-09-01T21:19:40.788108+00:00",
+ "input_hash": "a4a1db36f20f94245b42de2a5c19b0b38817e7bf492422eb1faff9c784f6a1e0",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Read plate fluorescence using excitation wavelength 535 nm, emission wavelength 620 nm, and focal height 15 mm.\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

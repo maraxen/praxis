@@ -1,0 +1,10 @@
+{
+ "created_utc": "2026-08-25T21:46:39Z",
+ "key": "99121de857cc0c81dfac24cef832c2ada4feff21df29cb586664bc2184891cd0",
+ "prompt_sha256": "99121de857cc0c81dfac24cef832c2ada4feff21df29cb586664bc2184891cd0",
+ "prompt_version": "p24-naturalness-v1",
+ "response": "Dispense 100+50+200 uL to plate A1:C1\nPlease put 100+50+200 uL into plate A1:C1\nDeliver 100+50+200 uL to plate A1:C1",
+ "schema_version": 1,
+ "served_model_version": "titanix-vllm-primary",
+ "teacher_model_version": "titanix-vllm-primary"
+}

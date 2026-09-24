@@ -7,11 +7,6 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from praxis.backend.models.enums import (
-    AssetType,
-    DataOutputTypeEnum,
-    SpatialContextEnum,
-)
 from praxis.backend.models.domain.machine import Machine
 from praxis.backend.models.domain.outputs import FunctionDataOutput
 from praxis.backend.models.domain.protocol import (
@@ -24,6 +19,11 @@ from praxis.backend.models.domain.protocol_source import (
     ProtocolSourceRepository,
 )
 from praxis.backend.models.domain.resource import Resource
+from praxis.backend.models.enums import (
+    AssetType,
+    DataOutputTypeEnum,
+    SpatialContextEnum,
+)
 
 
 @pytest_asyncio.fixture

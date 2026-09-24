@@ -1,0 +1,9 @@
+{
+ "cache_key": "036fb343c4b99a342a236e3ed1907404e7220340490386b434638aaf17473737",
+ "fetched_at": "2026-09-03T15:08:12.294808+00:00",
+ "input_hash": "ccae8f8947c89ff4a6ae6b50e5ab050726d2b983eb23b07343640bc2e8fa9523",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you turn off the shaking on the heater shaker?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

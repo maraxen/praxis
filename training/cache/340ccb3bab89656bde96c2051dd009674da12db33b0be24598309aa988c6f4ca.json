@@ -1,0 +1,9 @@
+{
+ "cache_key": "340ccb3bab89656bde96c2051dd009674da12db33b0be24598309aa988c6f4ca",
+ "fetched_at": "2026-08-28T18:02:22.008286+00:00",
+ "input_hash": "e5595a5beb14c012fbad6aa297d12286286562585b707b64c748f7b3e33cc8d0",
+ "prompt_version": "p23_nlify_v1",
+ "raw_response": "{\"clarification\": \"I am not able to adjust temperatures or control heater-shaker modules. My supported capabilities include pipetting operations (aspirate, dispense, transfer, stamp), tip handling, plate transport, and plate reader assays.\", \"utterance\": \"Can you set the heater-shaker on the deck to 37\\u00b0C?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

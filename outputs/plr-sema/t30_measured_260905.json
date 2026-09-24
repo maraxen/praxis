@@ -1,0 +1,1169 @@
+{
+  "benchmark": "tier1-sidecar-gated-dd79c4c89",
+  "block1_parse_coverage": {
+    "by_atom_kind": {
+      "AllOf/AnyOf": 87,
+      "And": 99,
+      "Cmp": 289,
+      "Is": 343,
+      "IsInstance": 34,
+      "Not": 780,
+      "Opaque": 313,
+      "Or": 87,
+      "SetOf-uniqueness": 12,
+      "TRUE": 379,
+      "chained-Cmp": 382
+    },
+    "n_guards_distinct_sites": 2805,
+    "n_non_opaque": 2492,
+    "n_opaque": 313,
+    "n_tip_family_owned_excluded": 1,
+    "top10_unparsed_shapes": [
+      {
+        "n": 20,
+        "text": "self._parse_scpi_response(res)['status'] != 'OK'"
+      },
+      {
+        "n": 6,
+        "text": "self.model.value.split('_')[-1] == 'NC'"
+      },
+      {
+        "n": 5,
+        "text": "get_capture_or_validation_active()"
+      },
+      {
+        "n": 5,
+        "text": "(plr_e := convert_star_firmware_error_to_plr_error(e))"
+      },
+      {
+        "n": 5,
+        "text": "block_id not in self.available_blocks"
+      },
+      {
+        "n": 4,
+        "text": "time.time() - start > timeout"
+      },
+      {
+        "n": 4,
+        "text": "resp == b'\\x060000\\x03'"
+      },
+      {
+        "n": 4,
+        "text": "self._offset + 4 > len(self._data)"
+      },
+      {
+        "n": 3,
+        "text": "time.time() - t0 > 120"
+      },
+      {
+        "n": 3,
+        "text": "SparkDevice.FLUORESCENCE not in self.reader.devices"
+      }
+    ]
+  },
+  "block2_binding_coverage": {
+    "d2": {
+      "n_channels_for_call_non_none": 361,
+      "n_pick_up_tips_ops": 361
+    },
+    "guards_with_free_locals": {
+      "all": 5,
+      "none": 794
+    },
+    "n_alpha": 5,
+    "n_beta": 11,
+    "name_coincidence_exposure_count": 936,
+    "name_coincidence_exposure_examples": [
+      {
+        "entry": "A4SBackend.seal",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/sealing/a4s_backend.py",
+          "lineno": 200,
+          "qualname": "A4SBackend.set_temperature"
+        },
+        "name": "temperature"
+      },
+      {
+        "entry": "AgrowPumpArrayBackend.stop",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/pumps/agrowpumps/agrowdosepump_backend.py",
+          "lineno": 191,
+          "qualname": "AgrowPumpArrayBackend.halt"
+        },
+        "name": "self"
+      },
+      {
+        "entry": "AgrowPumpArrayBackend.stop",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/pumps/agrowpumps/agrowdosepump_backend.py",
+          "lineno": 192,
+          "qualname": "AgrowPumpArrayBackend.halt"
+        },
+        "name": "self"
+      },
+      {
+        "entry": "BioShake.shake",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/heating_shaking/bioshake_backend.py",
+          "lineno": 138,
+          "qualname": "BioShake.start_shaking"
+        },
+        "name": "speed"
+      },
+      {
+        "entry": "BioShake.shake",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/heating_shaking/bioshake_backend.py",
+          "lineno": 146,
+          "qualname": "BioShake.start_shaking"
+        },
+        "name": "speed"
+      },
+      {
+        "entry": "BioShake.shake",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/heating_shaking/bioshake_backend.py",
+          "lineno": 160,
+          "qualname": "BioShake.start_shaking"
+        },
+        "name": "acceleration"
+      },
+      {
+        "entry": "BioShake.shake",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/heating_shaking/bioshake_backend.py",
+          "lineno": 168,
+          "qualname": "BioShake.start_shaking"
+        },
+        "name": "acceleration"
+      },
+      {
+        "entry": "BioTekPlateReaderBackend.read_absorbance",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/agilent/biotek_backend.py",
+          "lineno": 265,
+          "qualname": "BioTekPlateReaderBackend._parse_body"
+        },
+        "name": "self"
+      },
+      {
+        "entry": "BioTekPlateReaderBackend.read_fluorescence",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/agilent/biotek_backend.py",
+          "lineno": 265,
+          "qualname": "BioTekPlateReaderBackend._parse_body"
+        },
+        "name": "self"
+      },
+      {
+        "entry": "BioTekPlateReaderBackend.read_luminescence",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/agilent/biotek_backend.py",
+          "lineno": 265,
+          "qualname": "BioTekPlateReaderBackend._parse_body"
+        },
+        "name": "self"
+      },
+      {
+        "entry": "ByonoyAbsorbanceBaseUnit.__init__",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/byonoy/byonoy_a96a.py",
+          "lineno": 125,
+          "qualname": "ByonoyAbsorbanceBaseUnit.assign_child_resource"
+        },
+        "name": "self"
+      },
+      {
+        "entry": "ByonoyLuminescenceBaseUnit.__init__",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/byonoy/byonoy_l96.py",
+          "lineno": 98,
+          "qualname": "ByonoyLuminescenceBaseUnit.assign_child_resource"
+        },
+        "name": "self"
+      },
+      {
+        "entry": "CLARIOstarBackend.read_luminescence",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/bmg_labtech/clario_star_backend.py",
+          "lineno": 212,
+          "qualname": "CLARIOstarBackend._run_luminescence"
+        },
+        "name": "focal_height"
+      },
+      {
+        "entry": "Carrier.__delitem__",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/resources/carrier.py",
+          "lineno": 90,
+          "qualname": "Carrier.unassign_child_resource"
+        },
+        "name": "self"
+      },
+      {
+        "entry": "Carrier.__setitem__",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/resources/carrier.py",
+          "lineno": 90,
+          "qualname": "Carrier.unassign_child_resource"
+        },
+        "name": "resource"
+      },
+      {
+        "entry": "Carrier.__setitem__",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/resources/carrier.py",
+          "lineno": 90,
+          "qualname": "Carrier.unassign_child_resource"
+        },
+        "name": "self"
+      },
+      {
+        "entry": "CytationBackend._acquire_image",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/agilent/biotek_cytation_backend.py",
+          "lineno": 518,
+          "qualname": "CytationBackend.stop_acquisition"
+        },
+        "name": "self"
+      },
+      {
+        "entry": "CytationBackend._acquire_image",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/agilent/biotek_cytation_backend.py",
+          "lineno": 510,
+          "qualname": "CytationBackend.start_acquisition"
+        },
+        "name": "self"
+      },
+      {
+        "entry": "CytationBackend._stop_camera",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/agilent/biotek_cytation_backend.py",
+          "lineno": 518,
+          "qualname": "CytationBackend.stop_acquisition"
+        },
+        "name": "self"
+      },
+      {
+        "entry": "CytationBackend.capture",
+        "guard_site": {
+          "file": "external/pylabrobot/pylabrobot/plate_reading/agilent/biotek_cytation_backend.py",
+          "lineno": 518,
+          "qualname": "CytationBackend.stop_acquisition"
+        },
+        "name": "self"
+      }
+    ],
+    "tuples": [
+      {
+        "K": "VantageBackend.aspirate",
+        "K_lineno": 569,
+        "default_shape": "repeat",
+        "idiom": "beta",
+        "module": "pylabrobot.liquid_handling.backends.hamilton.vantage_backend",
+        "param": "ops",
+        "x": "disable_volume_correction"
+      },
+      {
+        "K": "VantageBackend.dispense",
+        "K_lineno": 755,
+        "default_shape": "repeat",
+        "idiom": "beta",
+        "module": "pylabrobot.liquid_handling.backends.hamilton.vantage_backend",
+        "param": "ops",
+        "x": "disable_volume_correction"
+      },
+      {
+        "K": "LiquidHandler._assert_positions_unique",
+        "K_lineno": 294,
+        "idiom": "alpha",
+        "iter": "positions",
+        "module": "pylabrobot.liquid_handling.liquid_handler",
+        "pred": {
+          "negated": true,
+          "node": "Is",
+          "term": {
+            "name": "p",
+            "node": "Var"
+          }
+        },
+        "x": "not_none"
+      },
+      {
+        "K": "LiquidHandler._make_sure_channels_exist",
+        "K_lineno": 405,
+        "idiom": "alpha",
+        "iter": "channels",
+        "module": "pylabrobot.liquid_handling.liquid_handler",
+        "pred": {
+          "node": "Opaque",
+          "text": "c not in self.head"
+        },
+        "x": "invalid_channels"
+      },
+      {
+        "K": "LiquidHandler.pick_up_tips",
+        "K_lineno": 438,
+        "idiom": "alpha",
+        "iter": "tip_spots",
+        "module": "pylabrobot.liquid_handling.liquid_handler",
+        "pred": {
+          "node": "Not",
+          "predicate": {
+            "node": "IsInstance",
+            "term": {
+              "name": "ts",
+              "node": "Var"
+            },
+            "types": [
+              "TipSpot"
+            ]
+          }
+        },
+        "x": "not_tip_spots"
+      },
+      {
+        "K": "LiquidHandler.pick_up_tips",
+        "K_lineno": 438,
+        "default_shape": "repeat",
+        "idiom": "beta",
+        "module": "pylabrobot.liquid_handling.liquid_handler",
+        "param": "tip_spots",
+        "x": "offsets"
+      },
+      {
+        "K": "LiquidHandler.drop_tips",
+        "K_lineno": 587,
+        "idiom": "alpha",
+        "iter": "tip_spots",
+        "module": "pylabrobot.liquid_handling.liquid_handler",
+        "pred": {
+          "node": "Not",
+          "predicate": {
+            "node": "IsInstance",
+            "term": {
+              "name": "ts",
+              "node": "Var"
+            },
+            "types": [
+              "TipSpot",
+              "Trash"
+            ]
+          }
+        },
+        "x": "not_tip_spots"
+      },
+      {
+        "K": "LiquidHandler.drop_tips",
+        "K_lineno": 587,
+        "default_shape": "repeat",
+        "idiom": "beta",
+        "module": "pylabrobot.liquid_handling.liquid_handler",
+        "param": "tip_spots",
+        "x": "offsets"
+      },
+      {
+        "K": "LiquidHandler._check_containers",
+        "K_lineno": 871,
+        "idiom": "alpha",
+        "iter": "resources",
+        "module": "pylabrobot.liquid_handling.liquid_handler",
+        "pred": {
+          "node": "Not",
+          "predicate": {
+            "node": "IsInstance",
+            "term": {
+              "name": "r",
+              "node": "Var"
+            },
+            "types": [
+              "Container"
+            ]
+          }
+        },
+        "x": "not_containers"
+      },
+      {
+        "K": "LiquidHandler.aspirate",
+        "K_lineno": 878,
+        "default_shape": "repeat",
+        "idiom": "beta",
+        "module": "pylabrobot.liquid_handling.liquid_handler",
+        "param": "use_channels",
+        "x": "blow_out_air_volume"
+      },
+      {
+        "K": "LiquidHandler.aspirate",
+        "K_lineno": 878,
+        "default_shape": "repeat",
+        "idiom": "beta",
+        "module": "pylabrobot.liquid_handling.liquid_handler",
+        "param": "use_channels",
+        "x": "flow_rates"
+      },
+      {
+        "K": "LiquidHandler.aspirate",
+        "K_lineno": 878,
+        "default_shape": "repeat",
+        "idiom": "beta",
+        "module": "pylabrobot.liquid_handling.liquid_handler",
+        "param": "use_channels",
+        "x": "liquid_height"
+      },
+      {
+        "K": "LiquidHandler.dispense",
+        "K_lineno": 1070,
+        "default_shape": "repeat",
+        "idiom": "beta",
+        "module": "pylabrobot.liquid_handling.liquid_handler",
+        "param": "use_channels",
+        "x": "blow_out_air_volume"
+      },
+      {
+        "K": "LiquidHandler.dispense",
+        "K_lineno": 1070,
+        "default_shape": "repeat",
+        "idiom": "beta",
+        "module": "pylabrobot.liquid_handling.liquid_handler",
+        "param": "use_channels",
+        "x": "flow_rates"
+      },
+      {
+        "K": "LiquidHandler.dispense",
+        "K_lineno": 1070,
+        "default_shape": "repeat",
+        "idiom": "beta",
+        "module": "pylabrobot.liquid_handling.liquid_handler",
+        "param": "use_channels",
+        "x": "liquid_height"
+      },
+      {
+        "K": "LiquidHandler.transfer",
+        "K_lineno": 1273,
+        "default_shape": "repeat",
+        "idiom": "beta",
+        "module": "pylabrobot.liquid_handling.liquid_handler",
+        "param": "targets",
+        "x": "dispense_flow_rates"
+      }
+    ]
+  },
+  "block3_per_cluster": [
+    {
+      "bound": false,
+      "condition": "len(missing) > 0",
+      "n_ops_blocked": 544,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:375:LiquidHandler._check_args",
+      "predicted_tier": "(ii) backend signature",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": false,
+      "condition": "strictness == Strictness.STRICT",
+      "n_ops_blocked": 544,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:383:LiquidHandler._check_args",
+      "predicted_tier": "(ii) env and backend",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "not len(invalid_channels) == 0",
+      "n_ops_blocked": 384,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:409:LiquidHandler._make_sure_channels_exist",
+      "predicted_tier": "(ii) head channel count",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_predicate_unparsed"
+    },
+    {
+      "bound": false,
+      "condition": "not resource_from_deck == resource",
+      "n_ops_blocked": 288,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:321:LiquidHandler._assert_resources_exist",
+      "predicted_tier": "(ii) deck membership",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "len(not_tip_spots) > 0",
+      "n_ops_blocked": 223,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:498:LiquidHandler.pick_up_tips",
+      "predicted_tier": "(i)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "len(set(use_channels)) == len(use_channels)",
+      "n_ops_blocked": 223,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:502:LiquidHandler.pick_up_tips",
+      "predicted_tier": "(i)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "decidable_or_operand_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "not all((self.backend.can_pick_up_tip(channel, tip) for channel, tip in zip(use_channels, tips)))",
+      "n_ops_blocked": 223,
+      "parsed": false,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:514:LiquidHandler.pick_up_tips",
+      "predicted_tier": "(ii) backend",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_predicate_unparsed"
+    },
+    {
+      "bound": true,
+      "condition": "len(tip_spots) == len(offsets) == len(use_channels)",
+      "n_ops_blocked": 223,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:522:LiquidHandler.pick_up_tips",
+      "predicted_tier": "(i)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": false,
+      "condition": "error is not None",
+      "n_ops_blocked": 223,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:576:LiquidHandler.pick_up_tips",
+      "predicted_tier": "(iii)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "lidded is resource",
+      "n_ops_blocked": 163,
+      "parsed": false,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:116:_check_no_lid",
+      "predicted_tier": "(ii) lid topology",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_predicate_unparsed"
+    },
+    {
+      "bound": true,
+      "condition": "<unconditional>",
+      "n_ops_blocked": 163,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:117:_check_no_lid",
+      "predicted_tier": "reachability-blocked (E-UNCOND(5))",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "decidable_or_operand_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "len(not_containers) > 0",
+      "n_ops_blocked": 136,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:875:LiquidHandler._check_containers",
+      "predicted_tier": "(i) [but depth>=1 -- see E-CALL(depth)]",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "volume - self.get_free_volume() > 1e-06",
+      "n_ops_blocked": 117,
+      "parsed": false,
+      "plr_site": "external/pylabrobot/pylabrobot/resources/volume_tracker.py:105:VolumeTracker.add_liquid",
+      "predicted_tier": "(ii) observation (already evaluated, increment 5)",
+      "reason_ledger": "volume_state_unknown",
+      "reason_measured": "guard_predicate_unparsed"
+    },
+    {
+      "bound": false,
+      "condition": "error is not None",
+      "n_ops_blocked": 96,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1067:LiquidHandler.aspirate",
+      "predicted_tier": "(iii)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "len(set(use_channels)) == len(use_channels)",
+      "n_ops_blocked": 96,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:959:LiquidHandler.aspirate",
+      "predicted_tier": "(i)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "decidable_or_operand_dependent"
+    },
+    {
+      "bound": false,
+      "condition": "len(p) != len(use_channels)",
+      "n_ops_blocked": 96,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:990:LiquidHandler.aspirate",
+      "predicted_tier": "(i) unbindable (needs gamma)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "self.setup_finished and (not self._resource_pickups)",
+      "n_ops_blocked": 93,
+      "parsed": false,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2055:LiquidHandler.pick_up_resource",
+      "predicted_tier": "not individually tabulated in spec 260904 sec15.1",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_predicate_unparsed"
+    },
+    {
+      "bound": true,
+      "condition": "self._resource_pickup is not None",
+      "n_ops_blocked": 93,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2070:LiquidHandler.pick_up_resource",
+      "predicted_tier": "not individually tabulated in spec 260904 sec15.1",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "<unconditional>",
+      "n_ops_blocked": 93,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2092:LiquidHandler.pick_up_resource",
+      "predicted_tier": "derived (iii) (is_dynamic_raise)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "self._resource_pickup is None",
+      "n_ops_blocked": 93,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2120:LiquidHandler.move_picked_up_resource",
+      "predicted_tier": "not individually tabulated in spec 260904 sec15.1",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "self._resource_pickup is None",
+      "n_ops_blocked": 93,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2147:LiquidHandler.drop_resource",
+      "predicted_tier": "not individually tabulated in spec 260904 sec15.1",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "decidable_or_operand_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "destination.direction == 'z'",
+      "n_ops_blocked": 93,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2204:LiquidHandler.drop_resource",
+      "predicted_tier": "not individually tabulated in spec 260904 sec15.1",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "decidable_or_operand_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "resource_rotation_wrt_destination % 180 != 0",
+      "n_ops_blocked": 93,
+      "parsed": false,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2211:LiquidHandler.drop_resource",
+      "predicted_tier": "not individually tabulated in spec 260904 sec15.1",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_predicate_unparsed"
+    },
+    {
+      "bound": true,
+      "condition": "destination.resource is not None and destination.resource is not resource",
+      "n_ops_blocked": 93,
+      "parsed": false,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2226:LiquidHandler.drop_resource",
+      "predicted_tier": "not individually tabulated in spec 260904 sec15.1",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_predicate_unparsed"
+    },
+    {
+      "bound": false,
+      "condition": "not isinstance(resource, Plate)",
+      "n_ops_blocked": 93,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2233:LiquidHandler.drop_resource",
+      "predicted_tier": "not individually tabulated in spec 260904 sec15.1",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "isinstance(destination, ResourceStack) and destination.direction != 'z'",
+      "n_ops_blocked": 93,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2284:LiquidHandler.drop_resource",
+      "predicted_tier": "not individually tabulated in spec 260904 sec15.1",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "decidable_or_operand_dependent"
+    },
+    {
+      "bound": false,
+      "condition": "not isinstance(resource, Plate)",
+      "n_ops_blocked": 93,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2290:LiquidHandler.drop_resource",
+      "predicted_tier": "not individually tabulated in spec 260904 sec15.1",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": null,
+      "condition": "_state_updated",
+      "n_ops_blocked": 93,
+      "parsed": null,
+      "plr_site": "<none>",
+      "predicted_tier": "out of scope (unresolved_delegate, deferred row (e))",
+      "reason_ledger": "unresolved_delegate",
+      "reason_measured": "n/a (not a guard)"
+    },
+    {
+      "bound": true,
+      "condition": "volume - self.get_used_volume() > 1e-06",
+      "n_ops_blocked": 77,
+      "parsed": false,
+      "plr_site": "external/pylabrobot/pylabrobot/resources/volume_tracker.py:92:VolumeTracker.remove_liquid",
+      "predicted_tier": "(ii) observation (already evaluated, increment 5)",
+      "reason_ledger": "volume_state_unknown",
+      "reason_measured": "guard_predicate_unparsed"
+    },
+    {
+      "bound": true,
+      "condition": "len(not_tip_spots) > 0",
+      "n_ops_blocked": 65,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:647:LiquidHandler.drop_tips",
+      "predicted_tier": "(i)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "len(set(use_channels)) == len(use_channels)",
+      "n_ops_blocked": 65,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:651:LiquidHandler.drop_tips",
+      "predicted_tier": "(i)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "decidable_or_operand_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "tip.tracker.get_used_volume() > 0 and (not allow_nonzero_volume)",
+      "n_ops_blocked": 65,
+      "parsed": false,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:657:LiquidHandler.drop_tips",
+      "predicted_tier": "1/2 by decision (numeric Cmp, Open decision 2)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_predicate_unparsed"
+    },
+    {
+      "bound": false,
+      "condition": "len(tip_spots) == len(offsets) == len(use_channels) == len(tips)",
+      "n_ops_blocked": 65,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:666:LiquidHandler.drop_tips",
+      "predicted_tier": "(i) unbindable (loop-append)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": false,
+      "condition": "error is not None",
+      "n_ops_blocked": 65,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:726:LiquidHandler.drop_tips",
+      "predicted_tier": "(iii)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "len(set(use_channels)) == len(use_channels)",
+      "n_ops_blocked": 59,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1153:LiquidHandler.dispense",
+      "predicted_tier": "(i)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "decidable_or_operand_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "self._blow_out_air_volume is None",
+      "n_ops_blocked": 59,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1185:LiquidHandler.dispense",
+      "predicted_tier": "withdrawn (round 1) -- does not clear",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "decidable_or_operand_dependent"
+    },
+    {
+      "bound": false,
+      "condition": "requested_bav is not None and done_bav is not None and (requested_bav > done_bav)",
+      "n_ops_blocked": 59,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1188:LiquidHandler.dispense",
+      "predicted_tier": "withdrawn (round 1) -- does not clear",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": false,
+      "condition": "len(p) != len(use_channels)",
+      "n_ops_blocked": 59,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1202:LiquidHandler.dispense",
+      "predicted_tier": "(i) unbindable (needs gamma)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": false,
+      "condition": "error is not None",
+      "n_ops_blocked": 59,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1271:LiquidHandler.dispense",
+      "predicted_tier": "(iii)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": false,
+      "condition": "n == 0",
+      "n_ops_blocked": 34,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:822:LiquidHandler.discard_tips",
+      "predicted_tier": "not individually tabulated in spec 260904 sec15.1",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": false,
+      "condition": "not (isinstance(resource, (Plate, Container)) or (isinstance(resource, list) and all((isinstance(w, Well) for w in resource))))",
+      "n_ops_blocked": 27,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1743:LiquidHandler.aspirate96",
+      "predicted_tier": "(i)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "<unconditional>",
+      "n_ops_blocked": 27,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1770:LiquidHandler.aspirate96",
+      "predicted_tier": "reachability-blocked (else-of-if, E-UNCOND way (1))",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "decidable_or_operand_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "not self._check_96_head_fits_in_container(container)",
+      "n_ops_blocked": 27,
+      "parsed": false,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1778:LiquidHandler.aspirate96",
+      "predicted_tier": "(ii) topology",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_predicate_unparsed"
+    },
+    {
+      "bound": false,
+      "condition": "well.parent != plate",
+      "n_ops_blocked": 27,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1804:LiquidHandler.aspirate96",
+      "predicted_tier": "(ii) topology",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": false,
+      "condition": "not len(containers) == 96",
+      "n_ops_blocked": 27,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1807:LiquidHandler.aspirate96",
+      "predicted_tier": "(i)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": false,
+      "condition": "not (isinstance(resource, (Plate, Container)) or (isinstance(resource, list) and all((isinstance(w, Well) for w in resource))))",
+      "n_ops_blocked": 27,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1893:LiquidHandler.dispense96",
+      "predicted_tier": "(i)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "<unconditional>",
+      "n_ops_blocked": 27,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1920:LiquidHandler.dispense96",
+      "predicted_tier": "reachability-blocked (else-of-if, E-UNCOND way (1))",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "decidable_or_operand_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "not self._check_96_head_fits_in_container(container)",
+      "n_ops_blocked": 27,
+      "parsed": false,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1940:LiquidHandler.dispense96",
+      "predicted_tier": "(ii) topology",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_predicate_unparsed"
+    },
+    {
+      "bound": false,
+      "condition": "well.parent != plate",
+      "n_ops_blocked": 27,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1960:LiquidHandler.dispense96",
+      "predicted_tier": "(ii) topology",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": false,
+      "condition": "not len(containers) == 96",
+      "n_ops_blocked": 27,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1963:LiquidHandler.dispense96",
+      "predicted_tier": "(i)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_env_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "(source.num_items_x, source.num_items_y) == (target.num_items_x, target.num_items_y)",
+      "n_ops_blocked": 27,
+      "parsed": false,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:2030:LiquidHandler.stamp",
+      "predicted_tier": "not individually tabulated in spec 260904 sec15.1",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "guard_predicate_unparsed"
+    },
+    {
+      "bound": true,
+      "condition": "ratios is not None",
+      "n_ops_blocked": 19,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1335:LiquidHandler.transfer",
+      "predicted_tier": "(i)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "decidable_or_operand_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "source_vol is not None",
+      "n_ops_blocked": 19,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1337:LiquidHandler.transfer",
+      "predicted_tier": "(i)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "decidable_or_operand_dependent"
+    },
+    {
+      "bound": true,
+      "condition": "source_vol is None",
+      "n_ops_blocked": 19,
+      "parsed": true,
+      "plr_site": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:1340:LiquidHandler.transfer",
+      "predicted_tier": "(i)",
+      "reason_ledger": "guard_predicate_unparsed",
+      "reason_measured": "decidable_or_operand_dependent"
+    }
+  ],
+  "block4_per_op_with_o1": {
+    "by_method": {
+      "aspirate": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "decidable+guard_env_dependent+guard_predicate_unparsed": 137
+        }
+      },
+      "discard_tips": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "decidable+guard_env_dependent+guard_predicate_unparsed": 62
+        }
+      },
+      "dispense": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "decidable+guard_env_dependent+guard_predicate_unparsed": 66
+        }
+      },
+      "drop_tips": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "decidable+guard_env_dependent+guard_predicate_unparsed": 28
+        }
+      },
+      "move_lid": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "guard_env_dependent+guard_predicate_unparsed": 59
+        }
+      },
+      "move_plate": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "guard_env_dependent+guard_predicate_unparsed": 59
+        }
+      },
+      "move_resource": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "guard_env_dependent+guard_predicate_unparsed": 59
+        }
+      },
+      "pick_up_tips": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "decidable+guard_env_dependent+guard_predicate_unparsed": 361
+        }
+      },
+      "stamp": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "decidable+guard_env_dependent+guard_predicate_unparsed": 53
+        }
+      },
+      "transfer": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "decidable+guard_env_dependent+guard_predicate_unparsed": 39
+        }
+      }
+    },
+    "n_ops": 923
+  },
+  "block4_per_op_without_o1": {
+    "by_method": {
+      "aspirate": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "decidable+guard_env_dependent+guard_predicate_unparsed": 137
+        }
+      },
+      "discard_tips": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "decidable+guard_env_dependent+guard_predicate_unparsed": 62
+        }
+      },
+      "dispense": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "decidable+guard_env_dependent+guard_predicate_unparsed": 66
+        }
+      },
+      "drop_tips": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "decidable+guard_env_dependent+guard_operand_unknown+guard_predicate_unparsed": 28
+        }
+      },
+      "move_lid": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "guard_env_dependent+guard_predicate_unparsed": 59
+        }
+      },
+      "move_plate": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "guard_env_dependent+guard_predicate_unparsed": 59
+        }
+      },
+      "move_resource": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "guard_env_dependent+guard_predicate_unparsed": 59
+        }
+      },
+      "pick_up_tips": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "decidable+guard_env_dependent+guard_operand_unknown+guard_predicate_unparsed": 361
+        }
+      },
+      "stamp": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "decidable+guard_env_dependent+guard_predicate_unparsed": 53
+        }
+      },
+      "transfer": {
+        "example_ops_clearing": [],
+        "n_ops_clearing_gate": 0,
+        "residual_reason_sets": {
+          "decidable+guard_env_dependent+guard_predicate_unparsed": 39
+        }
+      }
+    }
+  },
+  "block5_o1_delta": {
+    "n_heterogeneous_parent_observations": 0,
+    "n_ops_differing": 389
+  },
+  "contracts": "plr-sema/data/derived_contracts.json",
+  "corpus": "training/assemble/out/corpus_p25.jsonl",
+  "gate": {
+    "with_o1": {
+      "example_ops_clearing": [],
+      "go": false,
+      "methods_clearing": [],
+      "n_ops_clearing": 0
+    },
+    "without_o1": {
+      "example_ops_clearing": [],
+      "go": false,
+      "methods_clearing": [],
+      "n_ops_clearing": 0
+    }
+  },
+  "limit": null,
+  "scope_notes": [
+    "This script constructs no verdict and never calls check_ir; T31 (the evaluator) does not exist yet.",
+    "classify_guard_for_call/classify_guard_structural are a STATIC classification of what E-CALL would resolve, not a truth evaluation -- see the module docstring for exactly which E-CALL mechanisms are modelled (the recursive binding/iterand resolution, the channel term via a real channels_for_call import, per-element IsInstance resolution against O1's element_type) and which are not (chained-Cmp short-circuit truth, G4 set-value comparison, numeric interval folding).",
+    "predicted_tier is transcribed from spec 260904's own SS15.1 tables for the sites it names; every other cluster is published as 'not individually tabulated', never guessed."
+  ]
+}

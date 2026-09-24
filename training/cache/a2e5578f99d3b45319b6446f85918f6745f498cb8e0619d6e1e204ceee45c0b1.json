@@ -1,0 +1,9 @@
+{
+ "cache_key": "a2e5578f99d3b45319b6446f85918f6745f498cb8e0619d6e1e204ceee45c0b1",
+ "fetched_at": "2026-09-03T15:04:11.184396+00:00",
+ "input_hash": "0184ec2543636eca6d7ad70a6c8555fc6cbca6f7517b94f53eed9fae089e2349",
+ "prompt_version": "p23_nlify_v2_natural_oos",
+ "raw_response": "{\"clarification\": null, \"utterance\": \"Could you get the heater-shaker warmed up to 37 \\u00b0C?\"}",
+ "schema_version": 1,
+ "teacher_model_version": "gemini-3.7-flash-medium"
+}

@@ -1,4 +1,3 @@
-import pytest
 from praxis.backend.utils.protocol_serialization import serialize_protocol_function
 
 
