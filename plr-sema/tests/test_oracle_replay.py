@@ -1559,6 +1559,57 @@ class TestT46ObservationThreading:
         assert rc == 1
 
 
+class TestT57VolumeObservationThreading:
+    """#5043 (spec 260903 §14.6/§14.11, increment 5, T27; T57): `run_row`'s
+    volume-family sibling of T46's `plr_observation` wire --
+    `RuntimeOutcome.volume_tracking_observed` (T27, already landed on the
+    outcome) was never threaded into `run_static_calls` at the two
+    corpus-replay call sites, so `env` stayed empty for the volume member
+    even when `verify()` observed tracking on. This class is the
+    differential regression: the keyword must arrive at all, and its
+    value must equal the runtime outcome's own observation (not a
+    re-derived process-wide read)."""
+
+    def test_volume_tracking_observed_threaded_from_runtime(self, tmp_path, monkeypatch):
+        """One clean `pick_up_tips` row through `main()`: the
+        `run_static_calls` call inside `run_row` must receive
+        `volume_tracking_observed` and that value must equal the
+        `RuntimeOutcome` `run_runtime` just returned for the same row.
+        Pre-fix, assertion (i) fails -- the keyword is simply absent."""
+        import oracle_replay
+
+        recorded_kwargs: list[dict] = []
+        runtime_outcomes: list = []
+        real_run_static_calls = oracle_replay.run_static_calls
+        real_run_runtime = oracle_replay.run_runtime
+
+        def _recording_run_static_calls(*args, **kwargs):
+            recorded_kwargs.append(kwargs)
+            return real_run_static_calls(*args, **kwargs)
+
+        def _recording_run_runtime(*args, **kwargs):
+            rt = real_run_runtime(*args, **kwargs)
+            runtime_outcomes.append(rt)
+            return rt
+
+        monkeypatch.setattr(oracle_replay, "run_static_calls", _recording_run_static_calls)
+        monkeypatch.setattr(oracle_replay, "run_runtime", _recording_run_runtime)
+
+        row = _chat_row(
+            "pick_up_tips",
+            {"at": ["tip_rack.A1"]},
+            utterance="pick up a tip",
+        )
+        corpus_path = tmp_path / "corpus.jsonl"
+        corpus_path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+        report_path = tmp_path / "report.json"
+        oracle_replay.main(["--corpus", str(corpus_path), "--report", str(report_path)])
+
+        assert recorded_kwargs, "run_static_calls was never called"
+        assert "volume_tracking_observed" in recorded_kwargs[0]
+        assert recorded_kwargs[0]["volume_tracking_observed"] == runtime_outcomes[0].volume_tracking_observed
+
+
 # ---------------------------------------------------------------------------
 # §16.7 (fence increment, T45, backlog #5025): F1's frame-list capture, F2's
 # any-frame narrowing with the outermost tie-break, F2a's ONE normalisation

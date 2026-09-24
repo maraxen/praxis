@@ -424,6 +424,14 @@ def run_row(
             element_types=rt.element_types,
             excludes_sites=row_excludes_sites,
             scope_excluded_sites=row_scope_excluded_sites,
+            # 260903 (spec §14.6/§14.11, increment 5, T27, #5043): the
+            # volume-family sibling of T46's `plr_observation` wire --
+            # `RuntimeOutcome.volume_tracking_observed` (already captured
+            # in-window by T27) was never threaded here, so `env` stayed
+            # empty for `does_volume_tracking` even when `verify()`
+            # observed tracking on. Threading it can only turn UNKNOWN
+            # into decided; it cannot mint a new SAFE.
+            volume_tracking_observed=rt.volume_tracking_observed,
             # 260909 (spec §16.2/§16.5, increment 7, T46): thread the
             # in-window observation record through to `run_static_calls`'s
             # `env` build -- the missing wire between T40's capture (already
