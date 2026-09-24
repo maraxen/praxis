@@ -90,9 +90,13 @@ def test_global_flags_restored_after_run():
 # `plr_observation` additive result key -- AC-16.1.
 # ---------------------------------------------------------------------------
 
-#: §16.2.1's CLOSED field list -- a field absent from this table is not
-#: observed. Mirrors `plr-sema/eval/oracle_common.OBSERVATION_KEYS`.
-_OBSERVATION_KEYS = {"backend_class", "num_channels", "head_channels", "deck_resource_names"}
+#: §16.2.1's CLOSED field list, extended by §17.3 (move-family increment,
+#: T51) with `arm_slots` -- a field absent from this table is not observed.
+#: Mirrors `plr-sema/eval/oracle_common.OBSERVATION_KEYS`.
+_OBSERVATION_KEYS = {
+    "backend_class", "num_channels", "head_channels", "deck_resource_names",
+    "arm_slots",
+}
 
 
 def test_plr_observation_present_on_success():
@@ -101,8 +105,8 @@ def test_plr_observation_present_on_success():
     assert r["passed"], [(c["name"], c["detail"]) for c in r["checks"] if not c["passed"]]
     obs = r["plr_observation"]
     assert obs is not None
-    # §16.2.1's CLOSED record: exactly these four keys, no others -- fails
-    # if `plr_observation` ever grows a fifth key.
+    # §16.2.1's CLOSED record: exactly these five keys, no others -- fails
+    # if `plr_observation` ever grows a sixth key.
     assert set(obs) == _OBSERVATION_KEYS
     assert obs["backend_class"] == "LiquidHandlerChatterboxBackend"
     assert obs["num_channels"] == 8
@@ -114,6 +118,61 @@ def test_plr_observation_present_on_success():
     assert "source_plate" in obs["deck_resource_names"]
     assert "dest_plate" in obs["deck_resource_names"]
     assert "tip_rack" in obs["deck_resource_names"]
+    # §17.3's placement half (AC-17.2): `arm_slots` is the sorted key set
+    # of `self._resource_pickups`, non-empty for a real chatterbox backend
+    # (num_arms >= 1) once `setup.machine.setup()` has run.
+    assert obs["arm_slots"] == sorted(obs["arm_slots"])
+    assert len(obs["arm_slots"]) > 0
+
+
+def test_capture_observation_arm_slots_empty_before_setup_nonempty_after():
+    """AC-17.2's placement half (spec 260909_plr-sema-move-family-increment
+    .md §17.3, T51): `arm_slots` is the SORTED key set of
+    `machine._resource_pickups` -- EMPTY before `await
+    setup.machine.setup()` runs (the dict is initialised empty at
+    construction,
+    `external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:176`)
+    and non-empty after (`setup` rebuilds it wholesale, `:212`) -- the
+    identical placement argument §16.2.1 already makes for `head_channels`.
+    """
+    from verify.deck import DeckLayout, build_setup, capture_observation
+
+    setup = build_setup("LiquidHandlerChatterboxBackend", DeckLayout())
+    before = capture_observation(setup)
+    assert before["arm_slots"] == []
+
+    asyncio.run(setup.machine.setup())
+    after = capture_observation(setup)
+    assert after["arm_slots"] != []
+    assert after["arm_slots"] == sorted(after["arm_slots"])
+
+
+def test_arm_slots_stability_across_pickup_and_drop(monkeypatch):
+    """AC-17.2's stability assertion (spec 260909_plr-sema-move-family
+    -increment.md §17.3, round 1's C16): an operation sequence containing a
+    pickup and a drop leaves `sorted(self._resource_pickups)` unchanged --
+    what licenses calling the observed `Seq` complete at a LATER instant
+    than the capture point. `move_plate` calls `pick_up_resource` then
+    `drop_resource` internally."""
+    import verify.verifier as verifier_mod
+
+    captured: dict[str, object] = {}
+    orig_capture = verifier_mod.capture_observation
+
+    def _spy(setup):
+        record = orig_capture(setup)
+        captured["machine"] = setup.machine
+        return record
+
+    monkeypatch.setattr(verifier_mod, "capture_observation", _spy)
+
+    seq, intent, layout = _load("move_plate.json")
+    r = _run(seq, intent, layout)
+    assert r["passed"], [(c["name"], c["detail"]) for c in r["checks"] if not c["passed"]]
+
+    before = r["plr_observation"]["arm_slots"]
+    after = sorted(captured["machine"]._resource_pickups)
+    assert after == before
 
 
 def test_plr_observation_none_on_deck_build_failure(monkeypatch):

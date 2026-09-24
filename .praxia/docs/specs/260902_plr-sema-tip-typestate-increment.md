@@ -179,7 +179,7 @@ performs no AST work — main spec §6.2's packaging fact is untouched.
 The existing derivation (`plr-sema/src/plr_sema/derive/__init__.py:446-492`) already gives us guards
 with polarity (`InlinedGuard.kind`, `:406-432`), the raising class (`InlinedGuard.raises`), the
 defining site, and depth. It throws away one field that this increment needs:
-`SurveyRecord.dropped_calls` (`derive/__init__.py:181-199`) — the receiver-qualified call expressions
+`SurveyRecord.dropped_calls` (`derive/__init__.py:182-212`) — the receiver-qualified call expressions
 the survey drops for every non-`self.<name>` attribute receiver. `derive_contract` never reads it.
 
 ### 10.2.1 P1 — receiver-attribute typing (research c-e's rule R3)

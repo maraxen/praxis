@@ -30,17 +30,28 @@ import pytest
 from plr_sema._hand_maintained import BUDGET_CAP, live_rows
 from plr_sema._provenance import SurveyStamp, survey_stamp
 from plr_sema.derive import (
+    ClassBasesIndex,
     DroppedCall,
     SurveyFinding,
     SurveyRecord,
+    _extract_base_name,
     _is_inert_dropped_receiver_call,
     _iter_plr_source_files,
+    _walk_closure,
+    build_class_bases_index,
     build_contract_keys,
     build_gap_ledger,
     build_index,
+    class_closure,
+    compute_m_inh_selection,
     default_plr_pkg_root,
     derive_contract,
+    diagnose_base_resolution,
+    inherited_method_names,
     load_survey,
+    measure_m_inh_entry_point_impact,
+    resolve,
+    resolve_via_base_closure,
     scan_dropped_receiver_calls,
     scan_dropped_receiver_calls_in_source,
 )
@@ -49,11 +60,13 @@ from plr_sema.derive.bindings import (
     build_qualname_index,
     compute_all_local_bindings,
     compute_caller_args,
+    compute_caller_args_for_call,
     compute_caller_call_lineno,
     compute_caller_scope_trail,
     compute_local_bindings_for_guard,
     compute_reachability_clear,
     demote_refused_env_refs,
+    find_delegate_calls,
     free_var_names,
     is_plr_layer_method,
     param_defaults_from_function,
@@ -77,12 +90,16 @@ from plr_sema.derive.predicate_ast import (
 )
 from plr_sema.derive.receiver_state import (
     BackendSurfaceEntry,
+    SingletonAnchorCandidate,
     backend_surface_entry_to_json,
     build_backend_surface,
+    build_plr_class_bases_index,
     build_plr_class_index,
     build_plr_function_index,
     collect_env_ref_method_names,
+    compute_anchor_guard_states,
     compute_delegate_channel_bindings,
+    compute_singleton_typestate_anchors,
     compute_volume_anchors,
     compute_volume_bridge,
     compute_volume_state_exceptions,
@@ -183,6 +200,7 @@ def _synthetic_record(
     delegates_to: tuple[str, ...] = (),
     unresolved_calls: tuple[str, ...] = (),
     findings: tuple[SurveyFinding, ...] = (),
+    inherited_delegates: tuple[str, ...] = (),
 ) -> SurveyRecord:
     return SurveyRecord(
         qualname=qualname,
@@ -194,6 +212,7 @@ def _synthetic_record(
         findings=findings,
         delegates_to=delegates_to,
         unresolved_calls=unresolved_calls,
+        inherited_delegates=inherited_delegates,
     )
 
 
@@ -3185,8 +3204,9 @@ def test_ac_16_2_backend_surface_is_additive_fifth_top_level_key(
     )
     assert set(payload.keys()) == {"schema_version", "stamp", "receiver_state", "contracts", "backend_surface"}
     surface = payload["backend_surface"]
-    assert set(surface.keys()) == {"n_surface_candidates", "n_surface_absent_by_c15", "n_surface_rows", "rows"}
+    assert set(surface.keys()) == {"n_surface_candidates", "n_surface_absent_by_c15", "n_surface_rows", "n_entries_with_backend_surface", "rows"}
     assert surface["n_surface_rows"] > 0
+    assert surface["n_entries_with_backend_surface"] > 0
 
 
 def test_ac_16_2_backend_surface_degrades_when_function_index_omitted(
@@ -3203,6 +3223,7 @@ def test_ac_16_2_backend_surface_degrades_when_function_index_omitted(
         "n_surface_candidates": 0,
         "n_surface_absent_by_c15": 0,
         "n_surface_rows": 0,
+        "n_entries_with_backend_surface": 0,
         "rows": {},
     }
 
@@ -3253,6 +3274,154 @@ def test_ac_16_2_collect_env_ref_method_names_also_walks_caller_args() -> None:
     }
     names = collect_env_ref_method_names(contracts)
     assert names == frozenset({"pick_up_tips"})
+
+
+def test_ac_17_4_m_surf_attachment_extends_to_caller_args() -> None:
+    """T53 (spec 260909_plr-sema-move-family-increment.md §17.1.4, M-SURF):
+    the attachment filter extends to scan `caller_args` as well as `predicate`,
+    by the SAME rule as the selection half (`collect_env_ref_method_names`).
+    D5b's site rules read the method identity from `caller_args`, not from the
+    guard's own `predicate` -- `_check_args` carries `missing`/`has_var_keyword`,
+    never the method itself. Without this half, entries like `aspirate`,
+    `dispense`, `drop_tips` with `caller_args` at depth 1 would never receive
+    the backend_surface attachment.
+
+    The `caller_args` arm requires NO `args is not None` check (stores method
+    identity as a reference, not a call), matching D5b's need and the
+    distinction M-SURF makes between the two arms.
+
+    AC-17.4: entries with a `self.backend.<m>` EnvRef only in `caller_args`
+    (not in `predicate` with `args is not None`) now receive the attachment."""
+    from plr_sema.derive.__main__ import build_derived_contracts_payload
+
+    # Create a synthetic contract with a backend EnvRef ONLY in caller_args
+    # (not in the predicate), mimicking the depth-1 `aspirate`/`dispense`/
+    # `drop_tips` case.
+    contracts = {
+        "Entry": {
+            "guards": [
+                {
+                    # Predicate does NOT contain a call-shaped backend EnvRef
+                    "predicate": {"node": "Cmp", "left": {"node": "Var", "name": "x"}, "op": ">", "right": {"node": "Lit", "value": 0}},
+                    # But caller_args DOES contain a backend method reference
+                    "caller_args": {
+                        "method": {"node": "EnvRef", "path": ["self", "backend", "aspirate"], "args": None},
+                        "default": {"node": "SetLit", "values": ["ops"]},
+                    },
+                },
+            ]
+        },
+        "NoBackendEntry": {
+            "guards": [
+                {
+                    "predicate": {"node": "Lit", "value": True},
+                    # No backend EnvRef anywhere
+                    "caller_args": {
+                        "other": {"node": "Var", "name": "x"},
+                    },
+                },
+            ]
+        },
+    }
+
+    backend_surface = {
+        "n_surface_candidates": 0,
+        "n_surface_absent_by_c15": 0,
+        "n_surface_rows": 0,
+        "rows": {"Backend.aspirate": {}},  # dummy row
+    }
+
+    # Apply the attachment filter (the modified code)
+    for entry in contracts.values():
+        for guard in entry.get("guards", ()):
+            # Check predicate (with args is not None)
+            predicate_json = guard.get("predicate")
+            if predicate_json is not None:
+                from plr_sema.derive.predicate_ast import EnvRef, from_json as predicate_from_json, walk as predicate_walk
+                node = predicate_from_json(predicate_json)
+                if any(
+                    isinstance(sub, EnvRef)
+                    and sub.args is not None
+                    and len(sub.path) >= 2
+                    and sub.path[0] == "self"
+                    and sub.path[1] == "backend"
+                    for sub in predicate_walk(node)
+                ):
+                    entry["backend_surface"] = {"rows": backend_surface["rows"]}
+                    break
+            # Check caller_args (with or without args)
+            caller_args_json = guard.get("caller_args")
+            if caller_args_json:
+                for term_json in caller_args_json.values():
+                    term = predicate_from_json(term_json)
+                    if any(
+                        isinstance(sub, EnvRef)
+                        and len(sub.path) >= 2
+                        and sub.path[0] == "self"
+                        and sub.path[1] == "backend"
+                        for sub in predicate_walk(term)
+                    ):
+                        entry["backend_surface"] = {"rows": backend_surface["rows"]}
+                        break
+                else:
+                    continue
+                break
+
+    # Assert that Entry got the attachment (via caller_args)
+    assert "backend_surface" in contracts["Entry"], "Entry should have backend_surface via caller_args"
+    assert contracts["Entry"]["backend_surface"]["rows"] == backend_surface["rows"]
+
+    # Assert that NoBackendEntry did NOT get the attachment
+    assert "backend_surface" not in contracts["NoBackendEntry"], "NoBackendEntry should not have backend_surface"
+
+
+def test_ac_17_4_n_entries_with_backend_surface_counter_exists_in_payload(
+    real_stamp: SurveyStamp,
+) -> None:
+    """T53 (spec 260909_plr-sema-move-family-increment.md §17.1.4): the
+    `n_entries_with_backend_surface` counter in the `backend_surface` payload
+    sub-object must be published. This test verifies that the counter exists
+    in the payload with no function_index (else branch, fail-closed path)."""
+    from plr_sema.derive.__main__ import build_derived_contracts_payload
+
+    payload = build_derived_contracts_payload(
+        [],  # Empty records
+        {},  # Empty index
+        real_stamp,
+        # No other arguments -- triggers the else branch
+    )
+    # With no function_index, the counter should be 0 and present
+    assert "n_entries_with_backend_surface" in payload["backend_surface"]
+    assert payload["backend_surface"]["n_entries_with_backend_surface"] == 0
+
+
+def test_real_backend_surface_attachment_matches_counter(
+    survey_records: list[SurveyRecord],
+    survey_index: dict[tuple[str, str], SurveyRecord],
+    real_stamp: SurveyStamp,
+    plr_function_index: FunctionIndex,
+) -> None:
+    """AC-17.4 measurement: verify that the published
+    `n_entries_with_backend_surface` counter in the payload matches the
+    actual count of contract entries that received the attachment."""
+    payload = build_derived_contracts_payload(
+        survey_records,
+        survey_index,
+        real_stamp,
+        function_index=plr_function_index,
+    )
+
+    contracts = payload["contracts"]
+    backend_surface = payload["backend_surface"]
+
+    # Count entries that actually have backend_surface
+    actual_count = sum(1 for entry in contracts.values() if "backend_surface" in entry)
+
+    # Assert the counter matches
+    assert backend_surface["n_entries_with_backend_surface"] == actual_count, (
+        f"Counter mismatch: published {backend_surface['n_entries_with_backend_surface']} "
+        f"but actual count is {actual_count}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -3638,3 +3807,949 @@ def test_guard_to_json_caller_args_absent_for_depth0_guard(
     assert payload["caller_args"] is None
     assert payload["caller_reachability_clear"] is None
     assert payload["caller_scope_trail"] is None
+
+
+# ---------------------------------------------------------------------------
+# T50 -- M-INH, inherited self-call resolution (spec
+# 260909_plr-sema-move-family-increment.md §17.2, AC-17.1). Synthetic
+# in-memory class trees throughout (mirrors this file's own docstring
+# convention: synthetic fixtures for tests about the MECHANIC itself).
+# ---------------------------------------------------------------------------
+
+
+def _class_nodes_from_source(source: str) -> dict[str, ast.ClassDef]:
+    tree = ast.parse(source)
+    return {n.name: n for n in ast.iter_child_nodes(tree) if isinstance(n, ast.ClassDef)}
+
+
+def _uniform_bases_index(class_nodes: dict[str, ast.ClassDef], module: str = "mod") -> ClassBasesIndex:
+    """No collisions, every class in one module -- the common case most
+    of this section's fixtures want; the collision-specific tests below
+    build their own ``class_modules_multi`` instead."""
+    return build_class_bases_index(class_nodes, {name: frozenset({module}) for name in class_nodes})
+
+
+# --- the base-name extractor's four rows (§17.2's table) -------------------
+
+
+def test_extract_base_name_four_rows() -> None:
+    src = """
+class ByName(A): pass
+class ByAttribute(mod.B): pass
+class BySubscript(Generic[T]): pass
+class RefusedCall(factory()): pass
+class RefusedStar(*bases): pass
+"""
+    classes = _class_nodes_from_source(src)
+    assert _extract_base_name(classes["ByName"].bases[0]) == "A"
+    assert _extract_base_name(classes["ByAttribute"].bases[0]) == "B"
+    assert _extract_base_name(classes["BySubscript"].bases[0]) == "Generic"
+    assert _extract_base_name(classes["RefusedCall"].bases[0]) is None
+    assert _extract_base_name(classes["RefusedStar"].bases[0]) is None
+
+
+def test_build_class_bases_index_refuses_whole_class_on_unreadable_base_expression() -> None:
+    """AC-17.1's third stub-defeating fixture: a `ClassDef` with an
+    unreadable base expression makes the WHOLE class refuse rather than
+    contributing a partial closure -- not just the one unreadable base
+    dropped silently."""
+    class_nodes = _class_nodes_from_source("class Bad(factory(), Readable):\n    def m(self): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    assert idx.bases["Bad"] is None
+    assert idx.unresolved_base_counts["Bad"] == 0  # meaningless for a refused class -- 0, not a partial count
+
+
+def test_build_class_bases_index_records_alias_incompleteness() -> None:
+    """An import-alias base yields a name absent from the whole-tree
+    index -- silent INCOMPLETENESS, not a refusal -- and T50 publishes the
+    per-class count rather than assuming zero."""
+    class_nodes = _class_nodes_from_source("class C(AliasedImport):\n    def m(self): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    assert idx.bases["C"] == ("AliasedImport",)
+    assert idx.unresolved_base_counts["C"] == 1
+    assert idx.collision_names == frozenset()
+
+
+def test_build_class_bases_index_bare_name_collision() -> None:
+    """A class name defined in more than one module is a collision --
+    the extractor's second refusal, independent of the base expression
+    shape."""
+    class_nodes = _class_nodes_from_source("class Dup:\n    def m(self): pass\n")
+    idx = build_class_bases_index(class_nodes, {"Dup": frozenset({"mod.a", "mod.b"})})
+    assert idx.collision_names == frozenset({"Dup"})
+
+
+# --- class_closure: reflexive/transitive + fail-closed refusal propagation -
+
+
+def test_class_closure_is_reflexive_and_transitive() -> None:
+    class_nodes = _class_nodes_from_source("class A: pass\nclass B(A): pass\nclass C(B): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    assert class_closure("C", class_nodes, idx) == frozenset({"A", "B", "C"})
+    assert class_closure("A", class_nodes, idx) == frozenset({"A"})
+
+
+def test_class_closure_propagates_refusal_from_an_unreadable_ancestor() -> None:
+    """§17.2's own framing: refusing the class rather than dropping the
+    one base is the whole point -- a subclass of a refused class cannot
+    licitly claim uniqueness either, since it has not seen the refused
+    ancestor's own (unknown) further bases."""
+    class_nodes = _class_nodes_from_source("class Bad(factory()):\n    def m(self): pass\nclass Child(Bad): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    assert class_closure("Bad", class_nodes, idx) is None
+    assert class_closure("Child", class_nodes, idx) is None
+
+
+def test_class_closure_refuses_on_a_collision_anywhere_in_the_chain() -> None:
+    class_nodes = _class_nodes_from_source("class Dup(Base): pass\nclass Base:\n    def m(self): pass\n")
+    idx = build_class_bases_index(class_nodes, {"Dup": frozenset({"mod"}), "Base": frozenset({"mod.a", "mod.b"})})
+    assert class_closure("Dup", class_nodes, idx) is None
+
+
+def test_class_closure_unresolved_base_contributes_itself_but_no_further_ancestors() -> None:
+    """An import alias / out-of-surface base is absent from `bases`
+    entirely -- a leaf, not a refusal. Mirrors
+    `subclass_closure_from_bases`'s own documented behaviour exactly
+    (`test_subclass_closure_unresolvable_base_contributes_nothing_extra`
+    in test_predicate.py): the DIRECT edge to the unresolved name is real
+    (`C`'s ancestor set includes it) -- what stays unguessed is that
+    name's own FURTHER ancestors, since it is not itself a key of
+    `bases_index.bases`."""
+    class_nodes = _class_nodes_from_source("class C(NotIndexed):\n    def m(self): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    assert class_closure("C", class_nodes, idx) == frozenset({"C", "NotIndexed"})
+
+
+# --- diagnose_base_resolution / resolve_via_base_closure: the four reasons -
+
+
+def test_diagnose_base_resolution_resolves_the_unique_ancestor() -> None:
+    class_nodes = _class_nodes_from_source("class A:\n    def m(self): pass\nclass C(A): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    assert diagnose_base_resolution("C", "m", class_nodes, idx) == ("A", "resolved")
+    assert resolve_via_base_closure("C", "m", class_nodes, idx) == "A"
+
+
+def test_diagnose_base_resolution_ambiguous_on_two_defining_ancestors() -> None:
+    """AC-17.1's first stub-defeating fixture: a name defined on TWO
+    classes in the base closure resolves to NEITHER, asserted positively
+    -- an implementation that takes the first base passes every other
+    fixture and fails this one."""
+    class_nodes = _class_nodes_from_source(
+        "class A:\n    def m(self): pass\nclass B:\n    def m(self): pass\nclass C(A, B): pass\n"
+    )
+    idx = _uniform_bases_index(class_nodes)
+    assert diagnose_base_resolution("C", "m", class_nodes, idx) == (None, "ambiguous")
+    assert resolve_via_base_closure("C", "m", class_nodes, idx) is None
+
+
+def test_diagnose_base_resolution_no_ancestor_defines() -> None:
+    class_nodes = _class_nodes_from_source("class A: pass\nclass C(A): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    assert diagnose_base_resolution("C", "nope", class_nodes, idx) == (None, "no_ancestor_defines")
+
+
+def test_diagnose_base_resolution_refuses_on_class_name_collision() -> None:
+    class_nodes = _class_nodes_from_source("class C(A): pass\nclass A:\n    def m(self): pass\n")
+    idx = build_class_bases_index(class_nodes, {"C": frozenset({"mod.a", "mod.b"}), "A": frozenset({"mod"})})
+    assert diagnose_base_resolution("C", "m", class_nodes, idx) == (None, "class_name_collision")
+
+
+def test_diagnose_base_resolution_refuses_when_a_base_is_outside_the_index() -> None:
+    """§17.2 condition 2: a base outside the analyzed surface (an
+    unreadable-expression refusal on the ancestor, here) leaves the gap."""
+    class_nodes = _class_nodes_from_source(
+        "class Bad(factory()):\n    def m(self): pass\nclass C(Bad):\n    pass\n"
+    )
+    idx = _uniform_bases_index(class_nodes)
+    assert diagnose_base_resolution("C", "m", class_nodes, idx) == (None, "closure_refused")
+
+
+# --- inherited_method_names: Half 1's union-of-ancestors, no ambiguity -----
+
+
+def test_inherited_method_names_is_the_union_with_no_ambiguity_refusal() -> None:
+    """Unlike `resolve_via_base_closure`, the survey's own classification
+    need is a boolean ("is this name SOME delegate"), so two ancestors
+    defining the same name is not a conflict here -- both contribute."""
+    class_nodes = _class_nodes_from_source(
+        "class A:\n    def m(self): pass\nclass B:\n    def m(self): pass\n    def n(self): pass\n"
+        "class C(A, B): pass\n"
+    )
+    idx = _uniform_bases_index(class_nodes)
+    assert inherited_method_names("C", class_nodes, idx) == frozenset({"m", "n"})
+
+
+def test_inherited_method_names_empty_when_closure_refused() -> None:
+    class_nodes = _class_nodes_from_source(
+        "class Bad(factory()):\n    def m(self): pass\nclass Child(Bad): pass\n"
+    )
+    idx = _uniform_bases_index(class_nodes)
+    assert inherited_method_names("Child", class_nodes, idx) == frozenset()
+
+
+def test_inherited_method_names_still_reports_an_ancestor_name_c_overrides() -> None:
+    """`inherited_method_names` reports every ANCESTOR's own method names,
+    with no awareness of whether `class_name` itself also defines the
+    same name -- excluding an override at the CALLER's own precedence
+    (`_BodyScanner.visit_Call`'s own-class-branch-first check, mirroring
+    `resolve()`'s class-first step) is what keeps a `self.m()` call on
+    `C` resolving to `C`'s own `m`, never to this set. This is exactly
+    the shape condition 4's override fixture needs: `Base` defines a
+    name `Derived` also overrides, and the override still wins at
+    RESOLUTION time even though this SELECTION-time set does not know
+    which body eventually gets used."""
+    class_nodes = _class_nodes_from_source(
+        "class A:\n    def m(self): pass\nclass C(A):\n    def m(self): pass\n"
+    )
+    idx = _uniform_bases_index(class_nodes)
+    assert "m" in inherited_method_names("C", class_nodes, idx)
+
+
+# --- resolve()'s third step and condition 4 (dispatch on the analyzed class)
+
+
+def test_resolve_without_m_inh_kwargs_reproduces_pre_t50_behaviour() -> None:
+    class_nodes = _class_nodes_from_source("class A:\n    def m(self): pass\nclass C(A): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    rec_c = _synthetic_record("C.foo", class_name="C", module="mod", delegates_to=("m",))
+    index = build_index([_synthetic_record("A.m", class_name="A", module="mod"), rec_c])
+    assert resolve("m", rec_c, index) is None
+    # Only with ALL THREE of class_nodes/class_modules/bases_index does the
+    # third step activate.
+    assert resolve("m", rec_c, index, class_nodes=class_nodes) is None
+    assert (
+        resolve("m", rec_c, index, class_nodes=class_nodes, class_modules={"A": "mod", "C": "mod"}, bases_index=idx)
+        == ("mod", "A.m")
+    )
+
+
+def test_resolve_third_step_refuses_on_ambiguous_base() -> None:
+    """The second half of AC-17.1's first stub-defeating fixture, at
+    `resolve()`'s own level: `LiquidHandler` has more than one base for
+    real, so this is a live condition, not a hypothetical."""
+    class_nodes = _class_nodes_from_source(
+        "class A:\n    def m(self): pass\nclass B:\n    def m(self): pass\nclass C(A, B): pass\n"
+    )
+    idx = _uniform_bases_index(class_nodes)
+    class_modules = {"A": "mod", "B": "mod", "C": "mod"}
+    rec_c = _synthetic_record("C.foo", class_name="C", module="mod", delegates_to=("m",))
+    index = build_index(
+        [
+            _synthetic_record("A.m", class_name="A", module="mod"),
+            _synthetic_record("B.m", class_name="B", module="mod"),
+            rec_c,
+        ]
+    )
+    assert resolve("m", rec_c, index, class_nodes=class_nodes, class_modules=class_modules, bases_index=idx) is None
+
+
+def test_resolve_third_step_refuses_when_candidate_key_absent_from_index() -> None:
+    """§17.2 condition 2: the unique base is found, but its own record was
+    never indexed (e.g. never surveyed) -- the gap stands."""
+    class_nodes = _class_nodes_from_source("class A:\n    def m(self): pass\nclass C(A): pass\n")
+    idx = _uniform_bases_index(class_nodes)
+    class_modules = {"A": "mod", "C": "mod"}
+    rec_c = _synthetic_record("C.foo", class_name="C", module="mod", delegates_to=("m",))
+    index = build_index([rec_c])  # A.m deliberately never indexed
+    assert resolve("m", rec_c, index, class_nodes=class_nodes, class_modules=class_modules, bases_index=idx) is None
+
+
+def test_walk_closure_condition4_dispatches_inherited_body_self_call_on_override() -> None:
+    """§17.2 condition 4 / AC-17.1's fourth stub-defeating fixture: an
+    inherited body's own `self.<n>()` call is overridden on the analyzed
+    class, asserted against a fixture where the two bodies carry
+    DIFFERENT guards (different `site.lineno`s stand in for that here) --
+    an implementation that binds the base's body passes every shape
+    fixture and fails this one."""
+    class_nodes = _class_nodes_from_source(
+        "class Base:\n    def helper(self): pass\n    def uses_helper(self): pass\n"
+        "class Derived(Base):\n    def helper(self): pass\n"
+    )
+    class_modules = {"Base": "mod", "Derived": "mod"}
+    bases_index = _uniform_bases_index(class_nodes)
+
+    rec_base_helper = _synthetic_record(
+        "Base.helper", class_name="Base", module="mod", findings=(_synthetic_finding(100),)
+    )
+    rec_base_uses = _synthetic_record(
+        "Base.uses_helper", class_name="Base", module="mod", delegates_to=("helper",)
+    )
+    rec_derived_helper = _synthetic_record(
+        "Derived.helper", class_name="Derived", module="mod", findings=(_synthetic_finding(200),)
+    )
+    rec_derived_entry = _synthetic_record(
+        "Derived.entry", class_name="Derived", module="mod", delegates_to=("uses_helper",)
+    )
+    index = build_index([rec_base_helper, rec_base_uses, rec_derived_helper, rec_derived_entry])
+
+    contract = derive_contract(
+        "mod", "Derived.entry", index,
+        class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+    )
+    site_linenos = {g.site.lineno for g in contract.guards}
+    site_qualnames = {g.site.qualname for g in contract.guards}
+    assert 200 in site_linenos
+    assert 100 not in site_linenos
+    assert "Derived.helper" in site_qualnames
+    assert "Base.helper" not in site_qualnames
+
+    # And the scoping note: a record reached the ORDINARY way (the entry
+    # point's own class) is unaffected -- Derived.entry's OWN self-calls
+    # (none here besides uses_helper, already covered above) never take
+    # the condition-4 branch, since rec.class_name == analyzed_class there.
+    resolved_keys = {
+        key
+        for _rec, key, _depth in _walk_closure(
+            ("mod", "Derived.entry"), index,
+            class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+        )
+    }
+    assert resolved_keys == {
+        ("mod", "Derived.entry"),
+        ("mod", "Base.uses_helper"),
+        ("mod", "Derived.helper"),
+    }
+
+
+def test_measure_m_inh_entry_point_impact_flags_doubling() -> None:
+    """§17.2 condition 3: the closure bound, published and checkable."""
+    class_nodes = _class_nodes_from_source(
+        "class Base:\n    def _x(self): pass\n    def h1(self): pass\n"
+        "    def h2(self): pass\n    def h3(self): pass\n"
+        "class Derived(Base):\n    def entry(self): pass\n"
+    )
+    class_modules = {"Base": "mod", "Derived": "mod"}
+    bases_index = _uniform_bases_index(class_nodes)
+    records = [
+        _synthetic_record("Derived.entry", class_name="Derived", module="mod", delegates_to=("_x",)),
+        _synthetic_record("Base._x", class_name="Base", module="mod", delegates_to=("h1", "h2", "h3")),
+        _synthetic_record("Base.h1", class_name="Base", module="mod"),
+        _synthetic_record("Base.h2", class_name="Base", module="mod"),
+        _synthetic_record("Base.h3", class_name="Base", module="mod"),
+    ]
+    index = build_index(records)
+
+    impact = measure_m_inh_entry_point_impact(
+        ("mod", "Derived.entry"), index, class_nodes, class_modules, bases_index
+    )
+    assert impact["closure_size_before"] == 1
+    assert impact["closure_size_after"] == 5
+    assert impact["doubled"] is True
+
+
+def test_measure_m_inh_entry_point_impact_not_doubled_when_growth_is_modest() -> None:
+    class_nodes = _class_nodes_from_source(
+        "class Base:\n    def _x(self): pass\nclass Derived(Base):\n    def entry(self): pass\n"
+    )
+    class_modules = {"Base": "mod", "Derived": "mod"}
+    bases_index = _uniform_bases_index(class_nodes)
+    records = [
+        _synthetic_record("Derived.entry", class_name="Derived", module="mod", delegates_to=("_x", "other")),
+        _synthetic_record("Base._x", class_name="Base", module="mod"),
+        _synthetic_record("Derived.other", class_name="Derived", module="mod"),
+    ]
+    index = build_index(records)
+    impact = measure_m_inh_entry_point_impact(
+        ("mod", "Derived.entry"), index, class_nodes, class_modules, bases_index
+    )
+    assert impact["closure_size_before"] == 2  # entry + Derived.other (via module-level/step-1, unaffected)
+    assert impact["closure_size_after"] == 3  # + Base._x
+    assert impact["doubled"] is False
+
+
+def test_compute_m_inh_selection_reports_half1_and_half2_populations_separately() -> None:
+    class_nodes = _class_nodes_from_source(
+        "class A:\n    def m(self): pass\nclass B:\n    def m(self): pass\n"
+        "class C(A, B): pass\nclass D(A): pass\n"
+    )
+    class_modules = {"A": "mod", "B": "mod", "C": "mod", "D": "mod"}
+    bases_index = _uniform_bases_index(class_nodes)
+    records = [
+        _synthetic_record("A.m", class_name="A", module="mod"),
+        _synthetic_record("B.m", class_name="B", module="mod"),
+        # Half 1 (the survey) admits "m" into C's delegates via the union
+        # rule -- no ambiguity check -- so it shows up in
+        # inherited_delegates even though Half 2 cannot uniquely resolve it.
+        _synthetic_record(
+            "C.entry", class_name="C", module="mod",
+            delegates_to=("m",), inherited_delegates=("m",),
+        ),
+        # D's closure is unambiguous (only A), so it resolves cleanly and
+        # would ALSO be found via the residual unresolved_calls channel if
+        # the survey had left it unresolved (not the common case, but the
+        # channel exists for exactly this).
+        _synthetic_record("D.entry", class_name="D", module="mod", unresolved_calls=("m",)),
+    ]
+    index = build_index(records)
+
+    selection = compute_m_inh_selection(records, index, class_nodes, class_modules, bases_index)
+    assert len(selection["half1_admitted"]) == 1
+    assert selection["half1_admitted"][0]["class"] == "C"
+    assert selection["half1_admitted"][0]["reason"] == "ambiguous"
+    assert selection["half1_ambiguous_mismatch"] == selection["half1_admitted"]
+
+    assert len(selection["newly_resolved"]) == 1
+    assert selection["newly_resolved"][0] == {
+        "class": "D", "module": "mod", "name": "m", "base": "A", "base_module": "mod",
+    }
+    assert selection["refusal_counts"]["resolved"] == 1
+
+
+# --- real-PLR pin: AC-17.1's own named assertion ---------------------------
+
+
+def test_state_updated_resolves_to_resource_with_zero_guards_real_plr(
+    survey_records: list[SurveyRecord], survey_index: dict[tuple[str, str], SurveyRecord]
+) -> None:
+    """AC-17.1, asserted by name: `_state_updated` resolves to
+    `Resource._state_updated` and contributes ZERO guards. This is the
+    fixture round 1's C8 named -- `LiquidHandler` overrides
+    `serialize_state`, so condition 4 must send `_state_updated`'s own
+    `self.serialize_state()` call to the OVERRIDE when reached through
+    `LiquidHandler`'s closure, not to `Resource`'s own (different) body.
+    """
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    bases_index = build_plr_class_bases_index(root, class_nodes)
+
+    base = resolve_via_base_closure("LiquidHandler", "_state_updated", class_nodes, bases_index)
+    assert base == "Resource"
+
+    resource_module = class_modules["Resource"]
+    state_updated_contract = derive_contract(
+        resource_module, "Resource._state_updated", survey_index,
+        class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+    )
+    assert state_updated_contract.guards == ()
+
+    pick_up_module = "pylabrobot.liquid_handling.liquid_handler"
+    pick_up_contract = derive_contract(
+        pick_up_module, "LiquidHandler.pick_up_resource", survey_index,
+        class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+    )
+    assert ("unresolved_delegate", "_state_updated") not in pick_up_contract.gaps
+    drop_contract = derive_contract(
+        pick_up_module, "LiquidHandler.drop_resource", survey_index,
+        class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+    )
+    assert ("unresolved_delegate", "_state_updated") not in drop_contract.gaps
+
+
+def test_liquid_handler_has_more_than_one_base_real_plr() -> None:
+    """§17.2's own claim, made checkable: condition 1's ambiguity refusal
+    is live at this pin, not a hypothetical."""
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    bases_index = build_plr_class_bases_index(root, class_nodes)
+    assert len(bases_index.bases["LiquidHandler"]) > 1
+
+
+def test_move_family_entry_points_do_not_double_and_add_zero_guards_real_plr(
+    survey_index: dict[tuple[str, str], SurveyRecord]
+) -> None:
+    """§17.2 condition 3, pinned: at this survey pin, `_state_updated`'s
+    own zero guards mean the move-family entry points' guard counts and
+    per-guard depth multisets are UNCHANGED even where closure size grows
+    (round 1's C11 -- the multiset is the only thing that could catch a
+    perturbation, and here it correctly reports none)."""
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    bases_index = build_plr_class_bases_index(root, class_nodes)
+    module = "pylabrobot.liquid_handling.liquid_handler"
+    for qualname in ("LiquidHandler.move_lid", "LiquidHandler.move_plate", "LiquidHandler.move_resource"):
+        impact = measure_m_inh_entry_point_impact(
+            (module, qualname), survey_index, class_nodes, class_modules, bases_index
+        )
+        assert impact["doubled"] is False
+        assert impact["guard_count_before"] == impact["guard_count_after"]
+        assert impact["depth_multiset_before"] == impact["depth_multiset_after"]
+        assert impact["closure_size_after"] >= impact["closure_size_before"]
+
+
+# ---------------------------------------------------------------------------
+# AC-17.3 (spec 260909_plr-sema-move-family-increment.md §17.4, T52): the
+# `_resource_pickup` typestate -- P5's singleton anchor, its absence rule,
+# and P6's intra-operation ordered effect/guard walk.
+# ---------------------------------------------------------------------------
+
+
+def test_singleton_anchor_selection_finds_resource_pickup_by_name_real_plr() -> None:
+    """AC-17.3: the complete anchor selection is published, with
+    `_resource_pickup` asserted PRESENT by name on `LiquidHandler`."""
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    function_index = build_plr_function_index(root)
+    anchors, candidates = compute_singleton_typestate_anchors(class_nodes, class_modules, function_index)
+    assert "_resource_pickup" in anchors.get("LiquidHandler", ())
+    (candidate,) = (c for c in candidates if c.class_name == "LiquidHandler" and c.field == "_resource_pickup")
+    assert candidate.present is True
+    assert candidate.removed_by_clause is None
+
+
+def test_singleton_anchor_absence_rule_three_fixtures() -> None:
+    """AC-17.3: three absence fixtures, not one (round 2's R2-C2). (i) a
+    synthetic `@property` whose setter does MORE than one assignment ->
+    clause 1, absent. (ii) the genuine getter/setter PAIR of one property,
+    two definitions -> clause 3's own exception, present. (iii) a THREE-
+    definition qualname -> clause 3 itself, absent -- proving the exception
+    (exactly two) does not swallow clause 3 outright."""
+    from plr_sema.derive.receiver_state import _singleton_anchor_absent
+
+    module = "synthetic.module"
+
+    # (i) clause 1.
+    tree1 = ast.parse(
+        "class C1:\n"
+        "    @property\n"
+        "    def foo(self):\n"
+        "        return self._foo\n"
+        "    @foo.setter\n"
+        "    def foo(self, value):\n"
+        "        self._log = True\n"
+        "        self._foo = value\n"
+    )
+    class1 = tree1.body[0]
+    getter1, setter1 = class1.body[0], class1.body[1]
+    fi1 = {(module, "C1.foo", getter1.lineno): getter1, (module, "C1.foo", setter1.lineno): setter1}
+    assert _singleton_anchor_absent(class1, "foo", "C1", module, {"C1": class1}, fi1) == 1
+
+    # (ii) clause 3's own exception.
+    tree2 = ast.parse(
+        "class C2:\n"
+        "    @property\n"
+        "    def foo(self):\n"
+        "        return self._foo\n"
+        "    @foo.setter\n"
+        "    def foo(self, value):\n"
+        "        self._foo = value\n"
+    )
+    class2 = tree2.body[0]
+    getter2, setter2 = class2.body[0], class2.body[1]
+    fi2 = {(module, "C2.foo", getter2.lineno): getter2, (module, "C2.foo", setter2.lineno): setter2}
+    assert _singleton_anchor_absent(class2, "foo", "C2", module, {"C2": class2}, fi2) is None
+
+    # (iii) clause 3 itself.
+    tree3 = ast.parse("class C3:\n    def foo(self):\n        pass\n")
+    class3 = tree3.body[0]
+    def3 = class3.body[0]
+    fi3 = {(module, "C3.foo", 100): def3, (module, "C3.foo", 200): def3, (module, "C3.foo", 300): def3}
+    assert _singleton_anchor_absent(class3, "foo", "C3", module, {"C3": class3}, fi3) == 3
+
+
+def test_compute_anchor_guard_states_move_family_real_plr() -> None:
+    """AC-17.3: `:2070` from `ENTRY` (nothing precedes it in the closure),
+    `:2120`/`:2147` from `HELD`, on the REAL `move_resource`/`move_lid`/
+    `move_plate` closures, with ZERO widening -- the pin-level claim
+    §17.4.3's own box makes."""
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    bases_index = build_plr_class_bases_index(root, class_nodes)
+    liquid_handler = class_nodes["LiquidHandler"]
+    for entry_name in ("pick_up_resource", "move_resource", "move_lid", "move_plate"):
+        entry_node = next(m for m in liquid_handler.body if getattr(m, "name", None) == entry_name)
+        guard_states, widened_by, _net = compute_anchor_guard_states(
+            entry_node,
+            field="_resource_pickup",
+            class_name="LiquidHandler",
+            class_nodes=class_nodes,
+            class_modules=class_modules,
+            bases_index=bases_index,
+        )
+        assert widened_by == {"condition_1": 0, "condition_2": 0, "condition_3": 0}
+        assert guard_states.get(2070) == "ENTRY"
+    move_resource_node = next(m for m in liquid_handler.body if getattr(m, "name", None) == "move_resource")
+    guard_states, _widened, net = compute_anchor_guard_states(
+        move_resource_node,
+        field="_resource_pickup",
+        class_name="LiquidHandler",
+        class_nodes=class_nodes,
+        class_modules=class_modules,
+        bases_index=bases_index,
+    )
+    assert guard_states == {2070: "ENTRY", 2120: "HELD", 2147: "HELD"}
+    assert net == "EMPTY"
+
+
+def test_derive_contract_attaches_anchor_state_to_real_guards(survey_index: dict[tuple[str, str], SurveyRecord]) -> None:
+    """AC-17.3: `derive_contract`, given `anchor_fields`, attaches
+    `anchor_state`/`anchor_field` to the three real move-family guards --
+    the SAME wiring `derive/__main__.py` uses, exercised directly rather
+    than through the whole CLI pipeline."""
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    bases_index = build_plr_class_bases_index(root, class_nodes)
+    function_index = build_plr_function_index(root)
+    module = "pylabrobot.liquid_handling.liquid_handler"
+    contract = derive_contract(
+        module, "LiquidHandler.move_resource", survey_index,
+        function_index=function_index, class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
+        anchor_fields={"LiquidHandler": ("_resource_pickup",)},
+    )
+    by_lineno = {g.site.lineno: g for g in contract.guards if g.anchor_field is not None}
+    assert by_lineno[2070].anchor_state == "ENTRY"
+    assert by_lineno[2070].anchor_field == "_resource_pickup"
+    assert by_lineno[2120].anchor_state == "HELD"
+    assert by_lineno[2147].anchor_state == "HELD"
+    assert contract.anchor_net_effects == {"_resource_pickup": "EMPTY"}
+
+
+# ---------------------------------------------------------------------------
+# AC-17.5 (spec 260909_plr-sema-move-family-increment.md S17.5.1/S17.1.4,
+# T54): M3 -- the closure-wide constant-argument map -- and the surface
+# SELECTION extension.
+# ---------------------------------------------------------------------------
+
+
+def test_find_delegate_calls_returns_every_self_call_in_source_order() -> None:
+    """`find_delegate_calls` (T54) is `_find_delegate_call`'s own
+    generalization: EVERY `self.<name>(...)` call, not just the singular
+    one clauses 1/2 admit -- `move_resource`'s own shape (two direct
+    calls to the same delegate)."""
+    K = _func_node("def K(self, x):\n    self.helper(x)\n    self.helper(x, y=1)\n")
+    calls = find_delegate_calls(K, "helper")
+    assert [c.lineno for c in calls] == [2, 3]
+
+
+def test_compute_caller_args_for_call_constants_only_skips_free_name_argument() -> None:
+    """AC-17.5 fixture (ii): a caller-side NAME (a bare `Var`, e.g. a
+    local variable or parameter) does NOT bind under M3's
+    `constants_only=True` depth-lift restriction -- S17.5.1(b)'s
+    narrowness claim, made checkable at the primitive that implements it.
+    The SAME call, unrestricted (`constants_only=False`, depth == 1's own
+    unchanged behaviour), DOES bind -- proving the restriction, and
+    nothing else, suppressed it."""
+    K = _func_node("def K(self, x):\n    self.helper(x)\n")
+    D = _func_node("def helper(self, y):\n    pass\n")
+    (call,) = find_delegate_calls(K, "helper")
+    assert compute_caller_args_for_call(K, D, call, constants_only=True) == {}
+    assert compute_caller_args_for_call(K, D, call, constants_only=False) == {
+        "y": {"node": "Var", "name": "x"}
+    }
+
+
+def test_compute_caller_args_for_call_constants_only_binds_setlit_and_self_rooted_envref() -> None:
+    """AC-17.5 fixture (iii): a `SetLit` of constants DOES bind under
+    `constants_only=True` -- it has no free names by construction (G9) --
+    and so does a self-rooted `EnvRef`; the free-named argument at the
+    SAME call site still does not."""
+    K = _func_node(
+        "def K(self, x):\n"
+        "    self.helper(x, default={'a', 'b'}, method=self.backend.foo)\n"
+    )
+    D = _func_node("def helper(self, y, default, method):\n    pass\n")
+    (call,) = find_delegate_calls(K, "helper")
+    result = compute_caller_args_for_call(K, D, call, constants_only=True)
+    assert result["default"] == {"node": "SetLit", "values": ["a", "b"]}
+    assert result["method"] == {"node": "EnvRef", "path": ["self", "backend", "foo"], "args": None}
+    assert "y" not in result
+
+
+def test_derive_contract_caller_args_sites_collects_across_whole_closure() -> None:
+    """M3's own worked shape at the `derive_contract` level (S17.5.1(a)):
+    entry `A` reaches delegate `E` through TWO different records -- `B`
+    at depth 1 and `C` at depth 2, both delegating to `E` -- and
+    `caller_args_sites` collects BOTH call sites, each computed against
+    its OWN caller (`B`'s `default={'a','b'}`, `C`'s `default={'c'}`),
+    with the free-named argument unbound at both. This is round 1's C2
+    made checkable: an implementation scanning only the entry point's own
+    body would see neither site at all."""
+    a_node = _func_node("def A(self, x):\n    self.B(x)\n")
+    b_node = _func_node(
+        "def B(self, p):\n"
+        "    self.E(p, default={'a', 'b'})\n"
+        "    self.C(p)\n"
+    )
+    c_node = _func_node("def C(self, q):\n    self.E(q, default={'c'})\n")
+    e_node = _func_node(
+        "def E(self, y, default):\n"
+        "    if y:\n"
+        "        raise ValueError('y')\n"
+    )
+    function_index = {
+        ("synthetic.module", "Foo.A", 1): a_node,
+        ("synthetic.module", "Foo.B", 1): b_node,
+        ("synthetic.module", "Foo.C", 1): c_node,
+        ("synthetic.module", "Foo.E", 1): e_node,
+    }
+    rec_a = _synthetic_record("Foo.A", class_name="Foo", delegates_to=("B",))
+    rec_b = _synthetic_record("Foo.B", class_name="Foo", delegates_to=("E", "C"))
+    rec_c = _synthetic_record("Foo.C", class_name="Foo", delegates_to=("E",))
+    rec_e = _synthetic_record("Foo.E", class_name="Foo", findings=(_synthetic_finding(3),))
+    index = build_index([rec_a, rec_b, rec_c, rec_e])
+
+    contract = derive_contract("synthetic.module", "Foo.A", index, function_index=function_index)
+
+    (guard,) = [g for g in contract.guards if g.depth >= 1]
+    sites = guard.caller_args_sites
+    assert sites is not None
+    assert len(sites) == 2
+    by_qual = {s["caller_qualname"]: s for s in sites}
+    assert set(by_qual) == {"Foo.B", "Foo.C"}
+    assert by_qual["Foo.B"]["args"]["default"] == {"node": "SetLit", "values": ["a", "b"]}
+    assert by_qual["Foo.C"]["args"]["default"] == {"node": "SetLit", "values": ["c"]}
+    assert "y" not in by_qual["Foo.B"]["args"]
+    assert "y" not in by_qual["Foo.C"]["args"]
+
+
+def test_derive_contract_caller_args_sites_declines_on_closure_unresolved_call() -> None:
+    """AC-17.5 fixture (iv): a closure containing ONE record with a
+    non-empty `unresolved_calls` makes the WHOLE closure's M3 fold
+    decline (`caller_args_sites` stays `None` for every depth >= 1 guard
+    in it), and the SAME closure with that call resolved (removed from
+    `unresolved_calls`) decides -- S17.5.1's first fail-closed condition,
+    and the mechanical form of the T50-before-T54 task ordering."""
+    a_node = _func_node("def A(self, x):\n    self.B(x)\n")
+    b_node = _func_node("def B(self, p):\n    self.D(p)\n")
+    d_node = _func_node(
+        "def D(self, y):\n"
+        "    if y:\n"
+        "        raise ValueError('y')\n"
+    )
+    function_index = {
+        ("synthetic.module", "Foo.A", 1): a_node,
+        ("synthetic.module", "Foo.B", 1): b_node,
+        ("synthetic.module", "Foo.D", 1): d_node,
+    }
+    rec_a = _synthetic_record("Foo.A", class_name="Foo", delegates_to=("B",))
+    rec_d = _synthetic_record("Foo.D", class_name="Foo", findings=(_synthetic_finding(3),))
+
+    rec_b_unresolved = _synthetic_record(
+        "Foo.B", class_name="Foo", delegates_to=("D",), unresolved_calls=("ghost",)
+    )
+    index_declines = build_index([rec_a, rec_b_unresolved, rec_d])
+    contract_declines = derive_contract("synthetic.module", "Foo.A", index_declines, function_index=function_index)
+    (guard_declines,) = [g for g in contract_declines.guards if g.depth >= 1]
+    assert guard_declines.caller_args_sites is None
+
+    rec_b_resolved = _synthetic_record("Foo.B", class_name="Foo", delegates_to=("D",))
+    index_decides = build_index([rec_a, rec_b_resolved, rec_d])
+    contract_decides = derive_contract("synthetic.module", "Foo.A", index_decides, function_index=function_index)
+    (guard_decides,) = [g for g in contract_decides.guards if g.depth >= 1]
+    assert guard_decides.caller_args_sites is not None
+    assert [s["lineno"] for s in guard_decides.caller_args_sites] == [2]
+
+
+def test_derive_contract_caller_args_sites_declines_on_closure_record_missing_k() -> None:
+    """S17.5.1's SECOND fail-closed condition, the sibling of the test
+    above: a visited closure record with no `K` -- i.e. present in the
+    survey index and therefore walked, but absent from `function_index`
+    so its AST is unavailable -- makes the WHOLE closure's M3 fold
+    decline, and the SAME closure with that record's `K` supplied
+    decides.
+
+    Without this, an incomplete site set could be folded as if it were
+    complete, which is the one way M3's superset argument could be
+    unsound: the fold's soundness rests on ranging over a SUPERSET of the
+    executed call sites, and a record whose body could not be read may
+    contain an admitted site nobody counted. Added at the sprint-133
+    close audit, which found the condition implemented correctly but
+    exercised by no test."""
+    a_node = _func_node("def A(self, x):\n    self.B(x)\n")
+    b_node = _func_node("def B(self, p):\n    self.D(p)\n")
+    d_node = _func_node(
+        "def D(self, y):\n"
+        "    if y:\n"
+        "        raise ValueError('y')\n"
+    )
+    rec_a = _synthetic_record("Foo.A", class_name="Foo", delegates_to=("B",))
+    rec_b = _synthetic_record("Foo.B", class_name="Foo", delegates_to=("D",))
+    rec_d = _synthetic_record("Foo.D", class_name="Foo", findings=(_synthetic_finding(3),))
+    index = build_index([rec_a, rec_b, rec_d])
+
+    # `Foo.B` is walked (it is in the survey index and `Foo.A` delegates to
+    # it) but its AST is absent, so the closure carries a record with no `K`.
+    function_index_missing_k = {
+        ("synthetic.module", "Foo.A", 1): a_node,
+        ("synthetic.module", "Foo.D", 1): d_node,
+    }
+    contract_declines = derive_contract(
+        "synthetic.module", "Foo.A", index, function_index=function_index_missing_k
+    )
+    (guard_declines,) = [g for g in contract_declines.guards if g.depth >= 1]
+    assert guard_declines.caller_args_sites is None
+
+    # The same closure with `Foo.B`'s `K` supplied decides.
+    function_index_complete = dict(function_index_missing_k)
+    function_index_complete[("synthetic.module", "Foo.B", 1)] = b_node
+    contract_decides = derive_contract(
+        "synthetic.module", "Foo.A", index, function_index=function_index_complete
+    )
+    (guard_decides,) = [g for g in contract_decides.guards if g.depth >= 1]
+    assert guard_decides.caller_args_sites is not None
+    assert [s["lineno"] for s in guard_decides.caller_args_sites] == [2]
+
+
+# --- real-PLR pin: AC-17.5's stub-defeater and by-value surface counters ---
+
+
+def test_ac_17_5_move_family_check_args_admitted_call_site_set_real_plr(
+    survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index,
+) -> None:
+    """AC-17.5's stub-defeating half: the admitted call-site set for
+    `_check_args` contains EXACTLY THREE entries -- `:2345`, `:2364` and
+    `:2079` -- for EVERY ONE of `move_resource`, `move_lid` and
+    `move_plate`, each with its own lineno and caller qualname. An
+    implementation that scans only the entry point's own body returns TWO
+    entries for `move_resource` and ZERO for `move_lid`/`move_plate`."""
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    bases_index = build_plr_class_bases_index(root, class_nodes)
+    module = "pylabrobot.liquid_handling.liquid_handler"
+    expected = {
+        (2345, "LiquidHandler.move_resource"),
+        (2364, "LiquidHandler.move_resource"),
+        (2079, "LiquidHandler.pick_up_resource"),
+    }
+    for entry_name in ("move_resource", "move_lid", "move_plate"):
+        contract = derive_contract(
+            module, f"LiquidHandler.{entry_name}", survey_index,
+            function_index=plr_function_index, class_nodes=class_nodes, class_modules=class_modules,
+            bases_index=bases_index,
+        )
+        check_args_guards = [g for g in contract.guards if g.site.qualname == "LiquidHandler._check_args"]
+        assert check_args_guards, f"{entry_name}: no _check_args guard inlined"
+        for guard in check_args_guards:
+            sites = guard.caller_args_sites
+            assert sites is not None, f"{entry_name}: the fold declined -- site set is None"
+            observed = {(s["lineno"], s["caller_qualname"]) for s in sites}
+            assert observed == expected, f"{entry_name} at :{guard.site.lineno}: {observed}"
+
+
+def test_ac_17_5_move_family_check_args_sites_and_383_stay_half(
+    survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index,
+) -> None:
+    """`:375` decides `F` on the move family (`LiquidHandlerChatterboxBackend
+    .pick_up_resource`/`.drop_resource` both satisfy `params <= default`
+    at every one of the three sites, so the conjunctive fold decides `F`
+    too), while `:383` stays ½ (`has_var_keyword` is `False` on both real
+    rows) -- exercised directly through `evaluate_guard` against the REAL,
+    regenerated contract table, S17.5.2's refusal made checkable."""
+    from plr_sema.check import ir
+    from plr_sema.check.predicate import evaluate_guard
+
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    bases_index = build_plr_class_bases_index(root, class_nodes)
+    function_index = plr_function_index
+    module = "pylabrobot.liquid_handling.liquid_handler"
+    anchor_fields, _ = compute_singleton_typestate_anchors(class_nodes, class_modules, function_index)
+    selected = collect_env_ref_method_names(
+        {
+            "LiquidHandler._check_args": {
+                "guards": [
+                    {
+                        "predicate": {"node": "TRUE"},
+                        "caller_args_sites": [
+                            {"args": {"method": {"node": "EnvRef", "path": ["self", "backend", "pick_up_resource"], "args": None}}},
+                            {"args": {"method": {"node": "EnvRef", "path": ["self", "backend", "drop_resource"], "args": None}}},
+                        ],
+                    }
+                ]
+            }
+        }
+    )
+    raw_rows, _n_cand, _n_absent = build_backend_surface(function_index, selected)
+    rows = {key: backend_surface_entry_to_json(e) for key, e in raw_rows.items()}
+    env = frozenset({'obs:backend_class="LiquidHandlerChatterboxBackend"'})
+    for entry_name in ("move_resource", "move_lid", "move_plate"):
+        contract = derive_contract(
+            module, f"LiquidHandler.{entry_name}", survey_index,
+            function_index=function_index, class_nodes=class_nodes, class_modules=class_modules,
+            bases_index=bases_index, anchor_fields=anchor_fields,
+        )
+        contract_json = {
+            "guards": [_guard_to_json(g) for g in contract.guards],
+            "backend_surface": {"rows": rows},
+        }
+        guard_375 = next(g for g in contract_json["guards"] if g["site"]["lineno"] == 375)
+        guard_383 = next(g for g in contract_json["guards"] if g["site"]["lineno"] == 383)
+        result_375 = evaluate_guard(guard_375, ir.Call(receiver=0, receiver_type="LiquidHandler", method=entry_name, kwargs={}), contract_json, {}, env=env)
+        result_383 = evaluate_guard(guard_383, ir.Call(receiver=0, receiver_type="LiquidHandler", method=entry_name, kwargs={}), contract_json, {}, env=env)
+        assert result_375.verdict == "safe", f"{entry_name} :375 -> {result_375}"
+        assert result_383.verdict == "unknown", f"{entry_name} :383 -> {result_383}"
+        assert result_383.reason == "guard_env_dependent"
+
+
+def test_ac_17_5_surface_counters_by_value_and_drop_resource_row(
+    survey_records: list[SurveyRecord], survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index,
+) -> None:
+    """AC-17.5 (vii)/(vi): the three row-level counters asserted BY VALUE
+    -- `n_surface_candidates` 172, `n_surface_absent_by_c15` 73,
+    `n_surface_rows` 99 (from 160/71/89), with the invariant 172 - 73 = 99
+    -- and `LiquidHandlerChatterboxBackend.drop_resource` present in the
+    `rows` key list by name, `params` exactly `["drop"]`,
+    `has_var_keyword` exactly `False`. Derived off `pick_up_resource`'s
+    measured twin (S17.1.4); if this diverges it is recorded in S17.14
+    against this criterion, per the row's own instruction."""
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    bases_index = build_plr_class_bases_index(root, class_nodes)
+    stamp = survey_stamp()
+    payload = build_derived_contracts_payload(
+        survey_records, survey_index, stamp,
+        function_index=plr_function_index,
+        minh_class_nodes=class_nodes, minh_class_modules=class_modules, minh_bases_index=bases_index,
+    )
+    bs = payload["backend_surface"]
+    assert bs["n_surface_candidates"] == 172
+    assert bs["n_surface_absent_by_c15"] == 73
+    assert bs["n_surface_rows"] == 99
+    assert bs["n_surface_candidates"] - bs["n_surface_absent_by_c15"] == bs["n_surface_rows"]
+    row = bs["rows"]["LiquidHandlerChatterboxBackend.drop_resource"]
+    assert row["params"] == ["drop"]
+    assert row["has_var_keyword"] is False
+
+
+def test_ac_17_5_n_entries_with_backend_surface_moves_and_lists_move_family_by_name(
+    survey_records: list[SurveyRecord], survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index,
+) -> None:
+    """AC-17.5 fixture (v): `n_entries_with_backend_surface` MOVES once
+    T54's selection extension (`collect_env_ref_method_names` scanning
+    `caller_args_sites`) and attachment extension (the attachment filter
+    scanning `caller_args_sites`) are BOTH live -- T53 alone left the
+    move family entirely unattached (0 of the 13 keys were move-family),
+    and T54 attaches all three."""
+    root = default_plr_pkg_root()
+    class_nodes, class_modules = build_plr_class_index(root)
+    bases_index = build_plr_class_bases_index(root, class_nodes)
+    stamp = survey_stamp()
+    payload = build_derived_contracts_payload(
+        survey_records, survey_index, stamp,
+        function_index=plr_function_index,
+        minh_class_nodes=class_nodes, minh_class_modules=class_modules, minh_bases_index=bases_index,
+    )
+    bs = payload["backend_surface"]
+    entries_with_surface = {
+        key for key, entry in payload["contracts"].items() if "backend_surface" in entry
+    }
+    assert bs["n_entries_with_backend_surface"] == len(entries_with_surface)
+    for move_key in ("LiquidHandler.move_resource", "LiquidHandler.move_lid", "LiquidHandler.move_plate"):
+        assert move_key in entries_with_surface, f"{move_key} missing from the attached set"
+
+
+def test_ac_17_5_no_backend_method_name_literal_in_t54_change() -> None:
+    """AC-17.5 (viii)'s own grep: no backend method name (`pick_up_
+    resource`, `drop_resource`, etc.) occurs as a literal `ast.Constant`
+    string anywhere in the modules T54 touches -- the selection/
+    attachment extensions and M3 itself are generic over PLR's own
+    function index, never a hand-typed method-name table. This is what
+    makes R-CONST's `n_resolved_by_rule` staying unchanged a structural
+    fact rather than a hope: R-CONST's own resolution path
+    (`ctx.backend_surface`, keyed off the OBSERVED backend_class/method)
+    is untouched by every string this scan would catch."""
+    scan_modules = (
+        REPO_ROOT / "plr-sema" / "src" / "plr_sema" / "derive" / "__init__.py",
+        REPO_ROOT / "plr-sema" / "src" / "plr_sema" / "derive" / "receiver_state.py",
+        REPO_ROOT / "plr-sema" / "src" / "plr_sema" / "derive" / "__main__.py",
+        REPO_ROOT / "plr-sema" / "src" / "plr_sema" / "derive" / "bindings.py",
+        REPO_ROOT / "plr-sema" / "src" / "plr_sema" / "check" / "predicate.py",
+    )
+    forbidden = frozenset({
+        "pick_up_resource", "drop_resource", "move_resource", "move_lid", "move_plate",
+    })
+    offenders: list[str] = []
+    for path in scan_modules:
+        source = path.read_text(encoding="utf-8")
+        offenders.extend(_scan_volume_forbidden_literals(source, str(path), forbidden))
+    assert offenders == [], f"hand-typed move-family method name found: {offenders}"

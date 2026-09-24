@@ -54,6 +54,14 @@ __all__ = [
     "join_channel_state",
     "join_walk_states",
     "disabled_receivers",
+    # 260909 (spec 260909_plr-sema-move-family-increment.md §17.4, T52,
+    # D7 unit 12): the `_resource_pickup` typestate -- a second, channel-free
+    # lattice sharing `atom_truth`/`_finding_for_atom` with the tip family
+    # above (§17.4.0 decision 6).
+    "PickupState",
+    "join_pickup",
+    "AnchorWalk",
+    "evaluate_anchor_call",
 ]
 
 
@@ -77,6 +85,39 @@ def join_tip(a: TipState, b: TipState) -> TipState:
     .join`'s obligation order (§10.1.2).
     """
     return a if a is b else TipState.TOP
+
+
+# ---------------------------------------------------------------------------
+# §17.4.1 (spec 260909_plr-sema-move-family-increment.md, T52): the
+# `_resource_pickup` typestate's own lattice -- two states and a top, no
+# channel dimension (one `PickupState` per RECEIVER, never per channel).
+# ---------------------------------------------------------------------------
+
+
+class PickupState(Enum):
+    EMPTY = "EMPTY"
+    HELD = "HELD"
+    TOP = "top"
+
+
+def join_pickup(a: PickupState, b: PickupState) -> PickupState:
+    """§17.4.1's join: `EMPTY up EMPTY = EMPTY`, `HELD up HELD = HELD`,
+    everything else is `TOP` -- `join_tip`'s own shape, over the other
+    lattice."""
+    return a if a is b else PickupState.TOP
+
+
+#: §17.4.0 decision 6: the "two-states-and-a-top protocol" both lattices
+#: satisfy -- `atom_truth` (below) is expressed against these two sets
+#: rather than against either enum's member names directly, so it serves
+#: BOTH lattices verbatim, adding no new production (`_measure_hm25`'s own
+#: `productions` tuple stays at 3 for exactly this reason -- see
+#: `atom_truth`'s own docstring).
+_TOP_MEMBERS: frozenset[Any] = frozenset({TipState.TOP, PickupState.TOP})
+#: The member each lattice's `bool_view`/`null_check(is_none=False)`
+#: production reads as TRUE: `HAS_TIP` for the tip family, `HELD` for the
+#: singleton anchor.
+_POSITIVE_MEMBERS: frozenset[Any] = frozenset({TipState.HAS_TIP, PickupState.HELD})
 
 
 def fold_channels(channels: tuple[int, ...] | None, state_of: Any) -> TipState:
@@ -439,23 +480,45 @@ def parse_bridge_atom(condition: str | None, *, bool_view_attr: str, state_field
     )
 
 
-def atom_truth(atom: _Atom, s: TipState) -> str:
-    """§10.3.2's truth table. Returns `"T"`, `"F"`, or `"half"`."""
-    if s is TipState.TOP:
+def atom_truth(atom: _Atom, s: "TipState | PickupState") -> str:
+    """§10.3.2/§17.4.1's shared truth table, GENERALISED over both lattices
+    (§17.4.0 decision 6, D7 unit 12): the same three productions as before
+    -- `bool_view`, `null_check(is_none=True)`, `null_check(is_none=False)`
+    -- now expressed against `_TOP_MEMBERS`/`_POSITIVE_MEMBERS` rather than
+    against `TipState`'s own member names directly, so a SECOND lattice
+    (`PickupState`) can reuse this function verbatim, adding NO new
+    production. `_measure_hm25`'s own `productions` tuple stays at 3 for
+    exactly this reason -- a duplicated `atom_truth` would count as two or
+    three further productions and trip T52's own STOP contingency.
+    Returns `"T"`, `"F"`, or `"half"`.
+    """
+    if s in _TOP_MEMBERS:
         return "half"
+    is_positive = s in _POSITIVE_MEMBERS
     kind, is_none = atom
     if kind == "bool_view":
-        return "T" if s is TipState.HAS_TIP else "F"
+        return "T" if is_positive else "F"
     # null_check
     if is_none:
-        return "T" if s is TipState.NO_TIP else "F"
-    return "T" if s is TipState.HAS_TIP else "F"
+        return "T" if not is_positive else "F"
+    return "T" if is_positive else "F"
 
 
-def _finding_for_atom(operation_id: str, guard_json: dict[str, Any], atom: _Atom, s: TipState) -> Finding:
+def _finding_for_atom(
+    operation_id: str, guard_json: dict[str, Any], atom: _Atom, s: "TipState | PickupState", *, reason: str = "channel_state_unknown"
+) -> Finding:
     """§10.3.3's fires -> Finding table. `guard.kind == "raise_guard"` is a
     precondition of calling this (checked by the caller, §10.3.1 criterion
     1) -- `fires` is exactly the atom's truth value.
+
+    `reason` (§17.4.0's parametrised line, D7 unit 12): the reason attached
+    to the ½ branch's `UNKNOWN` finding -- `"channel_state_unknown"` (the
+    default, unchanged for every existing tip-family call site) or
+    `"guard_env_dependent"` (`evaluate_anchor_call`'s own, §17.6's reason
+    table) for the singleton anchor. This is the ONE line §17.4.0 says this
+    increment changes in this function; `truth == "T"` still returns
+    `WILL_FAIL` directly, with no `depth` argument and no call to
+    `guard_is_unconditional` -- unchanged.
     """
     truth = atom_truth(atom, s)
     site_json = guard_json.get("site")
@@ -467,6 +530,21 @@ def _finding_for_atom(operation_id: str, guard_json: dict[str, Any], atom: _Atom
         )
     if truth == "F":
         return Finding(verdict=Verdict.SAFE, operation_id=operation_id, category="", plr_site=site, reason="", detail=detail)
+    # §3.3's closure check requires every `Finding(..., reason=...)` site to
+    # resolve to a vocabulary member SYNTACTICALLY -- a bare `reason=reason`
+    # (the parameter) would be unresolvable, and routing it through
+    # `vocabulary_reason(reason)` (the one blessed DYNAMIC form, §13.3)
+    # would make this the ONLY construction site for "channel_state_unknown"
+    # go dynamic, breaking the REVERSE closure check (every vocabulary
+    # member must be reached by >=1 STATIC literal site). Dispatching on
+    # the two known values keeps BOTH as their own literal `Finding(...)`
+    # call, satisfying both directions while still letting the caller
+    # parametrise which one fires -- the one line §17.4.0 says this
+    # increment changes.
+    if reason == "guard_env_dependent":
+        return Finding(
+            verdict=Verdict.UNKNOWN, operation_id=operation_id, category="", plr_site=site, reason="guard_env_dependent", detail=detail
+        )
     return Finding(
         verdict=Verdict.UNKNOWN, operation_id=operation_id, category="", plr_site=site, reason="channel_state_unknown", detail=detail
     )
@@ -648,5 +726,149 @@ def evaluate_call(
     entry_reset = receiver_state.get("entry_reset")
     if entry_reset is not None and call.method == entry_reset.get("method"):
         walk.reset(call.receiver, _POST_TO_TIPSTATE.get(entry_reset.get("post"), TipState.TOP))
+
+    return tuple(findings), frozenset(consumed)
+
+
+# ---------------------------------------------------------------------------
+# §17.4 (spec 260909_plr-sema-move-family-increment.md, T52): the
+# `_resource_pickup` typestate -- §17.4.0's new, channel-free evaluator
+# entry point (`evaluate_anchor_call`) and its own per-receiver walk
+# (`AnchorWalk`).
+# ---------------------------------------------------------------------------
+
+
+class AnchorWalk:
+    """§17.4.0 decision 5: ONE `PickupState` per `(receiver slot, anchor
+    field)` pair -- `TipWalk`'s own manner (`TipWalk` above), but with no
+    channel dimension at all: a singleton anchor has no channel set to be
+    exact or inexact about. Keyed on the FIELD as well as the receiver
+    (not receiver alone) because one receiver class can carry more than
+    one independent anchor (`ReceiverState.anchor_fields`'s own docstring
+    -- measured, `LiquidHandler` carries two); a bare per-receiver map
+    would silently conflate two unrelated fields' states on the same
+    instance. A pair never seen defaults to `PickupState.TOP` (§17.4.3
+    condition 4: "the initial state is TOP unless the graph supplies it"),
+    read lazily rather than pre-seeded.
+    """
+
+    def __init__(self) -> None:
+        self._states: dict[tuple[int, str], PickupState] = {}
+
+    def state(self, slot: int, field: str) -> PickupState:
+        return self._states.get((slot, field), PickupState.TOP)
+
+    def apply(self, slot: int, field: str, effect: PickupState) -> None:
+        self._states[(slot, field)] = effect
+
+    def widen(self, slot: int, field: str) -> None:
+        self._states[(slot, field)] = PickupState.TOP
+
+
+#: §17.4.3's `"EMPTY"`/`"HELD"`/`"TOP"` wire values -> `PickupState`. Built
+#: from `PickupState`'s own member values, same discipline
+#: `_POST_TO_TIPSTATE` above uses (never a hand-typed literal comparison at
+#: the call site) -- a stale/unrecognised value degrades to `TOP`,
+#: fail-closed.
+_ANCHOR_EFFECT_TO_STATE: dict[str, PickupState] = {s.value: s for s in (PickupState.EMPTY, PickupState.HELD)}
+
+
+def evaluate_anchor_call(
+    operation_id: str,
+    call: ir.Call,
+    contract: dict[str, Any],
+    receiver_state: dict[str, Any] | None,
+    walk: AnchorWalk,
+) -> tuple[tuple[Finding, ...], frozenset[int]]:
+    """§17.4.0's seven closed decisions: the NEW, channel-free evaluator
+    entry point for a singleton typestate anchor. A sibling of
+    :func:`evaluate_call` (decision 1), same `(findings, consumed)` return
+    shape, so `plr_sema.check` consumes it through the SAME protocol --
+    `_evaluate_guards_for_call` skips any consumed index unconditionally.
+    Runs BEFORE `evaluate_call`'s two loops for the SAME CALL (decision 2);
+    the caller unions this function's `consumed` with `evaluate_call`'s own
+    -- anchor and channel indices are disjoint by construction (a guard
+    matching `self.<channel_attr>[<name>]` cannot also match a bare-`self`
+    anchor field), so no precedence rule is needed.
+
+    Unlike `evaluate_call`, there is NO `channels is not None` gate
+    (decision 3) -- a singleton anchor has no channel set to be exact or
+    inexact about, and gating on one would make the mechanism unreachable
+    on every `move_*` operation.
+
+    `receiver_state` supplies `"anchor_fields"` (`ReceiverState.anchor_fields`
+    -- a receiver class may carry more than one independent singleton
+    anchor, that dataclass's own docstring). `None`, or a `receiver_state`
+    with no (or an empty) `anchor_fields`, degrades to `((), frozenset())`
+    -- no involvement at all, the same E5 degrade `evaluate_call` uses.
+    `poisoned` (E4 condition 4's tip-channel-disabler concept) has no
+    analogue here and is deliberately not a parameter.
+    """
+    anchor_fields = tuple((receiver_state or {}).get("anchor_fields", ()))
+    if not anchor_fields:
+        return (), frozenset()
+
+    state_fields = frozenset(anchor_fields)
+    findings: list[Finding] = []
+    consumed: set[int] = set()
+
+    for idx, guard in enumerate(contract.get("guards", ())):
+        if guard.get("kind") != "raise_guard":
+            continue
+        # Decision 4: `_parse_atom` reused UNCHANGED, with `parse_bridge_atom`'s
+        # own bare-`self` `base_ok` and an EMPTY `bool_view_attr` -- which can
+        # never equal an `ast.Attribute.attr`, so the bool-view branch is dead
+        # by construction and the only reachable atom is `_null_check`'s. No
+        # third matcher function is added.
+        atom = _parse_atom(
+            guard.get("condition"),
+            bool_view_attr="",
+            state_fields=state_fields,
+            base_ok=lambda base: isinstance(base, ast.Name) and base.id == "self",
+        )
+        if atom is None:
+            continue
+        consumed.add(idx)
+        # §17.4.3's ordering: the guard's own derived `anchor_state`
+        # (`plr_sema.derive.receiver_state.compute_anchor_guard_states`,
+        # build time) is this position's pre-state -- a concrete
+        # "EMPTY"/"HELD"/"TOP" constant, or the sentinel "ENTRY"/absent
+        # meaning "read the walk's own inter-operation carry for this
+        # receiver AND field" (§17.4.3 condition 4). `anchor_field`
+        # (published beside `anchor_state`) says WHICH of this receiver's
+        # possibly-several anchors this specific guard is about.
+        guard_field = guard.get("anchor_field")
+        anchor_state = guard.get("anchor_state")
+        if guard_field is None:
+            s: PickupState = PickupState.TOP
+        elif anchor_state in (None, "ENTRY"):
+            s = walk.state(call.receiver, guard_field)
+        elif anchor_state == "EMPTY":
+            s = PickupState.EMPTY
+        elif anchor_state == "HELD":
+            s = PickupState.HELD
+        else:
+            s = PickupState.TOP
+        # The ½ branch carries `guard_env_dependent` for this anchor, NOT
+        # the tip family's `channel_state_unknown` (§17.6's reason table) --
+        # the ONE line `_finding_for_atom` this increment parametrises.
+        findings.append(_finding_for_atom(operation_id, guard, atom, s, reason="guard_env_dependent"))
+
+    # The transfer function: EACH anchor field's own net effect
+    # (`anchor_net_effects`, `DerivedContract`'s own docstring) is applied
+    # to the walk AFTER this call's own guards are evaluated against the
+    # pre-state -- the same E1/"after guards" ordering `_apply_transfer`
+    # uses for the tip family. A field absent from `anchor_net_effects`
+    # never appears in this closure at all (E3's own no-bridge no-op) and
+    # is left untouched.
+    net_effects = contract.get("anchor_net_effects") or {}
+    for field_name in anchor_fields:
+        net = net_effects.get(field_name)
+        if net is None:
+            continue
+        if net in _ANCHOR_EFFECT_TO_STATE:
+            walk.apply(call.receiver, field_name, _ANCHOR_EFFECT_TO_STATE[net])
+        else:
+            walk.widen(call.receiver, field_name)
 
     return tuple(findings), frozenset(consumed)

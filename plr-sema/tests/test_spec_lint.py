@@ -36,6 +36,7 @@ SPEC_INCREMENT_4 = REPO_ROOT / ".praxia" / "docs" / "specs" / "260903_plr-sema-f
 SPEC_INCREMENT_5 = REPO_ROOT / ".praxia" / "docs" / "specs" / "260903_plr-sema-volume-increment.md"
 SPEC_INCREMENT_6 = REPO_ROOT / ".praxia" / "docs" / "specs" / "260904_plr-sema-predicate-increment.md"
 SPEC_INCREMENT_7 = REPO_ROOT / ".praxia" / "docs" / "specs" / "260909_plr-sema-observation-increment.md"
+SPEC_INCREMENT_8 = REPO_ROOT / ".praxia" / "docs" / "specs" / "260909_plr-sema-move-family-increment.md"
 REGISTRY = PKG_ROOT / "src" / "plr_sema" / "_hand_maintained.py"
 
 
@@ -222,6 +223,7 @@ def test_crossref_lint_reports_registry_row_missing_from_inventory(tmp_path: Pat
         pytest.param(SPEC_INCREMENT_5, id="increment-5-volume"),
         pytest.param(SPEC_INCREMENT_6, id="increment-6-predicates"),
         pytest.param(SPEC_INCREMENT_7, id="increment-7-observation"),
+        pytest.param(SPEC_INCREMENT_8, id="increment-8-move-family"),
     ],
 )
 def test_live_spec_has_no_failing_citations(spec_path: Path) -> None:
@@ -247,6 +249,7 @@ def test_live_spec_ac_hm_crossrefs_reconcile() -> None:
         pytest.param(SPEC_INCREMENT_5, id="increment-5-volume"),
         pytest.param(SPEC_INCREMENT_6, id="increment-6-predicates"),
         pytest.param(SPEC_INCREMENT_7, id="increment-7-observation"),
+        pytest.param(SPEC_INCREMENT_8, id="increment-8-move-family"),
     ],
 )
 def test_increment_specs_ac_gating_violations(spec_path: Path) -> None:

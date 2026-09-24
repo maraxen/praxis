@@ -13,6 +13,7 @@ from plr_sema.check.predicate import (
     GuardResult,
     evaluate_guard,
     evaluate_predicate,
+    evaluate_term,
     subclass_closure_from_bases,
 )
 from plr_sema.derive import predicate_ast as pa
@@ -646,3 +647,115 @@ def test_guard_without_a_predicate_key_degrades_to_the_pre_increment_blanket_rea
     del guard["predicate"]
     result = evaluate_guard(guard, _call(), {}, {})
     assert result == GuardResult(verdict="unknown", reason="guard_predicate_unparsed")
+
+
+# ---------------------------------------------------------------------------
+# AC-17.2 (spec 260909_plr-sema-move-family-increment.md §17.1.2/§17.3,
+# T51): R-ARM and the amended predicate-position clause.
+# ---------------------------------------------------------------------------
+
+
+def _arm_slots_env(arm_slots: "list[int] | None" = None) -> "frozenset[str]":
+    if arm_slots is None:
+        return frozenset()
+    return frozenset({f"obs:arm_slots={list(arm_slots)}".replace(" ", "")})
+
+
+def test_r_arm_truthiness_trichotomy() -> None:
+    """The amended predicate-position clause (§17.1.2): `T` iff a non-empty
+    observed `arm_slots`, `F` iff EMPTY -- not ½ by omission, the whole
+    point of §17.3's stability precondition -- and ½ when `arm_slots` was
+    never observed at all."""
+    guard = _self_entry_guard("self._resource_pickups")
+
+    # `k_reachability_clear=True`: depth-0/empty-effective-trail's own
+    # positive E-UNCOND branch (AC-15.6) needs this supplied directly --
+    # `check/` has no wire signal of its own for the K-body fact, exactly
+    # as `test_uncond_5_depth_0_empty_trail_k_with_no_earlier_control_flow_
+    # yields_will_fail` above already establishes.
+    nonempty = evaluate_guard(guard, _call(), {}, {}, env=_arm_slots_env([0, 1]), k_reachability_clear=True)
+    assert nonempty.verdict == "will_fail"
+
+    empty = evaluate_guard(guard, _call(), {}, {}, env=_arm_slots_env([]), k_reachability_clear=True)
+    assert empty.verdict == "safe"
+
+    unobserved = evaluate_guard(guard, _call(), {}, {}, env=_arm_slots_env(None), k_reachability_clear=True)
+    assert unobserved.verdict == "unknown"
+    assert unobserved.reason == "guard_env_dependent"
+
+
+def test_r_arm_kleene_and_needs_only_the_second_conjunct() -> None:
+    """AC-17.2 stub-defeating half (i): `self.setup_finished and not
+    self._resource_pickups` -- with `setup_finished` UNOBSERVED (½) and
+    `arm_slots` non-empty, `Not(EnvRef)` is `F`, and Kleene `And` decides
+    `F` on one `F` conjunct regardless of the other -- `SAFE`, never ½. An
+    implementation that requires BOTH conjuncts to resolve fails this."""
+    guard = _self_entry_guard("self.setup_finished and not self._resource_pickups")
+    result = evaluate_guard(guard, _call(), {}, {}, env=_arm_slots_env([0]))
+    assert result.verdict == "safe"
+
+
+def test_r_arm_self_head_shape_refusal_kept_even_when_observed() -> None:
+    """AC-17.2 stub-defeating half (ii): `self.head` stays ½ in predicate
+    position BY SHAPE, unconditionally -- even with a fully observed,
+    non-empty `head_channels` in `env`. The kept refusal, made checkable."""
+    guard = _self_entry_guard("self.head")
+    env = frozenset({
+        'obs:backend_class="LiquidHandlerChatterboxBackend"',
+        "obs:num_channels=8",
+        "obs:head_channels=[0,1,2,3,4,5,6,7]",
+    })
+    result = evaluate_guard(guard, _call(), {}, {}, env=env)
+    assert result.verdict == "unknown"
+    assert result.reason == "guard_env_dependent"
+
+
+def test_r_arm_non_top_seq_under_a_non_completeness_rule_stays_half() -> None:
+    """AC-17.2 stub-defeating half (iii): a `_resolve_env_ref`-shaped
+    `EnvRef` resolving to a non-`Top` `ir.Seq` under a `rule` that has NOT
+    declared completeness must stay ½ here -- what makes the amended
+    clause narrower than a bare `isinstance(value, ir.Seq)` test. Exercised
+    by monkeypatching `_resolve_env_ref` itself, since every SHIPPED rule
+    that returns a `Seq` (R-HEAD, R-ARM) already declares completeness --
+    there is no real shape today that reaches this branch, which is
+    exactly why the clause must be keyed on the rule rather than the type."""
+    import plr_sema.check.predicate as predicate_mod
+
+    node = pa.EnvRef(("self", "_resource_pickups"), None)
+    ctx = predicate_mod._Ctx(
+        call=_call(), resources_by_slot={}, param_defaults={}, bindings_by_name={}, depth=0,
+        channel_kwarg=None, channels=None, env=frozenset(), class_hierarchy=None,
+    )
+    original = predicate_mod._resolve_env_ref
+    try:
+        predicate_mod._resolve_env_ref = lambda n, c: (ir.Seq((ir.Lit(0),)), "R-NOT-COMPLETE")
+        assert evaluate_predicate(node, ctx) is None
+    finally:
+        predicate_mod._resolve_env_ref = original
+
+
+def test_r_arm_term_position_behaves_as_r_head_seq_gains_no_membership_case() -> None:
+    """§17.3's term-position claim: `self._resource_pickups` resolves to
+    the SAME `ir.Seq` shape R-HEAD's own `self.head` does, and a `not in`
+    membership `Cmp` against it stays the identical LOWER-BOUND ½ R-HEAD's
+    own membership case is -- R-ARM gains no membership case of its own."""
+    from plr_sema.check.predicate import _Ctx, _resolve_env_ref
+
+    ctx = _Ctx(
+        call=_call(), resources_by_slot={}, param_defaults={}, bindings_by_name={}, depth=0,
+        channel_kwarg=None, channels=None, env=_arm_slots_env([0, 1]), class_hierarchy=None,
+    )
+    node = pa.EnvRef(("self", "_resource_pickups"), None)
+    value, rule = _resolve_env_ref(node, ctx)
+    assert rule == "R-ARM"
+    assert isinstance(value, ir.Seq)
+    assert value.items == (ir.Lit(0), ir.Lit(1))
+
+    # term position: evaluate_term returns the same Seq, unchanged.
+    assert evaluate_term(node, ctx) == value
+
+    # no membership case: `99 not in self._resource_pickups` is NOT the
+    # R-HEAD-shaped Cmp §16.5.4 reopens (that shape checks SYNTACTICALLY
+    # for `("self", "head")`), so it stays the ordinary lower-bound ½.
+    cmp_node = pa.Cmp(left=pa.Lit(99), op="not in", right=node)
+    assert evaluate_predicate(cmp_node, ctx) is None

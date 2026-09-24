@@ -387,14 +387,15 @@ def _has_tail(ref: str) -> bool:
 
 
 def capture_observation(setup: SetupHandle) -> dict[str, Any]:
-    """§16.2.1 (spec 260909, observation increment, T40): the four-field
+    """§16.2.1 (spec 260909, observation increment, T40), extended by
+    §17.3 (spec 260909, move-family increment, T51): the five-field
     observation record -- ``backend_class``, ``num_channels``,
-    ``head_channels``, ``deck_resource_names`` -- read off the LIVE
-    ``setup`` at whatever instant the caller invokes this function.  This
-    function does no fail-closed handling of its own: it either returns a
-    complete record or raises, and the ONE capture-point guard (spec
-    §16.2.1's normative box; ``training/verify/verifier.py`` and
-    ``plr-sema/eval/region_oracle.py``, both after ``await
+    ``head_channels``, ``deck_resource_names``, ``arm_slots`` -- read off
+    the LIVE ``setup`` at whatever instant the caller invokes this
+    function.  This function does no fail-closed handling of its own: it
+    either returns a complete record or raises, and the ONE capture-point
+    guard (spec §16.2.1's normative box; ``training/verify/verifier.py``
+    and ``plr-sema/eval/region_oracle.py``, both after ``await
     setup.machine.setup()`` and before real execution) is the caller's
     responsibility to wrap in ``try/except -> None``, never this helper's.
 
@@ -405,6 +406,15 @@ def capture_observation(setup: SetupHandle) -> dict[str, Any]:
     -- populated only after ``machine.setup()`` runs
     (``external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:
     187-197``), which is why the capture point is defined to sit after it.
+    ``arm_slots`` is the SORTED key set of ``machine._resource_pickups``
+    (§17.3's R-ARM) -- read at the SAME single capture point, no second
+    one. §17.3's stability precondition is what licenses treating that key
+    set as fixed for the rest of the program from here on: ``setup``
+    rebuilds the dict wholesale
+    (``external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:
+    212``), which is why the capture point sitting after it matters here
+    too, and the setter for a pickup only ever writes a key that rebuild
+    already created.
     """
     machine = setup.machine
     return {
@@ -412,6 +422,7 @@ def capture_observation(setup: SetupHandle) -> dict[str, Any]:
         "num_channels": machine.backend.num_channels,
         "head_channels": sorted(machine.head),
         "deck_resource_names": setup.deck_resource_names(),
+        "arm_slots": sorted(machine._resource_pickups),
     }
 
 

@@ -70,6 +70,18 @@ from plr_survey_common import (
     resolved_call_name,
 )
 
+# (260909, T50, spec 260909_plr-sema-move-family-increment.md §17.2, M-INH
+# Half 1): the ONE shared, generic (no PLR knowledge) base-name-extractor
+# and fail-closed-closure implementation -- `plr_sema.derive.receiver_state
+# .build_plr_class_bases_index` (the derive package's own CLI glue, T50
+# Half 2) calls the SAME `build_class_bases_index`/`inherited_method_names`
+# off a DIFFERENT whole-tree scan. Sharing this one implementation, rather
+# than each half growing its own copy of the extractor's closed rule, is
+# what §17.2's own "both halves must land together" box requires -- two
+# copies could silently drift on which self.<name>() calls count as a
+# delegate.
+from plr_sema.derive import build_class_bases_index, inherited_method_names
+
 DEFAULT_OUT = PROJECT_ROOT / "training" / "verify" / "data" / "plr_preconditions.json"
 
 
@@ -126,6 +138,18 @@ class FunctionPreconditions:
     #: module-level function (see module docstring's scope note) -- named
     #: so a human can decide whether to chase it by hand.
     unresolved_calls: list[str] = field(default_factory=list)
+    #: (260909, T50, spec §17.2, M-INH Half 1) The SUBSET of `delegates_to`
+    #: admitted ONLY because this class's transitive base closure -- not
+    #: this class's own method set -- defines the name. Strictly additive
+    #: and strictly a subset of `delegates_to` (never adds a name
+    #: `delegates_to` doesn't already carry): a `self.<name>()` call whose
+    #: name is defined BOTH on this class and on an ancestor resolves via
+    #: the ordinary own-class branch and never lands here, exactly
+    #: matching `resolve()`'s own class-first precedence in
+    #: `plr_sema.derive`. Published so the inheritance-admitted selection
+    #: is inspectable per function and its whole-surface count is
+    #: publishable without re-deriving it from `delegates_to` alone.
+    inherited_delegates: list[str] = field(default_factory=list)
     #: (round-5 T0, F1) Every call whose receiver is an ast.Attribute but is
     #: NOT the literal `self.<name>(...)` shape (e.g. `self.head[channel].
     #: get_tip()`, `tip_spot.get_tip()`) -- previously left NO trace at all,
@@ -154,14 +178,37 @@ def _is_validation_looking(name: str) -> bool:
 class _BodyScanner(ast.NodeVisitor):
     """Walks ONE function/method body for precondition evidence."""
 
-    def __init__(self, param_names: set[str], class_method_names: set[str], module_func_names: set[str]):
+    def __init__(
+        self,
+        param_names: set[str],
+        class_method_names: set[str],
+        module_func_names: set[str],
+        inherited_method_names: frozenset[str] = frozenset(),
+    ):
         self.param_names = param_names
+        #: This class's OWN direct method names ONLY -- never extended
+        #: with `inherited_method_names` (260909, T50, §17.2 Half 1):
+        #: keeping the two sets separate is what lets `visit_Call` below
+        #: classify a resolved self-call as ordinary-vs-inheritance-only
+        #: without re-deriving the distinction from scratch.
         self.class_method_names = class_method_names
         self.module_func_names = module_func_names
+        #: (260909, T50, §17.2 Half 1) The UNION of every ancestor's own
+        #: method names (this class's transitive base closure, excluding
+        #: itself) -- `plr_sema.derive.inherited_method_names`'s output,
+        #: computed ONCE per class by the caller and passed in here
+        #: (never re-derived per function). `frozenset()` for a
+        #: module-level function (`class_method_names` is also `set()`
+        #: there) and for any class M-INH's closure refused outright.
+        self.inherited_method_names = inherited_method_names
         self._scope_trail: list[str] = []
         self.findings: list[PreconditionFinding] = []
         self.delegates: set[str] = set()
         self.unresolved: set[str] = set()
+        #: (260909, T50, §17.2 Half 1) The SUBSET of `delegates` admitted
+        #: only because `inherited_method_names` (not `class_method_names`)
+        #: defines the name -- see `FunctionPreconditions.inherited_delegates`.
+        self.inherited_delegates: set[str] = set()
         #: (round-5 T0, F1) receiver-qualified call expressions dropped by
         #: the `name is None` fallthrough below -- see PreconditionFinding's
         #: dropped_calls docstring. (260903, T25) A `list`, not a `set`:
@@ -290,6 +337,18 @@ class _BodyScanner(ast.NodeVisitor):
         if name is not None:
             if (is_self_call and name in self.class_method_names) or (not is_self_call and name in self.module_func_names):
                 self.delegates.add(name)
+            elif is_self_call and name in self.inherited_method_names:
+                # (260909, T50, §17.2 Half 1, M-INH): no ancestor takes
+                # precedence over the class's own definition -- checked
+                # first, above -- but a name defined ONLY by an ancestor
+                # is now a delegate too, not an unresolved call. Recorded
+                # in BOTH `delegates` (so downstream readers checking
+                # `delegates_to` see it exactly as any other delegate) AND
+                # `inherited_delegates` (so the inheritance-only admission
+                # is separately inspectable, per FunctionPreconditions'
+                # own field).
+                self.delegates.add(name)
+                self.inherited_delegates.add(name)
             elif is_self_call or (not is_self_call and _is_validation_looking(name)):
                 # Looks like a validation call but isn't resolvable to a
                 # same-class/module function this survey collected (e.g. a
@@ -315,6 +374,27 @@ def survey(plr_root: Path) -> list[FunctionPreconditions]:
     print(f"scanning {len(files)} files under {plr_root}")
     parsed = parse_files(files)
 
+    # (260909, T50, §17.2 Half 1, M-INH): the whole-tree class index, built
+    # ONCE up front from the SAME already-parsed `parsed` dict the per-file
+    # loop below reuses -- no second disk read. `class_nodes` is
+    # first-definition-wins, bare-name keyed (mirrors
+    # `plr_sema.derive.receiver_state.build_plr_class_index`'s own
+    # convention); `class_modules_multi` additionally keeps EVERY module
+    # that defines each bare name (not just the first), which
+    # `build_class_bases_index` needs to detect a bare-name collision the
+    # first-wins index alone cannot see.
+    class_nodes: dict[str, ast.ClassDef] = {}
+    class_modules_multi: dict[str, set[str]] = {}
+    for file, tree in parsed.items():
+        module = module_name(Path(file), plr_root)
+        for top in ast.iter_child_nodes(tree):
+            if isinstance(top, ast.ClassDef):
+                class_nodes.setdefault(top.name, top)
+                class_modules_multi.setdefault(top.name, set()).add(module)
+    bases_index = build_class_bases_index(
+        class_nodes, {name: frozenset(mods) for name, mods in class_modules_multi.items()}
+    )
+
     results: list[FunctionPreconditions] = []
 
     for file, tree in parsed.items():
@@ -326,9 +406,12 @@ def survey(plr_root: Path) -> list[FunctionPreconditions]:
             if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
         }
 
-        def _survey_function(node, class_name: str | None, class_method_names: set[str]):
+        def _survey_function(
+            node, class_name: str | None, class_method_names: set[str],
+            inherited_names: frozenset[str] = frozenset(),
+        ):
             params = _function_params(node)
-            scanner = _BodyScanner(set(params), class_method_names, module_func_names)
+            scanner = _BodyScanner(set(params), class_method_names, module_func_names, inherited_names)
             for stmt in node.body:
                 scanner.visit(stmt)
             qualname = f"{class_name}.{node.name}" if class_name else node.name
@@ -336,6 +419,7 @@ def survey(plr_root: Path) -> list[FunctionPreconditions]:
                 qualname=qualname, class_name=class_name, module=module, file=rel_file,
                 lineno=node.lineno, params=params, findings=scanner.findings,
                 delegates_to=sorted(scanner.delegates), unresolved_calls=sorted(scanner.unresolved),
+                inherited_delegates=sorted(scanner.inherited_delegates),
                 # (260903, T25) NOT sorted -- `scanner.dropped` is already a
                 # deterministic list in AST-visitation order, and multiplicity
                 # (two records sharing an `expr` from two different scopes)
@@ -352,9 +436,14 @@ def survey(plr_root: Path) -> list[FunctionPreconditions]:
                     n.name for n in ast.iter_child_nodes(node)
                     if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
                 }
+                # (260909, T50, §17.2 Half 1) computed once per class, not
+                # per method -- `inherited_method_names` walks the WHOLE
+                # transitive base closure, and every method on this class
+                # shares the identical extension.
+                inherited_names = inherited_method_names(node.name, class_nodes, bases_index)
                 for member in ast.iter_child_nodes(node):
                     if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        _survey_function(member, node.name, method_names)
+                        _survey_function(member, node.name, method_names, inherited_names)
 
     return results
 

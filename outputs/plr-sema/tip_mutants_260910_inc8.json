@@ -1,0 +1,61 @@
+{
+  "by_class": {
+    "m1_remove_pickup": {
+      "n_construction_skipped": 0,
+      "n_error": 0,
+      "n_raised_as_expected": 199,
+      "n_ran": 289,
+      "n_total": 289,
+      "static_verdict_at_raising_index": {
+        "none": 0,
+        "safe": 0,
+        "unknown": 0,
+        "will_fail": 199
+      },
+      "unsound_safe_where_simulator_raised": [],
+      "unsound_will_fail_where_simulator_ran_clean": []
+    },
+    "m2_duplicate_pickup": {
+      "n_construction_skipped": 0,
+      "n_error": 0,
+      "n_raised_as_expected": 289,
+      "n_ran": 289,
+      "n_total": 289,
+      "static_verdict_at_raising_index": {
+        "none": 0,
+        "safe": 0,
+        "unknown": 0,
+        "will_fail": 289
+      },
+      "unsound_safe_where_simulator_raised": [],
+      "unsound_will_fail_where_simulator_ran_clean": []
+    },
+    "p3a_pickup_already_held": {
+      "floor_denominator_population": 93,
+      "floor_met": false,
+      "n_achieved_will_fail_at_raised_index": 0,
+      "n_attempted": 178,
+      "n_construction_skipped": 0,
+      "n_error": 0,
+      "n_raised_as_expected": 164,
+      "n_ran": 178,
+      "n_total": 178,
+      "static_verdict_at_raising_index": {
+        "none": 0,
+        "safe": 0,
+        "unknown": 164,
+        "will_fail": 0
+      },
+      "unsound_safe_where_simulator_raised": [],
+      "unsound_will_fail_where_simulator_ran_clean": []
+    }
+  },
+  "gate_passed": false,
+  "hard_violations": [
+    "p3a_pickup_already_held: floor FAILED -- achieved=0 != attempted=178 (static verdicts at raising index: {'will_fail': 0, 'unknown': 164, 'safe': 0, 'none': 0})"
+  ],
+  "n_corpus_bases": 285,
+  "n_example_bases": 4,
+  "n_move_corpus_bases": 177,
+  "n_move_example_bases": 1
+}
