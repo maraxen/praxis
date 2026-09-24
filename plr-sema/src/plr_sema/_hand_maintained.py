@@ -390,9 +390,9 @@ def _measure_hm25() -> int:
 REGISTRY: tuple[HandMaintainedSurface, ...] = (
     HandMaintainedSurface(
         id="HM-1",
-        what="PLR_RESOURCE_TYPES class-name set (praxis/common/type_inspection.py:14-56)",
+        what="PLR_RESOURCE_TYPES class-name set (praxis/common/type_inspection.py:14-77)",
         metric="entries",
-        declared=34,
+        declared=53,  # 34 -> 53: main 2a40bb25 (debt #1849) replaced substring matching with exact names (+20 holders/decks/racks, -CarrierSite)
         status="DERIVABLE_NOT_YET",
         why_not_derived=(
             "A hand-typed class-name set; the exception_name_closure fixpoint "
