@@ -1,4 +1,4 @@
-# pr156 Internal Docs
+# praxis Internal Docs
 
 ## Daily
 - [260912_overnight-decisions](daily/260912_overnight-decisions.md) — Every decision the 260912 L5 loop made without a human gate: the REPL-refocus staleness dispositions, the #5110 selection, and the praxia debt filings.
