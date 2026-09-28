@@ -1,6 +1,7 @@
 [project]
 slug = "praxis"
 root = "/home/marielle/projects/praxis"
+id = "bc3d1848-6f0c-47fa-a929-5186228cde6a"
 
 [remotes.engaging]
 host = "engaging"
