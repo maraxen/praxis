@@ -4,7 +4,7 @@ description: Epic spec for the web-REPL notebook display. Three sprints (A spike
 status: active
 task_id: 260929_notebook-display-design
 date: '260929'
-adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator); round5 challenger REVISE (1 MAJOR / 3 MINOR; C4-1, C4-3 CLOSED, C4-2 partial) -> revised 260929 (Revision 5, orchestrator); round6 challenger REVISE (1 MAJOR / 1 MINOR) -> revised 260929 (Revision 6: deck panel state machine); round7 challenger REVISE (2 MAJOR vs user preemption rule / 6 MINOR / 1 SUGGESTION; state machine sound) -> revised 260929 (Revision 7); round8 challenger REVISE (2 MAJOR / 5 MINOR; resume design otherwise sound) -> revised 260929 (Revision 8); round9 challenger REVISE (1 MAJOR / 5 MINOR) -> revised 260929 (Revision 9); round10 challenger ACCEPT (0 BLOCKER / 0 MAJOR; 4 MINOR for the sprint) -> CONVERGED 260929; Revision 10 (PLR 1.0 pin + runner corrections) 260929; round11 challenger REVISE (1 BLOCKER / 3 MAJOR / 11 MINOR) -> Revision 11 (round 11 fixes) 260929, challenger round 12 pending'
+adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator); round5 challenger REVISE (1 MAJOR / 3 MINOR; C4-1, C4-3 CLOSED, C4-2 partial) -> revised 260929 (Revision 5, orchestrator); round6 challenger REVISE (1 MAJOR / 1 MINOR) -> revised 260929 (Revision 6: deck panel state machine); round7 challenger REVISE (2 MAJOR vs user preemption rule / 6 MINOR / 1 SUGGESTION; state machine sound) -> revised 260929 (Revision 7); round8 challenger REVISE (2 MAJOR / 5 MINOR; resume design otherwise sound) -> revised 260929 (Revision 8); round9 challenger REVISE (1 MAJOR / 5 MINOR) -> revised 260929 (Revision 9); round10 challenger ACCEPT (0 BLOCKER / 0 MAJOR; 4 MINOR for the sprint) -> CONVERGED 260929; Revision 10 (PLR 1.0 pin + runner corrections) 260929; round11 challenger REVISE (1 BLOCKER / 3 MAJOR / 11 MINOR) -> Revision 11 (round 11 fixes) 260929, challenger round 12 pending; round12 challenger CONVERGED 260929 (0 BLOCKER / 0 MAJOR / 5 MINOR, sprint notes)'
 ---
 # Notebook display epic (web-repl)
 
@@ -4262,16 +4262,18 @@ on the sprint A branch (`feat/notebook-display-sprint-a`).
 - Sizes: A1 ~450 → ~500, A7 ~420 → ~410 LOC. The ACs still number 42; the tasks still
   number 24.
 
-## Convergence (260929; re-opened for Revision 10)
+## Convergence (260929; re-converged after Revision 11, round 12)
 
-**Converged after 10 challenger rounds, then re-opened.** Round 10
-(`.praxia/docs/audits/260929_notebook-display-round10-challenger.md`) found no BLOCKER and no MAJOR.
-The PLR 1.0 pin bump on `origin/main` (a176bac7) then invalidated several PLR-dependent
-premises (`.praxia/docs/research/260929_notebook-display-plr10-premises.md`), and Revision 10
-applied them with the orchestrator's C2/D11 ruling and the A1a runner corrections. Round 11
-(`.praxia/docs/audits/260929_notebook-display-round11-challenger.md`) returned REVISE on
-Revision 10, fixed as Revision 11 with the orchestrator's C11-3 ruling (a). The spec is
-**not converged** until challenger round 12 (targeted, per the orchestrator) clears Revision 11.
+**Converged after 10 challenger rounds, re-opened by the PLR 1.0 pin bump, and converged again
+after round 12.** Round 10 (`.praxia/docs/audits/260929_notebook-display-round10-challenger.md`)
+found no BLOCKER and no MAJOR. The PLR 1.0 pin bump on `origin/main` (a176bac7) then invalidated
+several PLR-dependent premises (`.praxia/docs/research/260929_notebook-display-plr10-premises.md`),
+and Revision 10 applied them with the orchestrator's C2/D11 ruling and the A1a runner corrections.
+Round 11 (`.praxia/docs/audits/260929_notebook-display-round11-challenger.md`) returned REVISE on
+Revision 10, fixed as Revision 11 with the orchestrator's C11-3 ruling (a). Round 12
+(`.praxia/docs/audits/260929_notebook-display-round12-challenger.md`, targeted) found no BLOCKER and
+no MAJOR on Revision 11 (5 MINOR, 2 suggestions): **CONVERGED 260929**. The MINORs are sprint
+notes below, not a Revision 12.
 
 | Round | BLOCKER | MAJOR | MINOR | Fixed by |
 |---|---|---|---|---|
@@ -4287,7 +4289,7 @@ Revision 10, fixed as Revision 11 with the orchestrator's C11-3 ruling (a). The 
 | 10 | 0 | 0 | 4 | none: recorded below for the sprint |
 | (pin bump) | 3 | 10 | anchors | Revision 10 (PLR 1.0 recon, not a challenger round) |
 | 11 | 1 | 3 | 11 | Revision 11 (REVISE; round 11 fixes, C11-3 ruling (a)) |
-| 12 | pending | | | |
+| 12 | 0 | 0 | 5 | none: recorded below for the sprint (CONVERGED) |
 
 **For the implementing sprint (non-blocking MINORs, round 10). Fold them into A1's tests-first work:**
 - **C10-1:** the real-Chromium `test_unit_runner.py` case gets a positive control. Before the
@@ -4302,3 +4304,23 @@ Revision 10, fixed as Revision 11 with the orchestrator's C11-3 ruling (a). The 
 - **C10-4:** `ensure_token` re-execs with `sys.orig_argv`, so interpreter flags are kept.
   *(Implemented, `unit_runner.py:509`; stated in D16 by Revision 11, C11-9.)*
 
+**For the implementing sprint (non-blocking MINORs, round 12).** Fold into the task named in each note:
+- **C12-1 (A7, B7, C3):** state how the R21 gate is invoked. Run it as `subprocess.run(["bash", "-c", GATE])`
+  with no `-e` or `pipefail` (or use the allowed Python form); a CI `run:` step (`bash -e {0}`) must wrap it
+  with `set +e`, and `/bin/sh` (dash) rejects the `s=(` array form. Both misuses fail loudly, never falsely pass.
+- **C12-2 (C3):** AC-31's state snapshot covers only `vars(Viewer3D)` and `vars(server)`. Either extend it to
+  every module dict under `pylabrobot.visualizer3D.*` (and the class dicts they expose), or narrow D11's
+  wording to "no rebinding in `server` or `Viewer3D`".
+- **C12-3 (A1, A2, A3, C1):** add `harness` (`scripts/repl_smoke.py`) to AC-1's "Units" hashed-input list
+  (it governs AC-1, AC-2, AC-3 and AC-29); D17 already requires it.
+- **C12-4 (doc):** D16's "`repl.yml:45` on the sprint A branch" is `:47` (`timeout-minutes: 45`), as D16's
+  other anchor and References say.
+- **C12-5 (A1, A7):** A1's import test builds a temporary tree holding only `repl_smoke.py` and
+  `pyproject.toml`. If A7 makes `repl_smoke.py` load `scripts/unit_runner.py` at module import, the test
+  must also copy `unit_runner.py`, or the load must stay lazy.
+- **S1 (A1):** D16 says `notebook_expected()` is called "once per `--notebook-check` run" but A1 calls it at
+  four sites: say "at each use site", or bind it once at the top of `run_notebook_check` so a missing
+  `version.txt` fails before the browser launches. Update the S1 probe's `_dry_run` comment ("repl_smoke
+  reads the PLR submodule's version.txt at import") in the amendment commit.
+- **S2 (C3):** AC-31's positive control should run a scene build without triggering the rebind: a stock
+  `Viewer3D(deck, open_browser=False)` over the seeded root, since constructing `DockedViewer3D` rebinds.
