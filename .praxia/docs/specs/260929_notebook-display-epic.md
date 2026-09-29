@@ -1,10 +1,10 @@
 ---
 title: 'Notebook display epic: rich PLR outputs, quieter chrome, Visualizer3D deck panel (web-repl)'
 description: Epic spec for the web-REPL notebook display. Three sprints (A spikes + chrome, B praxis.display reprs/ledger/errors/staleness, C Visualizer3D deck panel). Four spikes (S1-S4) run first, and every downstream decision states its behaviour under each spike outcome.
-status: draft
+status: active
 task_id: 260929_notebook-display-design
 date: '260929'
-adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator); round5 challenger REVISE (1 MAJOR / 3 MINOR; C4-1, C4-3 CLOSED, C4-2 partial) -> revised 260929 (Revision 5, orchestrator); round6 challenger REVISE (1 MAJOR / 1 MINOR) -> revised 260929 (Revision 6: deck panel state machine); round7 challenger REVISE (2 MAJOR vs user preemption rule / 6 MINOR / 1 SUGGESTION; state machine sound) -> revised 260929 (Revision 7); round8 challenger REVISE (2 MAJOR / 5 MINOR; resume design otherwise sound) -> revised 260929 (Revision 8); round9 challenger REVISE (1 MAJOR / 5 MINOR) -> revised 260929 (Revision 9)'
+adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator); round5 challenger REVISE (1 MAJOR / 3 MINOR; C4-1, C4-3 CLOSED, C4-2 partial) -> revised 260929 (Revision 5, orchestrator); round6 challenger REVISE (1 MAJOR / 1 MINOR) -> revised 260929 (Revision 6: deck panel state machine); round7 challenger REVISE (2 MAJOR vs user preemption rule / 6 MINOR / 1 SUGGESTION; state machine sound) -> revised 260929 (Revision 7); round8 challenger REVISE (2 MAJOR / 5 MINOR; resume design otherwise sound) -> revised 260929 (Revision 8); round9 challenger REVISE (1 MAJOR / 5 MINOR) -> revised 260929 (Revision 9); round10 challenger ACCEPT (0 BLOCKER / 0 MAJOR; 4 MINOR for the sprint) -> CONVERGED 260929'
 ---
 # Notebook display epic (web-repl)
 
@@ -3507,4 +3507,32 @@ task and no file. It adds one runner function (`ensure_token`), one `Watchdog` m
 - The AC-42 `--reap` case now sets `CI=1` or passes `--force`; without either, the Revision 8
   case would have hit the new refusal.
 - A1 size ~370 → ~450 LOC. The ACs still number 42; the tasks still number 24.
+
+## Convergence (260929)
+
+**Converged after 10 challenger rounds.** Round 10
+(`.praxia/docs/audits/260929_notebook-display-round10-challenger.md`) found no BLOCKER and no MAJOR.
+
+| Round | BLOCKER | MAJOR | MINOR | Fixed by |
+|---|---|---|---|---|
+| 1 | 2 | 13 | 14 | Revision 1 (A-1..A-20, after the defender) |
+| 2 | 2 | 7 | 3 | Revision 2 (B-1..B-12, after the defender) |
+| 3 | 0 | 2 | 2 | Revision 3 |
+| 4 | 0 | 2 | 2 | Revision 4 |
+| 5 | 0 | 1 | 3 | Revision 5 |
+| 6 | 0 | 1 | 1 | Revision 6 (deck panel state machine) |
+| 7 | 0 | 2 | 6 | Revision 7 (preemption-safe harness and spikes, per the user's new rule of 260929) |
+| 8 | 0 | 2 | 5 | Revision 8 (shared unit runner) |
+| 9 | 0 | 1 | 5 | Revision 9 (bounded teardown) |
+| 10 | 0 | 0 | 4 | none: recorded below for the sprint |
+
+**For the implementing sprint (non-blocking MINORs, round 10). Fold them into A1's tests-first work:**
+- **C10-1:** the real-Chromium `test_unit_runner.py` case gets a positive control. Before the
+  timeout, a live Chromium process (by `comm`/`exe`) carries the token and sits in a pgid different
+  from the child's. Only then assert that none survive.
+- **C10-2:** `Watchdog.write_result` does the result/artifact write under the lock, checking
+  `fired`, so "no result" after a timeout is guaranteed.
+- **C10-3:** the watchdog's timeout line is written with a non-blocking `os.write(1, ...)`
+  (ignoring `EAGAIN`), or after `kill_tree`, and the marker file is the authoritative record.
+- **C10-4:** `ensure_token` re-execs with `sys.orig_argv`, so interpreter flags are kept.
 
