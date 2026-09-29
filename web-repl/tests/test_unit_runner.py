@@ -39,6 +39,7 @@ import logging
 import os
 import re
 import signal
+import stat
 import subprocess
 import sys
 import textwrap
@@ -179,7 +180,7 @@ def exe_basename(pid: int) -> str:
 # per-test process tracking and teardown
 # --------------------------------------------------------------------------- #
 
-PRELUDE = '''\
+PRELUDE = """\
 import importlib.util, json, os, signal, subprocess, sys, threading, time
 _spec = importlib.util.spec_from_file_location("unit_runner", os.environ["UR_PATH"])
 ur = importlib.util.module_from_spec(_spec)
@@ -195,7 +196,7 @@ def put(path, text):
     os.replace(path + ".t", path)
 
 
-'''
+"""
 
 
 class Procs:
@@ -276,7 +277,7 @@ class Procs:
         for proc in self.popens:
             try:
                 proc.wait(timeout=2)
-            except Exception:  # noqa: BLE001 -- best-effort reap
+            except Exception:
                 pass
 
 
@@ -421,7 +422,8 @@ def test_run_unit_timeout_kills_setsid_grandchild(ur, procs, tmp_path):
 
 def test_run_unit_timeout_kills_orphan_reparented_out_of_the_tree(ur, procs, tmp_path):
     """The intermediate parent exits first, so the walk cannot find the grandchild:
-    only the PRAXIS_UNIT_TOKEN sweep can."""
+    only the PRAXIS_UNIT_TOKEN sweep can.
+    """
     info = tmp_path / "info.json"
     inter = procs.script(
         "inter.py",
@@ -524,7 +526,8 @@ def test_kill_tree_walk_alone_kills_root_and_every_descendant(ur, procs, tmp_pat
 def test_kill_tree_fixpoint_catches_a_child_forked_during_the_grace_window(ur, procs, tmp_path):
     """C9-2: a sweep-found setsid orphan whose SIGTERM handler forks a child that
     ignores SIGTERM. The child inherits the token, appears only during the grace
-    window, and must still die."""
+    window, and must still die.
+    """
     token = uuid.uuid4().hex
     forked = tmp_path / "forked.pid"
     orphan = procs.script(
@@ -539,7 +542,8 @@ def test_kill_tree_fixpoint_catches_a_child_forked_during_the_grace_window(ur, p
         )
 
         def on_term(signum, frame):
-            subprocess.Popen([sys.executable, "-c", CHILD, {str(forked)!r}])
+            # its own session: the group SIGKILL cannot reach it, only the second fixpoint can
+            subprocess.Popen([sys.executable, "-c", CHILD, {str(forked)!r}], start_new_session=True)
 
         signal.signal(signal.SIGTERM, on_term)
         put(sys.argv[1], str(os.getpid()))
@@ -578,7 +582,8 @@ def test_kill_tree_fixpoint_catches_a_child_forked_during_the_grace_window(ur, p
 
 def test_kill_tree_survives_unreadable_and_empty_environs(ur, procs):
     """C9-2: PermissionError / ProcessLookupError / empty environ are skipped, not fatal,
-    and the token-carrying grandchild is still killed."""
+    and the token-carrying grandchild is still killed.
+    """
     token = uuid.uuid4().hex
     victim = procs.sleeper(token=token)
     b_perm, b_gone, b_empty = (procs.sleeper() for _ in range(3))
@@ -602,7 +607,8 @@ def test_kill_tree_survives_unreadable_and_empty_environs(ur, procs):
 
 def test_kill_tree_sweep_matches_the_whole_environ_entry_only(ur, procs):
     """C9-2: `PRAXIS_UNIT_TOKEN=<token>x`, `X_PRAXIS_UNIT_TOKEN=<token>`, a prefix and a
-    substring inside another value must not be signalled."""
+    substring inside another value must not be signalled.
+    """
     token = uuid.uuid4().hex
     victim = procs.sleeper(token=token)
     decoys = [
@@ -634,13 +640,17 @@ def test_kill_tree_sigcont_in_finally_leaves_nothing_stopped(ur, procs, tmp_path
         ur.kill_tree(root.pid, token, 1, children_reader=walker)
 
     assert spy.count(signal.SIGSTOP) >= 2, "control: processes really were frozen mid-walk"
+    # SIGSTOP/SIGCONT take effect asynchronously: settle first, or a process that has
+    # been signalled but not yet stopped reads as "not T" and the check passes vacuously.
+    time.sleep(0.5)
     stuck = [p for p in members if wait_not_stopped(p) == "T"]
     assert stuck == [], f"processes left in state T after an interrupted walk: {stuck}"
 
 
 def test_kill_tree_pid_reuse_guard_without_pidfd(ur, procs, monkeypatch):
     """C9-3: a collected pid whose starttime changed is treated as reused: it gets no
-    signal, and its group gets none when no other verified live member remains."""
+    signal, and its group gets none when no other verified live member remains.
+    """
     token = uuid.uuid4().hex
     reused = procs.sleeper(token=token)  # leads its own group
     real_victim = procs.sleeper(token=token)
@@ -661,8 +671,7 @@ def test_kill_tree_pid_reuse_guard_without_pidfd(ur, procs, monkeypatch):
     assert reads.get(reused.pid, 0) > 1, "control: the guard re-read the starttime"
     assert wait_gone(real_victim.pid, 3), "control: the guard is selective, not a no-op"
     assert is_running(reused.pid), "the reused pid was killed"
-    for sig in (signal.SIGTERM, signal.SIGKILL):
-        assert int(sig) not in spy.to_pid(reused.pid)
+    assert spy.to_pid(reused.pid) == [], "a pid whose starttime changed received a signal"
     assert spy.group_signals(reused_pgid) == [], "group signalled with no verified live member"
 
 
@@ -688,7 +697,8 @@ def test_kill_tree_sends_every_per_pid_signal_through_pidfd_when_available(ur, p
 
 def test_kill_tree_never_signals_the_caller_or_its_process_group(ur, procs, tmp_path):
     """The Watchdog case: the caller itself carries the token and shares a process group
-    with one of its descendants."""
+    with one of its descendants.
+    """
     token = uuid.uuid4().hex
     out = tmp_path / "caller.json"
     script = procs.script(
@@ -748,7 +758,8 @@ put(os.path.join(sys.argv[1], "out.json"), json.dumps({
 
 def test_ensure_token_reexecs_so_the_token_is_in_proc_self_environ(ur, procs, tmp_path):
     """C9-4 and C10-4: re-exec (a token assigned to os.environ after exec is invisible in
-    /proc/self/environ), from sys.orig_argv so interpreter flags survive."""
+    /proc/self/environ), from sys.orig_argv so interpreter flags survive.
+    """
     script = procs.script("ensure.py", _ENSURE_BODY)
     outdir = tmp_path / "e1"
     outdir.mkdir()
@@ -863,7 +874,8 @@ def test_watchdog_timeout_line_is_nonblocking_when_stdout_is_full(ur, procs, tmp
 
 def test_hang_after_the_stamp_still_exits_with_the_stamp_exit(ur, procs, tmp_path):
     """C9-1: an atexit handler that sleeps forever and a non-daemon thread that blocks
-    forever must not matter, because only os._exit(stamp.exit) follows the commit."""
+    forever must not matter, because only os._exit(stamp.exit) follows the commit.
+    """
     proc, outdir = _run_wd_child(procs, tmp_path, "stamp_os_exit")
     t0 = time.monotonic()
     code = proc.wait(timeout=20)
@@ -876,7 +888,8 @@ def test_hang_after_the_stamp_still_exits_with_the_stamp_exit(ur, procs, tmp_pat
 
 def test_negative_control_sys_exit_after_the_stamp_does_hang(ur, procs, tmp_path):
     """The hang-after-stamp case above would pass vacuously if its atexit handler and
-    thread did not actually hang an ordinary exit. This is that check: it must hang."""
+    thread did not actually hang an ordinary exit. This is that check: it must hang.
+    """
     proc, outdir = _run_wd_child(procs, tmp_path, "stamp_sys_exit")
     with pytest.raises(subprocess.TimeoutExpired):
         proc.wait(timeout=4)
@@ -945,7 +958,8 @@ def test_watchdog_commit_and_write_result_are_refused_once_fired(ur, tmp_path):
 
 def test_watchdog_write_result_runs_under_the_lock_and_is_deleted_by_a_later_expiry(ur, tmp_path):
     """C10-2: a result write in flight when the budget expires completes first, and the
-    expiry's on_expire then deletes it, so 'no result after a timeout' is guaranteed."""
+    expiry's on_expire then deletes it, so 'no result after a timeout' is guaranteed.
+    """
     rec = _Recorder()
     result = tmp_path / "result.json"
 
@@ -983,7 +997,8 @@ def test_watchdog_a_raising_on_expire_still_kills_and_exits(ur):
 
 def test_watchdog_lock_is_released_before_the_kill(ur):
     """kill_tree runs after the lock is released, so a unit thread finishing its commit
-    at that instant is refused rather than deadlocked."""
+    at that instant is refused rather than deadlocked.
+    """
     rec = _Recorder()
     results: list[bool] = []
     box: dict = {}
@@ -1084,7 +1099,8 @@ def test_reap_kills_the_token_carrying_orphan_and_nothing_else(ur, procs, mode):
 
 def test_reap_function_runs_kill_tree_once_per_token_found(ur, procs):
     """The unrestricted CLI form kills every token on the box, so its logic is checked
-    in-process over an injected pid universe instead."""
+    in-process over an injected pid universe instead.
+    """
     tok_a, tok_b = uuid.uuid4().hex, uuid.uuid4().hex
     a, b = procs.sleeper(token=tok_a), procs.sleeper(token=tok_b)
     tokenless = procs.sleeper()
@@ -1106,12 +1122,16 @@ def test_write_atomic_writes_fsyncs_replaces_and_leaves_no_temp_file(ur, tmp_pat
     target = tmp_path / "out" / "result.json"
     target.parent.mkdir()
     target.write_bytes(b"old")
-    synced: list[int] = []
+    synced: list[bool] = []  # one entry per fsync: was the fd a regular file?
     real_fsync = os.fsync
-    monkeypatch.setattr(os, "fsync", lambda fd: (synced.append(fd), real_fsync(fd))[1])
+    monkeypatch.setattr(
+        os,
+        "fsync",
+        lambda fd: (synced.append(stat.S_ISREG(os.fstat(fd).st_mode)), real_fsync(fd))[1],
+    )
     ur.write_atomic(target, b"new-bytes")
     assert target.read_bytes() == b"new-bytes"
-    assert synced, "the file was never fsynced before the rename"
+    assert any(synced), "the file itself was never fsynced before the rename"
     assert [p.name for p in target.parent.iterdir()] == ["result.json"], "temp file left behind"
 
 
@@ -1274,7 +1294,8 @@ time.sleep(120)
 
 def test_browser_case_scaffolding_with_a_stub_tree(ur, procs, tmp_path):
     """Runs the CI-only case's scaffolding locally, with a `chrome-stub` process standing
-    in for Chromium, so the real-Chromium case is not the first run of its own harness."""
+    in for Chromium, so the real-Chromium case is not the first run of its own harness.
+    """
     info = _browser_tree_case(
         ur, procs, tmp_path, _STUB_BODY, comm_pattern=r"chrom", timeout_s=4, ready_wait_s=3.5
     )
@@ -1283,7 +1304,8 @@ def test_browser_case_scaffolding_with_a_stub_tree(ur, procs, tmp_path):
 
 def test_browser_case_positive_control_fails_when_no_browser_process_exists(ur, procs, tmp_path):
     """Negative control for the scaffolding: with no browser-like process the positive
-    control must fail, so a run that starts no browser cannot pass."""
+    control must fail, so a run that starts no browser cannot pass.
+    """
     with pytest.raises(AssertionError, match="control: no browser process"):
         _browser_tree_case(
             ur, procs, tmp_path, _STUB_BODY_NO_BROWSER, comm_pattern=r"chrom", timeout_s=4, ready_wait_s=3.5
@@ -1312,7 +1334,8 @@ time.sleep(600)
 )
 def test_real_chromium_under_run_unit_leaves_no_process_carrying_the_token(ur, procs, tmp_path):
     """CI only. Fails, never skips, if Chromium cannot be resolved (C9-5). Playwright
-    launches Chromium detached, so this is the case the whole runner exists for."""
+    launches Chromium detached, so this is the case the whole runner exists for.
+    """
     spec = importlib.util.spec_from_file_location("repl_smoke_for_unit_runner", REPL_SMOKE_PATH)
     assert spec is not None and spec.loader is not None
     smoke = importlib.util.module_from_spec(spec)
