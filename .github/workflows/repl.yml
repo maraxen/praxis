@@ -18,6 +18,7 @@ on:
       - 'web-repl/**'
       - 'coxswain/**'
       - 'scripts/repl_smoke.py'
+      - 'scripts/unit_runner.py'
       - 'external/pylabrobot'
       - '.github/workflows/repl.yml'
       - 'pyproject.toml'
@@ -27,6 +28,7 @@ on:
       - 'web-repl/**'
       - 'coxswain/**'
       - 'scripts/repl_smoke.py'
+      - 'scripts/unit_runner.py'
       - 'external/pylabrobot'
       - '.github/workflows/repl.yml'
       - 'pyproject.toml'
@@ -260,6 +262,9 @@ jobs:
           uv run python -m pytest web-repl/tests/test_stamp_loader_shas.py -q
           uv run python -m pytest web-repl/tests/test_theme_staging.py -q
           uv run python -m pytest web-repl/tests/test_transport.py -q
+          # test_unit_runner's real-Chromium case runs HERE (Actions sets CI=true) and uses
+          # the Chromium installed above; locally it is skipped, so this run is its gate.
+          uv run python -m pytest web-repl/tests/test_unit_runner.py -q
           uv run python -m pytest web-repl/tests/test_vendor_staging.py -q
           uv run python -m pytest web-repl/tests/test_viz_highlight_staging.py -q
 
