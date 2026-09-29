@@ -259,6 +259,7 @@ jobs:
           uv run python -m pytest web-repl/tests/test_praxis_bootstrap_loader.py -q
           uv run python -m pytest web-repl/tests/test_praxis_startup.py -q
           uv run python -m pytest web-repl/tests/test_prune_pyodide.py -q
+          uv run python -m pytest web-repl/tests/test_repl_smoke_import.py -q
           uv run python -m pytest web-repl/tests/test_repl_workflow_covers_tests.py -q
           uv run python -m pytest web-repl/tests/test_rid_invariant.py -q
           uv run python -m pytest web-repl/tests/test_s1_spike_driver.py -q

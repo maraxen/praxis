@@ -1443,15 +1443,26 @@ def expected_plr_version_prefix() -> str:
 
 DEFAULT_NOTEBOOK = "welcome.ipynb"
 
-#: Strings the welcome notebook must print. These are the notebook's own output,
-#: not the harness's -- if the notebook's cells change, this list must change with
-#: them, and that coupling is deliberate: it is what makes this a test OF the
-#: notebook rather than a test that some notebook ran.
-NOTEBOOK_EXPECTED = (
-    "praxis auto-setup state: ready",
-    f"PyLabRobot {expected_plr_version_prefix()}",
-    "Serial is the browser shim: True",
-)
+def notebook_expected() -> tuple[str, ...]:
+    """Strings the welcome notebook must print.
+
+    These are the notebook's own output, not the harness's -- if the notebook's cells
+    change, this list must change with them, and that coupling is deliberate: it is what
+    makes this a test OF the notebook rather than a test that some notebook ran.
+
+    A function, not a module-level tuple: the PLR version comes from the submodule's
+    ``version.txt`` (``expected_plr_version_prefix``), and reading it at import made every
+    harness consumer that loads this module by path fail without an initialised submodule
+    (epic 260929_notebook-display-design, D16 "Import-time submodule dependency, removed in
+    A1"). ``run_notebook_check`` binds the result once at its top; ``main`` reads only the
+    length off the returned result dict's ``expected`` list. Raises ``VizCheckError`` when
+    ``version.txt`` is missing or empty.
+    """
+    return (
+        "praxis auto-setup state: ready",
+        f"PyLabRobot {expected_plr_version_prefix()}",
+        "Serial is the browser shim: True",
+    )
 
 
 def find_forbidden_bootstrap_in_notebook(nb_path: Path) -> list[str]:
@@ -1503,6 +1514,11 @@ def run_notebook_check(
     has no `?code=&execute=1` parameter -- that is a REPL-app feature -- so
     clicking or command-dispatch is the only way to run cells there.
     """
+    # Bind the expected strings ONCE, first: a missing PLR ``version.txt`` must fail here,
+    # before Playwright is imported or a browser launched. Every later use in this function
+    # reads ``expected``; ``main`` uses ``len(result["expected"])`` (no second call).
+    expected = notebook_expected()
+
     from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
     from playwright.sync_api import sync_playwright
 
@@ -1653,7 +1669,7 @@ def run_notebook_check(
                     page.wait_for_function(
                         "(needles) => { const t = window.__praxisCollectOutputs(); "
                         "return t !== null && needles.every(n => t.includes(n)); }",
-                        arg=list(NOTEBOOK_EXPECTED),
+                        arg=list(expected),
                         timeout=timeout_ms,
                     )
                     timed_out = False
@@ -1663,7 +1679,7 @@ def run_notebook_check(
                 outputs_text = page.evaluate("() => window.__praxisCollectOutputs() || ''") or ""
                 body_text = page.evaluate("() => document.body.innerText")
                 run_all_error = page.evaluate("() => window.__praxisRunAllError || null")
-                found = {n: (n in outputs_text) for n in NOTEBOOK_EXPECTED}
+                found = {n: (n in outputs_text) for n in expected}
                 # A traceback in the rendered output is the single most useful
                 # signal and is invisible to a needle check that only looks for
                 # success strings.
@@ -1677,7 +1693,7 @@ def run_notebook_check(
                     "notebook": notebook,
                     "url": url,
                     "cell_count": cell_count,
-                    "expected": list(NOTEBOOK_EXPECTED),
+                    "expected": list(expected),
                     "found": found,
                     "all_found": all(found.values()),
                     "timed_out": timed_out,
@@ -4448,7 +4464,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         LOG.info(
             "notebook-check PASSED: %s ran %d cell(s) and printed all %d expected "
-            "output(s).", result["notebook"], result["cell_count"], len(NOTEBOOK_EXPECTED),
+            "output(s).", result["notebook"], result["cell_count"], len(result["expected"]),
         )
         return 0
 
