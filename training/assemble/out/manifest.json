@@ -1032,7 +1032,7 @@
    "sha256": "9031e7de07ffd8261334bb00b6a5c17d0b8722c234ed829d4052c0870866c6d8"
   }
  },
- "plr_source_sha": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+ "plr_source_sha": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
  "post_freeze_train_only_strata": [
   {
    "ambiguity_class": "ambiguous_referent",
