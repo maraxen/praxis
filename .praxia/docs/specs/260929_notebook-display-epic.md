@@ -4,7 +4,7 @@ description: Epic spec for the web-REPL notebook display. Three sprints (A spike
 status: draft
 task_id: 260929_notebook-display-design
 date: '260929'
-adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2)'
+adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3)'
 ---
 # Notebook display epic (web-repl)
 
@@ -58,7 +58,7 @@ pre-registered spike (D17). Each sprint that depends on a spike names the branch
 
 | Spike | Question | Branches and what the downstream design does |
 |---|---|---|
-| **S1** (sprint A) | Can a plain script, with no labextension build, construct a Lumino `Widget` and add it with `app.shell.add(w, 'main', {mode: 'split-right', ref})`? Does Lumino honour CSS `min-width`/`max-width` on the widget node? Which DOM hooks or model signals give each cell's state (not run, ran, running, error, edited since run)? | **S1-A**: walk the prototype chain of an existing shell widget to the root class. Identify it structurally: its prototype owns `processMessage` and `onAfterAttach`, and its own prototype is `Object.prototype`. `new Ctor({node})` then gives the deck panel as a real widget. **S1-B**: A fails, but a stock command (candidate `help:open`) creates a main-area iframe widget, its iframe allows scripts and same-origin, and it can be re-added with `split-right`. The deck panel then re-homes that widget and replaces its content. **S1-C**: both fail. **Stop** sprint C task C5 and escalate: the user's decision (a real JupyterLab widget) cannot be met without a labextension. The degraded option offered to the user is a shell-owned fixed panel with `#main` narrowed by CSS. Size limits (a second, independent axis): if CSS limits are honoured, use them. Otherwise the shell sizes through the main DockPanel's layout: `saveLayout()`, edit the split area's `sizes`, then `restoreLayout()` (a main-area `split-right` lives in a `DockLayout`, which has no `setRelativeSizes`). S1 records `css_limits_honoured`, `dock_layout_sizing_reachable` and `css_limits_refit` (whether Lumino re-reads a widget's CSS `min-width`/`max-width` after `parent.fit()`). The combination selects one row of the D6 sizing-case table, which fixes, per AC-36 width key, the mechanism or the recorded-only status. **S1-L**: neither CSS limits nor layout sizing works. The split opens at Lumino's own size, the drag is unclamped, and **every** AC-36 width key is recorded-only (the drawer and height keys stay asserted). This is a stated deviation, accepted per the user's 260929 ruling "split initially. we can figure out a more ergonomic layout later." Cell state: each state uses a CSS hook where one exists. Otherwise `chrome.js` computes it from model signals and writes `data-praxis-cell-state` on the cell node. S1 also records the notebook's `windowingMode` and the signal that fires when a virtualised cell's DOM is re-attached (used by D7 marking). |
+| **S1** (sprint A) | Can a plain script, with no labextension build, construct a Lumino `Widget` and add it with `app.shell.add(w, 'main', {mode: 'split-right', ref})`? Does Lumino honour CSS `min-width`/`max-width` on the widget node? Which DOM hooks or model signals give each cell's state (not run, ran, running, error, edited since run)? | **S1-A**: walk the prototype chain of an existing shell widget to the root class. Identify it structurally: its prototype owns `processMessage` and `onAfterAttach`, and its own prototype is `Object.prototype`. `new Ctor({node})` then gives the deck panel as a real widget. **S1-B**: A fails, but a stock command (candidate `help:open`) creates a main-area iframe widget, its iframe allows scripts and same-origin, and it can be re-added with `split-right`. The deck panel then re-homes that widget and replaces its content. **S1-C**: both fail. **Stop** sprint C task C5 and escalate: the user's decision (a real JupyterLab widget) cannot be met without a labextension. The degraded option offered to the user is a shell-owned fixed panel with `#main` narrowed by CSS. Size limits (a second, independent axis): if CSS limits are honoured, use them. Otherwise the shell sizes through the main DockPanel's layout: `saveLayout()`, edit the split area's `sizes`, then `restoreLayout()` (a main-area `split-right` lives in a `DockLayout`, which has no `setRelativeSizes`). S1 records `css_limits_honoured`, `dock_layout_sizing_reachable` and `css_limits_refit` (whether Lumino re-reads a widget's CSS `min-width`/`max-width` after `parent.fit()`). S1 also records `restore_layout_keeps_iframe`: whether `restoreLayout()` keeps an iframe in the widget loaded, so that a layout-sizing clamp causes no reload. The combination selects one row of the D6 sizing-case table, which fixes, per AC-36 width key, the mechanism or the recorded-only status. **S1-L**: neither CSS limits nor layout sizing works. The split opens at Lumino's own size, the drag is unclamped, and **every** AC-36 width key is recorded-only (the drawer and height keys stay asserted). This is a stated deviation, accepted per the user's 260929 ruling "split initially. we can figure out a more ergonomic layout later." Cell state: each state uses a CSS hook where one exists. Otherwise `chrome.js` computes it from model signals and writes `data-praxis-cell-state` on the cell node. S1 also records the notebook's `windowingMode` and the signal that fires when a virtualised cell's DOM is re-attached (used by D7 marking). |
 | **S2** (sprint A) | For a notebook reopened untrusted in our JupyterLite build, which mimetype does JupyterLab choose from `{text/html, text/plain}`? What does its sanitizer keep of our HTML and SVG? The spike tests elements `svg g path rect text title details summary table`; attributes `fill stroke stroke-width stroke-dasharray class style role aria-label tabindex data-*`; and `viewBox`. S2 probes two reopen paths and records the trust state and chosen mimetype of each: a **crafted** notebook written to the drive (never executed, so untrusted; this also stands for download/upload), and a notebook **executed, saved and reopened** in the same browser. | **S2-T**: the executed-saved-reopened notebook reopens **trusted**. It renders as live, and the branches below then apply only to the crafted path. **S2-A**: `text/html` is chosen and SVG survives with `class`. Full design, with token-mapped CSS (D3) applied to reopened outputs. **S2-A'**: SVG survives, but `class` and/or `style` are stripped. Reopened outputs keep their inline light palette (D3) and scale freely without the D5 `min-width` until re-run. Accepted and stated. **S2-B**: SVG is stripped, but `text/html` is still chosen. Reopened outputs show name line, sentence, ledger table and error text, with no drawings until re-run. Accepted: "survives trust loss" is met by the text. **S2-C**: `text/plain` is chosen. Reopened outputs show the summary sentence. Accepted; OQ-9 asks whether a labextension is wanted later. **In every branch the live output format is identical (D2).** Interaction on reopened outputs (hover, keyboard, click to focus) works only if `data-*` and `tabindex` survive. If they are stripped, it returns when the cell is re-run. |
 | **S3** (sprint A) | In the JupyterLite Pyodide kernel (`pyodide_kernel-0.8.2`; IPython 9.12.0 per the cached `pyodide-lock.json`), four things, (b) with a variant (b′): (a) Is `get_ipython()` non-None? (b) Does `display_formatter.mimebundle_formatter.for_type(cls, fn)` work, with `fn` returning `(data, metadata)`? (b′) Does `display_formatter.formatters['text/html'].for_type(cls, fn)`, with `fn` returning `(html, {"praxis": stamp})`, put the stamp at the output's `metadata["text/html"]["praxis"]`? (IPython `core/formatters.py:243-250` unpacks a per-type `(data, metadata)` return into `md_dict[format_type]`; verified by the orchestrator on 9.13.0, 260929.) (c) Is a `set_custom_exc` handler invoked for an exception raised in a plain cell **and** in a top-level-`await` cell? Does `display()` inside the handler emit, does the returned structured traceback become the cell's `error` output, and does Run All stop? (d) Does `events.register('post_run_cell', cb)` fire? | **S3-A**: all yes. Design as written. **S3-B**: (b) fails and (b′) holds. Register `text/html` and `text/plain` separately via `formatters[...].for_type`; the `text/html` function returns `(html, {"praxis": stamp})`, so the D7 stamp is carried at `metadata["text/html"]["praxis"]`. Every reader goes through one accessor, `stampOf` (D2), so staleness, Follow and AC-21 behave identically under S3-A and S3-B. A DOM-attribute carrier is rejected: S2 may strip `data-*`. If (b′) also fails, **stop** B7 and B9 and escalate. **S3-C**: (c) fails. Wrap the kernel shell **instance's** `showtraceback`: an instance attribute that handles the four classes and delegates everything else. PLR and IPython classes are not modified. If that is also not honoured, stop B6 and escalate (MVP item 3 cannot be met). **S3-D**: (d) fails. The kernel announces from PLR state-update callbacks, debounced with `loop.call_later(0.1, ...)`. |
 | **S4** (sprint C) | Does the vendored `plr_visualizer3d` package import in the Pyodide kernel? Check `http.server`, `webbrowser`, `socket.gethostname()`, `websockets.asyncio.server` and `websockets.http11`. Does `DockedViewer3D(deck)` construct and `start()` without threads? Does WebLoop support `call_later` and `call_soon_threadsafe` as the viewer uses them? How many bytes is the fixture deck's first `scene` message? What does the stock `plr_visualizer3d.server.PACKAGE_ROOT` resolve to in the kernel (expected: the contents drive `/drive`, because loose sources land relative to the kernel's working directory), and what is it after `viewer3d.py`'s rebind (D11)? How long does the first `_models_on_disk(PACKAGE_ROOT)` walk take over the rebound root (it is no longer pre-warmed by `start`; its first call is the inherited scene build, `server.py:417`)? | **S4-A**: all yes. Design as written. **S4-B**: a stdlib import or `gethostname` fails. `praxis/viz/viewer3d.py` installs minimal named stubs into `sys.modules` **before** importing `plr_visualizer3d`, the same mechanism `stages.install_native_stubs` uses. Each stub is listed and tested. Vendored files stay byte-identical. **S4-C**: WebLoop lacks `call_later`. Making it work would need a fourth override (`_mark_scene_dirty`), which trips GATE X (D11). **Stop** and escalate. The recommended path is to upstream a transport hook to PLR. |
@@ -274,7 +274,7 @@ slot shows one row (≤ 36 px) and collapses first.
   |---|---|---|---|
   | honoured | reachable | CSS | layout |
   | ignored | reachable | layout | layout |
-  | honoured | unreachable | CSS | inline px `min-width`/`max-width` (both equal to the D6 formula) on the widget node + `parent.fit()`; asserted only if `css_limits_refit`, otherwise recorded-only. The inline values are cleared, and `parent.fit()` called, when the window drops below 1600 px. |
+  | honoured | unreachable | CSS | inline px `min-width`/`max-width` (both equal to the D6 formula) on the widget node + `parent.fit()`; asserted only if `css_limits_refit`, otherwise recorded-only. The inline values are cleared, and `parent.fit()` called, when the window drops below 1600 px. They are recomputed on every `ResizeObserver` callback (a window resize within ≥ 1600 px, and a file-browser toggle), not only on tier crossings. |
   | ignored | unreachable (**S1-L**) | every width key recorded-only | every width key recorded-only |
 
   In every case the drawer keys and the height keys stay asserted. AC-39(d) is skipped, and
@@ -357,7 +357,10 @@ signal S1 records for the observed `windowingMode`), and on `activeCellChanged`.
 The display handles `TooLittleLiquidError`, `TooLittleVolumeError`, `HasTipError` and
 `NoTipError` from `pylabrobot.resources.errors` (`errors.py:8-22`). Everything else gets the
 normal IPython traceback, styled by Praxis CSS on the stderr/error output. Nothing is
-intercepted. Errors raised inside a `*96` (96-head) op are out of MVP scope: they get the
+intercepted. This includes the `RuntimeError`s that bare `discard_tips()` ("No tips have been
+picked up and no channels were specified.") and bare `return_tips()` ("No tips have been
+picked up.") raise with no tip mounted: they are not one of the four classes and get the plain
+styled traceback (AC-15 negatives). Errors raised inside a `*96` (96-head) op are out of MVP scope: they get the
 generic panel (step 2; orchestrator ruling 260929, MVP item 3 names four classes and no heads).
 
 **What PLR's message omits (read at the pin):**
@@ -416,10 +419,12 @@ over the traceback frames. It only reads them:
      offends if its committed `tracker.volume` < channel c's requested volume.
    - TLV, container owner: a resource offends if its summed addition >
      `max_volume − tracker.volume`.
-   - TLV, tip owner: the tip on channel c.
+   - TLV, tip owner: the tip on channel c offends if channel c's requested volume >
+     its `max_volume − tracker.volume` (committed); `{avail}` is that committed room.
    - HasTip / NoTip: the channels or tip spots whose committed tip state conflicts with the
      op (a channel that already holds a tip for Pick up, an empty spot for Pick up, an
-     occupied spot for Drop/Return, a channel with no tip for any liquid op).
+     occupied spot for Drop/Return, a channel with no committed tip, for any op that uses a
+     mounted tip (Aspirate, Dispense, Transfer, Drop tips, Return tips, Discard tips)).
    - **Pending residue.** PLR checks pending state (`volume_tracker.py:91,114-116`,
      `tip_tracker.py:91,104`), so an earlier failed op's uncommitted changes can cause a raise
      that committed state does not explain (a retry after E9; a pick-up after a failed
@@ -593,9 +598,8 @@ is not relied on: `dock.js` sets `src` only from an announce.
 
 **Closed panel** (Revision 2, B-2). A closed deck panel (its tab closed, or the drawer hidden)
 holds **no** iframe, and `dock.js` ignores `announce` while the panel is closed, except that
-the first `announce` a page sees auto-opens it. On reopen (`praxis:toggle-deck-panel`, or a
-tier crossing that re-homes an open panel), `dock.js` creates the iframe with no `src` and
-posts `query`; the `src` comes only from the answering `announce`. With no answer the body
+the first `announce` a page sees auto-opens it. On reopen (`praxis:toggle-deck-panel`),
+`dock.js` creates the iframe with no `src` and posts `query`; the `src` comes only from the answering `announce`. With no answer the body
 shows the section 3.6 placeholder.
 
 | Direction | `kind` | Meaning |
@@ -613,6 +617,10 @@ shows the section 3.6 placeholder.
   later `accept` for that client; the page's own reconnect loop retries with a new client.
 - `bye` at `pagehide` is best-effort (a page being torn down may not deliver it). Eviction at
   the cap is the backstop.
+- A synchronous cell that blocks the kernel for more than about 60 s makes the page's
+  transport give up (`static/transport.js:26, 72-74`); the panel then shows the section 3.6
+  lost-connection placeholder (the `plr:gone` state) even though the viewer is still live, and closing and reopening the deck panel
+  recovers through `query`. This is accepted and stated.
 - Traffic uses a **new channel**, not `praxis_viz`: that channel's receiver
   (`visualizer-augmentations/index.js`) would misread these envelopes. It is also not
   `praxis_repl`, per R21.
@@ -632,7 +640,9 @@ project pages, so "same origin" means "any page the account serves".
 - **Inbound bounds.** `DockedViewer3D` caps virtual clients at **4**. At the cap, a new
   `open` **evicts the oldest** client: the kernel posts `evict` to it and ends its
   `VirtualConnection` with a sentinel, then gives the new client `accept`. `_clients` never
-  exceeds 4. (A BroadcastChannel post never raises, so the stock evict-on-send-failure path,
+  exceeds 4. `_clients` is a set (`server.py:187`), so `DockedViewer3D` keeps its own
+  insertion-ordered map of clients to find the oldest, and the evict path removes the old
+  connection from `_clients` synchronously, before the new client's `_handler` runs. (A BroadcastChannel post never raises, so the stock evict-on-send-failure path,
   `server.py:357-361`, never fires; without eviction, orphans from routine reloads would
   fill the cap.) Messages that are not JSON, or whose `kind` is unknown, are dropped without
   an exception (logged at debug level).
@@ -992,7 +1002,9 @@ formatted as in 3.2:
 
 For the stamp, a tip owner counts as a channel owner: `resource: null` (D2). A raise that `resolve` returns `None` for (no owner, pending residue, or a `*96` op;
 D8 steps 2, 4, 5) gets the generic panel: "PyLabRobot raised X: message" plus the traceback,
-with no heading template.
+with no heading template. A raise outside the four classes, including the `RuntimeError` of a
+bare `discard_tips()` or `return_tips()` with no tip mounted, gets no panel at all: the plain
+IPython traceback, styled by Praxis CSS (D8).
 
 With the fixture's error cell (`make_fixture.py:97-99`: 80 µL from assay A1:H1, which holds
 50 µL), the panel reads "Not enough liquid in assay A1:H1." / "Each well holds 50 µL; the
@@ -1052,8 +1064,12 @@ kernel, i.e. after `viewer = await praxis.viz.viewer3d.dock(deck)`. The layout:
 - **Footer:** the focused resource in words, then the one-row motion slot.
 
 **States:**
-- With no viewer running, or after `plr:gone`, the body shows "No deck viewer is running.
+- With no viewer running, the body shows "No deck viewer is running.
   Run `viewer = await praxis.viz.viewer3d.dock(deck)` in a cell."
+- After `plr:gone` (the page gave up after 60 s, possibly while the viewer is still live, see
+  D11), the body shows "The deck view lost its connection. Close and reopen the deck panel,
+  or run `dock(deck)` again." It never claims the viewer is gone, because the shell cannot
+  tell a stopped viewer from a busy kernel. *(Orchestrator, Revision 3.)*
 - `await viewer.stop()` gives the same placeholder within 5 s.
 - Re-running the `dock()` cell stops the old viewer (D11); its `announce` reloads the iframe
   with the new id if the panel is open.
@@ -1148,6 +1164,8 @@ Gate shorthands:
     failure.
   - The note also records `css_limits_honoured`, `css_limits_refit`, and the D6 sizing case
     (the table row) that AC-36 is keyed by.
+  - The note records `restore_layout_keeps_iframe`: whether `restoreLayout()` keeps the
+    widget's iframe loaded (no reload on a clamp).
 - **AC-2 (S2 recorded)**:
   - Same record checks as AC-1.
   - The note contains the survivorship table: element and attribute × {trusted live,
@@ -1308,7 +1326,7 @@ Gate shorthands:
     committed → TLL, owner the trough, requested 240 (summed), available 100 (committed),
     offending = {trough}. The resolved numbers do not come from PLR's message.
   - **E10** (mixed wells): aspirate 80 µL from A1:H1 where A1:D1 hold 50 and E1:H1 hold 200
-    → offending exactly A1:D1 (plus the owner if it is outside that set).
+    → offending exactly A1:D1.
   - **E11**: `return_tips` onto an occupied spot → HasTip, owner the tip spot, `action ==
     "return_tips"` (the outermost ACTIONS frame), not `drop_tips`.
   - **E4-off**, **E6-off**: E4 and E6 with tracking off still raise and resolve to the same
@@ -1326,9 +1344,24 @@ Gate shorthands:
     layout with the chatterbox backend, `pick_up_tips96(tips_300)` then
     `aspirate96(assay, volume=50)` raises `TooLittleLiquidError: Not enough liquid in
     container: 50.0uL > 0uL.`
+  - **E15** (TLV, tip owner, committed room; verified on PLR 0.2.2 with chatterbox, 260929):
+    300 µL filter tips (`max_volume` 360); source A1:C1 at 200 µL and D1 at 100 µL;
+    `pick_up_tips(tips A1:D1)`; `aspirate(source A1:D1, vols=[200]*4, use_channels=[0,1,2,3])`
+    raises `TooLittleLiquidError` ("200.0uL > 100uL"), leaving tip 0 at committed 0 / pending
+    200; then `aspirate(source A2, vols=[200], use_channels=[0])` raises
+    `TooLittleVolumeError: Not enough space in container: 200.0uL > 160.0uL.` → `None`: the
+    committed room is 360 ≥ 200, so the tip owner is not in the committed offending set.
+  - **E16** (NoTip, channel, drop-family op; verified 260929): `discard_tips(use_channels=[0])`
+    with no tip mounted raises `NoTipError: Channel 0 does not have a tip.` → owner channel 0,
+    action `discard_tips` (the outermost ACTIONS frame).
   - Negative: a `ValueError` → `None`.
   - Negative: a TLL raised by a tracker whose `thing` names nothing on any deck, with no LH
     frame → `None`.
+  - Negative (verified 260929): bare `discard_tips()` with no tip mounted raises
+    `RuntimeError: No tips have been picked up and no channels were specified.` → `None`
+    (not one of the four classes; plain styled traceback, D8).
+  - Negative (verified 260929): bare `return_tips()` with no tip mounted raises
+    `RuntimeError: No tips have been picked up.` → `None` (as above).
 - **AC-16 (error panel)** [PY:test_display_errors.py]:
   - For E1, the heading is exactly "Not enough liquid in assay A1:H1."
   - The body contains "Each well holds 50 µL; the aspirate asked for 80 µL." and
@@ -1349,6 +1382,8 @@ Gate shorthands:
     `ledger.step_for`.
   - **E12** matches the "TLL, owner is a tip (dispense)" row: heading "The tip on channel 0
     holds only 0 µL.", body "The dispense asked for 100 µL. Nothing was dispensed."
+  - **E16** matches the "NoTip, channel" row: heading "Channel 0 has no tip.", and the body
+    names "Discard tips" (the outermost op).
   - Stamps (D2): every panel has `kind == "error"` and `rev` null; E1's `resource ==
     "assay"`, E5's is the tip rack's name, and E4's and E12's (channel and tip owners) are
     null.
@@ -1358,7 +1393,8 @@ Gate shorthands:
   - The handler returns a list of one string, `"<Name>: <message>"`.
   - The handler displays exactly one bundle.
   - An unresolvable context displays the generic panel. **E13** (AC-15, pending residue)
-    displays the generic panel, whose stamp has `resource` null.
+    displays the generic panel, whose stamp has `resource` null. **E15** (AC-15, tip owner
+    with committed room) displays the generic panel likewise.
   - For an exception with a `ledger._ERROR_STEPS` entry, the handler's displayed bundle names
     that step, and the entry is gone afterwards. Order check with a real `RunLedger(lh)`
     (show on) around a failing op: the recorded `display` calls are the ledger bundle, then
@@ -1447,6 +1483,8 @@ Gate shorthands:
   - `earlier_session_marked`: after `kernelmenu:restart`, re-running the boot cell and
     re-running a drawing cell (which sets the panel's current session, D7), a pre-restart
     output reads "Drawn in an earlier session."
+  - `rerun_not_marked` (negative control for `earlier_session_marked`): in the same scenario,
+    the re-run drawing cell's own new output does not contain "Drawn in an earlier session."
   - `persistence_gate_never_open`: `dialog#praxis-persistence-first-save` was never open
     during the scenario (D16); trivially true when `main` lacks the ladder.
 - **AC-24 (trust loss)** [DISPLAY, scenario D3: save, reload, reopen the notebook]:
@@ -1606,6 +1644,10 @@ Gate shorthands:
     are the 1280–1599 width keys.)
   - `fit_after_tier_change`: resizing an open split panel from 1440 to 1600 wide and back
     re-satisfies each tier's width key (asserted or recorded per case).
+  - `resize_within_wide`: resizing one page with an open split panel from 1600 to 1920 wide
+    (no tier crossing) re-satisfies the ≥ 1600 width formula at 1920 (a ≥ 1600 width key,
+    asserted or recorded per case; in case honoured/unreachable it checks that the inline
+    widths were recomputed on `ResizeObserver`, D6).
   - At 1280×800: `viewer_height ≥ 300`, and `motion_slot_height ≤ 36`.
   - At 1152×800: `drawer_no_reflow`, meaning the notebook content width changes by 0 px when
     the drawer opens, and `drawer_overlays`, meaning the panel is `position: fixed`.
@@ -1659,8 +1701,9 @@ Gate shorthands:
     that wraps `BroadcastChannel.prototype.postMessage` in the parent page to drop messages
     of kind `query` (harness code; no product switch), `--dock-check` exits nonzero and names
     `late_iframe`.
-  - The observed exit codes go in the sprint C PR description. (a) is run first in sprint B's
-    PR.- **AC-40 (CI wiring)**:
+  - The observed exit codes go in the sprint C PR description. (a) is run first in sprint A's
+    PR (A7), and again in sprint B's (B10).
+- **AC-40 (CI wiring)**:
   - `uv run python -m pytest web-repl/tests/test_repl_workflow_covers_tests.py -q` passes on
     each sprint's head.
   - `grep -c -- '--display-check' .github/workflows/repl.yml` ≥ 1 (sprint A).
@@ -1694,7 +1737,8 @@ action (project memory, "praxis main merge policy").
   CSS limits, measures the widget after a splitter drag, tries DockPanel layout sizing
   (`saveLayout` → edit `sizes` → `restoreLayout`), tests `css_limits_refit` (set inline px
   `min-width`/`max-width` on the widget node, call `parent.fit()`, measure), records the D6
-  sizing case, enumerates cell-state hooks for the five
+  sizing case, records `restore_layout_keeps_iframe` (whether `restoreLayout()` keeps an
+  iframe in the widget loaded, i.e. a clamp causes no reload), enumerates cell-state hooks for the five
   states, and records the notebook's `windowingMode` and the signal that fires when a
   scrolled-away cell's DOM is re-attached.
 - Run it with `bth run`, verify by record, and file the research note.
@@ -1827,7 +1871,8 @@ the ledger stamp (`resource` null, `rev` null, D2). Add their `repl.yml` lines.
 - Size: ~320 LOC.
 
 **B5: Error context.** Create `context.py`, and `test_display_context.py` first: cases
-E1–E14, E4-off, E6-off, E-96 and both negatives, using real PLR at the pin. Implement D8
+E1–E16, E4-off, E6-off, E-96 and the four negatives (including the two bare-call
+`RuntimeError`s), using real PLR at the pin. Implement D8
 steps 1–5: the `glossary.ACTIONS` frame filter (defence against comprehension frames, no
 case), the `*96` short-circuit, owner rules (a)–(e) (no `head96` in rule (b)), the committed,
 summed offending set (per channel for a tip owner), and the pending-residue rule (owner
@@ -1840,7 +1885,8 @@ outside the committed offending set → `None`). Add its `repl.yml` line.
 **B6: Error panel and handler.** Create `errors.py`, and `test_display_errors.py` first.
 Implement the handler per D8, using S3-A or the S3-C fallback as recorded in AC-3, with the
 escaped, capped traceback (D2, D4) and the step line from `ledger.step_for` (D9). Include the
-tip-owner TLL row (E12), the generic panel for every `None` result (including E13), and the
+tip-owner TLL row (E12), the "NoTip, channel" row naming "Discard tips" (E16), the generic
+panel for every `None` result (including E13 and E15), and the
 error stamp by owner (D2). Add its `repl.yml` line.
 - Depends on: B2, B4 (glossary, ledger), B5.
 - Closes: AC-16, and AC-13's error-panel case.
@@ -1860,7 +1906,7 @@ Add its `repl.yml` line. If AC-3 recorded (b) and (b′) both failing, do not st
 **B8: Install and bootstrap stage.** Create `install.py` and `praxis/display/__init__.py`, and
 `test_display_install.py` first. It covers the fake shell and the S3-B (the
 `(html, {"praxis": stamp})` carrier), S3-C and S3-D fallbacks, and the generic panel for
-E13. Add the D13 stage to `praxis_bootstrap.py`, and extend
+E13 and E15. Add the D13 stage to `praxis_bootstrap.py`, and extend
 `test_praxis_bootstrap_loader.py` for its order and its non-fatal failure. Add the `repl.yml`
 line. Extend `assert_dist_complete` with `assets/python/praxis/display/__init__.py`.
 - Depends on: B2, B3, B4, B6, B7.
@@ -1885,7 +1931,8 @@ both failing, do not start; escalate (D1, S3-B).
 
 **B10: `--display-check` scenarios D2–D4.** Extend the fixture notebook and
 `run_display_check` for AC-21 to AC-26, including AC-23's `mark_survives_scroll`,
-`earlier_session_marked` (kernel restart, boot cell, then a re-run drawing cell) and
+`earlier_session_marked` (kernel restart, boot cell, then a re-run drawing cell) with its
+negative control `rerun_not_marked` (the re-run output itself is not marked), and
 `persistence_gate_never_open`; the harness reads stamps with the `stampOf` expression (D2). D3 asserts the
 S2 branch that AC-2 recorded for the executed-saved-reopened path. Run AC-39(a).
 - Depends on: B8, B9.
@@ -1927,7 +1974,8 @@ justification comment, and append the ADR §2 addendum (section 4 rows; D11). Ad
 - the one-time `plr_visualizer3d.server.PACKAGE_ROOT` rebind to `tempfile.mkdtemp()` before
   the first viewer (module code, not an override; D11)
 - `start`: no `_models_on_disk` pre-warm, the 4-client cap with oldest-client eviction
-  (`evict` plus a sentinel), `bye` ending a connection, `query` → `announce`, dropping
+  (`evict` plus a sentinel; an own insertion-ordered client map, since `_clients` is a set,
+  and synchronous removal from `_clients` before the new `_handler` runs), `bye` ending a connection, `query` → `announce`, dropping
   non-JSON and unknown kinds (D11 threat model)
 - `stop`: end every connection with a sentinel and await its `_handler` task, then `close`
 - `dock()`: the module-level current viewer stopped first, and
@@ -1957,7 +2005,9 @@ and signals), tests first:
 - the widget per the S1 branch, and sizing per the D6 sizing-case table recorded in AC-1
   (CSS limits, DockPanel `saveLayout`/`restoreLayout`, inline px `min-width`/`max-width` +
   `parent.fit()`, or S1-L), including the ≥ 1600 width formula and `parent.fit()` after
-  every tier change inside the split (D6)
+  every tier change inside the split (D6), and, in case honoured/unreachable, the inline
+  widths recomputed on every `ResizeObserver` callback within ≥ 1600 px (window resize and
+  file-browser toggle)
 - the header, footer, motion slot, tiers, and the drawer: auto-open on first announce,
   close button, Escape, tier crossing both ways (D6)
 - Follow (first output with a non-null `resource`, read through `stampOf` from `stale.js`),
@@ -1984,7 +2034,8 @@ Mount it from `index.js`.
 
 **C7: `--dock-check` gate and CI wiring.** Add `run_dock_check` with scenarios K1 and K2
 (AC-34 to AC-38), using the full-Chromium launch and SwiftShader args (D16), the
-persistence-ack init script (D16), AC-36 keyed by the recorded D6 sizing case, AC-38's
+persistence-ack init script (D16), AC-36 keyed by the recorded D6 sizing case (including
+the 1600→1920 `resize_within_wide` case), AC-38's
 `late_iframe` ordering listener and `many_reloads`, and the harness-only `query`-drop init
 script for AC-39(e). Run the extended R21 grep (AC-31). Add to CI:
 - a step that checks out PLR main at C2's recorded commit into a temporary directory, followed
@@ -2368,3 +2419,41 @@ closes, and where it landed.
   AC-39(e).
 - Size estimates raised: B5 ~300, B9 ~360, C3 ~290, C4 ~250, C5 ~380, C7 ~350 LOC.
 - References list the round 2 audits and the IPython formatter lines.
+
+## Revision 3 (260929)
+
+Round-3 adversarial review: challenger REVISE (2 MAJOR / 2 MINOR; all round-2 findings
+C2-1..C2-12 CLOSED; B-1, B-3 and B-7 judged sound). The orchestrator verified both MAJORs by
+running real PLR 0.2.2 on the fixture (`web-repl/design/notebook-display/make_fixture.py`,
+chatterbox backend) on 260929, and corrected the challenger's proposed E16 setup (a bare
+`discard_tips()` raises `RuntimeError`, not `NoTipError`). No AC or task was added or
+renumbered: every change appends cases or keys to existing ACs or edits existing text.
+
+- **R3-1 (C3-1, MAJOR): TLV tip owner uses committed room.** The tip on channel c offends
+  only if channel c's request > `max_volume − tracker.volume` (committed); `{avail}` is that
+  room. Landed: D8 step 4; AC-15 E15 (→ `None`); AC-17 (E15 generic panel); B5, B6, B8.
+- **R3-2 (C3-2, MAJOR): NoTip channel for every tip-using op.** "A channel with no committed
+  tip, for any op that uses a mounted tip (Aspirate, Dispense, Transfer, Drop tips, Return
+  tips, Discard tips)". Bare `discard_tips()` / `return_tips()` `RuntimeError`s get the plain
+  styled traceback. Landed: D8 step 4 and intro; §3.3 generic-panel paragraph; AC-15 E16 and
+  two `RuntimeError` negatives; AC-16 E16 ("NoTip, channel", body names "Discard tips"); B5,
+  B6.
+- **R3-3 (C3-3, MINOR): tier re-homing is not a reopen.** Moving keeps the iframe's `src`
+  (D6 drawer note and §7 drawer row unchanged). Landed: D11 "Closed panel" reopen list.
+- **R3-4 (C3-4, MINOR): E10 and AC-39 wording.** Landed: AC-15 E10 (parenthetical deleted);
+  AC-39 last bullet ((a) runs first in sprint A's PR, A7, again in B10) and the AC-40 heading
+  restored to its own line.
+- **R3-5 (implementer notes).**
+  - (a) `_clients` is a set; own insertion-ordered map; synchronous removal on evict.
+    Landed: D11 inbound bounds; C3 `start` bullet.
+  - (b) A cell blocking > ~60 s makes the page give up; placeholder while the viewer lives;
+    close/reopen recovers via `query`; accepted. Landed: D11 timeout bullets.
+  - (c) Inline ≥ 1600 widths recomputed on `ResizeObserver`. Landed: D6 sizing table
+    (honoured/unreachable row); AC-36 `resize_within_wide` (1600→1920); C5 (unit), C7.
+  - (d) S1 records `restore_layout_keeps_iframe`. Landed: D1 S1 row; AC-1; A1.
+  - (e) Negative control `rerun_not_marked`. Landed: AC-23; B10.
+- **R3-6: this log and the frontmatter** `adversarial_review` entry.
+
+**Consistency fixes made while applying:**
+- B5's case list now reads E1–E16 and "the four negatives"; B6 names E16 and E15; B8 names
+  E15; AC-39's last bullet agrees with A7 and B10, which both run AC-39(a).
