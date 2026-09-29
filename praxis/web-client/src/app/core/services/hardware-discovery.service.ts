@@ -89,20 +89,20 @@ const KNOWN_DEVICES: Record<string, { manufacturer: string; model: string; plrBa
     '0x08BB:0x0106': {
         manufacturer: 'Hamilton',
         model: 'STAR',
-        plrBackend: 'pylabrobot.liquid_handling.backends.hamilton.STAR',
+        plrBackend: 'pylabrobot.legacy.liquid_handling.backends.hamilton.STAR',
         configSchema: HAMILTON_CONFIG_SCHEMA,
     },
     '0x08BB:0x0107': {
         manufacturer: 'Hamilton',
         model: 'Starlet',
-        plrBackend: 'pylabrobot.liquid_handling.backends.hamilton.Starlet',
+        plrBackend: 'pylabrobot.legacy.liquid_handling.backends.hamilton.Starlet',
         configSchema: HAMILTON_CONFIG_SCHEMA,
     },
     // Opentrons devices
     '0x04D8:0xE11A': {
         manufacturer: 'Opentrons',
         model: 'OT-2',
-        plrBackend: 'pylabrobot.liquid_handling.backends.opentrons.OT2',
+        plrBackend: 'pylabrobot.legacy.liquid_handling.backends.opentrons.OT2',
         configSchema: {
             simulate: { type: 'boolean', label: 'Simulation Mode', required: false, default: false },
         },
@@ -111,21 +111,21 @@ const KNOWN_DEVICES: Record<string, { manufacturer: string; model: string; plrBa
     '0x0856:0xAC11': {
         manufacturer: 'Hamilton',
         model: 'STAR/Starlet (via B&B Adapter)',
-        plrBackend: 'pylabrobot.liquid_handling.backends.hamilton.STAR',
+        plrBackend: 'pylabrobot.legacy.liquid_handling.backends.hamilton.STAR',
         configSchema: HAMILTON_CONFIG_SCHEMA,
     },
     // BMG CLARIOstar Plate Reader
     '0x0403:0xBB68': {
         manufacturer: 'BMG LABTECH',
         model: 'CLARIOstar',
-        plrBackend: 'pylabrobot.plate_reading.clario_star_backend.CLARIOstarBackend',
+        plrBackend: 'pylabrobot.legacy.plate_reading.clario_star_backend.CLARIOstarBackend',
         // configSchema removed per user request (no simulation config needed for physical discovery)
     },
     // MCT Adapter (Found on RPi for Hamilton)
     '0x08AF:0x8000': {
         manufacturer: 'Hamilton',
         model: 'STAR/Starlet (via MCT Adapter)',
-        plrBackend: 'pylabrobot.liquid_handling.backends.hamilton.STAR',
+        plrBackend: 'pylabrobot.legacy.liquid_handling.backends.hamilton.STAR',
         configSchema: HAMILTON_CONFIG_SCHEMA
     },
     // Generic USB-Serial adapters

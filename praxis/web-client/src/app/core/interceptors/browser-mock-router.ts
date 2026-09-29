@@ -321,7 +321,7 @@ export class BrowserMockRouter {
                             ip_address: '192.168.1.100',
                             manufacturer: 'Opentrons',
                             model: 'OT-2',
-                            plr_backend: 'pylabrobot.liquid_handling.backends.opentrons.OT2',
+                            plr_backend: 'pylabrobot.legacy.liquid_handling.backends.opentrons.OT2',
                             properties: { simulated: true },
                         },
                         {
@@ -332,7 +332,7 @@ export class BrowserMockRouter {
                             port: '/dev/ttyUSB0',
                             manufacturer: 'Hamilton',
                             model: 'STAR',
-                            plr_backend: 'pylabrobot.liquid_handling.backends.hamilton.STAR',
+                            plr_backend: 'pylabrobot.legacy.liquid_handling.backends.hamilton.STAR',
                             properties: { simulated: true },
                         },
                     ];

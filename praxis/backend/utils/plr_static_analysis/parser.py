@@ -41,23 +41,28 @@ class PLRSourceParser:
   """
 
   # Patterns for discovering PLR source files
-  # These cover all machine types in PLR
+  # These cover all machine types in PLR.
+  # PLR 1.0: the machine-agnostic ("legacy") frontend/backend stack lives under
+  # pylabrobot/legacy/. The old top-level packages are DeprecationWarning shims
+  # (star-imports only, no class definitions), so globbing them finds nothing.
+  # Module paths derived from these files (pylabrobot.legacy.X...) match the
+  # runtime __module__ of the classes.
   MACHINE_PATTERNS = (
-    "pylabrobot/liquid_handling/**/*.py",
-    "pylabrobot/plate_reading/**/*.py",
-    "pylabrobot/machines/**/*.py",
-    "pylabrobot/heating_shaking/**/*.py",
-    "pylabrobot/shaking/**/*.py",
-    "pylabrobot/temperature_controlling/**/*.py",
-    "pylabrobot/pumps/**/*.py",
-    "pylabrobot/centrifuge/**/*.py",
-    "pylabrobot/thermocycling/**/*.py",
-    "pylabrobot/storage/**/*.py",
-    "pylabrobot/sealing/**/*.py",
-    "pylabrobot/peeling/**/*.py",
-    "pylabrobot/powder_dispensing/**/*.py",
-    "pylabrobot/only_fans/**/*.py",
-    "pylabrobot/arms/**/*.py",
+    "pylabrobot/legacy/liquid_handling/**/*.py",
+    "pylabrobot/legacy/plate_reading/**/*.py",
+    "pylabrobot/legacy/machines/**/*.py",
+    "pylabrobot/legacy/heating_shaking/**/*.py",
+    "pylabrobot/legacy/shaking/**/*.py",
+    "pylabrobot/legacy/temperature_controlling/**/*.py",
+    "pylabrobot/legacy/pumps/**/*.py",
+    "pylabrobot/legacy/centrifuge/**/*.py",
+    "pylabrobot/legacy/thermocycling/**/*.py",
+    "pylabrobot/legacy/storage/**/*.py",
+    "pylabrobot/legacy/sealing/**/*.py",
+    "pylabrobot/legacy/peeling/**/*.py",
+    "pylabrobot/legacy/powder_dispensing/**/*.py",
+    "pylabrobot/legacy/only_fans/**/*.py",
+    "pylabrobot/legacy/arms/**/*.py",
   )
 
   RESOURCE_PATTERNS = ("pylabrobot/resources/**/*.py",)
@@ -479,7 +484,7 @@ class PLRSourceParser:
       file_path: Path to the Python source file.
 
     Returns:
-      The module path (e.g., 'pylabrobot.liquid_handling.backends.hamilton.STAR_backend')
+      The module path (e.g., 'pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_backend')
 
     """
     try:

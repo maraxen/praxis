@@ -278,6 +278,9 @@ export class ParameterConfigComponent implements OnChanges {
     const machinePatterns = [
       'pylabrobot.machines',
       'pylabrobot.liquid_handling',
+      // PLR 1.0 home of the LiquidHandler stack (the two above are deprecated shims)
+      'pylabrobot.legacy.machines',
+      'pylabrobot.legacy.liquid_handling',
       'LiquidHandler',
       'Machine',
     ];

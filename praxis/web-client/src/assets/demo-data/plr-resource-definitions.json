@@ -1,6 +1,6 @@
 [
   {
-    "accession_id": "plr-d7691ea5",
+    "accession_id": "plr-296793b1",
     "name": "Carrier",
     "fqn": "pylabrobot.resources.carrier.Carrier",
     "plr_category": "Carrier",
@@ -13,37 +13,127 @@
     }
   },
   {
-    "accession_id": "plr-830322f4",
+    "accession_id": "plr-b1f3d11e",
     "name": "Container",
     "fqn": "pylabrobot.resources.container.Container",
     "plr_category": "Resource",
-    "description": "A container is an abstract base class for a resource that can hold liquid.",
+    "description": "A container is an abstract base class for a resource that can hold liquid.\n\nVia the :class:`Liddable` mixin, a container (trough, tube, petri dish, well) can host a lid.",
     "vendor": "Container",
     "is_consumable": false,
     "is_reusable": true,
     "properties_json": {}
   },
   {
-    "accession_id": "plr-090bfec2",
+    "accession_id": "plr-741cc4c3",
+    "name": "ContainerRack",
+    "fqn": "pylabrobot.resources.container_rack.ContainerRack",
+    "plr_category": "Resource",
+    "description": "A movable rack of holders parameterized by content type ``T``.\n\nSlots are :class:`ResourceHolder` cells in a 2D grid; each slot may be empty\nor hold a resource of type ``T``. Dimensions and item layout are caller-defined,\nso the rack is not restricted to any particular footprint (the SLAS-1\n127.76 x 85.48 mm footprint is one common case \u2014 see e.g.\n:func:`pylabrobot.resources.alpaqua.tube_racks.alpaqua_12_tuberack_5mL_eppis`).\n\nSubclasses pick a concrete content type by parameterizing ``T`` and overriding\n``_content_type`` (used for runtime ``isinstance`` enforcement, since Python\nerases generic parameters at runtime). The base class uses :class:`Resource`,\ni.e. accepts anything.\n\nIdentifiers in ``ordered_items`` may be any string \u2014 Excel notation\n(``\"A1\"``, ``\"B2\"``), descriptive names (``\"primary\"``, ``\"left_well\"``),\nor anything else. Slice syntax (``rack[\"A1:A3\"]``) and row/column helpers\ninherited from :class:`ItemizedResource` only work for Excel-style keys;\nsingle-key access (``rack[\"primary\"]``) works for any identifier. This\nmatters for irregularly shaped racks that don't fit a Cartesian grid.\n\nExamples:\n    >>> # Heterogeneous rack with Excel-style identifiers:\n    >>> rack: ContainerRack[Resource] = ContainerRack(\n    ...     name=\"mixed\", size_x=127.76, size_y=85.48, size_z=45.0,\n    ...     ordered_items=holders,\n    ... )\n    >>> rack[\"A1\"] = my_tube\n    >>> rack[\"A1:A3\"] = [tube1, tube2, tube3]\n    >>>\n    >>> # Irregular rack with custom identifiers:\n    >>> rack[\"primary_well\"] = my_tube\n    >>> rack[\"overflow\"] = backup_tube\n    >>>\n    >>> # Typed rack (only Tubes), via subclass:\n    >>> tr: TubeRack = TubeRack(...)\n    >>> tube: Tube = tr.get_container(\"A1\")  # statically typed Tube",
+    "vendor": "Container Rack",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "category": "container_rack"
+    }
+  },
+  {
+    "accession_id": "plr-02439575",
     "name": "Deck",
     "fqn": "pylabrobot.resources.deck.Deck",
     "plr_category": "Deck",
-    "description": "Base class for liquid handler decks.\n\nThis class maintains a dictionary of all resources on the deck. The dictionary is keyed by the\nresource name and is updated when resources are assigned and unassigned from the deck. The point\nof this dictionary is to allow O(1) naming collision checks as well as the quick lookup of\nresources by name.",
+    "description": "Base class for liquid handler decks.",
     "vendor": null,
     "is_consumable": false,
     "is_reusable": true,
     "properties_json": {
       "name": "deck",
-      "size_x": 1360,
-      "size_y": 653.5,
-      "size_z": 900,
       "category": "deck"
     }
   },
   {
-    "accession_id": "plr-24cee9e2",
+    "accession_id": "plr-6f47df02",
+    "name": "EmbeddedTipRack",
+    "fqn": "pylabrobot.resources.tip_rack.EmbeddedTipRack",
+    "plr_category": "TipRack",
+    "description": "The EmbeddedTipRack - this is what some might call a \"standard\" TipRack; they cannot stand on their own, they require an EmbeddedTipRackHolder at all times to be functional.\n\nhave historically been referred to as FTRs (officially \"framed tip rack\" from Hamilton, sometimes we used to call them \"floating tip racks\".",
+    "vendor": null,
+    "is_consumable": true,
+    "is_reusable": false,
+    "properties_json": {
+      "category": "tip_rack",
+      "with_tips": true
+    }
+  },
+  {
+    "accession_id": "plr-c35801c9",
+    "name": "EmbeddedTipRackHolder",
+    "fqn": "pylabrobot.resources.tip_rack_holder.EmbeddedTipRackHolder",
+    "plr_category": "Resource",
+    "description": "A mixin class for resources that can hold other resources, like a plate or a lid.\n\nThis applies a linear transformation after the rotation to correctly place the child resource.",
+    "vendor": "Tip Rack Holder",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "category": "embedded_tip_rack_holder"
+    }
+  },
+  {
+    "accession_id": "plr-db76a6e0",
+    "name": "FlexDeck",
+    "fqn": "pylabrobot.resources.opentrons.flex_deck.FlexDeck",
+    "plr_category": "Deck",
+    "description": "Opentrons Flex deck \u2014 16 slots with placement and collision detection.\n\nEach slot (the 12 standard A1\u2013D3 slots plus the 4 staging slots A4\u2013D4)\nis modeled as a :class:`ResourceHolder` child assigned into this deck's\nresource tree, so labware placed at a slot is properly parented \u2014\n``resource.parent`` walks up through the slot holder to this deck, and\n``get_absolute_location()`` works through the standard PLR mechanism.\nLabware is placed into a slot's holder with :meth:`assign_child_at_slot`.\n\nExample::\n\n    deck = FlexDeck()\n    deck.assign_child_at_slot(tip_rack, slot=\"C1\")\n    print(deck.summary())\n    deck.check_single_nozzle_clearance(\"C3\", primary_nozzle=\"H1\")",
+    "vendor": "Opentrons",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "name": "flex_deck"
+    }
+  },
+  {
+    "accession_id": "plr-2ea9350f",
+    "name": "HamiltonCoreGripperTool",
+    "fqn": "pylabrobot.resources.hamilton.core_gripper_tools.HamiltonCoreGripperTool",
+    "plr_category": "Resource",
+    "description": "A CO-RE grip tool, picked up by a pair of channels to grip a plate.",
+    "vendor": "Hamilton",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "category": "core_gripper_tool"
+    }
+  },
+  {
+    "accession_id": "plr-87b9c9b4",
+    "name": "HamiltonCoreGrippers",
+    "fqn": "pylabrobot.resources.hamilton.core_grippers.HamiltonCoreGrippers",
+    "plr_category": "Resource",
+    "description": "Base class for deck resources.\n\nArgs:\n  name: The name of the resource.\n  size_x: The size of the resource in the x-direction.\n  size_y: The size of the resource in the y-direction.\n  size_z: The size of the resource in the z-direction.\n  location: The location of the resource, relative to its parent. (see :meth:`get_absolute_location`)\n  category: The category of the resource, e.g. `tips`, `plate_carrier`, etc.\n  model: The model of the resource (optional).\n  barcode: The barcode of the resource (optional).\n  preferred_pickup_location: The location where the center of the gripper should be when picking\n    up this resource, relative to the resource's origin (optional).\n  metadata: Free-form metadata. Treated as black box during serialisation.\n    To make standard JSON serialisation work, only add JSON-compatible metadata.",
+    "vendor": "Hamilton",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "category": "core_grippers"
+    }
+  },
+  {
+    "accession_id": "plr-c80d1919",
+    "name": "HamiltonDeck",
+    "fqn": "pylabrobot.resources.hamilton.hamilton_decks.HamiltonDeck",
+    "plr_category": "Deck",
+    "description": "Hamilton decks. Currently only STARLet, STAR and Vantage are supported.",
+    "vendor": "Hamilton",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "name": "deck",
+      "category": "deck"
+    }
+  },
+  {
+    "accession_id": "plr-ed950936",
     "name": "HamiltonSTARDeck",
-    "fqn": "pylabrobot.resources.hamilton.hamilton_decks.HamiltonSTARDeck",
+    "fqn": "pylabrobot.resources.hamilton.star_decks.HamiltonSTARDeck",
     "plr_category": "Deck",
     "description": "Base class for a Hamilton STAR(let) deck.",
     "vendor": "Hamilton",
@@ -52,30 +142,66 @@
     "properties_json": {
       "name": "deck",
       "category": "deck",
+      "with_waste_block": true,
       "with_trash": true,
       "with_trash96": true,
-      "with_teaching_rack": true,
+      "with_teaching_needle_rack": true,
       "core_grippers": "1000uL-5mL-on-waste"
     }
   },
   {
-    "accession_id": "plr-6c85bff7",
+    "accession_id": "plr-4b8812ef",
+    "name": "HamiltonTip",
+    "fqn": "pylabrobot.resources.hamilton.tip_creators.HamiltonTip",
+    "plr_category": "Resource",
+    "description": "Represents a single tip for Hamilton instruments.",
+    "vendor": "Hamilton",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "category": "tip"
+    }
+  },
+  {
+    "accession_id": "plr-2bd1e770",
+    "name": "HamiltonTool",
+    "fqn": "pylabrobot.resources.hamilton.hamilton_tool.HamiltonTool",
+    "plr_category": "Resource",
+    "description": "A tool carried by a Hamilton pipetting channel.",
+    "vendor": "Hamilton",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {}
+  },
+  {
+    "accession_id": "plr-9297582c",
+    "name": "HeadTool",
+    "fqn": "pylabrobot.resources.head_tool.HeadTool",
+    "plr_category": "Resource",
+    "description": "A tool that a liquid handling channel picks up and carries.\n\nAttributes:\n  fitting_depth: the overlap between the tool and the channel, in mm.",
+    "vendor": "Head Tool",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {}
+  },
+  {
+    "accession_id": "plr-5b49535b",
     "name": "ItemizedResource",
     "fqn": "pylabrobot.resources.itemized_resource.ItemizedResource",
     "plr_category": "Resource",
-    "description": "Base class for Itemized resources.\n\nThis class provides utilities for getting child resources by an identifier. It also restricts the\nchild resources to instances of the generic type `T`, specified by the subclass. For example, a\n:class:`pylabrobot.resources.plate.Plate` can only have child resources of type\n:class:`pylabrobot.resources.well.Well`.\n\n.. note::\n  This class is not meant to be used directly, but rather to be subclassed, most commonly by\n  :class:`pylabrobot.resources.Plate` and :class:`pylabrobot.resources.TipRack`.",
+    "description": "Base class for Itemized resources.\n\nThis class provides utilities for getting child resources by an identifier. It also restricts the\nchild resources to instances of the generic type `T`, specified by the subclass. For example, a\n:class:`pylabrobot.resources.plate.Plate` can only have child resources of type\n:class:`pylabrobot.resources.well.Well`.\n\nItems are always arranged in a uniform grid with equal spacing between items. The spacing between\nitems in the x direction is given by :attr:`item_dx` and the spacing in the y direction is given\nby :attr:`item_dy`.\n\n.. note::\n  This class is not meant to be used directly, but rather to be subclassed, most commonly by\n  :class:`pylabrobot.resources.Plate` and :class:`pylabrobot.resources.TipRack`.",
     "vendor": "Itemized Resource",
     "is_consumable": false,
     "is_reusable": true,
     "properties_json": {}
   },
   {
-    "accession_id": "plr-1179444f",
+    "accession_id": "plr-8a81779d",
     "name": "Lid",
-    "fqn": "pylabrobot.resources.plate.Lid",
+    "fqn": "pylabrobot.resources.lid.Lid",
     "plr_category": "Resource",
-    "description": "Lid for plates.",
-    "vendor": null,
+    "description": "A removable cover seated on top of a :class:`Liddable` resource.\n\nAny liddable resource - a ``Plate`` or a ``Container`` (trough, tube, petri dish, well) - can carry\none. A lid is a standalone resource, moved with the gripper (``LiquidHandler.move_lid``) or\nassigned as a child; when seated it is centred on the parent's top face and lowered by\n``nesting_z_height``, the vertical overlap between the lid and the parent it rests on.",
+    "vendor": "Lid",
     "is_consumable": false,
     "is_reusable": true,
     "properties_json": {
@@ -83,7 +209,31 @@
     }
   },
   {
-    "accession_id": "plr-655d0be7",
+    "accession_id": "plr-27e01e9a",
+    "name": "Liddable",
+    "fqn": "pylabrobot.resources.lid.Liddable",
+    "plr_category": "Resource",
+    "description": "Mixin: a resource that can host a single :class:`Lid` on its top face.\n\nMixed into :class:`~pylabrobot.resources.plate.Plate` and\n:class:`~pylabrobot.resources.container.Container` (so troughs, tubes, petri dishes, and wells\ncan carry a lid). The lid is seated centred on the parent's top face and sunk by its own\n``nesting_z_height``; a resource may hold at most one lid at a time.",
+    "vendor": "Lid",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {}
+  },
+  {
+    "accession_id": "plr-829da12b",
+    "name": "LinkBody",
+    "fqn": "pylabrobot.resources.manipulator.LinkBody",
+    "plr_category": "Resource",
+    "description": "One of the rigid members an arm is built from, joined to its neighbours by joints.\n\nIts origin is a corner, as any resource's is, and neither joint is obliged to sit there. It\nturns about `proximal_joint`, so a caller moves one with\n`rotate(z=angle, pivot_coordinate=body.proximal_joint)`.\n\nA member that ends the chain has no `distal_joint`, because nothing attaches past it. What sits\nat the far end of its span is that subclass's own business, and so is its `length`.",
+    "vendor": "Manipulator",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "category": "link_body"
+    }
+  },
+  {
+    "accession_id": "plr-a388da10",
     "name": "MFXCarrier",
     "fqn": "pylabrobot.resources.carrier.MFXCarrier",
     "plr_category": "Carrier",
@@ -96,11 +246,38 @@
     }
   },
   {
-    "accession_id": "plr-b799d13a",
+    "accession_id": "plr-d701b9e8",
+    "name": "MechanicalGripper",
+    "fqn": "pylabrobot.resources.end_effector.MechanicalGripper",
+    "plr_category": "Resource",
+    "description": "A gripper that holds by closing two fingers on what it takes.\n\nA member that ends the chain: nothing attaches past a tool, so it has no distal joint. What sits\nat the far end of its span is `tool_center_point`, the point it grips at. Its body, its two\nfingers and a pad on each are material bolted to it.\n\nThe gap between the fingers is state rather than shape, so `jaw_width` moves them. That is why\nthe member is sized to its body alone: a box drawn around the fingers would change size every\ntime the jaws did. The fingers reach past it.",
+    "vendor": "End Effector",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "category": "mechanical_gripper"
+    }
+  },
+  {
+    "accession_id": "plr-c786bc63",
+    "name": "NChannelPipette",
+    "fqn": "pylabrobot.resources.n_channel_pipettes.NChannelPipette",
+    "plr_category": "Resource",
+    "description": "A rigid grid of pipetting channels that move as one.\n\nOnly for channels that share their drives: where each moves on its own, it is a\n`TipMountingShaft` in its own right and there is nothing for this to wrap.\n\nThe channels are the items, so where any one of them is follows from where the pipette is and how\nthe grid is spaced - `item_dx` and `item_dy` are that spacing, and `channel_pitch` is the word the\ndrivers use for it. Located like any resource, by its left front bottom corner; where the drives\nreport it - which need not be a channel at all - is `reference_point`.",
+    "vendor": "N Channel Pipettes",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "independent_channel_actuation": false,
+      "category": "n_channel_pipette"
+    }
+  },
+  {
+    "accession_id": "plr-88352066",
     "name": "NestedTipRack",
     "fqn": "pylabrobot.resources.tip_rack.NestedTipRack",
     "plr_category": "TipRack",
-    "description": "A nested tip rack.",
+    "description": "Deprecated. Use :class:`StandingTipRack` with a `stacking_z_height` instead.",
     "vendor": null,
     "is_consumable": true,
     "is_reusable": false,
@@ -110,24 +287,50 @@
     }
   },
   {
-    "accession_id": "plr-b059a0d5",
+    "accession_id": "plr-2aa255bc",
+    "name": "NimbusDeck",
+    "fqn": "pylabrobot.resources.hamilton.nimbus_decks.NimbusDeck",
+    "plr_category": "Deck",
+    "description": "Hamilton Nimbus deck.\n\nSupports track-based positioning (called \"rails\" in the API for consistency\nwith other Hamilton decks). The deck is defined in PyLabRobot coordinates,\nbut can convert to/from Hamilton coordinates when interfacing with hardware.",
+    "vendor": "Hamilton",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "num_rails": 30,
+      "size_x": 831.85,
+      "size_y": 424.18,
+      "size_z": 300.0,
+      "y_min": -310.0,
+      "y_max": 20.0,
+      "z_max": 146.0,
+      "rail_start_x": -125.7,
+      "rail_width": 22.454,
+      "rail_y": -360.487,
+      "name": "deck",
+      "category": "deck",
+      "waste_type": "default_long"
+    }
+  },
+  {
+    "accession_id": "plr-8818fef6",
     "name": "OTDeck",
     "fqn": "pylabrobot.resources.opentrons.deck.OTDeck",
     "plr_category": "Deck",
-    "description": "The OpenTron deck.",
+    "description": "The Opentrons OT-2 deck.\n\nThe 12 slots are modeled as :class:`ResourceHolder` children, one per slot, so the deck geometry\nhas a single source of truth and renders directly from the serialized resource tree. Labware is\nplaced into a slot's holder with :meth:`assign_child_at_slot`.",
     "vendor": "Opentrons",
     "is_consumable": false,
     "is_reusable": true,
     "properties_json": {
       "size_x": 624.3,
       "size_y": 565.2,
-      "size_z": 900,
+      "size_z": 0,
       "with_trash": true,
-      "name": "deck"
+      "name": "ot2_deck",
+      "category": "deck"
     }
   },
   {
-    "accession_id": "plr-bb983654",
+    "accession_id": "plr-3f339ae6",
     "name": "PetriDish",
     "fqn": "pylabrobot.resources.petri_dish.PetriDish",
     "plr_category": "Resource",
@@ -140,7 +343,7 @@
     }
   },
   {
-    "accession_id": "plr-d0000e36",
+    "accession_id": "plr-57b62c71",
     "name": "PetriDishHolder",
     "fqn": "pylabrobot.resources.petri_dish.PetriDishHolder",
     "plr_category": "Resource",
@@ -156,7 +359,7 @@
     }
   },
   {
-    "accession_id": "plr-629857f6",
+    "accession_id": "plr-2be76361",
     "name": "Plate",
     "fqn": "pylabrobot.resources.plate.Plate",
     "plr_category": "Plate",
@@ -170,7 +373,7 @@
     }
   },
   {
-    "accession_id": "plr-debd417d",
+    "accession_id": "plr-3e3252c0",
     "name": "PlateAdapter",
     "fqn": "pylabrobot.resources.plate_adapter.PlateAdapter",
     "plr_category": "Resource",
@@ -185,7 +388,7 @@
     }
   },
   {
-    "accession_id": "plr-eb121aca",
+    "accession_id": "plr-db6cce45",
     "name": "PlateCarrier",
     "fqn": "pylabrobot.resources.carrier.PlateCarrier",
     "plr_category": "Carrier",
@@ -198,7 +401,7 @@
     }
   },
   {
-    "accession_id": "plr-9acbcb6d",
+    "accession_id": "plr-79195efc",
     "name": "PlateHolder",
     "fqn": "pylabrobot.resources.carrier.PlateHolder",
     "plr_category": "Resource",
@@ -211,18 +414,41 @@
     }
   },
   {
-    "accession_id": "plr-a9bc9f77",
+    "accession_id": "plr-3c4d3e5a",
+    "name": "PrepDeck",
+    "fqn": "pylabrobot.resources.hamilton.prep_decks.PrepDeck",
+    "plr_category": "Deck",
+    "description": "Hamilton PREP deck: labware spots, waste block, waste bin, liquid waste container, teaching\nneedle, CoRe gripper holder, and waste positions.\n\nGeometry aligns with the prep_tcp / MLPrep DeckConfiguration teaching site and waste\nsites used by :class:`~pylabrobot.hamilton.prep.driver.features.pipettes.Pipettes`\n(``waste_rear``, ``waste_front``, ``waste_mph``). Validate coordinates on hardware\n(plastic mounts, calibration) before production use.\n\nThis is **not** a :class:`HamiltonSTARDeck` (rails/teaching rack layout differ).",
+    "vendor": "Hamilton",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "name": "deck",
+      "size_x": 300.0,
+      "size_y": 394.0,
+      "size_z": 167.5,
+      "category": "deck",
+      "with_spots": true,
+      "with_calibration_block": true,
+      "with_waste_block": true,
+      "with_waste_bin": true,
+      "with_waste_positions": true,
+      "with_core_grippers": true
+    }
+  },
+  {
+    "accession_id": "plr-87bbe2b5",
     "name": "Resource",
     "fqn": "pylabrobot.resources.resource.Resource",
     "plr_category": "Resource",
-    "description": "Base class for deck resources.\n\nArgs:\n  name: The name of the resource.\n  size_x: The size of the resource in the x-direction.\n  size_y: The size of the resource in the y-direction.\n  size_z: The size of the resource in the z-direction.\n  location: The location of the resource, relative to its parent. (see :meth:`get_absolute_location`)\n  category: The category of the resource, e.g. `tips`, `plate_carrier`, etc.\n  model: The model of the resource (optional).\n  barcode: The barcode of the resource (optional).",
+    "description": "Base class for deck resources.\n\nArgs:\n  name: The name of the resource.\n  size_x: The size of the resource in the x-direction.\n  size_y: The size of the resource in the y-direction.\n  size_z: The size of the resource in the z-direction.\n  location: The location of the resource, relative to its parent. (see :meth:`get_absolute_location`)\n  category: The category of the resource, e.g. `tips`, `plate_carrier`, etc.\n  model: The model of the resource (optional).\n  barcode: The barcode of the resource (optional).\n  preferred_pickup_location: The location where the center of the gripper should be when picking\n    up this resource, relative to the resource's origin (optional).\n  metadata: Free-form metadata. Treated as black box during serialisation.\n    To make standard JSON serialisation work, only add JSON-compatible metadata.",
     "vendor": null,
     "is_consumable": false,
     "is_reusable": true,
     "properties_json": {}
   },
   {
-    "accession_id": "plr-22a34368",
+    "accession_id": "plr-ee0460bf",
     "name": "ResourceHolder",
     "fqn": "pylabrobot.resources.resource_holder.ResourceHolder",
     "plr_category": "Resource",
@@ -235,18 +461,32 @@
     }
   },
   {
-    "accession_id": "plr-6c115100",
+    "accession_id": "plr-efba9984",
     "name": "ResourceStack",
     "fqn": "pylabrobot.resources.resource_stack.ResourceStack",
     "plr_category": "Resource",
-    "description": "ResourceStack represent a group of resources that are stacked together and act as a single\nunit. Stacks can grow be configured to be able to grow in x, y, or z direction. Stacks growing\nin the x direction are from left to right. Stacks growing in the y direction are from front to\nback. Stacks growing in the z direction are from bottom to top, and function as the\n`stack data type <https://en.wikipedia.org/wiki/Stack_(abstract_data_type)>`.\n\nAttributes:\n  name: The name of the resource group.\n  location: The location of the resource group. This will be the location of the first resource in\n    the group.\n  category: The category of the resource group.\n  resources: The resources in the resource group.\n\nExamples:\n  Making a resource group containing two resources:\n\n  >>> stack = ResourceStack(\u201cpatched_plate\u201d, \"z\", [\n  ...   Resource(\"plate1\", size_x=1, size_y=1, size_z=10),\n  ...   Resource(\"plate2\", size_x=1, size_y=1, size_z=10),\n  ... ])\n  >>> stack.get_size_x()\n  1\n  >>> stack.get_size_z()\n  30\n\n  :meth:`Moving <pyhamilton.liquid_handling.LiquidHandler.move_plate>` a plate to the a stacking\n  area.\n\n  >>> lh.move_plate(plate, stacking_area)\n\n  :meth:`Moving <pyhamilton.liquid_handling.LiquidHandler.move_lid>` a lid to the stacking area.\n\n  >>> lh.move_lid(plate.lid, stacking_area)\n\n  Getting a plate from the stacking area and moving it to a :class:`~abstract.PlateCarrier`.\n\n  >>> lh.move_plate(stacking_area.get_top_item(), plt_car[0])",
+    "description": "ResourceStack represent a group of resources that are stacked together and act as a single\nunit. Stacks can grow be configured to be able to grow in x, y, or z direction. Stacks growing\nin the x direction are from left to right. Stacks growing in the y direction are from front to\nback. Stacks growing in the z direction are from bottom to top, and function as the\n`stack data type <https://en.wikipedia.org/wiki/Stack_(abstract_data_type)>`.\n\nWhen stacking in the z direction, bare plates nest into one another: if a plate defines a\n``stacking_z_height`` (the vertical pitch it adds to a stack) and is placed directly on top of\nanother bare plate, it sinks in by ``size_z - stacking_z_height`` instead of resting at the\nlower plate's full height. A stack of ``N`` identical such plates is therefore\n``size_z + (N - 1) * stacking_z_height`` tall. Plates without a ``stacking_z_height``, and plates\nwearing a lid, do not nest. Standing tip racks nest into one another the same way.\n\nAttributes:\n  name: The name of the resource group.\n  location: The location of the resource group. This will be the location of the first resource in\n    the group.\n  category: The category of the resource group.\n  resources: The resources in the resource group.\n\nExamples:\n  Making a resource group containing two resources:\n\n  >>> stack = ResourceStack(\u201cpatched_plate\u201d, \"z\", [\n  ...   Resource(\"plate1\", size_x=1, size_y=1, size_z=10),\n  ...   Resource(\"plate2\", size_x=1, size_y=1, size_z=10),\n  ... ])\n  >>> stack.get_size_x()\n  1\n  >>> stack.get_size_z()\n  30\n\n  :meth:`Moving <pyhamilton.liquid_handling.LiquidHandler.move_plate>` a plate to the a stacking\n  area.\n\n  >>> lh.move_plate(plate, stacking_area)\n\n  :meth:`Moving <pyhamilton.liquid_handling.LiquidHandler.move_lid>` a lid to the stacking area.\n\n  >>> lh.move_lid(plate.lid, stacking_area)\n\n  Getting a plate from the stacking area and moving it to a :class:`~abstract.PlateCarrier`.\n\n  >>> lh.move_plate(stacking_area.get_top_item(), plt_car[0])",
     "vendor": "Resource Stack",
     "is_consumable": false,
     "is_reusable": true,
     "properties_json": {}
   },
   {
-    "accession_id": "plr-d071869f",
+    "accession_id": "plr-1cffb8fc",
+    "name": "StandingTipRack",
+    "fqn": "pylabrobot.resources.tip_rack.StandingTipRack",
+    "plr_category": "TipRack",
+    "description": "A tip rack that stands on its own rather than sinking into a holder.\n\nRacks that nest are stacked in a z-growing :class:`~pylabrobot.resources.ResourceStack`.\n\nAttributes:\n  stacking_z_height: how far a nested rack stands above the one below it, in mm, or None if the\n    rack does not nest.",
+    "vendor": null,
+    "is_consumable": true,
+    "is_reusable": false,
+    "properties_json": {
+      "category": "tip_rack",
+      "with_tips": true
+    }
+  },
+  {
+    "accession_id": "plr-e9d7c414",
     "name": "TecanDeck",
     "fqn": "pylabrobot.resources.tecan.tecan_decks.TecanDeck",
     "plr_category": "Deck",
@@ -261,7 +501,7 @@
     }
   },
   {
-    "accession_id": "plr-6d1cb23f",
+    "accession_id": "plr-2d85557a",
     "name": "TecanPlate",
     "fqn": "pylabrobot.resources.tecan.plates.TecanPlate",
     "plr_category": "Plate",
@@ -274,7 +514,7 @@
     }
   },
   {
-    "accession_id": "plr-6d4bc35b",
+    "accession_id": "plr-742e31fd",
     "name": "TecanPlateCarrier",
     "fqn": "pylabrobot.resources.tecan.plate_carriers.TecanPlateCarrier",
     "plr_category": "Carrier",
@@ -287,7 +527,7 @@
     }
   },
   {
-    "accession_id": "plr-5047b937",
+    "accession_id": "plr-d61693a1",
     "name": "TecanResource",
     "fqn": "pylabrobot.resources.tecan.tecan_resource.TecanResource",
     "plr_category": "Resource",
@@ -301,7 +541,21 @@
     }
   },
   {
-    "accession_id": "plr-87cf56b9",
+    "accession_id": "plr-72442a35",
+    "name": "TecanTip",
+    "fqn": "pylabrobot.resources.tecan.tip_creators.TecanTip",
+    "plr_category": "Resource",
+    "description": "Represents a single tip for Tecan instruments.",
+    "vendor": "Tecan",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "fitting_depth": 0,
+      "category": "tip"
+    }
+  },
+  {
+    "accession_id": "plr-6cba5b4f",
     "name": "TecanTipCarrier",
     "fqn": "pylabrobot.resources.tecan.tip_carriers.TecanTipCarrier",
     "plr_category": "Carrier",
@@ -314,7 +568,7 @@
     }
   },
   {
-    "accession_id": "plr-f91fbf6a",
+    "accession_id": "plr-c68532b2",
     "name": "TecanTipRack",
     "fqn": "pylabrobot.resources.tecan.tip_racks.TecanTipRack",
     "plr_category": "TipRack",
@@ -327,7 +581,7 @@
     }
   },
   {
-    "accession_id": "plr-ef415355",
+    "accession_id": "plr-c440dc2e",
     "name": "TecanWashStation",
     "fqn": "pylabrobot.resources.tecan.wash.TecanWashStation",
     "plr_category": "Carrier",
@@ -340,7 +594,20 @@
     }
   },
   {
-    "accession_id": "plr-4b243d1c",
+    "accession_id": "plr-7822fb7b",
+    "name": "Tip",
+    "fqn": "pylabrobot.resources.tip.Tip",
+    "plr_category": "Resource",
+    "description": "A single tip.\n\nAttributes:\n  has_filter: whether the tip type has a filter\n  size_z: total length of the tip, in mm\n  nominal_volume: rated working volume of the tip (what it is sold and named as), in uL.\n    Defaults to maximal_volume when not given.\n  maximal_volume: physical brim-full capacity of the tip, in uL\n  collar_height: the height of the collar, in mm\n  name: identifier for this tip",
+    "vendor": "Tip",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "category": "tip"
+    }
+  },
+  {
+    "accession_id": "plr-1abc5f45",
     "name": "TipCarrier",
     "fqn": "pylabrobot.resources.carrier.TipCarrier",
     "plr_category": "Carrier",
@@ -353,7 +620,24 @@
     }
   },
   {
-    "accession_id": "plr-b68426d2",
+    "accession_id": "plr-3227be19",
+    "name": "TipMountingShaft",
+    "fqn": "pylabrobot.resources.n_channel_pipettes.TipMountingShaft",
+    "plr_category": "Resource",
+    "description": "The end of one pipetting channel, where a tip is mounted and sealed.\n\nNamed as the patent literature names it. Vendors do not agree: Hamilton's firmware names only the\nstop disc, the collar its drive positions by, and reserves \"tip cone\" for the tip's own geometry.\nWhat is invariant is that the shaft carries its channel through to the tip.\n\nA device whose channels move independently carries these one each. A device whose channels move\nas one carries them inside an `NChannelPipette`.\n\nRound, and modelled as a cylinder: it is a shaft, and a tip is sealed onto it by turning around\nits axis. A collected tip is a child of the shaft carrying it, which keeps the two together as\nthe shaft moves.",
+    "vendor": "N Channel Pipettes",
+    "is_consumable": false,
+    "is_reusable": true,
+    "properties_json": {
+      "size_x": 7.0,
+      "size_y": 7.0,
+      "size_z": 8.0,
+      "category": "tip_mounting_shaft",
+      "cross_section_type": "circle"
+    }
+  },
+  {
+    "accession_id": "plr-879befd7",
     "name": "TipRack",
     "fqn": "pylabrobot.resources.tip_rack.TipRack",
     "plr_category": "TipRack",
@@ -367,7 +651,7 @@
     }
   },
   {
-    "accession_id": "plr-20cc3faa",
+    "accession_id": "plr-b61c0e57",
     "name": "TipSpot",
     "fqn": "pylabrobot.resources.tip_rack.TipSpot",
     "plr_category": "Resource",
@@ -381,7 +665,7 @@
     }
   },
   {
-    "accession_id": "plr-b8d81c14",
+    "accession_id": "plr-e43b1312",
     "name": "Trash",
     "fqn": "pylabrobot.resources.trash.Trash",
     "plr_category": "Resource",
@@ -396,7 +680,7 @@
     }
   },
   {
-    "accession_id": "plr-3b59dfb9",
+    "accession_id": "plr-3fc87dff",
     "name": "Trough",
     "fqn": "pylabrobot.resources.trough.Trough",
     "plr_category": "Reservoir",
@@ -410,7 +694,7 @@
     }
   },
   {
-    "accession_id": "plr-0073c2cf",
+    "accession_id": "plr-177c0d6d",
     "name": "TroughCarrier",
     "fqn": "pylabrobot.resources.carrier.TroughCarrier",
     "plr_category": "Carrier",
@@ -423,7 +707,7 @@
     }
   },
   {
-    "accession_id": "plr-d55fc9ff",
+    "accession_id": "plr-c9d1eae1",
     "name": "Tube",
     "fqn": "pylabrobot.resources.tube.Tube",
     "plr_category": "Resource",
@@ -436,7 +720,7 @@
     }
   },
   {
-    "accession_id": "plr-fa81a9fa",
+    "accession_id": "plr-80ec4464",
     "name": "TubeCarrier",
     "fqn": "pylabrobot.resources.carrier.TubeCarrier",
     "plr_category": "Carrier",
@@ -449,18 +733,20 @@
     }
   },
   {
-    "accession_id": "plr-c7b40204",
+    "accession_id": "plr-c72a9cd2",
     "name": "TubeRack",
     "fqn": "pylabrobot.resources.tube_rack.TubeRack",
     "plr_category": "Resource",
-    "description": "Tube rack resource.",
+    "description": "A rack of tubes.\n\nSpecialization of :class:`ContainerRack` that restricts slot contents to\n:class:`Tube` resources (statically via ``ContainerRack[Tube]`` and at\nruntime via ``_content_type``).",
     "vendor": "Tube Rack",
     "is_consumable": false,
     "is_reusable": true,
-    "properties_json": {}
+    "properties_json": {
+      "category": "tube_rack"
+    }
   },
   {
-    "accession_id": "plr-f8b05b4c",
+    "accession_id": "plr-3e152345",
     "name": "VantageDeck",
     "fqn": "pylabrobot.resources.hamilton.vantage_decks.VantageDeck",
     "plr_category": "Deck",
@@ -475,7 +761,7 @@
     }
   },
   {
-    "accession_id": "plr-807c11e5",
+    "accession_id": "plr-b4aeb46c",
     "name": "Well",
     "fqn": "pylabrobot.resources.well.Well",
     "plr_category": "Resource",

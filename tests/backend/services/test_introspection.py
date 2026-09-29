@@ -4,7 +4,7 @@ from praxis.backend.services.introspection import inspect_machine_methods
 
 
 def test_inspect_liquid_handler():
-  fqn = "pylabrobot.liquid_handling.LiquidHandler"
+  fqn = "pylabrobot.legacy.liquid_handling.LiquidHandler"
   methods = inspect_machine_methods(fqn)
 
   assert len(methods) > 0

@@ -37,6 +37,41 @@ class TestGetClassFromFqn:
         with pytest.raises((ImportError, ModuleNotFoundError)):
             get_class_from_fqn("nonexistent.module.ClassName")
 
+    @pytest.mark.parametrize(
+        "stored_fqn",
+        [
+            # Pre-1.0 FQNs as persisted in DB rows / manifests. The top-level shim packages
+            # have no `.liquid_handler` / `.chatterbox` submodules, so these only resolve
+            # through the explicit pylabrobot.legacy home.
+            "pylabrobot.liquid_handling.liquid_handler.LiquidHandler",
+            "pylabrobot.liquid_handling.LiquidHandler",
+            "pylabrobot.plate_reading.chatterbox.PlateReaderChatterboxBackend",
+            "pylabrobot.heating_shaking.heater_shaker.HeaterShaker",
+        ],
+    )
+    def test_get_class_from_fqn_resolves_pre_1_0_plr_paths_via_legacy(self, stored_fqn: str) -> None:
+        """Old PLR machine paths resolve to their pylabrobot.legacy home, without a shim warning."""
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            cls = get_class_from_fqn(stored_fqn)
+        assert cls.__module__.startswith("pylabrobot.legacy.")
+        assert cls.__name__ == stored_fqn.rsplit(".", 1)[1]
+
+    def test_get_class_from_fqn_explicit_legacy_and_top_level_resources_unchanged(self) -> None:
+        """Explicit legacy FQNs and still-top-level modules are not rewritten."""
+        from pylabrobot.resources import Plate
+
+        legacy = get_class_from_fqn("pylabrobot.legacy.liquid_handling.liquid_handler.LiquidHandler")
+        assert legacy.__module__ == "pylabrobot.legacy.liquid_handling.liquid_handler"
+        assert get_class_from_fqn("pylabrobot.resources.plate.Plate") is Plate
+
+    def test_get_class_from_fqn_legacy_fallback_does_not_mask_missing_class(self) -> None:
+        """A shimmed package name with a class that exists nowhere still raises."""
+        with pytest.raises((ImportError, AttributeError)):
+            get_class_from_fqn("pylabrobot.liquid_handling.NoSuchClassAnywhere")
+
 
 class TestWorkcellRuntimeInit:
 

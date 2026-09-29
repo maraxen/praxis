@@ -370,7 +370,7 @@ export class ExecutionService {
               machineEntries.push({
                 param_name: paramName,
                 machine_type: 'LiquidHandler',
-                backend_fqn: cfg.simulation_backend_name || 'pylabrobot.liquid_handling.backends.chatterbox.LiquidHandlerChatterboxBackend',
+                backend_fqn: cfg.simulation_backend_name || 'pylabrobot.legacy.liquid_handling.backends.chatterbox.LiquidHandlerChatterboxBackend',
                 is_simulated: cfg.is_simulated ?? true
               });
               this.addLog(`[Browser Mode] Machine from wizard: ${paramName} (backend=${cfg.simulation_backend_name})`);
@@ -386,7 +386,7 @@ export class ExecutionService {
         machineEntries.push({
           param_name: 'liquid_handler',
           machine_type: 'LiquidHandler',
-          backend_fqn: 'pylabrobot.liquid_handling.backends.chatterbox.LiquidHandlerChatterboxBackend',
+          backend_fqn: 'pylabrobot.legacy.liquid_handling.backends.chatterbox.LiquidHandlerChatterboxBackend',
           is_simulated: true
         });
       }

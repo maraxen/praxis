@@ -70,7 +70,8 @@ def _error_frames(exc: BaseException) -> list[dict[str, Any]]:
     C5 (WITHDRAWN spec_version 1 defect, §16.7's own normative box):
     ``extract_tb`` -- and this walk, which reproduces its order -- returns
     frames OUTERMOST-first. A captured-then-re-raised exception
-    (``liquid_handler.py:551-556`` catches, ``:575-576`` re-raises) has the
+    (legacy ``liquid_handler.py:775-778`` catches, ``:798-799`` re-raises; was
+    551-556 / 575-576 before the PLR 1.0.0b1 move to ``pylabrobot.legacy``) has the
     re-raise site EARLY in this list and the backend's original raise LAST,
     the opposite of what an innermost-frame (``[-1]``) match would need.
     """

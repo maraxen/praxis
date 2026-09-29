@@ -26,8 +26,8 @@ test.describe('@slow JupyterLite Optimization Validation', () => {
 
     // Domain Coverage: Beyond just import, verify a core method works
     const lhOutput = await playground.executeCode(`
-from pylabrobot.liquid_handling import LiquidHandler
-from pylabrobot.liquid_handling.backends import SimulatorBackend
+from pylabrobot.legacy.liquid_handling import LiquidHandler
+from pylabrobot.legacy.liquid_handling.backends import SimulatorBackend
 print("LH_INIT_SUCCESS" if LiquidHandler else "LH_INIT_FAIL")
 `);
     expect(lhOutput).toContain('LH_INIT_SUCCESS');

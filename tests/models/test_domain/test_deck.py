@@ -112,7 +112,7 @@ async def test_deck_definition_orm_with_jsonb_fields(db_session: AsyncSession) -
 
     deck_def = DeckDefinition(
         name="hamilton_star_deck",
-        fqn="pylabrobot.liquid_handling.backends.hamilton.STARDeck",
+        fqn="pylabrobot.legacy.liquid_handling.backends.hamilton.STARDeck",
         positioning_config_json=positioning_config,
         serialized_constructor_args_json=constructor_args,
         default_size_x_mm=1360.0,

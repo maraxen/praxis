@@ -47,7 +47,7 @@ test.describe('@slow Playground Direct Control', () => {
                     {
                         accession_id: 'mach_test_002',
                         name: 'Hamilton STAR',
-                        fqn: 'pylabrobot.liquid_handling.backends.hamilton.INVALID_BACKEND', // Deliberately wrong
+                        fqn: 'pylabrobot.legacy.liquid_handling.backends.hamilton.INVALID_BACKEND', // Deliberately wrong
                         plr_category: 'Machine',
                         machine_category: 'LiquidHandler',
                         manufacturer: 'Hamilton',

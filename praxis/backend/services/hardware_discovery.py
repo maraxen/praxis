@@ -71,18 +71,18 @@ class HardwareDiscoveryService:
     (0x08BB, 0x0106): {
       "manufacturer": "Hamilton",
       "model": "STAR",
-      "plr_backend": "pylabrobot.liquid_handling.backends.hamilton.STAR",
+      "plr_backend": "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR",
     },
     (0x08BB, 0x0107): {
       "manufacturer": "Hamilton",
       "model": "Starlet",
-      "plr_backend": "pylabrobot.liquid_handling.backends.hamilton.Starlet",
+      "plr_backend": "pylabrobot.legacy.liquid_handling.backends.hamilton.Starlet",
     },
     # Opentrons devices
     (0x04D8, 0xE11A): {
       "manufacturer": "Opentrons",
       "model": "OT-2",
-      "plr_backend": "pylabrobot.liquid_handling.backends.opentrons.OT2",
+      "plr_backend": "pylabrobot.legacy.liquid_handling.backends.opentrons.OT2",
     },
     # Add more known devices here
   }
@@ -101,22 +101,22 @@ class HardwareDiscoveryService:
     "opentrons": {
       "manufacturer": "Opentrons",
       "model_parser": lambda name: "Flex" if "flex" in name.lower() else "OT-2",
-      "plr_backend": "pylabrobot.liquid_handling.backends.opentrons_backend.OpentronsBackend",
+      "plr_backend": "pylabrobot.legacy.liquid_handling.backends.opentrons_backend.OpentronsBackend",
     },
     "hamilton": {
       "manufacturer": "Hamilton",
       "model_parser": lambda name: "STAR" if "star" in name.lower() else "Starlet",
-      "plr_backend": "pylabrobot.liquid_handling.backends.hamilton.STAR",
+      "plr_backend": "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR",
     },
     "tecan": {
       "manufacturer": "Tecan",
       "model_parser": lambda name: "Freedom EVO" if "evo" in name.lower() else "Fluent",
-      "plr_backend": "pylabrobot.liquid_handling.backends.tecan.Tecan",
+      "plr_backend": "pylabrobot.legacy.liquid_handling.backends.tecan.Tecan",
     },
     "beckman": {
       "manufacturer": "Beckman Coulter",
       "model_parser": lambda name: "Biomek",
-      "plr_backend": "pylabrobot.liquid_handling.backends.beckman.Biomek",
+      "plr_backend": "pylabrobot.legacy.liquid_handling.backends.beckman.Biomek",
     },
     "agilent": {
       "manufacturer": "Agilent",
@@ -187,7 +187,7 @@ class HardwareDiscoveryService:
         status=DeviceStatus.AVAILABLE,
         manufacturer="PyLabRobot",
         model="SimulatedLiquidHandler",
-        plr_backend="pylabrobot.liquid_handling.backends.simulation.SimulatorBackend",
+        plr_backend="pylabrobot.legacy.liquid_handling.backends.simulation.SimulatorBackend",
         properties={"simulated": True, "visualizer": True},
       ),
       DiscoveredDevice(
@@ -197,7 +197,7 @@ class HardwareDiscoveryService:
         status=DeviceStatus.AVAILABLE,
         manufacturer="PyLabRobot",
         model="SimulatedPlateReader",
-        plr_backend="pylabrobot.plate_reading.backends.simulation.SimulatedPlateReader",
+        plr_backend="pylabrobot.legacy.plate_reading.backends.simulation.SimulatedPlateReader",
         properties={"simulated": True},
       ),
       DiscoveredDevice(
@@ -207,7 +207,7 @@ class HardwareDiscoveryService:
         status=DeviceStatus.AVAILABLE,
         manufacturer="PyLabRobot",
         model="SimulatedHeaterShaker",
-        plr_backend="pylabrobot.heating_shaking.backends.simulation.SimulatedHeaterShaker",
+        plr_backend="pylabrobot.legacy.heating_shaking.backends.simulation.SimulatedHeaterShaker",
         properties={"simulated": True},
       ),
     ]

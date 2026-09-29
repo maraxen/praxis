@@ -478,22 +478,22 @@ FRONTEND_TO_BACKEND_MAP = _frontend_to_backend
 
 # Backend type → Frontend FQN mapping for code generation
 BACKEND_TYPE_TO_FRONTEND_FQN: dict[PLRClassType, str] = {
-  PLRClassType.LH_BACKEND: "pylabrobot.liquid_handling.LiquidHandler",
-  PLRClassType.PR_BACKEND: "pylabrobot.plate_reading.PlateReader",
-  PLRClassType.HS_BACKEND: "pylabrobot.heating_shaking.HeaterShaker",
-  PLRClassType.SHAKER_BACKEND: "pylabrobot.shaking.Shaker",
-  PLRClassType.TEMP_BACKEND: "pylabrobot.temperature_controlling.TemperatureController",
+  PLRClassType.LH_BACKEND: "pylabrobot.legacy.liquid_handling.LiquidHandler",
+  PLRClassType.PR_BACKEND: "pylabrobot.legacy.plate_reading.PlateReader",
+  PLRClassType.HS_BACKEND: "pylabrobot.legacy.heating_shaking.HeaterShaker",
+  PLRClassType.SHAKER_BACKEND: "pylabrobot.legacy.shaking.Shaker",
+  PLRClassType.TEMP_BACKEND: "pylabrobot.legacy.temperature_controlling.TemperatureController",
   PLRClassType.CENTRIFUGE_BACKEND: "pylabrobot.centrifuging.Centrifuge",
-  PLRClassType.THERMOCYCLER_BACKEND: "pylabrobot.thermocycling.Thermocycler",
+  PLRClassType.THERMOCYCLER_BACKEND: "pylabrobot.legacy.thermocycling.Thermocycler",
   PLRClassType.PUMP_BACKEND: "pylabrobot.pumping.Pump",
   PLRClassType.PUMP_ARRAY_BACKEND: "pylabrobot.pumping.PumpArray",
   PLRClassType.FAN_BACKEND: "pylabrobot.fans.Fan",
   PLRClassType.SEALER_BACKEND: "pylabrobot.plate_sealing.Sealer",
   PLRClassType.PEELER_BACKEND: "pylabrobot.plate_peeling.Peeler",
-  PLRClassType.POWDER_DISPENSER_BACKEND: "pylabrobot.powder_dispensing.PowderDispenser",
+  PLRClassType.POWDER_DISPENSER_BACKEND: "pylabrobot.legacy.powder_dispensing.PowderDispenser",
   PLRClassType.INCUBATOR_BACKEND: "pylabrobot.incubating.Incubator",
   PLRClassType.SCARA_BACKEND: "pylabrobot.scara.SCARA",
-  PLRClassType.IMAGER_BACKEND: "pylabrobot.plate_reading.Imager",
+  PLRClassType.IMAGER_BACKEND: "pylabrobot.legacy.plate_reading.Imager",
 }
 
 # =============================================================================

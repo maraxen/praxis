@@ -160,36 +160,39 @@ CHATTERBOX_REGISTRY: dict[str, list[tuple[str, type, dict[str, Any]]]] = {
     ],
 }
 
-# Scaffolded machine types — registered at module load time
+# Scaffolded machine types — registered at module load time.
+# PLR 1.0: these modules live under pylabrobot.legacy.*. The old top-level
+# packages are shims with no .chatterbox submodule, so a bare path raises
+# ImportError, is swallowed below, and silently registers nothing.
 _SCAFFOLDED_BACKENDS: list[tuple[str, str, str, dict[str, Any]]] = [
     ("HeaterShaker", "HeaterShakerChatterboxBackend",
-     "pylabrobot.heating_shaking.chatterbox", {}),
+     "pylabrobot.legacy.heating_shaking.chatterbox", {}),
     ("Thermocycler", "ThermocyclerChatterboxBackend",
-     "pylabrobot.thermocycling.chatterbox", {}),
+     "pylabrobot.legacy.thermocycling.chatterbox", {}),
     ("TemperatureController", "TemperatureControllerChatterboxBackend",
-     "pylabrobot.temperature_controlling.chatterbox", {}),
+     "pylabrobot.legacy.temperature_controlling.chatterbox", {}),
     ("Shaker", "ShakerChatterboxBackend",
-     "pylabrobot.shaking.chatterbox", {}),
+     "pylabrobot.legacy.shaking.chatterbox", {}),
     ("PowderDispenser", "PowderDispenserChatterboxBackend",
-     "pylabrobot.powder_dispensing.chatterbox", {}),
+     "pylabrobot.legacy.powder_dispensing.chatterbox", {}),
     ("Incubator", "IncubatorChatterboxBackend",
-     "pylabrobot.storage.chatterbox", {}),
+     "pylabrobot.legacy.storage.chatterbox", {}),
     ("Scale", "ScaleChatterboxBackend",
-     "pylabrobot.scales.chatterbox", {}),
+     "pylabrobot.legacy.scales.chatterbox", {}),
     ("Tilter", "TilterChatterboxBackend",
-     "pylabrobot.tilting.chatterbox", {}),
+     "pylabrobot.legacy.tilting.chatterbox", {}),
     ("Tilter", "HamiltonTiltModuleChatterboxBackend",
-     "pylabrobot.tilting.hamilton_backend", {}),
+     "pylabrobot.legacy.tilting.hamilton_backend", {}),
     ("Pump", "PumpChatterboxBackend",
-     "pylabrobot.pumps.chatterbox", {}),
+     "pylabrobot.legacy.pumps.chatterbox", {}),
     ("PumpArray", "PumpArrayChatterboxBackend",
-     "pylabrobot.pumps.chatterbox", {}),
+     "pylabrobot.legacy.pumps.chatterbox", {}),
     ("Centrifuge", "CentrifugeChatterboxBackend",
-     "pylabrobot.centrifuge.chatterbox", {}),
+     "pylabrobot.legacy.centrifuge.chatterbox", {}),
     ("Centrifuge", "LoaderChatterboxBackend",
-     "pylabrobot.centrifuge.chatterbox", {}),
+     "pylabrobot.legacy.centrifuge.chatterbox", {}),
     ("Fan", "FanChatterboxBackend",
-     "pylabrobot.only_fans.chatterbox", {}),
+     "pylabrobot.legacy.only_fans.chatterbox", {}),
 ]
 
 for _mt, _cls_name, _mod_path, _kwargs in _SCAFFOLDED_BACKENDS:

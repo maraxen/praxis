@@ -184,7 +184,7 @@ export class PlaygroundAssetService {
       lines.push(`backend = ${backendClass}()`);
     } else {
       lines.push(`# No backend definition found — using fallback`);
-      lines.push(`from pylabrobot.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend`);
+      lines.push(`from pylabrobot.legacy.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend`);
       lines.push(`backend = LiquidHandlerChatterboxBackend()`);
     }
 

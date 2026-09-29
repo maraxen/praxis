@@ -10,7 +10,7 @@ class BasePLRVisitor(cst.CSTVisitor):
     """Initialize the visitor.
 
     Args:
-      module_path: The Python module path (e.g., 'pylabrobot.liquid_handling.backends.hamilton')
+      module_path: The Python module path (e.g., 'pylabrobot.legacy.liquid_handling.backends.hamilton')
       file_path: The absolute file path to the source file
 
     """

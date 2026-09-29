@@ -115,7 +115,7 @@ print("LH Initialized")
         # They might need to do: `import asyncio; asyncio.run(lh.setup())`
 
         setup_script = """
-from pylabrobot.liquid_handling.backends.simulation.simulator_backend import SimulatorBackend
+from pylabrobot.legacy.liquid_handling.backends.simulation.simulator_backend import SimulatorBackend
 from pylabrobot.resources.hamilton import STARLetDeck
 import asyncio
 

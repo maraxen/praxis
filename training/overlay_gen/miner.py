@@ -69,7 +69,7 @@ HARDWARE_CONTEXT_ONLY_NOTEBOOKS: dict[str, str] = {
 #: recorded exclusion reason each (mirrors param_namespace.py's include/
 #: exclude record). Extraction counts these calls, then drops them.
 NON_SURFACE_VERB_REASONS: dict[str, str] = {
-    # Phantoms vs vendored HEAD dd79c4c89 (recon §1.4).
+    # Phantoms vs vendored HEAD dd79c4c89, still absent @ 786ac2c4e (recon §1.4).
     "mix": "phantom verb (no vendored method); upstream models via aspirate/dispense mix kwarg",
     "blow_out": "phantom verb; modeled via blow_out_air_volume kwargs",
     "touch_tip": "phantom verb vs vendored HEAD",

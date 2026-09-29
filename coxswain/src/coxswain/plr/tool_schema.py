@@ -108,7 +108,7 @@ TOOL_SCHEMA: Final[dict[str, ToolSpec]] = {
             RiskTier.IRREVERSIBLE,
             ("dispenses",),
             to_waste=True,
-            # Phantom vs vendored HEAD dd79c4c89 (recon §1.4): no such method.
+            # Phantom vs vendored HEAD dd79c4c89, still absent @ 786ac2c4e (recon §1.4): no such method.
             experimental=True,
         ),
         # --- reversible mutators ---------------------------------------------
@@ -129,7 +129,7 @@ TOOL_SCHEMA: Final[dict[str, ToolSpec]] = {
             "liquid_handler",
             RiskTier.REVERSIBLE,
             ("aspirates", "dispenses"),
-            # Phantom vs vendored HEAD dd79c4c89 (recon §1.4); upstream models
+            # Phantom vs vendored HEAD dd79c4c89, still absent @ 786ac2c4e (recon §1.4); upstream models
             # mixing as aspirate/dispense ``mix`` kwarg lists instead.
             experimental=True,
         ),
@@ -138,7 +138,7 @@ TOOL_SCHEMA: Final[dict[str, ToolSpec]] = {
             "blow out",
             "liquid_handler",
             RiskTier.REVERSIBLE,
-            # Phantom vs vendored HEAD dd79c4c89 (recon §1.4); modeled via
+            # Phantom vs vendored HEAD dd79c4c89, still absent @ 786ac2c4e (recon §1.4); modeled via
             # blow_out_air_volume kwargs on aspirate/dispense.
             experimental=True,
         ),
@@ -147,7 +147,7 @@ TOOL_SCHEMA: Final[dict[str, ToolSpec]] = {
             "touch",
             "liquid_handler",
             RiskTier.REVERSIBLE,
-            # Phantom vs vendored HEAD dd79c4c89 (recon §1.4).
+            # Phantom vs vendored HEAD dd79c4c89, still absent @ 786ac2c4e (recon §1.4).
             experimental=True,
         ),
         _spec(

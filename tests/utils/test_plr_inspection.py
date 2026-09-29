@@ -738,10 +738,10 @@ class TestGetLiquidHandlerClasses:
         try:
             import pylabrobot.legacy.liquid_handling  # noqa: F401
         except ImportError:
-            pytest.skip("pylabrobot.liquid_handling not available")
+            pytest.skip("pylabrobot.legacy.liquid_handling not available")
 
         # Mocking import to ensure we hit the try block success path or check call
-        with patch("pylabrobot.liquid_handling.LiquidHandler"):
+        with patch("pylabrobot.legacy.liquid_handling.LiquidHandler"):
             get_liquid_handler_classes()
             assert mock_get_all.call_count > 0
 
