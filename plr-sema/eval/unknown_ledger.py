@@ -77,7 +77,7 @@ import oracle_replay  # noqa: E402
 log = logging.getLogger(__name__)
 
 DEFAULT_CONTRACTS = oc.DEFAULT_CONTRACTS
-BENCHMARK_NAME = "tier1-sidecar-gated-dd79c4c89"
+BENCHMARK_NAME = "tier1-sidecar-gated-786ac2c4e"
 
 
 def _git_head() -> str:

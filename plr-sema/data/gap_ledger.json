@@ -9,29 +9,29 @@
   },
   "by_category_status": "not_applicable_v1",
   "by_reason": {
-    "no_contract_derived": 0,
-    "unresolved_delegate": 610
+    "no_contract_derived": 708,
+    "unresolved_delegate": 49
   },
   "contract_table": {
-    "disambiguated_keys": 52,
-    "distinct_bare_qualnames": 4744,
-    "total_entries": 4770
+    "disambiguated_keys": 55,
+    "distinct_bare_qualnames": 5778,
+    "total_entries": 5808
   },
   "dropped_receiver_calls_by_method": {
     "aspirate": 21,
-    "discard_tips": 26,
+    "discard_tips": 27,
     "dispense": 21,
-    "drop_tips": 24,
+    "drop_tips": 25,
     "move_lid": 58,
     "move_plate": 58,
     "move_resource": 58,
-    "pick_up_tips": 23,
+    "pick_up_tips": 24,
     "stamp": 42,
     "transfer": 27
   },
   "index_key_collisions": {
-    "all_records": 12,
-    "finding_bearing_records": 8
+    "all_records": 20,
+    "finding_bearing_records": 9
   },
   "lid_state": {
     "Liddable": {
@@ -41,8 +41,11 @@
       ],
       "check_no_lid_guards": [
         {
+          "anchor_field": null,
+          "anchor_state": null,
           "bindings": [],
           "caller_args": null,
+          "caller_args_sites": null,
           "caller_reachability_clear": null,
           "caller_scope_trail": null,
           "condition": "lidded is resource",
@@ -62,14 +65,17 @@
             "if lidded is resource"
           ],
           "site": {
-            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-            "lineno": 116,
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 325,
             "qualname": "_check_no_lid"
           }
         },
         {
+          "anchor_field": null,
+          "anchor_state": null,
           "bindings": [],
           "caller_args": null,
+          "caller_args_sites": null,
           "caller_reachability_clear": null,
           "caller_scope_trail": null,
           "condition": null,
@@ -86,8 +92,8 @@
           "reachability_clear": false,
           "scope_trail": [],
           "site": {
-            "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-            "lineno": 117,
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 326,
             "qualname": "_check_no_lid"
           }
         }
@@ -102,28 +108,28 @@
       "branch": "HEAD",
       "dirty": false,
       "dirty_content_id": null,
-      "hash": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+      "hash": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
       "provenance_source": "git",
-      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/external/pylabrobot"
+      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/external/pylabrobot"
     },
     "praxis": {
-      "branch": "plr-sema-inc8-move-family",
+      "branch": "plr-1.0-bump",
       "dirty": true,
-      "dirty_content_id": "5d0be5ecd6eed5389f9db8e7395ed0ac6377066ff6953834d509e538de106349",
-      "hash": "8adb83f4049536061c0f7df1a2240c3fd62f1760",
+      "dirty_content_id": "e9fd53b20011068e787b6652ba37340f183c17ca",
+      "hash": "4772f26405a4116f83e19d92e588216ac9f801b5",
       "provenance_source": "git",
-      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820"
+      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10"
     },
-    "pylabrobot_version": "0.2.2",
+    "pylabrobot_version": "1.0.0b1",
     "schema_version": 1,
-    "stamped_at": "2026-09-10T15:39:59.390666+00:00",
+    "stamped_at": "2026-09-29T19:30:26.525370+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   },
   "supported_tools": {
     "by_reason": {
-      "no_contract_derived": 0,
-      "unresolved_delegate": 6
+      "no_contract_derived": 6,
+      "unresolved_delegate": 0
     },
     "liquid_handler_present": true,
     "methods_attempted": 10,
@@ -146,21 +152,15 @@
           ],
           "delegate": "aspirate",
           "rule": "arity_default",
-          "site_lineno": 1347
+          "site_lineno": 1572
         },
         "LiquidHandler.use_tips": "absent"
       },
-      "entry_reset": {
-        "method": "setup",
-        "post": "no_tip"
-      },
-      "tip_dropping": [
-        "drop_tips"
-      ],
+      "entry_reset": "absent",
+      "tip_dropping": [],
       "tip_loading": [
         "clear_head_state",
         "consolidate_tip_inventory",
-        "load_state",
         "move_tips",
         "pick_up_tips",
         "probe_tip_presence_via_pickup",
@@ -190,6 +190,19 @@
       "tip_loading": [],
       "tip_requiring": [],
       "tipstate_anchor": "_pending_tip"
+    },
+    "TipTracker": {
+      "bound_channels": {},
+      "entry_reset": "absent",
+      "tip_dropping": [],
+      "tip_loading": [
+        "add_tip"
+      ],
+      "tip_requiring": [
+        "get_tip",
+        "remove_tip"
+      ],
+      "tipstate_anchor": "_collar_height"
     }
   },
   "top_unresolved": {
@@ -602,6 +615,10 @@
       },
       {
         "blocks_methods": 1,
+        "call": "racks.values"
+      },
+      {
+        "blocks_methods": 1,
         "call": "resource.get_absolute_rotation"
       },
       {
@@ -727,28 +744,32 @@
     ],
     "dropped_receiver_whole_surface": [
       {
-        "blocks_methods": 42,
+        "blocks_methods": 46,
         "call": "logger.debug"
       },
       {
-        "blocks_methods": 42,
+        "blocks_methods": 45,
         "call": "logger.info"
       },
       {
-        "blocks_methods": 36,
-        "call": "self.cr.next_command"
-      },
-      {
-        "blocks_methods": 25,
+        "blocks_methods": 40,
         "call": "logger.warning"
       },
       {
-        "blocks_methods": 25,
+        "blocks_methods": 37,
+        "call": "self.cr.next_command"
+      },
+      {
+        "blocks_methods": 33,
         "call": "super().__init__"
       },
       {
-        "blocks_methods": 22,
+        "blocks_methods": 25,
         "call": "capturer.record"
+      },
+      {
+        "blocks_methods": 24,
+        "call": "logger.log"
       },
       {
         "blocks_methods": 21,
@@ -756,15 +777,23 @@
       },
       {
         "blocks_methods": 20,
-        "call": "logger.log"
+        "call": "loop.run_in_executor"
+      },
+      {
+        "blocks_methods": 20,
+        "call": "self._driver.send_command"
       },
       {
         "blocks_methods": 19,
         "call": "self.io.write"
       },
       {
-        "blocks_methods": 15,
+        "blocks_methods": 17,
         "call": "super().assign_child_resource"
+      },
+      {
+        "blocks_methods": 14,
+        "call": "c.z_drive_mm_to_increments"
       },
       {
         "blocks_methods": 14,
@@ -772,14 +801,14 @@
       },
       {
         "blocks_methods": 13,
-        "call": "loop.run_in_executor"
-      },
-      {
-        "blocks_methods": 13,
         "call": "op.resource.get_location_wrt"
       },
       {
-        "blocks_methods": 8,
+        "blocks_methods": 11,
+        "call": "c.z_drive_increments_to_mm"
+      },
+      {
+        "blocks_methods": 10,
         "call": "hlc.compute_corrected_volume"
       },
       {
@@ -789,6 +818,18 @@
       {
         "blocks_methods": 8,
         "call": "self.logger.debug"
+      },
+      {
+        "blocks_methods": 7,
+        "call": "c.dispensing_drive_uL_to_increments"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "c.dispensing_drive_increments_to_uL"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "c.y_drive_mm_to_increments"
       },
       {
         "blocks_methods": 6,
@@ -804,7 +845,31 @@
       },
       {
         "blocks_methods": 6,
+        "call": "resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "self.deck.to_hamilton_coordinate"
+      },
+      {
+        "blocks_methods": 6,
         "call": "self.io.setup"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "c.wrist_increments_to_deg"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "c.z_drive_acceleration_mm_to_increments"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "match.group"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "pipettes._record_after_command"
       },
       {
         "blocks_methods": 5,
@@ -812,7 +877,7 @@
       },
       {
         "blocks_methods": 5,
-        "call": "self.deck.to_hamilton_coordinate"
+        "call": "resource.get_item"
       },
       {
         "blocks_methods": 5,
@@ -824,7 +889,11 @@
       },
       {
         "blocks_methods": 5,
-        "call": "tip_spot.get_tip"
+        "call": "self.resource.get_all_items"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "tip.get_size_z"
       },
       {
         "blocks_methods": 5,
@@ -832,7 +901,15 @@
       },
       {
         "blocks_methods": 4,
-        "call": "match.group"
+        "call": "c.gripper_mm_to_increments"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "c.x_drive_mm_to_increments"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "container.compute_volume_from_height"
       },
       {
         "blocks_methods": 4,
@@ -841,6 +918,10 @@
       {
         "blocks_methods": 4,
         "call": "ops[0].resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "pipettes._require_iswap_parked"
       },
       {
         "blocks_methods": 4,
@@ -860,15 +941,19 @@
       },
       {
         "blocks_methods": 4,
-        "call": "resource.get_absolute_size_y"
+        "call": "resource.get_all_items"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "resource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "resource.get_size_y"
       },
       {
         "blocks_methods": 4,
         "call": "self._sila_interface.send_command"
-      },
-      {
-        "blocks_methods": 4,
-        "call": "self.deck.get_resource"
       },
       {
         "blocks_methods": 4,
@@ -887,12 +972,80 @@
         "call": "self.liha.set_z_travel_height"
       },
       {
+        "blocks_methods": 4,
+        "call": "tip_rack.get_all_items"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "tip_spot.get_tip"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "arm.resource.assign_child_resource"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.elbow_drive_angle_to_increments"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.elbow_drive_increments_to_angle"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.from_deck_frame"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.get_location_wrt"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.gripper_increments_to_mm"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.wrist_deg_to_increments"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.x_drive_increments_to_mm"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.y_drive_increments_to_mm"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "carrier.get_location_wrt"
+      },
+      {
         "blocks_methods": 3,
         "call": "cls._validate_manifold_xy"
       },
       {
         "blocks_methods": 3,
+        "call": "container.compute_height_from_volume"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "held.center().rotated"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "held.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "loop.time"
+      },
+      {
+        "blocks_methods": 3,
         "call": "np.array"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "pipettes._check_reachable"
       },
       {
         "blocks_methods": 3,
@@ -908,7 +1061,7 @@
       },
       {
         "blocks_methods": 3,
-        "call": "resource.get_item"
+        "call": "resource.get_size_x"
       },
       {
         "blocks_methods": 3,
@@ -924,11 +1077,11 @@
       },
       {
         "blocks_methods": 3,
-        "call": "self._executor.shutdown"
+        "call": "self._reader.read"
       },
       {
         "blocks_methods": 3,
-        "call": "self._reader.read"
+        "call": "self.deck.get_resource"
       },
       {
         "blocks_methods": 3,
@@ -952,6 +1105,10 @@
       },
       {
         "blocks_methods": 3,
+        "call": "self.resource.get_item"
+      },
+      {
+        "blocks_methods": 3,
         "call": "self.serial.readline"
       },
       {
@@ -960,15 +1117,23 @@
       },
       {
         "blocks_methods": 3,
-        "call": "tip_rack.get_all_items"
+        "call": "serial.tools.list_ports.comports"
       },
       {
         "blocks_methods": 3,
-        "call": "tip_spot_a1.get_location_wrt"
+        "call": "shaft.mount_tip"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "super().unassign_child_resource"
       },
       {
         "blocks_methods": 3,
         "call": "utils.reshape_2d"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "anchor.compute_volume_from_height"
       },
       {
         "blocks_methods": 2,
@@ -984,11 +1149,19 @@
       },
       {
         "blocks_methods": 2,
-        "call": "carrier.get_absolute_size_x"
+        "call": "c.dispensing_drive_mm_to_increments"
       },
       {
         "blocks_methods": 2,
-        "call": "carrier.get_location_wrt"
+        "call": "c.y_mm_to_increments"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "c.z_mm_to_increments"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "carrier.get_absolute_size_x"
       },
       {
         "blocks_methods": 2,
@@ -1004,7 +1177,19 @@
       },
       {
         "blocks_methods": 2,
+        "call": "child.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "container.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
         "call": "container.tracker.commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "container.tracker.get_used_volume"
       },
       {
         "blocks_methods": 2,
@@ -1012,7 +1197,27 @@
       },
       {
         "blocks_methods": 2,
-        "call": "core_grippers.get_location_wrt"
+        "call": "containers[job].supports_compute_height_volume_functions"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "date_match.groups"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "deck.compute_right_track_of_carrier"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "destination.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "destination.get_default_child_location"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "destination.get_location_wrt"
       },
       {
         "blocks_methods": 2,
@@ -1028,19 +1233,19 @@
       },
       {
         "blocks_methods": 2,
-        "call": "drop.resource.get_item"
+        "call": "head.move_to_safe_z"
       },
       {
         "blocks_methods": 2,
-        "call": "f.read"
+        "call": "holder.assign_child_resource"
       },
       {
         "blocks_methods": 2,
-        "call": "loop.time"
+        "call": "importlib.import_module"
       },
       {
         "blocks_methods": 2,
-        "call": "np.sqrt"
+        "call": "logger.exception"
       },
       {
         "blocks_methods": 2,
@@ -1053,6 +1258,10 @@
       {
         "blocks_methods": 2,
         "call": "ops[i].resource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "parent.get_anchor"
       },
       {
         "blocks_methods": 2,
@@ -1072,11 +1281,27 @@
       },
       {
         "blocks_methods": 2,
+        "call": "pipettes._min_spacing_between"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "pipettes._temporary_z_drive_profile"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "pipettes.move_to_safe_z"
+      },
+      {
+        "blocks_methods": 2,
         "call": "plate.get_size_x"
       },
       {
         "blocks_methods": 2,
         "call": "plate.unassign"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "q_match.group"
       },
       {
         "blocks_methods": 2,
@@ -1096,19 +1321,11 @@
       },
       {
         "blocks_methods": 2,
-        "call": "resource.get_all_items"
+        "call": "resource.centers"
       },
       {
         "blocks_methods": 2,
-        "call": "resource.get_location_wrt"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "resource.get_size_y"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "resource.register_did_assign_resource_callback"
+        "call": "resource.get_all_children"
       },
       {
         "blocks_methods": 2,
@@ -1116,7 +1333,19 @@
       },
       {
         "blocks_methods": 2,
+        "call": "response.read"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "rotation.get_rotation_matrix"
+      },
+      {
+        "blocks_methods": 2,
         "call": "self._cam.ExposureTime.GetValue"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._driver.get_or_assign_tip_type_index"
       },
       {
         "blocks_methods": 2,
@@ -1125,10 +1354,6 @@
       {
         "blocks_methods": 2,
         "call": "self._tempfile.write"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "self.backend.can_pick_up_tip"
       },
       {
         "blocks_methods": 2,
@@ -1145,6 +1370,10 @@
       {
         "blocks_methods": 2,
         "call": "self.barcode_scanner.scan"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.configuration.dispensing_drive_increments_to_uL"
       },
       {
         "blocks_methods": 2,
@@ -1208,11 +1437,19 @@
       },
       {
         "blocks_methods": 2,
-        "call": "self.wfile.write"
+        "call": "serial.Serial"
       },
       {
         "blocks_methods": 2,
-        "call": "serial.tools.list_ports.comports"
+        "call": "shaft.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "shaft.tip_bottom"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "spot.tip_for_pickup"
       },
       {
         "blocks_methods": 2,
@@ -1221,10 +1458,6 @@
       {
         "blocks_methods": 2,
         "call": "super().setup"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "super().unassign_child_resource"
       },
       {
         "blocks_methods": 2,
@@ -1248,7 +1481,19 @@
       },
       {
         "blocks_methods": 2,
+        "call": "tip_spot_a1.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
         "call": "tlc.compute_corrected_volume"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tool.get_size_z"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "usb.util.dispose_resources"
       },
       {
         "blocks_methods": 2,
@@ -1257,6 +1502,10 @@
       {
         "blocks_methods": 2,
         "call": "usb.util.find_descriptor"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "v.strftime"
       },
       {
         "blocks_methods": 2,
@@ -1269,6 +1518,10 @@
       {
         "blocks_methods": 2,
         "call": "well.get_row"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "year_match.group"
       },
       {
         "blocks_methods": 1,
@@ -1284,6 +1537,10 @@
       },
       {
         "blocks_methods": 1,
+        "call": "(tip.pick_up_location or tip.get_anchor('c', 'c', 't')).rotated"
+      },
+      {
+        "blocks_methods": 1,
         "call": "_ACK_RE.match"
       },
       {
@@ -1292,7 +1549,43 @@
       },
       {
         "blocks_methods": 1,
-        "call": "all_origin_tip_spots[0].tracker.get_tip"
+        "call": "anchor.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "anchor.tracker.set_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "anchor.vector"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.move_to_x_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.pipettes._unchecked_fw_request_lowest_z_positions"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.pipettes.add_tip_mounting_shaft"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.pipettes.move_to_safe_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.pipettes.request_y_positions"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.pipettes.update_location_by_reference_point"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.request_position"
       },
       {
         "blocks_methods": 1,
@@ -1312,7 +1605,59 @@
       },
       {
         "blocks_methods": 1,
+        "call": "body.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "body.get_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "body.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
         "call": "bottom_right_well.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.elbow_deg_per_sec2_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.elbow_deg_per_sec_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.gripper_mm_per_sec2_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.gripper_mm_per_sec_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.supports_compute_height_volume_functions"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.to_deck_frame"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.wrist_deg_per_sec2_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.wrist_deg_per_sec_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.x_mm_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.z_increments_to_mm"
       },
       {
         "blocks_methods": 1,
@@ -1336,15 +1681,23 @@
       },
       {
         "blocks_methods": 1,
-        "call": "cast(Plate, well.parent).index_of_item"
+        "call": "cast(HamiltonDeck, self.device.deck).track_to_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ch.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ch.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "chain[0].get_absolute_rotation"
       },
       {
         "blocks_methods": 1,
         "call": "checksum.to_bytes"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "child._check_naming_conflicts"
       },
       {
         "blocks_methods": 1,
@@ -1357,14 +1710,6 @@
       {
         "blocks_methods": 1,
         "call": "child.get_anchor"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "child.get_location_wrt"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "child.get_resource"
       },
       {
         "blocks_methods": 1,
@@ -1392,7 +1737,19 @@
       },
       {
         "blocks_methods": 1,
-        "call": "container.compute_volume_from_height"
+        "call": "connection.close"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "connection.getresponse"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "connection.request"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "container.get_size_z"
       },
       {
         "blocks_methods": 1,
@@ -1400,7 +1757,27 @@
       },
       {
         "blocks_methods": 1,
+        "call": "container.tracker.get_free_volume"
+      },
+      {
+        "blocks_methods": 1,
         "call": "container.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "containers[job].compute_volume_from_height"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "containers[job].tracker.get_used_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "containers[job].tracker.set_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "core_grippers.get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -1416,11 +1793,31 @@
       },
       {
         "blocks_methods": 1,
-        "call": "date_match.groups"
+        "call": "deck.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_absolute_size_z"
       },
       {
         "blocks_methods": 1,
         "call": "deck.get_slot"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_trash_area"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_trash_area96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "declared.adjustment_date.isoformat"
       },
       {
         "blocks_methods": 1,
@@ -1429,10 +1826,6 @@
       {
         "blocks_methods": 1,
         "call": "destination.assign_child_resource"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "destination.check_can_drop_resource_here"
       },
       {
         "blocks_methods": 1,
@@ -1448,10 +1841,6 @@
       },
       {
         "blocks_methods": 1,
-        "call": "destination.get_default_child_location"
-      },
-      {
-        "blocks_methods": 1,
         "call": "destination.get_default_child_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
       },
       {
@@ -1461,10 +1850,6 @@
       {
         "blocks_methods": 1,
         "call": "destination.get_lid_location(lid.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "destination.get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -1488,7 +1873,19 @@
       },
       {
         "blocks_methods": 1,
+        "call": "device.detach_kernel_driver"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "device.is_kernel_driver_active"
+      },
+      {
+        "blocks_methods": 1,
         "call": "dispense.container.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drain_task.result"
       },
       {
         "blocks_methods": 1,
@@ -1516,6 +1913,10 @@
       },
       {
         "blocks_methods": 1,
+        "call": "drop.resource.get_item"
+      },
+      {
+        "blocks_methods": 1,
         "call": "elapsed_time_match.group"
       },
       {
@@ -1540,11 +1941,19 @@
       },
       {
         "blocks_methods": 1,
+        "call": "f.read"
+      },
+      {
+        "blocks_methods": 1,
         "call": "f.write"
       },
       {
         "blocks_methods": 1,
         "call": "final_position.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "finger.assign_child_resource"
       },
       {
         "blocks_methods": 1,
@@ -1560,7 +1969,27 @@
       },
       {
         "blocks_methods": 1,
+        "call": "gripper.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
         "call": "grpc.insecure_channel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "head.request_y_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "head.request_z_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "head.update_location_by_reference_point"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "held.get_absolute_size_z"
       },
       {
         "blocks_methods": 1,
@@ -1572,7 +2001,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "holder.assign_child_resource"
+        "call": "holder.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "holder.get_size_x"
       },
       {
         "blocks_methods": 1,
@@ -1600,6 +2033,58 @@
       },
       {
         "blocks_methods": 1,
+        "call": "intent.channel_tracker.add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "intent.channel_tracker.remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "intent.destination.tracker.add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "intent.tip_spot.tracker.remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.elbow_drive_request_angle"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.elbow_drive_update_angle"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.elbow_request_y_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.elbow_request_z_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.gripper_request_width"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.update_location_by_reference_point"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.wrist_drive_request_angle"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.wrist_drive_update_angle"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "jaw.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
         "call": "klass.deserialize"
       },
       {
@@ -1616,19 +2101,19 @@
       },
       {
         "blocks_methods": 1,
-        "call": "lock.acquire"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "lock.locked"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "lock.release"
+        "call": "location.vector"
       },
       {
         "blocks_methods": 1,
         "call": "m.group"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "match.groups"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "matcher.search"
       },
       {
         "blocks_methods": 1,
@@ -1708,6 +2193,10 @@
       },
       {
         "blocks_methods": 1,
+        "call": "np.sqrt"
+      },
+      {
+        "blocks_methods": 1,
         "call": "np.var"
       },
       {
@@ -1716,7 +2205,19 @@
       },
       {
         "blocks_methods": 1,
+        "call": "obj.isoformat"
+      },
+      {
+        "blocks_methods": 1,
         "call": "obj.serialize"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "occupied[0].tracker.get_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "offset.vector"
       },
       {
         "blocks_methods": 1,
@@ -1740,6 +2241,10 @@
       },
       {
         "blocks_methods": 1,
+        "call": "op.tip.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
         "call": "op.tip.tracker.add_liquid"
       },
       {
@@ -1748,11 +2253,31 @@
       },
       {
         "blocks_methods": 1,
+        "call": "opener.open"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ops[0].tip.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ops[i].tip.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "origins[0].tracker.get_tip"
+      },
+      {
+        "blocks_methods": 1,
         "call": "ot_api.modules.list_connected_modules"
       },
       {
         "blocks_methods": 1,
         "call": "other.get_absolute_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "other.get_absolute_rotation"
       },
       {
         "blocks_methods": 1,
@@ -1768,7 +2293,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "parent.get_anchor"
+        "call": "parent.get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -1792,6 +2317,30 @@
       },
       {
         "blocks_methods": 1,
+        "call": "pipettes._require_channel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pipettes.move_to_y_positions"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pipettes.request_y_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pipettes.shaft"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "place.assign_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "place.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
         "call": "plate.get_absolute_size_x"
       },
       {
@@ -1801,6 +2350,14 @@
       {
         "blocks_methods": 1,
         "call": "plate.get_all_children"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_child_column"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_child_row"
       },
       {
         "blocks_methods": 1,
@@ -1821,6 +2378,14 @@
       {
         "blocks_methods": 1,
         "call": "plate_rows.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "process.communicate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "process.kill"
       },
       {
         "blocks_methods": 1,
@@ -1868,11 +2433,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "q_match.group"
+        "call": "r.groups"
       },
       {
         "blocks_methods": 1,
-        "call": "r.groups"
+        "call": "rack.get_all_items"
       },
       {
         "blocks_methods": 1,
@@ -1904,11 +2469,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "resource.assign_child_resource"
+        "call": "resource._comparable_children"
       },
       {
         "blocks_methods": 1,
-        "call": "resource.centers"
+        "call": "resource.assign_child_resource"
       },
       {
         "blocks_methods": 1,
@@ -1940,7 +2505,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "resource.get_size_x"
+        "call": "resource.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_item('A1').get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -1948,11 +2517,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "resource.register_did_unassign_resource_callback"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "resource.register_state_update_callback"
+        "call": "resource.register_did_assign_resource_callback"
       },
       {
         "blocks_methods": 1,
@@ -1965,6 +2530,10 @@
       {
         "blocks_methods": 1,
         "call": "resp.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response.getheaders"
       },
       {
         "blocks_methods": 1,
@@ -2012,11 +2581,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "self._dev.close"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "self._dev.open"
+        "call": "self._deck.get_all_children"
       },
       {
         "blocks_methods": 1,
@@ -2104,6 +2669,22 @@
       },
       {
         "blocks_methods": 1,
+        "call": "self._parser.feed"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._pipettes._record_where_they_stopped"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._pipettes.sense_tip_presence"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._pipettes.shaft"
+      },
+      {
+        "blocks_methods": 1,
         "call": "self._reader.readline"
       },
       {
@@ -2148,6 +2729,18 @@
       },
       {
         "blocks_methods": 1,
+        "call": "self.arm.move_to_x_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.arm.pipettes.move_to_safe_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.arm.request_position"
+      },
+      {
+        "blocks_methods": 1,
         "call": "self.backend.aspirate"
       },
       {
@@ -2156,7 +2749,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "self.backend.capture"
+        "call": "self.backend.can_pick_up_tip"
       },
       {
         "blocks_methods": 1,
@@ -2256,11 +2849,19 @@
       },
       {
         "blocks_methods": 1,
+        "call": "self.configuration.x_increments_to_mm"
+      },
+      {
+        "blocks_methods": 1,
         "call": "self.data_control.turn_all_interval_messages_off"
       },
       {
         "blocks_methods": 1,
         "call": "self.deck.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.deck.get_component_name"
       },
       {
         "blocks_methods": 1,
@@ -2288,19 +2889,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "self.fst.start"
-      },
-      {
-        "blocks_methods": 1,
         "call": "self.get_absolute_rotation().get_rotation_matrix"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "self.get_anchor(x=x, y=y, z=z).vector"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "self.get_resource('waste_block').get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -2317,10 +2906,6 @@
       {
         "blocks_methods": 1,
         "call": "self.head96[i].get_tip_origin"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "self.httpd.serve_forever"
       },
       {
         "blocks_methods": 1,
@@ -2404,10 +2989,6 @@
       },
       {
         "blocks_methods": 1,
-        "call": "self.location.vector"
-      },
-      {
-        "blocks_methods": 1,
         "call": "self.logger.log"
       },
       {
@@ -2432,23 +3013,23 @@
       },
       {
         "blocks_methods": 1,
-        "call": "self.parent.get_absolute_location"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "self.parent.get_absolute_rotation"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "self.parent.get_absolute_rotation().get_rotation_matrix"
-      },
-      {
-        "blocks_methods": 1,
         "call": "self.parent.get_child_identifier"
       },
       {
         "blocks_methods": 1,
+        "call": "self.port.read"
+      },
+      {
+        "blocks_methods": 1,
         "call": "self.reader.start_background_read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.resource.get_item(HEAD_REFERENCE_SHAFT).get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.resource.get_item(name).has_tip"
       },
       {
         "blocks_methods": 1,
@@ -2520,7 +3101,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "self.websocket.send"
+        "call": "self.wfile.write"
       },
       {
         "blocks_methods": 1,
@@ -2528,7 +3109,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "serial.Serial"
+        "call": "shaft.has_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "shaft.release_tip"
       },
       {
         "blocks_methods": 1,
@@ -2537,6 +3122,14 @@
       {
         "blocks_methods": 1,
         "call": "site.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "spot.assign_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "spot.get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -2568,19 +3161,35 @@
       },
       {
         "blocks_methods": 1,
-        "call": "super().do_GET"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "super().end_headers"
-      },
-      {
-        "blocks_methods": 1,
         "call": "super().get_anchor"
       },
       {
         "blocks_methods": 1,
+        "call": "super().redirect_request"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "t.tracker.get_used_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "task.cancel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "task.done"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "task.exception"
+      },
+      {
+        "blocks_methods": 1,
         "call": "td.total_seconds"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.get_anchor"
       },
       {
         "blocks_methods": 1,
@@ -2589,6 +3198,10 @@
       {
         "blocks_methods": 1,
         "call": "tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.set_volume"
       },
       {
         "blocks_methods": 1,
@@ -2604,11 +3217,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "tip_rack.get_location_wrt"
+        "call": "tip_rack.get_item"
       },
       {
         "blocks_methods": 1,
-        "call": "tip_spot.has_tip"
+        "call": "tip_rack.get_item('A1').get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -2624,15 +3237,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "tipspots_w_tips[0].tracker.get_tip"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "tr.empty"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "tr.fill"
+        "call": "tool.get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -2644,7 +3249,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "usb.util.dispose_resources"
+        "call": "trash.get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -2653,10 +3258,6 @@
       {
         "blocks_methods": 1,
         "call": "usb.util.get_string"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "v.strftime"
       },
       {
         "blocks_methods": 1,
@@ -2681,6 +3282,10 @@
       {
         "blocks_methods": 1,
         "call": "waste_block.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "waste_block.get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -2728,45 +3333,53 @@
       },
       {
         "blocks_methods": 1,
-        "call": "year_match.group"
-      },
-      {
-        "blocks_methods": 1,
         "call": "year_matches.group"
       }
     ],
     "dropped_receiver_whole_surface_unfiltered": [
       {
-        "blocks_methods": 57,
+        "blocks_methods": 59,
         "call": "asyncio.sleep"
+      },
+      {
+        "blocks_methods": 46,
+        "call": "logger.debug"
+      },
+      {
+        "blocks_methods": 45,
+        "call": "logger.info"
       },
       {
         "blocks_methods": 44,
         "call": "time.time"
       },
       {
-        "blocks_methods": 42,
-        "call": "logger.debug"
-      },
-      {
-        "blocks_methods": 42,
-        "call": "logger.info"
-      },
-      {
-        "blocks_methods": 36,
-        "call": "self.cr.next_command"
-      },
-      {
-        "blocks_methods": 25,
+        "blocks_methods": 40,
         "call": "logger.warning"
       },
       {
-        "blocks_methods": 25,
+        "blocks_methods": 37,
+        "call": "self.cr.next_command"
+      },
+      {
+        "blocks_methods": 33,
         "call": "super().__init__"
       },
       {
-        "blocks_methods": 22,
+        "blocks_methods": 27,
+        "call": "warnings.warn"
+      },
+      {
+        "blocks_methods": 25,
         "call": "capturer.record"
+      },
+      {
+        "blocks_methods": 24,
+        "call": "logger.log"
+      },
+      {
+        "blocks_methods": 23,
+        "call": "asyncio.get_running_loop"
       },
       {
         "blocks_methods": 21,
@@ -2774,7 +3387,11 @@
       },
       {
         "blocks_methods": 20,
-        "call": "logger.log"
+        "call": "loop.run_in_executor"
+      },
+      {
+        "blocks_methods": 20,
+        "call": "self._driver.send_command"
       },
       {
         "blocks_methods": 19,
@@ -2785,20 +3402,24 @@
         "call": "self.io.write"
       },
       {
-        "blocks_methods": 18,
+        "blocks_methods": 17,
         "call": "bytes.fromhex"
       },
       {
-        "blocks_methods": 18,
-        "call": "warnings.warn"
-      },
-      {
-        "blocks_methods": 15,
-        "call": "asyncio.get_running_loop"
-      },
-      {
-        "blocks_methods": 15,
+        "blocks_methods": 17,
         "call": "super().assign_child_resource"
+      },
+      {
+        "blocks_methods": 15,
+        "call": "time.monotonic"
+      },
+      {
+        "blocks_methods": 14,
+        "call": "Coordinate.zero"
+      },
+      {
+        "blocks_methods": 14,
+        "call": "c.z_drive_mm_to_increments"
       },
       {
         "blocks_methods": 14,
@@ -2810,23 +3431,35 @@
       },
       {
         "blocks_methods": 13,
-        "call": "loop.run_in_executor"
-      },
-      {
-        "blocks_methods": 13,
         "call": "op.resource.get_location_wrt"
       },
       {
-        "blocks_methods": 10,
+        "blocks_methods": 12,
+        "call": "asyncio.gather"
+      },
+      {
+        "blocks_methods": 12,
         "call": "re.search"
       },
       {
+        "blocks_methods": 11,
+        "call": "c.z_drive_increments_to_mm"
+      },
+      {
+        "blocks_methods": 11,
+        "call": "resp.split"
+      },
+      {
         "blocks_methods": 10,
-        "call": "time.monotonic"
+        "call": "hlc.compute_corrected_volume"
       },
       {
         "blocks_methods": 9,
         "call": "asyncio.wait_for"
+      },
+      {
+        "blocks_methods": 8,
+        "call": "' '.join"
       },
       {
         "blocks_methods": 8,
@@ -2838,10 +3471,6 @@
       },
       {
         "blocks_methods": 8,
-        "call": "hlc.compute_corrected_volume"
-      },
-      {
-        "blocks_methods": 8,
         "call": "self.io.readline"
       },
       {
@@ -2850,11 +3479,7 @@
       },
       {
         "blocks_methods": 7,
-        "call": "' '.join"
-      },
-      {
-        "blocks_methods": 7,
-        "call": "Coordinate.zero"
+        "call": "c.dispensing_drive_uL_to_increments"
       },
       {
         "blocks_methods": 7,
@@ -2865,8 +3490,20 @@
         "call": "resp.strip"
       },
       {
+        "blocks_methods": 7,
+        "call": "tips.append"
+      },
+      {
         "blocks_methods": 6,
         "call": "asyncio.get_event_loop"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "c.dispensing_drive_increments_to_uL"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "c.y_drive_mm_to_increments"
       },
       {
         "blocks_methods": 6,
@@ -2886,15 +3523,55 @@
       },
       {
         "blocks_methods": 6,
+        "call": "resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 6,
+        "call": "self.deck.to_hamilton_coordinate"
+      },
+      {
+        "blocks_methods": 6,
         "call": "self.io.setup"
       },
       {
         "blocks_methods": 5,
-        "call": "', '.join"
+        "call": "''.join"
       },
       {
         "blocks_methods": 5,
-        "call": "asyncio.gather"
+        "call": "asyncio.create_task"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "asyncio.shield"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "c.wrist_increments_to_deg"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "c.z_drive_acceleration_mm_to_increments"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "json.dumps"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "kwargs.get"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "match.group"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "math.sqrt"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "pipettes._record_after_command"
       },
       {
         "blocks_methods": 5,
@@ -2902,15 +3579,11 @@
       },
       {
         "blocks_methods": 5,
-        "call": "resp.split"
+        "call": "resource.get_item"
       },
       {
         "blocks_methods": 5,
         "call": "self._find_module().get"
-      },
-      {
-        "blocks_methods": 5,
-        "call": "self.deck.to_hamilton_coordinate"
       },
       {
         "blocks_methods": 5,
@@ -2922,7 +3595,11 @@
       },
       {
         "blocks_methods": 5,
-        "call": "tip_spot.get_tip"
+        "call": "self.resource.get_all_items"
+      },
+      {
+        "blocks_methods": 5,
+        "call": "tip.get_size_z"
       },
       {
         "blocks_methods": 5,
@@ -2930,7 +3607,7 @@
       },
       {
         "blocks_methods": 4,
-        "call": "''.join"
+        "call": "', '.join"
       },
       {
         "blocks_methods": 4,
@@ -2942,19 +3619,23 @@
       },
       {
         "blocks_methods": 4,
-        "call": "asyncio.create_task"
+        "call": "asyncio.Lock"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "c.gripper_mm_to_increments"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "c.x_drive_mm_to_increments"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "container.compute_volume_from_height"
       },
       {
         "blocks_methods": 4,
         "call": "logging.warning"
-      },
-      {
-        "blocks_methods": 4,
-        "call": "match.group"
-      },
-      {
-        "blocks_methods": 4,
-        "call": "math.sqrt"
       },
       {
         "blocks_methods": 4,
@@ -2967,6 +3648,10 @@
       {
         "blocks_methods": 4,
         "call": "ops[0].resource.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "pipettes._require_iswap_parked"
       },
       {
         "blocks_methods": 4,
@@ -2990,7 +3675,15 @@
       },
       {
         "blocks_methods": 4,
-        "call": "resource.get_absolute_size_y"
+        "call": "resource.get_all_items"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "resource.get_location_wrt"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "resource.get_size_y"
       },
       {
         "blocks_methods": 4,
@@ -2999,10 +3692,6 @@
       {
         "blocks_methods": 4,
         "call": "self._sila_interface.send_command"
-      },
-      {
-        "blocks_methods": 4,
-        "call": "self.deck.get_resource"
       },
       {
         "blocks_methods": 4,
@@ -3025,6 +3714,14 @@
         "call": "self.liha.set_z_travel_height"
       },
       {
+        "blocks_methods": 4,
+        "call": "tip_rack.get_all_items"
+      },
+      {
+        "blocks_methods": 4,
+        "call": "tip_spot.get_tip"
+      },
+      {
         "blocks_methods": 3,
         "call": "DEVICE_ENDPOINTS.get"
       },
@@ -3042,7 +3739,7 @@
       },
       {
         "blocks_methods": 3,
-        "call": "asyncio.Lock"
+        "call": "arm.resource.assign_child_resource"
       },
       {
         "blocks_methods": 3,
@@ -3054,7 +3751,47 @@
       },
       {
         "blocks_methods": 3,
+        "call": "batches.append"
+      },
+      {
+        "blocks_methods": 3,
         "call": "buf.extend"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.elbow_drive_angle_to_increments"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.elbow_drive_increments_to_angle"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.from_deck_frame"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.get_location_wrt"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.gripper_increments_to_mm"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.wrist_deg_to_increments"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.x_drive_increments_to_mm"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "c.y_drive_increments_to_mm"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "carrier.get_location_wrt"
       },
       {
         "blocks_methods": 3,
@@ -3066,6 +3803,26 @@
       },
       {
         "blocks_methods": 3,
+        "call": "container.compute_height_from_volume"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "data.get"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "dataclasses.replace"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "datetime.date"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "errors.append"
+      },
+      {
+        "blocks_methods": 3,
         "call": "framed_message.hex"
       },
       {
@@ -3074,15 +3831,23 @@
       },
       {
         "blocks_methods": 3,
+        "call": "held.center"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "held.center().rotated"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "held.get_absolute_rotation"
+      },
+      {
+        "blocks_methods": 3,
         "call": "hex(tadm_channel_pattern_num)[2:].upper"
       },
       {
         "blocks_methods": 3,
-        "call": "itertools.product"
-      },
-      {
-        "blocks_methods": 3,
-        "call": "json.dumps"
+        "call": "importlib.import_module"
       },
       {
         "blocks_methods": 3,
@@ -3098,7 +3863,19 @@
       },
       {
         "blocks_methods": 3,
+        "call": "loop.time"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "method.upper"
+      },
+      {
+        "blocks_methods": 3,
         "call": "np.array"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "pipettes._check_reachable"
       },
       {
         "blocks_methods": 3,
@@ -3122,7 +3899,11 @@
       },
       {
         "blocks_methods": 3,
-        "call": "resource.get_item"
+        "call": "resource.get_size_x"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "response.decode"
       },
       {
         "blocks_methods": 3,
@@ -3142,11 +3923,11 @@
       },
       {
         "blocks_methods": 3,
-        "call": "self._executor.shutdown"
+        "call": "self._reader.read"
       },
       {
         "blocks_methods": 3,
-        "call": "self._reader.read"
+        "call": "self.deck.get_resource"
       },
       {
         "blocks_methods": 3,
@@ -3170,11 +3951,23 @@
       },
       {
         "blocks_methods": 3,
+        "call": "self.resource.get_item"
+      },
+      {
+        "blocks_methods": 3,
         "call": "self.serial.readline"
       },
       {
         "blocks_methods": 3,
         "call": "self.serial.write"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "serial.tools.list_ports.comports"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "shaft.mount_tip"
       },
       {
         "blocks_methods": 3,
@@ -3190,15 +3983,7 @@
       },
       {
         "blocks_methods": 3,
-        "call": "tip_rack.get_all_items"
-      },
-      {
-        "blocks_methods": 3,
-        "call": "tip_spot_a1.center"
-      },
-      {
-        "blocks_methods": 3,
-        "call": "tip_spot_a1.get_location_wrt"
+        "call": "super().unassign_child_resource"
       },
       {
         "blocks_methods": 3,
@@ -3207,6 +3992,10 @@
       {
         "blocks_methods": 3,
         "call": "wells.append"
+      },
+      {
+        "blocks_methods": 3,
+        "call": "z_positions_mm.append"
       },
       {
         "blocks_methods": 2,
@@ -3247,10 +4036,6 @@
       {
         "blocks_methods": 2,
         "call": "Reader(resp_header[7:]).u16"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "Rotation.deserialize"
       },
       {
         "blocks_methods": 2,
@@ -3302,6 +4087,10 @@
       },
       {
         "blocks_methods": 2,
+        "call": "anchor.compute_volume_from_height"
+      },
+      {
+        "blocks_methods": 2,
         "call": "aspiration.container.get_absolute_size_x"
       },
       {
@@ -3314,23 +4103,27 @@
       },
       {
         "blocks_methods": 2,
+        "call": "asyncio.wait"
+      },
+      {
+        "blocks_methods": 2,
         "call": "buf.hex"
       },
       {
         "blocks_methods": 2,
-        "call": "c.split"
+        "call": "c.dispensing_drive_mm_to_increments"
       },
       {
         "blocks_methods": 2,
-        "call": "c.split(chr(i) + key + chr(j))[1].split"
+        "call": "c.y_mm_to_increments"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "c.z_mm_to_increments"
       },
       {
         "blocks_methods": 2,
         "call": "carrier.get_absolute_size_x"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "carrier.get_location_wrt"
       },
       {
         "blocks_methods": 2,
@@ -3346,7 +4139,23 @@
       },
       {
         "blocks_methods": 2,
+        "call": "child.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "collar_heights.pop"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "columns.setdefault"
+      },
+      {
+        "blocks_methods": 2,
         "call": "command.encode"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "command.find"
       },
       {
         "blocks_methods": 2,
@@ -3362,7 +4171,15 @@
       },
       {
         "blocks_methods": 2,
+        "call": "container.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
         "call": "container.tracker.commit"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "container.tracker.get_used_volume"
       },
       {
         "blocks_methods": 2,
@@ -3374,7 +4191,7 @@
       },
       {
         "blocks_methods": 2,
-        "call": "core_grippers.get_location_wrt"
+        "call": "containers[job].supports_compute_height_volume_functions"
       },
       {
         "blocks_methods": 2,
@@ -3390,7 +4207,23 @@
       },
       {
         "blocks_methods": 2,
-        "call": "datetime.date"
+        "call": "date_match.groups"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "deck.compute_right_track_of_carrier"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "destination.check_can_drop_resource_here"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "destination.get_default_child_location"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "destination.get_location_wrt"
       },
       {
         "blocks_methods": 2,
@@ -3406,15 +4239,23 @@
       },
       {
         "blocks_methods": 2,
-        "call": "drop.resource.get_item"
+        "call": "exc.errors.values"
       },
       {
         "blocks_methods": 2,
-        "call": "f.read"
+        "call": "found[job].append"
       },
       {
         "blocks_methods": 2,
         "call": "hamilton_liquid_classes.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "he.errors.items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "head.move_to_safe_z"
       },
       {
         "blocks_methods": 2,
@@ -3426,7 +4267,23 @@
       },
       {
         "blocks_methods": 2,
+        "call": "holder.assign_child_resource"
+      },
+      {
+        "blocks_methods": 2,
         "call": "items.append"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "json.loads"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "key.lower"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "kwargs.items"
       },
       {
         "blocks_methods": 2,
@@ -3434,11 +4291,19 @@
       },
       {
         "blocks_methods": 2,
+        "call": "locations.values"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "logger.exception"
+      },
+      {
+        "blocks_methods": 2,
         "call": "logging.info"
       },
       {
         "blocks_methods": 2,
-        "call": "loop.time"
+        "call": "math.ceil"
       },
       {
         "blocks_methods": 2,
@@ -3451,10 +4316,6 @@
       {
         "blocks_methods": 2,
         "call": "next_command.data.lower"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "np.sqrt"
       },
       {
         "blocks_methods": 2,
@@ -3474,15 +4335,11 @@
       },
       {
         "blocks_methods": 2,
-        "call": "os.path.dirname"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "os.path.join"
-      },
-      {
-        "blocks_methods": 2,
         "call": "packet.hex"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "parent.get_anchor"
       },
       {
         "blocks_methods": 2,
@@ -3491,6 +4348,10 @@
       {
         "blocks_methods": 2,
         "call": "payload.iter"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "per_container_settings.items"
       },
       {
         "blocks_methods": 2,
@@ -3506,6 +4367,22 @@
       },
       {
         "blocks_methods": 2,
+        "call": "pipettes._min_spacing_between"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "pipettes._temporary_z_drive_profile"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "pipettes.move_to_safe_z"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "planned.sort"
+      },
+      {
+        "blocks_methods": 2,
         "call": "plate.get_size_x"
       },
       {
@@ -3515,6 +4392,10 @@
       {
         "blocks_methods": 2,
         "call": "predefined_increments.items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "q_match.group"
       },
       {
         "blocks_methods": 2,
@@ -3546,19 +4427,11 @@
       },
       {
         "blocks_methods": 2,
-        "call": "resource.get_all_items"
+        "call": "resource.centers"
       },
       {
         "blocks_methods": 2,
-        "call": "resource.get_location_wrt"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "resource.get_size_y"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "resource.register_did_assign_resource_callback"
+        "call": "resource.get_all_children"
       },
       {
         "blocks_methods": 2,
@@ -3570,7 +4443,15 @@
       },
       {
         "blocks_methods": 2,
-        "call": "response.decode"
+        "call": "resp.split('bb/')[-1].split"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resp.split('vw')[-1].strip"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "resp.split('vw')[-1].strip().split"
       },
       {
         "blocks_methods": 2,
@@ -3582,11 +4463,27 @@
       },
       {
         "blocks_methods": 2,
+        "call": "response.read"
+      },
+      {
+        "blocks_methods": 2,
         "call": "root.find"
       },
       {
         "blocks_methods": 2,
+        "call": "rotation.get_rotation_matrix"
+      },
+      {
+        "blocks_methods": 2,
         "call": "self._cam.ExposureTime.GetValue"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._driver.get_or_assign_tip_type_index"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self._held_transport_air.get"
       },
       {
         "blocks_methods": 2,
@@ -3606,7 +4503,7 @@
       },
       {
         "blocks_methods": 2,
-        "call": "self.backend.can_pick_up_tip"
+        "call": "self._tip_type_indices.values"
       },
       {
         "blocks_methods": 2,
@@ -3626,7 +4523,15 @@
       },
       {
         "blocks_methods": 2,
+        "call": "self.configuration.dispensing_drive_increments_to_uL"
+      },
+      {
+        "blocks_methods": 2,
         "call": "self.data_packets.popleft"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "self.declared.get"
       },
       {
         "blocks_methods": 2,
@@ -3690,11 +4595,19 @@
       },
       {
         "blocks_methods": 2,
-        "call": "self.wfile.write"
+        "call": "serial.Serial"
       },
       {
         "blocks_methods": 2,
-        "call": "serial.tools.list_ports.comports"
+        "call": "shaft.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "shaft.tip_bottom"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "spot.tip_for_pickup"
       },
       {
         "blocks_methods": 2,
@@ -3707,14 +4620,6 @@
       {
         "blocks_methods": 2,
         "call": "super().setup"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "super().unassign_child_resource"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "time.sleep"
       },
       {
         "blocks_methods": 2,
@@ -3738,15 +4643,35 @@
       },
       {
         "blocks_methods": 2,
-        "call": "tips.append"
+        "call": "tip_spot_a1.center"
       },
       {
         "blocks_methods": 2,
-        "call": "tips.pop"
+        "call": "tip_spot_a1.get_location_wrt"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tips.items"
       },
       {
         "blocks_methods": 2,
         "call": "tlc.compute_corrected_volume"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "tool.get_size_z"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "urllib.request.Request"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "usb.core.find"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "usb.util.dispose_resources"
       },
       {
         "blocks_methods": 2,
@@ -3755,6 +4680,10 @@
       {
         "blocks_methods": 2,
         "call": "usb.util.find_descriptor"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "v.strftime"
       },
       {
         "blocks_methods": 2,
@@ -3798,7 +4727,19 @@
       },
       {
         "blocks_methods": 2,
-        "call": "z_positions_mm.append"
+        "call": "year_match.group"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "ys.items"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "ys.keys"
+      },
+      {
+        "blocks_methods": 2,
+        "call": "zs.items"
       },
       {
         "blocks_methods": 1,
@@ -3858,6 +4799,10 @@
       },
       {
         "blocks_methods": 1,
+        "call": "(tip.pick_up_location or tip.get_anchor('c', 'c', 't')).rotated"
+      },
+      {
+        "blocks_methods": 1,
         "call": "(tree_part + '<empty>').ljust"
       },
       {
@@ -3882,7 +4827,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "Barcode.deserialize"
+        "call": "AUTOLOAD_TYPES.items"
       },
       {
         "blocks_methods": 1,
@@ -3947,10 +4892,6 @@
       {
         "blocks_methods": 1,
         "call": "LiquidHandlerBackend.deserialize"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "MachineBackend.get_all_instances"
       },
       {
         "blocks_methods": 1,
@@ -4031,6 +4972,10 @@
       {
         "blocks_methods": 1,
         "call": "Reader(result[2:]).u16"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "Resource.deserialize"
       },
       {
         "blocks_methods": 1,
@@ -4150,7 +5095,15 @@
       },
       {
         "blocks_methods": 1,
+        "call": "_ROW_ORDER.index"
+      },
+      {
+        "blocks_methods": 1,
         "call": "__version__.encode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "above_bottom.append"
       },
       {
         "blocks_methods": 1,
@@ -4162,6 +5115,14 @@
       },
       {
         "blocks_methods": 1,
+        "call": "address.partition"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "air_ahead.append"
+      },
+      {
+        "blocks_methods": 1,
         "call": "alignment_tipspot.center"
       },
       {
@@ -4170,15 +5131,19 @@
       },
       {
         "blocks_methods": 1,
-        "call": "all_origin_tip_spots.pop"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "all_origin_tip_spots[0].tracker.get_tip"
-      },
-      {
-        "blocks_methods": 1,
         "call": "all_rows.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "anchor.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "anchor.tracker.set_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "anchor.vector"
       },
       {
         "blocks_methods": 1,
@@ -4190,11 +5155,47 @@
       },
       {
         "blocks_methods": 1,
+        "call": "arm.move_to_x_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.pipettes._unchecked_fw_request_lowest_z_positions"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.pipettes.add_tip_mounting_shaft"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.pipettes.move_to_safe_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.pipettes.request_y_positions"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.pipettes.resources.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.pipettes.update_location_by_reference_point"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "arm.request_position"
+      },
+      {
+        "blocks_methods": 1,
         "call": "aspiration.container.get_absolute_size_z"
       },
       {
         "blocks_methods": 1,
         "call": "asyncio.Event"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "asyncio.create_subprocess_exec"
       },
       {
         "blocks_methods": 1,
@@ -4234,6 +5235,14 @@
       },
       {
         "blocks_methods": 1,
+        "call": "base_url.rstrip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "batch_found.items"
+      },
+      {
+        "blocks_methods": 1,
         "call": "batch_measurements.items"
       },
       {
@@ -4242,7 +5251,23 @@
       },
       {
         "blocks_methods": 1,
+        "call": "blinks.get"
+      },
+      {
+        "blocks_methods": 1,
         "call": "body.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "body.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "body.get_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "body.get_size_z"
       },
       {
         "blocks_methods": 1,
@@ -4270,15 +5295,55 @@
       },
       {
         "blocks_methods": 1,
-        "call": "buffer.extend"
-      },
-      {
-        "blocks_methods": 1,
         "call": "buffer.upper"
       },
       {
         "blocks_methods": 1,
         "call": "bytes(resp).hex"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.elbow_deg_per_sec2_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.elbow_deg_per_sec_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.gripper_mm_per_sec2_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.gripper_mm_per_sec_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.head_types.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.supports_compute_height_volume_functions"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.to_deck_frame"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.wrist_deg_per_sec2_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.wrist_deg_per_sec_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.x_mm_to_increments"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "c.z_increments_to_mm"
       },
       {
         "blocks_methods": 1,
@@ -4314,7 +5379,19 @@
       },
       {
         "blocks_methods": 1,
+        "call": "carried.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "carried.get"
+      },
+      {
+        "blocks_methods": 1,
         "call": "carrier_rails.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "carrying.append"
       },
       {
         "blocks_methods": 1,
@@ -4322,15 +5399,31 @@
       },
       {
         "blocks_methods": 1,
-        "call": "cast(Plate, well.parent).index_of_item"
+        "call": "cast(HamiltonDeck, self.device.deck).track_to_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ch.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ch.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "chain.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "chain.reverse"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "chain[0].get_absolute_rotation"
       },
       {
         "blocks_methods": 1,
         "call": "channel_locations.values"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "channel_subset.index"
       },
       {
         "blocks_methods": 1,
@@ -4346,10 +5439,6 @@
       },
       {
         "blocks_methods": 1,
-        "call": "child._check_naming_conflicts"
-      },
-      {
-        "blocks_methods": 1,
         "call": "child.get_absolute_size_y"
       },
       {
@@ -4362,14 +5451,6 @@
       },
       {
         "blocks_methods": 1,
-        "call": "child.get_location_wrt"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "child.get_resource"
-      },
-      {
-        "blocks_methods": 1,
         "call": "child_cls.deserialize"
       },
       {
@@ -4378,7 +5459,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "clusters_by_model.items"
+        "call": "children.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "classes.append"
       },
       {
         "blocks_methods": 1,
@@ -4386,15 +5471,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "clusters_by_model.setdefault(current_model, []).append"
+        "call": "clusters_by_model.setdefault(model, []).append"
       },
       {
         "blocks_methods": 1,
-        "call": "clusters_by_x.setdefault"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "clusters_by_x.setdefault(x, []).append"
+        "call": "clusters_by_model.values"
       },
       {
         "blocks_methods": 1,
@@ -4422,11 +5503,27 @@
       },
       {
         "blocks_methods": 1,
-        "call": "color.upper"
+        "call": "cols.reverse"
       },
       {
         "blocks_methods": 1,
-        "call": "cols.reverse"
+        "call": "column.sort"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "columns.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "columns.setdefault(_column_key(spot), []).append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "columns.setdefault(_x_of(tip_spot), []).append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "columns.values"
       },
       {
         "blocks_methods": 1,
@@ -4438,15 +5535,19 @@
       },
       {
         "blocks_methods": 1,
-        "call": "command.find"
-      },
-      {
-        "blocks_methods": 1,
         "call": "command.get_log_params"
       },
       {
         "blocks_methods": 1,
         "call": "command.interpret_response"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.lower"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "command.pop"
       },
       {
         "blocks_methods": 1,
@@ -4486,7 +5587,19 @@
       },
       {
         "blocks_methods": 1,
-        "call": "container.compute_volume_from_height"
+        "call": "connection.close"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "connection.getresponse"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "connection.request"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "container.get_size_z"
       },
       {
         "blocks_methods": 1,
@@ -4494,19 +5607,31 @@
       },
       {
         "blocks_methods": 1,
+        "call": "container.tracker.get_free_volume"
+      },
+      {
+        "blocks_methods": 1,
         "call": "container.tracker.remove_liquid"
       },
       {
         "blocks_methods": 1,
-        "call": "content.encode"
+        "call": "containers[job].compute_volume_from_height"
       },
       {
         "blocks_methods": 1,
-        "call": "content.replace"
+        "call": "containers[job].tracker.get_used_volume"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "containers[job].tracker.set_volume"
       },
       {
         "blocks_methods": 1,
         "call": "copy.deepcopy"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "core_grippers.get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -4574,7 +5699,15 @@
       },
       {
         "blocks_methods": 1,
-        "call": "date_match.groups"
+        "call": "dataclasses.asdict"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dataclasses.astuple"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dataclasses.fields"
       },
       {
         "blocks_methods": 1,
@@ -4586,7 +5719,31 @@
       },
       {
         "blocks_methods": 1,
+        "call": "deck.get_absolute_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_absolute_size_y"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
         "call": "deck.get_slot"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_trash_area"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "deck.get_trash_area96"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "declared.adjustment_date.isoformat"
       },
       {
         "blocks_methods": 1,
@@ -4602,10 +5759,6 @@
       },
       {
         "blocks_methods": 1,
-        "call": "destination.check_can_drop_resource_here"
-      },
-      {
-        "blocks_methods": 1,
         "call": "destination.compute_plate_location"
       },
       {
@@ -4615,10 +5768,6 @@
       {
         "blocks_methods": 1,
         "call": "destination.get_absolute_rotation"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "destination.get_default_child_location"
       },
       {
         "blocks_methods": 1,
@@ -4634,15 +5783,15 @@
       },
       {
         "blocks_methods": 1,
-        "call": "destination.get_location_wrt"
-      },
-      {
-        "blocks_methods": 1,
         "call": "destination.get_new_child_location"
       },
       {
         "blocks_methods": 1,
         "call": "destination.get_new_child_location(resource.rotated(z=resource_rotation_wrt_destination_wrt_local)).rotated"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "detections.append"
       },
       {
         "blocks_methods": 1,
@@ -4658,7 +5807,19 @@
       },
       {
         "blocks_methods": 1,
+        "call": "device.detach_kernel_driver"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "device.is_kernel_driver_active"
+      },
+      {
+        "blocks_methods": 1,
         "call": "devices.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "differences.append"
       },
       {
         "blocks_methods": 1,
@@ -4667,6 +5828,10 @@
       {
         "blocks_methods": 1,
         "call": "dispense.container.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "drain_task.result"
       },
       {
         "blocks_methods": 1,
@@ -4698,6 +5863,14 @@
       },
       {
         "blocks_methods": 1,
+        "call": "drop.resource.get_item"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "dropped.items"
+      },
+      {
+        "blocks_methods": 1,
         "call": "e.errors.get"
       },
       {
@@ -4726,6 +5899,10 @@
       },
       {
         "blocks_methods": 1,
+        "call": "error.errors.values"
+      },
+      {
+        "blocks_methods": 1,
         "call": "error_code_msg.split"
       },
       {
@@ -4738,10 +5915,6 @@
       },
       {
         "blocks_methods": 1,
-        "call": "errors.append"
-      },
-      {
-        "blocks_methods": 1,
         "call": "errors.groupdict"
       },
       {
@@ -4751,10 +5924,6 @@
       {
         "blocks_methods": 1,
         "call": "errors_dict.items"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "exc.errors.values"
       },
       {
         "blocks_methods": 1,
@@ -4782,6 +5951,10 @@
       },
       {
         "blocks_methods": 1,
+        "call": "f.read"
+      },
+      {
+        "blocks_methods": 1,
         "call": "f.write"
       },
       {
@@ -4790,7 +5963,23 @@
       },
       {
         "blocks_methods": 1,
+        "call": "features.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "field.name.endswith"
+      },
+      {
+        "blocks_methods": 1,
         "call": "final_position.to_bytes"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "finger.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "fingers.append"
       },
       {
         "blocks_methods": 1,
@@ -4806,7 +5995,19 @@
       },
       {
         "blocks_methods": 1,
+        "call": "found.setdefault"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "found.setdefault(job, []).extend"
+      },
+      {
+        "blocks_methods": 1,
         "call": "frame.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "frames.append"
       },
       {
         "blocks_methods": 1,
@@ -4826,6 +6027,10 @@
       },
       {
         "blocks_methods": 1,
+        "call": "gripper.assign_child_resource"
+      },
+      {
+        "blocks_methods": 1,
         "call": "group[0].decode"
       },
       {
@@ -4842,6 +6047,18 @@
       },
       {
         "blocks_methods": 1,
+        "call": "groups.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "groups.setdefault"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "groups.setdefault(_x_of(tip_spot), []).append"
+      },
+      {
+        "blocks_methods": 1,
         "call": "groups[-1].append"
       },
       {
@@ -4850,7 +6067,15 @@
       },
       {
         "blocks_methods": 1,
-        "call": "he.errors.items"
+        "call": "head.request_y_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "head.request_z_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "head.update_location_by_reference_point"
       },
       {
         "blocks_methods": 1,
@@ -4859,6 +6084,18 @@
       {
         "blocks_methods": 1,
         "call": "height_volume_data.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "heights.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "held.get_absolute_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "held.pop"
       },
       {
         "blocks_methods": 1,
@@ -4878,11 +6115,15 @@
       },
       {
         "blocks_methods": 1,
-        "call": "holder.assign_child_resource"
+        "call": "holder.get_location_wrt"
       },
       {
         "blocks_methods": 1,
-        "call": "http.server.HTTPServer"
+        "call": "holder.get_size_x"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "http.client.HTTPConnection"
       },
       {
         "blocks_methods": 1,
@@ -4895,6 +6136,26 @@
       {
         "blocks_methods": 1,
         "call": "hvd.keys"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iSWAPElbowPositions.SLOTS.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iSWAPGripperPositions.SLOTS.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iSWAPWristPositions.SLOTS.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iSWAPYPositions.SLOTS.index"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iSWAPZPositions.SLOTS.index"
       },
       {
         "blocks_methods": 1,
@@ -4911,6 +6172,10 @@
       {
         "blocks_methods": 1,
         "call": "images.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "inconsistent.append"
       },
       {
         "blocks_methods": 1,
@@ -4942,6 +6207,10 @@
       },
       {
         "blocks_methods": 1,
+        "call": "installed.values"
+      },
+      {
+        "blocks_methods": 1,
         "call": "int(9.15 * 100 * acceleration).to_bytes"
       },
       {
@@ -4962,7 +6231,59 @@
       },
       {
         "blocks_methods": 1,
+        "call": "intent.channel_tracker.add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "intent.channel_tracker.remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "intent.destination.tracker.add_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "intent.tip_spot.tracker.remove_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "io.BufferedReader"
+      },
+      {
+        "blocks_methods": 1,
         "call": "io.BytesIO"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.elbow_drive_request_angle"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.elbow_drive_update_angle"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.elbow_request_y_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.elbow_request_z_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.gripper_request_width"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.update_location_by_reference_point"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.wrist_drive_request_angle"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "iswap.wrist_drive_update_angle"
       },
       {
         "blocks_methods": 1,
@@ -4971,6 +6292,14 @@
       {
         "blocks_methods": 1,
         "call": "items[i].append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "itertools.product"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "jaw.assign_child_resource"
       },
       {
         "blocks_methods": 1,
@@ -4987,14 +6316,6 @@
       {
         "blocks_methods": 1,
         "call": "klass.deserialize"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "kwargs.get"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "kwargs.items"
       },
       {
         "blocks_methods": 1,
@@ -5018,6 +6339,14 @@
       },
       {
         "blocks_methods": 1,
+        "call": "line.endswith"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "line.extend"
+      },
+      {
+        "blocks_methods": 1,
         "call": "line.hex"
       },
       {
@@ -5030,14 +6359,6 @@
       },
       {
         "blocks_methods": 1,
-        "call": "liquid_color.strip"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "liquid_color.strip().lstrip"
-      },
-      {
-        "blocks_methods": 1,
         "call": "loader.load"
       },
       {
@@ -5046,15 +6367,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "lock.acquire"
+        "call": "location.vector"
       },
       {
         "blocks_methods": 1,
-        "call": "lock.locked"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "lock.release"
+        "call": "locations.items"
       },
       {
         "blocks_methods": 1,
@@ -5086,15 +6403,31 @@
       },
       {
         "blocks_methods": 1,
+        "call": "mask.strip"
+      },
+      {
+        "blocks_methods": 1,
         "call": "mask_hex.strip"
       },
       {
         "blocks_methods": 1,
-        "call": "matches[0].split"
+        "call": "match.group(1).split"
       },
       {
         "blocks_methods": 1,
-        "call": "math.ceil"
+        "call": "match.group(2).strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "match.groups"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "matcher.search"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "matches[0].split"
       },
       {
         "blocks_methods": 1,
@@ -5107,14 +6440,6 @@
       {
         "blocks_methods": 1,
         "call": "measurements[orig_idx].append"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "merged.append"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "message.get"
       },
       {
         "blocks_methods": 1,
@@ -5135,6 +6460,10 @@
       {
         "blocks_methods": 1,
         "call": "messages.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "metadata_data.copy"
       },
       {
         "blocks_methods": 1,
@@ -5163,6 +6492,10 @@
       {
         "blocks_methods": 1,
         "call": "multiline.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "needed.get"
       },
       {
         "blocks_methods": 1,
@@ -5254,6 +6587,10 @@
       },
       {
         "blocks_methods": 1,
+        "call": "np.sqrt"
+      },
+      {
+        "blocks_methods": 1,
         "call": "np.var"
       },
       {
@@ -5266,6 +6603,10 @@
       },
       {
         "blocks_methods": 1,
+        "call": "obj.isoformat"
+      },
+      {
+        "blocks_methods": 1,
         "call": "obj.items"
       },
       {
@@ -5274,7 +6615,39 @@
       },
       {
         "blocks_methods": 1,
+        "call": "occupied[0].tracker.get_tip"
+      },
+      {
+        "blocks_methods": 1,
         "call": "od.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "of_each_collar.setdefault"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "of_each_collar.setdefault(collar, []).append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "of_each_collar.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "of_each_model.setdefault"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "of_each_model.setdefault(tip.model, []).append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "of_each_model.values"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "offset.vector"
       },
       {
         "blocks_methods": 1,
@@ -5306,11 +6679,27 @@
       },
       {
         "blocks_methods": 1,
+        "call": "op.tip.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
         "call": "op.tip.tracker.add_liquid"
       },
       {
         "blocks_methods": 1,
         "call": "op.tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "opener.open"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ops[0].tip.get_size_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "ops[i].tip.get_size_z"
       },
       {
         "blocks_methods": 1,
@@ -5326,7 +6715,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "os.path.abspath"
+        "call": "origins[0].tracker.get_tip"
       },
       {
         "blocks_methods": 1,
@@ -5339,6 +6728,10 @@
       {
         "blocks_methods": 1,
         "call": "other.get_absolute_location"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "other.get_absolute_rotation"
       },
       {
         "blocks_methods": 1,
@@ -5358,11 +6751,15 @@
       },
       {
         "blocks_methods": 1,
+        "call": "pads.extend"
+      },
+      {
+        "blocks_methods": 1,
         "call": "par.get_location_wrt"
       },
       {
         "blocks_methods": 1,
-        "call": "parent.get_anchor"
+        "call": "parent.get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -5386,6 +6783,18 @@
       },
       {
         "blocks_methods": 1,
+        "call": "path.lstrip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pattern.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "picked_up.items"
+      },
+      {
+        "blocks_methods": 1,
         "call": "pickup.resource.center"
       },
       {
@@ -5406,7 +6815,35 @@
       },
       {
         "blocks_methods": 1,
+        "call": "pipettes._require_channel"
+      },
+      {
+        "blocks_methods": 1,
         "call": "pipettes.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pipettes.move_to_y_positions"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pipettes.request_y_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pipettes.shaft"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "place.assign_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "place.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "placed.items"
       },
       {
         "blocks_methods": 1,
@@ -5419,6 +6856,14 @@
       {
         "blocks_methods": 1,
         "call": "plate.get_all_children"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_child_column"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "plate.get_child_row"
       },
       {
         "blocks_methods": 1,
@@ -5446,7 +6891,23 @@
       },
       {
         "blocks_methods": 1,
+        "call": "port_str.split"
+      },
+      {
+        "blocks_methods": 1,
         "call": "positional_args.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "pressures.extend"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "process.communicate"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "process.kill"
       },
       {
         "blocks_methods": 1,
@@ -5494,10 +6955,6 @@
       },
       {
         "blocks_methods": 1,
-        "call": "q_match.group"
-      },
-      {
-        "blocks_methods": 1,
         "call": "r.decode"
       },
       {
@@ -5511,6 +6968,10 @@
       {
         "blocks_methods": 1,
         "call": "r.strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "rack.get_all_items"
       },
       {
         "blocks_methods": 1,
@@ -5530,7 +6991,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "random.choice"
+        "call": "racks.values"
       },
       {
         "blocks_methods": 1,
@@ -5582,7 +7043,15 @@
       },
       {
         "blocks_methods": 1,
+        "call": "re.match"
+      },
+      {
+        "blocks_methods": 1,
         "call": "re.split"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "read_command.lower"
       },
       {
         "blocks_methods": 1,
@@ -5654,11 +7123,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "resource.assign_child_resource"
+        "call": "resource._comparable_children"
       },
       {
         "blocks_methods": 1,
-        "call": "resource.centers"
+        "call": "resource.assign_child_resource"
       },
       {
         "blocks_methods": 1,
@@ -5690,7 +7159,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "resource.get_size_x"
+        "call": "resource.get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resource.get_item('A1').get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -5698,11 +7171,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "resource.register_did_unassign_resource_callback"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "resource.register_state_update_callback"
+        "call": "resource.register_did_assign_resource_callback"
       },
       {
         "blocks_methods": 1,
@@ -5738,7 +7207,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "resp.split('bb/')[-1].split"
+        "call": "resp.split('bb/', 1)[1].strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split('bb/', 1)[1].strip().strip"
       },
       {
         "blocks_methods": 1,
@@ -5746,11 +7219,23 @@
       },
       {
         "blocks_methods": 1,
-        "call": "resp.split('vw')[-1].strip"
+        "call": "resp.split('rw', 1)[-1].strip"
       },
       {
         "blocks_methods": 1,
-        "call": "resp.split('vw')[-1].strip().split"
+        "call": "resp.split('rw', 1)[-1].strip().strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split(read_command.lower(), 1)[-1].strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split(read_command.lower(), 1)[-1].strip().strip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "resp.split(read_command.lower(), 1)[-1].strip().strip(\"'\u201a\u201b\").split"
       },
       {
         "blocks_methods": 1,
@@ -5799,6 +7284,14 @@
       {
         "blocks_methods": 1,
         "call": "response.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response.getheaders"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "response.headers.items"
       },
       {
         "blocks_methods": 1,
@@ -5922,6 +7415,10 @@
       },
       {
         "blocks_methods": 1,
+        "call": "self._TADM_STORAGE_LEVELS.index"
+      },
+      {
+        "blocks_methods": 1,
         "call": "self._cam.GetNextImage"
       },
       {
@@ -5934,11 +7431,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "self._dev.close"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "self._dev.open"
+        "call": "self._deck.get_all_children"
       },
       {
         "blocks_methods": 1,
@@ -5995,6 +7488,10 @@
       {
         "blocks_methods": 1,
         "call": "self._handlers.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._held_transport_air.pop"
       },
       {
         "blocks_methods": 1,
@@ -6058,11 +7555,23 @@
       },
       {
         "blocks_methods": 1,
-        "call": "self._pending_response_ids.add"
+        "call": "self._parser.feed"
       },
       {
         "blocks_methods": 1,
-        "call": "self._pending_response_ids.discard"
+        "call": "self._pending_bin_events.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._pipettes._record_where_they_stopped"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._pipettes.sense_tip_presence"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._pipettes.shaft"
       },
       {
         "blocks_methods": 1,
@@ -6074,11 +7583,23 @@
       },
       {
         "blocks_methods": 1,
+        "call": "self._resources().get"
+      },
+      {
+        "blocks_methods": 1,
         "call": "self._shaking_started.set"
       },
       {
         "blocks_methods": 1,
         "call": "self._shaking_started.wait"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._slot_holders.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self._slot_holders.values"
       },
       {
         "blocks_methods": 1,
@@ -6110,6 +7631,18 @@
       },
       {
         "blocks_methods": 1,
+        "call": "self.arm.move_to_x_position"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.arm.pipettes.move_to_safe_z"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.arm.request_position"
+      },
+      {
+        "blocks_methods": 1,
         "call": "self.available_blocks.append"
       },
       {
@@ -6122,7 +7655,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "self.backend.capture"
+        "call": "self.backend.can_pick_up_tip"
       },
       {
         "blocks_methods": 1,
@@ -6226,7 +7759,15 @@
       },
       {
         "blocks_methods": 1,
+        "call": "self.channels.extend"
+      },
+      {
+        "blocks_methods": 1,
         "call": "self.children.remove"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.configuration.x_increments_to_mm"
       },
       {
         "blocks_methods": 1,
@@ -6238,7 +7779,15 @@
       },
       {
         "blocks_methods": 1,
+        "call": "self.deck.get_component_name"
+      },
+      {
+        "blocks_methods": 1,
         "call": "self.deck.get_trash_area"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.declared.get('arms', {}).items"
       },
       {
         "blocks_methods": 1,
@@ -6254,7 +7803,31 @@
       },
       {
         "blocks_methods": 1,
+        "call": "self.device.channel_drive_parameters.setdefault"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.dispensing_drive_uL.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.last_lld_heights.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.liquid_searches.get"
+      },
+      {
+        "blocks_methods": 1,
         "call": "self.device.read"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.transport_air_uL.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.device.transport_air_uL.pop"
       },
       {
         "blocks_methods": 1,
@@ -6262,19 +7835,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "self.fst.start"
-      },
-      {
-        "blocks_methods": 1,
         "call": "self.get_absolute_rotation().get_rotation_matrix"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "self.get_anchor(x=x, y=y, z=z).vector"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "self.get_resource('waste_block').get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -6307,10 +7868,6 @@
       {
         "blocks_methods": 1,
         "call": "self.headers.items"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "self.httpd.serve_forever"
       },
       {
         "blocks_methods": 1,
@@ -6398,10 +7955,6 @@
       },
       {
         "blocks_methods": 1,
-        "call": "self.location.vector"
-      },
-      {
-        "blocks_methods": 1,
         "call": "self.logger.log"
       },
       {
@@ -6434,19 +7987,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "self.parent.get_absolute_location"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "self.parent.get_absolute_rotation"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "self.parent.get_absolute_rotation().get_rotation_matrix"
-      },
-      {
-        "blocks_methods": 1,
         "call": "self.parent.get_child_identifier"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "self.port.read"
       },
       {
         "blocks_methods": 1,
@@ -6454,11 +7999,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "self.received.pop"
+        "call": "self.resource.get_item(HEAD_REFERENCE_SHAFT).get_location_wrt"
       },
       {
         "blocks_methods": 1,
-        "call": "self.recently_sampled.append"
+        "call": "self.resource.get_item(name).has_tip"
       },
       {
         "blocks_methods": 1,
@@ -6538,7 +8083,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "self.websocket.send"
+        "call": "self.wfile.write"
       },
       {
         "blocks_methods": 1,
@@ -6550,11 +8095,19 @@
       },
       {
         "blocks_methods": 1,
-        "call": "serial.Serial"
+        "call": "set().union"
       },
       {
         "blocks_methods": 1,
-        "call": "set().union"
+        "call": "shaft.has_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "shaft.release_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "shutil.which"
       },
       {
         "blocks_methods": 1,
@@ -6574,11 +8127,27 @@
       },
       {
         "blocks_methods": 1,
+        "call": "slot.upper"
+      },
+      {
+        "blocks_methods": 1,
         "call": "slots.append"
       },
       {
         "blocks_methods": 1,
         "call": "socket.socket"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "spot.assign_tip"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "spot.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "spots.append"
       },
       {
         "blocks_methods": 1,
@@ -6611,6 +8180,14 @@
       {
         "blocks_methods": 1,
         "call": "state.items"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stderr.decode"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "stdout.decode"
       },
       {
         "blocks_methods": 1,
@@ -6770,15 +8347,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "super().do_GET"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "super().end_headers"
-      },
-      {
-        "blocks_methods": 1,
         "call": "super().get_anchor"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "super().redirect_request"
       },
       {
         "blocks_methods": 1,
@@ -6794,11 +8367,23 @@
       },
       {
         "blocks_methods": 1,
-        "call": "target_tip_clusters_by_parent_x.values"
+        "call": "t.tracker.get_used_volume"
       },
       {
         "blocks_methods": 1,
-        "call": "target_tip_clusters_by_parent_x[key].append"
+        "call": "taken.append"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "task.cancel"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "task.done"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "task.exception"
       },
       {
         "blocks_methods": 1,
@@ -6814,11 +8399,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "threading.Lock"
+        "call": "time.sleep"
       },
       {
         "blocks_methods": 1,
-        "call": "threading.Thread"
+        "call": "tip.get_anchor"
       },
       {
         "blocks_methods": 1,
@@ -6827,6 +8412,10 @@
       {
         "blocks_methods": 1,
         "call": "tip.tracker.remove_liquid"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "tip.tracker.set_volume"
       },
       {
         "blocks_methods": 1,
@@ -6842,11 +8431,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "tip_rack.get_location_wrt"
+        "call": "tip_rack.get_item"
       },
       {
         "blocks_methods": 1,
-        "call": "tip_spot.has_tip"
+        "call": "tip_rack.get_item('A1').get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -6870,19 +8459,15 @@
       },
       {
         "blocks_methods": 1,
-        "call": "tipspots_w_tips[0].tracker.get_tip"
-      },
-      {
-        "blocks_methods": 1,
         "call": "tmp_message.encode"
       },
       {
         "blocks_methods": 1,
-        "call": "tr.empty"
+        "call": "too_high.items"
       },
       {
         "blocks_methods": 1,
-        "call": "tr.fill"
+        "call": "tool.get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -6902,6 +8487,14 @@
       },
       {
         "blocks_methods": 1,
+        "call": "trash.get_location_wrt"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "travels.append"
+      },
+      {
+        "blocks_methods": 1,
         "call": "types.CellType"
       },
       {
@@ -6910,23 +8503,19 @@
       },
       {
         "blocks_methods": 1,
+        "call": "urllib.parse.urljoin"
+      },
+      {
+        "blocks_methods": 1,
         "call": "urllib.parse.urlsplit"
       },
       {
         "blocks_methods": 1,
-        "call": "urllib.request.Request"
+        "call": "urllib.request.build_opener"
       },
       {
         "blocks_methods": 1,
         "call": "urllib.request.urlopen"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "usb.core.find"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "usb.util.dispose_resources"
       },
       {
         "blocks_methods": 1,
@@ -6935,10 +8524,6 @@
       {
         "blocks_methods": 1,
         "call": "usb.util.get_string"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "v.strftime"
       },
       {
         "blocks_methods": 1,
@@ -6986,11 +8571,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "waste_pos.get_location_wrt"
+        "call": "waste_block.get_location_wrt"
       },
       {
         "blocks_methods": 1,
-        "call": "webbrowser.open"
+        "call": "waste_pos.get_location_wrt"
       },
       {
         "blocks_methods": 1,
@@ -7062,11 +8647,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "y_positions.append"
+        "call": "xs.append"
       },
       {
         "blocks_methods": 1,
-        "call": "year_match.group"
+        "call": "y_positions.append"
       },
       {
         "blocks_methods": 1,
@@ -7074,15 +8659,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "ys.items"
+        "call": "ys.append"
       },
       {
         "blocks_methods": 1,
-        "call": "ys.keys"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "zs.items"
+        "call": "{'yv': head.y_drive_speed_default, 'yr': head.y_drive_acceleration_default, 'zv': head.z_drive_speed_default, 'zr': head.z_drive_acceleration_default}.get"
       },
       {
         "blocks_methods": 1,
@@ -7090,23 +8671,22 @@
       },
       {
         "blocks_methods": 1,
-        "call": "{96: 12, 384: 24, 1536: 48}.get"
-      }
-    ],
-    "supported_tools_closure": [
-      {
-        "blocks_methods": 2,
-        "call": "_state_updated"
-      }
-    ],
-    "whole_surface": [
-      {
-        "blocks_methods": 750,
-        "call": "send_command"
+        "call": "{0: ('G11', 'H12'), 1: ('A1', 'B2')}.get"
       },
       {
-        "blocks_methods": 12,
-        "call": "assign_child_resource"
+        "blocks_methods": 1,
+        "call": "{96: 12, 384: 24, 1536: 48}.get"
+      },
+      {
+        "blocks_methods": 1,
+        "call": "{id(c): c for c in givers}.values"
+      }
+    ],
+    "supported_tools_closure": [],
+    "whole_surface": [
+      {
+        "blocks_methods": 412,
+        "call": "send_command"
       },
       {
         "blocks_methods": 11,
@@ -7117,156 +8697,20 @@
         "call": "batch"
       },
       {
-        "blocks_methods": 9,
-        "call": "get_all_items"
-      },
-      {
-        "blocks_methods": 6,
-        "call": "_read_now"
-      },
-      {
-        "blocks_methods": 6,
-        "call": "_set_calibrate"
-      },
-      {
-        "blocks_methods": 6,
-        "call": "_set_carriage_speed"
-      },
-      {
-        "blocks_methods": 6,
-        "call": "_set_clear"
-      },
-      {
-        "blocks_methods": 6,
-        "call": "_set_flashes_per_well"
-      },
-      {
-        "blocks_methods": 6,
-        "call": "_set_mode"
-      },
-      {
-        "blocks_methods": 6,
-        "call": "_set_order"
-      },
-      {
-        "blocks_methods": 6,
-        "call": "_set_pmt"
-      },
-      {
-        "blocks_methods": 6,
-        "call": "_set_shake"
-      },
-      {
-        "blocks_methods": 6,
-        "call": "_transfer_data"
-      },
-      {
-        "blocks_methods": 6,
-        "call": "_wait_for_idle"
-      },
-      {
-        "blocks_methods": 5,
-        "call": "_callback"
-      },
-      {
-        "blocks_methods": 5,
-        "call": "_set_filter"
-      },
-      {
-        "blocks_methods": 5,
-        "call": "_set_readtype"
-      },
-      {
-        "blocks_methods": 5,
-        "call": "_set_tag"
-      },
-      {
-        "blocks_methods": 5,
-        "call": "get_resource"
-      },
-      {
-        "blocks_methods": 4,
-        "call": "_ops_to_fw_positions"
-      },
-      {
-        "blocks_methods": 4,
-        "call": "_set_wavelengths"
-      },
-      {
-        "blocks_methods": 4,
-        "call": "get_item"
-      },
-      {
-        "blocks_methods": 4,
-        "call": "get_or_assign_tip_type_index"
-      },
-      {
         "blocks_methods": 3,
-        "call": "report_x_param"
+        "call": "check_volume_arguments"
       },
       {
         "blocks_methods": 2,
-        "call": "_get_cutoff_filter_index_from_wavelength"
+        "call": "check_fw_string_error"
       },
       {
         "blocks_methods": 2,
-        "call": "_get_liquid_pipette"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "_head96_y_drive_increment_to_mm"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "_set_tip_state"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "_state_updated"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "end_headers"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "get_absolute_size_x"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "get_absolute_size_y"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "get_child_identifier"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "register_did_assign_resource_callback"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "register_did_unassign_resource_callback"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "send_header"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "send_response"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "stop_shaking"
-      },
-      {
-        "blocks_methods": 2,
-        "call": "unassign_child_resource"
+        "call": "validate_channel_selections"
       },
       {
         "blocks_methods": 1,
-        "call": "_assemble_command"
+        "call": "_callback"
       },
       {
         "blocks_methods": 1,
@@ -7282,15 +8726,7 @@
       },
       {
         "blocks_methods": 1,
-        "call": "_get_drop_pipette"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "_get_pickup_pipette"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "_head96_resolve_z_range"
+        "call": "_holder_ref"
       },
       {
         "blocks_methods": 1,
@@ -7298,11 +8734,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "_pipette_id_for_channel"
+        "call": "_parse_id"
       },
       {
         "blocks_methods": 1,
-        "call": "_purge_buffers"
+        "call": "_raise_for_error"
       },
       {
         "blocks_methods": 1,
@@ -7310,11 +8746,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "_serialize_ctrl_transfer_request"
+        "call": "assign_child_resource"
       },
       {
         "blocks_methods": 1,
-        "call": "_test_communication"
+        "call": "check_room"
       },
       {
         "blocks_methods": 1,
@@ -7322,43 +8758,15 @@
       },
       {
         "blocks_methods": 1,
-        "call": "cleanup_after_protocol"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "column"
-      },
-      {
-        "blocks_methods": 1,
         "call": "configuration_callback"
       },
       {
         "blocks_methods": 1,
-        "call": "deactivate"
+        "call": "end_headers"
       },
       {
         "blocks_methods": 1,
-        "call": "get_absolute_location"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "get_absolute_size_z"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "get_anchor"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "get_container"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "get_items"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "get_overview_register"
+        "call": "get_site_by_plate_name"
       },
       {
         "blocks_methods": 1,
@@ -7366,27 +8774,11 @@
       },
       {
         "blocks_methods": 1,
-        "call": "register_will_assign_resource_callback"
+        "call": "send_header"
       },
       {
         "blocks_methods": 1,
-        "call": "reset"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "row"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "set_plate"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "start_batch"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "validate_channel_selections"
+        "call": "send_response"
       },
       {
         "blocks_methods": 1,
@@ -7395,18 +8787,14 @@
       {
         "blocks_methods": 1,
         "call": "validate_storage_location_number"
-      },
-      {
-        "blocks_methods": 1,
-        "call": "wait_for_task_completion"
       }
     ]
   },
   "totals": {
-    "methods_attempted": 1314,
-    "methods_with_dropped_receiver_call": 671,
-    "methods_with_gaps": 290,
-    "methods_with_no_recorded_gap": 1024
+    "methods_attempted": 1598,
+    "methods_with_dropped_receiver_call": 872,
+    "methods_with_gaps": 335,
+    "methods_with_no_recorded_gap": 1263
   },
   "validation_looking_dropped_receiver_calls_by_method": {
     "aspirate": 0,

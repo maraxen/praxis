@@ -1441,29 +1441,51 @@ def _eval_check_args_strict_site_rule(ctx: _Ctx) -> "bool | None":
 
 
 #: HM-26's own live measure (`plr_sema._hand_maintained:_measure_hm26`):
-#: `len(D6_SITE_RULES)`. T48's `:321` plus T49's `:375`/`:383` pair --
-#: three entries, the SAME registry row (§16.15's D6 box: "whichever lands
-#: first adds it, the second asserts it already exists").
-D6_SITE_RULES: "dict[tuple[str, int], Any]" = {
-    ("LiquidHandler._assert_resources_exist", 321): _eval_assert_resources_site_rule,
-    ("LiquidHandler._check_args", 375): _eval_check_args_missing_site_rule,
-    ("LiquidHandler._check_args", 383): _eval_check_args_strict_site_rule,
+#: `len(D6_SITE_RULES)`. T48's `:321` plus T49's `:375`/`:383` pair (line
+#: numbers at the dd79c4c89 pin) -- three entries, the SAME registry row
+#: (§16.15's D6 box: "whichever lands first adds it, the second asserts it
+#: already exists"). Keyed BY SYMBOL, `(qualname, raises, condition)` --
+#: re-anchored 260929 for the PLR 1.0.0b1 bump (task
+#: 260929_plr-1.0-migration), where the same three guards moved to
+#: `legacy/liquid_handling/liquid_handler.py:542/:596/:604`. A line-number
+#: key silently fell back to `evaluate_predicate` whenever PLR shifted a
+#: line; this key changes only if PLR changes the guard itself, and
+#: `test_check_graph.py::test_d6_site_rule_keys_each_match_exactly_one_site`
+#: turns a stale key red instead of silently undispatched.
+D6_SITE_RULES: "dict[tuple[str, str, str], Any]" = {
+    ("LiquidHandler._assert_resources_exist", "ValueError", "not resource_from_deck == resource"): (
+        _eval_assert_resources_site_rule
+    ),
+    ("LiquidHandler._check_args", "TypeError", "len(missing) > 0"): _eval_check_args_missing_site_rule,
+    ("LiquidHandler._check_args", "TypeError", "strictness == Strictness.STRICT"): (
+        _eval_check_args_strict_site_rule
+    ),
 }
 
 
-def _site_rule_for(guard: Mapping[str, Any]) -> "Any | None":
-    """`guard["site"]` -> its `D6_SITE_RULES` entry, or `None` when the
-    guard's site is not one of the (qualname, lineno) pairs D6 covers --
-    the ordinary `evaluate_predicate` path, unchanged, for every other
-    guard in the contract table."""
+def d6_site_rule_key(guard: Mapping[str, Any]) -> "tuple[str, str, str] | None":
+    """`guard` -> its `(site.qualname, raises, condition)` symbol key, or
+    `None` when any part is missing -- the key shape `D6_SITE_RULES` uses."""
     site = guard.get("site")
     if not isinstance(site, Mapping):
         return None
     qualname = site.get("qualname")
-    lineno = site.get("lineno")
-    if qualname is None or lineno is None:
+    raises = guard.get("raises")
+    condition = guard.get("condition")
+    if qualname is None or raises is None or condition is None:
         return None
-    return D6_SITE_RULES.get((qualname, int(lineno)))
+    return (qualname, raises, condition)
+
+
+def _site_rule_for(guard: Mapping[str, Any]) -> "Any | None":
+    """`guard` -> its `D6_SITE_RULES` entry, or `None` when the guard is
+    not one of the three `(qualname, raises, condition)` sites D6 covers --
+    the ordinary `evaluate_predicate` path, unchanged, for every other
+    guard in the contract table."""
+    key = d6_site_rule_key(guard)
+    if key is None:
+        return None
+    return D6_SITE_RULES.get(key)
 
 
 # ---------------------------------------------------------------------------

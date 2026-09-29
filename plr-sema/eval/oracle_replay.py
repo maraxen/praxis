@@ -922,14 +922,44 @@ def main(argv: list[str] | None = None) -> int:
     # breakdown above, without any change to `check/predicate.py` (out of
     # this row's file list): each named mechanism owns exactly one PLR
     # site, so its resolved/declined counts are that site's decided/total
-    # counts under this mapping. `_LH` is `liquid_handler.py`'s own
-    # REPO_ROOT-relative path (matches `_site_key`'s `file` component).
-    _LH = "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py"
-    _SITE_R_HEAD = f"{_LH}:409:LiquidHandler._make_sure_channels_exist"
-    _SITE_R_CONST = f"{_LH}:514:LiquidHandler.pick_up_tips"
-    _SITE_CHECK_ARGS_MISSING = f"{_LH}:375:LiquidHandler._check_args"
-    _SITE_CHECK_ARGS_EXTRA = f"{_LH}:383:LiquidHandler._check_args"
-    _SITE_ASSERT_RESOURCES = f"{_LH}:321:LiquidHandler._assert_resources_exist"
+    # counts under this mapping. Each site key is the `_site_key` form
+    # (`file:line:qualname`) of one guard, resolved by symbol below.
+    # 260929 (PLR 1.0.0b1 bump, task 260929_plr-1.0-migration): the site
+    # keys are resolved BY SYMBOL -- (qualname, raises, condition) -> the
+    # shipped contract table's one guard site -- not hand-typed
+    # `liquid_handler.py:<line>` literals (`:409`/`:514`/`:375`/`:383`/
+    # `:321`/`:2055` at the dd79c4c89 pin), which silently zeroed these
+    # counters once PLR moved the file to `legacy/` and shifted every line.
+    _site_table = json.loads(contracts_json)["contracts"]
+
+    def _site_by_symbol(qualname: str, raises: str, condition: str) -> str:
+        sites = {
+            f"{g['site']['file']}:{g['site']['lineno']}:{g['site']['qualname']}"
+            for entry in _site_table.values()
+            for g in entry.get("guards", ())
+            if g.get("site", {}).get("qualname") == qualname
+            and g.get("raises") == raises
+            and g.get("condition") == condition
+        }
+        if len(sites) != 1:
+            raise RuntimeError(f"site symbol {(qualname, raises, condition)!r} matched {sorted(sites)}")
+        return next(iter(sites))
+
+    _SITE_R_HEAD = _site_by_symbol(
+        "LiquidHandler._make_sure_channels_exist", "ValueError", "not len(invalid_channels) == 0"
+    )
+    _SITE_R_CONST = _site_by_symbol(
+        "LiquidHandler.pick_up_tips",
+        "RuntimeError",
+        "not all((self.backend.can_pick_up_tip(channel, tip) for channel, tip in zip(use_channels, tips)))",
+    )
+    _SITE_CHECK_ARGS_MISSING = _site_by_symbol("LiquidHandler._check_args", "TypeError", "len(missing) > 0")
+    _SITE_CHECK_ARGS_EXTRA = _site_by_symbol(
+        "LiquidHandler._check_args", "TypeError", "strictness == Strictness.STRICT"
+    )
+    _SITE_ASSERT_RESOURCES = _site_by_symbol(
+        "LiquidHandler._assert_resources_exist", "ValueError", "not resource_from_deck == resource"
+    )
 
     def _resolved_declined(site_key: str) -> tuple[int, int]:
         resolved = n_findings_decided_by_site.get(site_key, 0)
@@ -1235,7 +1265,9 @@ def main(argv: list[str] | None = None) -> int:
     # `n_seq_truthiness_decided` (same site, two names, exactly as
     # §17.8.3's own prediction table states -- "the Kleene `And` needs
     # only the second conjunct").
-    _SITE_R_ARM = f"{_LH}:2055:LiquidHandler.pick_up_resource"
+    _SITE_R_ARM = _site_by_symbol(
+        "LiquidHandler.pick_up_resource", "RuntimeError", "self.setup_finished and (not self._resource_pickups)"
+    )
     _r_arm_resolved, _r_arm_declined = _resolved_declined(_SITE_R_ARM)
     n_resolved_by_rule["R-ARM"] = _r_arm_resolved
     n_declined_by_rule["R-ARM"] = _r_arm_declined

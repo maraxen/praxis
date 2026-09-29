@@ -1484,7 +1484,12 @@ def _is_plr_source_file(path: Path) -> bool:
 
 
 def _iter_plr_source_files(plr_pkg_root: Path) -> list[Path]:
-    return sorted(p for p in plr_pkg_root.rglob("*.py") if _is_plr_source_file(p))
+    """The analyzed surface's source files (260929, PLR 1.0 bump): the
+    legacy import closure when ``<root>/legacy/`` exists, else the whole
+    tree -- see ``plr_sema.derive.surface_files`` for the rule and why."""
+    from plr_sema.derive.surface_files import select_surface_files
+
+    return select_surface_files(plr_pkg_root, _is_plr_source_file)
 
 
 def _module_name_for_plr_file(file: Path, plr_pkg_root: Path) -> str:
