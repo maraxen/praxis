@@ -207,3 +207,81 @@ quiet so it can carry the page.
   deck, cropped as a stand-in for embed mode. The page's stats footer colliding with its
   scale bar is why embed mode has to hide chrome from inside the page, not crop it.
 - `shots/visualizer3d-standalone.png`: the same viewer as PLR ships it, for comparison.
+
+## Decisions and scope (user, 260929)
+
+The user accepted everything below into the epic. These are requirements input for the
+epic spec (`.praxia/docs/specs/260929_notebook-display-epic.md`), not a spec themselves.
+
+**Decided**
+- **Blue is volume, always.** Several liquids in one well are not given distinct colors. The
+  liquid's identity appears on hover and in the text. Revisit later.
+- **The deck panel is a JupyterLab main-area split** (`split-right`) beside the notebook,
+  not a sidebar. A more ergonomic layout comes later. Evidence that a plain script can reach
+  the app: the built bundle sets `window.jupyterapp = app` (`dist/build/4083.*.js`).
+  **Unverified:** how to get a Lumino `Widget` constructor without a labextension build.
+  This is spike S1.
+- **MVP targets desktop only**, windows 1280 px and wider.
+
+**MVP (this epic)**
+1. *Host constraints.*
+   - Deck panel as a real JupyterLab widget (above).
+   - Outputs survive trust loss. A reopened notebook is untrusted, so its HTML is sanitized;
+     what survives is **unverified**, spike S2.
+     - Each output carries its essential colors inline and is readable with no Praxis CSS
+       (GitHub, VS Code, print).
+     - Praxis CSS (added to `praxis-theme.css`) only enhances.
+     - Interaction comes from one shell-side script, never from `<script>` in outputs.
+     - Every output also has `text/plain`: the summary sentence.
+   - Size budget: one combined path per well state instead of one element per well, plus a
+     per-output byte cap.
+2. *Stale outputs.*
+   - Each resource output is stamped with the cell that drew it.
+   - The kernel announces state changes on the existing `praxis_repl` BroadcastChannel.
+   - The shell script marks earlier outputs of that resource "Changed since, see deck panel".
+3. *Errors:* structured output for `TooLittleLiquidError`, `TooLittleVolumeError`,
+   `HasTipError`, `NoTipError`. Anything else gets the plain traceback in Praxis styling.
+4. *Rendering tiers, desktop.*
+   - ≥1600 px: two panes, notebook capped near 960 px, the rest to the deck panel.
+   - 1280–1599 px: two panes, deck panel 420–480 px and resizable. With the file browser
+     open the notebook gets about 710 px and outputs scale down.
+   - 1024–1279 px: the deck panel is a drawer over the notebook, so opening it doesn't
+     reflow the notebook.
+   - <1024 px: out of scope. The prototype's bottom sheet is the starting point later.
+   - Height: on an 800 px-tall window the viewer keeps at least 300 px; the replay bar
+     collapses to one row first.
+5. *Detail floor, not a fixed scale.* Invariants: text never below 11 px, wells never below
+   4 px across. When a scale would break one, show less detail:
+   - single labware at 3 px/mm;
+   - plates of 384 wells and up as square cells, labeling every few columns;
+   - deck plan fit to width down to 0.6 px/mm, then labware as filled blocks with the
+     summary sentence and horizontal scroll, never smaller labels.
+6. *Quality floor.*
+   - Colorblind check that rose (selection) and brick (error) stay distinct. Errors are
+     never shown by color alone.
+   - Keyboard navigation over wells, with the summary sentence as each drawing's text
+     alternative.
+   - Outputs respect JupyterLab Dark High Contrast.
+   - A short glossary so each action has one name throughout.
+7. *Viewer.*
+   - Vendor `pylabrobot/visualizer3D/static` from PLR main.
+   - `praxis/viz/viewer3d.py`: a `Viewer3D` subclass over the BroadcastChannel.
+   - An embed-mode augmentation that hides the navbar, tool rail, stats footer and tree from
+     inside the page, not by cropping.
+   - Follow and view presets.
+   - The motion replay bar is a UI slot only (viz3d-motion is unmerged).
+
+**Next (named in the epic, not specified for build)**
+- Live hardware mode: a Stop control that is always visible while a hardware backend is
+  attached; its semantics are a separate safety decision. The ledger streams during long
+  runs, the wording says "PyLabRobot's record", and STAR per-channel firmware errors are
+  drawn on the labware.
+- Plate-reader results on the plate outline, with their own sequential color ramp (not
+  moonstone).
+- More labware: troughs, tube racks, lids, plate stacks, Petri dishes (PLR #1308),
+  and machine outputs.
+- Coxswain proposals shown as ledger rows in a "proposed" state with an approve control;
+  `coxswain.css`'s `--cx-*` palette moves onto the Praxis tokens (another session owns coxswain).
+- The persistence panel, chip and first-save modal (#4296) adopt the tokens.
+- Dark theme variant.
+- Layouts below 1024 px (the bottom sheet).
