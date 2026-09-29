@@ -77,8 +77,13 @@ fail-closed fallback is structural: any call the VOLUME family has not
 already modelled itself (`contract.get("volume_guards")` empty -- this is
 what keeps `aspirate`/`dispense` out, since despite having no
 `channel_effect` either they ARE modelled, and neither moves a mounted
-tip) that references `>=1` resource in its own kwargs sets `tips_dirty`.
-No shipped fixture exercises this branch; it is included because the spec
+tip) that references `>=1` resource in its own kwargs sets `tips_dirty`
+AND resets every recorded tip cell to `TOP` (260929 amendment, PLR 1.0
+bump: PLR 1.0's rewritten `TipTracker` leaves `pick_up_tips`/`drop_tips`
+with no derived `channel_effect`, so they land in this branch; flagging
+`tips_dirty` alone left a stale tip volume alive across an unmodelled
+drop, giving a false `SAFE` on the retip sequence). No shipped fixture
+exercised this branch before the 1.0 bump; it is included because the spec
 requires it, and its structure -- not a name list -- is disclosed here so
 a reviewer can find it without a diff.
 """
@@ -195,6 +200,22 @@ class VolumeWalk:
         if interval.hi > 0.0:
             self.tips_dirty = True
         self._cells[cell] = TOP
+
+    def reset_tip_cells(self) -> None:
+        """V5, 260929 amendment (PLR 1.0 bump): forget every recorded tip cell.
+
+        A tip movement with no
+        modelled effect (or whose departing channels are unresolved) gives
+        no way to know which mounted tip is now gone or which fresh one
+        replaced it, so EVERY recorded tip cell becomes `TOP` -- in
+        addition to `tips_dirty` being set by the caller. A tip cell that
+        was never recorded is already `TOP` (`get`'s default), so only
+        the recorded ones need touching. Monotone, conservative: can only
+        turn a definite verdict into `UNKNOWN`.
+        """
+        for cell in self._cells:
+            if cell[0] == "tip":
+                self._cells[cell] = TOP
 
     def snapshot(self) -> VolumeSnapshot:
         return VolumeSnapshot(cells=dict(self._cells), tips_dirty=self.tips_dirty)
@@ -539,12 +560,16 @@ def _apply_v5(
     volume family's purposes: a `channel_effect == "widen"` bridge -- e.g.
     `discard_tips`, whose exact channels the tip family itself could not
     resolve -- still means the tip is gone). `channel_effect is None`
-    falls through to the disclosed third-bullet heuristic.
+    falls through to the disclosed third-bullet heuristic, which (260929
+    amendment) both sets `tips_dirty` and resets every recorded tip cell
+    to `TOP` (`VolumeWalk.reset_tip_cells`); a departure whose channels
+    are unresolved does the same.
     """
     effect = contract.get("channel_effect")
     if effect is None:
         if _is_unmodelled_tip_movement(call, contract):
             walk.tips_dirty = True
+            walk.reset_tip_cells()
         return
     channels = None if poisoned else tipstate.channels_for_call(call, channel_default_param, channel_kwarg)
     if effect == "HAS_TIP":
@@ -554,8 +579,10 @@ def _apply_v5(
     # "NO_TIP" or "widen": a departure.
     if channels is None:
         # Can't identify which cell(s) departed, so the "provably [0, 0]"
-        # check cannot be made -- fail-closed to "assume dirty".
+        # check cannot be made -- fail-closed to "assume dirty", and (260929
+        # amendment) every recorded tip cell is forgotten, not just flagged.
         walk.tips_dirty = True
+        walk.reset_tip_cells()
         return
     for c in channels:
         walk.drop(("tip", c))
