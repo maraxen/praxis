@@ -4,7 +4,7 @@ description: Epic spec for the web-REPL notebook display. Three sprints (A spike
 status: draft
 task_id: 260929_notebook-display-design
 date: '260929'
-adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator); round5 challenger REVISE (1 MAJOR / 3 MINOR; C4-1, C4-3 CLOSED, C4-2 partial) -> revised 260929 (Revision 5, orchestrator); round6 challenger REVISE (1 MAJOR / 1 MINOR) -> revised 260929 (Revision 6: deck panel state machine)'
+adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator); round5 challenger REVISE (1 MAJOR / 3 MINOR; C4-1, C4-3 CLOSED, C4-2 partial) -> revised 260929 (Revision 5, orchestrator); round6 challenger REVISE (1 MAJOR / 1 MINOR) -> revised 260929 (Revision 6: deck panel state machine); round7 challenger REVISE (2 MAJOR vs user preemption rule / 6 MINOR / 1 SUGGESTION; state machine sound) -> revised 260929 (Revision 7)'
 ---
 # Notebook display epic (web-repl)
 
@@ -610,7 +610,20 @@ panel's lifecycle, superseding the Revision 2 "Closed panel" paragraph). Every o
 (D6 drawer, D12 embed mode, §3.6, §4 `dock.js`, C5, C7, AC-36, AC-38, §7) refers to this
 table and restates none of it. `dock.js` holds three values besides the state: `seen` (whether
 this page has received any `announce` since mount), `current` (the viewer id of the last
-`announce` the panel acted on, or none), and the view preset (D12).
+`announce` the panel acted on, or none), and the view preset (D12). It also keeps
+`viewerPanel`, a map from viewer id to notebook panel, used only by the kernel-restart event
+(Revision 7, C7-6):
+- On every `announce`, in any state (including an ignored one, T3), if `chrome.js` reports
+  exactly one notebook panel P with a cell executing, `viewerPanel[id] = P`. (`dock()` posts
+  its viewer's first `announce` from inside the executing `dock()` cell.)
+- The **viewer's kernel** is the kernel of `viewerPanel[current]`. If `current` has no entry
+  (the page loaded after `dock()` ran, and the `announce` answered a `query`), it is the
+  kernel of the only open notebook panel with a live kernel, if there is exactly one.
+  Otherwise the viewer's kernel is unknown, and the kernel-restart event never fires for it:
+  the panel then shows a frozen view (the dead kernel posts no `close`, and the page's socket
+  stays open, so no `plr:gone` arrives either) until the user closes and reopens the panel
+  (T17, then T4, whose `query` no dead viewer answers). This is accepted, and is stated
+  under the multi-notebook non-goal (§2).
 
 States:
 
@@ -629,23 +642,34 @@ when its `viewer` equals `current`); **plr:gone** (forwarded by `embed.js` as a
 `praxis:dock-status` event, D12); **tier crossing** (the window crosses 1280 px, which moves an
 open panel between split and drawer, D6; a 1600 px crossing only re-sizes the split with
 `parent.fit()`, moves no iframe, and is not a lifecycle event);
-**iframe reload** (the page in the panel's iframe unloads and loads again with the same `src`:
-a harness `iframe.src = iframe.src`, a user reload, or the DOM move of a tier crossing).
+**iframe reload** (the page in the panel's iframe unloads and loads again with the same `src`,
+while the panel stays in its tier: a harness `iframe.src = iframe.src`, or a user reload. The
+reload caused by a tier crossing's DOM move belongs to the tier-crossing event (T10, T15, T21)
+and is **not** an iframe reload, so one crossing never fires both T15 and T16; Revision 7,
+C7-9); **kernel restart** (the viewer's kernel, as defined above, restarts or shuts down,
+observed on that notebook panel's `sessionContext`: `statusChanged` to `restarting`,
+`autorestarting` or `dead`, or `kernelChanged`, including a change to no kernel. The dead
+kernel posts no `close`, so without this event the panel would keep a frozen deck that looks
+live. A restart of any other panel's kernel is not this event. Revision 7, C7-6).
 
 | # | State | Event | Next state | Actions |
 |---|---|---|---|---|
 | T1 | (none) | mount | `closed` | `seen = false`, `current` = none; post `query` |
 | T2 | `closed` | announce, first | `open-connected` | `seen = true`; attach the panel in the current tier's home (split or drawer); create one iframe; set its `src` with `viewer=<id>`; `current = id` |
 | T3 | `closed` | announce, not first | `closed` | none (ignored; no iframe is created) |
-| T4 | `closed` | reopen | `open-waiting` | attach the panel with **no** iframe; show the no-viewer text; post `query` |
+| T4 | `closed` | reopen | `open-waiting` | attach the panel, with **no** iframe, in the current tier's home (split or drawer); show the no-viewer text; post `query` |
 | T5 | `closed` | kernel close (any), plr:gone, tier crossing, close panel | `closed` | none |
+| T23 | `closed` | kernel restart | `closed` | none |
 | T6 | `open-waiting` | announce (first or not; including the answer to a `query`) | `open-connected` | `seen = true`; hide the text; **create** one new iframe (a removed element is never reused); set its `src` with `viewer=<id>`; `current = id` |
 | T7 | `open-waiting` | close panel | `closed` | detach the panel; `current` = none |
 | T8 | `open-waiting` | kernel close (any) | `open-waiting` | none |
+| T24 | `open-waiting` | kernel restart | `open-waiting` | none |
 | T9 | `open-waiting` | plr:gone | `open-waiting` | none (ignored; C5-2) |
 | T10 | `open-waiting` | tier crossing | `open-waiting` | re-home the panel (split ↔ drawer, D6); no `query` is re-sent (an outstanding answer still lands through T6) |
-| T11 | `open-connected` | announce (any id, including `current`) | `open-connected` | set the `src` of the iframe in the panel to `viewer=<id>` (the page reloads); `current = id` |
+| T11 | `open-connected` | announce, id ≠ `current` | `open-connected` | set the `src` of the iframe in the panel to `viewer=<id>` (the page reloads); `current = id` |
+| T27 | `open-connected` | announce, id = `current` | `open-connected` | none (no `src` write, no reload: the page is already on that viewer; for example another page's `query` answered by the same viewer; Revision 7, C7-9) |
 | T12 | `open-connected` | kernel close, current | `open-waiting` | remove the iframe; show the no-viewer text (within 5 s); `current` = none |
+| T25 | `open-connected` | kernel restart | `open-waiting` | as T12: remove the iframe; show the no-viewer text (within 5 s); `current` = none |
 | T13 | `open-connected` | kernel close, not current | `open-connected` | none |
 | T14 | `open-connected` | plr:gone | `open-lost` | remove the iframe; show the lost-connection text; keep `current` |
 | T15 | `open-connected` | tier crossing | `open-connected` | re-home the panel with its iframe (one reload, same `src`; C3-3); no `src` write, no `query` |
@@ -653,30 +677,38 @@ a harness `iframe.src = iframe.src`, a user reload, or the DOM move of a tier cr
 | T17 | `open-connected` | close panel | `closed` | remove the iframe; detach the panel; `current` = none |
 | T18 | `open-lost` | announce | `open-connected` | hide the text; create one new iframe; set its `src` with `viewer=<id>`; `current = id` |
 | T19 | `open-lost` | kernel close, current | `open-waiting` | show the no-viewer text instead of the lost-connection text; `current` = none |
+| T26 | `open-lost` | kernel restart | `open-waiting` | as T19: show the no-viewer text instead of the lost-connection text; `current` = none |
 | T20 | `open-lost` | kernel close, not current; plr:gone | `open-lost` | none |
 | T21 | `open-lost` | tier crossing | `open-lost` | re-home the panel |
 | T22 | `open-lost` | close panel | `closed` | detach the panel; `current` = none |
 
 Every announce also sets `seen = true`, in any state. "iframe reload" has no row for
-`closed`, `open-waiting` or `open-lost`, because those states hold no iframe (I1).
+`closed`, `open-waiting` or `open-lost`, because those states hold no iframe (I1). Rows T23 to
+T27 were added by Revision 7 and sit beside the rows for their state; T1 to T22 keep their
+numbers and meaning, except that T11 now covers only a new id (T27 covers the same id) and T4
+names the tier's home.
 
 Invariants (C5 checks each after every transition):
 - **I1.** The panel DOM holds an iframe if and only if the state is `open-connected`, and then
   exactly one, whose `src` carries `viewer=<current>`.
 - **I2.** An iframe `src` is written only in T2, T6, T11 and T18, i.e. only from an
-  `announce`. Reopen, tier crossing and iframe reload never write it.
+  `announce` whose id differs from the one the panel shows. Reopen, tier crossing, iframe
+  reload, kernel restart and a same-id `announce` (T27) never write it.
 - **I3.** `query` is posted only in T1 and T4.
 - **I4.** `plr:gone` changes state only in `open-connected` (T14). So after a kernel `close`
-  it is ignored until an `announce` returns the panel to `open-connected`, and from then on it
-  is honoured again (C5-2, C6-1).
+  or a kernel restart (T12, T25) it is ignored until an `announce` returns the panel to
+  `open-connected`, and from then on it is honoured again (C5-2, C6-1).
 - **I5.** The no-viewer text is shown if and only if the state is `open-waiting`, and the
   lost-connection text if and only if it is `open-lost` (C4-1).
-- **I6.** A kernel `close` for the current viewer never shows the lost-connection text.
+- **I6.** A kernel `close` for the current viewer, or a kernel restart, never shows the
+  lost-connection text.
 
 Re-docking (re-running a `dock()` cell with an open panel) is T12 followed by T6: `dock()`
 awaits the old viewer's `stop()`, whose `close` removes the iframe and shows the no-viewer
 text, and the new viewer's `announce` then creates a fresh iframe with the new id. The
-no-viewer text is visible between the two; this is accepted and stated (C6-1).
+no-viewer text is visible between the two; this is accepted and stated (C6-1). A stopped
+viewer has left `praxis_viz3d` (Kernel, `stop`), so a later `query` is answered only by the
+live viewer, never by a dead one (Revision 7, C7-3).
 
 | Direction | `kind` | Meaning |
 |---|---|---|
@@ -687,7 +719,7 @@ no-viewer text is visible between the two; this is accepted and stated (C6-1).
 | both | `msg` | `{client, data}`: `data` is the exact string the websocket would carry. |
 | page → kernel | `bye` | `{viewer, client}`: the client is gone. Posted on `close()`, on `pagehide`, and on the shim's accept timeout. Ends that client's `VirtualConnection`. |
 | kernel → one page | `evict` | `{viewer, client}`: the kernel dropped this client at the client cap. The shim fires `onclose`, so the page's own reconnect loop recovers. |
-| kernel → all | `close` | `{viewer, reason}`: the viewer stopped. The shell acts only on this kind and `announce`, per the deck-panel state table (T12, T19; ignored elsewhere). |
+| kernel → all | `close` | `{viewer, reason}`: the viewer stopped. The shell acts only on this kind and `announce`, per the deck-panel state table (T12, T19; ignored elsewhere). A kernel that restarts or shuts down posts nothing; the shell observes that on the notebook's `sessionContext` instead (the kernel-restart event, T25, T26). |
 
 - Without an `accept` within **3 s**, the shim posts `bye`, fires `onclose`, and ignores any
   later `accept` for that client; the page's own reconnect loop retries with a new client.
@@ -739,7 +771,11 @@ exactly **`__init__`, `start` and `stop`**:
   every subscription path are inherited unchanged. `start` answers `query` with `announce`.
 - `stop` calls `super().stop()`, which already skips `_ws_server` and `_httpd` when they are
   `None` (`server.py:841-850`). It then ends every `VirtualConnection` (a queue sentinel),
-  awaits each `_handler` task, and posts `close`. `stop` is idempotent: a second call on a
+  awaits each `_handler` task, posts `close`, and then **unsubscribes from `praxis_viz3d`**
+  (removes its listener and closes its channel). A stopped viewer therefore answers no
+  `query` and accepts no `open`: otherwise `late_iframe`'s reopen could receive two
+  `announce`s, from a dead viewer and a live one, and end on the dead one (Revision 7, C7-3).
+  `stop` is idempotent: a second call on a
   stopped viewer returns at once, raises nothing and posts nothing (so a `dock()` after a
   user's own `await viewer.stop()` posts no second `close`; Revision 6).
 
@@ -776,7 +812,10 @@ from the DOM at call time, and only in the D11 state `open-connected` (the only 
 iframe, I1). In any other state Follow and Click do nothing, and Iso / Top / Front only
 update the held preset. After every load of the panel's iframe (T2, T6, T11, T15, T16, T18),
 `dock.js` re-applies the held preset with `plrViewer.view(preset)` once the page's
-`plrViewer` exists, since the `src` always carries `view=top` (Revision 6).
+`plrViewer` exists **and `plrViewer.resources()` is non-empty**, i.e. after the first `scene`
+has arrived (polled every 250 ms, given up after 10 s), since the `src` always carries
+`view=top` (Revision 6). A `view()` issued before the first `scene` could be overridden when
+the page frames the arriving scene (Revision 7, C7-7; AC-38 `preset_survives_reload`).
 - **Preset.** `dock.js` holds the current view preset, initially `top`. Every focus call is
   `plrViewer.focus(name, preset)`, never `focus(name)`, whose default reframes from the iso
   direction (`app.js:180`) and would override the user's preset.
@@ -867,9 +906,14 @@ is the MVP; identity returns when PLR tracks it. OQ-2 is closed.
 
 ### D16. New browser gates live in `repl_smoke.py`. CI is authoritative.
 
-Two new flags follow the shape of `run_notebook_check` (`repl_smoke.py:1226-1430`):
-`ServedDir`, `chromium_launch_args`, model-first output reads, and a `result` dict whose keys
-are the ACs.
+The harness is `scripts/repl_smoke.py` at the **repo root** (not under `web-repl/scripts/`).
+Two new flags follow the shape of `run_notebook_check` (`repl_smoke.py:1226-1430` at the base
+`fd987728`; on `origin/main` it starts at `:1463`): `ServedDir`, `chromium_launch_args`,
+model-first output reads, and a `result` dict whose keys are the ACs. They do **not** copy its
+run shape: `run_notebook_check` builds one `RESULT` and prints it once at the end
+(`origin/main` `:1769`), and CI bounds it only by the job-level `timeout-minutes: 45`
+(`.github/workflows/repl.yml:43`). The new checks are split into units, persisted per unit,
+and resumable ("Preemption-safe harness design" below; Revision 7, C7-1).
 
 - **`--display-check`** (sprint A adds its chrome scenarios; sprint B adds the rest). It seeds
   the drive with `web-repl/tests/fixtures/notebooks/display_check.ipynb` through
@@ -888,10 +932,94 @@ are the ACs.
   - The result records `chrome_path` and the page's hello (`backend`, `renderer`), read by
     evaluating `viewer.clients_seen[-1]` in a cell (D11), not from printed output.
 
-**Local runs.** Narrow only. They need `dangerouslyDisableSandbox: true`, and per project
+**Local runs.** Narrow only: one `--scenario <id>` at a time, or the driver resuming over
+stamps. They need `dangerouslyDisableSandbox: true`, and per project
 memory they should run with no `--chrome-path` before a local result is called green: local
 chromium-1234 differs from CI's bundled build. pytest runs one file at a time; there are no
 whole-suite runs (local compute limits).
+
+#### Preemption-safe harness design (Revision 7, C7-1)
+
+This applies the user's rule of 260929: any run longer than a few minutes persists each unit
+of work as it completes, resumes by skipping verified-complete units, and bounds every
+timeout to one chunk. Every browser scenario boots Pyodide, so each check runs for many
+minutes and is covered by the rule.
+
+**The unit is the scenario.** Each unit is independent: it gets a fresh browser context,
+seeds the drive itself, boots its own kernel, and reads nothing from another unit. Budgets
+are the per-subprocess timeout; the CI step timeout is the budget + 2 min. The budgets below
+are estimates, not measurements. The first CI run of each scenario (A7, B10, C7) records its
+wall time in the aggregate. A budget is revised only with the orchestrator's approval,
+recorded in the sprint PR with the measured times, the same rule as D4's byte targets. A
+revised budget must stay at least 1.5× the measured time and must never be turned into a
+single whole-run timeout. *(Orchestrator, Revision 7.)*
+
+| Unit | Check | ACs | Page(s) | Budget |
+|---|---|---|---|---|
+| `D1` | `--display-check` | AC-7 (Light) | one | 6 min |
+| `D1-dark` | `--display-check` | AC-7 `d1_dark` | one | 5 min |
+| `D2` | `--display-check` | AC-21, AC-22, AC-23, AC-25 (includes one kernel restart and one Run All) | one | 12 min |
+| `D3` | `--display-check` | AC-24 (execute, save, reload, reopen) | one page, reloaded | 8 min |
+| `D4` | `--display-check` | AC-26 | two contexts (one with `praxis-theme.css` blocked) | 6 min |
+| `K1a` | `--dock-check` | AC-34, AC-35, AC-37 | one, 1440×900 | 10 min |
+| `K1b` | `--dock-check` | AC-38 (lifecycle; **atomic**, keys in the fixed AC-38 order) | one, 1440×900 | 14 min |
+| `K2` | `--dock-check` | AC-36 (tiers; atomic, fixed order stated in AC-36) | one, starting at 1152×800 | 15 min |
+| `N-d` | `--dock-check` | AC-39(d) negative only; never part of the aggregate | one, 1600×900 | 6 min |
+
+- **K1 is split** into K1a and K1b so that no unit has an unbounded budget and a lifecycle
+  failure does not discard the drawing, Follow and live-state keys. "K1" in older text means
+  both. K1b and K2 are atomic: their keys depend on each other's page state, so a unit is
+  never resumed mid-way; a timeout or preemption recomputes the whole unit.
+- **One subprocess per unit.** `--display-check --scenario <id>` and
+  `--dock-check --scenario <id>` run exactly one unit in one process, with one browser. The
+  driver starts each unit as its own subprocess with the unit's budget as its timeout, and
+  kills the subprocess tree (the process group) on expiry. There is no whole-run timeout.
+- **Per-unit output.** A unit writes `<out>/result.<id>.json` (its keys, `pageerrors`,
+  `chrome_path`, and its failing keys), fsynced, then `<out>/result.<id>.stamp.json` last,
+  both by write-to-temporary-then-rename. The stamp is the completion marker:
+  `{unit, inputs: {name: sha256}, result_sha256, started, finished, exit, budget_s}`.
+  `<out>` is `--out-dir`, default `outputs/repl_smoke/<check>/`, gitignored.
+- **Inputs hashed** (sha256), per unit:
+  - `dist`: the sha256 of the sorted `path<TAB>sha256` lines of every file under the served
+    dist (`--serve-dir`, or the default build dir);
+  - `notebook`: `web-repl/tests/fixtures/notebooks/display_check.ipynb`;
+  - `harness`: `scripts/repl_smoke.py`;
+  - `chrome`: the string `<resolved chrome path>\n<chrome --version output>`;
+  - `args`: the unit id, `--base-path`, the viewport list, and any harness-only negative flag
+    (for example AC-39(e)'s `--neg drop-query`).
+- **Resume.** The driver (`--display-check` or `--dock-check` with no `--scenario`) runs its
+  units in the table order (D1, D1-dark, D2, D3, D4; then K1a, K1b, K2). It **skips** a unit
+  only if its stamp exists, `stamp.inputs` equals the current inputs, `result_sha256` equals
+  the sha256 of the result file on disk, and that result has no failing key. Any mismatch
+  deletes the unit's result and stamp and recomputes it. A unit whose result has a failing
+  key is recorded and never reused, so a flaky failure is always retried. A timed-out unit
+  leaves no stamp and counts as failed with `timeout` named. `--fresh` ignores all stamps.
+- **Aggregate.** The driver writes `<out>/result.json` and prints it:
+  `{scenarios: {id: result}, reused: [{id, source, inputs, result_sha256}], recomputed: [id],
+  timed_out: [id]}`, where `source` is the reused result's path. It exits 0 only if every
+  listed key of every unit in its check holds. **The pass rule is unchanged** from the
+  single-process design: resume changes how the work is scheduled, never which keys must
+  hold. `--aggregate-only` recomputes nothing: a missing or non-reusable unit counts as
+  failed. CI's final step uses it.
+- **AC-39 negatives run only their own unit** (a: `D1`; b: `K1a`; d: `N-d`; e: `K1b` with
+  `--neg drop-query`), each against its own mutated copy of the dist. The mutated dist has a
+  different `dist` hash, so no negative can reuse, or be reused by, a real run.
+- **CI policy: no reuse across workflow runs.** Each workflow run is a fresh runner, and it
+  recomputes every unit. CI never downloads an earlier run's artifacts, even when hashes
+  would match, so a green gate is always evidence produced on this run's head. The only reuse
+  in CI is inside one job: the final `--aggregate-only` step reads the stamps that the
+  scenario steps of the same job just wrote. The layout, in the existing REPL job:
+  - one step per unit, `uv run python scripts/repl_smoke.py --display-check --scenario <id>
+    --base-path /praxis/` (and likewise `--dock-check`), each with step-level
+    `timeout-minutes` = the unit's budget + 2, and `if: ${{ !cancelled() }}`, so one failing
+    unit does not hide the others;
+  - one aggregate step per check, `--display-check --aggregate-only` (and `--dock-check`),
+    with `if: ${{ !cancelled() }}`; this is the step whose exit gates the PR;
+  - one `actions/upload-artifact` step with `if: always()` that uploads every
+    `result.<id>.json`, stamp and `result.json`, for diagnosis only;
+  - the job-level `timeout-minutes` at `repl.yml:43` stays only as a backstop, raised to at
+    least 45 plus the sum of the job's scenario step timeouts (60 after sprint A, 92 after
+    sprint B, 137 after sprint C), so it is never the limit that ends a unit.
 
 ### D17. Spikes are pre-registered bathos runs.
 
@@ -908,13 +1036,68 @@ sidecar. The sidecar states the hypothesis, the `[outcomes]` per branch of D1, a
 - **S4**: a stub-free import of a module known absent from Pyodide must fail.
 
 **How the runs work:**
-- Runs use `bth run --project-slug praxis -- uv run --no-sync python3 scripts/spikes/<name>.py ...`.
+- Runs use `bth run --project-slug praxis -- uv run --no-sync python3 scripts/spikes/<name>.py --out-dir <dir> [--resume] ...`.
   Use `bth`, never `uv run bth`, which silently skips enforcement.
 - A run is verified by its **record**:
   `bth sql "SELECT id, status, outcome, exit_code, command FROM runs WHERE id LIKE '<prefix>%'"`.
   Run `bth compact` first if the run is not yet visible.
 - Each spike's research note, `.praxia/docs/research/260929_notebook-display-s<N>-<slug>.md`
   (filed with `docs add`), cites the run id and names the D1 branch taken.
+
+**Units, resume and chunking** (Revision 7, C7-2; the user's preemption rule of 260929). Each
+spike is a driver over named units, not one process that writes its outcome at the end.
+
+| Spike | Units (each its own browser context in its own subprocess) | Timeout per unit |
+|---|---|---|
+| S1 | `widget_a` (S1-A constructor walk), `widget_b` (S1-B stock-command widget), `split_right`, `css_limits`, `dock_layout_sizing`, `css_limits_refit`, `restore_layout_keeps_iframe`, `cell_hooks` (the five states), `windowing` (`windowingMode` and the re-attach signal), `neg_wrong_ctor` (negative control) | 4 min each |
+| S2 | `live` (trusted live), `crafted` (untrusted reopened), `executed_saved_reopened`, `neg_script_onclick` (negative control, its own crafted notebook) | 5 min each |
+| S3 | one declared bounded unit, `ipython_hooks`: (a), (b), (b′), (c) plain and top-level `await`, (d) and the negative control share one kernel, so they are one unit | 10 min |
+| S4 | one declared bounded unit, `viewer3d_pyodide`: the imports, construction, `start`, the loop checks, the scene bytes, both `PACKAGE_ROOT`s, the walk time and the negative control share one kernel | 10 min |
+
+- **Per-unit output.** Each unit writes `<out>/units/<name>.json`, then
+  `<out>/units/<name>.stamp.json` last (both by temporary-then-rename):
+  `{unit, inputs: {name: sha256}, artifact_sha256, started, finished, exit, timeout_s}`.
+  Inputs hashed: the spike script, the dist manifest (the same `dist` hash as D16), the
+  fixture (the seeded notebook or crafted notebook JSON, and for S4 the five staged `.py`
+  files), the chrome path and version, and, for a unit that builds on another unit's result,
+  that unit's `artifact_sha256`. The S1 sizing, refit, restore and split units take the
+  widget from `widget_a` or `widget_b`, so a recomputed widget unit invalidates them.
+- **Chunked timeouts.** The driver starts each unit as its own subprocess with the table's
+  timeout and kills its process group on expiry. A timed-out unit leaves no stamp and is
+  recorded as `timeout`. There is no whole-run timeout.
+- **`--resume`** skips a unit only if its stamp's inputs equal the current inputs and its
+  `artifact_sha256` equals the sha256 of the artifact on disk; anything else is recomputed.
+  A unit whose probe raised is recorded and never reused.
+- **Outcomes over the full unit set.** The driver evaluates the sidecar's `[outcomes]` only
+  when every unit is verified-complete, reused or recomputed, over the full unit set. Reuse
+  changes how the work is scheduled, never the `[outcomes]` criteria. A run preempted before
+  that point writes no outcome, and the next `bth run ... --resume` is a new run record.
+- **Each sidecar pre-registers this design**: the unit list, the per-unit timeouts, the input
+  set hashed for each unit, the resume rule, and the statement that `[outcomes]` are evaluated
+  over the full unit set regardless of reuse. It is committed before the first run, as the
+  hypothesis and outcomes are.
+- **The research note records reuse**: for every unit, `recomputed` or `reused`, and for a
+  reused unit, its source path, input sha256s and artifact sha256; plus the ids of any earlier
+  partial runs. The run id it cites is the run whose outcome was evaluated.
+
+**AC-39 sensitivity runs are pre-registered too** (Revision 7, C7-8). Their exit codes are
+pass/fail findings cited in PRs, so they run through a tracked driver,
+`scripts/negatives/260929_nd_sensitivity.py`, one bathos run per sprint, each with a sidecar
+committed before its run: sprint A (A7: negative a), sprint B (B10: negative a) and sprint C
+(C7: negatives b, c, d, e). So that each run has exactly one sidecar, named after its script
+as the spikes' sidecars are, each sprint's run uses its own thin entry script,
+`scripts/negatives/260929_nd_sensitivity_sprint_{a,b,c}.py`, which calls the shared driver
+with a fixed negative set; each has its own `.bth.toml`. The driver follows the unit design
+above: one unit per negative, each copying the pristine dist into its own directory under
+`/tmp/claude-1000/nd-neg/<negative>/`, applying its one mutation, and running **only** its
+own harness unit (D16) as a subprocess with that unit's budget. It writes
+`units/<negative>.json` plus a stamp (inputs: the driver and entry script, `repl_smoke.py`,
+the pristine and the mutated dist hashes, the chrome path and version), and supports
+`--resume`. Each sidecar has **one outcome per negative**: exit nonzero **and** the expected
+key among the failing keys (a: `rail_state_after_run`; b: `viewer_resources`; d: the ≥ 1600
+`panel_width` key; e: `late_iframe`), and for (c) zero grep matches. (d) may instead record
+`skipped`, and the sidecar pre-registers that `skipped` passes only when the AC-1 sizing case
+makes the ≥ 1600 key recorded-only (D6).
 
 ---
 
@@ -955,7 +1138,10 @@ sidecar. The sidecar states the hypothesis, the `[outcomes]` per branch of D1, a
   theme (OQ-1).
 - Several live viewers or notebooks at once. The most recent `announce` wins; the protocol
   carries ids, so this can be added later. With more than 4 live pages on one viewer, the
-  client cap evicts in rotation (D11); accepted.
+  client cap evicts in rotation (D11); accepted. When several notebooks have live kernels and
+  the page learned the viewer only from a `query` answer, the viewer's kernel is unknown, so
+  a restart of it leaves a frozen deck until the panel is closed and reopened (D11
+  `viewerPanel`); accepted.
 - An automatic ledger for cells run outside `RunLedger` (OQ-8).
 - Structured error panels for `*96` (96-head) ops. They get the generic panel (D8 step 2).
 - A persistent 3D highlight in the deck panel (OQ-5). A collapsible tree in embed mode.
@@ -1140,7 +1326,8 @@ Nouns: **channel** (never "pip" or "pipette"), **well**, **tip**, **tip rack**, 
 
 ### 3.6 Deck panel
 
-It opens automatically, split right of the current notebook, on the first `announce` a page
+It opens automatically, in the current tier's home (split right of the current notebook at
+≥ 1280 px, the drawer at 1024–1279 px, D6), on the first `announce` a page
 receives, i.e. after `viewer = await praxis.viz.viewer3d.dock(deck)` (D11 deck-panel state
 table, T2). Its whole lifecycle (when it holds an iframe, when the `src` is written, when
 `query` is sent, which text the body shows) is that table; this section only describes what
@@ -1158,7 +1345,8 @@ each state looks like. The layout:
   Run `viewer = await praxis.viz.viewer3d.dock(deck)` in a cell." Shown with no viewer
   known: after a reopen until the answering `announce` (or indefinitely with no answer),
   after a kernel `close` for the current viewer (within 5 s; for example after
-  `await viewer.stop()`), and briefly while re-docking (T12 then T6).
+  `await viewer.stop()`), after the viewer's kernel restarts or shuts down (within 5 s;
+  T25, T26), and briefly while re-docking (T12 then T6).
 - `open-lost`: "The deck view lost its connection. Close and reopen the deck panel, or run
   `dock(deck)` again." Shown only after `plr:gone` from the page in the panel (the page gave
   up after 60 s, possibly while the viewer is still live, see D11). It never claims the
@@ -1178,6 +1366,8 @@ also close panel. The tiers follow D6; crossing 1280 px is the table's tier-cros
 
 | Path | Action | Contents |
 |---|---|---|
+| `scripts/spikes/260929_s{1,2,3,4}_*.py` (all four rows below) | create (A1–A3, C1) | Each is a unit driver per D17 "Units, resume and chunking": the units listed there, each in its own subprocess and browser context with its own timeout, `units/<name>.json` plus a stamp with input and artifact sha256, `--out-dir` and `--resume`; `[outcomes]` evaluated over the full unit set. The sidecar pre-registers the units, timeouts, hashed inputs and resume rule. |
+| `scripts/negatives/260929_nd_sensitivity.py`, `260929_nd_sensitivity_sprint_{a,b,c}.py` + `.bth.toml` each | create (A7), used (B10, C7) | The AC-39 sensitivity driver and its per-sprint entry scripts and sidecars (D17, C7-8): one unit per negative, each on its own mutated dist copy, running only its own harness unit; one outcome per negative. |
 | `scripts/spikes/260929_s1_lumino_widget.py` + `.bth.toml` | create (A1) | Playwright probe over a built dist, `lab/` entry. It tries S1-A, then S1-B. It records `split_right_ok`, `css_limits_honoured`, `dock_layout_sizing_reachable` (the DockPanel `saveLayout`/`restoreLayout` path), `css_limits_refit` (inline px `min-width`/`max-width` then `parent.fit()`: does the widget take the new width?), `restore_layout_keeps_iframe` (does a `restoreLayout()` clamp reload an iframe in the widget?), the resulting D6 sizing case, the per-state cell hooks, the notebook's `windowingMode` and the cell re-attach signal, with the negative control from D17. Written with argparse and logging. |
 | `scripts/spikes/260929_s2_sanitizer.py` + `.bth.toml` | create (A2) | It writes a notebook JSON with crafted outputs to the drive, which is untrusted because it was never executed, reopens it, and records the chosen mimetype and survivorship per element and attribute. It repeats the check for the same bundle displayed live (trusted), and for a notebook executed, saved and reopened in the same browser, recording that path's trust state and mimetype (S2-T or not). Negative control from D17. |
 | `scripts/spikes/260929_s3_ipython_hooks.py` + `.bth.toml` | create (A3) | It runs S3's (a), (b), (b′), (c) and (d) in the kernel; for (b′) it reads the output model's `metadata["text/html"]["praxis"]` through a seeded notebook, and records the IPython version, `run_code` path evidence and outputs by model. Negative control from D17. |
@@ -1191,7 +1381,9 @@ also close panel. The tiers follow D6; crossing 1280 px is the table's tier-cros
 | `web-repl/scripts/build_repl.py` | modify (A6, B9, C6) | A6: `stage_shell` removes and then copies `shell/display/`, skipping `__tests__`, and `assert_dist_complete` requires `shell/display/{index,chrome}.js`. B9: adds `stale.js` and `interact.js` to the required list. C6: adds `dock.js`, `assets/visualizer3d/index.html`, `assets/visualizer3d/vendor/three.webgpu.min.js`, `assets/visualizer3d-augmentations/{socket,embed}.js` and `embed.css`, `assets/python/plr_visualizer3d/server.py`, `assets/python/praxis/viz/viewer3d.py`, and `assets/python/praxis/display/__init__.py`, the last from B8. |
 | `web-repl/tests/test_display_staging.py` | create (A6), extend (B9, C6) | Stages to `tmp`: no `__tests__`, a stale file is removed, and `assert_dist_complete` raises on a missing required file. |
 | `web-repl/tests/fixtures/notebooks/display_check.ipynb` | create (A7), extend (B10, C7) | The gate notebook. Boot cell, the fixture deck from `make_fixture.py`'s `assemble()` with tracking on, cells that draw the deck, a plate and a tip rack, a `RunLedger` cell, one cell per error case, a sleep cell (running state), and a marker cell after an error (Run All stops). Not shipped in dist; the harness seeds it. |
-| `scripts/repl_smoke.py` | modify (A7, B10, C7) | Adds `--display-check` and `run_display_check`, and later `--dock-check` and `run_dock_check`. Each is added to the "nothing to do" list and gets a `main()` branch. |
+| `scripts/repl_smoke.py` (repo root) | modify (A7, B10, C7) | Adds `--display-check` and `run_display_check`, and later `--dock-check` and `run_dock_check`. Each is added to the "nothing to do" list and gets a `main()` branch. Both follow D16 "Preemption-safe harness design": `--scenario <id>` runs one unit in one process; with no `--scenario` the flag is the driver (one subprocess per unit with its budget as timeout, stamp-matched resume, aggregate `result.json` recording reused units); `--out-dir`, `--fresh`, `--aggregate-only`, and the harness-only `--neg drop-query` (AC-39(e)). The unit table, stamp writer, input hashing, reuse rule and aggregate are pure functions, testable without a browser. A7 adds the driver and D1/D1-dark, B10 adds D2–D4, C7 adds K1a, K1b, K2 and N-d. |
+| `web-repl/tests/test_repl_smoke_resume.py` | create (A7), extend (B10, C7) | AC-42: loads `scripts/repl_smoke.py` by path and drives the pure driver functions with fake unit runners. |
+| `web-repl/tests/test_repl_workflow_scenarios.py` | create (A7), extend (B10, C7) | AC-42: parses `repl.yml` and checks one step per unit with its step-level `timeout-minutes`, the `--aggregate-only` steps, the `if: always()` upload, and the job-level backstop. |
 | `web-repl/overlay/assets/python/praxis/display/__init__.py` | create (B8) | Exports `install`, `RunLedger` and `render`. `render(obj)` returns the bundle, for tests and explicit use. |
 | `.../praxis/display/svg.py` | create (B1) | Path builders (circle as two arcs, rounded rect, cross), a text element with a font size in user units, number formatting, and `esc_text` / `esc_attr` (D2 escaping; the only escape helpers). No PLR import. |
 | `.../praxis/display/floor.py` | create (B1) | D5 math: `nominal_scale`, `s_min` (labware and deck forms), `label_step_k`, `detail_level(labware, s_min)`. |
@@ -1213,13 +1405,13 @@ also close panel. The tiers follow D6; crossing 1280 px is the table's tier-cros
 | `web-repl/overlay/assets/visualizer3d/**` | generated, committed (C2) | The vendored static tree, `VENDOR_MANIFEST.json`, and the transformed `index.html`. |
 | `web-repl/overlay/assets/python/plr_visualizer3d/**` | generated, committed (C2) | Five vendored `.py` files and `VENDOR_MANIFEST.json`. |
 | `web-repl/tests/test_vendor_visualizer3d.py` | create (C2) | AC-30. |
-| `web-repl/overlay/assets/python/praxis/viz/viewer3d.py` | create (C3) | The one-time `plr_visualizer3d.server.PACKAGE_ROOT` rebind to `tempfile.mkdtemp()` before the first viewer (D11). `DockedViewer3D` (the 4-client cap with oldest-client eviction via `evict`, `bye` ending a connection, `query` answer, drop of non-JSON and unknown kinds, `stop` ending every connection), `VirtualConnection`, `ChannelTransport` (injected), `make_viz3d_channel()` (the only `import js`), and `async def dock(deck, **kw)` (module-level current viewer stopped first; awaits `wait_for_browser(timeout=15)`). |
+| `web-repl/overlay/assets/python/praxis/viz/viewer3d.py` | create (C3) | The one-time `plr_visualizer3d.server.PACKAGE_ROOT` rebind to `tempfile.mkdtemp()` before the first viewer (D11). `DockedViewer3D` (the 4-client cap with oldest-client eviction via `evict`, `bye` ending a connection, `query` answer, drop of non-JSON and unknown kinds, `stop` ending every connection, posting `close` and then unsubscribing from `praxis_viz3d`), `VirtualConnection`, `ChannelTransport` (injected), `make_viz3d_channel()` (the only `import js`), and `async def dock(deck, **kw)` (module-level current viewer stopped first; awaits `wait_for_browser(timeout=15)`). |
 | `web-repl/tests/test_viewer3d_docked.py` | create (C3) | AC-31. Loads `plr_visualizer3d` and `praxis/viz` under synthetic names. |
 | `web-repl/overlay/assets/visualizer3d-augmentations/socket.js` | create (C4) | A classic script. The factory `makePraxisSocketClass(BroadcastChannelCtor, {acceptTimeoutMs})` is attached to the global, and the script assigns `window.WebSocket` when `document` exists. The viewer id comes from `location.search` (`viewer`); without it the socket posts nothing and closes after the accept timeout. With it, the socket posts `bye` on `close()`, on `pagehide` and on its accept timeout, ignores a late `accept`, and fires `onclose` on its own `evict` (D11). |
 | `web-repl/overlay/assets/visualizer3d-augmentations/embed.js`, `embed.css` | create (C4) | D12 embed mode and status forwarding. |
 | `web-repl/shell/display/__tests__/viz3d_socket.test.js` | create (C4) | Evaluates `socket.js` text against a fake global. Kept here so that no `__tests__` directory lives under `overlay/assets/`, which is staged wholesale (`build_repl.py:551-578`). |
-| `web-repl/shell/display/dock.js` + tests | create (C5) | The deck panel widget per S1, the header, the footer, tiers and sizing per the D6 sizing-case table (CSS, DockPanel layout, inline px + `parent.fit()`, or S1-L), `parent.fit()` after every tier change inside the split, the drawer with its close button, Escape and tier crossing, Follow (skipping `resource: null` stamps, read through `stampOf`), the held preset, layout sizing only at open and on tier changes when `restore_layout_keeps_iframe` is `false`, and the deck-panel lifecycle implemented exactly as the D11 deck-panel state table (four states, transitions T1–T22, invariants I1–I6; the §3.6 texts per state), acting on `praxis_viz3d` only for `announce` and the kernel `close`; `praxis:toggle-deck-panel`. |
-| `.github/workflows/repl.yml` | modify (A7, B10, C7) | Each sprint adds its pytest lines in the task that creates each test file (the per-file guard `test_repl_workflow_covers_tests.py` on `main` fails on an unwired file), its `bun test web-repl/shell/display` line in the coxswain job (A5), and its smoke step (A7: `--display-check`; C7: `--dock-check`). |
+| `web-repl/shell/display/dock.js` + tests | create (C5) | The deck panel widget per S1, the header, the footer, tiers and sizing per the D6 sizing-case table (CSS, DockPanel layout, inline px + `parent.fit()`, or S1-L), `parent.fit()` after every tier change inside the split, the drawer with its close button, Escape and tier crossing, Follow (skipping `resource: null` stamps, read through `stampOf`), the held preset (re-applied after each iframe load once `resources()` is non-empty, D12), layout sizing only at open and on tier changes when `restore_layout_keeps_iframe` is `false`, and the deck-panel lifecycle implemented exactly as the D11 deck-panel state table (four states, transitions T1–T27, invariants I1–I6; the §3.6 texts per state), acting on `praxis_viz3d` only for `announce` and the kernel `close`, and on the viewer's kernel's `sessionContext` for the kernel-restart event (`viewerPanel`, D11); `praxis:toggle-deck-panel`. |
+| `.github/workflows/repl.yml` | modify (A7, B10, C7) | Each sprint adds its pytest lines in the task that creates each test file (the per-file guard `test_repl_workflow_covers_tests.py` on `main` fails on an unwired file), its `bun test web-repl/shell/display` line in the coxswain job (A5), and its scenario steps per D16 "Preemption-safe harness design" (A7: `--display-check --scenario` D1 and D1-dark, plus the `--aggregate-only` step and the `if: always()` upload; B10: D2, D3, D4; C7: `--dock-check --scenario` K1a, K1b, K2, plus its aggregate step), each with step-level `timeout-minutes` = budget + 2, and the job-level backstop raised to 60 / 92 / 137. No step downloads an earlier run's artifacts. |
 
 **Files that must not change:**
 - `web-repl/jupyter-lite.json` (D10; OQ-1 could change that later)
@@ -1236,10 +1428,13 @@ Gate shorthands:
 - **[PY:file]** means `uv run python -m pytest web-repl/tests/<file> -q`, one file per
   process, as in `repl.yml`.
 - **[BUN]** means `bun test web-repl/shell/display`.
-- **[DISPLAY]** means the JSON keys of
-  `uv run python scripts/repl_smoke.py --display-check --base-path /praxis/`, which exits 0
-  only if every listed key holds.
-- **[DOCK]** means the same for `--dock-check`.
+- **[DISPLAY]** means the JSON keys of the aggregate `result.json` of
+  `uv run python scripts/repl_smoke.py --display-check --base-path /praxis/` (the harness at
+  the repo root), which runs each display unit as its own subprocess with its own timeout,
+  resumes over stamp-matched units, and exits 0 only if every listed key of every unit holds
+  (D16 "Preemption-safe harness design"). **[DISPLAY, scenario X]** names the unit whose
+  `result.X.json` carries the keys; `--display-check --scenario X` runs that unit alone.
+- **[DOCK]** means the same for `--dock-check` (units K1a, K1b, K2).
 - Browser gates are authoritative in CI. Local runs follow D16.
 
 ### Sprint A: spikes and chrome
@@ -1259,15 +1454,24 @@ Gate shorthands:
   - The note lists every AC-36 width key with its resulting status (`asserted` or
     `recorded-only`), derived from the sizing case and `restore_layout_keeps_iframe`
     (D6 note, AC-36). *(Round 5, C5-1.)*
+  - **Units** (Revision 7, C7-2; applies to AC-1, AC-2, AC-3 and AC-29): the sidecar lists
+    the spike's D17 units, each unit's timeout, the hashed inputs and the resume rule, and
+    states that `[outcomes]` are evaluated over the full unit set regardless of reuse. The
+    out dir holds `units/<name>.json` and a matching stamp for every unit, and each stamp's
+    `artifact_sha256` equals the sha256 of its artifact. The note lists every unit as
+    `recomputed` or `reused` (with source path, input sha256s and artifact sha256) and names
+    any earlier partial run ids; the cited run is the one whose outcome was evaluated.
 - **AC-2 (S2 recorded)**:
-  - Same record checks as AC-1.
+  - Same record and unit checks as AC-1 (units: `live`, `crafted`,
+    `executed_saved_reopened`, `neg_script_onclick`).
   - The note contains the survivorship table: element and attribute × {trusted live,
     untrusted reopened (crafted), executed-saved-reopened}.
   - The note records the mimetype chosen for untrusted `{text/html, text/plain}`, the trust
     state and mimetype of the executed-saved-reopened path, and names the D1 branch for each
     path (S2-T, or one of S2-A, S2-A', S2-B, S2-C).
 - **AC-3 (S3 recorded)**:
-  - Same record checks as AC-1.
+  - Same record and unit checks as AC-1 (one declared bounded unit, `ipython_hooks`,
+    10 min).
   - The note records the IPython version seen in the kernel and the (a)–(d) results, and
     names the branch.
   - The note records the (b′) result: whether a `formatters['text/html'].for_type` function
@@ -1296,8 +1500,8 @@ Gate shorthands:
   - After `uv run python web-repl/scripts/build_repl.py --base-path /praxis/`, these both
     succeed: `test -f web-repl/dist/shell/display/index.js` and
     `! test -e web-repl/dist/shell/display/__tests__`.
-- **AC-7 (chrome in the browser)** [DISPLAY, scenario D1: fresh context; Light theme set via
-  `apputils:change-theme`]:
+- **AC-7 (chrome in the browser)** [DISPLAY, scenario D1: its own unit and subprocess, 6 min
+  budget (D16); fresh context; Light theme set via `apputils:change-theme`]:
   - `rail_state_never_run == "not-run"`.
   - `rail_state_after_run == "ran"`.
   - `rail_state_while_sleep == "running"`, polled during `await asyncio.sleep(3)`.
@@ -1308,7 +1512,8 @@ Gate shorthands:
   - `light_ground == "rgb(238, 241, 244)"` and `light_sheet == "rgb(255, 255, 255)"`.
   - `exec_count_on_rail`: the rail's count text equals the cell's execution count.
   - `pageerrors == []`.
-  - **Scenario D1-dark** (fresh context, default JupyterLab Dark, no theme change), reported
+  - **Scenario D1-dark** (its own unit and subprocess, 5 min budget; fresh context, default
+    JupyterLab Dark, no theme change), reported in `result.D1-dark.json` and in the aggregate
     under a `d1_dark` sub-object so the key names do not collide: the five `rail_state_*`
     keys above, `prompts_take_no_space`, and `rail_colors_match_dark` (rail
     grey equals the computed `--jp-border-color1`; the other states equal their section 3.1
@@ -1550,7 +1755,8 @@ Gate shorthands:
     `praxis:ready` post.
   - With an install that raises, `praxis:ready` is still posted, and one
     `praxis:display-error` message precedes it.
-- **AC-21 (reprs live)** [DISPLAY, scenario D2]:
+- **AC-21 (reprs live)** [DISPLAY, scenario D2: one unit and subprocess, 12 min budget, which
+  also carries AC-22, AC-23 and AC-25 (D16)]:
   - `repr_cells_ok`: the deck, plate and tip-rack cells each have a model output with
     `text/html`, `text/plain` and a stamp read through `stampOf` (D2; `metadata.praxis`
     under S3-A, `metadata["text/html"].praxis` under S3-B).
@@ -1583,7 +1789,8 @@ Gate shorthands:
     the re-run drawing cell's own new output does not contain "Drawn in an earlier session."
   - `persistence_gate_never_open`: `dialog#praxis-persistence-first-save` was never open
     during the scenario (D16); trivially true when `main` lacks the ladder.
-- **AC-24 (trust loss)** [DISPLAY, scenario D3: save, reload, reopen the notebook]:
+- **AC-24 (trust loss)** [DISPLAY, scenario D3: its own unit and subprocess, 8 min budget; it
+  executes its own drawing cells, then saves, reloads and reopens the notebook]:
   - `no_script_in_bundles`: the saved JSON has zero `<script` in any output.
   - `reopened_branch` equals the S2 branch recorded in AC-2 for the executed-saved-reopened
     path (this scenario is that path).
@@ -1601,8 +1808,8 @@ Gate shorthands:
   - `arrow_moves`: ArrowRight changes the live region to "assay A2: 50 µL".
   - `escape_leaves`: Escape returns focus to the figure.
   - All keys are driven by `page.keyboard`.
-- **AC-26 (High Contrast)** [DISPLAY, scenario D4: theme set to
-  "JupyterLab Dark High Contrast"]:
+- **AC-26 (High Contrast)** [DISPLAY, scenario D4: its own unit and subprocess, 6 min budget;
+  theme set to "JupyterLab Dark High Contrast"]:
   - `hc_text_color`: the summary text colour equals the computed `--jp-content-font-color0`.
   - `hc_sheet_fill`: the plate sheet fill equals the computed `--jp-layout-color0`.
   - `hc_palette_untouched`: the computed `--jp-layout-color0` equals the value measured before
@@ -1623,7 +1830,8 @@ Gate shorthands:
 ### Sprint C: deck panel
 
 - **AC-29 (S4 recorded)**:
-  - Same record checks as AC-1.
+  - Same record and unit checks as AC-1 (one declared bounded unit, `viewer3d_pyodide`,
+    10 min).
   - The note lists the stubs required (possibly none), `call_later` support, the fixture
     `scene` bytes and the time of the first `_models_on_disk(PACKAGE_ROOT)` walk, and names
     the branch.
@@ -1658,6 +1866,10 @@ Gate shorthands:
     no `_handler` task is pending (every `VirtualConnection` got its sentinel).
   - A second `stop()` on the same viewer raises nothing and posts nothing; a `dock()` after
     a user's own `stop()` posts no second `close` for the old id (D11, Revision 6).
+  - **Stopped viewer leaves the channel** (Revision 7, C7-3): after `stop()`, the recording
+    channel shows the viewer's listener removed and its channel closed; a `query` then gets
+    no `announce` from it, and an `open` addressed to its id gets no `accept`. After a second
+    `await dock(deck)`, a `query` yields exactly one `announce`, carrying the new viewer's id.
   - **Second dock**: a second `await dock(deck)` in the same process stops the first viewer
     (its `_subscribed` empty, a `close` with the first viewer's id posted) before the second
     `announce`.
@@ -1703,7 +1915,8 @@ Gate shorthands:
     `assets/python/plr_visualizer3d/server.py` and `assets/python/praxis/viz/viewer3d.py`.
   - [PY:test_contract_covers_imports.py] passes.
   - CI's `--probe --offline` gate stays green.
-- **AC-34 (viewer draws in the deck panel)** [DOCK, scenario K1: 1440×900, Light theme]:
+- **AC-34 (viewer draws in the deck panel)** [DOCK, scenario K1a: its own unit and subprocess,
+  10 min budget (D16); 1440×900, Light theme; it boots, draws and runs `dock()` itself]:
   - `panel_is_split_right`: per the S1 branch, the panel is a main-area widget whose left edge
     is at or right of the notebook's right edge.
   - `viewer_resources`: `plrViewer.resources()` includes the fixture's `assay`, `source` and
@@ -1714,7 +1927,7 @@ Gate shorthands:
   - `embed_hidden`: `.navbar`, `#toolbar-left`, `#stats-panel`, `#sidepanel` and `#toolbar`
     are all `display: none` inside the iframe.
   - `pageerrors == []`, in both the parent and the iframe.
-- **AC-35 (Follow and presets)** [DOCK, K1 continued]:
+- **AC-35 (Follow and presets)** [DOCK, K1a continued]:
   - `click_focuses`: a real click on `source` in the deck output changes
     `plrViewer.camera().at`, and the footer reads "source".
   - `follow_focuses`: with Follow on, activating the assay output's cell focuses `assay`.
@@ -1728,7 +1941,30 @@ Gate shorthands:
     are copied from `renderer.js:117-121` into the harness.
   - `follow_keeps_preset`: after Top, then a Follow-driven focus on another resource,
     `normalize(camera.from - camera.at) · normalize(VIEWS.top) > 0.99`.
-- **AC-36 (tiers)** [DOCK, scenario K2 across viewports]:
+- **AC-36 (tiers)** [DOCK, scenario K2 across viewports: its own unit and subprocess, 15 min
+  budget, atomic (D16)]:
+  - **Execution order and page count** (Revision 7, C7-5). K2 uses **one page, one kernel and
+    one `dock()`**; every viewport change is a `page.setViewportSize` on that page, and every
+    later open is through `praxis:toggle-deck-panel`. Steps, in this order:
+    1. A fresh page at 1152×800. Boot, draw, and measure the notebook content width; run
+       `dock()`, whose first `announce` opens the drawer (T2). Keys `drawer_overlays`,
+       `drawer_no_reflow` (the width before `dock()` against the width with the drawer open).
+    2. `drawer_dismiss_reopen` (close button T17, toggle T4 → T6, Escape T17), then toggle to
+       reopen (T4 → T6).
+    3. `tier_up_rehomes`: resize to 1440×900 with the drawer open (T15); then resize back to
+       1152×800 (T15), close with the close button (T17), resize to 1440×900 and assert it
+       stays closed (T5); toggle to reopen at 1440×900 (T4 → T6).
+    4. At 1440×900: the 1280–1599 open-time width key, then the splitter drags to 300 and
+       700 px, with `iframe_reloads_during_resize` counting over the drags.
+    5. `fit_after_tier_change`: resize 1440 → 1600 → 1440 wide.
+    6. Resize to 1280×800; toggle close and reopen; the 1280–1599 keys (open-time width and
+       both drags, counted as in step 4), then `viewer_height` and `motion_slot_height`.
+    7. Close the file browser; resize to 1600×900; toggle close and reopen;
+       `nb_content_width` and the ≥ 1600 `panel_width` key.
+    8. `resize_within_wide`: resize 1600 → 1920 wide with the panel open, with
+       `iframe_reloads_during_resize` counting over this step too.
+    9. Resize to 1920×1080; toggle close and reopen; `nb_content_width` and the ≥ 1600
+       `panel_width` key at open.
   - **Keyed by the D6 sizing case** recorded in AC-1. The result names the case and lists
     each width key below as `asserted` or `recorded-only`, per the D6 table: case
     honoured/reachable and case ignored/reachable assert every width key; case
@@ -1771,28 +2007,46 @@ Gate shorthands:
     split (T15: `panel_is_split_right` holds, the iframe then in the panel keeps its `src`,
     `resources()` repopulates within 10 s); a closed drawer resized the same way stays closed
     (T5).
-- **AC-37 (live state)** [DOCK, K1 continued]:
+- **AC-37 (live state)** [DOCK, K1a continued]:
   - `state_updates`: after an aspirate cell,
     `plrViewer.stateOf(source.get_well("A1").name)` differs from its value before, within 5 s.
     The well name is read from the kernel, not hardcoded.
   - `stale_and_panel`: AC-23's notice text names the deck panel, and the panel is open.
-- **AC-38 (reconnect and stop)** [DOCK, K1 continued]:
-  - **Execution order** (Revision 6, C6-2). The keys run in exactly the order listed below:
-    `reconnect_after_reload`, `drawer_reconnect`, `stop_placeholder`, `redock_reloads`,
-    `late_iframe`, `many_reloads`. `drawer_reconnect` needs a live viewer, so it precedes
-    `stop_placeholder`; `stop_placeholder` runs immediately before `redock_reloads`, so the
-    re-dock's `announce` arrives in an open panel with no iframe and exercises T12 → T6 (the
-    C6-1 path).
+- **AC-38 (reconnect and stop)** [DOCK, scenario K1b: its own unit and subprocess, 14 min
+  budget, **atomic** (a timeout or preemption recomputes all of K1b; it is never resumed
+  mid-way, D16); a fresh page at 1440×900, Light theme, which boots, draws and runs `dock()`
+  itself]:
+  - **Execution order** (Revision 6, C6-2; extended by Revision 7). The keys run in exactly
+    the order listed below:
+    `reconnect_after_reload`, `preset_survives_reload`, `drawer_reconnect`, `redock_live`,
+    `stop_placeholder`, `redock_reloads`, `late_iframe`, `many_reloads`,
+    `restart_placeholder`. `drawer_reconnect` and `redock_live` need a live viewer, so they
+    precede `stop_placeholder`; `stop_placeholder` runs immediately before `redock_reloads`,
+    so that re-dock's `announce` arrives in an open panel with no iframe after the user's own
+    `stop()` (T6). `redock_live` re-docks a **live** viewer, so the old viewer's `close`
+    exercises T12 → T6 (the C6-1 path) in the browser. `restart_placeholder` destroys the
+    kernel, so it runs last.
   - **DOM reads** (Revision 6, C6-1). Every key reads the deck iframe by querying the panel's
     DOM at the moment of each read or write (for example `panel.querySelectorAll('iframe')`),
     never through an element reference held from an earlier step or key. Wherever a key
     names "the iframe", exactly one iframe must be in the panel DOM (D11, I1).
   - `reconnect_after_reload` (T16): after the iframe reloads (the harness sets
     `iframe.src = iframe.src`), `resources()` repopulates within 10 s.
+  - `preset_survives_reload` (T16, D12; Revision 7, C7-7): the harness presses Front, then
+    reloads the iframe (`iframe.src = iframe.src`); within 10 s `resources()` repopulates and
+    `normalize(camera.from - camera.at) · normalize(VIEWS.front) > 0.99`, read from the
+    iframe then in the panel (VIEWS as in AC-35).
   - `drawer_reconnect` (T15): after resizing to 1152×800 (the panel becomes a drawer and the
     iframe moves), `resources()` repopulates within 10 s; the harness then resizes back to
     1440×900 (the drawer is re-homed into the split, T15 again) and `resources()` repopulates
     within 10 s, so the later keys run in the split tier that `late_iframe`'s tab close needs.
+  - `redock_live` (T12 → T6; Revision 7, C7-9): with the panel `open-connected` on a live
+    viewer v1, re-running the `dock()` cell yields, observed through a harness
+    `BroadcastChannel("praxis_viz3d")` listener and a `MutationObserver` on the panel subtree:
+    a `close` for v1 before the `announce` for the new id v2 (read from the kernel); the v1
+    iframe removed; exactly one iframe inserted after that `announce`, with its `src`'s
+    `viewer` parameter equal to v2 at insertion; and `resources()` in it repopulating within
+    10 s.
   - `stop_placeholder` (T12): after `await viewer.stop()`, within 5 s the body contains the
     exact string "No deck viewer is running.", does not contain "lost its connection", and
     the panel DOM holds no iframe.
@@ -1811,32 +2065,47 @@ Gate shorthands:
   - `many_reloads` (T16): 6 sequential iframe reloads (`iframe.src = iframe.src`), each
     followed by `resources()` repopulating within 10 s. (With the cap at 4, this fails unless
     dead clients leave through `bye` or eviction, D11.)
+  - `restart_placeholder` (T25; Revision 7, C7-6): with the panel `open-connected`, the
+    harness runs `kernelmenu:restart` on the notebook that ran `dock()`; within 5 s the body
+    contains the exact string "No deck viewer is running.", does not contain "lost its
+    connection", and the panel DOM holds no iframe. (The harness `BroadcastChannel` listener
+    also records that no `close` was posted: the restart, not a `close`, drove the change.)
 - **AC-39 (sensitivity and hygiene)**:
-  - Copy the built dist to `/tmp/claude-1000/nd-neg/`.
+  - **Pre-registered and unit-scoped** (Revision 7, C7-1, C7-8). Every negative below runs
+    through the tracked sensitivity driver (D17, "AC-39 sensitivity runs are pre-registered
+    too"), whose per-sprint sidecar, with one outcome per negative, is committed before the
+    run. Each negative copies the built dist to its own `/tmp/claude-1000/nd-neg/<negative>/`
+    and runs **only** its own harness unit (D16), as a subprocess with that unit's budget.
+    The run is verified by its bathos record (`outcome` evaluated), not by exit code alone.
   - (a) Remove `shell/display/index.js`, then run
-    `--display-check --serve-dir /tmp/claude-1000/nd-neg`: it exits nonzero and names
-    `rail_state_after_run`.
-  - (b) On a fresh copy, remove `assets/visualizer3d-augmentations/socket.js`, then run
-    `--dock-check`: it exits nonzero and names `viewer_resources`.
+    `--display-check --scenario D1 --serve-dir /tmp/claude-1000/nd-neg/a`: it exits nonzero
+    and names `rail_state_after_run`.
+  - (b) On its own copy, remove `assets/visualizer3d-augmentations/socket.js`, then run
+    `--dock-check --scenario K1a --serve-dir /tmp/claude-1000/nd-neg/b`: it exits nonzero and
+    names `viewer_resources`.
   - (c) `! grep -rnE '__praxis_test|data-praxis-test' web-repl/shell/display web-repl/overlay/assets/visualizer3d-augmentations --include='*.js' --exclude-dir=__tests__`
     finds nothing.
-  - (d) The AC-36 ≥ 1600 width predicate is sensitive: at 1600×900 the harness adds the
+  - (d) Unit `N-d` (`--dock-check --scenario N-d`, 6 min): the AC-36 ≥ 1600 width predicate
+    is sensitive: at 1600×900 the harness adds the
     viewer iframe in a stock `split-right` widget of its own (harness code, no `dock.js`
     sizing), measures it (a 50/50 split), and the predicate reports failure. Skipped, and
     recorded as such, wherever the ≥ 1600 key is recorded-only (D6 table: S1-L, and case
     honoured/unreachable without `css_limits_refit`).
   - (e) `late_iframe` is sensitive to the `query` path: with a harness context init script
     that wraps `BroadcastChannel.prototype.postMessage` in the parent page to drop messages
-    of kind `query` (harness code; no product switch), `--dock-check` exits nonzero and names
+    of kind `query` (harness code, enabled by the harness-only flag `--neg drop-query`; no
+    product switch), `--dock-check --scenario K1b --neg drop-query` exits nonzero and names
     `late_iframe`.
-  - The observed exit codes go in the sprint C PR description. (a) is run first in sprint A's
-    PR (A7), and again in sprint B's (B10).
+  - The observed exit codes, and the bathos run id whose outcome was evaluated, go in the
+    sprint C PR description. (a) is run first in sprint A's PR (A7), and again in sprint B's
+    (B10), each under its own sprint sidecar.
 - **AC-40 (CI wiring)**:
   - `uv run python -m pytest web-repl/tests/test_repl_workflow_covers_tests.py -q` passes on
     each sprint's head.
   - `grep -c -- '--display-check' .github/workflows/repl.yml` ≥ 1 (sprint A).
   - `grep -c -- '--dock-check' .github/workflows/repl.yml` ≥ 1 (sprint C).
   - `grep -c 'bun test web-repl/shell/display' .github/workflows/repl.yml` ≥ 1 (sprint A).
+  - The scenario-step layout of D16 is checked by AC-42's workflow test.
 - **AC-41 (no regressions, sprints B and C)**:
   - AC-8's list is green on each sprint's head.
   - [PY:test_contract_covers_imports.py] passes on each sprint's head. Every `pylabrobot.*`
@@ -1845,6 +2114,31 @@ Gate shorthands:
   - R19: `test -d web-repl/overlay/assets/visualizer-augmentations`, then
     `grep -rnE 'requestDevice|requestPort' web-repl/overlay/assets/visualizer-augmentations/ web-repl/overlay/assets/visualizer3d-augmentations/ web-repl/shell/display/`
     exits **1 exactly**.
+- **AC-42 (preemption-safe harness)** (Revision 7, C7-1) [PY:test_repl_smoke_resume.py] and
+  [PY:test_repl_workflow_scenarios.py]; created in A7 for the display units, extended in B10
+  and C7 for theirs:
+  - The driver's unit table equals D16's (ids, check, budget); `--scenario <id>` runs exactly
+    that unit.
+  - With fake unit runners: every unit is started as its own subprocess call with its own
+    budget as timeout; no call carries a whole-run timeout.
+  - A unit writes `result.<id>.json` before `result.<id>.stamp.json`; a runner killed between
+    the two leaves no stamp, and the next resume recomputes that unit.
+  - Resume skips a unit whose stamp inputs and `result_sha256` match and whose result has no
+    failing key, and records it under `reused` with its source path, input sha256s and
+    `result_sha256`. Each of these recomputes it: a changed input (one case each for `dist`,
+    `notebook`, `harness`, `chrome`, `args`), a tampered result file, a result with a failing
+    key, and `--fresh`.
+  - A timed-out unit is listed in `timed_out`, has no stamp, and fails the aggregate.
+  - The aggregate verdict over a fixed set of unit results is identical whether each unit was
+    reused or recomputed (the pass rule is unchanged).
+  - `--aggregate-only` starts no subprocess, and counts a missing unit as failed.
+  - The workflow test parses `repl.yml`: one step per unit of the current sprints, each
+    running `--scenario <id>` with step-level `timeout-minutes` equal to the D16 budget + 2
+    and `if: ${{ !cancelled() }}`; one `--aggregate-only` step per check; an
+    `actions/upload-artifact` step with `if: always()` covering the out dirs; no
+    `actions/download-artifact` step that fetches that artifact (CI never reuses across
+    workflow runs); and a
+    job-level `timeout-minutes` of at least 45 plus the sum of the scenario step timeouts.
 
 ---
 
@@ -1869,7 +2163,12 @@ action (project memory, "praxis main merge policy").
   iframe in the widget loaded, i.e. a clamp causes no reload), enumerates cell-state hooks for the five
   states, and records the notebook's `windowingMode` and the signal that fires when a
   scrolled-away cell's DOM is re-attached.
-- Run it with `bth run`, verify by record, and file the research note.
+- The probe is a unit driver (D17 "Units, resume and chunking"): the S1 units in their own
+  subprocesses and browser contexts, 4 min each, `units/<name>.json` plus a stamp,
+  `--resume`; the sidecar pre-registers the units, timeouts, hashed inputs and resume rule,
+  and evaluates `[outcomes]` over the full unit set.
+- Run it with `bth run`, verify by record, and file the research note, which records each
+  unit as recomputed or reused.
 - Depends on: none (a built dist).
 - Closes: AC-1.
 - Gate: AC-1 record query.
@@ -1879,7 +2178,10 @@ action (project memory, "praxis main merge policy").
 `260929_s2_sanitizer.py`. The crafted outputs cover every element and attribute in D1's S2
 row. Include a bundle with both `text/html` and `text/plain`, and the D17 negative control.
 Probe both reopen paths from D1's S2 row: the crafted notebook, and a notebook executed,
-saved and reopened in the same browser (record its trust state; S2-T if trusted).
+saved and reopened in the same browser (record its trust state; S2-T if trusted). Each trust
+path and the negative control is its own D17 unit (`live`, `crafted`,
+`executed_saved_reopened`, `neg_script_onclick`), in its own subprocess and browser context,
+5 min each, with stamps and `--resume`.
 - Depends on: none.
 - Closes: AC-2.
 - Gate: AC-2 record query.
@@ -1888,7 +2190,9 @@ saved and reopened in the same browser (record its trust state; S2-T if trusted)
 **A3: Spike S3 (IPython hooks in the Pyodide kernel).** Same discipline, over
 `260929_s3_ipython_hooks.py`. Test (a), (b), (b′), (c) and (d), each in a plain cell and a
 top-level-`await` cell, reading results from the notebook model (for (b′), the output's
-`metadata["text/html"]["praxis"]`).
+`metadata["text/html"]["praxis"]`). S3 declares itself one bounded D17 unit,
+`ipython_hooks`, with a 10 min subprocess timeout, a stamp and `--resume`; the sidecar says
+so.
 - Depends on: none.
 - Closes: AC-3.
 - Gate: AC-3 record query.
@@ -1935,15 +2239,27 @@ and `run_display_check` to `repl_smoke.py`:
 - read state from the model and computed styles
 - add scenario D1 (Light) and scenario D1-dark (default Dark), per AC-7
 - add the context init script that pre-sets the persistence ack key (D16)
+- build the D16 "Preemption-safe harness design" machinery, tests first
+  (`test_repl_smoke_resume.py`): the unit table, `--scenario <id>` (one unit per process),
+  the driver (one subprocess per unit with its budget as timeout, process-group kill), the
+  per-unit result and stamp writers, input hashing, the reuse rule, the aggregate with
+  `reused`/`recomputed`/`timed_out`, and `--out-dir`, `--fresh`, `--aggregate-only`
 
-Then add the CI step
-`uv run python scripts/repl_smoke.py --display-check --base-path /praxis/` after "Execute
-welcome.ipynb", and run AC-39(a) against a copied dist.
+Then add the CI steps after "Execute welcome.ipynb", per D16: one step per unit
+(`uv run python scripts/repl_smoke.py --display-check --scenario D1 --base-path /praxis/`,
+and `D1-dark`) with step-level `timeout-minutes` 8 and 7 and `if: ${{ !cancelled() }}`, the
+`--display-check --aggregate-only` step, the `if: always()` upload, and the job-level backstop
+raised to 60; write `test_repl_workflow_scenarios.py` first and wire both new test files.
+Write the sensitivity driver, `260929_nd_sensitivity_sprint_a.py` and its sidecar, commit
+them, then run AC-39(a) through `bth run` against a copied dist (D17).
 - Depends on: A4, A5, A6.
-- Closes: AC-7, AC-8, and AC-40 for its sprint A keys.
-- Gate: interim, a local unsandboxed run on a fresh build per D16. Final: a green REPL
-  workflow on the PR head.
-- Size: ~260 LOC.
+- Closes: AC-7, AC-8, AC-40 for its sprint A keys, and AC-42 for the display units D1 and
+  D1-dark.
+- Gate: interim, a local unsandboxed run of each unit (`--scenario D1`, `--scenario
+  D1-dark`) on a fresh build per D16, then the driver resuming over their stamps (both
+  listed under `reused`); [PY:test_repl_smoke_resume.py], [PY:test_repl_workflow_scenarios.py],
+  [PY:test_repl_workflow_covers_tests.py]. Final: a green REPL workflow on the PR head.
+- Size: ~420 LOC (raised in Revision 7 for the driver, stamps and the two tests).
 
 Sprint A order: A1, A2 and A3 in parallel; then A4 and A5 (after A1); then A6 (after A5);
 then A7.
@@ -2062,11 +2378,15 @@ both failing, do not start; escalate (D1, S3-B).
 `earlier_session_marked` (kernel restart, boot cell, then a re-run drawing cell) with its
 negative control `rerun_not_marked` (the re-run output itself is not marked), and
 `persistence_gate_never_open`; the harness reads stamps with the `stampOf` expression (D2). D3 asserts the
-S2 branch that AC-2 recorded for the executed-saved-reopened path. Run AC-39(a).
+S2 branch that AC-2 recorded for the executed-saved-reopened path. D2, D3 and D4 are D16
+units with budgets 12, 8 and 6 min; add them to the unit table, the two AC-42 tests and
+`repl.yml` (one step each, step timeouts 14, 10 and 8; job backstop 92). Commit
+`260929_nd_sensitivity_sprint_b.py` and its sidecar, then run AC-39(a) through `bth run`.
 - Depends on: B8, B9.
-- Closes: AC-21 to AC-26 (CI), and AC-41 for sprint B.
-- Gate: interim, a local unsandboxed run (D16). Final: a green REPL workflow on the PR head.
-- Size: ~300 LOC.
+- Closes: AC-21 to AC-26 (CI), AC-41 for sprint B, and AC-42 for D2–D4.
+- Gate: interim, a local unsandboxed run of each new unit alone (D16). Final: a green REPL
+  workflow on the PR head.
+- Size: ~340 LOC.
 
 Sprint B order: B1; B2; then B3, B4 and B7 in parallel; B5 (after B4); B6; B8; B9, which
 can start after B7; then B10.
@@ -2077,7 +2397,9 @@ can start after B7; then B10.
 of the five vendored files. It does not wait for C2. It records D1's S4 questions, the
 scene bytes, the stock `PACKAGE_ROOT` as resolved in the kernel, and the first
 `_models_on_disk(PACKAGE_ROOT)` time after rebinding the root to an empty temporary
-directory, as `viewer3d.py` will (D11).
+directory, as `viewer3d.py` will (D11). S4 declares itself one bounded D17 unit,
+`viewer3d_pyodide`, with a 10 min subprocess timeout, a stamp and `--resume`; the sidecar
+says so.
 - Depends on: none.
 - Closes: AC-29.
 - Gate: AC-29 record query.
@@ -2105,8 +2427,9 @@ justification comment, and append the ADR §2 addendum (section 4 rows; D11). Ad
   (`evict` plus a sentinel; an own insertion-ordered client map, since `_clients` is a set,
   and synchronous removal from `_clients` before the new `_handler` runs), `bye` ending a connection, `query` → `announce`, dropping
   non-JSON and unknown kinds (D11 threat model)
-- `stop`: end every connection with a sentinel and await its `_handler` task, then `close`;
-  idempotent (a second call posts nothing)
+- `stop`: end every connection with a sentinel and await its `_handler` task, then `close`,
+  then unsubscribe from `praxis_viz3d` (so a stopped viewer answers no `query` and accepts
+  no `open`, C7-3); idempotent (a second call posts nothing)
 - `dock()`: the module-level current viewer stopped first, and
   `wait_for_browser(timeout=15)` with the timeout stated
 - any S4-B stubs, installed before the vendored import, each named in a module constant and
@@ -2147,7 +2470,8 @@ and signals), tests first:
 - the deck-panel lifecycle as the D11 deck-panel state table, listening on `praxis_viz3d`
   and acting only on `announce` and the kernel `close` (`{viewer, reason}`), plus
   `praxis:toggle-deck-panel`, the drawer's close button and Escape, tier crossings and
-  forwarded `plr:gone`. Tests: **one bun test per table row, T1–T22** (a row that lists
+  forwarded `plr:gone`, and the kernel-restart event from the viewer's kernel's
+  `sessionContext` (the `viewerPanel` map, D11). Tests: **one bun test per table row, T1–T27** (a row that lists
   several events gets one case per event), each asserting the next state, the actions (iframe
   created / `src` written / iframe removed / `query` posted / text shown) and invariants
   I1–I6 read from the fake DOM (never from an element the test held). Sequence tests on top
@@ -2158,13 +2482,27 @@ and signals), tests first:
   - **C5-2:** kernel `close(current)`, then `plr:gone` → the no-viewer text stays.
   - **Reopen:** `closed` → reopen → no iframe and one `query` posted; the answering
     `announce` then creates the only iframe, already carrying the `src`.
+  - **C7-6 kernel restart:** `announce(v1)` while fake panel P has a cell executing (so
+    `viewerPanel[v1] = P`), then P's `sessionContext` reports `restarting` → `open-waiting`,
+    no iframe, the no-viewer text, no `query` posted; the same with `dead` and with
+    `kernelChanged` to no kernel. A restart of another panel Q leaves `open-connected`
+    unchanged. From `open-lost`, P's restart → `open-waiting` with the no-viewer text (T26).
+    With no `viewerPanel` entry and two panels with kernels, a restart changes nothing (the
+    stated gap); with exactly one panel with a kernel, it fires.
+  - **C7-9 same id:** in `open-connected` on v1, `announce(v1)` writes no `src` and creates
+    no iframe (T27); `announce(v2)` then writes `viewer=v2` (T11). A tier crossing's DOM move
+    fires T15 only, never T16.
+  - **C7-7 preset:** with a fake `plrViewer` whose `resources()` is empty, a load with the
+    preset `front` calls no `view()`; once `resources()` is non-empty, exactly one
+    `view("front")` follows.
 
 Mount it from `index.js`.
 - Depends on: A5, B9, C4, and AC-1 branch S1-A or S1-B. On S1-C, stop and escalate (D1).
 - Closes: the unit half of AC-35 and AC-36, and the unit half of AC-38 (the D11 state
   table rows).
 - Gate: [BUN].
-- Size: ~420 LOC (raised in Revision 6 for the 22 row tests).
+- Size: ~480 LOC (raised in Revision 6 for the 22 row tests, and in Revision 7 for T23–T27,
+  `viewerPanel` and the preset wait).
 
 **C6: Staging and offline.** Add the C6 paths to `assert_dist_complete` and to
 `test_display_staging.py`. Confirm that manifest collection picks up the vendored Python.
@@ -2173,23 +2511,33 @@ Mount it from `index.js`.
 - Gate: [PY:test_display_staging.py], [PY:test_contract_covers_imports.py], and a build.
 - Size: ~60 LOC.
 
-**C7: `--dock-check` gate and CI wiring.** Add `run_dock_check` with scenarios K1 and K2
-(AC-34 to AC-38), using the full-Chromium launch and SwiftShader args (D16), the
-persistence-ack init script (D16), AC-36 keyed by the recorded D6 sizing case (including
+**C7: `--dock-check` gate and CI wiring.** Add `run_dock_check` with the D16 units K1a
+(AC-34, AC-35, AC-37), K1b (AC-38) and K2 (AC-36), and the negative-only unit N-d
+(AC-39(d)), each a `--scenario` in its own subprocess with its D16 budget (10, 14, 15 and
+6 min), using the full-Chromium launch and SwiftShader args (D16), the
+persistence-ack init script (D16), AC-36 keyed by the recorded D6 sizing case and run in its
+stated one-page execution order (including
 the 1600→1920 `resize_within_wide` case and `iframe_reloads_during_resize`), AC-38 in its
-stated execution order with every iframe read taken from the panel DOM (never a held
-element), AC-38's `late_iframe` ordering listener and `many_reloads`, and the harness-only `query`-drop init
-script for AC-39(e). Run the extended R21 grep (AC-31). Add to CI:
+stated execution order (including `preset_survives_reload`, `redock_live` and
+`restart_placeholder`) with every iframe read taken from the panel DOM (never a held
+element), AC-38's `late_iframe` ordering listener and `many_reloads`, and the harness-only
+`--neg drop-query` init script for AC-39(e). Extend the two AC-42 tests for the dock units.
+Run the extended R21 grep (AC-31). Add to CI:
 - a step that checks out PLR main at C2's recorded commit into a temporary directory, followed
   by `vendor_visualizer3d.py --check --src <dir>`
-- the `--dock-check` step
+- one `--dock-check --scenario <id>` step per unit K1a, K1b, K2 (step timeouts 12, 16, 17,
+  `if: ${{ !cancelled() }}`), the `--dock-check --aggregate-only` step, the dock out dir in
+  the `if: always()` upload, and the job-level backstop raised to 137
 
-Run AC-39(b), (c), (d) and (e).
+Commit `260929_nd_sensitivity_sprint_c.py` and its sidecar (one outcome each for (b), (c),
+(d), (e)), then run them through `bth run` (D17).
 - Depends on: C6.
 - Closes: AC-30 (CI), AC-31's extended R21 grep, AC-33 (CI), AC-34 to AC-39, AC-40 for its
-  sprint C key, and AC-41 for sprint C.
-- Gate: interim, a local unsandboxed run (D16). Final: a green REPL workflow on the PR head.
-- Size: ~350 LOC.
+  sprint C key, AC-41 for sprint C, and AC-42 for the dock units.
+- Gate: interim, a local unsandboxed run of each unit alone (D16). Final: a green REPL
+  workflow on the PR head.
+- Size: ~450 LOC (raised in Revision 7 for the unit split, the three new AC-38 keys and the
+  sensitivity driver's sprint C entry).
 
 Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
 
@@ -2201,7 +2549,7 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
 | A4 | A | theme CSS + CSS test | A1 | AC-4 |
 | A5 | A | shell display skeleton, chrome.js, loader | A1 | AC-5 |
 | A6 | A | staging | A5 | AC-6 |
-| A7 | A | `--display-check` D1 + CI | A4, A5, A6 | AC-7, AC-8, AC-40 (A) |
+| A7 | A | `--display-check` driver, units D1, D1-dark + CI + AC-39(a) sidecar | A4, A5, A6 | AC-7, AC-8, AC-40 (A), AC-42 (D1, D1-dark) |
 | B1 | B | svg, floor, budget | none | AC-12/13 (pure) |
 | B2 | B | labware reprs | B1 | AC-9, AC-10 |
 | B3 | B | deck repr | B2 | AC-11, AC-12, AC-13 (except error-panel case) |
@@ -2211,14 +2559,14 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
 | B7 | B | staleness (kernel) | B2 | AC-18 |
 | B8 | B | install + bootstrap stage + colour test | B2, B3, B4, B6, B7 | AC-17, AC-20, AC-27 |
 | B9 | B | shell stale + interaction | A5, B7 | AC-19 |
-| B10 | B | `--display-check` D2–D4 | B8, B9 | AC-21 to AC-26, AC-41 (B) |
+| B10 | B | `--display-check` units D2–D4 | B8, B9 | AC-21 to AC-26, AC-41 (B), AC-42 (D2–D4) |
 | C1 | C | S4 spike | none | AC-29 |
 | C2 | C | vendoring + trees | none | AC-30 (local) |
 | C3 | C | DockedViewer3D | C1, C2 | AC-31 (except extended R21 grep) |
 | C4 | C | socket shim + embed | C2 | AC-32 |
 | C5 | C | deck panel widget | A5, B9, C4, S1-A/B | AC-35/36 (unit) |
 | C6 | C | staging + offline | C2–C5 | AC-33 (local) |
-| C7 | C | `--dock-check` + CI | C6 | AC-30, AC-31 (extended R21 grep), AC-33 to AC-40 (C), AC-41 (C) |
+| C7 | C | `--dock-check` units K1a, K1b, K2, N-d + CI + AC-39 sidecar | C6 | AC-30, AC-31 (extended R21 grep), AC-33 to AC-40 (C), AC-41 (C), AC-42 (dock units) |
 
 ---
 
@@ -2246,7 +2594,10 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
 | The CI Chromium lacks WebGL2 | D16's full Chromium with SwiftShader args. AC-34 records `hello_backend`, and the canvas check fails loudly rather than passing on a blank frame. |
 | Moving the iframe for the drawer tier reloads it | D11 state table T15: the `viewer` id stays in its `src`, the old client posts `bye`, the shim reconnects, and AC-38 `drawer_reconnect` and AC-36 `tier_up_rehomes` test it. |
 | A closed deck panel reconnects without exercising `query`, hiding a broken `query` path | D11 state table T3, T4, T6: a closed panel ignores every announce but a page's first; reopen attaches an iframe-less panel and posts `query`, so the only iframe is created by the answering `announce`. AC-38 `late_iframe` asserts the ordering, and AC-39(e) proves it fails with `query` dropped. |
-| Piecemeal edits to the deck panel's lifecycle contradict each other (Revisions 4 and 5 each left a neighbouring gap; round 6 found "panel open, no iframe" uncovered after every re-dock) | One authoritative table in D11 (four states, T1–T22, invariants I1–I6); every other section references it. C5 has one test per row plus the C6-1 re-dock sequence; AC-38 runs in a stated order and reads the iframe from the DOM. A future lifecycle change edits the table and its row tests together. |
+| Piecemeal edits to the deck panel's lifecycle contradict each other (Revisions 4 and 5 each left a neighbouring gap; round 6 found "panel open, no iframe" uncovered after every re-dock) | One authoritative table in D11 (four states, T1–T27, invariants I1–I6); every other section references it. C5 has one test per row plus the C6-1 re-dock sequence; AC-38 runs in a stated order and reads the iframe from the DOM. A future lifecycle change edits the table and its row tests together. |
+| A preempted, crashed or hung browser run loses every finished scenario, and one whole-run timeout hides which scenario hung | D16 "Preemption-safe harness design": one unit per scenario, one subprocess per unit with its own budget, a per-unit result and stamp written as each unit completes, resume over stamp-matched units, and one CI step per unit with a step-level timeout (the job timeout is only a backstop). Spikes and AC-39 runs follow the same design (D17). AC-42 tests it. |
+| Resume reuses a stale or tampered result and a gate passes on old evidence | A unit is reused only when every input sha256 (dist, notebook, harness, chrome, args) and its result sha256 match, and never when it failed; the aggregate lists every reused unit with its source and hashes. CI never reuses across workflow runs. The pass rule is unchanged by reuse (AC-42). |
+| A kernel restart leaves a frozen deck that looks live (the dead kernel posts no `close`) | D11 kernel-restart event on the viewer's kernel's `sessionContext` (T25, T26), treated like a kernel `close` for the current viewer; C5 unit cases and AC-38 `restart_placeholder`. The residual case (viewer's kernel unknown with several live kernels) is stated under the multi-notebook non-goal. |
 | Vendored PLR-main Python imports a submodule the import contract lacks | C2 extends `plr_contract.CONTRACT` with a justification and appends an ADR §2 addendum; `test_contract_covers_imports.py` gates C2 and sprint B (AC-30, AC-41). |
 | A Lumino split ignores CSS min/max, or layout sizing is unreachable | S1 records `css_limits_honoured`, `dock_layout_sizing_reachable` and `css_limits_refit`, which select a row of the D6 sizing-case table; every AC-36 width key then has a mechanism or a recorded-only status (AC-36 is keyed by case). Layout sizing goes through the main DockPanel's `saveLayout()` / `sizes` / `restoreLayout()` (a `DockLayout` has no `setRelativeSizes`); CSS-only reaches ≥ 1600 with inline px limits plus `parent.fit()`, asserted only if `css_limits_refit`. `dock.js` calls `parent.fit()` after every tier change inside the split. AC-36 drags the splitter for real, and AC-39(d) proves the ≥ 1600 check fails on a stock 50/50 split wherever that key is asserted. Under S1-L every width key is recorded only and the drag is unclamped (drawer and height keys stay asserted): a stated deviation, consistent with the user's 260929 "split initially" ruling. Whether Lumino re-reads limits after `fit()` is exactly what S1 measures. If `restoreLayout()` reloads the widget's iframe (`restore_layout_keeps_iframe = false`), layout sizing is limited to open and tier changes, and AC-36 `iframe_reloads_during_resize` = 0 catches any clamp that reloads. |
 | A user-controlled resource name injects markup into a trusted output | D2 escaping (`esc_text` / `esc_attr`, escaped traceback) and D14 matching by `dataset.praxisRes`. AC-9, AC-16 and AC-19 carry hostile-name cases. |
@@ -2319,9 +2670,11 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
   - `build_repl.py:830-895` (shell staging), `:979-1047` (`assert_dist_complete`)
   - `praxis_bootstrap.py:289-398` (stage ledger)
   - `praxis-shell.js:54-105` (channel listener)
-  - `scripts/repl_smoke.py:101-184` (Chromium resolution, launch args), `:1226-1430`
-    (`run_notebook_check`)
-  - `.github/workflows/repl.yml:146-226`
+  - `scripts/repl_smoke.py` (repo root): `:101-184` (Chromium resolution, launch args),
+    `:1226-1430` (`run_notebook_check`) at the base `fd987728`; on `origin/main`
+    `run_notebook_check` starts at `:1463` and prints its single `RESULT` at `:1769`
+  - `.github/workflows/repl.yml:146-226`; `:43` (the single job-level `timeout-minutes: 45`,
+    `origin/main`)
 - PLR main Visualizer3D (`/tmp/claude-1000/plr-main/pylabrobot/visualizer3D/`):
   - `server.py:155` (class), `:353` (`_broadcast`), `:559-603` (hello and `_handler`),
     `:711-783` (`__init__`), `:785-811` (`start`), `:829-850` (`stop`)
@@ -2341,7 +2694,10 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
   `.praxia/docs/audits/260929_notebook-display-round1-defender.md`.
 - Round 2 review: `.praxia/docs/audits/260929_notebook-display-round2-challenger.md`,
   `.praxia/docs/audits/260929_notebook-display-round2-defender.md`.
-- Rounds 3 to 6: `.praxia/docs/audits/260929_notebook-display-round{3,4,5,6}-challenger.md`.
+- Rounds 3 to 7: `.praxia/docs/audits/260929_notebook-display-round{3,4,5,6,7}-challenger.md`.
+- The user's preemption rule (global instructions, 260929): intensive calculations are
+  preemption-safe and recoverable by design (per-unit output and completion stamp, sha256-
+  verified resume, per-chunk timeouts, design in the spec and the sidecar).
 - IPython `core/formatters.py:243-250` (per-type `(data, metadata)` unpacking; S3(b′)).
 
 ## Revision 1 (260929)
@@ -2677,4 +3033,49 @@ order.
   for the piecemeal-edit risk; C5's size estimate is raised to ~420 LOC and it also closes the
   unit half of AC-38.
 - References list the round 3 to round 6 audits.
+
+## Revision 7 (260929)
+
+Round 7 (`.praxia/docs/audits/260929_notebook-display-round7-challenger.md`, audit
+`260929_notebook-display-design_spec-challenge_r7`) closed C6-1 and C6-2 and found the
+deck-panel state machine sound. It raised 2 MAJOR findings against the user's new preemption
+rule (260929), 6 MINOR and 1 SUGGESTION. All were applied as the orchestrator ruled. Existing
+AC, task, state-table row and invariant numbers are unchanged; Revision 7 appends AC-42 and
+rows T23–T27, and splits scenario K1 into units K1a and K1b.
+
+| Amendment | Finding | Landed |
+|---|---|---|
+| R7-1 | C7-1 (MAJOR): `--display-check` and `--dock-check` ran as one process that wrote results only at the end, under one 45 min job timeout | D16 path fix (the harness is `scripts/repl_smoke.py` at the repo root; `origin/main` line refs) and new D16 subsection "Preemption-safe harness design" (the unit table D1, D1-dark, D2, D3, D4, K1a, K1b, K2, N-d with budgets; `--scenario` one unit per subprocess; `result.<id>.json` plus a stamp with input and result sha256; driver resume; aggregate with `reused`; unchanged pass rule; CI policy: no reuse across workflow runs, one step per unit with step-level timeout, `--aggregate-only`, `if: always()` upload, job timeout as backstop); gate shorthand [DISPLAY]/[DOCK]; AC-7, AC-21, AC-24, AC-26, AC-34, AC-35, AC-36, AC-37, AC-38 unit headers; AC-39 (a), (b), (d), (e) each running only its unit; AC-40 pointer; new AC-42; §4 `repl_smoke.py` and `repl.yml` rows, two new test-file rows; A7, B10, C7 and the §6 table; §7 two new rows |
+| R7-2 | C7-2 (MAJOR): spikes S1–S4 had no unit, resume or chunk design | D17 "Units, resume and chunking" (unit table per spike; S3 and S4 declared single bounded units at 10 min; `units/<name>.json` plus stamp; per-unit subprocess and timeout; `--resume`; outcomes over the full unit set; sidecar pre-registers the design; the note records reuse); §4 spike row; AC-1 "Units" bullet, referenced by AC-2, AC-3, AC-29; A1, A2, A3, C1 |
+| R7-3 | C7-3 (MINOR): a stopped viewer stayed subscribed | D11 Kernel `stop` (unsubscribes after `close`), re-docking note; §4 `viewer3d.py` row; C3; AC-31 "Stopped viewer leaves the channel" |
+| R7-4 | C7-4 (MINOR): T4 and §3.6 assumed the split | T4 ("in the current tier's home"); §3.6 opening sentence |
+| R7-5 | C7-5 (MINOR): K2 had no order or page count | AC-36 "Execution order and page count" (one page, one kernel, one `dock()`, nine steps) |
+| R7-6 | C7-6 (MINOR): a kernel restart left a frozen deck | D11: `viewerPanel` and "the viewer's kernel", the kernel-restart event (`sessionContext`), rows T23–T26, I2, I4, I6, the protocol `close` row; §3.6 States; §2 non-goal (unknown-kernel gap); §4 `dock.js` row; C5 sequence case; AC-38 `restart_placeholder`; §7 row |
+| R7-7 | C7-7 (MINOR): preset re-apply untested and possibly before the first `scene` | D12 (re-apply once `resources()` is non-empty, 10 s bound); §4 `dock.js` row; C5 case; AC-38 `preset_survives_reload` |
+| R7-8 | C7-8 (MINOR): AC-39 exit codes were unregistered findings | D17 "AC-39 sensitivity runs are pre-registered too" (driver, per-sprint entry scripts and sidecars, one outcome per negative, unit design); §4 row; AC-39 preamble; A7, B10, C7 |
+| R7-9 | C7-9 (SUGGESTION): all three | D11 event definitions (a tier crossing's DOM move is not an iframe reload); T11 narrowed to a new id plus T27 (same id: no-op); I2; C5 case; AC-38 `redock_live`, placed after `drawer_reconnect` and before `stop_placeholder` in the stated order |
+| R7-10 | this log and the frontmatter `adversarial_review` entry | frontmatter; References (round 7 audit, the user's rule, `origin/main` line refs) |
+
+**Consistency fixes made while applying:**
+- AC-38's stated order is now `reconnect_after_reload`, `preset_survives_reload`,
+  `drawer_reconnect`, `redock_live`, `stop_placeholder`, `redock_reloads`, `late_iframe`,
+  `many_reloads`, `restart_placeholder`. `redock_live` needs a live viewer, so it precedes
+  `stop_placeholder`, which still runs immediately before `redock_reloads`.
+  `restart_placeholder` destroys the kernel, so it runs last; its viewer's kernel is known,
+  because `late_iframe`'s `dock()` announced during an executing cell (`viewerPanel`).
+- K1 is split because a single unit carrying AC-34, AC-35, AC-37 and AC-38 had no bounded
+  budget. K1a and K1b each boot and `dock()` themselves. AC-24's D3 now executes its own
+  drawing cells, rather than inheriting D2's page, so each display unit is independent.
+- The kernel-restart event needs to know which kernel owns the viewer, and the protocol
+  carries no kernel identity (D7 rejects adding one). `viewerPanel` derives it from the panel
+  executing when the `announce` arrives, with a single-kernel fallback. The remaining
+  unknown case is stated, not hidden.
+- A failing unit is never reused, so a flaky failure is retried on resume. This is a
+  scheduling rule and does not change the pass rule.
+- The harness path was already correct everywhere (`scripts/repl_smoke.py`); only the line
+  references were base-relative. D16 and References now give both the base and the
+  `origin/main` lines.
+- C5 tests T1–T27; §4 `dock.js` row and the §7 piecemeal row name T1–T27.
+- Sizes raised: A7 ~420, B10 ~340, C5 ~480, C7 ~450 LOC. The ACs now number 42 (R4-4's
+  parser note counted 41).
 
