@@ -1,0 +1,16 @@
+{
+  "control_fires": true,
+  "real_rows_executed": 343,
+  "real_rows_setup_error": 0,
+  "real_operations_executed": 548,
+  "real_unsound": 0,
+  "real_unsound_scoped": 0,
+  "real_totality_violations": 0,
+  "real_check_graph_exceptions": 0,
+  "real_n_operations_scope_verdict_safe": 0,
+  "real_unknown_rate": 1.0,
+  "real_crosscheck_agreement": 1.0,
+  "all_safe_unsound": 7,
+  "all_safe_operations_executed": 548,
+  "runtime_raised_ops_all_safe_arm": 7
+}
