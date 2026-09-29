@@ -11,13 +11,15 @@ adversarial_review: ''
 
 > **This document amends `260901_plr-sema-pre-corpus-spec.md` by reference** and adds §18 to its
 > numbering, as increments 7 and 8 added §16 and §17. It edits text in three earlier documents, each
-> named where it happens and each landed by a task row: increment 1's §10.2.4 P4 rule (the
-> "both kinds → no effect" clause, §18.4.4) and its §10.6.3 assumption table (one new row,
-> §18.5.5); and increment 7's §16.2.1 closed observation record (one new field, §18.5.2). Increment
+> named where it happens and each landed by a task row. In increment 1 it amends §10.2.4's P4 rule
+> (the "both kinds → no effect" clause, §18.4.4), §10.4's E2 (which now widens when depth-0 and deep
+> effects coexist, §18.4.4) and the §10.6.3 assumption table (one new row, §18.5.5). In increment 7
+> it amends §16.2.1's closed observation record (one new field) and §16.2.2's third failure-mode test
+> (a frame-condition clause), both in §18.5.2. Increment
 > 5's V5 rule, including its 260929 amendment, is **unchanged** (L5). `schema_version` stays 1,
 > `REASON_VOCABULARY` gets no new member, and no new registry row is added (L0).
 >
-> **Status: DRAFT for adversarial review.** Where this document asserts a number it names the file it
+> **Status: revision r1, after adversarial round 1** (the revision log is §18.17). Where this document asserts a number it names the file it
 > was read from. Where a claim is reasoned from reading source rather than measured, it says
 > *(reasoned)*. The recon's *(exploratory)* numbers are **not** evidence here and are quoted only as
 > labelled expectations. The owner's locked decisions L0–L7 (§18.2) are inputs, not open questions.
@@ -33,7 +35,11 @@ pickup and drop, and its predicate is unparseable. The pre-registered characteri
 run `fd63e9cd` measured the result: still sound, but **0** operations at `scope_verdict == SAFE`,
 against **216** at the dd79c4c89 pin. This increment adds five **derived** rules (R-A to R-E) that
 restore the effects under the new tracker shape. It also fixes one old unsoundness instead of copying
-it: `load_state`'s conditional tip now widens rather than asserting `HAS_TIP` (L1). Finally it decides
+it. Any tip write whose value might be `None` (a call result, a subscript, an attribute read and so on)
+is now classed `UNRESOLVED`, and a bridged method with such a write widens rather than asserting
+`HAS_TIP` (L1). `load_state` is the instance at both pins. At the old pin it writes
+`cast(…, deserialize(…))`; at 1.0 it writes an `IfExp` with a `None` arm. Both are `UNRESOLVED`, so
+the fix does not depend on the shape PLR happened to choose. Finally it decides
 `:338` with one closed observation field and one fourth D6 site rule, which returns `False` only and
 declines whenever a move-family call could have changed the rack topology (L3).
 
@@ -157,8 +163,8 @@ All of the following was read at the 1.0 pin (`786ac2c4e`) this session.
   getter returns `self._pending_tip` or `cast(Optional["Tip"], self._before)`, and its setter writes `_before`.
 - State changes take two helper hops. `add_tip` calls `self._hold(tip)`, `remove_tip` calls
   `self._hold(None)`, `_hold` calls `self._put(tip)`, and `_put` finally writes
-  `self._carried = tip` (`external/pylabrobot/pylabrobot/legacy/tip_tracker.py:80-96`, the
-  write at `:86`).
+  `self._carried = tip` (`external/pylabrobot/pylabrobot/legacy/tip_tracker.py:74-96`, which covers
+  both `_hold` and `_put`; the write is at `:86`).
 - `__init__` seeds `self._carried: Optional["Tip"] = None` as an `ast.AnnAssign`
   (`external/pylabrobot/pylabrobot/legacy/tip_tracker.py:39-49`).
 - No 1.0 method assigns `_pending_tip` or `_tip`, and no method's own body writes a state field.
@@ -217,8 +223,9 @@ Walk every `ast.Return` inside `G_F`, descending into `If`/`Try`/`With` bodies b
 
 | return value's AST, exactly | contribution |
 |---|---|
-| `Attribute(value=Name("self"), attr=X)`, where `X` is **not** a property of `C` | `X` joins `B` |
+| `Attribute(value=Name("self"), attr=X)`, where `X` names **no** direct `FunctionDef`/`AsyncFunctionDef` of `C` (so it is neither a property nor a method; r1, m16) | `X` joins `B` |
 | `Attribute(value=Name("self"), attr=P)`, where `P` **is** a property of `C` | recurse into `G_P`, with the property names already visited as the cycle guard (a revisit contributes nothing) |
+| `Attribute(value=Name("self"), attr=M)`, where `M` names a non-property direct method of `C` | nothing (a bound method is not a tip) |
 | anything else: a `Call` (including `cast(…, self.X)`), a non-`self` attribute (`holder.tip`), a `Name`, a `Constant` | nothing |
 
 `B` is published sorted (§18.4.8). **At 1.0:** `_pending_tip` returns `self._carried`, which gives
@@ -228,24 +235,46 @@ which contributes nothing. **So `B = {_carried}` and `_before` is excluded.**
 
 > **The `_before` exclusion rests on one syntactic accident, and this document says so.** `_before` is
 > left out only because the 1.0 source wraps it in `cast(...)`. If PLR removed the `cast`, `_before`
-> would join `B`, and three things would follow *(reasoned from §18.4.3's fold)*:
+> would join `B`, and the following would happen *(reasoned from §18.4.3's fold; corrected in r1, m1)*:
 >
-> - `commit`'s `self._before = _NOTHING_PENDING` would classify `HAS_TIP`, because it is a bare `Name`,
->   not a `W` read.
-> - `remove_tip` follows `self.commit()`. Its result would become `{NO_TIP, HAS_TIP}`, which is
->   `UNRESOLVED`.
-> - `drop_tips` would then widen instead of carrying `NO_TIP`.
+> - `commit`'s `self._before = _NOTHING_PENDING` would classify `UNRESOLVED`. `_NOTHING_PENDING` is a
+>   module global, so it is a `Name` bound nowhere in the method.
+> - `add_tip` and `remove_tip` **both** follow `self.commit()`, so both would become `UNRESOLVED`.
+> - Both `pick_up_tips` and `drop_tips` would therefore widen.
+> - `__init__`'s `self._before: object = _NOTHING_PENDING` would make `constructor_state` `UNRESOLVED`,
+>   so `entry_reset` would disappear as well.
 >
-> That is a silent **precision** loss, not an unsoundness, and precision losses are exactly what nobody
-> notices. **AC-18.1 pins `effect_backing_fields == ["_carried"]` at the pin**, so the change fails
-> loudly in CI rather than quietly in a number. §18.8's cross-pin fixture is a second, independent
-> tripwire, because `drop_tips` would move off `NO_TIP`.
+> Every one of these consequences fails closed. It is a silent **precision** loss, not an unsoundness,
+> and precision losses are exactly what nobody notices. **AC-18.1 pins
+> `effect_backing_fields == ["_carried"]` at the pin**, so the change fails loudly in CI rather than
+> quietly in a number. §18.8's cross-pin fixture is a second, independent tripwire, because
+> `pick_up_tips` and `drop_tips` would both move.
 
-**What R-A is NOT.** It does not read property **setters**. The recon found them irrelevant, and this
-document agrees for a different reason. An assignment `self.<F> = v` with `F ∈ S` is already a tip
-write under the unchanged old rule. What the setter does internally (at 1.0, writing `_before`) is a
-concrete-state detail, and the merged cell abstracts it away. No 1.0 method assigns `_tip` or
-`_pending_tip`, so the question has no instance at the pin.
+**Setters and hidden getter dependencies (r1, M3; this replaces r0's "What R-A is NOT").** R-A does
+not model what a property's setter does, so it must not pretend to know. r0 claimed that an
+assignment `self.<F> = v` with `F ∈ S` is a write of the merged cell. That is false in general. At
+1.0, `_tip`'s setter writes only `_before` (`external/pylabrobot/pylabrobot/legacy/tip_tracker.py:63-72`),
+which does not change `has_tip` at all. The rule is now:
+
+> **Normative (M3).** An assignment to `self.F`, where `F ∈ S` and `F` is a property of `C` (it has a
+> `<F>.setter`, or has only a getter, in which case the assignment would raise), classifies
+> **`UNRESOLVED`**. An assignment to a plain-field `F ∈ S`, which is the old-pin case, keeps the old
+> rule and classifies as `cls(value)`.
+
+A getter return that "contributes nothing" to `B` (such as `holder.tip`) can still depend on other
+self attributes. At 1.0, `_pending_tip` reads `self._holder`, a property that reads `self._holder_ref`
+(`external/pylabrobot/pylabrobot/legacy/tip_tracker.py:51-53`). A method that rewrote `_holder_ref`
+would change `has_tip` while writing no `W` field. R-B would then classify it `UNTOUCHED`, which acts
+as a no-op and is unsound after `entry_reset`. Two **checked tripwires**, asserted over the pin in
+AC-18.1, keep this out:
+
+- **(i) No hidden writers.** Take every self attribute read (transitively through properties) on the
+  bool-view getter's **non-alias** return paths. No method of `C` other than `__init__` may write
+  any of them. At the pin that set is `{_holder_ref}`, and its only writer is `__init__` (`:41`).
+- **(ii) No writing getters.** No getter of `C` writes any self attribute.
+
+If either tripwire fires, the test fails, and the derivation must be extended before it is
+regenerated. Neither is assumed.
 
 ### 18.4.3 R-B — argument-classified helper following
 
@@ -258,7 +287,8 @@ when `m` is called. No 1.0 `TipTracker` method contains one *(verified by readin
 
 | statement shape | class contributed |
 |---|---|
-| `Assign`, or `AnnAssign` with a value, whose target is `self.x` with `x ∈ W` | `cls(value)` (table below). An `Assign` with several targets is classified once per `W` target |
+| `Assign`, or `AnnAssign` with a value, whose target is `self.x`, where `x ∈ S` is a **property** of `C` (M3) | `UNRESOLVED` |
+| `Assign`, or `AnnAssign` with a value, whose target is `self.x` with `x ∈ W` otherwise | `cls(value)` (table below). An `Assign` with several targets is classified once per `W` target |
 | `AugAssign` on `self.x`, `x ∈ W` | `UNRESOLVED` |
 | a `Tuple`/`List` target containing `self.x`, `x ∈ W` | `UNRESOLVED` |
 | `Delete` of `self.x`, `x ∈ W` | `UNRESOLVED` |
@@ -270,8 +300,9 @@ when `m` is called. No 1.0 `TipTracker` method contains one *(verified by readin
 immediate children of `C`'s `ClassDef`, with no base-class resolution and no subclass overrides. The
 candidate is resolved as follows:
 
-- `h` names exactly one direct method with no `property`/`<name>.setter` decorator: **follow it** (below).
-- `h` names more than one direct definition, or only a property: the call contributes `UNRESOLVED`
+- `h` names exactly one direct method with no decorator: **follow it** (below).
+- `h` names more than one direct definition, or only a property, or a method decorated with
+  `staticmethod`, `classmethod` or anything else (r1, m6): the call contributes `UNRESOLVED`
   (fail-closed, and there is no instance at 1.0).
 - `h` names no direct method: **not followed, contributes nothing.** This covers inherited methods
   and callable attributes. The 1.0 instance is `commit`'s `self._callback()`
@@ -291,26 +322,60 @@ candidate is resolved as follows:
 class) builds the callee context `E′`:
 
 1. Take `h`'s parameters after the first (`self`) in declaration order. Positional `aᵢ` bind to them
-   in order, and `kⱼ=vⱼ` bind by name.
+   in order, and `kⱼ=vⱼ` bind by name, exactly as Python binds them.
 2. Each bound parameter gets `cls_E(argument)`.
 3. An unbound parameter gets `cls(default)` if it has a default, and `UNRESOLVED` otherwise.
 4. If the call site contains `ast.Starred` or `**`, or `h`'s signature has `*args`/`**kwargs`, **every**
    parameter of `h` gets `UNRESOLVED`.
+5. **(r1, m6)** If the call would not bind under Python's rules, **every** parameter of `h` gets
+   `UNRESOLVED`. That covers too many positionals, an unknown keyword, a keyword aimed at a
+   positional-only parameter, a keyword-only parameter passed positionally, or the same parameter
+   bound twice. Such a call would raise `TypeError` at runtime; the rule declines rather than
+   reasoning about that.
 
 **The argument/value classification `cls_E(e)`.** The first matching row wins.
 
 | `e` | class |
 |---|---|
 | `Constant(None)` | `NO_TIP` |
-| any other `Constant` | `HAS_TIP` (the old P4 "anything else non-`None`" rule, unchanged) |
+| any other `Constant` | **`UNRESOLVED`** (r1, B1) |
 | `Attribute(Name("self"), x)` with `x ∈ W` | `COPY` |
 | `IfExp(test, body, orelse)` | `join(cls_E(body), cls_E(orelse))` |
-| `Name(n)` with `n ∈ E` (a parameter of the current method) | `E[n]` |
-| `Name(n)`, a local of the current method | `join` of `cls_E(v)` over **every** binding `n = v` in the body. Any other binding form of `n` (tuple unpack, `for`/`with`/`except` target, walrus, `AugAssign`, `global`/`nonlocal`) gives `UNRESOLVED` |
+| `Name(n)` with `n ∈ E` (a parameter of the current method) that is **never** bound in the body | `E[n]` |
+| `Name(n)` with `n ∈ E` that **is** bound somewhere in the body (r1, B2) | `join(E[n], cls_E(v₁), …, cls_E(vₖ))` over **every** binding `n = vᵢ` in the body. Any other binding form of `n` gives `UNRESOLVED` (see the binding-forms rule below) |
+| `Name(n)`, a local of the current method (not a parameter) | `join` of `cls_E(v)` over **every** binding `n = v` in the body. Any other binding form gives `UNRESOLVED` |
 | `Name(n)` bound nowhere in the method (a global or free name) | `UNRESOLVED` |
-| anything else (`Call`, `Subscript`, a non-`W` attribute, `BinOp`, …) | `HAS_TIP` (old P4 rule, unchanged) |
+| anything else: `Call`, `Subscript`, `BoolOp`, `Await`, `BinOp`, `UnaryOp`, a non-`W` attribute, `Lambda`, a comprehension, … | **`UNRESOLVED`** (r1, B1) |
 
 `join(x, y) = x` if `x == y`, and `UNRESOLVED` otherwise.
+
+**Binding forms (r1, B2 and m6).** Only a plain `n = v` (`ast.Assign` whose targets include `Name(n)`
+as a whole target) and an `AnnAssign` `n: T = v` count as a classifiable binding. **Every other form
+that binds `n` in the body gives `UNRESOLVED`**: tuple or list unpacking, a `for`/`async for` target,
+`with … as n`, `except … as n`, a walrus `n := …`, `AugAssign`, `global`/`nonlocal`, `del`, an
+`import n`/`from … import n`, a `match` capture, and any form not listed here. At 1.0, `_put`
+contains `from pylabrobot.resources.tip_rack import resting_location`, which binds
+`resting_location`, not `tip`. The rule is keyed on the name, so that import does not affect `tip`.
+
+> **Why B1 replaced "anything else → `HAS_TIP`" (r1).** r0 kept the old P4 row that turned any
+> non-`None` expression into `HAS_TIP`. That row is the source of the old unsoundness L1 exists to fix,
+> and it reproduces it on the old-pin tracker. There, `load_state` writes
+> `self._tip = cast(Optional[Tip], deserialize(state.get("tip")))` (old pin, pr159 worktree,
+> `pylabrobot/resources/tip_tracker.py` lines 141-142). That value is a `Call`, which r0's table
+> classed `HAS_TIP`. Any expression that may evaluate to `None` would likewise have made a later
+> `NoTipError` guard decide `SAFE` while the runtime raises. Examples are a call result, `state.get(…)`,
+> `x or None` and `holder.tip`. r0 got L1 right at 1.0 only because PLR happened to write an `IfExp`
+> with a `None` arm there.
+>
+> **Cost at 1.0: zero** *(reasoned; the defender traced it: 0 effects and 0 of the 216 lost)*. The only
+> `W` writes in the 1.0 tracker are these:
+>
+> - `_put`'s `self._carried = tip`, which is a parameter;
+> - `__init__`'s `= None`.
+>
+> `add_tip`'s `tip` is still `HAS_TIP` through its entry annotation `Tip`. **The positive tip value
+> now comes only from a non-optional annotated entry parameter.** No expression form is presumed to be
+> a tip.
 
 **Entry context.** When a method `m` is classified on its own (the top of a derivation, not a followed
 call), each parameter `p` of `m` gets:
@@ -345,10 +410,19 @@ callee is already on the stack contributes `UNRESOLVED`, where the anchor walk c
 The anchor walk threads one running state, so a revisit re-applies effects it has already seen. R-B
 re-binds arguments on each call, so a recursive call may carry a different binding. Skipping it could
 hide a write. **The depth is unbounded.** It terminates because the stack only grows, and it is
-bounded by the number of direct methods of `C`. The artifact publishes `effects_max_depth`, the
-largest stack depth at which any tip write or followed call was examined while classifying any method
-of `C`, with the method's own body counted as depth 0. The expected value at 1.0 is **2**
-(`add_tip` → `_hold` → `_put`).
+bounded by the number of direct methods of `C`.
+
+> **Normative (`effects_max_depth`, r1, M4).** The artifact publishes `effects_max_depth`. It is the
+> maximum, over all **entry methods**, of the length of the longest chain of followed self-calls that
+> **ends in a `W` write**. The chain length is the number of call edges; a write in the entry method's
+> own body has length 0.
+>
+> - **Entry methods** are the public direct methods of `C` (names not beginning with `_`) plus `__init__`.
+> - The value is a structural property of the call graph. It is independent of evaluation order and of
+>   any memoisation the implementation uses.
+> - A chain that passes through a cycle-guarded call ends at that call and does not count.
+>
+> The expected value at 1.0 is **2** (`add_tip` → `_hold` → `_put`, which writes `_carried`).
 
 > **The interaction with the recon's zero-argument rule, and why that rule is not adopted.** The recon
 > proposed following only self-calls that pass at least one argument. Its reason: following the
@@ -378,26 +452,53 @@ for tracker methods: both kinds is `UNRESOLVED`. The old wording made a method t
 branch and loads in another a no-op, which is the omission-as-no-op unsoundness L1 exists to close.
 The E4.3 rule (conflicting **bridges** on the receiver) is untouched, because it already widens.
 
-**The bridge (normative change to `compute_channel_bridge`).** During the closure walk, for each matched
-bridge `self.<channel_attr>[…].<m>`:
+**Amendment to increment 1 §10.4's E2 (r1, M2, decided as a rule change).** E2 takes a method's
+single depth-0 effect. Today's code applies it **even when a deep effect is also present**
+(`plr-sema/src/plr_sema/derive/receiver_state.py:1576-1582`), so a method with a direct `add_tip` and
+a nested `drop_tips` would get `HAS_TIP`. Restoring effects makes that case live. **Normative: when
+depth-0 and deep tracker-mutating effects coexist, `channel_effect` is `"widen"`.** This is recorded
+beside the §10.2.4 amendment and landed by T64's text edit. **Cost at 1.0: zero** *(the defender
+traced it)*.
 
+**Definition (r1, m8).** A **bridge** of a contract entry `K` is a `dropped_calls` entry, anywhere in
+`K`'s `delegates_to` closure, whose expression matches `self.<channel_attr>[<name>].<m>` for the
+receiver's own derived `channel_attr`. "`K` has a bridge" means at least one such match exists.
+
+**The bridge (normative change to `compute_channel_bridge`).** During the closure walk, for each
+bridge `self.<channel_attr>[…].<m>`, the following rules run **before** today's
+`if c_key not in index: continue` skip (`plr-sema/src/plr_sema/derive/receiver_state.py:1536-1538`),
+which r0 placed its rules behind (r1, M1):
+
+0. **(r1, M1)** If `m` is not a direct method of `C`, or `(tracker_module, "C.m")` is not in the
+   survey index, set `any_unresolved = true`. A bridge the survey cannot see is omission-as-no-op,
+   which L1 forbids. At the pin every 1.0 `TipTracker` method is in `training/verify/data/plr_preconditions.json`
+   *(challenger-verified; zero cost)*.
 1. If `m ∈ effects_unresolved`, set `any_unresolved = true`, at any depth.
 2. Else if `m` begins with `_`, also set `any_unresolved = true`. A private tracker method is never
    published, so a bridge to it cannot be justified from the artifact. AC-18.3 asserts that no bridged
    method at the pin is private.
-3. Else, the existing depth-0 / deep bookkeeping over `effects.get(m)` applies, unchanged.
+3. Else, the existing depth-0 / deep bookkeeping over `effects.get(m)` applies.
 
-`channel_effect` is then `"widen"` if `any_unresolved`. Otherwise the existing three-way outcome at
-`plr-sema/src/plr_sema/derive/receiver_state.py:1576-1582` applies unchanged. **Unresolved takes
-precedence over everything.** Check-side needs **no change**: `_apply_transfer` already widens the
+Only after rules 0–3 does the index skip apply, and only to the guard-attachment half of the loop:
+there are no guards to attach for a method the index lacks.
+
+`channel_effect` is then decided in this order:
+
+1. `"widen"` if `any_unresolved`;
+2. otherwise `"widen"` if depth-0 and deep effects coexist (M2);
+3. otherwise the existing three-way outcome.
+
+**Unresolved takes precedence over everything.** Check-side needs **no change**: `_apply_transfer` already widens the
 whole receiver on `"widen"` (`plr-sema/src/plr_sema/check/tipstate.py:568-596`), and V5 already
 treats `"widen"` as a departure (`plr-sema/src/plr_sema/check/volumestate.py:547-588`).
 
 **The `load_state` case, end to end.** `TipTracker.load_state` binds
 `pending_tip = Tip.deserialize(pending_tip_data) if pending_tip_data is not None else None` and then calls
 `self._put(pending_tip)` (`external/pylabrobot/pylabrobot/legacy/tip_tracker.py:201-211`). The local's
-one binding is an `IfExp` whose arms classify `HAS_TIP` (a `Call`) and `NO_TIP`, so the join gives
-`UNRESOLVED`. `_put` binds `tip ↦ UNRESOLVED` and writes `self._carried = tip`, which is also
+one binding is an `IfExp`. Under B1 its `Call` arm is itself `UNRESOLVED`, so the join is `UNRESOLVED`
+whatever the other arm says. The conclusion therefore does **not** depend on the `IfExp`'s `None` arm.
+On the old pin's shape, `self._tip = cast(…, deserialize(…))`, the write is a `Call` and is
+`UNRESOLVED` directly (AC-18.2(l), inline fixture). `_put` binds `tip ↦ UNRESOLVED` and writes `self._carried = tip`, which is also
 `UNRESOLVED`. So `load_state ∈ effects_unresolved`. `LiquidHandler.load_state` bridges
 `self.head[channel].load_state(tracker_state)` at depth 0
 (`external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:460-478`), so its
@@ -432,8 +533,11 @@ from the old pin.
 > getter's `holder is None` path. On a holder-full tracker the initial state is the holder's child, which
 > may be a tip. R-C(2) is the cheapest derived witness that the reset constructs trackers without the
 > optional collaborator that selects the other path. It is a signature heuristic, not a proof, and OI-5
-> says so. It fails **closed**: if PLR ever builds head trackers with a holder, `entry_reset` disappears
-> and every first-pickup guard returns to `UNKNOWN`.
+> says so. **It fails closed only while the holder-selecting parameter has a `None` default** (r1, m2).
+> If PLR builds head trackers with a holder passed to such a parameter, `entry_reset` disappears and
+> every first-pickup guard returns to `UNKNOWN`. If PLR instead made the holder a **required** parameter,
+> or gave it a non-`None` default, R-C(2) would pass **vacuously**, and nothing in R-C(2) would notice.
+> M3's tripwire (i) and AC-18.9's holder-full polarity check are the backstops for that case.
 
 **L7, atomicity.** R-A, R-B, the L1 mapping and R-C land in **one** task (T57) and **one** regeneration
 of `plr-sema/data/derived_contracts.json`. The hazard the recon named is real. With `entry_reset` but
@@ -448,8 +552,9 @@ entry.
 
 `effects` and `effects_unresolved` list only methods whose name does not begin with `_`. This covers
 `_hold`, `_put` and `__init__`. The recon asked for this so the published maps describe the tracker's
-public protocol. **The bridge does not depend on it.** Rule 2 of §18.4.4 widens on any bridge to a
-private method, so an unpublished classification can never silently drive a verdict.
+public protocol. **The bridge does not depend on it.** Rules 0 and 2 of §18.4.4 widen on any bridge
+to a private method, or to a method outside `C` or outside the index, so an unpublished
+classification can never silently drive a verdict.
 `constructor_state` stays internal, as it is today, and is visible only through `entry_reset`.
 
 ### 18.4.7 R-E — receiver roots (L2)
@@ -519,6 +624,15 @@ changed keys are shown.
 }
 ```
 
+**Expected `receiver_state["LiquidHandlerBackend"]` at 1.0 (r1, m7).** It has the same tracker class,
+so the tracker-keyed values are identical: `effect_backing_fields`, `effects`, `effects_unresolved` and
+`effects_max_depth` all equal `LiquidHandler`'s above. It has **no `entry_reset`**. Its only write of
+`self._head` is `set_heads`'s `self._head = head`
+(`external/pylabrobot/pylabrobot/legacy/liquid_handling/backends/backend.py:63-66`), which is not a
+fresh construction, so increment 3's conjunct 1 fails. No contract bridges `self._head[…]`, so no
+`LiquidHandlerBackend` contract gains a `channel_effect` *(reasoned from the 1.0 survey's
+`dropped_calls`: every bridge-shaped entry there is on `head`/`head96`)*.
+
 ### 18.4.9 The expected selection, per 1.0 `TipTracker` method *(reasoned from reading `legacy/tip_tracker.py`; T57 measures)*
 
 | method | tip writes / followed calls | result | published as |
@@ -526,7 +640,7 @@ changed keys are shown.
 | `add_tip` | `self._hold(tip)`, with `tip ↦ HAS_TIP` from the entry annotation `Tip`; `_hold` → `_put` → `_carried = tip`; `self.commit()` followed, `UNTOUCHED` | `HAS_TIP` | `effects` |
 | `remove_tip` | `self._hold(None)` → `NO_TIP`; `commit` `UNTOUCHED` | `NO_TIP` | `effects` |
 | `clear` | `self._put(None)` | `NO_TIP` | `effects` (new relative to the recon's list; not bridged from `LiquidHandler`) |
-| `load_state` | `self._put(pending_tip)`, local `IfExp` with a `None` arm | `UNRESOLVED` | `effects_unresolved` |
+| `load_state` | `self._put(pending_tip)`; the local is an `IfExp` whose `Call` arm is `UNRESOLVED` under B1 | `UNRESOLVED` | `effects_unresolved` |
 | `rollback` | `self._put(self._tip)`, so `COPY` | `UNTOUCHED` | neither |
 | `commit` | writes only `_before` (∉ `W`); `self._callback()` not a method | `UNTOUCHED` | neither |
 | `_hold`, `_put` | entry `tip: Optional["Tip"]`, so `UNRESOLVED` | `UNRESOLVED` | neither (R-D) |
@@ -604,10 +718,26 @@ for admitting it anyway has three parts:
 3. **Scope.** It quantifies over *every* rack on the deck, not the operation's racks, so it is strictly
    stronger than the guard needs. One lidded rack anywhere makes every `:338` decline.
 
-**This is open issue OI-1, the strongest objection available to the adversarial round.** L3 fixes the
-decision. What the round can still attack is whether §16.2.2's test should be amended in its own text
-(proposed wording: "…or, if it is a pre-execution state fact, only together with a frame condition that
-the analyzer checks over the program") or whether this field stays a named exception.
+> **Amendment to §16.2.2's text (r1, M10; landed by T60, asserted by AC-18.10).** Amending only §16.2.1
+> would leave §16.2.2's normative test contradicted by a field the record admits. The third
+> failure-mode paragraph gains one clause, verbatim:
+>
+> *"An observation that is a pre-execution state fact may coincide with the value a guard reads **only
+> together with a frame condition the analyzer itself checks over the program**, one that declines
+> whenever the program could have changed that state before the guard runs. `tip_racks_available` with
+> §18.5.4's `rack_topology_stable` is the one instance. Without a checked frame condition such a field
+> is the answer, not an observation, and is refused."*
+
+OI-1 is resolved by this amendment. The residual risk is that the frame condition is incomplete. That
+is A-RACK-STATIC's (§18.5.5), and it is tracked there.
+
+**One raising read nulls the whole record, and that is accepted (r1, m12).** `_available_for_tip_handling`
+is a **private** PLR property. If reading it raises on some rack, §16.2.1's one-capture-point rule makes
+the **entire** `plr_observation` `None`. That disables not only `:338` but every other observation
+rule for that row: `:321`, R-HEAD, R-CONST, `:375`/`:383` and R-ARM. This is accepted deliberately. A
+partial record is exactly what §16.2.1 forbids, and the failure direction is decline, which is sound.
+The cost is precision on that row only. AC-18.10's raising-read fixture asserts that the whole record
+is `None`.
 
 ### 18.5.3 The site rule (4th `D6_SITE_RULES` row)
 
@@ -617,7 +747,14 @@ the analyzer checks over the program") or whether this field stays a named excep
 > `("_check_tip_racks_available", "ValueError", "not rack._available_for_tip_handling")`
 >
 > Its function `_eval_tip_racks_available_site_rule(ctx) -> bool | None` returns **`False`** iff all
-> three conjuncts hold, and **`None`** (decline) otherwise. **It never returns `True`.**
+> three conjuncts hold **and the guard's `kind` is `"raise_guard"`** (r1, m5), and **`None`** (decline)
+> otherwise. **It never returns `True`.**
+>
+> The kind check matters because `evaluate_guard` negates the value for non-`raise_guard` kinds
+> (`plr-sema/src/plr_sema/check/predicate.py:1604-1605`), which would turn a `False` into a firing
+> `True`. The shipped `:338` record is `"raise_guard"`. The site-rule signature gains access to the
+> guard's `kind`, as a `_Ctx` field `guard_kind` set by `evaluate_guard`; the three existing D6 rules
+> ignore it.
 >
 > 1. `_observation(ctx.env).get("tip_racks_available") is True`;
 > 2. `_observation(ctx.env).get("deck_resources_verified") is True`, the existing aggregate the `:321`
@@ -631,14 +768,34 @@ site-rule `False` to `SAFE` without consulting depth or reachability
 `guard_reason`, which returns `guard_predicate_unparsed` as today. The rule can therefore add `SAFE`
 findings and cannot add a `WILL_FAIL`. The same holds for the three existing D6 rules (D-G6).
 
-**Conjunct 2 is present because the observation covers only on-deck racks.** A spot whose rack is off
-the deck would be checked by PLR but not seen by the harness. On the harness paths every resource name
-is grounded against the deck. `deck_resources_verified` is the existing proof that every declared
-deck-parented name is present. The rule does not read the guard's `resources` argument at all.
-`_check_tip_racks_available` is a module-level delegate, and M1 binds nothing for those (AC-16.3). So
-that argument cannot be bound, and the decision rests on the whole-deck quantification instead. OI-3
-records the residual case, a program that constructs its own off-deck rack. That case cannot reach
-this rule on any harness path, because `env` carries `obs:` members only when the harness built them.
+**Why the whole-deck observation covers the operation's racks: the harness-grounding premise (r1, M6,
+rewritten).** r0 said conjunct 2 "covers off-deck racks". **That claim is withdrawn.**
+`deck_resources_verified` is vacuously true for a row that declares no deck-parented resource, and it
+covers only resources parented directly to `Deck`. So it cannot carry that claim. The rule rests
+instead on how the harness builds every executed call:
+
+1. On every harness path (tier 1 and region oracle), a tip-spot argument reaches PLR only as an object
+   the verifier's planner **resolved from the built deck**. That deck is the same tree
+   `tip_racks_available` walks, so the parent rack of every spot an executed call passes is a rack
+   the observation quantified over.
+2. A call whose arguments cannot be resolved is never planned, and `calls_from_plr_kwargs` drops it
+   from the static stream (`plr-sema/eval/oracle_common.py:653-657`). **Premise, stated (m10):** an
+   un-planned call means the runtime raised at that index, so nothing after it is reached, and the
+   frame condition is never asked about a call that did not execute.
+3. `env` carries `obs:` members only when the harness built them, so a program analyzed outside the
+   harness gets no observation, and the rule declines.
+
+Conjunct 2 stays as **defence in depth**: cheap, and already true on the pickup population. It is no
+longer load-bearing for any off-deck argument.
+
+**No argument-reading conjunct is added.** Reading the guard's own tip-spot argument would need either
+a binding for `_check_tip_racks_available`'s `resources` parameter or a hand-typed parameter name.
+There is no binding: it is a module-level delegate, M1 binds nothing for those (AC-16.3), and every
+inlined `:338` record in the shipped 1.0 table carries `caller_args: null` and `caller_args_sites: []`
+(read this session in `plr-sema/data/derived_contracts.json`). A hand-typed name is forbidden by L0 and
+would be a second HM-26 unit. The residual case is a program that constructs its own off-deck
+`TipRack` and reaches this rule. It moves to OI-3, where a derived argument binding for module-level
+delegates is recorded as the follow-up that would close it.
 
 ### 18.5.4 Rack-topology stability — the move-family conjunct
 
@@ -654,6 +811,13 @@ maps both fields to `"TOP"`. That applies to `_format_param`, `aspirate`, `conso
 delegates. It does not mean the method moves resources, so it does not count. Using the owner's three
 literal names instead would have hand-typed method names in `check/` and missed a direct
 `pick_up_resource`/`drop_resource` call.
+
+**The derived family is pinned, not trusted (r1, M5).** AC-18.11(i) asserts that the family computed
+from the **shipped** `plr-sema/data/derived_contracts.json` equals exactly
+`{drop_resource, move_lid, move_plate, move_resource, pick_up_resource}`. A P6 regression that
+decays, say, `move_lid` to `"TOP"` would silently drop it from the family and make `:338` unsound, so
+it must fail CI instead. Treating `"TOP"` as not disturbing is **fail-open**, and A-RACK-STATIC's
+row (§18.5.5) now says so.
 
 **A `CALL` is topology-disturbing** iff any of the following holds:
 
@@ -679,9 +843,24 @@ sibling arm has a higher pc, and the two arms cannot both run in one pass. The v
 site rule as a new keyword `rack_topology_stable: bool | None = None` on `evaluate_guard` and a
 same-named `_Ctx` field (`plr-sema/src/plr_sema/check/predicate.py:244-289`), set from `process_call`
 through `_findings_for_call` and `_findings_for_guards`
-(`plr-sema/src/plr_sema/check/__init__.py:409-479`). Every other guard ignores it. The pre-scan is also
-exported as a pure function, `rack_topology_disturber_pcs(instructions, contracts, receiver_states)`, so
-the measurement script can publish how many `:338`-bearing operations it made decline (§18.9).
+(`plr-sema/src/plr_sema/check/__init__.py:409-479`). Every other guard ignores it.
+
+The pre-scan is exported as a pure function (r1, m3):
+
+```
+rack_topology_disturbers(instructions, contracts, receiver_states) -> dict[int, tuple[str | None, frozenset[str]]]
+```
+
+It maps each `CALL` pc to that call's `(receiver_type, classes)`, where `classes ⊆
+{"move_family", "receiver_type_none", "no_contract"}`. Clause (d) cannot be precomputed, because it is
+relative to the checked call's receiver type. The caller evaluates it by comparing receiver types.
+**The measurement script does NOT use this function** for its consistency term. M8 requires an
+independent scan (§18.9).
+
+**The static stream includes the prepended `setup` call.** `calls_from_plr_kwargs` puts
+`{"method": "setup", …}` first (`plr-sema/eval/oracle_common.py:649-651`). `LiquidHandler.setup` has no
+`anchor_net_effects` entry, and it has a contract and the same receiver type, so it is not a disturber
+(this closes OI-14).
 
 ### 18.5.5 The residual assumption, named: A-RACK-STATIC
 
@@ -693,7 +872,7 @@ explicitly.
 
 | id | assumption | why it is needed | what breaks if it is false |
 |---|---|---|---|
-| **A-RACK-STATIC** (added 260929, §18.5.5) | between the observation capture point and an operation, a `TipRack`'s lid and stack position change only through a topology-disturbing call (§18.5.4) | the `:338` site rule reads a pre-execution observation (§18.5.2) | a non-move-family `LiquidHandler` method that places a lid on, or stacks onto, a tip rack before a pickup gives `SAFE` at `:338` where PLR raises `ValueError`, which is unsound. **Checked on the corpus** by the unmodified tier-1 fence, and given one **hand-built** adversarial witness per disturber class in AC-18.11 |
+| **A-RACK-STATIC** (added 260929, §18.5.5; r1) | between the observation capture point and an operation, a `TipRack`'s lid and stack position change only through a topology-disturbing call (§18.5.4) | the `:338` site rule reads a pre-execution observation (§18.5.2) | a non-move-family `LiquidHandler` method that places a lid on, or stacks onto, a tip rack before a pickup gives `SAFE` at `:338` where PLR raises `ValueError`, which is unsound. **Known fail-open edge (r1, M5):** a method whose P6 net effect is `"TOP"` (P6 declined) is treated as non-disturbing. The shipped-table family pin (AC-18.11(i)) catches a known member decaying to `"TOP"`, but not an unknown method that moves resources while being `"TOP"`. **Checked on the corpus** by the unmodified tier-1 fence and by the in-run m3 lidded-rack mutant (§18.9), and given one **hand-built** adversarial witness per disturber class in AC-18.11 |
 
 This row is added to increment 1's §10.6.3 table, taking it from five rows to **six**.
 `test_ac_16_13_a_deck_object_assumption_table_has_five_rows`
@@ -734,12 +913,16 @@ only because its input `channel_effect` changes:
   modelled first and second bullets, so across ordinary protocols `tips_dirty` stays false and
   volume-family precision returns.
 - `load_state` and `update_head_state` (`widen`) are departures. With no resolvable channel set, they
-  set `tips_dirty` and call `reset_tip_cells`.
+  set `tips_dirty` and call `reset_tip_cells`. The channel set is unresolvable because
+  `channels_for_call` returns `None` when a call has neither the channel keyword nor a channel-default
+  parameter, and neither method has either (`plr-sema/src/plr_sema/check/tipstate.py:303-311`). r1
+  (m9) adds a check-level fixture to AC-18.5 that shows this rather than asserting it.
 
 The amendment's reset (`plr-sema/src/plr_sema/check/volumestate.py:204`, `reset_tip_cells`) stays on
 every path where it fires today. The two tests that pinned the 1.0 soundness hole,
-`test_ac_14_5_e_retip_dirty_tip_never_safe` and `test_tips_dirty_cost`, must stay green through the
-modelled path. That is part of AC-18.13.
+`test_ac_14_5_e_retip_dirty_tip_never_safe` (in `plr-sema/tests/test_check_graph.py`) and the file
+`plr-sema/tests/test_tips_dirty_cost.py`, must stay green through the modelled path. That is AC-18.5,
+and T62's gate runs both files (r1, M9).
 
 ---
 
@@ -762,7 +945,8 @@ modelled path. That is part of AC-18.13.
     contingency.**
   - **The zero-cost alternative is recorded and not taken:** argue that R-A/R-B extend P4, which has
     never been on a registry row. That argument is available, and OI-4 asks the owner to choose between
-    the two. Neither option adds a row or changes `BUDGET_CAP`.
+    the two. Neither option adds a row or changes `BUDGET_CAP`. **T57's default is the booking option
+    (HM-25 12 → 13) unless the owner says otherwise** (r1).
 - **R-E: zero cost.** It is a set difference over P1a/P2 outputs, with no pattern, no literal and no
   table.
 - **The move-family predicate of §18.5.4: zero cost.** It reads P6's already-published
@@ -799,24 +983,34 @@ of them lists methods by hand, except as the **generated** content of the baseli
    - The first generation reads the **old-pin** table. That is the last commit whose table stamp has
      `plr.hash` `dd79c4c89…`, and T59 records the rev it used in `source_rev`. It declares exactly one
      intended divergence, `"LiquidHandler.load_state": {"old": "HAS_TIP", "new": "widen", "reason": "L1 (§18.4.4)"}`.
-   - The test, over the current table: every baseline key must still exist (a **vanished key fails**)
-     and carry the same value, unless it is listed in `intended_divergences`, in which case it must
-     carry the declared `new`. The test prints `parity = matched/total`, and at 1.0 that is expected to
-     be `total − 1`.
+   - The test runs over the current table, with absence treated as a value (r1, M11):
+     - **Old keys.** Every baseline key must still exist (a **vanished key fails**) and carry the same
+       value, unless it is listed in `intended_divergences`, in which case it must carry the declared
+       `new`.
+     - **New keys.** A contract that carries a `channel_effect` at 1.0 but is **absent from the
+       baseline** fails, unless it is listed with `"old": "absent"`.
+     - **The counter.**
+       `baseline_divergences = |{k ∈ keys(baseline) ∪ keys(current) : value_baseline(k) ≠ value_current(k)}|`,
+       where a missing key has the value `absent`. The test asserts
+       `baseline_divergences == len(intended_divergences)`, and prints `parity = matched/total` over the
+       union of keys.
    - **Any other divergence fails, and T59 must adjudicate it in this document's implementation record.
-     It must not rebase it away.** The old pin's `TipTracker` source is not on disk in this checkout, so
-     whether another old-pin effect was "both kinds" is not knowable before T59 runs (OI-9).
+     It must not rebase it away.** The old-pin expectation is now derived rather than unknown (r1,
+     OI-9). The fixture itself comes from the old-pin **artifact** through `git show`, and it — not the
+     derivation below — is the authority.
 2. **Structural invariants** are checked on the regenerated table, for every receiver in
    `receiver_state`:
-   - (a) `effects` has at least one `HAS_TIP` and at least one `NO_TIP` value whenever the receiver has
-     a bridge;
+   - (a) `effects` has at least one `HAS_TIP` and at least one `NO_TIP` value whenever some contract
+     entry on the receiver has a bridge, in §18.4.4's sense (r1, m8);
    - (b) `entry_reset` present ⇒ (a) holds, which is L7's invariant;
    - (c) the gap ledger's `tip_state` families `tip_loading`, `tip_dropping` and `tip_requiring` are
      non-empty for `LiquidHandler`;
    - (d) the four new keys of §18.4.8 are present with the declared types;
    - (e) no method bridged from any receiver begins with `_`;
-   - (f) `effects_max_depth ≥ 1` whenever `effect_backing_fields` is non-empty, since a backing field
-     is only reachable through a helper at 1.0.
+   - (f) **moved to a pin-scoped fixture (r1, m8).** "`effects_max_depth ≥ 1` whenever
+     `effect_backing_fields` is non-empty" is true of 1.0's shape only. A future PLR that writes a
+     backing field directly at depth 0 would break it legitimately. It is therefore asserted only as
+     part of AC-18.2's pin values (`effects_max_depth == 2`), not as a structural invariant.
 3. **Behavioural oracle, against real PLR.** Drive a holder-less `pylabrobot.legacy.tip_tracker.TipTracker`
    through each public method `m` in `effects`:
    - Construct the tracker in the pre-state its own guard admits: `NO_TIP` for a `HAS_TIP` effect, and
@@ -827,6 +1021,14 @@ of them lists methods by hand, except as the **generated** content of the baseli
      `{"tip": None, "pending_tip": None}` gives `has_tip is False`, and a serialized tip gives
      `has_tip is True`. This is L1's witness that "unresolved" is genuinely state-dependent.
    - Assert that a fresh tracker has `has_tip is False`, which is R-C's `NO_TIP`.
+   - **Holder-full polarity (r1, m11).** Repeat the `effects` polarity checks on a tracker built with a
+     real `TipSpot` holder. Every method's `has_tip` after the call must equal the same derived
+     polarity. This closes OI-5's polarity half empirically: the holder path assigns and unassigns the
+     spot's child (`external/pylabrobot/pylabrobot/legacy/tip_tracker.py:88-96`).
+   - **Rollback after an uncommitted `add_tip` (r1, m11).** On a `NO_TIP` tracker, call
+     `add_tip(tip, commit=False)` then `rollback()`, and assert `has_tip is False`. This bounds OI-6: it
+     shows what COPY's identity reading abstracts away, namely that `rollback` does change `has_tip`
+     mid-transaction and is identity only at operation boundaries.
    - **Import-order caveat (from the recon, not re-verified):** import `pylabrobot.resources` before
      `pylabrobot.legacy.tip_tracker`, otherwise a circular import fails. The test does this explicitly
      and says why in a comment.
@@ -843,12 +1045,39 @@ of them lists methods by hand, except as the **generated** content of the baseli
 The sidecar is **written and committed before the run** (T63, first step). It is not created by this
 document. It pre-registers a new script, `plr-sema/eval/plr10_tip_effects_measure.py`. That script
 reuses `plr10_characterize.py`'s two-arm structure unchanged (`real` and `all_safe`, the same seam, the
-same `oracle_replay.main`), and adds four things:
+same `oracle_replay.main`), and adds these (r1 additions marked):
 
 1. a per-method read of `scope_verdict_by_method`;
-2. one `tip_mutants.py` run for the direction controls;
-3. reads of the regenerated contracts;
-4. the baseline-parity numbers from §18.8(1).
+2. one `tip_mutants.py` run for the direction controls: m1, m2, p3a, and the **new m3 lidded-rack
+   class** (r1, M7);
+3. one `volume_mutants.py` run for the v1 class (r1, M7);
+4. reads of the regenerated contracts;
+5. the baseline-parity numbers from §18.8(1), with the M11 counter;
+6. **an independent IR scan (r1, M8).** For every executed `pick_up_tips` operation, the script decides
+   from its own code whether a topology disturber precedes it. It uses the §18.5.4 definition, written
+   again in the script **without importing `rack_topology_disturbers`**. Loop-clause cases are counted
+   separately.
+
+**The m3 lidded-rack mutant (r1, M7; the one in-run falsifier of a wrong `:338` SAFE).** This is a new
+mutator, `make_m3_lid_on_tip_rack`, in `plr-sema/eval/tip_mutants.py`, with expected exception
+`ValueError`. For each `pick_up_tips` base it produces a variant whose pickup rack carries a lid when
+the pickup executes, and it has two constructions:
+
+- **m3a, primary.** The rack is lidded in the row's deck layout, so the observation is `false` and the
+  site rule must decline.
+- **m3b.** A `move_lid` onto the pickup rack is inserted before the pickup, so the observation is `true`
+  and the topology conjunct must decline. m3b is built only where PLR 1.0 accepts that move. Whether it
+  does is OI-17.
+
+Bases that cannot be constructed count in `n_construction_skipped`. The pre-registered hard terms are
+`static_338_safe_on_m3 = 0` and `runtime_raised_m3 > 0`. The floor is `m3_attempted >= 100`, set
+against 223 `pick_up_tips` bases.
+
+**Mutant floors (r1, M7).** At dd79c4c89 increment 7 recorded m1 199/199, m2 289/289 and v1 67/67
+(AC-16.10). Recovery should reach achieved == attempted in each class. The pre-registered floors are
+`m1_attempted >= 150`, `m2_attempted >= 200` and `v1_attempted >= 50`, each with achieved ==
+attempted. These floors are margins below the old-pin denominators, not derived from anything. p3a
+keeps `tip_mutants`'s own floor (`floor_met`).
 
 The inputs are the **same four paths the `fd63e9cd` run used**, read off its record, not retyped from
 memory:
@@ -872,27 +1101,36 @@ never verified by exit code or console text.
 # No number from the #5622 recon's exploratory scripts is evidence for or against this hypothesis.
 
 [experiment]
-hypothesis = "With spec §18's derived rules (R-A..R-E, L1's effects_unresolved->widen) and the fourth D6 site rule at :338, the analyzer at PLR 1.0.0b1 (a) stays sound and total on the frozen 343-row tier-1 benchmark with a live negative control; (b) fires tip-state WILL_FAIL in the direction the simulator raised in both tip mutant classes with zero unsound mutant rows; (c) recovers pick_up_tips scope-SAFE from 0 to at least 205 of the 216 it had at dd79c4c89, and no other method reaches scope-SAFE; (d) publishes LiquidHandler.load_state channel_effect = 'widen' with exactly one baseline divergence (10/11-style parity by design); and (e) changes no benchmark counter through load_state, which the tier-1 vocabulary never calls."
+hypothesis = "With spec §18's derived rules (R-A..R-E, L1's effects_unresolved->widen) and the fourth D6 site rule at :338, the analyzer at PLR 1.0.0b1 (a) stays sound and total on the frozen 343-row tier-1 benchmark with a live negative control; (b) fires tip-state WILL_FAIL in the direction the simulator raised in m1/m2 at achieved == attempted above pre-registered floors, never emits a WILL_FAIL where the simulator ran clean, keeps the p3a floor and the v1 volume direction control, and never calls :338 SAFE on an m3 lidded-rack mutant that raises; (c) recovers pick_up_tips scope-SAFE from 0 to at least 205 of the 216 it had at dd79c4c89, and no other method reaches scope-SAFE; (d) publishes LiquidHandler.load_state channel_effect = 'widen' with exactly one baseline divergence, which is the only intended one; (e) changes no benchmark counter through load_state, which the tier-1 vocabulary never calls; and (f) every topology decline at :338 is accounted for by an independent IR scan."
 stage_name = "tip_effect_increment"
 novel = false
 
+# HARD block H (every outcome but fail requires all of it):
+#   control_fires = true AND real_unsound = 0 AND real_unsound_scoped = 0 AND real_totality_violations = 0
+#   AND real_check_graph_exceptions = 0 AND real_rows_setup_error = 0 AND real_rows_executed = 343
+#   AND mutants_unsound = 0 AND mutants_criterion_ii = 0 AND static_338_safe_on_m3 = 0 AND runtime_raised_m3 > 0
+#   AND m1_will_fail_fired = true AND m2_will_fail_fired = true AND load_state_channel_effect = 'widen'
+#   AND baseline_divergences = baseline_intended_divergences AND n_ops_load_state = 0
+#   AND n_338_declined_topology = n_pickups_with_preceding_disturber_indep AND real_pick_up_tips_scope_safe >= 123
+# (H is written out in full in each condition below; the comment is for the reader only.)
+
 [outcomes.pass]
-condition = "control_fires = true AND real_unsound = 0 AND real_unsound_scoped = 0 AND real_totality_violations = 0 AND real_check_graph_exceptions = 0 AND real_rows_setup_error = 0 AND real_rows_executed = 343 AND mutants_unsound = 0 AND m1_will_fail_fired = true AND m2_will_fail_fired = true AND load_state_channel_effect = 'widen' AND baseline_divergences = 1 AND n_ops_load_state = 0 AND real_pick_up_tips_scope_safe >= 205 AND real_pick_up_tips_scope_safe <= 216 AND real_n_operations_scope_verdict_safe = real_pick_up_tips_scope_safe"
+condition = "control_fires = true AND real_unsound = 0 AND real_unsound_scoped = 0 AND real_totality_violations = 0 AND real_check_graph_exceptions = 0 AND real_rows_setup_error = 0 AND real_rows_executed = 343 AND mutants_unsound = 0 AND mutants_criterion_ii = 0 AND static_338_safe_on_m3 = 0 AND runtime_raised_m3 > 0 AND m1_will_fail_fired = true AND m2_will_fail_fired = true AND load_state_channel_effect = 'widen' AND baseline_divergences = baseline_intended_divergences AND n_ops_load_state = 0 AND n_338_declined_topology = n_pickups_with_preceding_disturber_indep AND real_pick_up_tips_scope_safe >= 123 AND mutants_gate_passed = true AND p3a_floor_met = true AND m1_achieved = m1_attempted AND m1_attempted >= 150 AND m2_achieved = m2_attempted AND m2_attempted >= 200 AND v1_gate_passed = true AND v1_achieved = v1_attempted AND v1_attempted >= 50 AND m3_attempted >= 100 AND baseline_intended_divergences = 1 AND n_338_declined_topology_loop = 0 AND real_pick_up_tips_scope_safe >= 205 AND real_pick_up_tips_scope_safe <= 216 AND real_n_operations_scope_verdict_safe = real_pick_up_tips_scope_safe"
 is_residual = false
-decision = "Precision at PLR 1.0 is recovered to within 5% of the dd79c4c89 headline with soundness intact and the instrument live. Close #5622's measurement; publish the per-conjunct decline counts beside the result."
-reasoning = "The 216 at 1.0 are blocked by exactly {:338, :758, tip_tracker:153}; R-A..R-C restore the last two by the old pin's own mechanism, the site rule decides the first. The only decline paths the old pin did not have are an observed lidded/stacked rack and a preceding topology disturber; a loss of at most 11 (5%) is what 'rare in a benchmark of 1.6 operations per row' allows."
+decision = "Precision at PLR 1.0 is recovered to within 5% of the dd79c4c89 headline with soundness intact, every direction control at floor, and the instrument live. Close #5622's measurement; publish the per-conjunct decline counts beside the result."
+reasoning = "The 216 at 1.0 are blocked by exactly {:338, :758, tip_tracker:153}; R-A..R-C restore the last two by the old pin's own mechanism, the site rule decides the first. The only decline paths the old pin did not have are an observed lidded/stacked rack and a preceding topology disturber; a loss of at most 11 (5%) is a judgement, stated as one."
 
 [outcomes.marginal]
-condition = "control_fires = true AND real_unsound = 0 AND real_unsound_scoped = 0 AND real_totality_violations = 0 AND real_check_graph_exceptions = 0 AND real_rows_setup_error = 0 AND real_rows_executed = 343 AND mutants_unsound = 0 AND m1_will_fail_fired = true AND m2_will_fail_fired = true AND load_state_channel_effect = 'widen' AND baseline_divergences = 1 AND n_ops_load_state = 0 AND real_pick_up_tips_scope_safe >= 123 AND (real_pick_up_tips_scope_safe < 205 OR real_pick_up_tips_scope_safe > 216 OR real_n_operations_scope_verdict_safe != real_pick_up_tips_scope_safe)"
+condition = "control_fires = true AND real_unsound = 0 AND real_unsound_scoped = 0 AND real_totality_violations = 0 AND real_check_graph_exceptions = 0 AND real_rows_setup_error = 0 AND real_rows_executed = 343 AND mutants_unsound = 0 AND mutants_criterion_ii = 0 AND static_338_safe_on_m3 = 0 AND runtime_raised_m3 > 0 AND m1_will_fail_fired = true AND m2_will_fail_fired = true AND load_state_channel_effect = 'widen' AND baseline_divergences = baseline_intended_divergences AND n_ops_load_state = 0 AND n_338_declined_topology = n_pickups_with_preceding_disturber_indep AND real_pick_up_tips_scope_safe >= 123 AND (mutants_gate_passed = false OR p3a_floor_met = false OR m1_achieved != m1_attempted OR m1_attempted < 150 OR m2_achieved != m2_attempted OR m2_attempted < 200 OR v1_gate_passed = false OR v1_achieved != v1_attempted OR v1_attempted < 50 OR m3_attempted < 100 OR baseline_intended_divergences != 1 OR n_338_declined_topology_loop != 0 OR real_pick_up_tips_scope_safe < 205 OR real_pick_up_tips_scope_safe > 216 OR real_n_operations_scope_verdict_safe != real_pick_up_tips_scope_safe)"
 is_residual = false
-decision = "Sound and the mechanism works, but either the new conjuncts cost more than 5% of the old headline or an unpredicted SAFE population appeared. Publish n_338_declined_observation / n_338_declined_topology / n_338_declined_deck; attribute every unpredicted SAFE to a named rule; decide (owner) whether a finer topology conjunct is worth an increment. No precision claim beyond the measured number."
-reasoning = "123 = 216 - 93: even if every one of the benchmark's 93 move-family operations preceded a distinct pick_up_tips, at least 123 would survive; below that the losses cannot be the conjunct alone."
+decision = "Sound, instrument live, topology declines fully accounted for, but a floor or prediction missed: a direction control under its floor, a second intended baseline divergence, a loop-clause decline, recovery below 205, or an unpredicted SAFE population. Publish n_338_declined_observation / n_338_declined_topology / n_338_declined_topology_loop / n_338_declined_deck and the per-class mutant counts; attribute every miss to a named rule; the owner decides whether a finer conjunct or a harness fix is worth an increment. No precision claim beyond the measured number."
+reasoning = "Every soundness and accounting term held, so what missed is precision or coverage, not correctness."
 
 [outcomes.fail]
-condition = "control_fires = false OR real_unsound > 0 OR real_unsound_scoped > 0 OR real_totality_violations > 0 OR real_check_graph_exceptions > 0 OR real_rows_setup_error > 0 OR real_rows_executed != 343 OR mutants_unsound > 0 OR m1_will_fail_fired = false OR m2_will_fail_fired = false OR load_state_channel_effect != 'widen' OR baseline_divergences != 1 OR n_ops_load_state != 0 OR real_pick_up_tips_scope_safe < 123"
+condition = "control_fires = false OR real_unsound > 0 OR real_unsound_scoped > 0 OR real_totality_violations > 0 OR real_check_graph_exceptions > 0 OR real_rows_setup_error > 0 OR real_rows_executed != 343 OR mutants_unsound > 0 OR mutants_criterion_ii > 0 OR static_338_safe_on_m3 > 0 OR runtime_raised_m3 = 0 OR m1_will_fail_fired = false OR m2_will_fail_fired = false OR load_state_channel_effect != 'widen' OR baseline_divergences != baseline_intended_divergences OR n_ops_load_state != 0 OR n_338_declined_topology != n_pickups_with_preceding_disturber_indep OR real_pick_up_tips_scope_safe < 123"
 is_residual = true
-decision = "Stop. A soundness counter moved, the instrument is dead, the denominator changed (the observation-field change touched the harness's runtime path), a derivation prediction failed, or recovery is too small to be explained by the conjuncts alone. Triage before any claim; soundness outranks precision."
-reasoning = "Every prior increment held 0 unsound on this 343-row denominator; a failed direction control or a wrong load_state value means the derivation is not the one specified."
+decision = "Stop and attribute the cause through the published counters before any claim. Soundness/instrument: a soundness counter, criterion (ii), a wrong :338 SAFE on m3, a dead negative control, or a changed denominator (the observation-field change touched the harness runtime path). Derivation: a wrong load_state value or an unintended baseline divergence. Accounting: topology declines disagree with the independent scan. Precision below 123: read n_338_declined_topology vs n_338_declined_observation vs n_338_declined_deck vs non-:338 residual sites to say which mechanism lost the operations, and do not infer 'mechanism broken' until that breakdown says so."
+reasoning = "Every prior increment held 0 unsound on this 343-row denominator; a failed direction control, a wrong load_state value, or an unaccounted decline means the implementation is not the one specified."
 
 [result_schema]
 control_fires = "bool"
@@ -912,18 +1150,50 @@ real_n_tip_racks_attempted = "int"
 n_338_declined_observation = "int"
 n_338_declined_deck = "int"
 n_338_declined_topology = "int"
+n_338_declined_topology_loop = "int"
+n_pickups_with_preceding_disturber_indep = "int"
 all_safe_unsound = "int"
 all_safe_operations_executed = "int"
 runtime_raised_ops_all_safe_arm = "int"
 m1_will_fail_fired = "bool"
 m2_will_fail_fired = "bool"
+m1_attempted = "int"
+m1_achieved = "int"
+m2_attempted = "int"
+m2_achieved = "int"
+p3a_floor_met = "bool"
+mutants_gate_passed = "bool"
 mutants_unsound = "int"
+mutants_criterion_ii = "int"
+m3_attempted = "int"
+runtime_raised_m3 = "int"
+static_338_safe_on_m3 = "int"
+v1_attempted = "int"
+v1_achieved = "int"
+v1_gate_passed = "bool"
 load_state_channel_effect = "str"
 baseline_divergences = "int"
+baseline_intended_divergences = "int"
 baseline_parity_matched = "int"
 baseline_parity_total = "int"
 n_ops_load_state = "int"
 ```
+
+**Field definitions (r1).**
+
+- `mX_attempted` is `n_ran` for the class.
+- `mX_achieved` is `static_verdict_at_raising_index.will_fail`, the same shape p3a's floor already uses.
+- `mutants_unsound` sums the lengths of every class's `unsound_safe_where_simulator_raised` list, across
+  the `tip_mutants` classes and v1.
+- `mutants_criterion_ii` sums the lengths of every class's
+  `unsound_will_fail_where_simulator_ran_clean` list.
+- `mutants_gate_passed` is `tip_mutants`'s own `gate_passed`, and `v1_gate_passed` is
+  `volume_mutants`'s.
+- `static_338_safe_on_m3` counts m3 rows whose static finding at `:338` is `SAFE`.
+- `runtime_raised_m3` counts m3 rows that raised `ValueError` at the pickup index.
+- `n_pickups_with_preceding_disturber_indep` is the independent scan's count. The script re-implements
+  §18.5.4 in its own code and does not import `rack_topology_disturbers`.
+- `n_338_declined_topology_loop` counts the declines due to clause (ii) alone. The prediction is 0.
 
 **How the thresholds were chosen.**
 
@@ -933,11 +1203,15 @@ n_ops_load_state = "int"
   rack *(reasoned from its docstring; lid/stack placement not audited)*. The second is a topology
   disturber preceding a pickup. A 5% allowance (11 operations) is a judgement. It is stated as one
   here and is not derived.
-- **123 (MARGINAL/FAIL boundary).** This one is derived, with one caveat. The benchmark has 93
-  move-family operations (31 each for `move_lid`, `move_plate` and `move_resource`, from
-  `real.oracle_replay.json`). If each preceded a distinct `pick_up_tips`, 216 − 93 = 123 would remain.
-  **Caveat:** one move could precede two pickups in the same row, so this is not a strict bound. A
-  result below it points at a broken mechanism before it points at the conjunct.
+- **123 (MARGINAL/FAIL boundary), reframed in r1 (M8).** r0 called 123 "derived". It is only an
+  anchor. The arithmetic is 216 − 93, where 93 is the benchmark's move-family operations (31 each for
+  `move_lid`, `move_plate` and `move_resource`, from `real.oracle_replay.json`). But the arithmetic
+  ignores disturber classes (b), (c) and (d), the loop clause, and `tip_racks_available = false`.
+  The ten methods account for 544 of the 548 executed operations, so 4 operations lie outside them.
+  Two measurements now make a result below 123 interpretable instead of presumptively "mechanism
+  broken":
+  - **the hard consistency term** `n_338_declined_topology = n_pickups_with_preceding_disturber_indep`;
+  - **the FAIL decision's attribution** through the decline counters.
 - **≤ 216, and total == `pick_up_tips`.** These are predictions. The 7 `:720` operations cannot reach
   scope-`SAFE`, and every other method keeps at least one undecidable site in its 1.0 residual
   (`drop_tips` keeps `:882`/`:891`, per `real.oracle_replay.json`). A violation of either routes to
@@ -947,8 +1221,9 @@ n_ops_load_state = "int"
 
 - (i) `load_state_channel_effect == "widen"` in the regenerated table, a deterministic artifact property
   and a hard term;
-- (ii) `baseline_divergences == 1`, where the one divergence is `load_state` HAS_TIP → widen, i.e.
-  parity is total − 1;
+- (ii) `baseline_divergences == baseline_intended_divergences == 1` (M11's counter over the key union,
+  absence counted as a value). The one divergence is `load_state` HAS_TIP → widen, derived from the
+  old-pin source in OI-9;
 - (iii) `n_ops_load_state == 0`, which means the benchmark cannot observe the change, so any movement
   in a benchmark counter must be attributed to something else.
 
@@ -973,8 +1248,19 @@ Each criterion names its fixture or artifact field and states what a stub would 
     - (c) a property chain `_tip → _pending_tip → _carried` aliases `_carried` exactly once;
     - (d) a getter returning `holder.tip` contributes nothing;
     - (e) a two-property cycle terminates.
+    - (f) (r1, m16) a getter `return self.helper` where `helper` is a direct method of `C` does **not**
+      alias `helper`.
   - (b) is the stub-defeating half: an implementation that aliases every `self.X` anywhere in the
     getter passes (a), (c) and (d) and fails (b).
+  - **The M3 tripwires (r1), asserted over the pin with a synthetic counter-class for each:**
+    - (i) the self attributes read on the bool-view getter's non-alias paths are written by no method
+      other than `__init__` (at the pin that set is `{_holder_ref}`);
+    - (ii) no getter of `C` writes a self attribute.
+  - Synthetic tripwire controls:
+    - a class whose `rebind(self, h)` writes `self._holder_ref` makes (i) fail;
+    - a getter that assigns `self._cache` makes (ii) fail;
+    - an assignment `self._tip = t` to a setter-bearing `F ∈ S` classifies `UNRESOLVED`, not
+      `HAS_TIP`.
 - **AC-18.2 (R-B, helper following, and its synthetic controls).**
   - The regenerated artifact has `effects == {"add_tip": "HAS_TIP", "clear": "NO_TIP", "remove_tip": "NO_TIP"}`,
     `effects_unresolved == ["load_state"]` and `effects_max_depth == 2`. **If any value differs, T57
@@ -997,9 +1283,26 @@ Each criterion names its fixture or artifact field and states what a stub would 
     - (j) **callable attribute:** `self._callback()` is not followed and contributes nothing;
     - (k) **inherited helper:** a helper defined only on a base class is not followed; separately, a
       whole-surface check asserts that no class in `TipTracker`'s PLR base closure assigns any name in
-      `W`.
-  - (c), (d) and (e) together are the stub-defeating core: no single simplification of the fold passes
-    all three.
+      `W`;
+    - (l) **(r1, B1) the old-pin `load_state` shape, as an INLINE synthetic fixture.**
+      `def load_state(self, state): self._tip = cast(Optional[Tip], deserialize(state.get("tip")))`,
+      with `_tip` a plain field, gives `load_state ∈ effects_unresolved`. The fixture is written into
+      the test source. No test reads a sibling worktree, because CI cannot see one;
+    - (m) **(r1, B1) value forms:** writes of `self._carried = f(x)`, `= state["t"]`, `= x or None`,
+      `= await g()`, `= self.backend.tip` and `= "a"` each give `UNRESOLVED`;
+    - (n) **(r1, B2) rebound parameter, the negative control:**
+      `def _put(self, tip): if c: tip = None; self._carried = tip`, called as `self._put(t)` with
+      `t ↦ HAS_TIP`, gives `UNRESOLVED`, not `HAS_TIP`. A companion with `for tip in xs:` also gives
+      `UNRESOLVED`;
+    - (o) **(r1, m6) catch-alls:**
+      - a `staticmethod`/`classmethod` callee gives `UNRESOLVED`;
+      - `import tip` in the callee body makes `tip` `UNRESOLVED`;
+      - `self._put(t, u)` against `def _put(self, tip)` (too many positionals), and `self._put(x=t)`
+        (unknown keyword), each give `UNRESOLVED` for every parameter;
+    - (p) **(r1, M4) order independence:** classifying the methods of a synthetic tracker in two
+      different orders, with and without memoisation, yields the same `effects_max_depth`.
+  - (c), (d), (e), (l) and (n) together are the stub-defeating core: no single simplification of the
+    classifier passes all five.
 - **AC-18.3 (L1's widen mapping in the bridge).**
   - The regenerated table has `LiquidHandler.load_state.channel_effect == "widen"`,
     `LiquidHandler.pick_up_tips.channel_effect == "HAS_TIP"` and
@@ -1009,7 +1312,12 @@ Each criterion names its fixture or artifact field and states what a stub would 
     - an unresolved method bridged at depth 1 gives `"widen"`;
     - a bridge to an `_`-prefixed method gives `"widen"`;
     - one depth-0 resolved bridge plus one unresolved bridge gives `"widen"`, so unresolved takes
-      precedence.
+      precedence;
+    - **(r1, M1)** a bridge to a method absent from the survey index gives `"widen"`, and so does a
+      bridge to a name that is not a direct method of `C`. Both run **before** the index skip, so an
+      implementation that leaves rules 0–3 behind `if c_key not in index: continue` fails;
+    - **(r1, M2)** a depth-0 `HAS_TIP` bridge together with a depth-1 `NO_TIP` bridge gives `"widen"`,
+      not `HAS_TIP`.
   - A check-level fixture `pick_up_tips(use_channels=[0])` → `load_state(...)` → `pick_up_tips(use_channels=[0])`
     yields **zero** `WILL_FAIL` findings on the third operation. Under the old `HAS_TIP` mapping that
     third operation would get a `WILL_FAIL`, so this is the old unsoundness, asserted gone.
@@ -1028,11 +1336,19 @@ Each criterion names its fixture or artifact field and states what a stub would 
       `TipTracker.get_tip`.
     - These three reinstate increment 1's AC-10.1/10.2/10.3 at the new pin. The third needs the
       bridge, the effects and the channel set all to be right.
-- **AC-18.5 (V5 non-regression through the modelled path).** `test_ac_14_5_e_retip_dirty_tip_never_safe`
-  and `test_tips_dirty_cost` pass with `pick_up_tips`/`drop_tips` now carrying modelled effects. A new
-  fixture, pickup → aspirate 50 → dispense 50 → drop → pickup → aspirate 50 → dispense 50, shows the
-  second pickup's cell at `[0,0]`. That means `tips_dirty` stays false and the second dispense decides.
-  This is the precision half: the amendment must not have been what made the retip tests pass.
+- **AC-18.5 (V5 non-regression through the modelled path).**
+  - `test_ac_14_5_e_retip_dirty_tip_never_safe` (in `plr-sema/tests/test_check_graph.py`) and every
+    test in the file `plr-sema/tests/test_tips_dirty_cost.py` pass, with `pick_up_tips`/`drop_tips`
+    now carrying modelled effects.
+  - A new fixture, pickup → aspirate 50 → dispense 50 → drop → pickup → aspirate 50 → dispense 50,
+    shows the second pickup's cell at `[0,0]`. That means `tips_dirty` stays false and the second
+    dispense decides. This is the precision half: the amendment must not have been what made the retip
+    tests pass.
+  - **(r1, m9)** A check-level fixture covers the channel-set reset: pickup → aspirate 50 →
+    `update_head_state({0: None})` → pickup → dispense 50. It shows that `update_head_state` resolves no
+    channel set, sets `tips_dirty`, resets every tip cell to `TOP`, and widens the tip receiver, so the
+    final dispense is not `SAFE`. A companion with `load_state(...)` in place of `update_head_state`
+    asserts the same.
 - **AC-18.6 (R-E, receiver roots).**
   - The regenerated table has receivers set-equal to `{"LiquidHandler", "LiquidHandlerBackend"}`. The
     test pins the **set**, not a count.
@@ -1043,17 +1359,22 @@ Each criterion names its fixture or artifact field and states what a stub would 
   - `plr-sema/scripts/gen_channel_effect_baseline.py` and `plr-sema/tests/fixtures/channel_effect_baseline.json`
     exist, with `source_rev` naming the old-pin commit.
   - The drift test passes with exactly one intended divergence, `LiquidHandler.load_state`, and prints
-    `parity`.
+    `parity`. The test asserts `baseline_divergences == len(intended_divergences)`, counted over the
+    key union with absence as a value (r1, M11).
   - Negative self-tests:
     - deleting a baseline key from a copy of the current table fails the test (**vanished key**);
     - flipping `drop_tips` to `HAS_TIP` in a copy fails it;
+    - **(r1, M11)** adding a `channel_effect` to a contract absent from the baseline fails it, unless
+      the key is listed with `"old": "absent"`;
     - `--rebase` without an explicit `--intended-divergences` exits non-zero.
-- **AC-18.8 (structural invariants).** §18.8(2)(a)–(f) are each asserted over the regenerated table, and
-  each has a synthetic counter-table that must fail it.
+- **AC-18.8 (structural invariants).** §18.8(2)(a)–(e) are each asserted over the regenerated table, and
+  each has a synthetic counter-table that must fail it. (f) moved to AC-18.2's pin values in r1 (m8).
 - **AC-18.9 (behavioural oracle).** §18.8(3), run against real PLR 1.0.0b1:
   - every `effects` polarity is matched by `has_tip` after the call;
   - `load_state` exhibits both outcomes;
   - a fresh tracker has no tip;
+  - **(r1, m11)** the holder-full tracker matches every `effects` polarity;
+  - **(r1, m11)** an uncommitted `add_tip` followed by `rollback()` leaves `has_tip is False`;
   - the import order is explicit;
   - the test is not skipped when PLR imports.
 - **AC-18.10 (the sixth observation field).**
@@ -1069,14 +1390,18 @@ Each criterion names its fixture or artifact field and states what a stub would 
   - The empty-`env` cache key is unchanged.
   - §16.2.1's closed-record text in `.praxia/docs/specs/260909_plr-sema-observation-increment.md`
     carries the one-field amendment and the narrowed lid-topology exception.
+  - **(r1, M10)** §16.2.2's third failure-mode paragraph in the same file carries §18.5.2's
+    frame-condition clause verbatim. A test asserts that the clause text is present.
 - **AC-18.11 (the `:338` site rule, the topology conjunct, and A-RACK-STATIC).**
   - (a) The key is present in `D6_SITE_RULES` and matches exactly one site
     (`test_d6_site_rule_keys_each_match_exactly_one_site`, count 4).
-  - (b) **Never `True`:** exhaustive over the 2×2×3 product of conjunct values, where
-    `rack_topology_stable ∈ {True, False, None}`.
+  - (b) **Never `True`:** exhaustive over the **3×3×3** product (r1, m4), where each observation field
+    is `true`, `false` or absent and `rack_topology_stable ∈ {True, False, None}`. Separately, the
+    rule returns `None` for any guard whose `kind` is not `"raise_guard"` (r1, m5).
   - (c) `SAFE` at `:338` on a `setup → pick_up_tips` graph with `env` carrying
     `obs:tip_racks_available=true` and `obs:deck_resources_verified=true`.
-  - (d) One fixture per decline path, each giving `UNKNOWN`/`guard_predicate_unparsed`:
+  - (d) One fixture per decline path, each **run against the shipped `plr-sema/data/derived_contracts.json`**
+    (r1, M5) and each giving `UNKNOWN`/`guard_predicate_unparsed`:
     - `tip_racks_available=false`;
     - the field absent;
     - `deck_resources_verified=false`;
@@ -1092,6 +1417,9 @@ Each criterion names its fixture or artifact field and states what a stub would 
     static verdict at `:338` is not `SAFE`, and the tier-1 fence counts 0 unsound.
   - (g) `n_tip_racks_decided` is published, with `attempted` and `predicted_target`.
   - (h) A-RACK-STATIC is in increment 1's §10.6.3 table, and the table test asserts **six** rows.
+  - (i) **(r1, M5) The family pin.** The move family computed from the **shipped**
+    `plr-sema/data/derived_contracts.json` equals exactly
+    `{drop_resource, move_lid, move_plate, move_resource, pick_up_resource}`.
 - **AC-18.12 (registry).**
   - HM-26 has `declared == 4` and live 4, with `what`/`breaks_when` naming the fourth rule.
   - HM-25 has `declared == 13` and live 13, and its thirteenth probe exercises a synthetic three-hop
@@ -1101,14 +1429,16 @@ Each criterion names its fixture or artifact field and states what a stub would 
 - **AC-18.13 (goldens re-taken once, and the gate-1 failures closed).** This runs **after** T57, T58 and
   T61 have all landed, and only then.
   - `test_check_graph_report_unchanged_for_shipped_fixture` (`plr-sema/tests/test_ir.py`) is re-taken
-    at **44** findings, with the `by_reason` counter **measured**, not predicted, and the comment
-    recording why it moved: the two `:338` findings, whose reason stays `guard_predicate_unparsed`
-    without an observation.
+    with the finding count and the `by_reason` counter **measured**, not predicted. The predicted count
+    is **44**. The comment records why it moved: the two `:338` findings, whose reason stays
+    `guard_predicate_unparsed` without an observation. **If the measured count is not 44 (r1, m13),
+    T62 records the measured value and its cause in §18.16 and does not edit anything to match the
+    prediction.**
   - `test_ac_10_4_shipped_fixture_unchanged` compares non-volume findings **excluding** findings sited
     at `_check_tip_racks_available` against the pre-increment 38, and asserts exactly 2 such findings.
   - Every test the gate-1 report attributes to RC-1 or RC-2 passes, with no `xfail`/`skip` added:
-    the 15 in `test_tip_typestate.py`, the 2 in the tier-2 test file, and the `test_oracle_replay.py`
-    clean-pickup gate test. They are red at `a176bac7` per that report and were not re-run for this
+    the 15 in `test_tip_typestate.py`, the 2 in `plr-sema/tests/test_tier2.py`, and the
+    `test_oracle_replay.py` clean-pickup gate test. They are red at `a176bac7` per that report and were not re-run for this
     spec.
   - AC-10.9's AST literal scan is green.
 - **AC-18.14 (the measurement).**
@@ -1125,8 +1455,20 @@ Each criterion names its fixture or artifact field and states what a stub would 
     live-spec tests.
   - `uv run pytest plr-sema/tests/test_spec_lint.py -q` is run, with zero failing citation violations
     and zero AC-gating violations over this file, and the other nine specs unchanged.
-  - Increment 1's §10.2.4 carries the "both kinds → UNRESOLVED" amendment note.
+  - Increment 1's §10.2.4 carries the "both kinds → UNRESOLVED" amendment note. Its §10.4 E2 carries
+    the r1 M2 amendment note: widen when depth-0 and deep effects coexist.
   - `.praxia/docs/INDEX.md` is regenerated with the docs tool.
+- **AC-18.16 (r1, M7: the m3 lidded-rack mutant).**
+  - `make_m3_lid_on_tip_rack` exists in `plr-sema/eval/tip_mutants.py`, registered with expected
+    exception `ValueError`. Its m3a construction lids the pickup rack in the layout, and its m3b
+    construction inserts a preceding `move_lid` onto the rack where PLR accepts it.
+  - A unit test runs the mutator on inline base examples and asserts that the simulator raises
+    `ValueError` at the pickup index for m3a.
+  - The same test asserts that the static finding at `:338` is not `SAFE` on those rows.
+  - `tip_mutants`'s summary gains `m3_lid_on_tip_rack` with the standard per-class fields.
+  - p3a's floor and criterion (iii) logic are unchanged for the existing classes.
+  - m3 is **excluded from criterion (iii)**, because its `:338` rule is False-only and can never fire
+    `WILL_FAIL`. Its gate is the pair `static_338_safe_on_m3 = 0` and `runtime_raised_m3 > 0`.
 
 ---
 
@@ -1135,7 +1477,9 @@ Each criterion names its fixture or artifact field and states what a stub would 
 > **Ordering (normative).**
 > - T57 is atomic (L7) and comes first.
 > - T58 may land before or after T57, but T59 needs both.
-> - T60 comes before T61, because the site rule reads the field T60 creates.
+> - T61 comes after **both T57 and T60** (r1, m15). The site rule reads the field T60 creates, and
+>   T61's gate files (`test_oracle_replay.py`, `test_check_graph.py`) stay red on the RC-1 tests
+>   until T57's effects land.
 > - T62 runs **once**, after T57 + T58 + T61, so the goldens are re-taken a single time against the
 >   final rules.
 > - T63 is last among the code rows, and its sidecar commit is its own first step.
@@ -1149,17 +1493,19 @@ Each criterion names its fixture or artifact field and states what a stub would 
 
 | task | scope | files | gate | ~LOC | depends on |
 |---|---|---|---|---|---|
-| **T57** | **Derivation, atomic (L7).** In `derive/receiver_state.py`: R-A (§18.4.2), R-B's classifier with the binding and argument table, entry context, fold and cycle guard (§18.4.3), L1's `effects_unresolved` plus `compute_channel_bridge`'s unresolved/private → `"widen"` precedence (§18.4.4), R-C(1)/(2) (§18.4.5), R-D (§18.4.6); the four new `receiver_state` keys (§18.4.8); `_classify_write`'s `"ambiguous"` renamed to `COPY` with identical semantics; one regeneration of `plr-sema/data/derived_contracts.json` and the gap ledger. HM-25 thirteenth probe and `declared` 12 → 13 **only if OI-4's booking option is taken**; STOP if the measure ≠ 13 | modify `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/src/plr_sema/derive/__main__.py` (if serialization needs it), `plr-sema/src/plr_sema/_hand_maintained.py`, `plr-sema/data/derived_contracts.json`, `plr-sema/data/gap_ledger.json` (regenerated); create `plr-sema/tests/test_tip_effects_plr1.py`; modify `plr-sema/tests/test_derive.py`, `plr-sema/tests/test_hand_maintained_ratchet.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_tip_effects_plr1.py -q`; `uv run pytest plr-sema/tests/test_derive.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q` — satisfying **AC-18.1**, **AC-18.2**, **AC-18.3**, **AC-18.4** | ~260 | — |
+| **T57** | **Derivation, atomic (L7).** In `derive/receiver_state.py`: R-A (§18.4.2), R-A's no-method restriction and M3's property-assignment rule plus its two tripwires (§18.4.2); R-B's classifier with the binding and argument table as revised in r1 (B1: non-`None` expressions → `UNRESOLVED`; B2: rebound parameters join; m6 catch-alls), entry context, fold, cycle guard and the structural `effects_max_depth` of M4 (§18.4.3); L1's `effects_unresolved` plus `compute_channel_bridge`'s rules 0–3 placed **before** the index skip and M2's coexistence widen (§18.4.4); R-C(1)/(2) (§18.4.5); R-D (§18.4.6); the four new `receiver_state` keys (§18.4.8); `test_derive.py` is run in full because it also rebuilds the non-legacy gap ledger (OI-12); `_classify_write`'s `"ambiguous"` renamed to `COPY` with identical semantics; one regeneration of `plr-sema/data/derived_contracts.json` and the gap ledger. HM-25 thirteenth probe and `declared` 12 → 13 **only if OI-4's booking option is taken**; STOP if the measure ≠ 13 | modify `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/src/plr_sema/derive/__main__.py` (if serialization needs it), `plr-sema/src/plr_sema/_hand_maintained.py`, `plr-sema/data/derived_contracts.json`, `plr-sema/data/gap_ledger.json` (regenerated); create `plr-sema/tests/test_tip_effects_plr1.py`; modify `plr-sema/tests/test_derive.py`, `plr-sema/tests/test_hand_maintained_ratchet.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_tip_effects_plr1.py -q`; `uv run pytest plr-sema/tests/test_derive.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q` — satisfying **AC-18.1**, **AC-18.2**, **AC-18.3**, **AC-18.4** | ~260 | — |
 | **T58** | **R-E receiver roots (§18.4.7).** Two-pass candidate/tracker set difference in `derive_receiver_states`; regenerate | modify `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/data/derived_contracts.json` (regenerated); modify `plr-sema/tests/test_tip_effects_plr1.py` | `uv run pytest plr-sema/tests/test_tip_effects_plr1.py -q`; `uv run pytest plr-sema/tests/test_derive.py -q` — satisfying **AC-18.6** | ~40 | — |
 | **T59** | **Drift tests (§18.8).** Baseline generator with `--from`/`--from-git-rev`/`--rebase`/`--intended-divergences`; the generated fixture from the old-pin table; the cross-pin test; structural invariants with counter-tables; the behavioural oracle against real PLR | create `plr-sema/scripts/gen_channel_effect_baseline.py`, `plr-sema/tests/fixtures/channel_effect_baseline.json`, `plr-sema/tests/test_tip_effect_drift.py` | `uv run python plr-sema/scripts/gen_channel_effect_baseline.py --from-git-rev <old-pin rev> --out plr-sema/tests/fixtures/channel_effect_baseline.json --intended-divergences LiquidHandler.load_state=widen`; `uv run pytest plr-sema/tests/test_tip_effect_drift.py -q` — satisfying **AC-18.7**, **AC-18.8**, **AC-18.9** | ~220 | T57, T58 |
-| **T60** | **The sixth observation field (§18.5.2).** `capture_observation` computes `tip_racks_available`; `OBSERVATION_KEYS` gets six members; `observation_env_members` adds the `obs:` member; closed-list tests move to six; lidded/no-rack/raising fixtures; the §16.2.1 text amendment | modify `training/verify/deck.py`, `training/verify/verifier.py` (comment only), `plr-sema/eval/oracle_common.py`, `plr-sema/tests/test_cache.py`, `training/tests/test_verify_postconditions.py`, `.praxia/docs/specs/260909_plr-sema-observation-increment.md` | `uv sync --all-packages`; `uv run pytest training/tests/test_verify_postconditions.py -q`; `uv run pytest plr-sema/tests/test_cache.py -q` — satisfying **AC-18.10** | ~90 | — |
-| **T61** | **The `:338` site rule (§18.5.3–§18.5.6).** `_eval_tip_racks_available_site_rule` plus the fourth key; the `rack_topology_stable` pre-scan (`rack_topology_disturber_pcs`) and its threading through `process_call` → `_findings_for_call` → `_findings_for_guards` → `evaluate_guard` → `_Ctx`; `n_tip_racks_decided` in the replay report; HM-26 `declared` 3 → 4 with the rewritten `what`/`breaks_when`; A-RACK-STATIC added to increment 1's §10.6.3 table, with the table test at six; the hand-built `move_lid`-onto-rack runtime fixture | modify `plr-sema/src/plr_sema/check/predicate.py`, `plr-sema/src/plr_sema/check/__init__.py`, `plr-sema/src/plr_sema/_hand_maintained.py`, `plr-sema/eval/oracle_replay.py`, `plr-sema/tests/test_check_graph.py`, `plr-sema/tests/test_hand_maintained_ratchet.py`, `plr-sema/tests/test_oracle_replay.py`, `.praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md` | `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q`; `uv run pytest plr-sema/tests/test_oracle_replay.py -q` — satisfying **AC-18.11**, **AC-18.12** | ~200 | T60 |
-| **T62** | **Goldens re-taken ONCE, plus non-regression.** Re-take the `test_ir.py` shipped-fixture golden (44, `by_reason` measured) and the AC-10.4 comparison (excluding `:338`-sited findings); the V5 modelled-path fixture; confirm every gate-1 RC-1/RC-2 test green with no marker | modify `plr-sema/tests/test_ir.py`, `plr-sema/tests/test_tip_typestate.py`, `plr-sema/tests/test_volumestate_v5.py` | `uv run pytest plr-sema/tests/test_ir.py -q`; `uv run pytest plr-sema/tests/test_tip_typestate.py -q`; `uv run pytest plr-sema/tests/test_volumestate_v5.py -q`; `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_oracle_replay.py -q`; then each tier-2 test file individually — satisfying **AC-18.5**, **AC-18.13** | ~60 | T57, T58, T61 |
-| **T63** | **The measurement (§18.9).** Step 1: commit the sidecar exactly as §18.9. Step 2: implement the script (two arms reused from `plr10_characterize.py`, per-method read, `tip_mutants` m1/m2, contract reads, parity from T59's fixture, decline counters via `rack_topology_disturber_pcs`) with a schema-vs-TOML unit test. Step 3: `bth run` in wrapped form, `bth compact`, verify by record | create `plr-sema/eval/plr10_tip_effects_measure.bth.toml`, `plr-sema/eval/plr10_tip_effects_measure.py`, `plr-sema/tests/test_plr10_tip_effects_measure.py`; outputs under `outputs/plr-sema/plr10_tip_effects_<date>/` | `uv run pytest plr-sema/tests/test_plr10_tip_effects_measure.py -q`; `bth run --project-slug <fd63e9cd's slug> -- uv run --no-sync python plr-sema/eval/plr10_tip_effects_measure.py <fd63e9cd's inputs> --out-dir …`; `bth compact`; `bth sql "SELECT id, status, outcome, exit_code FROM runs WHERE id LIKE '<prefix>%'"` — satisfying **AC-18.14** | ~180 | T59, T62 |
-| **T64** | **Lint, amendments and index.** Register this file in `test_spec_lint.py` (both live-spec tests); increment 1's §10.2.4 amendment note; regenerate `.praxia/docs/INDEX.md`; fill this document's implementation record with T57–T63's measured values and every divergence | modify `plr-sema/tests/test_spec_lint.py`, `.praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md`, this file; regenerate `.praxia/docs/INDEX.md` | `uv run pytest plr-sema/tests/test_spec_lint.py -q` — satisfying **AC-18.15** | ~20 | T63 |
+| **T60** | **The sixth observation field (§18.5.2).** `capture_observation` computes `tip_racks_available`; `OBSERVATION_KEYS` gets six members; `observation_env_members` adds the `obs:` member; closed-list tests move to six; lidded/no-rack/raising fixtures; the §16.2.1 text amendment **and the §16.2.2 frame-condition clause (r1, M10)** | modify `training/verify/deck.py`, `training/verify/verifier.py` (comment only), `plr-sema/eval/oracle_common.py`, `plr-sema/tests/test_cache.py`, `training/tests/test_verify_postconditions.py`, `.praxia/docs/specs/260909_plr-sema-observation-increment.md` | `uv sync --all-packages`; `uv run pytest training/tests/test_verify_postconditions.py -q`; `uv run pytest plr-sema/tests/test_cache.py -q` — satisfying **AC-18.10** | ~90 | — |
+| **T61** | **The `:338` site rule (§18.5.3–§18.5.6).** `_eval_tip_racks_available_site_rule` plus the fourth key, declining unless `kind == "raise_guard"` (via `_Ctx.guard_kind`); the `rack_topology_stable` pre-scan (`rack_topology_disturbers`, returning pc → `(receiver_type, classes)`) and its threading through `process_call` → `_findings_for_call` → `_findings_for_guards` → `evaluate_guard` → `_Ctx`; `n_tip_racks_decided` in the replay report; HM-26 `declared` 3 → 4 with the rewritten `what`/`breaks_when`; A-RACK-STATIC added to increment 1's §10.6.3 table, with the table test at six; the hand-built `move_lid`-onto-rack runtime fixture | modify `plr-sema/src/plr_sema/check/predicate.py`, `plr-sema/src/plr_sema/check/__init__.py`, `plr-sema/src/plr_sema/_hand_maintained.py`, `plr-sema/eval/oracle_replay.py`, `plr-sema/tests/test_check_graph.py`, `plr-sema/tests/test_hand_maintained_ratchet.py`, `plr-sema/tests/test_oracle_replay.py`, `.praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md` | `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q`; `uv run pytest plr-sema/tests/test_oracle_replay.py -q` — satisfying **AC-18.11**, **AC-18.12** | ~210 | T57, T60 |
+| **T62** | **Goldens re-taken ONCE, plus non-regression.** Re-take the `test_ir.py` shipped-fixture golden (44, `by_reason` measured) and the AC-10.4 comparison (excluding `:338`-sited findings); the V5 modelled-path fixture; confirm every gate-1 RC-1/RC-2 test green with no marker | modify `plr-sema/tests/test_ir.py`, `plr-sema/tests/test_tip_typestate.py`, `plr-sema/tests/test_volumestate_v5.py` | `uv run pytest plr-sema/tests/test_ir.py -q`; `uv run pytest plr-sema/tests/test_tip_typestate.py -q`; `uv run pytest plr-sema/tests/test_volumestate_v5.py -q`; `uv run pytest plr-sema/tests/test_tips_dirty_cost.py -q`; `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_oracle_replay.py -q`; `uv run pytest plr-sema/tests/test_tier2.py -q` — satisfying **AC-18.5**, **AC-18.13** | ~80 | T57, T58, T61 |
+| **T63** | **The measurement (§18.9).** Step 1: commit the sidecar exactly as §18.9. Step 2a (r1, M7): the m3 mutator `make_m3_lid_on_tip_rack` in `tip_mutants.py`, with criterion (iii) excluded for m3, plus its unit test. Step 2b: implement the script: two arms reused from `plr10_characterize.py`; per-method read; `tip_mutants` m1/m2/p3a/m3 and `volume_mutants` v1 with the r1 floor fields; contract reads; parity and `baseline_intended_divergences` from T59's fixture; the decline counters; and **an independent disturber scan that does not import `rack_topology_disturbers`** (M8). A schema-vs-TOML unit test covers it. Step 3: `bth run` in wrapped form, `bth compact`, verify by record | create `plr-sema/eval/plr10_tip_effects_measure.bth.toml`, `plr-sema/eval/plr10_tip_effects_measure.py`, `plr-sema/tests/test_plr10_tip_effects_measure.py`, `plr-sema/tests/test_tip_mutants_m3.py`; modify `plr-sema/eval/tip_mutants.py`; outputs under `outputs/plr-sema/plr10_tip_effects_<date>/` | `uv run pytest plr-sema/tests/test_tip_mutants_m3.py -q`; `uv run pytest plr-sema/tests/test_plr10_tip_effects_measure.py -q`; `bth run --project-slug <fd63e9cd's slug> -- uv run --no-sync python plr-sema/eval/plr10_tip_effects_measure.py <fd63e9cd's inputs> --out-dir …`; `bth compact`; `bth sql "SELECT id, status, outcome, exit_code FROM runs WHERE id LIKE '<prefix>%'"` — satisfying **AC-18.14**, **AC-18.16** | ~280 | T59, T62 |
+| **T64** | **Lint, amendments and index.** Register this file in `test_spec_lint.py` (both live-spec tests); increment 1's §10.2.4 amendment note and §10.4 E2 amendment note (r1, M2); regenerate `.praxia/docs/INDEX.md`; fill this document's implementation record with T57–T63's measured values and every divergence | modify `plr-sema/tests/test_spec_lint.py`, `.praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md`, this file; regenerate `.praxia/docs/INDEX.md` | `uv run pytest plr-sema/tests/test_spec_lint.py -q` — satisfying **AC-18.15** | ~20 | T63 |
 
-**Sizing note.** The total is about 1,070 LOC across eight rows. T57 at ~260 is the largest and the only
-one that must not be split, because of L7. If a session boundary falls inside it, the safe cut is
+**Sizing note.** The total is about 1,200 LOC across eight rows after r1. T63 grew to ~280 with the
+m3 mutator, the v1 run and the independent scan. If T63 runs long, split it at step 2a/2b: the
+mutator and its test land and are gated first, and the sidecar commit still precedes the run. T57 at
+~260 is the only row that must not be split, because of L7. If a session boundary falls inside it, the safe cut is
 before the regeneration: rules and synthetic tests landed, table not regenerated, every existing test
 unchanged. It is never between effects and `entry_reset`.
 
@@ -1169,16 +1515,18 @@ unchanged. It is never between effects and `entry_reset`.
 
 | risk | likelihood | mitigation / rollback |
 |---|---|---|
-| R-A silently aliases `_before` after a PLR edit (drops the `cast`), so `remove_tip` becomes `UNRESOLVED` and `drop_tips` widens (a silent precision loss) | low | AC-18.1 pins `["_carried"]`, AC-18.7 fails on `drop_tips` moving, AC-18.9's oracle disagrees. Rollback: revert T57's commit and regenerate the table |
+| R-A silently aliases `_before` after a PLR edit (drops the `cast`), so `commit`, `add_tip` and `remove_tip` become `UNRESOLVED`, both pickup and drop widen, and `entry_reset` disappears (a silent precision loss) | low | AC-18.1 pins `["_carried"]`, AC-18.7 fails on `pick_up_tips`/`drop_tips` moving, AC-18.9's oracle disagrees. Rollback: revert T57's commit and regenerate the table |
+| B1's stricter value table costs a real effect in some future PLR shape (a tip value that is an expression, not an annotated parameter) | low | fails closed (widen); AC-18.7 flags the moved key; extending the table needs its own argument |
 | L7 violated: `entry_reset` lands without effects, giving a false `SAFE` on a repeated pickup | low if T57 is one commit | AC-18.4(c) invariant; T57 is one row; review checks one regeneration |
-| The observation field is judged "the answer" under §16.2.2 | **medium** (OI-1) | argued in §18.5.2; the field reverts cleanly (T60) and the site rule then declines everywhere, which is sound |
-| A-RACK-STATIC false for some non-move `LiquidHandler` method | low–medium (OI-2) | a hand-built witness per disturber class (AC-18.11(d)/(f)); tier-1 fence; derived family ⊇ owner's three |
+| The observation field is judged "the answer" under §16.2.2 | low after r1 (M10 amends §16.2.2) | the field reverts cleanly (T60) and the site rule then declines everywhere, which is sound |
+| A-RACK-STATIC false for some non-move `LiquidHandler` method, or a family member decays to `"TOP"` | low–medium (OI-2) | family pinned on the shipped table (AC-18.11(i)); a hand-built witness per disturber class (AC-18.11(d)/(f)); in-run m3 mutant; tier-1 fence |
+| The m3 mutator cannot build m3b (PLR rejects `move_lid` onto a `TipRack`) | unknown (OI-17) | m3a alone meets the floor; m3b is reported, not gated |
 | The topology conjunct costs more precision than 5% | medium | pre-registered MARGINAL branch with per-path decline counters; no claim beyond the measured number |
-| The baseline fixture shows a second divergence (an old-pin "both kinds" method) | unknown (OI-9) | T59 stops and adjudicates in writing, never rebases silently; `--rebase` refuses without explicit divergences |
+| The baseline fixture shows a second divergence, or a 1.0 key absent from the old table | low (OI-9 now derived) | T59 stops and adjudicates in writing, never rebases silently; `--rebase` refuses without explicit divergences; the M11 counter counts new keys |
 | R-E drops a legitimate receiver in a future PLR | low | AC-18.6 pins the set; the failure is loud and fail-closed |
 | `tip_mutants.py` does not run at 1.0 | unknown | the script crashes, no `result.json` is written, and the outcome is FAIL by construction; fix the harness before re-running under the **same** sidecar |
 | Cache entries built against the old table serve stale verdicts | none by construction | the table digest changes, so entries cool (§16.2.3 / T41 precedent) |
-| Tests that re-derive `upstream_nonlegacy` move under the new derive code (L6) | unknown (OI-12) | T57/T58 must run every test that reads `derived_contracts.upstream_nonlegacy.json` and report. If one re-derives, freeze its expectation to the committed file, which is not regenerated |
+| Tests that re-derive `upstream_nonlegacy` move under the new derive code (L6) | low (OI-12) | the one known consumer, `test_derive.py`'s non-legacy gap-ledger fixture, asserts only unrelated fields; T57's gate runs the whole file |
 
 ---
 
@@ -1207,53 +1555,99 @@ unchanged. It is never between effects and `entry_reset`.
 
 Each item is something this document could not verify or had to decide by judgement.
 
-- **OI-1 — the observation field vs §16.2.2's third failure mode.** `tip_racks_available` evaluates the
-  guard's own property. It is admitted as a pre-execution state fact plus a checked frame condition
-  (§18.5.2). It also narrows §16.2.1's "lid topology — refused". Should §16.2.2's text be amended, or
-  should this remain a named exception? Increment 4's §13.1 lid disposition, which §16.2.1 cites, was
-  **not** re-read for this draft.
-- **OI-2 — A-RACK-STATIC.** It is a new named assumption, which in increment 7 was a user decision
-  (D2). L3 implies it, and the owner should confirm it explicitly. The claim that no non-move-family
-  same-receiver `LiquidHandler` method can change a rack's lid or stack was **not** exhaustively
-  verified. Candidates to check include `LiquidHandler.assign_child_resource` (inherited from
-  `Resource`), which is decided by condition (c) of §18.5.4 only if no `LiquidHandler.assign_child_resource`
-  contract key exists.
-- **OI-3 — off-deck racks.** Conjunct 2 plus harness grounding is argued to cover them. A program
-  that constructs its own `TipRack` cannot reach the rule on a harness path. That is reasoned from
-  `env` being harness-built, not tested.
+- **OI-1 — RESOLVED in r1 (M10).** §16.2.2's test is amended in its own text (§18.5.2, T60,
+  AC-18.10), so no standing text contradicts the field. The residual risk is that the frame condition
+  is incomplete, and it lives in A-RACK-STATIC (OI-2). Increment 4's §13.1 lid disposition was still
+  not re-read.
+- **OI-2 — A-RACK-STATIC (updated r1).** It is a new named assumption, and the owner should confirm it
+  explicitly (D2 precedent). One candidate is now closed: `LiquidHandler.assign_child_resource` always
+  raises `NotImplementedError`
+  (`external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2813-2822`), so it cannot
+  place a lid. The challenger found that it has a contract key, so disturber condition (c) does not
+  apply to it, and that is harmless. **Deferred as a follow-up (orchestrator ruling):** a whole-surface
+  check that no non-family `LiquidHandler` method's closure reaches `assign_child_resource` /
+  `unassign_child_resource` on a non-tip resource. The survey does not carry the receiver-type
+  resolution that check needs. The `"TOP"` fail-open edge is named in A-RACK-STATIC's row.
+- **OI-3 — off-deck racks (updated r1, M6).** r0's claim that conjunct 2 "covers off-deck racks" is
+  withdrawn. The rule rests on the harness-grounding premise (§18.5.3). The residual is a program that
+  constructs its own off-deck `TipRack` and reaches the rule with a harness-built `env`, which is not
+  tested. **Follow-up:** a derived argument binding for module-level delegates, so the rule could check
+  that the guard's own spots are declared deck `Ref`s. Every inlined `:338` record today has
+  `caller_args: null` and `caller_args_sites: []`, so no existing table supplies this, and a
+  hand-typed parameter name is forbidden (L0/HM-26).
 - **OI-4 — HM-25 12 → 13 or 0.** The spec books R-A/R-B/R-C(2) as one HM-25 unit. The zero-cost
-  argument (P4 was never booked) is available. The owner chooses; T57 and AC-18.12 carry both branches.
-- **OI-5 — flow-insensitivity and the holder-less path.** `_put`'s `_carried` write is conditional on
-  `holder is None`. The recon's claim that the holder branch has the same polarity is reasoned, not
-  verified. R-C(2) is a signature heuristic that the head trackers are holder-less.
+  argument (P4 was never booked) is available. **T57's default is the booking option (12 → 13) unless
+  the owner says otherwise** (r1). AC-18.12 carries both branches.
+- **OI-5 — flow-insensitivity and the holder-less path (updated r1).**
+  - **The polarity half is confirmed.** The holder path unassigns the spot's current child and assigns
+    the new tip (`external/pylabrobot/pylabrobot/legacy/tip_tracker.py:88-96`), which is the same
+    polarity as the holder-less write. AC-18.9's holder-full check tests it empirically.
+  - **The R-C(2) half remains.** It fails closed only while the holder-selecting parameter has a `None`
+    default (m2). A required or non-`None`-default holder would pass it vacuously.
 - **OI-6 — `COPY` replaces the recon's ≥ 1-argument filter.** This is a deliberate deviation. `COPY`'s
   identity semantics inherits A-COMMIT, whose verified scope is `pick_up_tips`/`drop_tips` boundaries
   (increment 1 §10.2.2). A new `LiquidHandler` method bridging only `rollback` at depth 0 would get no
   effect. That would be sound only under A-COMMIT at that method's boundary.
 - **OI-7 — "direct methods only".** The PLR base-closure check (AC-18.2(k)) guards it at the pin, but a
   third-party mixin outside the PLR tree would be invisible.
-- **OI-8 — beyond-parity refinements.** "Optional parameter → UNRESOLVED" and "free name → UNRESOLVED"
-  go beyond parity. Their effect at 1.0 is predicted to be zero (§18.4.9, reasoned). The cross-pin
-  fixture will show whether they move any old-pin value.
-- **OI-9 — the old-pin `load_state` value and the "10 of 11".** The old pin's `TipTracker` source is not
-  on disk in this checkout. The recon's exploratory count of 11 and `load_state: HAS_TIP` are
-  unverified here. The fixture generator reading the old artifact is the authority, and any second
-  divergence halts T59.
-- **OI-10 — the pass threshold 205.** It is a judgement; 123 is derived with a caveat. The number of
-  `pick_up_tips` operations preceded by a topology disturber was **not** measured, and could not be
-  without a pre-registration of its own.
+- **OI-8 — beyond-parity refinements.** These go beyond parity: "optional parameter → UNRESOLVED",
+  "free name → UNRESOLVED", and (r1) B1's "every non-`None` expression → UNRESOLVED". Their effect at
+  1.0 is predicted to be zero (§18.4.9, reasoned; the defender traced B1). On the old-pin source, B1
+  moves exactly one value, `load_state`, which is the intended L1 divergence (OI-9).
+- **OI-9 — the old-pin value, now DERIVED (r1).** The old-pin PLR source is on disk in the sibling
+  worktree `outputs/pr159` (tracker at `pylabrobot/resources/tip_tracker.py`). It was read for this
+  revision. The old P4 effects were:
+  - `add_tip` HAS_TIP (`self._pending_tip = tip`, line 93);
+  - `remove_tip` NO_TIP (line 106);
+  - `clear` NO_TIP (lines 127-128);
+  - `load_state` HAS_TIP (lines 141-142, two `cast(…, deserialize(…))` writes).
+
+  The only old-pin `head[...]` bridge to `load_state` is `LiquidHandler.load_state` (pr159
+  `pylabrobot/liquid_handling/liquid_handler.py`, line 250). Under §18's rules the old-pin classes are:
+  - `add_tip` HAS_TIP, since `tip` is an annotated entry parameter;
+  - `remove_tip` and `clear` NO_TIP;
+  - `load_state` UNRESOLVED, since its writes are `Call`s (B1).
+
+  So exactly one channel-effect divergence is expected, `LiquidHandler.load_state` HAS_TIP → widen.
+  T59's generated fixture, read from the old-pin **artifact**, remains the authority. Tests use inline
+  fixtures (AC-18.2(l)), never that path.
+- **OI-10 — RESOLVED in r1 (M8).** 205 remains a stated judgement. 123 is now called an anchor, not a
+  derivation. The topology declines are reconciled against an independent scan as a hard term, and the
+  FAIL decision attributes its cause through the published decline counters.
 - **OI-11 — the "rollback never bridged" claim.** It is verified only by the absence of the string from
   the 1.0 survey. If a future survey records `IfExp`-callee attributes, `rollback` becomes bridged. It
   classifies `UNTOUCHED` (`COPY`), so there is still no effect, but that rests on OI-6.
-- **OI-12 — L6.** It was not verified whether any test re-derives the non-legacy table from source.
+- **OI-12 — L6 (updated r1).** The one known consumer is `test_derive.py`'s non-legacy fixtures
+  (`plr-sema/tests/test_derive.py:596-622`). They rebuild a gap ledger from the committed non-legacy
+  survey through `build_gap_ledger`, and assert only fields unrelated to §18. The risk is low, and
+  T57's gate runs the whole file. No other re-deriving test was found, but this was not an exhaustive
+  search.
 - **OI-13 — the behavioural oracle's import-order caveat and `Tip` construction.** Both come from the
-  recon and were not re-verified.
-- **OI-14 — `setup` in the tier-1 IR.** The old pin's 216 required `entry_reset` to fire, which implies
-  that the tier-1 lowering emits a `setup` `CALL`. That is reasoned from the old result and was not
-  re-read from the lowering.
+  recon and were not re-verified. The test fails rather than skips, so the gap cannot pass silently.
+- **OI-14 — CLOSED in r1.** `calls_from_plr_kwargs` prepends a `setup` `CALL`
+  (`plr-sema/eval/oracle_common.py:649-651`), and `evaluate_call` fires `entry_reset` on it. It is not a
+  topology disturber (§18.5.4).
 - **OI-15 — R-E's breadth.** A class that is both a legitimate receiver and another candidate's tracker
   is dropped. There is no instance at 1.0, and it fails closed.
 - **OI-16 — HM-26 headroom.** `declared == live` (4/4) follows HM-26's precedent, not §9.1's live+2.
+- **OI-17 — NEW in r1: can the m3 mutant be built as specified?**
+  - It was not verified whether the harness's `DeckLayout` can express a lid on a tip rack (m3a).
+  - It was not verified whether PLR 1.0 accepts `move_lid` with a `TipRack` destination (m3b).
+  - If m3a cannot be built, `m3_attempted` misses its floor, and the run is MARGINAL rather than PASS.
+    It cannot silently pass.
+  - If only m3b fails, it is reported and not gated.
+- **OI-18 — NEW in r1: the m3 exclusion from criterion (iii).** m3 is excluded because the `:338` rule
+  cannot fire `WILL_FAIL`. This changes `tip_mutants`'s gate logic for one class. Review whether that
+  exclusion should instead live in the measurement script, leaving `tip_mutants`'s own gate untouched.
+- **OI-19 — NEW in r1: M2's rule change is broader than tip effects.** "Widen when depth-0 and deep
+  effects coexist" applies to every receiver with a tip bridge. It amends increment 1's E2 for all of
+  them. The defender traced zero cost at the pin, but the regenerated table must be diffed for any
+  `channel_effect` that moved from `HAS_TIP`/`NO_TIP` to `widen` besides `load_state`. The M11 counter
+  catches this, because any such key is an unintended divergence.
+- **OI-20 — NEW in r1: B1 makes every positive tip value depend on an annotated entry parameter.** A
+  future PLR that passes an **un**annotated parameter still gets `HAS_TIP` (the entry-context default).
+  Whether an unannotated parameter should also be `UNRESOLVED` is a judgement r1 did not change. That
+  change would be a zero-cost tightening at 1.0 *(reasoned: `add_tip`'s `tip` is annotated)*.
 
 ---
 
@@ -1268,7 +1662,8 @@ Each item is something this document could not verify or had to decide by judgem
 | the spurious receiver is `TipTracker` | also found `LiquidHandlerBackend` (`_head` → `TipTracker`) in the 1.0 artifact; R-E keeps it | read from `plr-sema/data/derived_contracts.json` |
 | R-A: "bare `return self.X`" | same, but it recurses through properties, and the exclusion of `_before` is shown to rest on the `cast(...)` wrapper | the fragility is pinned by AC-18.1 |
 | move-family conjunct over `move_lid`/`move_plate`/`move_resource` | derived via `anchor_net_effects ∈ {EMPTY, HELD}`, giving five methods incl. `pick_up_resource`/`drop_resource`, plus other-receiver / no-contract / `receiver_type is None` disturbers | no hand-typed names; closes direct `pick_up_resource`/`drop_resource` calls |
-| `:338` rule reads the observation alone | adds `deck_resources_verified` and `rack_topology_stable` conjuncts | the off-deck rack case (OI-3) and L3's frame condition |
+| `:338` rule reads the observation alone | adds `deck_resources_verified` (defence in depth only, after r1's M6) and `rack_topology_stable` conjuncts, plus a `raise_guard` kind check | L3's frame condition; the off-deck residual stays in OI-3 |
+| (recon silent on value forms) | r1: any non-`None` expression value is `UNRESOLVED` (B1), and rebound parameters join (B2) | the recon's P4-parity row reproduced the old `load_state` unsoundness on the old-pin source |
 | R-C: seed `_constructor_state` with the backing fields | same, plus R-C(2), the holder-less construction conjunct | `_carried` backs `_pending_tip` only on the holder-less path |
 | the recon's exploratory 11/11 | not cited as evidence; 10/11 is the owner's expected parity, and the fixture generator is the authority | the recon's own provenance note |
 | `tip_rack.py:355-363`, call sites `:721 :872 :1706 :1787`, `liquid_handler.py:418, 421, 469, 476` | **confirmed** at `786ac2c4e` | read this session |
@@ -1290,6 +1685,56 @@ this table's cells as gate cells.)*
 | T62 | — | — | — | — |
 | T63 | — | — | — | — |
 | T64 | — | — | — | — |
+
+---
+
+## 18.17 Revision log
+
+**r1 (260929): adversarial round 1.** The challenger returned REVISE: 2 blockers, 11 major and 16
+minor objections. The defender also returned REVISE, conceding 20, partially conceding 10 and
+rebutting none. The binding list of changes is the orchestrator's `adjudication_r1.md`, and every item
+on it is applied. L0–L7 are unchanged.
+
+| id | change | where |
+|---|---|---|
+| B1 | `cls_E`: any non-`None` `Constant`, `Call`, `Subscript`, `BoolOp`, `Await`, non-`W` attribute or other expression → `UNRESOLVED`. Inline old-pin `load_state` fixture added. The L1 claim is rewritten so it no longer rests on the `IfExp` | §18.0, §18.4.3, §18.4.4, AC-18.2(l)(m) |
+| B2 | A parameter rebound in the body joins `E[n]` with every binding; non-`=` binding forms give `UNRESOLVED`; negative control added | §18.4.3, AC-18.2(n) |
+| M1 | Bridge rules run before the index skip. New rule 0: a bridge to a method that is not a direct method of `C`, or not in the index, sets `any_unresolved` | §18.4.4, AC-18.3 |
+| M2 | Rule change: widen when depth-0 and deep effects coexist. Increment 1's E2 amended | §18.4.4, amendment box, T64, AC-18.3, AC-18.15 |
+| M3 | Assignment to a property `F ∈ S` gives `UNRESOLVED`. Two checked tripwires added (hidden writers of non-alias getter dependencies; writing getters). r0's "What R-A is NOT" replaced | §18.4.2, §18.4.3, AC-18.1 |
+| M4 | `effects_max_depth` defined structurally: the longest followed-call chain ending in a `W` write, over entries (public methods + `__init__`), independent of evaluation order | §18.4.3, AC-18.2(p) |
+| M5 | Family pinned on the shipped table; AC-18.11(d) runs on shipped contracts; `"TOP"` named fail-open in A-RACK-STATIC. The whole-surface closure check is deferred to OI-2 | §18.5.4, §18.5.5, AC-18.11(d)(i), OI-2 |
+| M6 | Conjunct 2 rationale rebuilt on the harness-grounding premise; the "covers off-deck racks" claim withdrawn; no argument-reading conjunct (no derived table supplies one); follow-up recorded in OI-3 | §18.5.3, OI-3 |
+| M7 | Sidecar: `mutants_gate_passed`, `mutants_criterion_ii`, `p3a_floor_met`, attempted/achieved floors, a v1 class, and the new m3 lidded-rack mutant with hard terms `static_338_safe_on_m3 = 0` and `runtime_raised_m3 > 0`, owned by T63 | §18.9, AC-18.16, T63 |
+| M8 | Hard term `n_338_declined_topology = n_pickups_with_preceding_disturber_indep` from an independent scan; loop-clause declines reported separately; the FAIL decision attributes its cause; 123 reframed as an anchor | §18.9, OI-10 |
+| M9 | `plr-sema/tests/test_tips_dirty_cost.py` added to T62's gate | §18.6, AC-18.5, T62 |
+| M10 | §16.2.2 amended in its own text (frame-condition clause), in T60 and AC-18.10 | §18.5.2, AC-18.10, T60, OI-1 |
+| M11 | New 1.0 keys absent from the baseline fail unless listed; `baseline_divergences` defined over the key union with absence as a value, and equal to `len(intended_divergences)` | §18.8(1), AC-18.7, §18.9 |
+| m1 | `_before` note corrected: `_NOTHING_PENDING` is a global, so `UNRESOLVED`; both pickup and drop would widen, and `entry_reset` would vanish | §18.4.2, §18.12 |
+| m2 | R-C(2) fails closed only with a `None`-default holder parameter | §18.4.5, OI-5 |
+| m3 | The pre-scan function returns pc → `(receiver_type, classes)` | §18.5.4, T61 |
+| m4 | AC-18.11(b) is 3×3×3 | AC-18.11(b) |
+| m5 | The rule declines unless `kind == "raise_guard"` | §18.5.3, AC-18.11(b), T61 |
+| m6 | Catch-alls: unlisted binding forms including `import`; `staticmethod`/`classmethod` callees; calls that do not bind | §18.4.3, AC-18.2(o) |
+| m7 | Expected `LiquidHandlerBackend` block added | §18.4.8 |
+| m8 | "Bridge" defined; invariant (f) moved to a pin-scoped assertion | §18.4.4, §18.8(2), AC-18.8 |
+| m9 | Check fixture for the `load_state`/`update_head_state` channel-set reset | §18.6, AC-18.5 |
+| m10 | Premise stated: an un-planned call means the runtime raised there | §18.5.3 |
+| m11 | AC-18.9 gains a holder-full polarity check and a rollback-after-uncommitted-`add_tip` witness | §18.8(3), AC-18.9 |
+| m12 | One raising read nulls the whole observation record; stated and accepted | §18.5.2 |
+| m13 | Tier-2 file named (`test_tier2.py`); a measured golden that is not 44 is recorded, not edited to match | AC-18.13, T62 |
+| m14 | Citation widened to `tip_tracker.py` 74-96 | §18.3 |
+| m15 | T61 depends on T57 + T60; the ordering box matches the table | §18.11 |
+| m16 | An R-A alias `X` must name no direct `FunctionDef` of `C` | §18.4.2, AC-18.1(f) |
+| OI-9 | Derived from the old-pin source; T59 stays the authority | OI-9, §18.8(1) |
+| OI-14 | Closed (the prepended `setup` is not a disturber) | §18.5.4, OI-14 |
+| OI-2/5/12 | Updated as ruled | §18.14 |
+| OI-4 | T57 defaults to the booking option | §18.7, OI-4 |
+| OI-1/3/10 | Resolved by M10/M6/M8 | §18.14 |
+
+New open issues created by this revision: OI-17 (can the m3 mutant be built), OI-18 (where the m3
+criterion-(iii) exclusion should live), OI-19 (M2's breadth beyond tip effects) and OI-20 (unannotated
+entry parameters still default to `HAS_TIP`).
 
 ---
 
