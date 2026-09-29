@@ -4,7 +4,7 @@ description: Epic spec for the web-REPL notebook display. Three sprints (A spike
 status: draft
 task_id: 260929_notebook-display-design
 date: '260929'
-adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator); round5 challenger REVISE (1 MAJOR / 3 MINOR; C4-1, C4-3 CLOSED, C4-2 partial) -> revised 260929 (Revision 5, orchestrator); round6 challenger REVISE (1 MAJOR / 1 MINOR) -> revised 260929 (Revision 6: deck panel state machine); round7 challenger REVISE (2 MAJOR vs user preemption rule / 6 MINOR / 1 SUGGESTION; state machine sound) -> revised 260929 (Revision 7); round8 challenger REVISE (2 MAJOR / 5 MINOR; resume design otherwise sound) -> revised 260929 (Revision 8)'
+adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator); round5 challenger REVISE (1 MAJOR / 3 MINOR; C4-1, C4-3 CLOSED, C4-2 partial) -> revised 260929 (Revision 5, orchestrator); round6 challenger REVISE (1 MAJOR / 1 MINOR) -> revised 260929 (Revision 6: deck panel state machine); round7 challenger REVISE (2 MAJOR vs user preemption rule / 6 MINOR / 1 SUGGESTION; state machine sound) -> revised 260929 (Revision 7); round8 challenger REVISE (2 MAJOR / 5 MINOR; resume design otherwise sound) -> revised 260929 (Revision 8); round9 challenger REVISE (1 MAJOR / 5 MINOR) -> revised 260929 (Revision 9)'
 ---
 # Notebook display epic (web-repl)
 
@@ -934,8 +934,12 @@ and resumable ("Preemption-safe harness design" below; Revision 7, C7-1).
 
 **Local runs.** Narrow only: one `--scenario <id>` at a time, or the driver resuming over
 stamps. A direct `--scenario` run is bounded by its own watchdog at the unit's budget
-("Preemption-safe harness design" below; Revision 8, C8-2), so the local form needs no outer
-`timeout`. They need `dangerouslyDisableSandbox: true`, and per project
+("Preemption-safe harness design" below; Revision 8, C8-2). Browser and Playwright teardown
+run inside that bounded region, before the stamp, and only `os._exit` follows the stamp
+(Revision 9, C9-1). The process therefore ends within the budget plus `kill_tree`'s grace, and
+the local form needs no outer `timeout`. `unit_runner.py --reap` refuses to run locally
+without `--force` (C9-2). The real-Chromium case in `test_unit_runner.py` runs in CI only,
+never locally (C9-5). Local runs need `dangerouslyDisableSandbox: true`, and per project
 memory they should run with no `--chrome-path` before a local result is called green: local
 chromium-1234 differs from CI's bundled build. pytest runs one file at a time; there are no
 whole-suite runs (local compute limits).
@@ -983,48 +987,116 @@ single whole-run timeout. *(Orchestrator, Revision 7.)*
   Chromium alive, and so does a CI step timeout. Every unit kind (these harness units, the
   D17 spike units and the D17 AC-39 negative units) therefore starts and kills units through
   one module, `scripts/unit_runner.py`, so the three cannot diverge. Its public functions:
-  - `kill_tree(root_pid, token, grace_s=5)`: (1) walk `/proc/<pid>/task/*/children`
-    recursively from `root_pid`, sending `SIGSTOP` to each descendant as it is found, and
-    re-walk until no new pid appears (so nothing forks or re-parents away mid-kill);
-    (2) add every process whose `/proc/<pid>/environ` carries `PRAXIS_UNIT_TOKEN=<token>`
-    (this catches a `setsid` grandchild whose parent already exited and which was re-parented
-    out of the tree); (3) collect the process group id of every collected pid; (4) `SIGTERM`
-    each of those process groups and each pid, then `SIGCONT` them; (5) after `grace_s`,
-    `SIGKILL` each process group and each pid still alive. It never signals the caller, the
-    caller's ancestors or the caller's own process group, and logs any survivor with
-    `logging.error` (none is expected).
+  - `kill_tree(root_pid, token, grace_s=5)` (Revision 9, C9-2, C9-3):
+    1. **Collect to a fixpoint.** Repeat two passes until neither finds a new pid:
+       - walk `/proc/<pid>/task/*/children` recursively from `root_pid` **and** from every
+         pid collected so far;
+       - sweep every `/proc/<pid>/environ` for the exact NUL-delimited entry
+         `PRAXIS_UNIT_TOKEN=<token>`. This catches a `setsid` grandchild whose parent already
+         exited and which was re-parented out of the tree, and anything such an orphan
+         forked since.
+       Each newly found pid gets `SIGSTOP` as soon as it is found, so nothing forks or
+       re-parents away mid-kill. The sweep matches the whole entry, never a prefix, suffix or
+       substring. It **skips** a pid whose environ read raises `PermissionError`,
+       `ProcessLookupError` or `FileNotFoundError`, or returns empty (a kernel thread or a
+       zombie).
+    2. **Guard against pid reuse (C9-3).** At discovery each pid is recorded with its
+       `/proc/<pid>/stat` starttime (field 22). Where `os.pidfd_open` is available, a pidfd
+       is also opened, and every later signal to that pid goes through
+       `signal.pidfd_send_signal`. Otherwise the starttime is re-read immediately before
+       each signal, and the pid is skipped if it is gone or its starttime differs. A pid
+       that passes the check is a **verified** member.
+    3. Collect the process group id of every verified pid. A group signal (`os.killpg`) is
+       sent only while at least one verified member of that group is still alive.
+    4. `SIGTERM` each of those process groups and each verified pid.
+    5. After `grace_s`, repeat the step 1 fixpoint, which catches a child forked during the
+       grace window by, for example, a `SIGTERM` handler. Then `SIGKILL` each verified pid
+       still alive, and each process group with a verified live member.
+    Steps 1 to 5 run inside a `try` whose `finally` sends `SIGCONT` to every pid it stopped
+    (C9-2). An exception or a Ctrl-C mid-walk therefore never leaves a process stopped. Only
+    a `SIGKILL` of the caller can skip the `finally`. The stopped processes still carry the
+    token, so `--reap` removes them: in CI its `if: always()` step does this, and locally
+    `--reap --force` does. `kill_tree` never signals the caller, the caller's ancestors or
+    the caller's own process group. It logs any survivor with `logging.error` (none is
+    expected).
   - `run_unit(argv, timeout_s, *, env, cwd) -> UnitOutcome(exit, timed_out, killed)`: mints
-    a fresh `PRAXIS_UNIT_TOKEN` (uuid4) into the child's environment (Playwright passes the
-    environment on to its driver and to Chromium), starts the child with
-    `start_new_session=True`, and on expiry calls `kill_tree` with that token.
-  - `Watchdog(budget_s, on_expire)`: a daemon timer armed by a unit's own entry point; on
-    expiry it calls `on_expire`, then `kill_tree(os.getpid(), token)` over its own
-    descendants, then `os._exit(124)`.
+    a fresh `PRAXIS_UNIT_TOKEN` (uuid4) into the child's environment **at exec**, so it is
+    visible in the child's `/proc/<pid>/environ`. Playwright passes the environment on to its
+    driver and to Chromium. `run_unit` starts the child with `start_new_session=True`, and on
+    expiry calls `kill_tree` with that token.
+  - `ensure_token()` (Revision 9, C9-4): if `PRAXIS_UNIT_TOKEN` is absent from the
+    environment, mint one and re-exec the current process with it set
+    (`os.execve(sys.executable, [sys.executable, *sys.argv], env)`). A token assigned to
+    `os.environ` after exec is invisible in `/proc/self/environ`, so the sweep could not see
+    it; the re-exec fixes that. It is a no-op when the token is already set, as it is under
+    `run_unit`.
+  - `Watchdog(budget_s, on_expire)`: a daemon timer. A unit's entry point arms it as its
+    **first act** after `ensure_token()`, before it deletes any file or launches anything
+    (C9-4). It owns the stamp lock:
+    - `commit(write_stamp)` runs the stamp rename under the lock, then disarms the watchdog.
+      If the watchdog has already fired, it refuses and returns `False`.
+    - On expiry, under the same lock, it does nothing if a stamp was already committed.
+      Otherwise it marks itself fired, calls `on_expire` (which deletes the unit's result
+      file if present, writes the timeout marker and prints the timeout line; C9-6), then
+      releases the lock, runs `kill_tree(os.getpid(), token)` over its own descendants and
+      calls `os._exit(124)`.
+  - **Bounded teardown** (Revision 9, C9-1). Every unit, harness or spike, ends in this order,
+    all inside the watchdog-bounded region:
+    1. write the result or artifact;
+    2. close the browser (`browser.close()`) and leave `sync_playwright()`, which stops the
+       node driver; an exception here is logged with `logging.error` and does not change the
+       keys;
+    3. run `kill_tree(os.getpid(), token)` over any descendant still alive (a no-op, with no
+       grace wait, when the close succeeded and nothing is collected; a survivor is logged);
+    4. flush stdout, stderr and the logging handlers;
+    5. `Watchdog.commit` the stamp.
+    After a successful commit the unit calls only `os._exit(stamp.exit)`. That call skips
+    `atexit` handlers, non-daemon threads and the interpreter's own shutdown, so nothing can
+    hang after the stamp. A hang in steps 1 to 4 is a timeout (exit 124, no stamp, no
+    result).
   - `write_atomic(path, bytes)` (temporary file, fsync, rename), `dist_hash(dir)` (the
     `dist` input below) and `driver_input()` (the `driver` input below, C8-6).
-  - A CLI, `uv run python scripts/unit_runner.py --reap`, which kills every process carrying
-    any `PRAXIS_UNIT_TOKEN` (excluding itself and its ancestors), for CI's `if: always()`
-    reap step. Written with argparse and logging.
+  - A CLI, `uv run python scripts/unit_runner.py --reap` (Revision 9, C9-2). It collects
+    every distinct `PRAXIS_UNIT_TOKEN` value found by the environ sweep and runs `kill_tree`
+    once per token (with no root, the sweep and the fixpoint only), excluding itself and its
+    ancestors. It **refuses** (exit 2, signalling nothing) unless the `CI` environment
+    variable is set (GitHub Actions sets `CI=true`) or `--force` is given, so a stray local
+    invocation cannot kill another session's units. It serves CI's `if: always()` reap step.
+    Written with argparse and logging.
   Consumers load it by path (`importlib.util.spec_from_file_location` on
   `Path(__file__).resolve()` up to `scripts/unit_runner.py`), as the tests load
   `repl_smoke.py`; nothing edits `sys.path`.
 - **`--scenario` is self-bounded** (Revision 8, C8-2). A direct `--scenario <id>` run (the
-  local gate form in A7, B10 and C7, and every CI scenario step) arms a `unit_runner.Watchdog`
-  at the unit's D16 budget before launching the browser, setting `PRAXIS_UNIT_TOKEN` in its
-  own environment if the driver did not. On expiry it writes
-  `<out>/result.<id>.timeout.json` (`{unit, budget_s, started, expired}`, informational and
-  never a completion marker), prints one JSON line `{"unit": <id>, "status": "timeout",
-  "budget_s": ...}`, kills its descendant tree, and exits **124** without writing a stamp.
-  The stamp writer and the watchdog share a lock: once the watchdog has fired, the stamp
-  rename is refused; once the stamp is renamed, the watchdog is disarmed. The ordering of the
-  three bounds is fixed: watchdog at the budget, the driver's `run_unit` kill at budget +
-  60 s, the CI step timeout at budget + 2 min, so each outer bound is only a backstop.
-- **Per-unit output.** A unit's first act, before any other work, is to delete its own
-  `result.<id>.json`, stamp and timeout marker (Revision 8, C8-3), so an interrupted or
-  timed-out re-run can never leave an earlier run's stamp standing. It then writes
-  `<out>/result.<id>.json` (its keys, `pageerrors`, `chrome_path`, and its failing keys)
-  and, last, `<out>/result.<id>.stamp.json`, both through `unit_runner.write_atomic`. The
-  stamp is the completion marker:
+  local gate form in A7, B10 and C7, and every CI scenario step) first calls
+  `unit_runner.ensure_token()`, which re-execs with `PRAXIS_UNIT_TOKEN` set if the driver did
+  not set it (Revision 9, C9-4). Its first act after that is to arm a `unit_runner.Watchdog`
+  at the unit's D16 table budget, before it deletes its files or launches the browser. On
+  expiry the watchdog, under the stamp lock:
+  - deletes `result.<id>.json` if present (C9-6);
+  - writes `<out>/result.<id>.timeout.json` (`{unit, budget_s, started, expired}`,
+    informational and never a completion marker);
+  - prints one JSON line `{"unit": <id>, "status": "timeout", "budget_s": ...}`;
+  - kills its descendant tree and exits **124** without writing a stamp.
+  The stamp is committed through `Watchdog.commit`. Once the watchdog has fired, the stamp
+  rename is refused. Once the stamp is renamed, the watchdog is disarmed. The browser and
+  Playwright close before the commit ("Bounded teardown" above; C9-1), so a disarmed
+  watchdog never leaves teardown unbounded. The three bounds are fixed in this order, so each
+  outer bound is only a backstop:
+  1. the watchdog at the budget;
+  2. the driver's `run_unit` kill at budget + 60 s;
+  3. the CI step timeout at budget + 2 min.
+  If the driver's `run_unit` times out over a **valid** stamp, the stamp governs (C9-1). A
+  valid stamp is one that exists, whose `inputs` equal the current inputs and whose
+  `result_sha256` matches the result on disk. The unit is then judged from its result like
+  any recomputed unit, is not listed in `timed_out`, and the driver logs the timeout with
+  `logging.warning`.
+- **Per-unit output.** Right after arming its watchdog (C9-4), and before any other work, a
+  unit deletes its own `result.<id>.json`, stamp and timeout marker (Revision 8, C8-3), so an
+  interrupted or timed-out re-run can never leave an earlier run's stamp standing. It then
+  writes `<out>/result.<id>.json` (its keys, `pageerrors`, `chrome_path`, and its failing
+  keys), runs the bounded teardown (C9-1), and, last, commits `<out>/result.<id>.stamp.json`
+  through `Watchdog.commit`. Both files are written with `unit_runner.write_atomic`. The unit
+  then exits with `os._exit(stamp.exit)`. The stamp is the completion marker:
   `{unit, inputs: {name: sha256}, result_sha256, started, finished, exit, budget_s}`, where
   `exit` is the code the unit exits with (0 only if every listed key is present and holds).
   `<out>` is `--out-dir`, default `outputs/repl_smoke/<check>/`, gitignored. A run with a
@@ -1036,6 +1108,8 @@ single whole-run timeout. *(Orchestrator, Revision 7.)*
     dist (`--serve-dir`, or the default build dir);
   - `notebook`: `web-repl/tests/fixtures/notebooks/display_check.ipynb`;
   - `harness`: `scripts/repl_smoke.py`;
+  - `runner` (Revision 9, C9-6): `scripts/unit_runner.py`, so a change to the kill, watchdog
+    or write logic recomputes every unit, as it already does for spike and nd units (D17);
   - `chrome`: the string `<resolved chrome path>\n<chrome --version output>`;
   - `args`: the unit id, `--base-path`, the viewport list, and any harness-only negative flag
     (for example AC-39(e)'s `--neg drop-query`);
@@ -1054,13 +1128,14 @@ single whole-run timeout. *(Orchestrator, Revision 7.)*
   Otherwise it recomputes the unit (the unit clears its own files first, above; the driver
   also clears them before launching it). A unit whose result has a failing or missing key is
   recorded and never reused, so a flaky failure is always retried. A timed-out unit leaves no
-  stamp and counts as failed with `timeout` named. `--fresh` ignores all stamps.
+  stamp and no result, and counts as failed with `timeout` named. A `run_unit` timeout over a
+  valid stamp is not a timed-out unit: the stamp governs and the timeout is logged
+  ("`--scenario` is self-bounded" above; Revision 9, C9-1). `--fresh` ignores all stamps.
 - **Aggregate.** The driver writes `<out>/result.json` and prints it:
   `{scenarios: {id: result}, reused: [{id, source, inputs, result_sha256}], recomputed: [id],
   timed_out: [id], missing: [id], stale: [{id, mismatched: [input name]}]}`, where `source`
-  is the reused result's path, `timed_out` lists units with a timeout marker and no stamp (or, in the driver, whose
-  `run_unit` call timed out),
-  and `stale` lists units whose stamp exists but does not meet the skip rule, naming each
+  is the reused result's path, `timed_out` lists units with a timeout marker and no stamp (or,
+  in the driver, whose `run_unit` call timed out and left no valid stamp; C9-1), and `stale` lists units whose stamp exists but does not meet the skip rule, naming each
   input whose hash differs. It exits 0 only if every listed key of every unit in its check
   holds. **The pass rule is unchanged** from the single-process design: resume changes how
   the work is scheduled, never which keys must hold.
@@ -1090,7 +1165,8 @@ single whole-run timeout. *(Orchestrator, Revision 7.)*
     must equal the scenario steps' (Revision 8, C8-4: without `--base-path /praxis/` every
     stamp's `args` hash mismatches and the gate is permanently red);
   - one reap step with `if: always()`, `uv run python scripts/unit_runner.py --reap`, step
-    `timeout-minutes: 1`, which kills any unit process a step timeout left behind (C8-1);
+    `timeout-minutes: 1`, which kills any unit process a step timeout left behind (C8-1). It
+    runs without `--force`, because GitHub Actions sets `CI=true` (C9-2);
   - one `actions/upload-artifact` step with `if: always()` that uploads every
     `result.<id>.json`, stamp, timeout marker and `result.json`, for diagnosis only;
   - the job-level `timeout-minutes` at `repl.yml:43` stays only as a backstop, raised to at
@@ -1131,9 +1207,13 @@ spike is a driver over named units, not one process that writes its outcome at t
 | S3 | one declared bounded unit, `ipython_hooks`: (a), (b), (b′), (c) plain and top-level `await`, (d) and the negative control share one kernel, so they are one unit | 10 min |
 | S4 | one declared bounded unit, `viewer3d_pyodide`: the imports, construction, `start`, the loop checks, the scene bytes, both `PACKAGE_ROOT`s, the walk time and the negative control share one kernel | 10 min |
 
-- **Per-unit output.** A unit's first act is to delete its own artifact, stamp and timeout
-  marker (Revision 8, C8-3). It then writes `<out>/units/<name>.json`, then
-  `<out>/units/<name>.stamp.json` last (both through `unit_runner.write_atomic`, D16):
+- **Per-unit output.** A unit first calls `unit_runner.ensure_token()`, then arms its
+  `unit_runner.Watchdog` (Revision 9, C9-4). Only then does it delete its own artifact,
+  stamp and timeout marker (Revision 8, C8-3). It then writes `<out>/units/<name>.json`, runs
+  the D16 bounded teardown (browser and Playwright closed, residual descendants killed,
+  output flushed; C9-1), and commits `<out>/units/<name>.stamp.json` last through
+  `Watchdog.commit`. Both files are written with `unit_runner.write_atomic`, and after the
+  stamp the unit calls only `os._exit(stamp.exit)`. The stamp:
   `{unit, inputs: {name: sha256}, artifact_sha256, started, finished, exit, timeout_s}`.
   Inputs hashed: the spike script, `scripts/unit_runner.py`, the dist manifest (the same
   `dist` hash as D16, from `unit_runner.dist_hash`), the fixture (the seeded notebook or
@@ -1144,10 +1224,13 @@ spike is a driver over named units, not one process that writes its outcome at t
   from `widget_a` or `widget_b`, so a recomputed widget unit invalidates them.
 - **Chunked timeouts** (Revision 8, C8-1, C8-2). The driver starts each unit as its own
   subprocess (`<script> --unit <name> --out-dir <dir>`) through `unit_runner.run_unit`, with
-  timeout = the table's timeout + 60 s; the unit itself arms a `unit_runner.Watchdog` at the
-  table's timeout, which writes `units/<name>.timeout.json`, kills its descendant tree
-  (Chromium included, D16 "Shared unit runner") and exits 124 with no stamp. A timed-out
-  unit is recorded as `timeout`. There is no whole-run timeout.
+  timeout = the table's timeout + 60 s. The unit itself arms a `unit_runner.Watchdog` at the
+  table's timeout. On expiry the watchdog, under the stamp lock, deletes the unit's artifact
+  if present (C9-6), writes `units/<name>.timeout.json`, kills its descendant tree (Chromium
+  included, D16 "Shared unit runner") and exits 124 with no stamp. A timed-out unit is
+  recorded as `timeout`. If the driver's `run_unit` times out over a valid stamp (inputs and
+  `artifact_sha256` match), the stamp governs and the driver logs the timeout (D16; Revision
+  9, C9-1). There is no whole-run timeout.
 - **Completeness** (Revision 8, C8-7). A unit is **complete** when its artifact and a
   matching stamp exist. A probe that raises inside a unit is caught by the unit, recorded in
   the artifact as an `error` finding (`{type, message, traceback_tail}`, the tail capped at
@@ -1199,12 +1282,15 @@ clearing its own earlier files (C8-3) (inputs: the driver and entry script, `rep
 `driver`, C8-6). It supports `--resume`, which skips a negative only if its stamp exists with
 `exit == 0`, its inputs and artifact sha256 match, its artifact carries every pre-registered
 field (`harness_exit`, `failing_keys`, `outcome`), and its recorded outcome passed; a missed
-negative is always rerun. Each sidecar has **one outcome per negative**: exit nonzero **and** the expected
+negative is always rerun. A negative's `harness_exit` is the exit recorded in the harness
+unit's stamp. If the driver's `run_unit` call times out over a valid harness stamp, the stamp
+governs and the timeout is logged. A harness unit with no stamp is a timeout (D16; Revision
+9, C9-1). Each sidecar has **one outcome per negative**: exit nonzero **and** the expected
 key among the failing keys (a: `rail_state_after_run`; b: `viewer_resources`; d: the ≥ 1600
 `panel_width` key; e: `late_iframe`), and for (c) zero grep matches. (d) may instead record
 `skipped`, and the sidecar pre-registers that `skipped` passes only when the AC-1 sizing case
-makes the ≥ 1600 key recorded-only (D6). A harness timeout (exit 124, no result file) is
-nonzero but names no key, so it never passes a negative's outcome (Revision 8, consistency).
+makes the ≥ 1600 key recorded-only (D6). A harness timeout (exit 124, no stamp, and no result file,
+because the watchdog deletes it under the lock; C9-6) is nonzero but names no key, so it never passes a negative's outcome (Revision 8, consistency).
 The completeness definition above applies: a negative unit whose driver code raised records
 an `error` finding, counts as a failed outcome and is never reused.
 
@@ -1475,9 +1561,9 @@ also close panel. The tiers follow D6; crossing 1280 px is the table's tier-cros
 
 | Path | Action | Contents |
 |---|---|---|
-| `scripts/unit_runner.py` | create (A1); used by A2, A3, A7, B10, C1, C7 | The one shared unit runner (D16 "Shared unit runner"; Revision 8, C8-1): `kill_tree` (descendant walk over `/proc/<pid>/task/*/children` with `SIGSTOP` while walking, plus the `PRAXIS_UNIT_TOKEN` environ sweep, then `SIGTERM`/`SIGKILL` of every collected pid and process group), `run_unit` (fresh token, `start_new_session=True`, `kill_tree` on expiry), `Watchdog` (exit 124 after the tree kill), `write_atomic`, `dist_hash`, `driver_input`, and the `--reap` CLI. Loaded by path by `repl_smoke.py`, the spike scripts and the sensitivity driver; no other module kills unit processes. argparse and logging. |
-| `web-repl/tests/test_unit_runner.py` | create (A1) | AC-42 runner cases, with real short-lived processes (no browser): a `setsid` grandchild does not survive `run_unit`'s timeout; a `setsid` grandchild whose parent has already exited is killed by the token sweep; a `Watchdog` child exits 124 at its budget with its `setsid` grandchild gone; `kill_tree` never signals the caller's process group; `--reap` kills a token-carrying orphan; `driver_input` changes when the Playwright version or `uv.lock` changes (both injected). Wired into `repl.yml` in A1. |
-| `scripts/spikes/260929_s{1,2,3,4}_*.py` (all four rows below) | create (A1–A3, C1) | Each is a unit driver per D17 "Units, resume and chunking": the units listed there, each started as `--unit <name>` through `unit_runner.run_unit` in its own subprocess and browser context, self-bounded by a `unit_runner.Watchdog` at its timeout; the unit clears its own files first; `units/<name>.json` plus a stamp with input (including `driver`) and artifact sha256; a raised probe recorded as an `error` finding (complete, never reused); `--out-dir` and `--resume`; `[outcomes]` evaluated over the full unit set. The sidecar pre-registers the units, timeouts, hashed inputs, artifact fields, resume rule and completeness definition. |
+| `scripts/unit_runner.py` | create (A1); used by A2, A3, A7, B10, C1, C7 | The one shared unit runner (D16 "Shared unit runner"; Revision 8, C8-1; Revision 9, C9-1..C9-4): `kill_tree` (descendant walk over `/proc/<pid>/task/*/children` and the exact NUL-delimited `PRAXIS_UNIT_TOKEN=<token>` environ sweep, iterated to a fixpoint with `SIGSTOP` on each find, skipping unreadable or empty environs; pid-reuse guard by pidfd where available, else a `/proc/<pid>/stat` starttime check; group signals only with a verified live member; `SIGTERM`, a second fixpoint after the grace, then `SIGKILL`; `SIGCONT` to every stopped pid in a `finally`), `run_unit` (fresh token at exec, `start_new_session=True`, `kill_tree` on expiry), `ensure_token` (re-exec with the token set), `Watchdog` (armed first; owns the stamp lock through `commit`; on expiry deletes the result, writes the marker, kills the tree, exits 124), the bounded-teardown order (browser and Playwright closed before the stamp, only `os._exit(stamp.exit)` after it), `write_atomic`, `dist_hash`, `driver_input`, and the `--reap` CLI (`kill_tree` per token found; refuses without `CI` or `--force`). Loaded by path by `repl_smoke.py`, the spike scripts and the sensitivity driver; no other module kills unit processes. argparse and logging. |
+| `web-repl/tests/test_unit_runner.py` | create (A1) | AC-42 runner cases. All but one use real short-lived processes and no browser: a `setsid` grandchild does not survive `run_unit`'s timeout; a `setsid` grandchild whose parent has already exited is killed by the token sweep; a `Watchdog` child exits 124 at its budget with its `setsid` grandchild gone; a child that hangs after its stamp (a blocking `atexit` handler and a non-daemon thread) still exits with `stamp.exit` within budget + grace; the fixpoint catches a child forked during the grace by a sweep-found orphan; an unreadable or empty environ is skipped, and only the exact token entry matches; `SIGCONT` in the `finally` leaves no stopped process after an interrupted walk; `ensure_token` re-execs so `/proc/self/environ` carries the token; the pid-reuse guard; `kill_tree` never signals the caller's process group; `--reap` refuses without `CI` or `--force`, and with either it kills a token-carrying orphan; `driver_input` changes when the Playwright version or `uv.lock` changes (both injected). The exception is one real-Chromium case (C9-5), which runs in CI only, never locally: headless Chromium under `run_unit` leaves no process carrying the token. Wired into `repl.yml` in A1, in the REPL job, which has Playwright's Chromium. |
+| `scripts/spikes/260929_s{1,2,3,4}_*.py` (all four rows below) | create (A1–A3, C1) | Each is a unit driver per D17 "Units, resume and chunking": the units listed there, each started as `--unit <name>` through `unit_runner.run_unit` in its own subprocess and browser context, self-bounded by a `unit_runner.Watchdog` at its timeout (armed first, after `ensure_token`); the unit clears its own files next; browser and Playwright teardown run before the stamp is committed, and only `os._exit(stamp.exit)` follows it (C9-1); `units/<name>.json` plus a stamp with input (including `driver`) and artifact sha256; a raised probe recorded as an `error` finding (complete, never reused); `--out-dir` and `--resume`; `[outcomes]` evaluated over the full unit set. The sidecar pre-registers the units, timeouts, hashed inputs, artifact fields, resume rule and completeness definition. |
 | `scripts/negatives/260929_nd_sensitivity.py`, `260929_nd_sensitivity_sprint_{a,b,c}.py` + `.bth.toml` each | create (A7), used (B10, C7) | The AC-39 sensitivity driver and its per-sprint entry scripts and sidecars (D17, C7-8): one unit per negative, each on its own mutated dist copy (`/tmp/claude-1000/nd-neg/<negative>/dist/`) with its own `--out-dir` (`.../<negative>/out/`, C8-5), running only its own harness unit through `unit_runner.run_unit`; `driver` hashed; one outcome per negative. |
 | `scripts/spikes/260929_s1_lumino_widget.py` + `.bth.toml` | create (A1) | Playwright probe over a built dist, `lab/` entry. It tries S1-A, then S1-B. It records `split_right_ok`, `css_limits_honoured`, `dock_layout_sizing_reachable` (the DockPanel `saveLayout`/`restoreLayout` path), `css_limits_refit` (inline px `min-width`/`max-width` then `parent.fit()`: does the widget take the new width?), `restore_layout_keeps_iframe` (does a `restoreLayout()` clamp reload an iframe in the widget?), the resulting D6 sizing case, the per-state cell hooks, the notebook's `windowingMode` and the cell re-attach signal, with the negative control from D17. Written with argparse and logging. |
 | `scripts/spikes/260929_s2_sanitizer.py` + `.bth.toml` | create (A2) | It writes a notebook JSON with crafted outputs to the drive, which is untrusted because it was never executed, reopens it, and records the chosen mimetype and survivorship per element and attribute. It repeats the check for the same bundle displayed live (trusted), and for a notebook executed, saved and reopened in the same browser, recording that path's trust state and mimetype (S2-T or not). Negative control from D17. |
@@ -1492,8 +1578,8 @@ also close panel. The tiers follow D6; crossing 1280 px is the table's tier-cros
 | `web-repl/scripts/build_repl.py` | modify (A6, B9, C6) | A6: `stage_shell` removes and then copies `shell/display/`, skipping `__tests__`, and `assert_dist_complete` requires `shell/display/{index,chrome}.js`. B9: adds `stale.js` and `interact.js` to the required list. C6: adds `dock.js`, `assets/visualizer3d/index.html`, `assets/visualizer3d/vendor/three.webgpu.min.js`, `assets/visualizer3d-augmentations/{socket,embed}.js` and `embed.css`, `assets/python/plr_visualizer3d/server.py`, `assets/python/praxis/viz/viewer3d.py`, and `assets/python/praxis/display/__init__.py`, the last from B8. |
 | `web-repl/tests/test_display_staging.py` | create (A6), extend (B9, C6) | Stages to `tmp`: no `__tests__`, a stale file is removed, and `assert_dist_complete` raises on a missing required file. |
 | `web-repl/tests/fixtures/notebooks/display_check.ipynb` | create (A7), extend (B10, C7) | The gate notebook. Boot cell, the fixture deck from `make_fixture.py`'s `assemble()` with tracking on, cells that draw the deck, a plate and a tip rack, a `RunLedger` cell, one cell per error case, a sleep cell (running state), and a marker cell after an error (Run All stops). Not shipped in dist; the harness seeds it. |
-| `scripts/repl_smoke.py` (repo root) | modify (A7, B10, C7) | Adds `--display-check` and `run_display_check`, and later `--dock-check` and `run_dock_check`. Each is added to the "nothing to do" list and gets a `main()` branch. Both follow D16 "Preemption-safe harness design": `--scenario <id>` runs one unit in one process, clears its own files first and is self-bounded by a `unit_runner.Watchdog` at its budget (exit 124, timeout marker, no stamp); with no `--scenario` the flag is the driver (one subprocess per unit through `unit_runner.run_unit` with budget + 60 s as timeout, stamp-matched resume requiring `exit == 0` and every listed key present and holding, aggregate `result.json` recording reused, timed-out, missing and stale units); `--out-dir` (required with a non-default `--serve-dir` or any `--neg`), `--fresh`, `--aggregate-only` (never deletes), and the harness-only `--neg drop-query` (AC-39(e)). Hashed inputs include `driver` (C8-6). The unit table (with listed keys), stamp writer, input hashing, reuse rule and aggregate are pure functions, testable without a browser; process start, kill and atomic writes come from `scripts/unit_runner.py` only. A7 adds the driver and D1/D1-dark, B10 adds D2–D4, C7 adds K1a, K1b, K2 and N-d. |
-| `web-repl/tests/test_repl_smoke_resume.py` | create (A7), extend (B10, C7) | AC-42: loads `scripts/repl_smoke.py` by path and drives the pure driver functions with fake unit runners; the `--scenario` watchdog case runs `run_scenario` in a short-lived child process with a hanging fake runner. |
+| `scripts/repl_smoke.py` (repo root) | modify (A7, B10, C7) | Adds `--display-check` and `run_display_check`, and later `--dock-check` and `run_dock_check`. Each is added to the "nothing to do" list and gets a `main()` branch. Both follow D16 "Preemption-safe harness design": `--scenario <id>` runs one unit in one process: `ensure_token`, then arming a `unit_runner.Watchdog` at its table budget as its first act (exit 124, timeout marker, result deleted, no stamp), then clearing its own files, and closing the browser and Playwright before the stamp commit, after which only `os._exit(stamp.exit)` runs (C9-1, C9-4, C9-6); with no `--scenario` the flag is the driver (one subprocess per unit through `unit_runner.run_unit` with budget + 60 s as timeout, stamp-matched resume requiring `exit == 0` and every listed key present and holding, aggregate `result.json` recording reused, timed-out, missing and stale units; a `run_unit` timeout over a valid stamp defers to the stamp and is logged); `--out-dir` (required with a non-default `--serve-dir` or any `--neg`), `--fresh`, `--aggregate-only` (never deletes), and the harness-only `--neg drop-query` (AC-39(e)). Hashed inputs include `driver` (C8-6) and `runner` (C9-6). The unit table (with listed keys), stamp writer, input hashing, reuse rule and aggregate are pure functions, testable without a browser; process start, kill and atomic writes come from `scripts/unit_runner.py` only. A7 adds the driver and D1/D1-dark, B10 adds D2–D4, C7 adds K1a, K1b, K2 and N-d. |
+| `web-repl/tests/test_repl_smoke_resume.py` | create (A7), extend (B10, C7) | AC-42: loads `scripts/repl_smoke.py` by path and drives the pure driver functions with fake unit runners; the `--scenario` watchdog case runs `run_scenario` in a short-lived child process with a hanging fake runner. Revision 9 adds: `run_scenario(<id>)` arms the `Watchdog` with that unit's table budget before anything else (C9-4); a hanging fake teardown exits 124 within budget + grace; a `run_unit` timeout over a valid stamp defers to the stamp (C9-1); a `runner` hash change forces a recompute (C9-6). |
 | `web-repl/tests/test_repl_workflow_scenarios.py` | create (A7), extend (B10, C7) | AC-42: parses `repl.yml` and checks one step per unit with its step-level `timeout-minutes`, the `--aggregate-only` steps and that their hashed arguments equal the scenario steps', the `if: always()` reap step and upload, and the job-level backstop. |
 | `web-repl/overlay/assets/python/praxis/display/__init__.py` | create (B8) | Exports `install`, `RunLedger` and `render`. `render(obj)` returns the bundle, for tests and explicit use. |
 | `.../praxis/display/svg.py` | create (B1) | Path builders (circle as two arcs, rounded rect, cross), a text element with a font size in user units, number formatting, and `esc_text` / `esc_attr` (D2 escaping; the only escape helpers). No PLR import. |
@@ -1522,7 +1608,7 @@ also close panel. The tiers follow D6; crossing 1280 px is the table's tier-cros
 | `web-repl/overlay/assets/visualizer3d-augmentations/embed.js`, `embed.css` | create (C4) | D12 embed mode and status forwarding. |
 | `web-repl/shell/display/__tests__/viz3d_socket.test.js` | create (C4) | Evaluates `socket.js` text against a fake global. Kept here so that no `__tests__` directory lives under `overlay/assets/`, which is staged wholesale (`build_repl.py:551-578`). |
 | `web-repl/shell/display/dock.js` + tests | create (C5) | The deck panel widget per S1, the header, the footer, tiers and sizing per the D6 sizing-case table (CSS, DockPanel layout, inline px + `parent.fit()`, or S1-L), `parent.fit()` after every tier change inside the split, the drawer with its close button, Escape and tier crossing, Follow (skipping `resource: null` stamps, read through `stampOf`), the held preset (re-applied after each iframe load once `resources()` is non-empty, D12), layout sizing only at open and on tier changes when `restore_layout_keeps_iframe` is `false`, and the deck-panel lifecycle implemented exactly as the D11 deck-panel state table (four states, transitions T1–T27, invariants I1–I6; the §3.6 texts per state), acting on `praxis_viz3d` only for `announce` and the kernel `close`, and on the viewer's kernel's `sessionContext` for the kernel-restart event (`viewerPanel`, D11); `praxis:toggle-deck-panel`. |
-| `.github/workflows/repl.yml` | modify (A1, A7, B10, C7) | Each sprint adds its pytest lines in the task that creates each test file (the per-file guard `test_repl_workflow_covers_tests.py` on `main` fails on an unwired file; A1 wires `test_unit_runner.py`), its `bun test web-repl/shell/display` line in the coxswain job (A5), and its scenario steps per D16 "Preemption-safe harness design" (A7: `--display-check --scenario` D1 and D1-dark, plus the `--display-check --aggregate-only --base-path /praxis/` step, the `if: always()` `unit_runner.py --reap` step and the `if: always()` upload; B10: D2, D3, D4; C7: `--dock-check --scenario` K1a, K1b, K2, plus its `--dock-check --aggregate-only --base-path /praxis/` step), each scenario step with step-level `timeout-minutes` = budget + 2, and the job-level backstop raised to 60 / 92 / 137. No step downloads an earlier run's artifacts. |
+| `.github/workflows/repl.yml` | modify (A1, A7, B10, C7) | Each sprint adds its pytest lines in the task that creates each test file (the per-file guard `test_repl_workflow_covers_tests.py` on `main` fails on an unwired file; A1 wires `test_unit_runner.py`), its `bun test web-repl/shell/display` line in the coxswain job (A5), and its scenario steps per D16 "Preemption-safe harness design" (A7: `--display-check --scenario` D1 and D1-dark, plus the `--display-check --aggregate-only --base-path /praxis/` step, the `if: always()` `unit_runner.py --reap` step (no `--force`; Actions sets `CI=true`, C9-2) and the `if: always()` upload; B10: D2, D3, D4; C7: `--dock-check --scenario` K1a, K1b, K2, plus its `--dock-check --aggregate-only --base-path /praxis/` step), each scenario step with step-level `timeout-minutes` = budget + 2, and the job-level backstop raised to 60 / 92 / 137. No step downloads an earlier run's artifacts. |
 
 **Files that must not change:**
 - `web-repl/jupyter-lite.json` (D10; OQ-1 could change that later)
@@ -2234,12 +2320,13 @@ Gate shorthands:
   - R19: `test -d web-repl/overlay/assets/visualizer-augmentations`, then
     `grep -rnE 'requestDevice|requestPort' web-repl/overlay/assets/visualizer-augmentations/ web-repl/overlay/assets/visualizer3d-augmentations/ web-repl/shell/display/`
     exits **1 exactly**.
-- **AC-42 (preemption-safe harness)** (Revision 7, C7-1; Revision 8, C8-1..C8-6)
-  [PY:test_unit_runner.py], [PY:test_repl_smoke_resume.py] and
+- **AC-42 (preemption-safe harness)** (Revision 7, C7-1; Revision 8, C8-1..C8-6; Revision 9,
+  C9-1..C9-6) [PY:test_unit_runner.py], [PY:test_repl_smoke_resume.py] and
   [PY:test_repl_workflow_scenarios.py]. `test_unit_runner.py` is created in A1 (the runner
   cases); the other two are created in A7 for the display units and extended in B10 and C7
   for theirs:
-  - **Runner** (`test_unit_runner.py`, real short-lived processes, no browser; C8-1):
+  - **Runner** (`test_unit_runner.py`, real short-lived processes, no browser except the one
+    CI-only case below; C8-1):
     - a child that starts a `setsid` grandchild (its own session and process group, as
       Playwright's detached Chromium) and then hangs: after `run_unit`'s timeout the
       grandchild is no longer running within the grace period (`/proc/<pid>` absent, or
@@ -2248,20 +2335,62 @@ Gate shorthands:
       re-parented out of the tree: the `PRAXIS_UNIT_TOKEN` sweep kills it;
     - a child arming `Watchdog(1)` with a `setsid` grandchild exits 124 within the budget
       plus grace, and the grandchild is gone;
+    - **Hang after the stamp** (Revision 9, C9-1): a child arming `Watchdog(1)` commits a
+      stamp with `exit` 3 while it holds an `atexit` handler that sleeps forever and a
+      non-daemon thread that blocks forever. It exits with code 3 within the budget plus
+      grace, because only `os._exit(stamp.exit)` follows the commit;
+    - **Fixpoint** (C9-2): a sweep-found `setsid` orphan whose `SIGTERM` handler forks a
+      child that ignores `SIGTERM` (the child inherits the token) during the grace window:
+      after `kill_tree` returns, neither survives;
+    - **Unreadable environ** (C9-2): with an injected environ reader that raises
+      `PermissionError` for one pid, `ProcessLookupError` for another and returns empty for
+      a third, `kill_tree` completes without raising and still kills the token-carrying
+      grandchild. A process whose environ holds `PRAXIS_UNIT_TOKEN=<token>x` or
+      `X_PRAXIS_UNIT_TOKEN=<token>` is not signalled;
+    - **`SIGCONT` in `finally`** (C9-2): with an injected walk that raises
+      `KeyboardInterrupt` after the first `SIGSTOP`, `kill_tree` re-raises, and afterwards
+      no process of the test tree is in state `T` in `/proc/<pid>/stat`;
+    - **`ensure_token`** (C9-4): a child started without `PRAXIS_UNIT_TOKEN` that calls
+      `ensure_token()` finds the token in its own `/proc/self/environ` afterwards;
+    - **Pid-reuse guard** (C9-3): with pidfd disabled and an injected `/proc` reader that
+      reports a changed starttime for a collected pid, `kill_tree` sends that pid no
+      signal, and sends no group signal to its pgid when the group has no other verified
+      live member. Where `os.pidfd_open` exists, a spy shows every per-pid signal going
+      through `signal.pidfd_send_signal`;
     - `kill_tree` never signals the caller or the caller's process group;
-    - `--reap` kills a token-carrying orphan and nothing without a token;
+    - `--reap` (C9-2): with `CI` unset and no `--force` it exits 2 and a token-carrying
+      orphan is still alive. With `CI=1`, and separately with `--force`, it kills the orphan
+      and nothing without a token;
     - `driver_input()` changes when the injected Playwright version changes and when the
-      injected `uv.lock` bytes change.
+      injected `uv.lock` bytes change;
+    - **Real Chromium** (Revision 9, C9-5; **CI only, never run locally**, per the local
+      compute rule): marked `skipif` unless `CI` is set. In CI it fails, and never skips, if
+      Chromium cannot be resolved. A child launches headless Chromium through Playwright and
+      then hangs. After `run_unit`'s timeout, no process whose environ carries that unit's
+      token survives the grace period. A1's local gate runs the file with this case skipped;
+      the CI run is authoritative for it.
   - The driver's unit table equals D16's (ids, check, budget, listed keys); `--scenario <id>`
     runs exactly that unit.
   - With fake unit runners: every unit is started as its own `run_unit` call with its own
     budget + 60 s as timeout; no call carries a whole-run timeout.
   - A unit writes `result.<id>.json` before `result.<id>.stamp.json`; a runner killed between
     the two leaves no stamp, and the next resume recomputes that unit.
-  - **`--scenario` watchdog** (C8-2): `run_scenario` for a unit, run in a short-lived child
-    process with a hanging fake runner and a 1 s budget, exits 124 at its budget, prints the
-    `"status": "timeout"` line, writes the timeout marker and leaves **no** stamp and no
-    result.
+  - **`--scenario` watchdog** (C8-2; Revision 9, C9-6): `run_scenario` for a unit, run in a
+    short-lived child process with a fake runner that writes its result and then hangs and a
+    1 s budget, exits 124 at its budget, prints the `"status": "timeout"` line, writes the
+    timeout marker and leaves **no** stamp. The result the fake wrote no longer exists,
+    because the watchdog deleted it under the lock.
+  - **Watchdog armed with the table budget** (C9-4): for every unit id in the table,
+    `run_scenario(<id>)` with an injected `Watchdog` spy arms it exactly once, with that
+    unit's D16 budget, before the first file deletion and before the fake browser launch.
+  - **Hang in teardown** (C9-1): with a fake whose `browser.close()` hangs, and separately a
+    fake whose `sync_playwright()` exit hangs, `run_scenario` exits 124 within budget +
+    grace and leaves no stamp and no result.
+  - **Driver timeout over a valid stamp** (C9-1): a fake `run_unit` that reports
+    `timed_out` after the unit committed a valid stamp over a passing result: the unit is
+    judged from its result (listed under `recomputed`, not `timed_out`), the aggregate
+    passes, and a `logging.warning` naming the unit is emitted. The same fake with no stamp
+    lists the unit under `timed_out`.
   - **Timed-out re-run clears the prior stamp** (C8-3): after a passing fake run of a unit
     leaves a stamp, a second `--scenario` run of it with a hanging fake runner times out;
     afterwards neither the old result nor the old stamp exists, and the next resume
@@ -2270,11 +2399,12 @@ Gate shorthands:
     and `result_sha256` match, and every listed key is present and holds; it records it under
     `reused` with its source path, input sha256s and `result_sha256`. Each of these
     recomputes it: a changed input (one case each for `dist`, `notebook`, `harness`,
-    `chrome`, `args`, and `driver` with the Playwright version changed and with the
+    `runner` (C9-6), `chrome`, `args`, and `driver` with the Playwright version changed and with the
     `uv.lock` sha256 changed, C8-6), a tampered result file, a result with a failing key, a
     result with a listed key missing, a stamp with `exit != 0` over an otherwise passing
     result, and `--fresh`.
-  - A timed-out unit is listed in `timed_out`, has no stamp, and fails the aggregate.
+  - A timed-out unit is listed in `timed_out`, has no stamp and no result, and fails the
+    aggregate.
   - The aggregate verdict over a fixed set of unit results is identical whether each unit was
     reused or recomputed (the pass rule is unchanged).
   - `--aggregate-only` starts no unit subprocess, counts a missing unit as failed, and
@@ -2289,7 +2419,7 @@ Gate shorthands:
     and `if: ${{ !cancelled() }}`; one `--aggregate-only` step per check whose hashed
     arguments (`--base-path`, and `--serve-dir`/`--out-dir` when present) equal those of
     every scenario step of that check (C8-4); an `if: always()` step running
-    `scripts/unit_runner.py --reap` (C8-1); an `actions/upload-artifact` step with
+    `scripts/unit_runner.py --reap` without `--force` (C8-1, C9-2); an `actions/upload-artifact` step with
     `if: always()` covering the out dirs; no `actions/download-artifact` step that fetches
     that artifact (CI never reuses across workflow runs); and a job-level `timeout-minutes`
     of at least 45 plus the sum of the scenario step timeouts.
@@ -2317,17 +2447,25 @@ action (project memory, "praxis main merge policy").
   iframe in the widget loaded, i.e. a clamp causes no reload), enumerates cell-state hooks for the five
   states, and records the notebook's `windowingMode` and the signal that fires when a
   scrolled-away cell's DOM is re-attached.
-- **First, the shared unit runner** (Revision 8, C8-1), tests first: write
-  `web-repl/tests/test_unit_runner.py` (the AC-42 runner cases) and see it fail, then
-  `scripts/unit_runner.py` (D16 "Shared unit runner": `kill_tree`, `run_unit`, `Watchdog`,
-  `write_atomic`, `dist_hash`, `driver_input`, `--reap`), and wire the test into `repl.yml`.
+- **First, the shared unit runner** (Revision 8, C8-1; Revision 9, C9-1..C9-5), tests
+  first: write `web-repl/tests/test_unit_runner.py` (the AC-42 runner cases, including the
+  Revision 9 cases: hang after the stamp, fixpoint, unreadable environ, `SIGCONT` in
+  `finally`, `ensure_token`, pid-reuse guard, `--reap` refusal, and the CI-only
+  real-Chromium case) and see it fail, then `scripts/unit_runner.py` (D16 "Shared unit
+  runner": `kill_tree` with the fixpoint, pidfd or starttime guard and `finally` `SIGCONT`;
+  `run_unit`; `ensure_token`; `Watchdog` with `commit` and result deletion; the bounded
+  teardown order; `write_atomic`, `dist_hash`, `driver_input`; `--reap` with its `CI` /
+  `--force` guard), and wire the test into `repl.yml` in the REPL job that has Playwright's
+  Chromium. The real-Chromium case is never run locally (local compute rule); A1's local
+  gate runs the file with it skipped, and the PR's CI run is authoritative for it.
   Commit these to the sprint branch before the probe work, so A2 and A3 can start on them.
   A1 is the first sprint A task to need a unit runner (A1–A3 start before A7), so it owns
   the module; every later unit kind uses it and none reimplements process killing.
 - The probe is a unit driver (D17 "Units, resume and chunking"): the S1 units, each started
   as `--unit <name>` through `unit_runner.run_unit` in its own subprocess and browser
-  context, 4 min each and self-bounded by a `unit_runner.Watchdog`, clearing its own files
-  first, `units/<name>.json` plus a stamp (inputs including `driver`), a raised probe
+  context, 4 min each and self-bounded by a `unit_runner.Watchdog` armed as its first act,
+  clearing its own files next, closing the browser and Playwright before the stamp commit
+  (only `os._exit(stamp.exit)` after it, C9-1), `units/<name>.json` plus a stamp (inputs including `driver`), a raised probe
   recorded as an `error` finding, `--resume`; the sidecar pre-registers the units, timeouts,
   hashed inputs, artifact fields, resume rule and completeness definition (D17, C8-7), and
   evaluates `[outcomes]` over the full unit set.
@@ -2335,8 +2473,11 @@ action (project memory, "praxis main merge policy").
   unit as recomputed or reused and lists any `error` findings.
 - Depends on: none (a built dist).
 - Closes: AC-1, and AC-42's runner cases.
-- Gate: [PY:test_unit_runner.py], [PY:test_repl_workflow_covers_tests.py]; AC-1 record query.
-- Size: ~370 LOC (raised in Revision 8 for `unit_runner.py` and its test).
+- Gate: [PY:test_unit_runner.py] (locally with the real-Chromium case skipped; that case is
+  closed by the PR's CI run), [PY:test_repl_workflow_covers_tests.py]; AC-1 record query.
+- Size: ~450 LOC (raised in Revision 8 for `unit_runner.py` and its test, and in Revision 9
+  for the fixpoint, pid-reuse guard, `ensure_token`, bounded teardown, seven new runner cases
+  and the tightened `--reap` case).
 
 **A2: Spike S2 (sanitizer and untrusted mimetype).** Same discipline as A1, over
 `260929_s2_sanitizer.py`. The crafted outputs cover every element and attribute in D1's S2
@@ -2408,11 +2549,14 @@ and `run_display_check` to `repl_smoke.py`:
 - add the context init script that pre-sets the persistence ack key (D16)
 - build the D16 "Preemption-safe harness design" machinery, tests first
   (`test_repl_smoke_resume.py`): the unit table with listed keys, `--scenario <id>` (one
-  unit per process, clearing its own files first, self-bounded by a `unit_runner.Watchdog`
-  at its budget: exit 124, timeout marker, no stamp), the driver (one `unit_runner.run_unit`
-  subprocess per unit with budget + 60 s as timeout; no process killing outside
-  `unit_runner.py`), the per-unit result and stamp writers (`unit_runner.write_atomic`),
-  input hashing including `driver`, the skip rule (`exit == 0`, every listed key present and
+  unit per process: `unit_runner.ensure_token`, then a `unit_runner.Watchdog` armed at its
+  table budget as the first act (exit 124, timeout marker, result deleted, no stamp), then
+  clearing its own files; browser and Playwright closed before the stamp commit, only
+  `os._exit(stamp.exit)` after it; C9-1, C9-4, C9-6), the driver (one `unit_runner.run_unit`
+  subprocess per unit with budget + 60 s as timeout, deferring to a valid stamp over its own
+  timeout and logging it; no process killing outside `unit_runner.py`), the per-unit result
+  and stamp writers (`unit_runner.write_atomic`, stamp through `Watchdog.commit`), input
+  hashing including `driver` and `runner`, the skip rule (`exit == 0`, every listed key present and
   holding), the aggregate with `reused`/`recomputed`/`timed_out`/`missing`/`stale`, and
   `--out-dir` (required with a non-default `--serve-dir` or any `--neg`), `--fresh`,
   `--aggregate-only` (never deletes)
@@ -2421,7 +2565,8 @@ Then add the CI steps after "Execute welcome.ipynb", per D16: one step per unit
 (`uv run python scripts/repl_smoke.py --display-check --scenario D1 --base-path /praxis/`,
 and `D1-dark`) with step-level `timeout-minutes` 8 and 7 and `if: ${{ !cancelled() }}`, the
 `--display-check --aggregate-only --base-path /praxis/` step, the `if: always()`
-`uv run python scripts/unit_runner.py --reap` step, the `if: always()` upload, and the
+`uv run python scripts/unit_runner.py --reap` step (no `--force`: Actions sets `CI=true`),
+the `if: always()` upload, and the
 job-level backstop raised to 60; write `test_repl_workflow_scenarios.py` first and wire both
 new test files. Write the sensitivity driver (units through `unit_runner.run_unit`, each
 negative on `/tmp/claude-1000/nd-neg/<negative>/dist/` with its own `--out-dir .../out/`,
@@ -2778,9 +2923,9 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
 | Moving the iframe for the drawer tier reloads it | D11 state table T15: the `viewer` id stays in its `src`, the old client posts `bye`, the shim reconnects, and AC-38 `drawer_reconnect` and AC-36 `tier_up_rehomes` test it. |
 | A closed deck panel reconnects without exercising `query`, hiding a broken `query` path | D11 state table T3, T4, T6: a closed panel ignores every announce but a page's first; reopen attaches an iframe-less panel and posts `query`, so the only iframe is created by the answering `announce`. AC-38 `late_iframe` asserts the ordering, and AC-39(e) proves it fails with `query` dropped. |
 | Piecemeal edits to the deck panel's lifecycle contradict each other (Revisions 4 and 5 each left a neighbouring gap; round 6 found "panel open, no iframe" uncovered after every re-dock) | One authoritative table in D11 (four states, T1–T27, invariants I1–I6); every other section references it. C5 has one test per row plus the C6-1 re-dock sequence; AC-38 runs in a stated order and reads the iframe from the DOM. A future lifecycle change edits the table and its row tests together. |
-| A preempted, crashed or hung browser run loses every finished scenario, and one whole-run timeout hides which scenario hung | D16 "Preemption-safe harness design": one unit per scenario, one subprocess per unit with its own budget, a per-unit result and stamp written as each unit completes, resume over stamp-matched units, and one CI step per unit with a step-level timeout (the job timeout is only a backstop). A direct `--scenario` run bounds itself with a watchdog at its budget (Revision 8, C8-2). Spikes and AC-39 runs follow the same design (D17). AC-42 tests it. |
-| A hung Chromium survives a unit timeout, because Playwright launches it detached as its own process-group leader (`processLauncher.js:108-111`), so a process-group kill or a CI step timeout orphans it and it holds CPU, memory or ports into the next unit | One shared `scripts/unit_runner.py` (D16, C8-1) used by every unit kind: `kill_tree` stops and walks every descendant, sweeps the per-unit `PRAXIS_UNIT_TOKEN` for re-parented orphans, and terminates every collected pid and process group; CI adds an `if: always()` `--reap` step. AC-42's runner cases prove a `setsid` grandchild dies, with and without its parent. Rollback: revert the module and its callers together (no caller kills processes itself). |
-| Resume reuses a stale or tampered result and a gate passes on old evidence | A unit is reused only when every input sha256 (dist, notebook, harness, chrome, args, driver) and its result sha256 match, its stamp has `exit == 0`, and every listed key is present and holds; a unit clears its own result and stamp before running, so a timed-out re-run leaves nothing to reuse (C8-3). The aggregate lists every reused unit with its source and hashes; `--aggregate-only` never deletes, so a mismatch stays diagnosable (C8-4). CI never reuses across workflow runs. The pass rule is unchanged by reuse (AC-42). |
+| A preempted, crashed or hung browser run loses every finished scenario, and one whole-run timeout hides which scenario hung | D16 "Preemption-safe harness design": one unit per scenario, one subprocess per unit with its own budget, a per-unit result and stamp written as each unit completes, resume over stamp-matched units, and one CI step per unit with a step-level timeout (the job timeout is only a backstop). A direct `--scenario` run bounds itself with a watchdog, armed as its first act at the unit's table budget (Revision 8, C8-2; Revision 9, C9-4). Browser and Playwright teardown run inside that bounded region before the stamp, and only `os._exit(stamp.exit)` follows the stamp, so a hang in teardown is a timeout and nothing can hang after the stamp (C9-1). A driver timeout over a valid stamp defers to the stamp and is logged. Spikes and AC-39 runs follow the same design (D17). AC-42 tests it, including a hang after the stamp and a hang in teardown. |
+| A hung Chromium survives a unit timeout, because Playwright launches it detached as its own process-group leader (`processLauncher.js:108-111`), so a process-group kill or a CI step timeout orphans it and it holds CPU, memory or ports into the next unit | One shared `scripts/unit_runner.py` (D16, C8-1) used by every unit kind: `kill_tree` stops and walks every descendant and sweeps the per-unit `PRAXIS_UNIT_TOKEN` (exact entry; unreadable environs skipped) for re-parented orphans, repeating both to a fixpoint before the kill and again after the grace. It guards against pid reuse with a pidfd, or with a starttime check where pidfd is unavailable, and sends group signals only while a verified member lives. It sends `SIGCONT` in a `finally`, and terminates every collected pid and process group (Revision 9, C9-2, C9-3). A direct run re-execs so the token is visible in `/proc/self/environ` (C9-4). CI adds an `if: always()` `--reap` step, which refuses to run outside CI without `--force`. AC-42's runner cases prove that a `setsid` grandchild dies, with and without its parent, and that a grace-window fork dies. A CI-only case proves that no real headless Chromium survives (C9-5). Rollback: revert the module and its callers together (no caller kills processes itself). |
+| Resume reuses a stale or tampered result and a gate passes on old evidence | A unit is reused only when every input sha256 (dist, notebook, harness, runner, chrome, args, driver; `runner` added in Revision 9, C9-6) and its result sha256 match, its stamp has `exit == 0`, and every listed key is present and holds. A unit clears its own result and stamp before running, and its watchdog deletes any result it wrote before timing out, so a timed-out re-run leaves nothing to reuse (C8-3, C9-6). The aggregate lists every reused unit with its source and hashes; `--aggregate-only` never deletes, so a mismatch stays diagnosable (C8-4). CI never reuses across workflow runs. The pass rule is unchanged by reuse (AC-42). |
 | A negative run overwrites real results, or a spike unit whose probe raised is silently treated as absent or reused | Each AC-39 negative has its own `--serve-dir` and `--out-dir` under `/tmp/claude-1000/nd-neg/<negative>/`, and the harness refuses a non-default dist or `--neg` without `--out-dir` (C8-5). A raised spike probe is a complete unit with an `error` finding that counts toward `[outcomes]` and is never reused; only a timeout or a stampless crash is incomplete, as each sidecar pre-registers (D17, C8-7). |
 | A kernel restart leaves a frozen deck that looks live (the dead kernel posts no `close`) | D11 kernel-restart event on the viewer's kernel's `sessionContext` (T25, T26), treated like a kernel `close` for the current viewer; C5 unit cases and AC-38 `restart_placeholder`. The residual case (viewer's kernel unknown with several live kernels) is stated under the multi-notebook non-goal. |
 | Vendored PLR-main Python imports a submodule the import contract lacks | C2 extends `plr_contract.CONTRACT` with a justification and appends an ADR §2 addendum; `test_contract_covers_imports.py` gates C2 and sprint B (AC-30, AC-41). |
@@ -2879,7 +3024,7 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
   `.praxia/docs/audits/260929_notebook-display-round1-defender.md`.
 - Round 2 review: `.praxia/docs/audits/260929_notebook-display-round2-challenger.md`,
   `.praxia/docs/audits/260929_notebook-display-round2-defender.md`.
-- Rounds 3 to 8: `.praxia/docs/audits/260929_notebook-display-round{3,4,5,6,7,8}-challenger.md`.
+- Rounds 3 to 9: `.praxia/docs/audits/260929_notebook-display-round{3,4,5,6,7,8,9}-challenger.md`.
 - Playwright's detached Chromium launch:
   `praxis/web-client/node_modules/playwright-core/lib/server/utils/processLauncher.js:108-111`
   (`detached: process.platform !== "win32"`; verified by the orchestrator, 260929, round 8).
@@ -3312,4 +3457,54 @@ A1.
 - `repl.yml` §4 row gains A1 (wiring `test_unit_runner.py`); the reap step's 1 minute sits
   inside the job backstop's 45-minute allowance, so 60 / 92 / 137 are unchanged.
 - Sizes: A1 ~250 → ~370 LOC. The ACs still number 42; the tasks still number 24.
+
+## Revision 9 (260929)
+
+Round 9 (`.praxia/docs/audits/260929_notebook-display-round9-challenger.md`, audit
+`260929_notebook-display-design_spec-challenge_r9`) closed C8-1 through C8-7 and found the
+runner design structurally sound, with 1 MAJOR and 5 MINOR hardening findings. The
+orchestrator ruled:
+- C9-1: the browser and Playwright close inside the watchdog-bounded region before the stamp,
+  and only `os._exit(stamp.exit)` follows it. A driver timeout over a valid stamp defers to
+  the stamp, and the timeout is logged.
+- C9-3: pidfd where available, with a starttime fallback.
+- C9-5: the real-Chromium case runs in CI only, never locally.
+- C9-6: reword to "no stamp" **and** delete the result under the lock.
+- C9-2 and C9-4: as stated.
+
+AC, task, state-table row and invariant numbers are unchanged. Revision 9 adds no AC, no
+task and no file. It adds one runner function (`ensure_token`), one `Watchdog` method
+(`commit`) and one hashed input (`runner`).
+
+| Amendment | Finding | Landed |
+|---|---|---|
+| R9-1 | C9-1 (MAJOR): the watchdog disarmed at the stamp, leaving `browser.close()`, `sync_playwright().__exit__` and driver shutdown unbounded | D16 "Shared unit runner" (new "Bounded teardown" bullet: result, teardown, residual `kill_tree`, flush, `Watchdog.commit`, then only `os._exit(stamp.exit)`), "`--scenario` is self-bounded" (commit after teardown; a driver timeout over a valid stamp defers to the stamp and is logged), "Per-unit output", "Resume", "Aggregate" (`timed_out` excludes a timeout over a valid stamp), "Local runs"; D17 "Per-unit output" and "Chunked timeouts"; nd paragraph (`harness_exit` from the stamp; stamp governs over the timeout); §4 `unit_runner.py`, `test_unit_runner.py`, spike, `repl_smoke.py` and resume-test rows; AC-42 runner case "hang after the stamp" and resume cases "hang in teardown" and "driver timeout over a valid stamp"; A1, A7; §7 preemption row |
+| R9-2 | C9-2 (MINOR): `kill_tree` and `--reap` hardening | D16 `kill_tree` (walk plus sweep to a fixpoint, freezing each find; exact NUL-delimited entry; `PermissionError`, `ProcessLookupError`, `FileNotFoundError` and empty environ skipped; a second fixpoint after the grace; `SIGCONT` in a `finally`), `--reap` (`kill_tree` per token; refuses without `CI` or `--force`), CI reap step (no `--force`), "Local runs"; §4 `unit_runner.py`, `test_unit_runner.py` and `repl.yml` rows; AC-42 fixpoint, unreadable-environ, `SIGCONT` and `--reap` refusal cases and the workflow check; A1, A7; §7 runner row |
+| R9-3 | C9-3 (MINOR): pid reuse before `SIGKILL` | D16 `kill_tree` step 2 (pidfd via `os.pidfd_open` / `signal.pidfd_send_signal`, else a `/proc/<pid>/stat` starttime re-check; group signals only with a verified live member); §4 rows; AC-42 pid-reuse case; A1; §7 runner row |
+| R9-4 | C9-4 (MINOR): a token set after exec is invisible in `/proc/self/environ`, the watchdog was not armed first, and the inner bound was untested | D16 `run_unit` (token at exec), new `ensure_token` (re-exec), `Watchdog` armed as the first act, "`--scenario` is self-bounded", "Per-unit output"; D17 "Per-unit output"; §4 `unit_runner.py`, spike, `repl_smoke.py` and resume-test rows; AC-42 `ensure_token` case and "Watchdog armed with the table budget" case; A1, A7; §7 preemption and runner rows |
+| R9-5 | C9-5 (MINOR): no gate ran a real Chromium | §4 `test_unit_runner.py` row (one real-Chromium case, wired in the REPL job with Playwright's Chromium); AC-42 "Real Chromium" case (`skipif` unless `CI`; fails rather than skips in CI when Chromium is missing; never run locally); D16 "Local runs"; A1 (local gate skips it, CI closes it); §7 runner row |
+| R9-6 | C9-6 (MINOR): `unit_runner.py` was not hashed into harness stamps, and "no result" was not guaranteed | D16 "Inputs hashed" (new `runner` input), `Watchdog` expiry and "`--scenario` is self-bounded" (result deleted under the lock), "Resume"; D17 "Chunked timeouts" (artifact deleted under the lock); nd paragraph (harness timeout: no stamp, no result); §4 `repl_smoke.py` and resume-test rows; AC-42 `--scenario` watchdog case (no stamp; the pre-written result deleted), skip-rule `runner` case, timed-out-unit case; A7; §7 resume row |
+| R9-7 | this log and the frontmatter `adversarial_review` entry | frontmatter; References (round 9 audit) |
+
+**Consistency fixes made while applying:**
+- The watchdog now owns the stamp lock through `Watchdog.commit`, so the harness and the spike
+  units share one lock implementation rather than each writing its own.
+- A unit's order is stated once: `ensure_token`, arm the watchdog, clear its own files, work,
+  write the result or artifact, teardown, flush, commit the stamp, `os._exit`. D16 "Per-unit
+  output", D17 "Per-unit output", the §4 rows and A1/A7 previously said "first act is to
+  delete its own files", which conflicted with arming the watchdog first. They now say the
+  deletion comes right after arming.
+- stdout, stderr and logging are flushed before the stamp commit, because `os._exit` does not
+  flush and a flush can block on a full pipe; the flush therefore sits inside the bounded
+  region.
+- `kill_tree`'s pre-kill fixpoint alone missed a fork made in the grace window by a `SIGTERM`
+  handler. Step 5 repeats the fixpoint before `SIGKILL`.
+- A `SIGKILL` of the caller skips the `finally`. The spec now says so, and names `--reap` (in
+  CI) and `--reap --force` (locally) as the recovery for processes left stopped.
+- `timed_out` in the aggregate, the Resume rule and the AC-39 `harness_exit` all now read the
+  stamp first, so a driver timeout over a valid stamp is judged the same way in the harness
+  driver, the spike drivers and the nd driver.
+- The AC-42 `--reap` case now sets `CI=1` or passes `--force`; without either, the Revision 8
+  case would have hit the new refusal.
+- A1 size ~370 → ~450 LOC. The ACs still number 42; the tasks still number 24.
 
