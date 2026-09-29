@@ -1,0 +1,58 @@
+# bathos sidecar for plr-sema/eval/plr10_characterize.py (backlog #5622, task 260929_plr-1.0-migration).
+#
+# PRE-REGISTERED 2026-09-29, committed before any run. Replaces the original
+# workstream-C reproduction targets (pick_up_tips SAFE 216/223, m1 199/199,
+# v1 67/67, tier-2b 16/0, ledger identical to unknown_ledger_260911_volwire),
+# which are known to be unreachable on PLR 1.0.0b1: the rewritten TipTracker
+# leaves pick_up_tips/drop_tips without a derived channel_effect (report
+# outputs/plr-sema/260929_plr10_wsC_gate1_report.md). This run CHARACTERISES
+# the analyzer at the 1.0 pin with the V5 amendment (223d690d) applied; it is
+# not a regression gate for precision.
+#
+# Two arms, same frozen benchmark (corpus_p25 + sidecar, crosschecks
+# corpus_p23_floor + overlay_full), same oracle_replay code path:
+#   real      -- the shipped analyzer and the regenerated 1.0 contracts.
+#   all_safe  -- NEGATIVE CONTROL: the static verdict for every operation is
+#                forced to SAFE. Any operation that raises at runtime must
+#                then be counted unsound. Proves the unsound counter fires on
+#                this benchmark at this pin (a counter that cannot fire makes
+#                "unsound 0" meaningless).
+
+[experiment]
+hypothesis = "On PLR 1.0.0b1 with the V5 amendment, the analyzer remains sound on the frozen tier-1 benchmark (real arm: unsound = 0, unsound_scoped = 0, totality_violations = 0, check_graph_exceptions = 0) while losing most precision (real arm: n_operations_scope_verdict_safe <= 20, down from 216 at the dd79c4c89 pin), and the instrument can detect unsoundness at this pin (all_safe arm: unsound >= 1, and unsound >= runtime_raised_ops_all_safe_arm, the number of executed operations that raised at runtime)."
+stage_name = "characterisation"
+novel = false
+
+[outcomes.pass]
+condition = "control_fires = true AND real_unsound = 0 AND real_unsound_scoped = 0 AND real_totality_violations = 0 AND real_check_graph_exceptions = 0 AND real_rows_setup_error = 0 AND real_rows_executed = 343"
+is_residual = false
+decision = "Soundness at the 1.0 pin is established on the same 343-row denominator as every prior increment, and the instrument is shown live. Publish real_n_operations_scope_verdict_safe as the 1.0 precision floor that backlog #5622 (tip-effect derivation increment) must recover toward 216. The #5622 spec may proceed."
+reasoning = "control_fires = true means the all_safe mutant produced unsound >= 1 (and >= its own runtime-raised op count), so real_unsound = 0 is evidence rather than an artefact of a dead counter; the denominator is unchanged so the comparison with the dd79c4c89 baseline is like-for-like."
+
+[outcomes.marginal]
+condition = "control_fires = true AND real_unsound = 0 AND real_unsound_scoped = 0 AND real_totality_violations = 0 AND real_check_graph_exceptions = 0 AND (real_rows_setup_error > 0 OR real_rows_executed != 343)"
+is_residual = false
+decision = "Soundness holds on the rows that executed, but the 1.0 runtime changed WHICH rows execute (setup errors or a different executed count). Report the soundness claim scoped to the executed subset only, list the setup-error / non-executed rows, and fix the harness's 1.0 runtime path before #5622's measurement uses this benchmark as its baseline."
+reasoning = "A shrunken denominator can hide unsoundness in the rows that no longer run; the claim must not be stated over 343 rows when fewer executed."
+
+[outcomes.fail]
+condition = "control_fires = false OR real_unsound > 0 OR real_unsound_scoped > 0 OR real_totality_violations > 0 OR real_check_graph_exceptions > 0"
+is_residual = true
+decision = "Stop. Either the instrument cannot detect unsoundness at this pin (control_fires = false: no soundness claim can be made from this benchmark until the oracle is repaired), or the analyzer is unsound / non-total at 1.0 beyond the V5 hole already fixed. Triage the offending rows before any #5622 spec work; a soundness defect outranks precision recovery."
+reasoning = "Soundness (0 unsound) is the property every plr-sema increment has held; losing it, or losing the ability to observe it, blocks all downstream use of verdicts."
+
+[result_schema]
+control_fires = "bool"
+real_rows_executed = "int"
+real_rows_setup_error = "int"
+real_operations_executed = "int"
+real_unsound = "int"
+real_unsound_scoped = "int"
+real_totality_violations = "int"
+real_check_graph_exceptions = "int"
+real_n_operations_scope_verdict_safe = "int"
+real_unknown_rate = "float"
+real_crosscheck_agreement = "float"
+all_safe_unsound = "int"
+all_safe_operations_executed = "int"
+runtime_raised_ops_all_safe_arm = "int"
