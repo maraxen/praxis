@@ -7,7 +7,11 @@ later gate. Writes three artifacts under ``training/overlay_gen/out/``:
 - ``mined_calls_<tag>.json``   mining manifest: counts by source, verb
                                tallies, exclusions w/ reasons, skips.
 - ``overlay_<tag>.jsonl``      candidate rows (instruction <-> call pairs).
-- ``smoke_report_<tag>.json``  pair-builder summary + environment versions.
+                               ``--full`` = freshly mined rows UNION the frozen
+                               archive (see ``overlay_gen/frozen.py``); smoke
+                               output is live rows only.
+- ``smoke_report_<tag>.json``  pair-builder summary + environment versions +
+                               ``frozen`` block (``frozen_rows_included`` ...).
 
 Usage (from anywhere; paths are resolved off this file's location)::
 
@@ -29,6 +33,7 @@ if __package__ in (None, ""):  # direct-script convenience
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from overlay_gen.cache import TeacherCache
+from overlay_gen.frozen import load_frozen_rows, merge_frozen, write_rows_jsonl
 from overlay_gen.miner import (
     NOTEBOOK_ROOT,
     PROTOCOL_DIR,
@@ -164,15 +169,32 @@ def main(argv: list[str] | None = None) -> int:
 
     calls = [c for stats in mined.values() for c in stats.kept_calls]
     teacher = GeminiTeacherClient() if args.backend == "gemini" else VllmTeacherClient()
-    rows, summary = build_pairs(
+    # out_path=None: the file is written below, after the (full-run) frozen merge.
+    live_rows, summary = build_pairs(
         calls,
         teacher=teacher,
         cache_dir=CACHE_DIR,
-        out_path=OUT_DIR / f"overlay_{tag}.jsonl",
+        out_path=None,
         n_variants=args.variants,
         generator_version=_git_sha(),
         batch_size=args.batch_size,
     )
+
+    frozen_block: dict = {"applied": False}
+    if args.full:
+        # Frozen rows are copied verbatim -- never re-verified/re-paraphrased --
+        # and are a hard error if their source notebook exists at this pin.
+        frozen_rows, frozen_manifest = load_frozen_rows()
+        rows, merge_stats = merge_frozen(live_rows, frozen_rows)
+        frozen_block = {
+            "applied": True,
+            "origin_pin": frozen_manifest["origin_pin"],
+            "rows_sha256": frozen_manifest["rows_sha256"],
+            **merge_stats.as_dict(),
+        }
+    else:
+        rows = live_rows
+    write_rows_jsonl(rows, OUT_DIR / f"overlay_{tag}.jsonl")
 
     report = {
         "tag": tag,
@@ -182,6 +204,7 @@ def main(argv: list[str] | None = None) -> int:
         "teacher_requested_model": teacher.model_version,
         "mining_summary": manifest["mining"],
         "pair_summary": summary,
+        "frozen": frozen_block,
         "sample_rows": [rows[i].__str__() for i in range(min(3, len(rows)))],
         "samples": [
             {"instruction": r["instruction"], "call": r["call"]} for r in rows[:5]
@@ -193,6 +216,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print(json.dumps({k: summary[k] for k in sorted(summary) if k != "warnings"}, indent=1))
     print(f"mined kept calls: {manifest['mining']['total_kept']}")
+    print(f"frozen: {json.dumps(frozen_block, sort_keys=True)}")
     print(f"artifacts under {OUT_DIR} (tag={tag})")
     return 0
 

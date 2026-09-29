@@ -27,6 +27,18 @@ Sources:
 2. `praxis/protocol/protocols/*.py` -- the 6 runnable `@protocol_function`
    modules, AST-parsed.
 
+3. **Frozen source** (`frozen/`, `--full` only): 54 rows mined at the previous
+   pin (`dd79c4c89bc0`) from the four notebooks upstream deleted at PLR 1.0
+   (`hamilton-star/{basic,foil}`, `opentrons/ot2/{hello-world,ot2-simulator}`).
+   They are copied verbatim -- never re-mined, re-verified or re-paraphrased --
+   so the assembled train corpus and the pinned eval split (6 of these rows are
+   pinned eval rows) do not shift. `overlay_full.jsonl` = live rows U frozen
+   rows, deduped on the normalized-utterance key, **live wins** collisions,
+   stably ordered by `provenance.origin`; the counts land in the report's
+   `frozen` block (`frozen_rows_included`, ...). A frozen row whose source
+   exists at the current pin is a hard error. Details: `frozen/README.md`,
+   code: `frozen.py`.
+
 Verbs outside the phase-2 surface (phantoms, 96-channel family, tip-return
 family, heater-shaker family, state/query plumbing) are counted then dropped;
 expert kwargs (`offsets`, `use_channels`, `mix` lists...) are dropped per the
@@ -43,14 +55,23 @@ PYTHONPATH=training python -m overlay_gen.run_smoke --full   # later full-scale 
 Artifacts land in `overlay_gen/out/` (mining manifest, `overlay_*.jsonl`,
 report). Teacher responses cache content-addressed under `overlay_gen/cache/`
 -- same sha => same corpus, so re-runs are idempotent and offline-replayable.
+Note `provenance.generator_version` is the git HEAD at run time, so re-mined
+(live) rows carry a new value after every commit and `overlay_full.jsonl` is not
+byte-stable across commits; regenerate `training/assemble/out` after a re-run
+(`python -m assemble`) -- the native pairs corpus stays identical, only sidecar
+lineage and the manifest's overlay sha move. Frozen rows keep their original
+`generator_version`.
 
 ## Tests
 
 ```bash
 python -m pytest training/tests/test_miner_extraction.py \
                   training/tests/test_dedup_and_pairs.py \
-                  training/tests/test_shapes.py
+                  training/tests/test_shapes.py \
+                  training/tests/test_overlay_frozen.py
 ```
+
+(One file per pytest process, per the repo rule.)
 
 (Scoped to these files on purpose: other phase-2 workers own the rest of
 `training/tests/`.)

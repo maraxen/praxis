@@ -1,0 +1,29 @@
+{
+ "artifact": "praxis-overlay-frozen-source",
+ "generator_versions": [
+  "d42c53f2"
+ ],
+ "origin_pin": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+ "origin_pin_note": "external/pylabrobot submodule commit at which the rows were mined, exec-verified and teacher-paraphrased (generator_version below)",
+ "prompt_versions": [
+  "p24-naturalness-v1"
+ ],
+ "row_count": 54,
+ "rows_by_source": {
+  "external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb": 18,
+  "external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/foil.ipynb": 9,
+  "external/pylabrobot/docs/user_guide/00_liquid-handling/opentrons/ot2/hello-world.ipynb": 12,
+  "external/pylabrobot/docs/user_guide/00_liquid-handling/opentrons/ot2/ot2-simulator.ipynb": 15
+ },
+ "rows_file": "pre_plr1_notebook_rows.jsonl",
+ "rows_sha256": "0a971eca51d7c37a82227d33e54e8b712eb8b2b380605f2f5e7d812d644aa0e8",
+ "rules": [
+  "rows are immutable (sha256 above is checked on every load)",
+  "a row whose source path exists at the current pin is a hard error",
+  "on a normalize_utterance(instruction) key collision the live mined row wins"
+ ],
+ "teacher_model_versions": [
+  "gemini-3.7-flash-medium"
+ ],
+ "why_frozen": "Upstream PLR 1.0 deleted/moved these notebooks. The calls remain valid legacy LiquidHandler calls. Rows are kept verbatim so the assembled train corpus and the pinned eval split are unchanged; they are never re-mined, re-verified or re-paraphrased."
+}
