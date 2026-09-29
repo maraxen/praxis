@@ -13,11 +13,17 @@ utterances, and emits provenance-tagged candidate rows.
 
 Sources:
 
-1. `external/pylabrobot/docs/user_guide/00_liquid-handling/**` -- 16
-   notebooks, code cells AST-parsed (never executed/imported). 7 are skipped
-   whole as hardware-context-only (probing / grippers / barcode reader /
-   surface-following / liquid classes / plate washer); reasons recorded in
-   the mining manifest.
+1. `external/pylabrobot/docs/user_guide/00_liquid-handling/**` -- code cells
+   AST-parsed (never executed/imported). At PLR 1.0.0b1 this is 5 notebooks
+   (16 at the pre-1.0 pin; the hamilton-star and OT2 notebooks left this
+   tree). Hardware-context-only notebooks (probing / grippers / barcode
+   reader / surface-following / liquid classes / plate washer) are skipped
+   whole when present; reasons recorded in the mining manifest.
+   **Receiver gate:** only calls whose receiver resolves to a legacy
+   `LiquidHandler` are kept. The modern device-API calls in
+   `hamilton-prep/prep_basic_demo.ipynb` (`prep.pipettes.*`, `prep.head8.*`)
+   share verb names but not semantics; they are recorded as exclusions
+   ("receiver ... not a legacy LiquidHandler"), never relabelled.
 2. `praxis/protocol/protocols/*.py` -- the 6 runnable `@protocol_function`
    modules, AST-parsed.
 

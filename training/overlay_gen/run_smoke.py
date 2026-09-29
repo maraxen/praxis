@@ -46,13 +46,15 @@ from overlay_gen.pair_builder import (
 OUT_DIR = Path(__file__).resolve().parent / "out"
 CACHE_DIR = Path(__file__).resolve().parent / "cache"
 
-#: Smoke subset: 6 minable notebooks (>=5 required) spanning tip lifecycle,
-#: volume ops, expert-kwarg dropping, and non-surface exclusion paths, plus
-#: 2 protocols (>=2 required).
+#: Smoke subset: every minable notebook under the vendored PLR 1.0.0b1 LH
+#: user guide (5; >=5 required) -- 4 legacy-LiquidHandler notebooks that
+#: contribute kept calls (tip lifecycle, volume ops, expert-kwarg dropping,
+#: non-surface exclusion paths) plus the modern-device-API ``prep_basic_demo``
+#: notebook, which must contribute ZERO kept calls (receiver-gate exclusion
+#: path), plus 2 protocols (>=2 required).
 SMOKE_NOTEBOOKS: tuple[str, ...] = (
-    "external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb",
-    "external/pylabrobot/docs/user_guide/00_liquid-handling/opentrons/ot2/hello-world.ipynb",
-    "external/pylabrobot/docs/user_guide/00_liquid-handling/opentrons/ot2/ot2-simulator.ipynb",
+    "external/pylabrobot/docs/user_guide/00_liquid-handling/container_no_go_zones.ipynb",
+    "external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-prep/prep_basic_demo.ipynb",
     "external/pylabrobot/docs/user_guide/00_liquid-handling/mixing.ipynb",
     "external/pylabrobot/docs/user_guide/00_liquid-handling/moving-channels-around.ipynb",
     "external/pylabrobot/docs/user_guide/00_liquid-handling/tutorial_tip_inventory_consolidation.ipynb",
@@ -80,8 +82,13 @@ def mine_subset(notebooks: list[str], protocols: list[str]) -> tuple[dict, dict,
     """Mine only the named sources (explicit-path staging discipline)."""
     nb_all = mine_notebooks(NOTEBOOK_ROOT)
     proto_all = mine_protocols(PROTOCOL_DIR)
-    picked = {n: nb_all[n] for n in notebooks if n in nb_all}
-    picked.update({p: proto_all[p] for p in protocols if p in proto_all})
+    missing = [n for n in notebooks if n not in nb_all] + [
+        p for p in protocols if p not in proto_all
+    ]
+    if missing:  # a silently-dropped smoke source hides submodule drift
+        raise KeyError(f"smoke sources not found in the mined corpus: {missing}")
+    picked = {n: nb_all[n] for n in notebooks}
+    picked.update({p: proto_all[p] for p in protocols})
     return nb_all, proto_all, picked
 
 
