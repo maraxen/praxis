@@ -1409,7 +1409,10 @@ def bootstrap_playground(namespace=None):
     import pylabrobot.resources
 
     # Core classes
-    target["LiquidHandler"] = pylabrobot.liquid_handling.LiquidHandler
+    # (``pylabrobot.legacy.liquid_handling`` explicitly: the top-level
+    # ``pylabrobot.liquid_handling`` is a 1.0 deprecation shim that the imports
+    # above never load, so it would not even be an attribute of ``pylabrobot``.)
+    target["LiquidHandler"] = pylabrobot.legacy.liquid_handling.LiquidHandler
 
     # Resources
     target["Plate"] = pylabrobot.resources.Plate
@@ -1419,9 +1422,11 @@ def bootstrap_playground(namespace=None):
     target["Deck"] = pylabrobot.resources.Deck
 
     # Backends
-    target["LiquidHandlerBackend"] = pylabrobot.liquid_handling.backends.LiquidHandlerBackend
+    target["LiquidHandlerBackend"] = (
+      pylabrobot.legacy.liquid_handling.backends.LiquidHandlerBackend
+    )
     # Import specific backends if available
-    for name, cls in pylabrobot.liquid_handling.backends.__dict__.items():
+    for name, cls in pylabrobot.legacy.liquid_handling.backends.__dict__.items():
       if isinstance(cls, type) and name.endswith("Backend"):
         target[name] = cls
 

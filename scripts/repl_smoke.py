@@ -208,6 +208,7 @@ FORBIDDEN_BOOTSTRAP_CALLS: tuple[str, ...] = ("praxis_main(", "praxis_boot.setup
 PLAYGROUND_NAME_IMPORT_NEEDLES: tuple[str, ...] = (
     "import LiquidHandler",
     "from pylabrobot.liquid_handling",
+    "from pylabrobot.legacy.liquid_handling",
 )
 
 
@@ -534,7 +535,7 @@ def build_probe_code(host_root: str, expect_praxis_sha: str | None) -> str:
             # under --offline the wheel is the only possible source.
             #
             # Load-bearing because the guard is in Visualizer.__init__ (visualizer.py
-            # :144 at this pin), not in setup(). A False flag here means the class
+            # :168 at the 1.0.0b1 pin), not in setup(). A False flag here means the class
             # cannot even be CONSTRUCTED, so BrowserVisualizer's setup()/stop()/
             # has_connection()/send_command() override design collapses to the
             # stub-websockets fallback before any of it runs.
@@ -860,7 +861,7 @@ def build_completion_probe_code(host_root: str) -> str:
             RESULT["use_jedi"] = bool(getattr(ip.Completer, "use_jedi", False))
 
             try:
-                exec("from pylabrobot.liquid_handling import LiquidHandler", ip.user_ns)
+                exec("from pylabrobot.legacy.liquid_handling import LiquidHandler", ip.user_ns)
                 RESULT["plr_import"] = True
             except Exception as e:  # noqa: BLE001
                 RESULT["plr_import"] = False
@@ -1422,6 +1423,24 @@ def read_submodule_sha(submodule_dir: Path) -> str:
     return out.stdout.strip()
 
 
+def expected_plr_version_prefix() -> str:
+    """``<base>+g`` -- the version prefix the built wheel must report in the browser.
+
+    ``build_wheels.stamp_version`` stamps ``<pylabrobot/version.txt>+g<sha8>`` from the
+    pinned commit, so the base is read from the submodule's own ``version.txt`` instead
+    of being a second literal that drifts on every PLR bump (it was ``0.2.2`` here until
+    the 1.0.0b1 migration).
+    """
+    version_txt = DEFAULT_PLR_SUBMODULE / "pylabrobot" / "version.txt"
+    try:
+        base = version_txt.read_text().strip()
+    except OSError as e:
+        raise VizCheckError(f"could not read PLR version from {version_txt}: {e}") from e
+    if not base:
+        raise VizCheckError(f"{version_txt} is empty; cannot derive the expected PLR version")
+    return f"{base}+g"
+
+
 DEFAULT_NOTEBOOK = "welcome.ipynb"
 
 #: Strings the welcome notebook must print. These are the notebook's own output,
@@ -1430,7 +1449,7 @@ DEFAULT_NOTEBOOK = "welcome.ipynb"
 #: notebook rather than a test that some notebook ran.
 NOTEBOOK_EXPECTED = (
     "praxis auto-setup state: ready",
-    "PyLabRobot 0.2.2+g",
+    f"PyLabRobot {expected_plr_version_prefix()}",
     "Serial is the browser shim: True",
 )
 
@@ -4493,7 +4512,7 @@ def main(argv: list[str] | None = None) -> int:
         if probe_imports_playground_names(probe_code):
             LOG.error(
                 "fresh-boot-check refused to run: its own probe source imports "
-                "LiquidHandler/pylabrobot.liquid_handling, which would make "
+                "LiquidHandler/pylabrobot[.legacy].liquid_handling, which would make "
                 "playground_names_ok pass vacuously (T3b)"
             )
             return 2
@@ -4594,9 +4613,10 @@ def main(argv: list[str] | None = None) -> int:
                 "startup file"
             )
         plr_after = result.get("plr_after") or ""
-        if not plr_after.startswith("0.2.2+g"):
+        plr_prefix = expected_plr_version_prefix()
+        if not plr_after.startswith(plr_prefix):
             failures.append(
-                f"pylabrobot version {plr_after!r} does not start with '0.2.2+g'"
+                f"pylabrobot version {plr_after!r} does not start with {plr_prefix!r}"
             )
         if result.get("derived_host_root") != expected_root:
             failures.append(

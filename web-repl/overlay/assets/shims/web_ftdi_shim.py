@@ -15,7 +15,7 @@ Usage in JupyterLite/Pyodide:
     plr_ftdi.FTDI = WebFTDI
 
     # Now CLARIOstarBackend will use WebFTDI
-    from pylabrobot.plate_reading.clario_star_backend import CLARIOstarBackend
+    from pylabrobot.legacy.plate_reading.bmg_labtech.clario_star_backend import CLARIOstarBackend
 """
 
 import asyncio

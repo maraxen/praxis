@@ -373,6 +373,15 @@ async def praxis_main(host_root: str, *, raise_on_error: bool = False) -> None:
         # pylabrobot comes first). PLR's `try: import pylibftdi.driver` then
         # fails and HAS_PYLIBFTDI=False is latched permanently in the cached
         # module -- making every FTDI-backed machine unusable in the REPL.
+        # PLR 1.0's core dependencies are `typing_extensions` and `websockets>=14`,
+        # and the wheels below install with deps=False, so nothing pulls them in.
+        # websockets ships as a vendored wheel in the manifest; typing_extensions
+        # is a Pyodide-lock package that is NOT preloaded in the kernel, and 1.0
+        # imports it unguarded (e.g. pylabrobot/hamilton/star/driver/features/
+        # pipettes.py) -- so every `pylabrobot.legacy.liquid_handling` import died
+        # with ModuleNotFoundError. Requested by NAME, micropip resolves it from
+        # the vendored lock (static/pyodide), never PyPI, so the offline gate holds.
+        await micropip.install("typing-extensions")
         for wheel_entry in manifest["wheels"]:
             wheel_url = f"{host_root}assets/wheels/{wheel_entry['filename']}"
             await micropip.install(wheel_url, deps=False)

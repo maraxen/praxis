@@ -156,7 +156,9 @@ def install_native_stubs(
     ``HAS_SERIAL`` evaluates True in a browser where ``serial`` does not
     actually exist. Measured against the real built wheels
     (``pylabrobot-0.2.2+gdd79c4c8`` + the fixed ``pylibftdi`` stub wheel;
-    re-measured 260818 after the Phase 4 pin bump -- values unchanged),
+    re-measured 260818 after the Phase 4 pin bump -- values unchanged; the
+    1.0.0b1 pin ``pylabrobot-1.0.0b1+g786ac2c4`` reports the same four flags in
+    the browser -- ``--probe`` ``capability_flags``, 260929),
     before ``apply()``, with these seven names stubbed:
     ``{'HAS_SERIAL': True, 'USE_USB': False, 'USE_HID': False,
     'HAS_PYLIBFTDI': True}``. Do NOT assume this function makes all four
@@ -187,11 +189,13 @@ def install_native_stubs(
       gain, so this function leaves them unstubbed and False on purpose.
 
     The seven stub names are load-bearing beyond the four flags above,
-    though: ``pylabrobot/storage/cytomat/cytomat.py`` does a bare
-    module-scope ``import serial`` with NO ``try/except`` -- it only
-    succeeds in a browser because this function ran first and put a
-    ``serial`` module in ``sys.modules``. That matters for Phase 4, since
-    ``Incubator`` moves into ``pylabrobot.storage``.
+    though: at the 0.2.2 pin ``pylabrobot/storage/cytomat/cytomat.py`` did a
+    bare module-scope ``import serial`` with NO ``try/except`` -- it only
+    succeeded in a browser because this function ran first and put a
+    ``serial`` module in ``sys.modules``. (At 1.0.0b1 that site,
+    ``pylabrobot/legacy/storage/cytomat/cytomat.py``, is try-guarded, but
+    ``pylabrobot.io.serial`` / ``ftdi`` / ``usb`` still evaluate their
+    capability flags against these names at import time.)
 
     Not classes. Not ``unittest.mock.MagicMock``. Not bare ``object()``s --
     real ``types.ModuleType`` instances, because a downstream check asserts
