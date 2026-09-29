@@ -4,7 +4,7 @@ description: Epic spec for the web-REPL notebook display. Three sprints (A spike
 status: draft
 task_id: 260929_notebook-display-design
 date: '260929'
-adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1)'
+adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2)'
 ---
 # Notebook display epic (web-repl)
 
@@ -58,10 +58,10 @@ pre-registered spike (D17). Each sprint that depends on a spike names the branch
 
 | Spike | Question | Branches and what the downstream design does |
 |---|---|---|
-| **S1** (sprint A) | Can a plain script, with no labextension build, construct a Lumino `Widget` and add it with `app.shell.add(w, 'main', {mode: 'split-right', ref})`? Does Lumino honour CSS `min-width`/`max-width` on the widget node? Which DOM hooks or model signals give each cell's state (not run, ran, running, error, edited since run)? | **S1-A**: walk the prototype chain of an existing shell widget to the root class. Identify it structurally: its prototype owns `processMessage` and `onAfterAttach`, and its own prototype is `Object.prototype`. `new Ctor({node})` then gives the deck panel as a real widget. **S1-B**: A fails, but a stock command (candidate `help:open`) creates a main-area iframe widget, its iframe allows scripts and same-origin, and it can be re-added with `split-right`. The deck panel then re-homes that widget and replaces its content. **S1-C**: both fail. **Stop** sprint C task C5 and escalate: the user's decision (a real JupyterLab widget) cannot be met without a labextension. The degraded option offered to the user is a shell-owned fixed panel with `#main` narrowed by CSS. Size limits (a second, independent axis): if CSS limits are honoured, use them. Otherwise the shell sizes through the main DockPanel's layout: `saveLayout()`, edit the split area's `sizes`, then `restoreLayout()` (a main-area `split-right` lives in a `DockLayout`, which has no `setRelativeSizes`). S1 records `css_limits_honoured` and `dock_layout_sizing_reachable`. **S1-L**: neither works. The initial width is set once at open and the drag is unclamped; the AC-36 drag-clamp keys become recorded-only. This is a stated deviation, accepted per the user's 260929 ruling "split initially. we can figure out a more ergonomic layout later." Cell state: each state uses a CSS hook where one exists. Otherwise `chrome.js` computes it from model signals and writes `data-praxis-cell-state` on the cell node. S1 also records the notebook's `windowingMode` and the signal that fires when a virtualised cell's DOM is re-attached (used by D7 marking). |
+| **S1** (sprint A) | Can a plain script, with no labextension build, construct a Lumino `Widget` and add it with `app.shell.add(w, 'main', {mode: 'split-right', ref})`? Does Lumino honour CSS `min-width`/`max-width` on the widget node? Which DOM hooks or model signals give each cell's state (not run, ran, running, error, edited since run)? | **S1-A**: walk the prototype chain of an existing shell widget to the root class. Identify it structurally: its prototype owns `processMessage` and `onAfterAttach`, and its own prototype is `Object.prototype`. `new Ctor({node})` then gives the deck panel as a real widget. **S1-B**: A fails, but a stock command (candidate `help:open`) creates a main-area iframe widget, its iframe allows scripts and same-origin, and it can be re-added with `split-right`. The deck panel then re-homes that widget and replaces its content. **S1-C**: both fail. **Stop** sprint C task C5 and escalate: the user's decision (a real JupyterLab widget) cannot be met without a labextension. The degraded option offered to the user is a shell-owned fixed panel with `#main` narrowed by CSS. Size limits (a second, independent axis): if CSS limits are honoured, use them. Otherwise the shell sizes through the main DockPanel's layout: `saveLayout()`, edit the split area's `sizes`, then `restoreLayout()` (a main-area `split-right` lives in a `DockLayout`, which has no `setRelativeSizes`). S1 records `css_limits_honoured`, `dock_layout_sizing_reachable` and `css_limits_refit` (whether Lumino re-reads a widget's CSS `min-width`/`max-width` after `parent.fit()`). The combination selects one row of the D6 sizing-case table, which fixes, per AC-36 width key, the mechanism or the recorded-only status. **S1-L**: neither CSS limits nor layout sizing works. The split opens at Lumino's own size, the drag is unclamped, and **every** AC-36 width key is recorded-only (the drawer and height keys stay asserted). This is a stated deviation, accepted per the user's 260929 ruling "split initially. we can figure out a more ergonomic layout later." Cell state: each state uses a CSS hook where one exists. Otherwise `chrome.js` computes it from model signals and writes `data-praxis-cell-state` on the cell node. S1 also records the notebook's `windowingMode` and the signal that fires when a virtualised cell's DOM is re-attached (used by D7 marking). |
 | **S2** (sprint A) | For a notebook reopened untrusted in our JupyterLite build, which mimetype does JupyterLab choose from `{text/html, text/plain}`? What does its sanitizer keep of our HTML and SVG? The spike tests elements `svg g path rect text title details summary table`; attributes `fill stroke stroke-width stroke-dasharray class style role aria-label tabindex data-*`; and `viewBox`. S2 probes two reopen paths and records the trust state and chosen mimetype of each: a **crafted** notebook written to the drive (never executed, so untrusted; this also stands for download/upload), and a notebook **executed, saved and reopened** in the same browser. | **S2-T**: the executed-saved-reopened notebook reopens **trusted**. It renders as live, and the branches below then apply only to the crafted path. **S2-A**: `text/html` is chosen and SVG survives with `class`. Full design, with token-mapped CSS (D3) applied to reopened outputs. **S2-A'**: SVG survives, but `class` and/or `style` are stripped. Reopened outputs keep their inline light palette (D3) and scale freely without the D5 `min-width` until re-run. Accepted and stated. **S2-B**: SVG is stripped, but `text/html` is still chosen. Reopened outputs show name line, sentence, ledger table and error text, with no drawings until re-run. Accepted: "survives trust loss" is met by the text. **S2-C**: `text/plain` is chosen. Reopened outputs show the summary sentence. Accepted; OQ-9 asks whether a labextension is wanted later. **In every branch the live output format is identical (D2).** Interaction on reopened outputs (hover, keyboard, click to focus) works only if `data-*` and `tabindex` survive. If they are stripped, it returns when the cell is re-run. |
-| **S3** (sprint A) | In the JupyterLite Pyodide kernel (`pyodide_kernel-0.8.2`; IPython 9.12.0 per the cached `pyodide-lock.json`), four things: (a) Is `get_ipython()` non-None? (b) Does `display_formatter.mimebundle_formatter.for_type(cls, fn)` work, with `fn` returning `(data, metadata)`? (c) Is a `set_custom_exc` handler invoked for an exception raised in a plain cell **and** in a top-level-`await` cell? Does `display()` inside the handler emit, does the returned structured traceback become the cell's `error` output, and does Run All stop? (d) Does `events.register('post_run_cell', cb)` fire? | **S3-A**: all yes. Design as written. **S3-B**: (b) fails. Register `text/html` and `text/plain` separately via `formatters[...].for_type`. The D7 stamp then lives only in DOM `data-praxis-*` attributes, which live (trusted) outputs keep. **S3-C**: (c) fails. Wrap the kernel shell **instance's** `showtraceback`: an instance attribute that handles the four classes and delegates everything else. PLR and IPython classes are not modified. If that is also not honoured, stop B6 and escalate (MVP item 3 cannot be met). **S3-D**: (d) fails. The kernel announces from PLR state-update callbacks, debounced with `loop.call_later(0.1, ...)`. |
-| **S4** (sprint C) | Does the vendored `plr_visualizer3d` package import in the Pyodide kernel? Check `http.server`, `webbrowser`, `socket.gethostname()`, `websockets.asyncio.server` and `websockets.http11`. Does `DockedViewer3D(deck)` construct and `start()` without threads? Does WebLoop support `call_later` and `call_soon_threadsafe` as the viewer uses them? How many bytes is the fixture deck's first `scene` message? How long does the first `_models_on_disk(PACKAGE_ROOT)` walk take (it is no longer pre-warmed by `start`; its first call is the inherited scene build, `server.py:417`)? | **S4-A**: all yes. Design as written. **S4-B**: a stdlib import or `gethostname` fails. `praxis/viz/viewer3d.py` installs minimal named stubs into `sys.modules` **before** importing `plr_visualizer3d`, the same mechanism `stages.install_native_stubs` uses. Each stub is listed and tested. Vendored files stay byte-identical. **S4-C**: WebLoop lacks `call_later`. Making it work would need a fourth override (`_mark_scene_dirty`), which trips GATE X (D11). **Stop** and escalate. The recommended path is to upstream a transport hook to PLR. |
+| **S3** (sprint A) | In the JupyterLite Pyodide kernel (`pyodide_kernel-0.8.2`; IPython 9.12.0 per the cached `pyodide-lock.json`), four things, (b) with a variant (b′): (a) Is `get_ipython()` non-None? (b) Does `display_formatter.mimebundle_formatter.for_type(cls, fn)` work, with `fn` returning `(data, metadata)`? (b′) Does `display_formatter.formatters['text/html'].for_type(cls, fn)`, with `fn` returning `(html, {"praxis": stamp})`, put the stamp at the output's `metadata["text/html"]["praxis"]`? (IPython `core/formatters.py:243-250` unpacks a per-type `(data, metadata)` return into `md_dict[format_type]`; verified by the orchestrator on 9.13.0, 260929.) (c) Is a `set_custom_exc` handler invoked for an exception raised in a plain cell **and** in a top-level-`await` cell? Does `display()` inside the handler emit, does the returned structured traceback become the cell's `error` output, and does Run All stop? (d) Does `events.register('post_run_cell', cb)` fire? | **S3-A**: all yes. Design as written. **S3-B**: (b) fails and (b′) holds. Register `text/html` and `text/plain` separately via `formatters[...].for_type`; the `text/html` function returns `(html, {"praxis": stamp})`, so the D7 stamp is carried at `metadata["text/html"]["praxis"]`. Every reader goes through one accessor, `stampOf` (D2), so staleness, Follow and AC-21 behave identically under S3-A and S3-B. A DOM-attribute carrier is rejected: S2 may strip `data-*`. If (b′) also fails, **stop** B7 and B9 and escalate. **S3-C**: (c) fails. Wrap the kernel shell **instance's** `showtraceback`: an instance attribute that handles the four classes and delegates everything else. PLR and IPython classes are not modified. If that is also not honoured, stop B6 and escalate (MVP item 3 cannot be met). **S3-D**: (d) fails. The kernel announces from PLR state-update callbacks, debounced with `loop.call_later(0.1, ...)`. |
+| **S4** (sprint C) | Does the vendored `plr_visualizer3d` package import in the Pyodide kernel? Check `http.server`, `webbrowser`, `socket.gethostname()`, `websockets.asyncio.server` and `websockets.http11`. Does `DockedViewer3D(deck)` construct and `start()` without threads? Does WebLoop support `call_later` and `call_soon_threadsafe` as the viewer uses them? How many bytes is the fixture deck's first `scene` message? What does the stock `plr_visualizer3d.server.PACKAGE_ROOT` resolve to in the kernel (expected: the contents drive `/drive`, because loose sources land relative to the kernel's working directory), and what is it after `viewer3d.py`'s rebind (D11)? How long does the first `_models_on_disk(PACKAGE_ROOT)` walk take over the rebound root (it is no longer pre-warmed by `start`; its first call is the inherited scene build, `server.py:417`)? | **S4-A**: all yes. Design as written. **S4-B**: a stdlib import or `gethostname` fails. `praxis/viz/viewer3d.py` installs minimal named stubs into `sys.modules` **before** importing `plr_visualizer3d`, the same mechanism `stages.install_native_stubs` uses. Each stub is listed and tested. Vendored files stay byte-identical. **S4-C**: WebLoop lacks `call_later`. Making it work would need a fourth override (`_mark_scene_dirty`), which trips GATE X (D11). **Stop** and escalate. The recommended path is to upstream a transport hook to PLR. |
 
 S1, S2 and S3 are sprint A tasks A1–A3. S4 is sprint C task C1. No task downstream of a spike
 starts until that spike's record exists (AC-1..AC-3, AC-29).
@@ -75,14 +75,30 @@ Each rendered PLR object produces one bundle:
 - `text/plain`: the summary sentence (section 3.2). This is what any viewer that drops HTML
   shows.
 - `metadata["praxis"]`: `{"v": 1, "kind": "plate|tiprack|container|deck|ledger|error",
-  "resource": "<name>", "rev": <int>, "session": "<display session id>", "exec": <int|null>}`.
+  "resource": <name|null>, "rev": <int|null>, "session": "<display session id>", "exec": <int|null>}`.
   This stamp is JSON, not HTML, so no sanitizer can strip it (D7).
   - The **display session id** is random, minted once per kernel process by
     `praxis.display.install()`. This spec uses that one term everywhere.
   - `exec` is `get_ipython().execution_count` at render time: the cell that drew the output.
+  - **Values by kind** (Revision 2):
+    - `plate`, `tiprack`, `container`, `deck`: `resource` is the drawn resource's name and
+      `rev` its current rev (D7).
+    - `ledger`: `resource: null`, `rev: null`.
+    - `error`: `resource` is the labware the panel is about (plate, container or tip rack),
+      or `null` when the owner is a channel (including a tip on a channel) or the panel is the
+      generic one; `rev: null`.
+  - Outputs with `rev: null` are historical and are never marked "Changed since" (D7). Follow
+    skips outputs with `resource: null` (D12).
 
 Registration uses `get_ipython().display_formatter.mimebundle_formatter.for_type(cls, fn)`,
-where `fn` returns `(data, metadata)` (S3-B has the fallback). The registered classes are
+where `fn` returns `(data, metadata)`. Under S3-B, `text/html` and `text/plain` are registered
+separately and the stamp rides at `metadata["text/html"]["praxis"]` (D1, S3(b′)).
+
+**One stamp reader.** Every consumer reads the stamp through one accessor,
+`stampOf(output) = output.metadata?.praxis ?? output.metadata?.["text/html"]?.praxis`. It is
+exported from `shell/display/stale.js`, imported by `dock.js`, and the `--display-check` and
+`--dock-check` harnesses evaluate the same expression. No other code reads
+`metadata.praxis` directly. The registered classes are
 `Plate`, `TipRack`, `Deck` and `Container`, with IPython resolving subclasses by MRO. PLR at
 the pin defines no `_repr_html_` or `_repr_*_` anywhere under `external/pylabrobot/pylabrobot`
 (grep: 0 hits), so nothing is shadowed. PLR is never patched.
@@ -247,18 +263,32 @@ slot shows one row (≤ 36 px) and collapses first.
 - The deck panel's widget node carries CSS `min-width: 420px; max-width: 480px` inside
   `@media (min-width: 1280px) and (max-width: 1599px)`, and no max above 1600.
 - The 960 px notebook cap is CSS on the notebook panel's content.
-- If S1 shows Lumino ignores CSS limits, `dock.js` sets the initial width and clamps on
+- **Layout sizing** ("reachable" below): `dock.js` sets the width and clamps on
   `ResizeObserver` callbacks through the main DockPanel's `saveLayout()` / edit the split
-  area's `sizes` / `restoreLayout()` (D1, S1). The same path sets the ≥ 1600 width.
-- **S1-L** (neither works): the initial width is set once at open and the drag is unclamped.
-  AC-36's drag-clamp keys are recorded, not asserted. Stated deviation (D1).
+  area's `sizes` / `restoreLayout()` (D1, S1).
+- `dock.js` calls `parent.fit()` on the panel's parent after every tier change inside the
+  split (crossing 1600 px either way), so Lumino re-reads the size limits.
+- Which mechanism applies is fixed by S1's recorded case (Revision 2, B-3):
+
+  | CSS limits | Layout sizing | 1280–1599 | ≥ 1600 |
+  |---|---|---|---|
+  | honoured | reachable | CSS | layout |
+  | ignored | reachable | layout | layout |
+  | honoured | unreachable | CSS | inline px `min-width`/`max-width` (both equal to the D6 formula) on the widget node + `parent.fit()`; asserted only if `css_limits_refit`, otherwise recorded-only. The inline values are cleared, and `parent.fit()` called, when the window drops below 1600 px. |
+  | ignored | unreachable (**S1-L**) | every width key recorded-only | every width key recorded-only |
+
+  In every case the drawer keys and the height keys stay asserted. AC-39(d) is skipped, and
+  recorded as skipped, wherever the ≥ 1600 key is recorded-only. Under S1-L the split opens
+  at Lumino's own size and the drag is unclamped: a stated deviation (D1).
 - The drawer detaches the widget from the main area and re-attaches it as a fixed-position
-  overlay. Moving an iframe in the DOM reloads it, and the socket shim reconnects (D11; the
-  `viewer` id stays in its `src`), so this costs one re-greeting.
+  overlay. Moving an iframe in the DOM reloads it: the old client posts `bye` on `pagehide`
+  and the socket shim reconnects (D11; the `viewer` id stays in its `src`), so this costs one
+  re-greeting.
 
 **Drawer behaviour (1024–1279 px):**
 - The first `announce` opens the drawer over the notebook.
-- A close button in its header, or Escape while focus is in it, hides it.
+- A close button in its header, or Escape while focus is in it, hides it. A hidden drawer
+  holds no iframe (D11, "Closed panel").
   `praxis:toggle-deck-panel` reopens it.
 - Resizing across 1280 px upward re-homes an **open** drawer into the split (one iframe
   reload) and leaves a **closed** one closed. Crossing below 1280 px does the reverse: an open
@@ -275,7 +305,10 @@ slot shows one row (≤ 36 px) and collapses first.
 When a resource is drawn, `stale.py` subscribes idempotently to the drawn resource and every
 descendant (`register_state_update_callback`, `resource.py:924`), and to structural changes
 (`register_did_assign_resource_callback` / `unassign`, `resource.py:806-830`). Any callback
-increments the `rev` of every drawn ancestor.
+increments the `rev` of every drawn ancestor. Callbacks that change only pending tracker state
+(a failed op's residue, `volume_tracker.py:98-99`) also bump `rev`, correctly: ordinary outputs
+draw `get_used_volume()`, which includes pending. Ledger and error outputs carry
+`rev: null` (D2), subscribe nothing and never enter an announcement.
 
 **Announcement.** At `post_run_cell` (S3-D has the fallback), if any rev changed during the
 cell, the kernel posts exactly one message on the existing **`praxis_repl`** BroadcastChannel,
@@ -285,26 +318,33 @@ as the user decided:
 - `json` encodes `{"session": ..., "exec": <execution_count>, "revs": {"<name>": <rev>}}` and
   is capped at **4 KiB**. Past the cap the `revs` map is replaced by `"all": true`.
 
-**Session announcement.** `install()` posts exactly one
-`{type: "praxis:display-session", json: "{\"session\": \"<id>\"}"}` through `stale.py`'s
-poster, once per kernel process (`install()` is idempotent). The shell takes the **last**
-session it has seen as current. Until one is known it writes no session marks.
+**Current session, per notebook panel** (Revision 2, B-7; there is no session message). The
+shell derives each notebook panel's current session from that panel's own outputs:
+- `panelSession[P]` is the stamp session (`stampOf`, D2) of the newest stamped output of a
+  cell whose execution `chrome.js` observed in this page, after P's kernel last started (seen
+  through P's `sessionContext` kernel-changed / status signals).
+- Until `panelSession[P]` is known, no "earlier session" mark is written in P. A restored,
+  never-executed panel therefore writes none, which is the safe default.
+- Two panels with two kernels (for example `welcome.ipynb` beside the user's notebook) each
+  have their own current session and never mark each other's outputs.
+- Adding a kernel identity to the stamp is rejected: it is not reachable from the worker.
 
 **Why `praxis_repl` does not break R21.** R21 (visualizer transport spec) forbids *visualizer*
 traffic on `praxis_repl` and greps `praxis/viz/`, `visualizer/` and `visualizer-augmentations/`
 for the name. That grep must still exit 1 exactly (AC-18), and from sprint C it also covers
 the new visualizer paths (AC-31). These announcements come from `praxis/display/`, send at
-most one message per cell plus one per kernel process, carry a typed `type`, and are ignored
+most one message per cell, carry a typed `type`, and are ignored
 by every other listener:
 - `praxis-shell.js:84-93` acts only on `praxis:shell-ping`.
 - `praxis_bootstrap._setup_broadcast_listener` acts only on `praxis:execute` and
   `praxis:interaction_response` (`praxis_bootstrap.py:212-214`).
 
 **Marking.** The shell (`stale.js`) keeps the latest rev per `(session, resource)`. An output
-whose stamp is older gets a DOM notice, **"Changed since, see deck panel."**, inserted in its
-output node. The notice is never written to the notebook model, so it is not saved. Once the
-current session is known, an output from another session gets **"Drawn in an earlier
-session."** The shell maps model outputs to DOM nodes through the notebook widget's output
+whose stamp has a non-null `rev` older than that gets a DOM notice, **"Changed since, see deck
+panel."**, inserted in its output node. Outputs with `rev: null` (ledger, error) are never
+marked "Changed since". The notice is never written to the notebook model, so it is not
+saved. Once `panelSession[P]` is known, an output in P of any kind whose
+`stamp.session ≠ panelSession[P]` gets **"Drawn in an earlier session."** The shell maps model outputs to DOM nodes through the notebook widget's output
 areas, following the model-first pattern of `repl_smoke.py:1300-1381`.
 
 **Marks survive re-rendering.** JupyterLab re-renders outputs and, with windowing, detaches
@@ -317,7 +357,8 @@ signal S1 records for the observed `windowingMode`), and on `activeCellChanged`.
 The display handles `TooLittleLiquidError`, `TooLittleVolumeError`, `HasTipError` and
 `NoTipError` from `pylabrobot.resources.errors` (`errors.py:8-22`). Everything else gets the
 normal IPython traceback, styled by Praxis CSS on the stderr/error output. Nothing is
-intercepted.
+intercepted. Errors raised inside a `*96` (96-head) op are out of MVP scope: they get the
+generic panel (step 2; orchestrator ruling 260929, MVP item 3 names four classes and no heads).
 
 **What PLR's message omits (read at the pin):**
 - `TooLittleLiquidError`: "Not enough liquid in container: {volume}uL > {used}uL."
@@ -338,8 +379,14 @@ over the traceback frames. It only reads them:
    `TipTracker` gives `tracker`, and for volume errors, `requested` = that frame's `volume`
    local.
 2. **Op.** Only frames whose `self` is a `LiquidHandler` **and** whose `f_code.co_name` is a
-   key of `glossary.ACTIONS` count; this skips `<listcomp>` and `<genexpr>` frames
-   (`liquid_handler.py:504, 974`).
+   key of `glossary.ACTIONS` count. The `co_name` filter also excludes any `<listcomp>` or
+   `<genexpr>` frame; this is defence only, with no test case (on Python 3.12, PEP 709
+   inlines list comprehensions, and no generator expression raises at the pin).
+   - **`*96` short-circuit.** If any such frame is a `*96` op (`pick_up_tips96`,
+     `drop_tips96`, `return_tips96`, `discard_tips96`, `aspirate96`, `dispense96`;
+     `liquid_handler.py:1448-1847`), `resolve` returns `None` at once and the
+     generic panel is shown. The `*96` glossary names and ledger wrappers exist for the
+     ledger only (D9, section 3.5).
    - The **innermost** such frame supplies the locals:
      - `lh`
      - `op_resources` (local `resources` or `tip_spots`)
@@ -351,8 +398,9 @@ over the traceback frames. It only reads them:
 3. **Owner, by identity, in this order:**
    - (a) walk `lh.deck`'s subtree for a resource whose `.tracker is tracker` (container or tip
      spot)
-   - (b) `lh.head[c] is tracker`, or `lh.head96[c]`, which gives the channel
-   - (c) a mounted tip whose `.tracker is tracker`, which gives a tip overflow on channel `c`
+   - (b) `lh.head[c] is tracker`, which gives the channel
+   - (c) a mounted tip whose `.tracker is tracker`, which gives the tip on channel `c` (a TLV
+     overflow on aspirate, or a TLL on dispense, `liquid_handler.py:1235`)
    - (d) with no LH frame: parse `tracker.thing`. `"<name>_volume_tracker"`
      (`container.py:85`) gives the container name, and `"Channel N"` gives the channel.
    - (e) no tracker frame, a `HasTipError`, and an LH frame with a `channel` local
@@ -362,18 +410,28 @@ over the traceback frames. It only reads them:
    channel only, and its message mixes in pending state ("Panel drawing" below). Every number
    and every mark in the panel is therefore computed from **committed** state, with demand
    **summed per resource** over the op's channels:
-   - TLL: a resource offends if its summed requested volume > `tracker.volume`.
+   - TLL, container owner: a resource offends if its summed requested volume >
+     `tracker.volume`.
+   - TLL, tip owner (dispense): compared **per channel**, not summed. The tip on channel c
+     offends if its committed `tracker.volume` < channel c's requested volume.
    - TLV, container owner: a resource offends if its summed addition >
      `max_volume − tracker.volume`.
    - TLV, tip owner: the tip on channel c.
    - HasTip / NoTip: the channels or tip spots whose committed tip state conflicts with the
      op (a channel that already holds a tip for Pick up, an empty spot for Pick up, an
      occupied spot for Drop/Return, a channel with no tip for any liquid op).
-   - The resolved owner is always in the offending set.
-   - `{avail}` is the committed value and `{req}` is the summed request.
+   - **Pending residue.** PLR checks pending state (`volume_tracker.py:91,114-116`,
+     `tip_tracker.py:91,104`), so an earlier failed op's uncommitted changes can cause a raise
+     that committed state does not explain (a retry after E9; a pick-up after a failed
+     pick-up). If the resolved owner is **not** in the committed offending set, `resolve`
+     returns `None`. Otherwise step 5 applies.
+   - `{avail}` is the committed value and `{req}` is the summed request (per channel for a
+     tip owner).
    - PLR's own number appears only in the verbatim "PyLabRobot raised" line.
-5. **Result.** If no owner resolves, the result is `None`, and the handler shows the generic
-   panel ("PyLabRobot raised X: message" plus the traceback). **It never guesses.**
+5. **Result.** If no owner resolves, or the owner is not in the committed offending set
+   (step 4), or a `*96` op is on the stack (step 2), the result is `None`, and the handler
+   shows the generic panel ("PyLabRobot raised X: message" plus the traceback). Otherwise the
+   result is the `ErrorContext`. **It never guesses.**
 
 **Handler** (`errors.py`, registered by `set_custom_exc`; S3-C has the fallback):
 - It calls `display()` on the panel bundle.
@@ -394,6 +452,8 @@ Consequences:
 - The panel never describes the other channels' tracker state.
 - Other outputs keep drawing PLR's own `get_used_volume()`, which includes pending, as the
   prototype fixture does. OQ-6 records the upstream question.
+- A later raise caused only by that pending residue resolves to `None` and gets the generic
+  panel (step 4, "Pending residue").
 
 **Tracking.** PLR tip/volume tracking is off by default (`tip_tracker.py:14`,
 `volume_tracker.py`); the fixture enables it.
@@ -495,9 +555,21 @@ Every rule obeys the file's load-bearing header: `--jp-*` overrides only under
   justification comment, and `test_contract_covers_imports.py` gates C2. Every sprint B task
   that adds a new `pylabrobot.*` import under `praxis/display/` adds its own contract entry
   in the same task.
-- **Meshes are unsupported.** Zero `.glb` files are vendored and PLR 0.2.2 has zero
-  `reference_glb`, so every model is drawn as a box and the removed file server is never
-  needed for a `mesh/<id>` URL. AC-31 asserts the fixture scene has no `mesh`.
+- **`PACKAGE_ROOT` is rebound** (Revision 2, B-4). The stock
+  `PACKAGE_ROOT = dirname(dirname(abspath(__file__)))` (`server.py:98`) resolves to the
+  kernel's working directory, the contents drive `/drive`, because loose sources are fetched
+  relative to it (`bootstrap/transport.py:210,247`). `_models_on_disk(PACKAGE_ROOT)` would
+  then `os.walk` the user's files, and a user `.glb` named after a PLR model would become a
+  `mesh` whose URL nothing serves. So `viewer3d.py` rebinds
+  `plr_visualizer3d.server.PACKAGE_ROOT` to `tempfile.mkdtemp()` (an empty directory it owns)
+  **once, before the first viewer is constructed**. `_register_meshes` reads the global at
+  call time, and `_models_on_disk` is cached per root (`server.py:104`), so the rebind takes
+  effect for every call. It is a module global, not a class attribute: GATE X holds and no
+  vendored byte changes. This is the **one deliberate runtime rebinding** of vendored state.
+- **Meshes are unsupported.** Zero `.glb` files are vendored, PLR 0.2.2 has zero
+  `reference_glb`, and the rebound root is empty, so every model is drawn as a box and the
+  removed file server is never needed for a `mesh/<id>` URL. AC-31 asserts the fixture scene
+  has no `mesh`, and that a `.glb` under the old root yields none.
 
 **Transport.** No file vendored from PLR is edited. The page's only socket is
 `new WebSocket(window.WS_URL)` (`static/transport.js:63`). `socket.js` replaces
@@ -508,29 +580,39 @@ over `BroadcastChannel("praxis_viz3d")`.
 - The page's `transport.js` compares against `WebSocket.OPEN` and `WebSocket.CONNECTING` and
   reconnects every 1.5 s for 60 s (`transport.js:23-27, 56-75`). It keeps working unchanged.
 
-**Protocol on `praxis_viz3d`.** Every message is a JSON string carrying `viewer` (the id
-minted per `DockedViewer3D`) and `client` (the id minted per `PraxisSocket`), except `query`,
-which carries neither.
+**Protocol on `praxis_viz3d`.** Every message is a JSON string. `open`, `accept`, `msg`, `bye`
+and `evict` carry `viewer` (the id minted per `DockedViewer3D`) and `client` (the id minted per
+`PraxisSocket`); `announce` and `close` carry `viewer` only; `query` carries neither.
 
-**How the page learns the viewer id.** The shell sets the iframe `src` to
-`assets/visualizer3d/index.html?embed=1&view=top&viewer=<id>` on **every** `announce`, which
-(re)loads the page. `socket.js` reads `viewer` from `location.search`. With no `viewer`
-parameter the shim posts nothing and fires `onclose` after 3 s. The page's own transport gives
-up after 60 s (`static/transport.js:26, 73`), so an iframe loaded before any announce is not
-relied on: the next announce reloads it with the id.
+**How the page learns the viewer id.** While the deck panel is open, the shell sets the iframe
+`src` to `assets/visualizer3d/index.html?embed=1&view=top&viewer=<id>` on **every** `announce`,
+which (re)loads the page. `socket.js` reads `viewer` from `location.search`. With no `viewer`
+parameter the shim posts nothing (not even `bye`) and fires `onclose` after 3 s. The page's own
+transport gives up after 60 s (`static/transport.js:26, 73`), so a page loaded without an id
+is not relied on: `dock.js` sets `src` only from an announce.
+
+**Closed panel** (Revision 2, B-2). A closed deck panel (its tab closed, or the drawer hidden)
+holds **no** iframe, and `dock.js` ignores `announce` while the panel is closed, except that
+the first `announce` a page sees auto-opens it. On reopen (`praxis:toggle-deck-panel`, or a
+tier crossing that re-homes an open panel), `dock.js` creates the iframe with no `src` and
+posts `query`; the `src` comes only from the answering `announce`. With no answer the body
+shows the section 3.6 placeholder.
 
 | Direction | `kind` | Meaning |
 |---|---|---|
-| kernel → all | `announce` | `{viewer, deck, session}` (`session` is the display session id): a viewer exists. The shell opens the deck panel on the first one and sets the iframe `src` on every one. |
+| kernel → all | `announce` | `{viewer, deck, session}` (`session` is the display session id): a viewer exists. The shell opens the deck panel on the first one a page sees, and sets the iframe `src` on every one while the panel is open. |
 | shell → kernel | `query` | `{}`: sent when `dock.js` mounts or the panel is reopened. A live `DockedViewer3D` answers with `announce`. |
 | page → kernel | `open` | `{viewer, client}` |
 | kernel → page | `accept` | Then the page receives, in order, the `scene` and `state` messages that `Viewer3D._handler` sends (`server.py:590-593`), as `msg`. |
 | both | `msg` | `{client, data}`: `data` is the exact string the websocket would carry. |
-| page → kernel | `close` | The client closed. |
-| kernel → all | `close` | `{viewer, reason}`: the viewer stopped. |
+| page → kernel | `bye` | `{viewer, client}`: the client is gone. Posted on `close()`, on `pagehide`, and on the shim's accept timeout. Ends that client's `VirtualConnection`. |
+| kernel → one page | `evict` | `{viewer, client}`: the kernel dropped this client at the client cap. The shim fires `onclose`, so the page's own reconnect loop recovers. |
+| kernel → all | `close` | `{viewer, reason}`: the viewer stopped. The shell acts only on this kind (and `announce`). |
 
-- Without an `accept` within **3 s**, the shim fires `onclose`, and the page's own reconnect
-  loop retries.
+- Without an `accept` within **3 s**, the shim posts `bye`, fires `onclose`, and ignores any
+  later `accept` for that client; the page's own reconnect loop retries with a new client.
+- `bye` at `pagehide` is best-effort (a page being torn down may not deliver it). Eviction at
+  the cap is the backstop.
 - Traffic uses a **new channel**, not `praxis_viz`: that channel's receiver
   (`visualizer-augmentations/index.js`) would misread these envelopes. It is also not
   `praxis_repl`, per R21.
@@ -547,20 +629,26 @@ project pages, so "same origin" means "any page the account serves".
   localhost websocket against **cross-origin** pages. No websocket exists here, so
   `_check_websocket` is never reached. The iframe's `window.parent` access is our own
   vendored code on our own origin.
-- **Inbound bounds.** `DockedViewer3D` caps virtual clients at **4**: a fifth `open` gets no
-  `accept`. Messages that are not JSON, or whose `kind` is unknown, are dropped without an
-  exception (logged at debug level).
+- **Inbound bounds.** `DockedViewer3D` caps virtual clients at **4**. At the cap, a new
+  `open` **evicts the oldest** client: the kernel posts `evict` to it and ends its
+  `VirtualConnection` with a sentinel, then gives the new client `accept`. `_clients` never
+  exceeds 4. (A BroadcastChannel post never raises, so the stock evict-on-send-failure path,
+  `server.py:357-361`, never fires; without eviction, orphans from routine reloads would
+  fill the cap.) Messages that are not JSON, or whose `kind` is unknown, are dropped without
+  an exception (logged at debug level).
 
 **Kernel.** `praxis/viz/viewer3d.py` defines `DockedViewer3D(Viewer3D)`, which overrides
 exactly **`__init__`, `start` and `stop`**:
-- `__init__` forces `open_browser=False` and takes an injected channel factory.
+- `__init__` forces `open_browser=False` and takes an injected channel factory. (The
+  `PACKAGE_ROOT` rebind happens in module code before the first construction, not in an
+  override.)
 - `start` copies the stock body (`server.py:785-811`) with four differences: `legacy_size`
   runs synchronously (Pyodide has no threads, and `asyncio.to_thread` needs them); there is no
   `websockets.serve`; there is no file server; and `_models_on_disk` is not pre-warmed in a
   thread (its first call is the inherited scene build, `server.py:417`; S4 times it).
-  It subscribes to the channel instead. On each `open` (up to the 4-client cap) it builds a
-  `VirtualConnection`, which has an `async send`, async iteration over an `asyncio.Queue`,
-  and ends on `close`. It then runs the **inherited, unmodified** `_handler(conn)` as a task.
+  It subscribes to the channel instead. On each `open` (evicting the oldest client at the
+  4-client cap) it builds a `VirtualConnection`, which has an `async send`, async iteration
+  over an `asyncio.Queue`, and ends on `bye` or eviction (a queue sentinel). It then runs the **inherited, unmodified** `_handler(conn)` as a task.
   `_broadcast`, `_flush`, `_enqueue`, the scene debounce, `_on_client_message` (hello) and
   every subscription path are inherited unchanged. `start` answers `query` with `announce`.
 - `stop` calls `super().stop()`, which already skips `_ws_server` and `_httpd` when they are
@@ -598,8 +686,11 @@ same-origin with no `sandbox`.
   `plrViewer.focus(name, preset)`, never `focus(name)`, whose default reframes from the iso
   direction (`app.js:180`) and would override the user's preset.
 - **Follow** (on by default): when the active cell changes, focus the resource stamped on its
-  first Praxis output.
-- **Click** on any resource inside an output (a `data-praxis-res` hit) focuses it.
+  first Praxis output whose stamp has a non-null `resource` (`stampOf`, D2). Ledger outputs,
+  channel-owner error panels and generic panels are skipped; a cell with no such output
+  leaves the camera unchanged.
+- **Click** on any resource inside an output (a `data-praxis-res` hit) focuses it. This
+  includes figures inside a ledger or an error panel, unchanged by the Follow rule.
 - **Iso / Top / Front** set the preset and call `plrViewer.view`.
 - The footer states the focused resource, and for a ledger row, its wells ("assay A1:H3,
   3 columns").
@@ -613,8 +704,8 @@ forbids. So:
 - A persistent 3D highlight is Next, and needs an upstream PLR API (OQ-5).
 
 **Embed mode.** `embed.js` runs only when `location.search` has `embed=1`. The same query
-string carries `viewer=<id>`, set by the shell on every `announce` and read only by
-`socket.js` (D11).
+string carries `viewer=<id>`, set by the shell on every `announce` while the panel is open
+(D11, "Closed panel") and read only by `socket.js`.
 - It hides, from inside the page, the navbar (`.navbar`), the left tool rail
   (`#toolbar-left`), the stats footer (`#stats-panel`), the tree (`#sidepanel`) and its
   toggle strip (`#toolbar`). This goes through an injected stylesheet, `embed.css`, and does
@@ -741,8 +832,9 @@ sidecar. The sidecar states the hypothesis, the `[outcomes]` per branch of D1, a
 - G4: Stale outputs are stamped, announced on `praxis_repl`, and marked
   "Changed since, see deck panel" (D7).
 - G5: Structured error panels for `TooLittleLiquidError`, `TooLittleVolumeError`,
-  `HasTipError` and `NoTipError`. Anything else keeps the plain traceback in Praxis styling
-  (D8).
+  `HasTipError` and `NoTipError` from channel ops (not `*96` ops). Anything else keeps the plain
+  traceback in Praxis styling; unresolvable, pending-residue and `*96` cases get the generic
+  panel (D8).
 - G6: Desktop rendering tiers ≥ 1024 px and the 800 px height rule (D6).
 - G7: The detail floor: text ≥ 11 px, wells ≥ 4 px (D5).
 - G8: The quality floor:
@@ -766,8 +858,10 @@ sidecar. The sidecar states the hypothesis, the `[outcomes]` per branch of D1, a
 - A designed Dark variant (Dark gets token-mapped legibility only, D10). Changing the default
   theme (OQ-1).
 - Several live viewers or notebooks at once. The most recent `announce` wins; the protocol
-  carries ids, so this can be added later.
+  carries ids, so this can be added later. With more than 4 live pages on one viewer, the
+  client cap evicts in rotation (D11); accepted.
 - An automatic ledger for cells run outside `RunLedger` (OQ-8).
+- Structured error panels for `*96` (96-head) ops. They get the generic panel (D8 step 2).
 - A persistent 3D highlight in the deck panel (OQ-5). A collapsible tree in embed mode.
 - A notebook top bar with the file name, a "Simulated STARlet" badge or the kernel state (shown
   in DESIGN.md's layout sketch, but not in the MVP list).
@@ -810,6 +904,8 @@ sidecar. The sidecar states the hypothesis, the `[outcomes]` per branch of D1, a
   - "Edited since it ran" compares the source with a snapshot taken when an execution is
     observed in this page. After a reload, cells show ran or error from their saved outputs,
     and become stale only after an edit in this page.
+  - Stale requires a run: a cell is stale only if it has a non-null execution count **and** a
+    snapshot. An edited cell that never ran stays "not run".
 - **Prompts.** The input and output prompts take no space. Outputs are inset under their code
   on the same sheet, divided by one rail-coloured hairline.
 - **Light theme.** The page ground is `#EEF1F4`, the cell sheet `#FFFFFF`, and the syntax
@@ -886,12 +982,17 @@ formatted as in 3.2:
 |---|---|---|---|
 | TLL, owner is a well (aspirate) | "Not enough liquid in {plate} {wells}." | "Each well holds {avail} µL; the aspirate asked for {req} µL." Or, when the wells differ: "{wells} hold {min}–{max} µL; ...". Then: "Nothing was aspirated." | "Lower `vols` to {min} µL or less, or aspirate from wells that hold more." |
 | TLL, owner is another container (aspirate) | "Not enough liquid in {container}." | "It holds {avail} µL; the aspirate asked for {req} µL across {n} channels. Nothing was aspirated." | "Lower `vols`, or aspirate from a container that holds more." |
+| TLL, owner is a tip (dispense) | "The tip on channel {c} holds only {avail} µL." | "The dispense asked for {req} µL. Nothing was dispensed." | "Dispense {avail} µL or less, or aspirate more first." |
 | TLV, owner is a well (dispense) | "Not enough room in {plate} {wells}." | "Each well has room for {avail} µL; the dispense asked for {req} µL. Nothing was dispensed." | "Lower `vols`, or dispense into emptier wells." |
 | TLV, owner is a tip (aspirate) | "The tip on channel {c} can't hold {req} µL." | "It has room for {avail} µL. Nothing was aspirated." | "Aspirate less, or use larger tips." |
 | HasTip, channel (pick up) | "Channel {c} already holds a tip." | "Pick up asked channel {c} for another." | "Drop or discard the tip first." |
 | HasTip, tip spot (drop/return) | "{rack} {spot} already has a tip." | "{Action} asked to put a tip there." (`{Action}` is the outermost op, D8 step 2: "Drop tips", "Return tips" or "Discard tips".) | "Drop the tip into an empty position." |
 | NoTip, channel | "Channel {c} has no tip." | "{Action} needs a tip on every channel it uses." | "Pick up tips before you {action}." |
 | NoTip, tip spot (pick up) | "{rack} {spot} has no tip." | "Pick up asked for a tip that has already been taken." | "Pick up from a position that still has a tip." |
+
+For the stamp, a tip owner counts as a channel owner: `resource: null` (D2). A raise that `resolve` returns `None` for (no owner, pending residue, or a `*96` op;
+D8 steps 2, 4, 5) gets the generic panel: "PyLabRobot raised X: message" plus the traceback,
+with no heading template.
 
 With the fixture's error cell (`make_fixture.py:97-99`: 80 µL from assay A1:H1, which holds
 50 µL), the panel reads "Not enough liquid in assay A1:H1." / "Each well holds 50 µL; the
@@ -933,6 +1034,9 @@ static until re-run.
 | `transfer` | Transfer | transfer |
 | `*96` variants | the same name + " (96 head)" | the same |
 
+The `*96` names are used by the ledger only. Errors inside a `*96` op get the generic panel
+(D8 step 2), so no error template uses them.
+
 Nouns: **channel** (never "pip" or "pipette"), **well**, **tip**, **tip rack**, and
 **deck panel** in every UI string. "Dock" is an internal name only.
 
@@ -943,8 +1047,8 @@ kernel, i.e. after `viewer = await praxis.viz.viewer3d.dock(deck)`. The layout:
 
 - **Header:** the deck name, a Follow toggle (on), and Iso / Top / Front (Top is the page's
   default view, `renderer.js:263`).
-- **Body:** the iframe `assets/visualizer3d/index.html?embed=1&view=top&viewer=<id>`. Its
-  `src` is set (and the page reloaded) on every `announce` (D11).
+- **Body:** the iframe `assets/visualizer3d/index.html?embed=1&view=top&viewer=<id>`. While
+  the panel is open, its `src` is set (and the page reloaded) on every `announce` (D11).
 - **Footer:** the focused resource in words, then the one-row motion slot.
 
 **States:**
@@ -952,10 +1056,13 @@ kernel, i.e. after `viewer = await praxis.viz.viewer3d.dock(deck)`. The layout:
   Run `viewer = await praxis.viz.viewer3d.dock(deck)` in a cell."
 - `await viewer.stop()` gives the same placeholder within 5 s.
 - Re-running the `dock()` cell stops the old viewer (D11); its `announce` reloads the iframe
-  with the new id.
+  with the new id if the panel is open.
 
-**Commands and tiers.** Closing the tab hides the panel. A registered command,
-`praxis:toggle-deck-panel`, reopens it and sends `query`. The tiers follow D6; in the
+**Commands and tiers.** Closing the tab (or hiding the drawer) closes the panel: it then holds
+no iframe and ignores announces (D11, "Closed panel"). A registered command,
+`praxis:toggle-deck-panel`, reopens it: the iframe is created with no `src`, `query` is sent,
+and the `src` is set only by the answering `announce`; until then (or with no viewer) the body
+shows the placeholder. The tiers follow D6; in the
 1024–1279 tier the drawer opens on the first announce, and has a close button that Escape
 also triggers (D6, "Drawer behaviour").
 
@@ -965,14 +1072,14 @@ also triggers (D6, "Drawer behaviour").
 
 | Path | Action | Contents |
 |---|---|---|
-| `scripts/spikes/260929_s1_lumino_widget.py` + `.bth.toml` | create (A1) | Playwright probe over a built dist, `lab/` entry. It tries S1-A, then S1-B. It records `split_right_ok`, `css_limits_honoured`, `dock_layout_sizing_reachable` (the DockPanel `saveLayout`/`restoreLayout` path), the per-state cell hooks, the notebook's `windowingMode` and the cell re-attach signal, with the negative control from D17. Written with argparse and logging. |
+| `scripts/spikes/260929_s1_lumino_widget.py` + `.bth.toml` | create (A1) | Playwright probe over a built dist, `lab/` entry. It tries S1-A, then S1-B. It records `split_right_ok`, `css_limits_honoured`, `dock_layout_sizing_reachable` (the DockPanel `saveLayout`/`restoreLayout` path), `css_limits_refit` (inline px `min-width`/`max-width` then `parent.fit()`: does the widget take the new width?), the resulting D6 sizing case, the per-state cell hooks, the notebook's `windowingMode` and the cell re-attach signal, with the negative control from D17. Written with argparse and logging. |
 | `scripts/spikes/260929_s2_sanitizer.py` + `.bth.toml` | create (A2) | It writes a notebook JSON with crafted outputs to the drive, which is untrusted because it was never executed, reopens it, and records the chosen mimetype and survivorship per element and attribute. It repeats the check for the same bundle displayed live (trusted), and for a notebook executed, saved and reopened in the same browser, recording that path's trust state and mimetype (S2-T or not). Negative control from D17. |
-| `scripts/spikes/260929_s3_ipython_hooks.py` + `.bth.toml` | create (A3) | It runs S3's (a)–(d) in the kernel through a seeded notebook, and records the IPython version, `run_code` path evidence and outputs by model. Negative control from D17. |
-| `scripts/spikes/260929_s4_viewer3d_pyodide.py` + `.bth.toml` | create (C1) | It imports the staged `plr_visualizer3d` in the kernel, constructs and starts `DockedViewer3D` on the fixture deck, and records the stubs needed, the `scene` bytes and the time of the first `_models_on_disk(PACKAGE_ROOT)` walk. Negative control from D17. |
+| `scripts/spikes/260929_s3_ipython_hooks.py` + `.bth.toml` | create (A3) | It runs S3's (a), (b), (b′), (c) and (d) in the kernel; for (b′) it reads the output model's `metadata["text/html"]["praxis"]` through a seeded notebook, and records the IPython version, `run_code` path evidence and outputs by model. Negative control from D17. |
+| `scripts/spikes/260929_s4_viewer3d_pyodide.py` + `.bth.toml` | create (C1) | It imports the staged `plr_visualizer3d` in the kernel, constructs and starts `DockedViewer3D` on the fixture deck, and records the stubs needed, the `scene` bytes, the stock and the rebound `PACKAGE_ROOT` (D11), and the time of the first `_models_on_disk(PACKAGE_ROOT)` walk over the rebound root. Negative control from D17. |
 | `web-repl/overlay/assets/theme/praxis-theme.css` | modify (A4) | Appends sections for the status rail, prompt removal, output inset, the Light steel/sheet ground and syntax palette (Light only), `.praxis-out` token mapping (D3), the stale notice, the error panel, traceback accents, the hover readout, the focus ring, and the deck panel header and footer. It follows the header rules; no animation. |
 | `web-repl/tests/test_display_css.py` | create (A4) | Text invariants on the new rules: no HC name, no `data-jp-theme-light`, no bare-`:root` `--jp-*`, no animation. Every colour in a `.praxis-*` rule is `var(--jp-*)`, `var(--praxis-*)` or one of the DESIGN hexes for moonstone, rose, rose ink or brick. The Light block carries `#EEF1F4`. |
 | `web-repl/shell/display/index.js` | create (A5) | `mount(window)`: waits for `jupyterapp` and `restored`, then mounts `chrome`, and from sprint B `stale` and `interact`, and from sprint C `dock`. |
-| `web-repl/shell/display/chrome.js` | create (A5) | Cell-state derivation from the model: a pure `cellState(model, {running, snapshot})`, where `snapshot` is the cell source captured when an execution is observed (or at first observation for a loaded cell), with precedence running > stale > error > ran > not-run (section 3.1). Plus the snapshot bookkeeping and the DOM writer for `data-praxis-cell-state` and `data-praxis-exec`, per the S1 result. |
+| `web-repl/shell/display/chrome.js` | create (A5) | Cell-state derivation from the model: a pure `cellState(model, {running, snapshot})`, where `snapshot` is the cell source captured when an execution is observed (or at first observation for a loaded cell), with precedence running > stale > error > ran > not-run (section 3.1); `stale` only with a non-null execution count and a snapshot. Plus the snapshot bookkeeping, an observed-execution event (cell, panel) that `stale.js` uses for `panelSession` (D7), and the DOM writer for `data-praxis-cell-state` and `data-praxis-exec`, per the S1 result. |
 | `web-repl/shell/display/__tests__/fakes.js`, `chrome.test.js` | create (A5) | Fakes for cells, notebook, app, BroadcastChannel and the DOM, following `web-repl/shell/coxswain/__tests__/dom_stub.js`. |
 | `web-repl/shell/praxis-shell.js` | modify, append only (A5) | One loader IIFE for `display/index.js`, gated to `/lab/`. Existing IIFEs untouched, including the persistence IIFE on `main`. |
 | `web-repl/scripts/build_repl.py` | modify (A6, B9, C6) | A6: `stage_shell` removes and then copies `shell/display/`, skipping `__tests__`, and `assert_dist_complete` requires `shell/display/{index,chrome}.js`. B9: adds `stale.js` and `interact.js` to the required list. C6: adds `dock.js`, `assets/visualizer3d/index.html`, `assets/visualizer3d/vendor/three.webgpu.min.js`, `assets/visualizer3d-augmentations/{socket,embed}.js` and `embed.css`, `assets/python/plr_visualizer3d/server.py`, `assets/python/praxis/viz/viewer3d.py`, and `assets/python/praxis/display/__init__.py`, the last from B8. |
@@ -986,13 +1093,13 @@ also triggers (D6, "Drawer behaviour").
 | `.../praxis/display/labware.py` | create (B2) | Plate, tip rack and well figures and sentences; sentence-only bundles for other containers (D2); well-range compression; the grid descriptor. |
 | `.../praxis/display/deck.py` | create (B3) | Deck plan, rail ruler, carriers, labware at their detail level, the deck sentence. |
 | `.../praxis/display/glossary.py` | create (B4) | `ACTIONS` and nouns (section 3.5). The only home of action strings. |
-| `.../praxis/display/ledger.py` | create (B4) | `RunLedger` (D9): rows, in-flight nesting, top-level counts, tip cycles, the after-state figures, the bundle; `_ERROR_STEPS` and `step_for(exc)`. |
-| `.../praxis/display/context.py` | create (B5) | `resolve(exc, tb) -> ErrorContext | None` (D8), with the frame filter on `glossary.ACTIONS`, owner rules (a)–(e) and the committed offending set. |
-| `.../praxis/display/errors.py` | create (B6) | Panel rendering (section 3.3, with the step line from `ledger.step_for`) and `handler(shell, etype, value, tb, tb_offset=None)`. |
-| `.../praxis/display/stale.py` | create (B7) | Display session id, the `praxis:display-session` post, revs, subscriptions, the `post_run_cell` announcer. It takes an injected `post(str)`. `import js` appears only inside `make_repl_poster()`, as in `browser.py:179-192`. |
-| `.../praxis/display/install.py` | create (B8) | `install(shell=None)`: registers the D2 formatters (with the S3-B fallback), the D8 handler (with the S3-C fallback), the D7 hooks (with the S3-D fallback) and the session. It is idempotent. |
+| `.../praxis/display/ledger.py` | create (B4) | `RunLedger` (D9): rows, in-flight nesting, top-level counts, tip cycles, the after-state figures, the bundle (stamp `resource: null`, `rev: null`, D2); `_ERROR_STEPS` and `step_for(exc)`. |
+| `.../praxis/display/context.py` | create (B5) | `resolve(exc, tb) -> ErrorContext | None` (D8), with the frame filter on `glossary.ACTIONS`, the `*96` short-circuit, owner rules (a)–(e), the committed offending set (per channel for a tip owner) and the pending-residue rule (owner outside the offending set → `None`). |
+| `.../praxis/display/errors.py` | create (B6) | Panel rendering (section 3.3, including the tip-owner TLL row and the generic panel, with the step line from `ledger.step_for`; stamp per D2: the labware name or `null`, `rev: null`) and `handler(shell, etype, value, tb, tb_offset=None)`. |
+| `.../praxis/display/stale.py` | create (B7) | Display session id, revs (none for `rev: null` stamps), subscriptions, the `post_run_cell` announcer. It posts nothing else (no session message; D7). It takes an injected `post(str)`. `import js` appears only inside `make_repl_poster()`, as in `browser.py:179-192`. |
+| `.../praxis/display/install.py` | create (B8) | `install(shell=None)`: registers the D2 formatters (with the S3-B fallback: separate `text/html` / `text/plain` registration, the `text/html` function returning `(html, {"praxis": stamp})`), the D8 handler (with the S3-C fallback), the D7 hooks (with the S3-D fallback), and mints the display session id. It is idempotent. |
 | `web-repl/bootstrap/praxis_bootstrap.py` | modify (B8) | Adds the D13 non-fatal stage between step 12 and `praxis:ready`. |
-| `web-repl/shell/display/stale.js`, `interact.js` + tests | create (B9) | D7 marking: the current session (last `praxis:display-session` seen), in-memory marks re-applied on `outputs.changed`, the S1 re-attach signal and `activeCellChanged`. D14 hover, keyboard, click and the live region; matching by `dataset.praxisRes`; the grid hit-test (pure). |
+| `web-repl/shell/display/stale.js`, `interact.js` + tests | create (B9) | `stampOf` (D2, exported; the only stamp reader). D7 marking: `panelSession[P]` per notebook panel (from `chrome.js`'s observed executions and P's `sessionContext`), no "Changed since" on `rev: null` stamps, in-memory marks re-applied on `outputs.changed`, the S1 re-attach signal and `activeCellChanged`. D14 hover, keyboard, click and the live region; matching by `dataset.praxisRes`; the grid hit-test (pure). |
 | `web-repl/tests/plr_contract.py` | modify (C2; B2–B8 as needed) | C2 adds `("pylabrobot.resources.resource", "Resource")` with a justification comment (D11). Each sprint B task adds an entry for any new `pylabrobot.*` submodule it imports. |
 | `.praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md` | modify, append only (C2) | ADR §2 addendum: one vendored third-party package (`plr_visualizer3d`, from PLR main) ships as loose fetched files beside the pinned 0.2.2 wheel, with the contract entry above. |
 | `web-repl/tests/test_display_{labware,deck,floor,budget,ledger,context,errors,stale,install,glossary,colorblind}.py` | create (B1–B8) | CPython tests. They load `praxis/display` by path under the synthetic package `_praxis_display_under_test` and never touch `sys.path` (README rule 2; the `test_browser_visualizer.py:33-51` pattern). They use real PLR 0.2.2 resources and `LiquidHandlerChatterboxBackend`. |
@@ -1000,12 +1107,12 @@ also triggers (D6, "Drawer behaviour").
 | `web-repl/overlay/assets/visualizer3d/**` | generated, committed (C2) | The vendored static tree, `VENDOR_MANIFEST.json`, and the transformed `index.html`. |
 | `web-repl/overlay/assets/python/plr_visualizer3d/**` | generated, committed (C2) | Five vendored `.py` files and `VENDOR_MANIFEST.json`. |
 | `web-repl/tests/test_vendor_visualizer3d.py` | create (C2) | AC-30. |
-| `web-repl/overlay/assets/python/praxis/viz/viewer3d.py` | create (C3) | `DockedViewer3D` (the 4-client cap, `query` answer, drop of non-JSON and unknown kinds, `stop` ending every connection), `VirtualConnection`, `ChannelTransport` (injected), `make_viz3d_channel()` (the only `import js`), and `async def dock(deck, **kw)` (module-level current viewer stopped first; awaits `wait_for_browser(timeout=15)`). |
+| `web-repl/overlay/assets/python/praxis/viz/viewer3d.py` | create (C3) | The one-time `plr_visualizer3d.server.PACKAGE_ROOT` rebind to `tempfile.mkdtemp()` before the first viewer (D11). `DockedViewer3D` (the 4-client cap with oldest-client eviction via `evict`, `bye` ending a connection, `query` answer, drop of non-JSON and unknown kinds, `stop` ending every connection), `VirtualConnection`, `ChannelTransport` (injected), `make_viz3d_channel()` (the only `import js`), and `async def dock(deck, **kw)` (module-level current viewer stopped first; awaits `wait_for_browser(timeout=15)`). |
 | `web-repl/tests/test_viewer3d_docked.py` | create (C3) | AC-31. Loads `plr_visualizer3d` and `praxis/viz` under synthetic names. |
-| `web-repl/overlay/assets/visualizer3d-augmentations/socket.js` | create (C4) | A classic script. The factory `makePraxisSocketClass(BroadcastChannelCtor, {acceptTimeoutMs})` is attached to the global, and the script assigns `window.WebSocket` when `document` exists. The viewer id comes from `location.search` (`viewer`); without it the socket posts nothing and closes after the accept timeout. |
+| `web-repl/overlay/assets/visualizer3d-augmentations/socket.js` | create (C4) | A classic script. The factory `makePraxisSocketClass(BroadcastChannelCtor, {acceptTimeoutMs})` is attached to the global, and the script assigns `window.WebSocket` when `document` exists. The viewer id comes from `location.search` (`viewer`); without it the socket posts nothing and closes after the accept timeout. With it, the socket posts `bye` on `close()`, on `pagehide` and on its accept timeout, ignores a late `accept`, and fires `onclose` on its own `evict` (D11). |
 | `web-repl/overlay/assets/visualizer3d-augmentations/embed.js`, `embed.css` | create (C4) | D12 embed mode and status forwarding. |
 | `web-repl/shell/display/__tests__/viz3d_socket.test.js` | create (C4) | Evaluates `socket.js` text against a fake global. Kept here so that no `__tests__` directory lives under `overlay/assets/`, which is staged wholesale (`build_repl.py:551-578`). |
-| `web-repl/shell/display/dock.js` + tests | create (C5) | The deck panel widget per S1, the header, the footer, tiers and sizing (CSS, DockPanel layout, or S1-L), the drawer with its close button, Escape and tier crossing, Follow, the held preset, the placeholder, the iframe `src` with `viewer=<id>` set on each `announce`, `query` on mount and reopen; `praxis:toggle-deck-panel`. |
+| `web-repl/shell/display/dock.js` + tests | create (C5) | The deck panel widget per S1, the header, the footer, tiers and sizing per the D6 sizing-case table (CSS, DockPanel layout, inline px + `parent.fit()`, or S1-L), `parent.fit()` after every tier change inside the split, the drawer with its close button, Escape and tier crossing, Follow (skipping `resource: null` stamps, read through `stampOf`), the held preset, the placeholder, closed-panel semantics (no iframe while closed, announces ignored except the first, which auto-opens), the iframe `src` with `viewer=<id>` set on each `announce` while open, `query` on mount, and on reopen the iframe created without `src` plus `query`; acting only on `announce` and the kernel `close`; `praxis:toggle-deck-panel`. |
 | `.github/workflows/repl.yml` | modify (A7, B10, C7) | Each sprint adds its pytest lines in the task that creates each test file (the per-file guard `test_repl_workflow_covers_tests.py` on `main` fails on an unwired file), its `bun test web-repl/shell/display` line in the coxswain job (A5), and its smoke step (A7: `--display-check`; C7: `--dock-check`). |
 
 **Files that must not change:**
@@ -1039,6 +1146,8 @@ Gate shorthands:
     (CSS limits, DockPanel layout sizing, or S1-L), records `dock_layout_sizing_reachable`,
     the `windowingMode` and the cell re-attach signal, and records the negative control's
     failure.
+  - The note also records `css_limits_honoured`, `css_limits_refit`, and the D6 sizing case
+    (the table row) that AC-36 is keyed by.
 - **AC-2 (S2 recorded)**:
   - Same record checks as AC-1.
   - The note contains the survivorship table: element and attribute × {trusted live,
@@ -1050,6 +1159,10 @@ Gate shorthands:
   - Same record checks as AC-1.
   - The note records the IPython version seen in the kernel and the (a)–(d) results, and
     names the branch.
+  - The note records the (b′) result: whether a `formatters['text/html'].for_type` function
+    returning `(html, {"praxis": stamp})` yields the stamp at the output model's
+    `metadata["text/html"]["praxis"]`. If (b) and (b′) both fail, the note says B7/B9 are
+    stopped and escalated (D1).
 - **AC-4 (theme invariants)** [PY:test_display_css.py] and [PY:test_theme_staging.py]:
   - Both pass. `test_high_contrast_theme_is_left_alone` and
     `test_jp_tokens_are_not_defined_on_bare_root` are unchanged and green.
@@ -1059,9 +1172,11 @@ Gate shorthands:
     - `ran` after a successful execution
     - `running` while executing
     - `error` when an output has `output_type == "error"`
-    - `stale` when the source differs from the execution snapshot
+    - `stale` when the cell has a non-null execution count and a snapshot, and the source
+      differs from the snapshot
   - Precedence: running > stale > error > ran > not-run. Cases: a running cell whose source
     was edited is `running`; an edited cell whose last output is an error is `stale`.
+  - An edited cell that never ran (null execution count, no snapshot) is `not-run`.
   - After a reload (a loaded cell with saved outputs, snapshot taken at first observation):
     `ran` or `error` from its saved outputs, and `stale` only after an edit in this page.
   - The DOM writer sets `data-praxis-cell-state` and `data-praxis-exec`, and is idempotent.
@@ -1173,6 +1288,7 @@ Gate shorthands:
     returns `None` (the entry is removed).
   - With `show=True` and an op that raises, `__exit__` displays the ledger bundle (a
     recording `display`) and the exception still propagates.
+  - The ledger bundle's stamp has `kind == "ledger"`, `resource` null and `rev` null (D2).
 - **AC-15 (error context)** [PY:test_display_context.py]. Real PLR at the pin, chatterbox
   backend, tracking on unless the case says off. Each case raises the real error and asserts
   `resolve(exc, exc.__traceback__)`:
@@ -1197,8 +1313,19 @@ Gate shorthands:
     "return_tips"` (the outermost ACTIONS frame), not `drop_tips`.
   - **E4-off**, **E6-off**: E4 and E6 with tracking off still raise and resolve to the same
     channel.
-  - A case where the innermost LH frame is a comprehension (`<listcomp>`/`<genexpr>`) still
-    resolves the enclosing op's locals.
+  - **E12**: dispense 100 µL from an empty tip → TLL, owner the tip on channel 0 (rule (c)),
+    requested 100, available 0 (committed, per channel), action `dispense`.
+  - **E13** (pending residue): directly after E9's failure (the trough at 100 µL committed,
+    earlier channels' removals still pending), a retry of 10 µL on 8 channels raises TLL →
+    `None`: the owner is not in the committed offending set (80 ≤ 100).
+  - **E14** (pending residue): a `pick_up_tips` that fails mid-loop leaves earlier channels
+    with pending tips (`liquid_handler.py:533-538`); a second pick-up on those channels raises
+    from that pending state with no committed conflict → `None`.
+  - **E-96** (negative, `*96` out of scope): a real `aspirate96` that raises TLL → `None`
+    (step 2 short-circuit). *Buildable at the pin (orchestrator, 260929):* on the fixture
+    layout with the chatterbox backend, `pick_up_tips96(tips_300)` then
+    `aspirate96(assay, volume=50)` raises `TooLittleLiquidError: Not enough liquid in
+    container: 50.0uL > 0uL.`
   - Negative: a `ValueError` → `None`.
   - Negative: a TLL raised by a tracker whose `thing` names nothing on any deck, with no LH
     frame → `None`.
@@ -1220,12 +1347,18 @@ Gate shorthands:
     "PyLabRobot raised" line (checked on E9, where they differ).
   - An error raised inside a `RunLedger` gets "Step {n} of the run." with the step from
     `ledger.step_for`.
+  - **E12** matches the "TLL, owner is a tip (dispense)" row: heading "The tip on channel 0
+    holds only 0 µL.", body "The dispense asked for 100 µL. Nothing was dispensed."
+  - Stamps (D2): every panel has `kind == "error"` and `rev` null; E1's `resource ==
+    "assay"`, E5's is the tip rack's name, and E4's and E12's (channel and tip owners) are
+    null.
 - **AC-17 (handler semantics)** [PY:test_display_install.py], with a fake shell recording
   `set_custom_exc`, `display` and formatter registrations:
   - Exactly the four classes are registered.
   - The handler returns a list of one string, `"<Name>: <message>"`.
   - The handler displays exactly one bundle.
-  - An unresolvable context displays the generic panel.
+  - An unresolvable context displays the generic panel. **E13** (AC-15, pending residue)
+    displays the generic panel, whose stamp has `resource` null.
   - For an exception with a `ledger._ERROR_STEPS` entry, the handler's displayed bundle names
     that step, and the entry is gone afterwards. Order check with a real `RunLedger(lh)`
     (show on) around a failing op: the recorded `display` calls are the ledger bundle, then
@@ -1233,6 +1366,9 @@ Gate shorthands:
   - `install()` is idempotent: a second call registers nothing new.
   - The S3-B and S3-C fallbacks each have a case that is selected when the fake lacks the
     primary API.
+  - The S3-B case: the registered `text/html` function returns a tuple
+    `(html, {"praxis": stamp})` whose stamp equals the one `render(obj)` puts at
+    `metadata["praxis"]`, and the `text/plain` function returns the summary sentence.
 - **AC-18 (staleness, kernel)** [PY:test_display_stale.py]:
   - Drawing `source` stamps `rev` r.
   - `source A1`'s tracker `set_volume` bumps `source` to r+1, and also the deck's rev if the
@@ -1240,9 +1376,13 @@ Gate shorthands:
   - One simulated `post_run_cell` posts exactly one message, carrying only the changed revs.
   - A cell with no change posts nothing.
   - The `json` field is ≤ 4096 bytes, and it switches to `"all": true` past the cap.
-  - The session announcement: one install posts exactly one `praxis:display-session` message
-    whose `json` decodes to `{"session": <the stamp's session>}`; a second `install()` in the
-    same process posts nothing.
+  - `stale.py` posts only `praxis:resource-changed` (no session message, D7): install plus a
+    cell with no change posts nothing at all.
+  - Registering a drawn output whose stamp has `resource` null or `rev` null (a ledger or
+    error stamp, built by hand in the test) subscribes nothing (`_subscribed` unchanged) and
+    adds nothing to any later announcement.
+  - A pending-only change (a tracker `remove_liquid` queued and not committed,
+    `volume_tracker.py:98-99`) bumps the drawn resource's rev (D7).
   - The channel name `praxis_repl` appears in `praxis/display/stale.py` only.
   - `test -d` on the three paths, then
     `grep -rn "praxis_repl" web-repl/overlay/assets/python/praxis/viz/ web-repl/overlay/assets/visualizer/ web-repl/overlay/assets/visualizer-augmentations/`
@@ -1251,8 +1391,18 @@ Gate shorthands:
   - `stale.js`, given stamps and announcements, marks only outputs with an older rev in the
     same session, marks other-session outputs "Drawn in an earlier session.", is idempotent,
     and never calls any model setter (the fake model throws on write).
-  - Before any `praxis:display-session` message, `stale.js` writes no session marks; after
-    two session messages the later one is current.
+  - Stamps are read only through `stampOf`: an output carrying its stamp at
+    `metadata["text/html"]["praxis"]` (the S3-B carrier) is marked exactly like one carrying
+    it at `metadata.praxis`.
+  - `rev: null`: a ledger output and an error output stamped `resource: "assay"`, followed
+    by an announcement raising `assay`'s rev, get no "Changed since" notice; both still get
+    "Drawn in an earlier session." when their session differs from the panel's.
+  - Per-panel session (D7): before panel P has an observed execution of a stamped cell after
+    its kernel last started, no session mark is written in P; after one, `panelSession[P]`
+    is that output's session. A fake kernel restart (P's `sessionContext` signal) followed by
+    a re-run drawing cell makes the new session current and marks P's older outputs.
+  - **Two panels**: panels P and Q with sessions sA and sB, each with an observed executed
+    drawing cell; neither panel's outputs are marked "Drawn in an earlier session."
   - After the fake output node is replaced (`outputs.changed`) or detached and re-attached
     (the S1 re-attach signal), the mark is back exactly once.
   - `interact.js`:
@@ -1270,7 +1420,8 @@ Gate shorthands:
     `praxis:display-error` message precedes it.
 - **AC-21 (reprs live)** [DISPLAY, scenario D2]:
   - `repr_cells_ok`: the deck, plate and tip-rack cells each have a model output with
-    `text/html`, `text/plain` and `metadata.praxis`.
+    `text/html`, `text/plain` and a stamp read through `stampOf` (D2; `metadata.praxis`
+    under S3-A, `metadata["text/html"].praxis` under S3-B).
   - `svg_in_dom`: each has an `svg` under its output node.
   - `html_bytes_max` ≤ 65,536.
   - `text_plain_matches`: the assay `text/plain` equals AC-9's string.
@@ -1293,8 +1444,9 @@ Gate shorthands:
   - `mark_survives_scroll`: the marked `source` output, scrolled out of view far enough to
     detach under the recorded `windowingMode` and back, still carries the notice exactly
     once.
-  - `earlier_session_marked`: after `kernelmenu:restart` and re-running the boot cell, a
-    pre-restart output reads "Drawn in an earlier session."
+  - `earlier_session_marked`: after `kernelmenu:restart`, re-running the boot cell and
+    re-running a drawing cell (which sets the panel's current session, D7), a pre-restart
+    output reads "Drawn in an earlier session."
   - `persistence_gate_never_open`: `dialog#praxis-persistence-first-save` was never open
     during the scenario (D16); trivially true when `main` lacks the ladder.
 - **AC-24 (trust loss)** [DISPLAY, scenario D3: save, reload, reopen the notebook]:
@@ -1341,6 +1493,8 @@ Gate shorthands:
   - The note lists the stubs required (possibly none), `call_later` support, the fixture
     `scene` bytes and the time of the first `_models_on_disk(PACKAGE_ROOT)` walk, and names
     the branch.
+  - The note records the stock `PACKAGE_ROOT` resolved in the kernel, the rebound root
+    (D11), and states that the timed walk ran over the rebound root.
 - **AC-30 (vendoring)** [PY:test_vendor_visualizer3d.py], plus
   `uv run python web-repl/scripts/vendor_visualizer3d.py --check --src <plr-main>`, which exits
   0 in CI after the PLR main checkout step C7 adds:
@@ -1372,7 +1526,16 @@ Gate shorthands:
     (its `_subscribed` empty, a `close` with the first viewer's id posted) before the second
     `announce`.
   - `query` yields one `announce` for the current viewer.
-  - **Client cap**: with 4 open clients, a fifth `open` gets no `accept`.
+  - **Client cap** (eviction): with 4 open clients, a fifth `open` gets `accept`; the
+    oldest client gets `evict` (addressed to it only), its `_handler` task ends, and
+    `_clients` stays at 4.
+  - `bye` from a client ends its `VirtualConnection`: its `_handler` task ends and it leaves
+    `_clients`.
+  - **`PACKAGE_ROOT` rebind**: after the first viewer is constructed,
+    `plr_visualizer3d.server.PACKAGE_ROOT` is an existing, empty directory different from the
+    stock value, and a second viewer does not rebind it again. With a `.glb` named after a
+    fixture model placed under the stock root, the first `scene` message has no `mesh` key on
+    any model.
   - A non-JSON message and a message with an unknown `kind` are ignored: no exception, no
     post.
   - `dock()` with a fake viewer whose `wait_for_browser` raises `TimeoutError` returns the
@@ -1389,7 +1552,13 @@ Gate shorthands:
   - `onclose` fires on kernel `close` and on no `accept` within 3 s (fake clock).
   - The statics equal `{0, 1, 2, 3}`.
   - Messages for another `client` or `viewer` are ignored.
-  - `close()` posts `close` exactly once.
+  - `close()` posts `bye` exactly once (a second `close()` posts nothing).
+  - A `pagehide` event posts `bye` exactly once; the accept timeout posts `bye` exactly once.
+  - A late `accept` (after the timeout) is ignored: `readyState` stays `CLOSED` and
+    `onopen` does not fire.
+  - `evict` addressed to this client fires `onclose`; an `evict` for another client is
+    ignored.
+  - The page-side shim never posts a message of kind `close`.
   - **No viewer**: loaded with no `viewer` parameter, the shim posts nothing at all and fires
     `onclose` after 3 s (fake clock). With `?viewer=v1`, `open` carries `viewer: "v1"`.
 - **AC-33 (staging and offline)**:
@@ -1414,22 +1583,36 @@ Gate shorthands:
     `plrViewer.camera().at`, and the footer reads "source".
   - `follow_focuses`: with Follow on, activating the assay output's cell focuses `assay`.
   - `follow_off_holds`: with Follow off, activating another cell leaves the camera unchanged.
+  - `follow_skips_null`: with Follow on, activating the `RunLedger` cell (whose only Praxis
+    output is the ledger, `resource` null) leaves `plrViewer.camera()` unchanged (D12). The
+    unit half (C5) covers a cell whose outputs are [ledger, plate] (focuses the plate)
+    and a cell whose only output is a ledger (camera unchanged).
   - `preset_directions`: after Top, Front and Iso,
     `normalize(camera.from - camera.at) · normalize(VIEWS[name]) > 0.99`. The VIEWS vectors
     are copied from `renderer.js:117-121` into the harness.
   - `follow_keeps_preset`: after Top, then a Follow-driven focus on another resource,
     `normalize(camera.from - camera.at) · normalize(VIEWS.top) > 0.99`.
 - **AC-36 (tiers)** [DOCK, scenario K2 across viewports]:
-  - At 1600×900 and at 1920×1080, file browser closed: `nb_content_width ≤ 960`, and
-    `panel_width` equals `max(420, main_area_width − 960 − nb_h_padding)` within ±8 px (D6).
+  - **Keyed by the D6 sizing case** recorded in AC-1. The result names the case and lists
+    each width key below as `asserted` or `recorded-only`, per the D6 table: case
+    honoured/reachable and case ignored/reachable assert every width key; case
+    honoured/unreachable asserts the 1280–1599 keys and asserts the ≥ 1600 keys only if
+    `css_limits_refit` (otherwise recorded-only); case S1-L records every width key.
+  - At 1600×900 and at 1920×1080, file browser closed: `nb_content_width ≤ 960` (always
+    asserted; it is CSS on the notebook), and `panel_width` equals
+    `max(420, main_area_width − 960 − nb_h_padding)` within ±8 px (D6) (≥ 1600 width key).
   - At 1440×900 and at 1280×800: `panel_width ∈ [420, 480]` after opening. After a real
-    splitter drag to 300 px it is clamped to 420, and after a drag to 700 px, to 480. Under
-    S1-L (AC-1) these two drag-clamp keys are recorded, not asserted, and the result says so.
+    splitter drag to 300 px it is clamped to 420, and after a drag to 700 px, to 480. (These
+    are the 1280–1599 width keys.)
+  - `fit_after_tier_change`: resizing an open split panel from 1440 to 1600 wide and back
+    re-satisfies each tier's width key (asserted or recorded per case).
   - At 1280×800: `viewer_height ≥ 300`, and `motion_slot_height ≤ 36`.
   - At 1152×800: `drawer_no_reflow`, meaning the notebook content width changes by 0 px when
     the drawer opens, and `drawer_overlays`, meaning the panel is `position: fixed`.
   - `drawer_dismiss_reopen`: at 1152×800 the first announce opens the drawer; its close
-    button hides it; `praxis:toggle-deck-panel` reopens it; Escape hides it again.
+    button hides it (and no iframe remains in the DOM); `praxis:toggle-deck-panel` reopens it;
+    Escape hides it again.
+  - The drawer keys and the height keys are asserted in every sizing case.
   - `tier_up_rehomes`: resizing an open drawer from 1152 to 1440 wide re-homes it into the
     split (`panel_is_split_right` holds, `resources()` repopulates within 10 s); a closed
     drawer resized the same way stays closed.
@@ -1450,7 +1633,14 @@ Gate shorthands:
   - `late_iframe`: the harness closes the deck panel's tab, re-runs `dock()` (only the
     first `announce` of a page auto-opens the panel, so it stays closed), then reopens it
     with `praxis:toggle-deck-panel` after `dock()` has returned; `resources()` populates within
-    10 s (`query` → `announce` → `src`).
+    10 s (`query` → `announce` → `src`). Ordering, observed through a harness
+    `BroadcastChannel("praxis_viz3d")` listener and a `MutationObserver` on the iframe `src`:
+    a `query` was posted after the reopen, the reopened iframe had no `src` until the
+    answering `announce`, and its `src` was first set after that `announce`. While closed, no iframe was in the
+    DOM.
+  - `many_reloads`: 6 sequential iframe reloads (`iframe.src = iframe.src`), each followed
+    by `resources()` repopulating within 10 s. (With the cap at 4, this fails unless dead
+    clients leave through `bye` or eviction, D11.)
 - **AC-39 (sensitivity and hygiene)**:
   - Copy the built dist to `/tmp/claude-1000/nd-neg/`.
   - (a) Remove `shell/display/index.js`, then run
@@ -1463,10 +1653,14 @@ Gate shorthands:
   - (d) The AC-36 ≥ 1600 width predicate is sensitive: at 1600×900 the harness adds the
     viewer iframe in a stock `split-right` widget of its own (harness code, no `dock.js`
     sizing), measures it (a 50/50 split), and the predicate reports failure. Skipped, and
-    recorded as such, under S1-L.
+    recorded as such, wherever the ≥ 1600 key is recorded-only (D6 table: S1-L, and case
+    honoured/unreachable without `css_limits_refit`).
+  - (e) `late_iframe` is sensitive to the `query` path: with a harness context init script
+    that wraps `BroadcastChannel.prototype.postMessage` in the parent page to drop messages
+    of kind `query` (harness code; no product switch), `--dock-check` exits nonzero and names
+    `late_iframe`.
   - The observed exit codes go in the sprint C PR description. (a) is run first in sprint B's
-    PR.
-- **AC-40 (CI wiring)**:
+    PR.- **AC-40 (CI wiring)**:
   - `uv run python -m pytest web-repl/tests/test_repl_workflow_covers_tests.py -q` passes on
     each sprint's head.
   - `grep -c -- '--display-check' .github/workflows/repl.yml` ≥ 1 (sprint A).
@@ -1498,7 +1692,9 @@ action (project memory, "praxis main merge policy").
 - The probe builds on `run_notebook_check`'s launch and ServedDir pattern.
 - It tries S1-A, then S1-B, adds the widget with `split-right` next to an open notebook, sets
   CSS limits, measures the widget after a splitter drag, tries DockPanel layout sizing
-  (`saveLayout` → edit `sizes` → `restoreLayout`), enumerates cell-state hooks for the five
+  (`saveLayout` → edit `sizes` → `restoreLayout`), tests `css_limits_refit` (set inline px
+  `min-width`/`max-width` on the widget node, call `parent.fit()`, measure), records the D6
+  sizing case, enumerates cell-state hooks for the five
   states, and records the notebook's `windowingMode` and the signal that fires when a
   scrolled-away cell's DOM is re-attached.
 - Run it with `bth run`, verify by record, and file the research note.
@@ -1518,8 +1714,9 @@ saved and reopened in the same browser (record its trust state; S2-T if trusted)
 - Size: ~220 LOC.
 
 **A3: Spike S3 (IPython hooks in the Pyodide kernel).** Same discipline, over
-`260929_s3_ipython_hooks.py`. Test (a)–(d), each in a plain cell and a top-level-`await` cell,
-reading results from the notebook model.
+`260929_s3_ipython_hooks.py`. Test (a), (b), (b′), (c) and (d), each in a plain cell and a
+top-level-`await` cell, reading results from the notebook model (for (b′), the output's
+`metadata["text/html"]["praxis"]`).
 - Depends on: none.
 - Closes: AC-3.
 - Gate: AC-3 record query.
@@ -1622,42 +1819,48 @@ Add the test's `repl.yml` line.
 
 **B4: Glossary and RunLedger.** Create `glossary.py` and `ledger.py`, with
 `test_display_ledger.py` and `test_display_glossary.py` first: in-flight nesting and
-top-level counts, `_ERROR_STEPS` / `step_for`, and the ledger shown on the error path (D9).
-Add their `repl.yml` lines.
+top-level counts, `_ERROR_STEPS` / `step_for`, the ledger shown on the error path (D9), and
+the ledger stamp (`resource` null, `rev` null, D2). Add their `repl.yml` lines.
 - Depends on: B2.
 - Closes: AC-14, AC-28.
 - Gate: the two [PY] files, [PY:test_contract_covers_imports.py].
 - Size: ~320 LOC.
 
 **B5: Error context.** Create `context.py`, and `test_display_context.py` first: cases
-E1–E11, E4-off, E6-off, the comprehension-frame case and both negatives, using real PLR at
-the pin. Implement D8 steps 1–5: the `glossary.ACTIONS` frame filter, owner rules (a)–(e),
-and the committed, summed offending set. Add its `repl.yml` line.
+E1–E14, E4-off, E6-off, E-96 and both negatives, using real PLR at the pin. Implement D8
+steps 1–5: the `glossary.ACTIONS` frame filter (defence against comprehension frames, no
+case), the `*96` short-circuit, owner rules (a)–(e) (no `head96` in rule (b)), the committed,
+summed offending set (per channel for a tip owner), and the pending-residue rule (owner
+outside the committed offending set → `None`). Add its `repl.yml` line.
 - Depends on: B4 (`glossary.ACTIONS`).
 - Closes: AC-15.
 - Gate: [PY:test_display_context.py], [PY:test_contract_covers_imports.py].
-- Size: ~260 LOC.
+- Size: ~300 LOC.
 
 **B6: Error panel and handler.** Create `errors.py`, and `test_display_errors.py` first.
 Implement the handler per D8, using S3-A or the S3-C fallback as recorded in AC-3, with the
-escaped, capped traceback (D2, D4) and the step line from `ledger.step_for` (D9). Add its
-`repl.yml` line.
+escaped, capped traceback (D2, D4) and the step line from `ledger.step_for` (D9). Include the
+tip-owner TLL row (E12), the generic panel for every `None` result (including E13), and the
+error stamp by owner (D2). Add its `repl.yml` line.
 - Depends on: B2, B4 (glossary, ledger), B5.
 - Closes: AC-16, and AC-13's error-panel case.
 - Gate: [PY:test_display_errors.py], [PY:test_contract_covers_imports.py].
 - Size: ~280 LOC.
 
-**B7: Staleness, kernel side.** Create `stale.py`, and `test_display_stale.py` first,
-including the `praxis:display-session` post (D7). Use an injected poster, with `import js`
-only in `make_repl_poster()`. Add its `repl.yml` line.
+**B7: Staleness, kernel side.** Create `stale.py`, and `test_display_stale.py` first (D7:
+revs, the announcer, no subscription or rev for `rev: null` stamps, the pending-only bump;
+no session message). Use an injected poster, with `import js` only in `make_repl_poster()`.
+Add its `repl.yml` line. If AC-3 recorded (b) and (b′) both failing, do not start; escalate
+(D1, S3-B).
 - Depends on: B2.
 - Closes: AC-18.
 - Gate: [PY:test_display_stale.py], plus the R21 grep, [PY:test_contract_covers_imports.py].
 - Size: ~220 LOC.
 
 **B8: Install and bootstrap stage.** Create `install.py` and `praxis/display/__init__.py`, and
-`test_display_install.py` first. It covers the fake shell and the S3-B, S3-C and S3-D
-fallbacks. Add the D13 stage to `praxis_bootstrap.py`, and extend
+`test_display_install.py` first. It covers the fake shell and the S3-B (the
+`(html, {"praxis": stamp})` carrier), S3-C and S3-D fallbacks, and the generic panel for
+E13. Add the D13 stage to `praxis_bootstrap.py`, and extend
 `test_praxis_bootstrap_loader.py` for its order and its non-fatal failure. Add the `repl.yml`
 line. Extend `assert_dist_complete` with `assets/python/praxis/display/__init__.py`.
 - Depends on: B2, B3, B4, B6, B7.
@@ -1668,18 +1871,22 @@ line. Extend `assert_dist_complete` with `assets/python/praxis/display/__init__.
 - Size: ~220 LOC.
 
 **B9: Shell stale and interaction.** Create `shell/display/stale.js` and `interact.js`, with
-their bun tests first: the current session and no marks before one (D7), marks re-applied on
-`outputs.changed`, the S1 re-attach signal and `activeCellChanged`, and matching by
-`dataset.praxisRes` (D14). Mount them from `index.js`. Extend staging (`build_repl.py`
-required list, `test_display_staging.py`).
-- Depends on: A5, B7 (message schema, including `praxis:display-session`).
+their bun tests first: `stampOf` (D2, exported), `panelSession` per notebook panel from
+`chrome.js`'s observed executions and the panel's `sessionContext`, no session marks before
+it is known, the two-panel case, no "Changed since" on `rev: null` stamps (D7), marks
+re-applied on `outputs.changed`, the S1 re-attach signal and `activeCellChanged`, and
+matching by `dataset.praxisRes` (D14). Mount them from `index.js`. Extend staging
+(`build_repl.py` required list, `test_display_staging.py`). If AC-3 recorded (b) and (b′)
+both failing, do not start; escalate (D1, S3-B).
+- Depends on: A5 (observed executions), B7 (the `praxis:resource-changed` schema).
 - Closes: AC-19.
 - Gate: [BUN], [PY:test_display_staging.py].
-- Size: ~320 LOC.
+- Size: ~360 LOC.
 
 **B10: `--display-check` scenarios D2–D4.** Extend the fixture notebook and
 `run_display_check` for AC-21 to AC-26, including AC-23's `mark_survives_scroll`,
-`earlier_session_marked` (kernel restart) and `persistence_gate_never_open`. D3 asserts the
+`earlier_session_marked` (kernel restart, boot cell, then a re-run drawing cell) and
+`persistence_gate_never_open`; the harness reads stamps with the `stampOf` expression (D2). D3 asserts the
 S2 branch that AC-2 recorded for the executed-saved-reopened path. Run AC-39(a).
 - Depends on: B8, B9.
 - Closes: AC-21 to AC-26 (CI), and AC-41 for sprint B.
@@ -1693,7 +1900,9 @@ can start after B7; then B10.
 
 **C1: Spike S4 (Viewer3D in Pyodide).** Discipline as in A1. The probe stages a throwaway copy
 of the five vendored files. It does not wait for C2. It records D1's S4 questions, the
-scene bytes and the first `_models_on_disk(PACKAGE_ROOT)` time.
+scene bytes, the stock `PACKAGE_ROOT` as resolved in the kernel, and the first
+`_models_on_disk(PACKAGE_ROOT)` time after rebinding the root to an empty temporary
+directory, as `viewer3d.py` will (D11).
 - Depends on: none.
 - Closes: AC-29.
 - Gate: AC-29 record query.
@@ -1715,7 +1924,10 @@ justification comment, and append the ADR §2 addendum (section 4 rows; D11). Ad
 
 **C3: DockedViewer3D.** Write `test_viewer3d_docked.py` first, then `viewer3d.py`:
 - the three overrides, `VirtualConnection`, the injected channel, and `dock()`
-- `start`: no `_models_on_disk` pre-warm, the 4-client cap, `query` → `announce`, dropping
+- the one-time `plr_visualizer3d.server.PACKAGE_ROOT` rebind to `tempfile.mkdtemp()` before
+  the first viewer (module code, not an override; D11)
+- `start`: no `_models_on_disk` pre-warm, the 4-client cap with oldest-client eviction
+  (`evict` plus a sentinel), `bye` ending a connection, `query` → `announce`, dropping
   non-JSON and unknown kinds (D11 threat model)
 - `stop`: end every connection with a sentinel and await its `_handler` task, then `close`
 - `dock()`: the module-level current viewer stopped first, and
@@ -1729,32 +1941,39 @@ and it is missing, stop and report; do not vendor it.
 - Closes: AC-31, except its extended R21 grep, which needs C4's and C5's paths and is closed
   by C7.
 - Gate: [PY:test_viewer3d_docked.py], plus the AC-18 R21 grep.
-- Size: ~260 LOC.
+- Size: ~290 LOC.
 
 **C4: Socket shim and embed mode.** Write `viz3d_socket.test.js` first, then `socket.js`
-(viewer id from `location.search`; nothing posted without it), `embed.js` and `embed.css`
-(D11, D12).
+(viewer id from `location.search`; nothing posted without it; `bye` on `close()`, `pagehide`
+and the accept timeout; a late `accept` ignored; `onclose` on its own `evict`), `embed.js`
+and `embed.css` (D11, D12).
 - Depends on: C2 (tag positions).
 - Closes: AC-32.
 - Gate: [BUN].
-- Size: ~220 LOC.
+- Size: ~250 LOC.
 
 **C5: Deck panel widget.** Create `shell/display/dock.js` and its bun tests (a fake app shell
 and signals), tests first:
-- the widget per the S1 branch, and sizing per the S1 sizing branch (CSS limits, DockPanel
-  `saveLayout`/`restoreLayout`, or S1-L), including the ≥ 1600 width formula (D6)
+- the widget per the S1 branch, and sizing per the D6 sizing-case table recorded in AC-1
+  (CSS limits, DockPanel `saveLayout`/`restoreLayout`, inline px `min-width`/`max-width` +
+  `parent.fit()`, or S1-L), including the ≥ 1600 width formula and `parent.fit()` after
+  every tier change inside the split (D6)
 - the header, footer, motion slot, tiers, and the drawer: auto-open on first announce,
   close button, Escape, tier crossing both ways (D6)
-- Follow, click-to-focus wiring from `interact.js`, the held preset passed to every
+- Follow (first output with a non-null `resource`, read through `stampOf` from `stale.js`),
+  click-to-focus wiring from `interact.js`, the held preset passed to every
   `focus(name, preset)` (D12), the placeholder, and `praxis:toggle-deck-panel`
-- `announce` listening on `praxis_viz3d`: the iframe `src` set with `viewer=<id>` on every
-  announce, and `query` sent on mount and on reopen (D11)
+- `announce` listening on `praxis_viz3d`, acting only on `announce` and the kernel `close`
+  (`{viewer, reason}`): the iframe `src` set with `viewer=<id>` on every announce while the
+  panel is open; closed-panel semantics (no iframe while closed; announces ignored except the
+  first, which auto-opens); `query` sent on mount, and on reopen after creating the iframe
+  with no `src` (D11, "Closed panel")
 
 Mount it from `index.js`.
 - Depends on: A5, B9, C4, and AC-1 branch S1-A or S1-B. On S1-C, stop and escalate (D1).
 - Closes: the unit half of AC-35 and AC-36.
 - Gate: [BUN].
-- Size: ~340 LOC.
+- Size: ~380 LOC.
 
 **C6: Staging and offline.** Add the C6 paths to `assert_dist_complete` and to
 `test_display_staging.py`. Confirm that manifest collection picks up the vendored Python.
@@ -1764,18 +1983,20 @@ Mount it from `index.js`.
 - Size: ~60 LOC.
 
 **C7: `--dock-check` gate and CI wiring.** Add `run_dock_check` with scenarios K1 and K2
-(AC-34 to AC-38), using the full-Chromium launch and SwiftShader args (D16), and the
-persistence-ack init script (D16). Run the extended R21 grep (AC-31). Add to CI:
+(AC-34 to AC-38), using the full-Chromium launch and SwiftShader args (D16), the
+persistence-ack init script (D16), AC-36 keyed by the recorded D6 sizing case, AC-38's
+`late_iframe` ordering listener and `many_reloads`, and the harness-only `query`-drop init
+script for AC-39(e). Run the extended R21 grep (AC-31). Add to CI:
 - a step that checks out PLR main at C2's recorded commit into a temporary directory, followed
   by `vendor_visualizer3d.py --check --src <dir>`
 - the `--dock-check` step
 
-Run AC-39(b), (c) and (d).
+Run AC-39(b), (c), (d) and (e).
 - Depends on: C6.
 - Closes: AC-30 (CI), AC-31's extended R21 grep, AC-33 (CI), AC-34 to AC-39, AC-40 for its
   sprint C key, and AC-41 for sprint C.
 - Gate: interim, a local unsandboxed run (D16). Final: a green REPL workflow on the PR head.
-- Size: ~320 LOC.
+- Size: ~350 LOC.
 
 Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
 
@@ -1815,20 +2036,25 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
 | S1-C: no widget constructor is reachable without a labextension | D1 stops C5 and escalates to the user, who decided "a real widget". Sprints A and B do not depend on the widget and still merge. |
 | The sanitizer strips SVG, `class` or `style` on reopened notebooks | Resolved by design (D1, S2 branches; S2-T covers a notebook that reopens trusted). Live outputs are unaffected, and reopened ones degrade to stated states. AC-24 asserts the recorded branch, so the degradation cannot be silent. |
 | The Pyodide kernel's execution path ignores `set_custom_exc` | S3-C falls back to an instance-level `showtraceback` wrapper. If that also fails, B6 stops and MVP item 3 is escalated. |
+| `mimebundle_formatter` does not accept `(data, metadata)` in the kernel (S3-B), so the stamp has no carrier | S3(b′) tests the per-type `text/html` formatter's `(html, {"praxis": stamp})` return (verified in IPython `core/formatters.py:243-250`); the stamp then rides at `metadata["text/html"]["praxis"]`, and one reader, `stampOf`, serves `stale.js`, `dock.js` and both harnesses, so AC-21 holds unconditionally. If (b′) also fails, B7 and B9 stop and escalate. |
 | Frame-local names in PLR (`op`, `channel`, `resources`) change on a pin bump | Owner resolution is by **identity** first and `thing` second. Frame locals are used only for the loop channel (including owner rule (e)), the op wells and `vols`, and only from frames whose `co_name` is in `glossary.ACTIONS`. AC-15 runs against the real pin, so a bump that breaks it fails CI. |
 | The panel's numbers differ from PLR's message (PLR's include pending state) | By design (D8 step 4): the body uses committed state summed per resource, and PLR's message is shown verbatim in the "PyLabRobot raised" line. AC-15 E9 and AC-16 check the two never mix. |
-| A PLR mid-loop tracker error leaves pending volumes on earlier channels, so drawings mislead | The error panel draws committed volume (D8), and AC-16 forces the case. Other outputs follow PLR's own `get_used_volume()`. OQ-6 raises it upstream. |
+| A PLR mid-loop tracker error leaves pending volumes on earlier channels, so drawings mislead | The error panel draws committed volume (D8), and AC-16 forces the case. Other outputs follow PLR's own `get_used_volume()`, and pending-only callbacks bump `rev` for them (D7). A later raise caused only by that pending residue, where the resolved owner is not in the committed offending set, resolves to `None` and gets the generic panel rather than numbers that describe no fault (D8 step 4; AC-15 E13/E14, AC-17 E13). OQ-6 raises it upstream. |
+| Errors inside `*96` ops bind different locals (`containers`, a scalar `volume`) | Out of MVP scope (orchestrator ruling 260929): D8 step 2 short-circuits to `None` and the generic panel; AC-15 E-96 checks it. The `*96` glossary names and ledger wrappers remain, for the ledger only. |
 | `RunLedger` instance shadowing breaks a user's own wrapper on `lh` | It shadows only inside the `with` block, restores on exit even on error (AC-14), and is only used when the user writes it. |
-| Staleness announcements on `praxis_repl` disturb device authorization | At most one small typed message per cell (4 KiB cap), plus one `praxis:display-session` per kernel process. Both existing listeners ignore unknown types (`praxis-shell.js:84-88`, `praxis_bootstrap.py:212-214`). R21's grep still guards `praxis/viz/`. Rollback: move `stale.py` to its own channel; the shell change is one constant. |
-| Viewer3D stream messages are structured-cloned to every `praxis_viz3d` listener, including the shell | The shell listens only for `announce` and `close`. The clone cost of a scene message is unmeasured; S4 records the scene bytes. If it matters, the announcements move to a separate small channel. |
-| Two notebooks each start a viewer | Non-goal. The ids in the protocol keep messages unambiguous, and the most recent `announce` wins. Within one kernel, re-running `dock()` stops the previous viewer first (D11, AC-31). |
-| A same-origin page (another project page on the shared `*.github.io` origin) drives `praxis_viz3d` | D11 threat model: such a page already has kernel code execution through `praxis:execute` on `praxis_repl`, so no nonce is added. Inbound traffic is bounded: 4 virtual clients, non-JSON and unknown kinds dropped (AC-31). |
+| Staleness announcements on `praxis_repl` disturb device authorization | At most one small typed message per cell (4 KiB cap); there is no session message (the current session is derived per notebook panel from its outputs, D7). Both existing listeners ignore unknown types (`praxis-shell.js:84-88`, `praxis_bootstrap.py:212-214`). R21's grep still guards `praxis/viz/`. Rollback: move `stale.py` to its own channel; the shell change is one constant. |
+| Viewer3D stream messages are structured-cloned to every `praxis_viz3d` listener, including the shell | The shell acts only on `announce` and the kernel `close` (`{viewer, reason}`). The clone cost of a scene message is unmeasured; S4 records the scene bytes. If it matters, the announcements move to a separate small channel. |
+| Two notebooks each start a viewer | Non-goal. The ids in the protocol keep messages unambiguous, and the most recent `announce` wins. Within one kernel, re-running `dock()` stops the previous viewer first (D11, AC-31). Two notebooks with two kernels never mark each other's outputs "Drawn in an earlier session": the current session is per panel (D7, AC-19). |
+| Dead page clients (reloads, drawer moves, 60 s give-ups, a long synchronous cell delaying `accept`) fill the 4-client cap | The shim posts `bye` on `close()`, `pagehide` and its accept timeout, and ignores a late `accept`; at the cap the kernel evicts the oldest client (`evict`), so a new page always gets `accept` (D11). AC-31 (eviction), AC-32 (`bye`, `evict`) and AC-38 `many_reloads` (6 reloads) test it. With more than 4 live pages, eviction rotates: accepted under the multi-viewer non-goal. |
+| The stock `PACKAGE_ROOT` resolves to the contents drive, so the model walk scans the user's files and a user `.glb` becomes an unserved `mesh` | `viewer3d.py` rebinds `plr_visualizer3d.server.PACKAGE_ROOT` to an empty `tempfile.mkdtemp()` once, before the first viewer: a module global, so GATE X holds and no vendored byte changes (D11). S4 records both roots and the walk time (AC-29); AC-31 asserts the rebind and that a `.glb` under the old root yields no `mesh`. |
+| A same-origin page (another project page on the shared `*.github.io` origin) drives `praxis_viz3d` | D11 threat model: such a page already has kernel code execution through `praxis:execute` on `praxis_repl`, so no nonce is added. Inbound traffic is bounded: 4 virtual clients (the oldest evicted at the cap), non-JSON and unknown kinds dropped (AC-31). |
 | Vendored three.js tree (~2 MB) grows dist and the offline gate | AC-30 asserts zero CDN URLs, and AC-33 keeps `--probe --offline` green. The build logs the size. |
 | The PLR main source drifts from the vendored copy | `--check` in CI against the pinned commit (C7). Updating is an explicit re-vendor with a new commit in both manifests. |
 | The CI Chromium lacks WebGL2 | D16's full Chromium with SwiftShader args. AC-34 records `hello_backend`, and the canvas check fails loudly rather than passing on a blank frame. |
-| Moving the iframe for the drawer tier reloads it | The `viewer` id stays in its `src`, the shim reconnects, and AC-38 `drawer_reconnect` and AC-36 `tier_up_rehomes` test it. |
+| Moving the iframe for the drawer tier reloads it | The `viewer` id stays in its `src`, the old client posts `bye`, the shim reconnects, and AC-38 `drawer_reconnect` and AC-36 `tier_up_rehomes` test it. |
+| A closed deck panel reconnects without exercising `query`, hiding a broken `query` path | A closed panel holds no iframe and ignores announces (except the first, which auto-opens); reopen creates the iframe with no `src` and posts `query`, so the `src` can only come from the answering `announce` (D11). AC-38 `late_iframe` asserts the ordering, and AC-39(e) proves it fails with `query` dropped. |
 | Vendored PLR-main Python imports a submodule the import contract lacks | C2 extends `plr_contract.CONTRACT` with a justification and appends an ADR §2 addendum; `test_contract_covers_imports.py` gates C2 and sprint B (AC-30, AC-41). |
-| A Lumino split ignores CSS min/max | S1 records the fact, and `dock.js` sizes and clamps through the main DockPanel's `saveLayout()` / `sizes` / `restoreLayout()` (a `DockLayout` has no `setRelativeSizes`). AC-36 drags the splitter for real, and AC-39(d) proves the ≥ 1600 check fails on a stock 50/50 split. If neither path works (S1-L), the initial width is set once, the drag is unclamped, and the drag-clamp keys are recorded only: a stated deviation, consistent with the user's 260929 "split initially" ruling. |
+| A Lumino split ignores CSS min/max, or layout sizing is unreachable | S1 records `css_limits_honoured`, `dock_layout_sizing_reachable` and `css_limits_refit`, which select a row of the D6 sizing-case table; every AC-36 width key then has a mechanism or a recorded-only status (AC-36 is keyed by case). Layout sizing goes through the main DockPanel's `saveLayout()` / `sizes` / `restoreLayout()` (a `DockLayout` has no `setRelativeSizes`); CSS-only reaches ≥ 1600 with inline px limits plus `parent.fit()`, asserted only if `css_limits_refit`. `dock.js` calls `parent.fit()` after every tier change inside the split. AC-36 drags the splitter for real, and AC-39(d) proves the ≥ 1600 check fails on a stock 50/50 split wherever that key is asserted. Under S1-L every width key is recorded only and the drag is unclamped (drawer and height keys stay asserted): a stated deviation, consistent with the user's 260929 "split initially" ruling. Whether Lumino re-reads limits after `fit()` is exactly what S1 measures. |
 | A user-controlled resource name injects markup into a trusted output | D2 escaping (`esc_text` / `esc_attr`, escaped traceback) and D14 matching by `dataset.praxisRes`. AC-9, AC-16 and AC-19 carry hostile-name cases. |
 | The detail-floor math is wrong in the browser because CSS scales SVGs | D5 puts an explicit `min-width` on each SVG, and AC-12 checks the math. Rendered sizes are a human check (H1). If S2-A' strips `style`, the floor holds only for live outputs (stated). |
 | The display layer throws at boot | D13 makes it non-fatal and loud (`praxis:display-error`). AC-20 tests both paths. |
@@ -1919,6 +2145,9 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
   `stefangolas/pylabrobot@viz3d-motion` (unmerged, slot only).
 - Round 1 review: `.praxia/docs/audits/260929_notebook-display-round1-challenger.md`,
   `.praxia/docs/audits/260929_notebook-display-round1-defender.md`.
+- Round 2 review: `.praxia/docs/audits/260929_notebook-display-round2-challenger.md`,
+  `.praxia/docs/audits/260929_notebook-display-round2-defender.md`.
+- IPython `core/formatters.py:243-250` (per-type `(data, metadata)` unpacking; S3(b′)).
 
 ## Revision 1 (260929)
 
@@ -1940,15 +2169,21 @@ where it landed.
   after 3 s; `dock()` keeps a module-level current viewer and awaits its `stop()`. Landed: D11
   protocol and `dock()`; D12 embed mode; §3.6; §4 viewer3d/socket/dock rows; AC-31 (second
   dock, `query`); AC-32 (no viewer); AC-38 (`redock_reloads`, `late_iframe`); C3, C4, C5.
+  *(Superseded in part by Revision 2 B-2: `src` is set on every announce only while the panel
+  is open; a closed panel holds no iframe, and reopen gets `src` only via `query`.)*
 - **A-3 (C1-9): threat model.** Token rationale replaced by the origin threat model (existing
   `praxis:execute` path, broadcast-visible nonce rejected, upstream checks defend a
   cross-origin websocket that does not exist); 4-client cap; non-JSON and unknown kinds
   dropped. Landed: D11 "Threat model"; AC-31 (client 5, unknown kind, non-JSON); §7 new row.
+  *(Superseded in part by Revision 2 B-1: at the cap the oldest client is evicted and the fifth
+  `open` gets `accept`; the page→kernel `close` kind is renamed `bye`.)*
 - **A-4 (C1-14, C1-22, C1-26): kernel start/stop.** `dock()` awaits
   `wait_for_browser(timeout=15)`, reconnect hellos stated; no `_models_on_disk` pre-warm, S4
   times it; meshes unsupported; `stop` ends every connection and awaits its handler task.
   Landed: D11 Python and Kernel; D1 S4 row; D16; §4 S4 and viewer3d rows; AC-29; AC-31 (no
   `mesh`, no pending `_handler`, timeout line); AC-34 (`clients_seen[-1]["backend"]`); C1, C3.
+  *(Extended by Revision 2 B-4: the stock `PACKAGE_ROOT` is the contents drive, so
+  `viewer3d.py` rebinds it to an empty temporary directory; S4 times the walk over that root.)*
 - **A-5 (C1-28): socket.js tag position.** AC-30 asserts the first `<script`, immediately
   followed by the original `:319` gif.js tag.
 - **A-6 (C1-3): import contract.** C2 adds `("pylabrobot.resources.resource", "Resource")`
@@ -1959,7 +2194,10 @@ where it landed.
   supplies locals, outermost supplies `action`); owner rule (e); offending set and body
   numbers from committed state with demand summed per resource; tracking note corrected.
   Landed: D8 steps 2–4 and "Tracking"; §3.3; AC-15 (E4 via rule (e), E9, E10, E11, E4-off,
-  E6-off, comprehension frame); AC-16; B5; §7 rows.
+  E6-off, comprehension frame); AC-16; B5; §7 rows. *(Superseded in part by Revision 2:
+  B-10 removed the comprehension-frame case (the filter stays as defence); B-8 replaced "the
+  resolved owner is always in the offending set" with the pending-residue rule; B-9 removed
+  `head96` from owner rule (b) and added the `*96` short-circuit.)*
 - **A-8 (C1-5): RunLedger nesting and step hand-off.** In-flight ops become children;
   counts use top-level rows; `_ERROR_STEPS` / `step_for`; ledger shown on the error path
   before the panel. Landed: D9; D8 handler; §3.3; AC-14; AC-16; AC-17; B4, B6.
@@ -1968,7 +2206,9 @@ where it landed.
   "display session id"; figures for Plate/TipRack/Deck/Well only, other containers
   sentence-only. Landed: D2; D7 stamps; D14; §2 non-goals; §3.2; §3.4; §4 svg/labware rows;
   AC-9 (keys, hostile name); AC-10 (Trough, infinite volume); AC-16 (escaped traceback);
-  AC-19 (exact name); B1, B2.
+  AC-19 (exact name); B1, B2. *(Extended by Revision 2: B-6 makes `resource`/`rev` nullable
+  by kind; B-5 adds the S3-B carrier `metadata["text/html"]["praxis"]` and the `stampOf`
+  reader.)*
 - **A-10 (C1-23): byte budget.** Target revisions need orchestrator approval in the sprint
   PR; ladder level 1 drops `data-praxis-grid`; traceback capped at 16 KiB, tail kept;
   everything counts toward 64 KiB. Landed: D4; §4 budget row (`cap_tail`); AC-13; B1, B6.
@@ -1976,15 +2216,21 @@ where it landed.
   `praxis:display-session`; last session wins; no session marks before one; marks kept in
   memory and re-applied on `outputs.changed`, the re-attach signal and `activeCellChanged`.
   Landed: D7; D1 S1 row; §4 stale.py/stale.js rows; AC-18; AC-19; AC-23
-  (`mark_survives_scroll`, `earlier_session_marked`); B7, B9, B10.
+  (`mark_survives_scroll`, `earlier_session_marked`); B7, B9, B10. *(Superseded in part by
+  Revision 2 B-7: the `praxis:display-session` message and "last session wins" are deleted;
+  the current session is derived per notebook panel from its outputs. Mark survival is
+  unchanged.)*
 - **A-12 (C1-13): cell state.** `cellState(model, {running, snapshot})`, precedence,
-  post-reload behaviour. Landed: §3.1; §4 chrome.js row; AC-5.
+  post-reload behaviour. Landed: §3.1; §4 chrome.js row; AC-5. *(Amended by Revision 2
+  B-11: `stale` requires a non-null execution count and a snapshot.)*
 - **A-13 (C1-8, C1-25): sizing and drawer.** DockPanel `saveLayout`/`sizes`/`restoreLayout`
   replaces `setRelativeSizes`; S1 records `dock_layout_sizing_reachable`; branch S1-L
   (accepted deviation); ≥ 1600 formula ±8 px at 1600×900 and 1920×1080; drawer auto-open,
   dismiss, reopen and tier crossing. Landed: D1 S1 row; D6; §3.6; §4 S1 and dock rows; AC-1;
   AC-36 (formula, S1-L recording, `drawer_dismiss_reopen`, `tier_up_rehomes`); AC-39(d);
-  A1, C5, C7; §7 row.
+  A1, C5, C7; §7 row. *(Superseded in part by Revision 2 B-3: S1-L no longer sets a width
+  "once at open"; every width key is keyed by the D6 sizing-case table, and under S1-L every
+  width key is recorded-only.)*
 - **A-14 (C1-21): preset held.** `dock.js` holds the preset (initially `top`) and always
   calls `focus(name, preset)`. Landed: D12; §3.4; AC-35 (`follow_keeps_preset`); C5.
 - **A-15 (C1-7): reopened trusted.** S2 probes the executed-saved-reopened path; branch
@@ -2018,10 +2264,107 @@ where it landed.
 - `late_iframe` is defined against a closed panel plus `query`, since only a page's first
   announce auto-opens the panel (A-2, A-13).
 - D1-dark keys sit in a `d1_dark` sub-object so they do not collide with D1's key names.
-- AC-39(d) and the drag-clamp keys are recorded, not asserted, under S1-L.
+- AC-39(d) and the drag-clamp keys are recorded, not asserted, under S1-L. *(Superseded by
+  Revision 2 B-3: under S1-L every width key is recorded-only, and AC-39(d) is skipped
+  wherever the ≥ 1600 key is recorded-only.)*
 - D11 `start` now lists four differences from the stock body (the `_models_on_disk`
   pre-warm is the fourth); the override set, and GATE X, stay at three.
 - §7 gained rows for the committed-vs-PLR number difference, the same-origin threat model,
   hostile names and the import contract; the `praxis_repl`, sanitizer, sizing, drawer-reload
   and frame-locals rows were updated.
 - B4, B5, B6 and B7 size estimates were raised by 20–40 LOC for the added cases.
+
+## Revision 2 (260929)
+
+Round-2 adversarial review: challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round-1
+findings C1-1..C1-29 CLOSED), defender REVISE (audits
+`260929_notebook-display-design_spec-challenge_r2` / `_spec-defense_r2`; 10 CONCEDE, 2
+PARTIAL). The defender's ordered amendment list B-1..B-12 was applied as ruled, with the
+orchestrator's rulings: C2-7 is verified (IPython `core/formatters.py:243-250` unpacks a
+per-type `(data, metadata)` return); `*96` errors are out of MVP scope and get the generic
+panel. No AC or task was added or renumbered: every change appends keys or cases to existing
+ACs (AC-39 gains sub-item (e)). Deletions ruled by the defender (the `praxis:display-session`
+message, the comprehension-frame case, "set once at open", `head96` in owner rule (b), "the
+resolved owner is always in the offending set") were removed everywhere; the Revision 1 log
+above is annotated rather than rewritten. Each entry gives the amendment, the finding it
+closes, and where it landed.
+
+- **B-1 (C2-12, C2-1 BLOCKER): protocol kinds and eviction.** Page→kernel `bye
+  {viewer, client}`, kernel→one page `evict {viewer, client}`, kernel→all `close
+  {viewer, reason}` (the only `close`; the shell acts on it and `announce`). At the 4-client
+  cap the oldest client is evicted; the shim posts `bye` on `close()`/`pagehide`/accept
+  timeout, ignores a late `accept`, fires `onclose` on `evict`. Landed: D11 protocol preamble,
+  table, timeout bullets, inbound bounds and Kernel `start`; D6 drawer-move note; §2
+  non-goals (eviction rotation); §4 `viewer3d.py`/`socket.js` rows; AC-31 (eviction, `bye`);
+  AC-32 (`bye` ×3 paths, late `accept`, `evict`, no page `close`); AC-38 `many_reloads`; C3,
+  C4, C7; §7 threat, stream-clone and drawer rows, new dead-clients row.
+- **B-2 (C2-9): closed panel.** No iframe while closed; announces ignored except the first
+  (auto-open); reopen creates the iframe with no `src` and posts `query`. Landed: D11 "How
+  the page learns the viewer id" and new "Closed panel"; D11 table `announce` row; D6 drawer
+  behaviour; D12 embed mode; §3.6 body, states, commands; §4 `dock.js` row; AC-36
+  `drawer_dismiss_reopen` (no iframe); AC-38 `late_iframe` ordering; AC-39(e); C5, C7; §7 new
+  row.
+- **B-3 (C2-2 BLOCKER): D6 sizing cases.** Four-case table; S1 records `css_limits_refit`;
+  `parent.fit()` after every tier change inside the split; "set once at open" deleted.
+  Landed: D1 S1 row; D6 mechanism (table); §4 S1 row; A1; AC-1; AC-36 (keyed by case,
+  `fit_after_tier_change`, drawer/height always asserted); AC-39(d) skip rule; C5, C7; §7
+  sizing row.
+- **B-4 (C2-3): `PACKAGE_ROOT` rebind.** Rebound once to `tempfile.mkdtemp()` before the
+  first viewer; module global, GATE X holds, the one deliberate runtime rebinding. Landed:
+  D11 Python (new bullet, meshes bullet) and Kernel `__init__` note; D1 S4 row; §4 S4 and
+  `viewer3d.py` rows; AC-29 (both roots, walk over rebound root); AC-31 (rebind,
+  `.glb`-no-mesh); C1, C3; §7 new row.
+- **B-5 (C2-7): S3(b′) carrier.** `formatters['text/html'].for_type` returning
+  `(html, {"praxis": stamp})`, carrier `metadata["text/html"]["praxis"]`; one reader
+  `stampOf`; escalate if (b′) fails. Landed: D1 S3 row (question and S3-B branch); D2
+  registration and "One stamp reader"; §4 S3 spike, `install.py`, `stale.js`, `dock.js` rows;
+  A3, B7, B8, B9, B10, C5; AC-3 (b′); AC-17 S3-B case; AC-19 (`stampOf` carrier case); AC-21
+  `repr_cells_ok` via `stampOf`; §7 new row.
+- **B-6 (C2-6): stamps by kind.** `resource: <name|null>`, `rev: <int|null>`; ledger null/null;
+  error labware-or-null, rev null; null rev never marked "Changed since"; session marks on
+  every kind; Follow skips null. Landed: D2 stamp and "Values by kind"; D7 stamps and
+  marking; D12 Follow and click; §3.3 note; §4 `ledger.py`/`errors.py`/`stale.py`/`stale.js`/
+  `dock.js` rows; AC-18 (null stamps subscribe nothing); AC-19 (`rev: null` case); B4, B6,
+  C5.
+- **B-7 (C2-8): per-panel session.** `praxis:display-session` deleted; `panelSession[P]`
+  from outputs of executions `chrome.js` observed after P's kernel last started. Landed: D7
+  (new "Current session, per notebook panel", R21 paragraph, marking); §4 `chrome.js`,
+  `stale.py`, `install.py`, `stale.js` rows; AC-18 (session bullet removed; posts only
+  `praxis:resource-changed`); AC-19 (per-panel rules, two-panel case); AC-23
+  `earlier_session_marked` (re-run a drawing cell); B7, B9, B10; §7 `praxis_repl` and
+  two-notebooks rows.
+- **B-8 (C2-4): pending residue → `None`.** Owner outside the committed offending set →
+  `None`, generic panel; pending-only callbacks bump `rev`. Landed: D8 steps 4 and 5, panel
+  drawing; D7 (one sentence); §2 G5; §3.3 note; §4 `context.py` row; AC-15 E13, E14; AC-17
+  E13; AC-18 (pending-only bump); B5, B6, B8; §7 pending row.
+- **B-9 (C2-5): tip-owner TLL and `*96`.** New §3.3 row "TLL, owner is a tip (dispense)";
+  step 4 compares per channel for a tip owner; step 2 `*96` short-circuit; `head96` removed
+  from rule (b); rule (c) names TLL on dispense. Landed: D8 intro, steps 2–5, rule (b), rule
+  (c); §2 G5 and non-goals; §3.3 row and note; §3.5 note; §4 `context.py`/`errors.py` rows;
+  AC-15 E12, E-96; AC-16 E12; B5, B6; §7 new `*96` row.
+- **B-10 (C2-10): comprehension case deleted.** Step 2 keeps the `co_name` filter as
+  defence only (PEP 709). Landed: D8 step 2; AC-15; B5.
+- **B-11 (C2-11): stale requires a run.** Landed: §3.1; §4 `chrome.js` row; AC-5 (definition
+  and never-run case).
+- **B-12: this log and the frontmatter** `adversarial_review` entry.
+
+**Consistency fixes made while applying** (not in the amendment list, required by it):
+- D11's protocol preamble listed every kind but `query` as carrying `client`; `announce` and
+  `close` carry `viewer` only. Fixed with the new kinds.
+- D6 case honoured/unreachable: the ≥ 1600 inline px limits would override the 1280–1599
+  media-query CSS, so `dock.js` clears them (with `parent.fit()`) below 1600 px.
+- AC-14 (ledger stamp) and AC-16 (error stamps for E1, E5, E4, E12) carry B-6's per-kind
+  values, because the ledger and error bundles are built in B4 and B6, not in `stale.py`
+  (B7 depends only on B2). AC-18 checks the kernel-side consequence with hand-built stamps.
+- AC-35 gains `follow_skips_null` (DOCK key, with a C5 unit half), since Follow lives in
+  `dock.js`, which AC-19 does not cover.
+- B9's dependency note no longer cites the session message; it depends on A5 for
+  `chrome.js`'s observed executions, which the §4 `chrome.js` row now names.
+- §3.3 states the generic panel for every `None` result and that a tip owner's stamp is
+  `resource: null`; §3.5 notes the `*96` names are ledger-only.
+- §2 G5 and non-goals name the `*96` scope cut and eviction rotation; §7 gained rows for the
+  S3 carrier, `*96`, dead clients, `PACKAGE_ROOT` and the closed-panel `query` path.
+- B7 and B9 carry the S3(b′) stop condition; C7 lists its new harness pieces and runs
+  AC-39(e).
+- Size estimates raised: B5 ~300, B9 ~360, C3 ~290, C4 ~250, C5 ~380, C7 ~350 LOC.
+- References list the round 2 audits and the IPython formatter lines.
