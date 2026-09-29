@@ -4,7 +4,7 @@ description: Epic spec for the web-REPL notebook display. Three sprints (A spike
 status: draft
 task_id: 260929_notebook-display-design
 date: '260929'
-adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3)'
+adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator)'
 ---
 # Notebook display epic (web-repl)
 
@@ -58,7 +58,7 @@ pre-registered spike (D17). Each sprint that depends on a spike names the branch
 
 | Spike | Question | Branches and what the downstream design does |
 |---|---|---|
-| **S1** (sprint A) | Can a plain script, with no labextension build, construct a Lumino `Widget` and add it with `app.shell.add(w, 'main', {mode: 'split-right', ref})`? Does Lumino honour CSS `min-width`/`max-width` on the widget node? Which DOM hooks or model signals give each cell's state (not run, ran, running, error, edited since run)? | **S1-A**: walk the prototype chain of an existing shell widget to the root class. Identify it structurally: its prototype owns `processMessage` and `onAfterAttach`, and its own prototype is `Object.prototype`. `new Ctor({node})` then gives the deck panel as a real widget. **S1-B**: A fails, but a stock command (candidate `help:open`) creates a main-area iframe widget, its iframe allows scripts and same-origin, and it can be re-added with `split-right`. The deck panel then re-homes that widget and replaces its content. **S1-C**: both fail. **Stop** sprint C task C5 and escalate: the user's decision (a real JupyterLab widget) cannot be met without a labextension. The degraded option offered to the user is a shell-owned fixed panel with `#main` narrowed by CSS. Size limits (a second, independent axis): if CSS limits are honoured, use them. Otherwise the shell sizes through the main DockPanel's layout: `saveLayout()`, edit the split area's `sizes`, then `restoreLayout()` (a main-area `split-right` lives in a `DockLayout`, which has no `setRelativeSizes`). S1 records `css_limits_honoured`, `dock_layout_sizing_reachable` and `css_limits_refit` (whether Lumino re-reads a widget's CSS `min-width`/`max-width` after `parent.fit()`). S1 also records `restore_layout_keeps_iframe`: whether `restoreLayout()` keeps an iframe in the widget loaded, so that a layout-sizing clamp causes no reload. The combination selects one row of the D6 sizing-case table, which fixes, per AC-36 width key, the mechanism or the recorded-only status. **S1-L**: neither CSS limits nor layout sizing works. The split opens at Lumino's own size, the drag is unclamped, and **every** AC-36 width key is recorded-only (the drawer and height keys stay asserted). This is a stated deviation, accepted per the user's 260929 ruling "split initially. we can figure out a more ergonomic layout later." Cell state: each state uses a CSS hook where one exists. Otherwise `chrome.js` computes it from model signals and writes `data-praxis-cell-state` on the cell node. S1 also records the notebook's `windowingMode` and the signal that fires when a virtualised cell's DOM is re-attached (used by D7 marking). |
+| **S1** (sprint A) | Can a plain script, with no labextension build, construct a Lumino `Widget` and add it with `app.shell.add(w, 'main', {mode: 'split-right', ref})`? Does Lumino honour CSS `min-width`/`max-width` on the widget node? Which DOM hooks or model signals give each cell's state (not run, ran, running, error, edited since run)? | **S1-A**: walk the prototype chain of an existing shell widget to the root class. Identify it structurally: its prototype owns `processMessage` and `onAfterAttach`, and its own prototype is `Object.prototype`. `new Ctor({node})` then gives the deck panel as a real widget. **S1-B**: A fails, but a stock command (candidate `help:open`) creates a main-area iframe widget, its iframe allows scripts and same-origin, and it can be re-added with `split-right`. The deck panel then re-homes that widget and replaces its content. **S1-C**: both fail. **Stop** sprint C task C5 and escalate: the user's decision (a real JupyterLab widget) cannot be met without a labextension. The degraded option offered to the user is a shell-owned fixed panel with `#main` narrowed by CSS. Size limits (a second, independent axis): if CSS limits are honoured, use them. Otherwise the shell sizes through the main DockPanel's layout: `saveLayout()`, edit the split area's `sizes`, then `restoreLayout()` (a main-area `split-right` lives in a `DockLayout`, which has no `setRelativeSizes`). S1 records `css_limits_honoured`, `dock_layout_sizing_reachable` and `css_limits_refit` (whether Lumino re-reads a widget's CSS `min-width`/`max-width` after `parent.fit()`). S1 also records `restore_layout_keeps_iframe`: whether `restoreLayout()` keeps an iframe in the widget loaded, so that a layout-sizing clamp causes no reload. If it is `false`, layout sizing is used only at open and on tier changes (one reload each, like a drawer move), never for `ResizeObserver` or drag clamps; for those the row is read as if layout sizing were unreachable (CSS or inline px where honoured, otherwise recorded-only). *(Round 4, C4-2.)* The combination selects one row of the D6 sizing-case table, which fixes, per AC-36 width key, the mechanism or the recorded-only status. **S1-L**: neither CSS limits nor layout sizing works. The split opens at Lumino's own size, the drag is unclamped, and **every** AC-36 width key is recorded-only (the drawer and height keys stay asserted). This is a stated deviation, accepted per the user's 260929 ruling "split initially. we can figure out a more ergonomic layout later." Cell state: each state uses a CSS hook where one exists. Otherwise `chrome.js` computes it from model signals and writes `data-praxis-cell-state` on the cell node. S1 also records the notebook's `windowingMode` and the signal that fires when a virtualised cell's DOM is re-attached (used by D7 marking). |
 | **S2** (sprint A) | For a notebook reopened untrusted in our JupyterLite build, which mimetype does JupyterLab choose from `{text/html, text/plain}`? What does its sanitizer keep of our HTML and SVG? The spike tests elements `svg g path rect text title details summary table`; attributes `fill stroke stroke-width stroke-dasharray class style role aria-label tabindex data-*`; and `viewBox`. S2 probes two reopen paths and records the trust state and chosen mimetype of each: a **crafted** notebook written to the drive (never executed, so untrusted; this also stands for download/upload), and a notebook **executed, saved and reopened** in the same browser. | **S2-T**: the executed-saved-reopened notebook reopens **trusted**. It renders as live, and the branches below then apply only to the crafted path. **S2-A**: `text/html` is chosen and SVG survives with `class`. Full design, with token-mapped CSS (D3) applied to reopened outputs. **S2-A'**: SVG survives, but `class` and/or `style` are stripped. Reopened outputs keep their inline light palette (D3) and scale freely without the D5 `min-width` until re-run. Accepted and stated. **S2-B**: SVG is stripped, but `text/html` is still chosen. Reopened outputs show name line, sentence, ledger table and error text, with no drawings until re-run. Accepted: "survives trust loss" is met by the text. **S2-C**: `text/plain` is chosen. Reopened outputs show the summary sentence. Accepted; OQ-9 asks whether a labextension is wanted later. **In every branch the live output format is identical (D2).** Interaction on reopened outputs (hover, keyboard, click to focus) works only if `data-*` and `tabindex` survive. If they are stripped, it returns when the cell is re-run. |
 | **S3** (sprint A) | In the JupyterLite Pyodide kernel (`pyodide_kernel-0.8.2`; IPython 9.12.0 per the cached `pyodide-lock.json`), four things, (b) with a variant (b′): (a) Is `get_ipython()` non-None? (b) Does `display_formatter.mimebundle_formatter.for_type(cls, fn)` work, with `fn` returning `(data, metadata)`? (b′) Does `display_formatter.formatters['text/html'].for_type(cls, fn)`, with `fn` returning `(html, {"praxis": stamp})`, put the stamp at the output's `metadata["text/html"]["praxis"]`? (IPython `core/formatters.py:243-250` unpacks a per-type `(data, metadata)` return into `md_dict[format_type]`; verified by the orchestrator on 9.13.0, 260929.) (c) Is a `set_custom_exc` handler invoked for an exception raised in a plain cell **and** in a top-level-`await` cell? Does `display()` inside the handler emit, does the returned structured traceback become the cell's `error` output, and does Run All stop? (d) Does `events.register('post_run_cell', cb)` fire? | **S3-A**: all yes. Design as written. **S3-B**: (b) fails and (b′) holds. Register `text/html` and `text/plain` separately via `formatters[...].for_type`; the `text/html` function returns `(html, {"praxis": stamp})`, so the D7 stamp is carried at `metadata["text/html"]["praxis"]`. Every reader goes through one accessor, `stampOf` (D2), so staleness, Follow and AC-21 behave identically under S3-A and S3-B. A DOM-attribute carrier is rejected: S2 may strip `data-*`. If (b′) also fails, **stop** B7 and B9 and escalate. **S3-C**: (c) fails. Wrap the kernel shell **instance's** `showtraceback`: an instance attribute that handles the four classes and delegates everything else. PLR and IPython classes are not modified. If that is also not honoured, stop B6 and escalate (MVP item 3 cannot be met). **S3-D**: (d) fails. The kernel announces from PLR state-update callbacks, debounced with `loop.call_later(0.1, ...)`. |
 | **S4** (sprint C) | Does the vendored `plr_visualizer3d` package import in the Pyodide kernel? Check `http.server`, `webbrowser`, `socket.gethostname()`, `websockets.asyncio.server` and `websockets.http11`. Does `DockedViewer3D(deck)` construct and `start()` without threads? Does WebLoop support `call_later` and `call_soon_threadsafe` as the viewer uses them? How many bytes is the fixture deck's first `scene` message? What does the stock `plr_visualizer3d.server.PACKAGE_ROOT` resolve to in the kernel (expected: the contents drive `/drive`, because loose sources land relative to the kernel's working directory), and what is it after `viewer3d.py`'s rebind (D11)? How long does the first `_models_on_disk(PACKAGE_ROOT)` walk take over the rebound root (it is no longer pre-warmed by `start`; its first call is the inherited scene build, `server.py:417`)? | **S4-A**: all yes. Design as written. **S4-B**: a stdlib import or `gethostname` fails. `praxis/viz/viewer3d.py` installs minimal named stubs into `sys.modules` **before** importing `plr_visualizer3d`, the same mechanism `stages.install_native_stubs` uses. Each stub is listed and tested. Vendored files stay byte-identical. **S4-C**: WebLoop lacks `call_later`. Making it work would need a fourth override (`_mark_scene_dirty`), which trips GATE X (D11). **Stop** and escalate. The recommended path is to upstream a transport hook to PLR. |
@@ -276,6 +276,13 @@ slot shows one row (≤ 36 px) and collapses first.
   | ignored | reachable | layout | layout |
   | honoured | unreachable | CSS | inline px `min-width`/`max-width` (both equal to the D6 formula) on the widget node + `parent.fit()`; asserted only if `css_limits_refit`, otherwise recorded-only. The inline values are cleared, and `parent.fit()` called, when the window drops below 1600 px. They are recomputed on every `ResizeObserver` callback (a window resize within ≥ 1600 px, and a file-browser toggle), not only on tier crossings. |
   | ignored | unreachable (**S1-L**) | every width key recorded-only | every width key recorded-only |
+
+  If S1 records `restore_layout_keeps_iframe = false`, every `layout` cell above means
+  "layout at open and on tier changes only"; `ResizeObserver` and drag clamps then follow the
+  `unreachable` row for the same CSS column, so a clamp never reloads the deck iframe. The
+  resulting per-key status is recorded in AC-1 with the sizing case. AC-36 records
+  `iframe_reloads_during_resize` (the count of deck iframe loads during the resize and drag
+  steps), and asserts it is 0 in every case. *(Round 4, C4-2.)*
 
   In every case the drawer keys and the height keys stay asserted. AC-39(d) is skipped, and
   recorded as skipped, wherever the ≥ 1600 key is recorded-only. Under S1-L the split opens
@@ -600,7 +607,7 @@ is not relied on: `dock.js` sets `src` only from an announce.
 holds **no** iframe, and `dock.js` ignores `announce` while the panel is closed, except that
 the first `announce` a page sees auto-opens it. On reopen (`praxis:toggle-deck-panel`),
 `dock.js` creates the iframe with no `src` and posts `query`; the `src` comes only from the answering `announce`. With no answer the body
-shows the section 3.6 placeholder.
+shows the section 3.6 "No deck viewer is running." placeholder.
 
 | Direction | `kind` | Meaning |
 |---|---|---|
@@ -1070,7 +1077,9 @@ kernel, i.e. after `viewer = await praxis.viz.viewer3d.dock(deck)`. The layout:
   D11), the body shows "The deck view lost its connection. Close and reopen the deck panel,
   or run `dock(deck)` again." It never claims the viewer is gone, because the shell cannot
   tell a stopped viewer from a busy kernel. *(Orchestrator, Revision 3.)*
-- `await viewer.stop()` gives the same placeholder within 5 s.
+- On the kernel `close` for the current viewer (for example after `await viewer.stop()`), the
+  body shows the "No deck viewer is running." text within 5 s. Only `plr:gone` shows the
+  lost-connection text; a `close` is unambiguous, so it never does. *(Round 4, C4-1.)*
 - Re-running the `dock()` cell stops the old viewer (D11); its `announce` reloads the iframe
   with the new id if the panel is open.
 
@@ -1078,7 +1087,7 @@ kernel, i.e. after `viewer = await praxis.viz.viewer3d.dock(deck)`. The layout:
 no iframe and ignores announces (D11, "Closed panel"). A registered command,
 `praxis:toggle-deck-panel`, reopens it: the iframe is created with no `src`, `query` is sent,
 and the `src` is set only by the answering `announce`; until then (or with no viewer) the body
-shows the placeholder. The tiers follow D6; in the
+shows the "No deck viewer is running." placeholder. The tiers follow D6; in the
 1024–1279 tier the drawer opens on the first announce, and has a close button that Escape
 also triggers (D6, "Drawer behaviour").
 
@@ -1088,7 +1097,7 @@ also triggers (D6, "Drawer behaviour").
 
 | Path | Action | Contents |
 |---|---|---|
-| `scripts/spikes/260929_s1_lumino_widget.py` + `.bth.toml` | create (A1) | Playwright probe over a built dist, `lab/` entry. It tries S1-A, then S1-B. It records `split_right_ok`, `css_limits_honoured`, `dock_layout_sizing_reachable` (the DockPanel `saveLayout`/`restoreLayout` path), `css_limits_refit` (inline px `min-width`/`max-width` then `parent.fit()`: does the widget take the new width?), the resulting D6 sizing case, the per-state cell hooks, the notebook's `windowingMode` and the cell re-attach signal, with the negative control from D17. Written with argparse and logging. |
+| `scripts/spikes/260929_s1_lumino_widget.py` + `.bth.toml` | create (A1) | Playwright probe over a built dist, `lab/` entry. It tries S1-A, then S1-B. It records `split_right_ok`, `css_limits_honoured`, `dock_layout_sizing_reachable` (the DockPanel `saveLayout`/`restoreLayout` path), `css_limits_refit` (inline px `min-width`/`max-width` then `parent.fit()`: does the widget take the new width?), `restore_layout_keeps_iframe` (does a `restoreLayout()` clamp reload an iframe in the widget?), the resulting D6 sizing case, the per-state cell hooks, the notebook's `windowingMode` and the cell re-attach signal, with the negative control from D17. Written with argparse and logging. |
 | `scripts/spikes/260929_s2_sanitizer.py` + `.bth.toml` | create (A2) | It writes a notebook JSON with crafted outputs to the drive, which is untrusted because it was never executed, reopens it, and records the chosen mimetype and survivorship per element and attribute. It repeats the check for the same bundle displayed live (trusted), and for a notebook executed, saved and reopened in the same browser, recording that path's trust state and mimetype (S2-T or not). Negative control from D17. |
 | `scripts/spikes/260929_s3_ipython_hooks.py` + `.bth.toml` | create (A3) | It runs S3's (a), (b), (b′), (c) and (d) in the kernel; for (b′) it reads the output model's `metadata["text/html"]["praxis"]` through a seeded notebook, and records the IPython version, `run_code` path evidence and outputs by model. Negative control from D17. |
 | `scripts/spikes/260929_s4_viewer3d_pyodide.py` + `.bth.toml` | create (C1) | It imports the staged `plr_visualizer3d` in the kernel, constructs and starts `DockedViewer3D` on the fixture deck, and records the stubs needed, the `scene` bytes, the stock and the rebound `PACKAGE_ROOT` (D11), and the time of the first `_models_on_disk(PACKAGE_ROOT)` walk over the rebound root. Negative control from D17. |
@@ -1128,7 +1137,7 @@ also triggers (D6, "Drawer behaviour").
 | `web-repl/overlay/assets/visualizer3d-augmentations/socket.js` | create (C4) | A classic script. The factory `makePraxisSocketClass(BroadcastChannelCtor, {acceptTimeoutMs})` is attached to the global, and the script assigns `window.WebSocket` when `document` exists. The viewer id comes from `location.search` (`viewer`); without it the socket posts nothing and closes after the accept timeout. With it, the socket posts `bye` on `close()`, on `pagehide` and on its accept timeout, ignores a late `accept`, and fires `onclose` on its own `evict` (D11). |
 | `web-repl/overlay/assets/visualizer3d-augmentations/embed.js`, `embed.css` | create (C4) | D12 embed mode and status forwarding. |
 | `web-repl/shell/display/__tests__/viz3d_socket.test.js` | create (C4) | Evaluates `socket.js` text against a fake global. Kept here so that no `__tests__` directory lives under `overlay/assets/`, which is staged wholesale (`build_repl.py:551-578`). |
-| `web-repl/shell/display/dock.js` + tests | create (C5) | The deck panel widget per S1, the header, the footer, tiers and sizing per the D6 sizing-case table (CSS, DockPanel layout, inline px + `parent.fit()`, or S1-L), `parent.fit()` after every tier change inside the split, the drawer with its close button, Escape and tier crossing, Follow (skipping `resource: null` stamps, read through `stampOf`), the held preset, the placeholder, closed-panel semantics (no iframe while closed, announces ignored except the first, which auto-opens), the iframe `src` with `viewer=<id>` set on each `announce` while open, `query` on mount, and on reopen the iframe created without `src` plus `query`; acting only on `announce` and the kernel `close`; `praxis:toggle-deck-panel`. |
+| `web-repl/shell/display/dock.js` + tests | create (C5) | The deck panel widget per S1, the header, the footer, tiers and sizing per the D6 sizing-case table (CSS, DockPanel layout, inline px + `parent.fit()`, or S1-L), `parent.fit()` after every tier change inside the split, the drawer with its close button, Escape and tier crossing, Follow (skipping `resource: null` stamps, read through `stampOf`), the held preset, the two placeholders (§3.6: "No deck viewer is running." on no viewer, no answer or kernel `close`; the lost-connection text on `plr:gone` only), closed-panel semantics (no iframe while closed, announces ignored except the first, which auto-opens), the iframe `src` with `viewer=<id>` set on each `announce` while open, `query` on mount, and on reopen the iframe created without `src` plus `query`; acting only on `announce` and the kernel `close`; `praxis:toggle-deck-panel`. |
 | `.github/workflows/repl.yml` | modify (A7, B10, C7) | Each sprint adds its pytest lines in the task that creates each test file (the per-file guard `test_repl_workflow_covers_tests.py` on `main` fails on an unwired file), its `bun test web-repl/shell/display` line in the coxswain job (A5), and its smoke step (A7: `--display-check`; C7: `--dock-check`). |
 
 **Files that must not change:**
@@ -1314,7 +1323,10 @@ Gate shorthands:
     op wells A1:H1, offending A1:H1, requested 80, available 50 (committed), action
     `aspirate`.
   - **E2**: dispense 400 µL into a 360 µL well → TLV, owner a well.
-  - **E3**: aspirate more than the 300 µL tip holds → TLV, owner the tip on channel 0.
+  - **E3**: aspirate more than the tip's `max_volume` (360 µL for the fixture's
+    `hamilton_96_tiprack_300uL_filter`, not its 300 µL nominal) from a well holding at least
+    that much (set it with `tracker.set_volume`, so the well's removal cannot raise TLL first)
+    → TLV, owner the tip on channel 0. *(Round 4, C4-3.)*
   - **E4**: `pick_up_tips` with tips already on → HasTip, owner the channel from the loop
     local, by rule (e) (no tracker frame).
   - **E5**: `drop_tips` onto an occupied spot → HasTip, owner the tip spot.
@@ -1648,6 +1660,10 @@ Gate shorthands:
     (no tier crossing) re-satisfies the ≥ 1600 width formula at 1920 (a ≥ 1600 width key,
     asserted or recorded per case; in case honoured/unreachable it checks that the inline
     widths were recomputed on `ResizeObserver`, D6).
+  - `iframe_reloads_during_resize`: the number of deck iframe `load` events during the
+    `resize_within_wide` step and the 1280–1599 splitter drag is 0, in every sizing case
+    (D6 note on `restore_layout_keeps_iframe`). Asserted, not recorded-only: a build that
+    clamps through a reloading `restoreLayout()` fails it. *(Round 4, C4-2.)*
   - At 1280×800: `viewer_height ≥ 300`, and `motion_slot_height ≤ 36`.
   - At 1152×800: `drawer_no_reflow`, meaning the notebook content width changes by 0 px when
     the drawer opens, and `drawer_overlays`, meaning the panel is `position: fixed`.
@@ -1666,8 +1682,8 @@ Gate shorthands:
 - **AC-38 (reconnect and stop)** [DOCK, K1 continued]:
   - `reconnect_after_reload`: after the iframe reloads (the harness sets
     `iframe.src = iframe.src`), `resources()` repopulates within 10 s.
-  - `stop_placeholder`: after `await viewer.stop()`, the placeholder text from section 3.6 is
-    visible within 5 s.
+  - `stop_placeholder`: after `await viewer.stop()`, the body contains the exact string
+    "No deck viewer is running." within 5 s, and does not contain "lost its connection".
   - `drawer_reconnect`: after crossing into the 1152 tier (the iframe moves), `resources()`
     repopulates within 10 s.
   - `redock_reloads`: re-running the `dock()` cell changes the iframe `src`'s `viewer`
@@ -2035,7 +2051,7 @@ Mount it from `index.js`.
 **C7: `--dock-check` gate and CI wiring.** Add `run_dock_check` with scenarios K1 and K2
 (AC-34 to AC-38), using the full-Chromium launch and SwiftShader args (D16), the
 persistence-ack init script (D16), AC-36 keyed by the recorded D6 sizing case (including
-the 1600→1920 `resize_within_wide` case), AC-38's
+the 1600→1920 `resize_within_wide` case and `iframe_reloads_during_resize`), AC-38's
 `late_iframe` ordering listener and `many_reloads`, and the harness-only `query`-drop init
 script for AC-39(e). Run the extended R21 grep (AC-31). Add to CI:
 - a step that checks out PLR main at C2's recorded commit into a temporary directory, followed
@@ -2105,7 +2121,7 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
 | Moving the iframe for the drawer tier reloads it | The `viewer` id stays in its `src`, the old client posts `bye`, the shim reconnects, and AC-38 `drawer_reconnect` and AC-36 `tier_up_rehomes` test it. |
 | A closed deck panel reconnects without exercising `query`, hiding a broken `query` path | A closed panel holds no iframe and ignores announces (except the first, which auto-opens); reopen creates the iframe with no `src` and posts `query`, so the `src` can only come from the answering `announce` (D11). AC-38 `late_iframe` asserts the ordering, and AC-39(e) proves it fails with `query` dropped. |
 | Vendored PLR-main Python imports a submodule the import contract lacks | C2 extends `plr_contract.CONTRACT` with a justification and appends an ADR §2 addendum; `test_contract_covers_imports.py` gates C2 and sprint B (AC-30, AC-41). |
-| A Lumino split ignores CSS min/max, or layout sizing is unreachable | S1 records `css_limits_honoured`, `dock_layout_sizing_reachable` and `css_limits_refit`, which select a row of the D6 sizing-case table; every AC-36 width key then has a mechanism or a recorded-only status (AC-36 is keyed by case). Layout sizing goes through the main DockPanel's `saveLayout()` / `sizes` / `restoreLayout()` (a `DockLayout` has no `setRelativeSizes`); CSS-only reaches ≥ 1600 with inline px limits plus `parent.fit()`, asserted only if `css_limits_refit`. `dock.js` calls `parent.fit()` after every tier change inside the split. AC-36 drags the splitter for real, and AC-39(d) proves the ≥ 1600 check fails on a stock 50/50 split wherever that key is asserted. Under S1-L every width key is recorded only and the drag is unclamped (drawer and height keys stay asserted): a stated deviation, consistent with the user's 260929 "split initially" ruling. Whether Lumino re-reads limits after `fit()` is exactly what S1 measures. |
+| A Lumino split ignores CSS min/max, or layout sizing is unreachable | S1 records `css_limits_honoured`, `dock_layout_sizing_reachable` and `css_limits_refit`, which select a row of the D6 sizing-case table; every AC-36 width key then has a mechanism or a recorded-only status (AC-36 is keyed by case). Layout sizing goes through the main DockPanel's `saveLayout()` / `sizes` / `restoreLayout()` (a `DockLayout` has no `setRelativeSizes`); CSS-only reaches ≥ 1600 with inline px limits plus `parent.fit()`, asserted only if `css_limits_refit`. `dock.js` calls `parent.fit()` after every tier change inside the split. AC-36 drags the splitter for real, and AC-39(d) proves the ≥ 1600 check fails on a stock 50/50 split wherever that key is asserted. Under S1-L every width key is recorded only and the drag is unclamped (drawer and height keys stay asserted): a stated deviation, consistent with the user's 260929 "split initially" ruling. Whether Lumino re-reads limits after `fit()` is exactly what S1 measures. If `restoreLayout()` reloads the widget's iframe (`restore_layout_keeps_iframe = false`), layout sizing is limited to open and tier changes, and AC-36 `iframe_reloads_during_resize` = 0 catches any clamp that reloads. |
 | A user-controlled resource name injects markup into a trusted output | D2 escaping (`esc_text` / `esc_attr`, escaped traceback) and D14 matching by `dataset.praxisRes`. AC-9, AC-16 and AC-19 carry hostile-name cases. |
 | The detail-floor math is wrong in the browser because CSS scales SVGs | D5 puts an explicit `min-width` on each SVG, and AC-12 checks the math. Rendered sizes are a human check (H1). If S2-A' strips `style`, the floor holds only for live outputs (stated). |
 | The display layer throws at boot | D13 makes it non-fatal and loud (`praxis:display-error`). AC-20 tests both paths. |
@@ -2457,3 +2473,17 @@ renumbered: every change appends cases or keys to existing ACs or edits existing
 **Consistency fixes made while applying:**
 - B5's case list now reads E1–E16 and "the four negatives"; B6 names E16 and E15; B8 names
   E15; AC-39's last bullet agrees with A7 and B10, which both run AC-39(a).
+
+## Revision 4 (260929)
+
+Round 4 (`.praxia/docs/audits/260929_notebook-display-round4-challenger.md`) closed C3-1..C3-4
+and four of the five R3-5 notes. It raised 2 MAJOR and 2 MINOR findings, applied here directly
+by the orchestrator.
+
+| Amendment | Finding | Landed |
+|---|---|---|
+| R4-1 | C4-1 (MAJOR): after the `plr:gone` edit, "the same placeholder" after `viewer.stop()` pointed at the lost-connection text | §3.6 States (a kernel `close` shows "No deck viewer is running."; only `plr:gone` shows the lost-connection text); D11 "Closed panel" and §3.6 Commands name the no-viewer text; §4 `dock.js` row names both placeholders; AC-38 `stop_placeholder` asserts the exact string, and the absence of "lost its connection" |
+| R4-2 | C4-2 (MAJOR): `restore_layout_keeps_iframe` was recorded but no branch used it | D1 S1 row (`false` means layout sizing only at open and on tier changes); D6 table note (clamps follow the `unreachable` row); §4 S1 spike row records the key; AC-36 `iframe_reloads_during_resize` = 0, asserted in every case; C7 names it; §7 sizing row |
+| R4-3 | C4-3 (MINOR): E3's threshold was ambiguous | AC-15 E3: more than `max_volume` (360 µL), with a source well that holds enough |
+| R4-4 | C4-4 (MINOR, parser note) | No content change. ACs are `- **AC-n …**` bullets at line start (41 of them), the same form as the persistence spec |
+
