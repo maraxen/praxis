@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>standard-curve.ipynb, Praxis REPL (display prototype)</title>
+<link rel="icon" href="../../overlay/assets/theme/praxis-favicon.svg">
+<link rel="stylesheet" href="display.css">
+</head>
+<body>
+
+<header class="topbar">
+  <img class="topbar__mark" src="../../overlay/assets/theme/praxis-mark.svg" alt="Praxis">
+  <div class="topbar__file">standard-curve<span>.ipynb</span></div>
+  <div class="topbar__spacer"></div>
+  <div class="topbar__status"><span class="dot dot--sim"></span>Simulated STARlet, 8 channels</div>
+  <div class="topbar__status"><span class="dot"></span>Kernel ready</div>
+</header>
+
+<div class="page">
+<main class="notebook" aria-label="Notebook">
+
+  <section class="cell cell--md">
+    <h1>Standard curve on the STARlet</h1>
+    <p>Moves 50, 100 and 150 µL from the source plate into columns 1 to 3 of the assay plate,
+      with fresh tips for each column. Runs on the simulator. To use the machine, swap the
+      backend for <code>STARBackend()</code>.</p>
+  </section>
+
+  <section class="cell" data-state="done">
+    <span class="cell__count">1</span>
+<pre class="code">
+from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.liquid_handling.backends import LiquidHandlerChatterboxBackend
+from pylabrobot.resources.hamilton import STARLetDeck, TIP_CAR_480_A00, PLT_CAR_L5AC_A00
+from pylabrobot.resources.hamilton import hamilton_96_tiprack_300uL_filter
+from pylabrobot.resources.corning.plates import Cor_96_wellplate_360ul_Fb
+
+deck = STARLetDeck()
+lh = LiquidHandler(backend=LiquidHandlerChatterboxBackend(num_channels=8), deck=deck)
+await lh.setup()
+
+tip_car = TIP_CAR_480_A00(name="tip_carrier")
+tip_car[0] = tips = hamilton_96_tiprack_300uL_filter(name="tips_300")
+deck.assign_child_resource(tip_car, rails=3)
+
+plate_car = PLT_CAR_L5AC_A00(name="plate_carrier")
+plate_car[0] = source = Cor_96_wellplate_360ul_Fb(name="source")
+plate_car[1] = assay = Cor_96_wellplate_360ul_Fb(name="assay")
+deck.assign_child_resource(plate_car, rails=9)
+deck
+</pre>
+    <div class="out" data-output="deck:empty"></div>
+  </section>
+
+  <section class="cell" data-state="done">
+    <span class="cell__count">2</span>
+<pre class="code">
+for well in source.get_all_items():
+    well.tracker.set_volume(200)
+source
+</pre>
+    <div class="out" data-output="plate:source:filled"></div>
+  </section>
+
+  <section class="cell" data-state="done">
+    <span class="cell__count">3</span>
+<pre class="code">
+from praxis.display import ledger
+
+with ledger(lh) as run:
+    for col, vol in [(1, 50), (2, 100), (3, 150)]:
+        await lh.pick_up_tips(tips[f"A{col}:H{col}"])
+        await lh.aspirate(source[f"A{col}:H{col}"], vols=[vol] * 8)
+        await lh.dispense(assay[f"A{col}:H{col}"], vols=[vol] * 8)
+        await lh.discard_tips()
+run
+</pre>
+    <div class="out" data-output="ledger"></div>
+  </section>
+
+  <section class="cell" data-state="done">
+    <span class="cell__count">4</span>
+<pre class="code">
+tips
+</pre>
+    <div class="out" data-output="tips:tips_300:after"></div>
+  </section>
+
+  <section class="cell" data-state="error">
+    <span class="cell__count">5</span>
+<pre class="code">
+await lh.pick_up_tips(tips["A4:H4"])
+await lh.aspirate(assay["A1:H1"], vols=[80] * 8)
+</pre>
+    <div class="out" data-output="error"></div>
+  </section>
+
+  <section class="cell is-active" data-state="idle">
+    <span class="cell__count"></span>
+<pre class="code">
+# Next: top up column 1 from the source plate
+</pre>
+  </section>
+
+</main>
+
+<aside class="dock" aria-label="Deck">
+  <div class="dock__head">
+    <span class="dock__title">Deck</span>
+    <span class="dock__sub">STARlet</span>
+    <span class="topbar__spacer"></span>
+    <button class="switch" type="button" role="switch" aria-checked="true">
+      <span class="switch__track"></span>Follow
+    </button>
+  </div>
+  <div class="dock__view"></div>
+  <div class="dock__sel" aria-live="polite"></div>
+  <div class="dock__controls">
+    <div class="seg" role="group" aria-label="View">
+      <button type="button" aria-pressed="false">Iso</button>
+      <button type="button" aria-pressed="true">Top</button>
+      <button type="button" aria-pressed="false">Front</button>
+    </div>
+  </div>
+  <div class="scrub">
+    <div class="scrub__head">Replay cell 3 <span class="scrub__now"></span></div>
+    <div class="scrub__row">
+      <button class="scrub__play" type="button" aria-label="Play">
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.5v9l7.5-4.5z" fill="currentColor"/></svg>
+      </button>
+      <div class="scrub__ticks"></div>
+    </div>
+  </div>
+</aside>
+</div>
+
+<script src="fixture.js"></script>
+<script src="display.js"></script>
+</body>
+</html>
