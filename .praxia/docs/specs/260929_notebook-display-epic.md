@@ -4,7 +4,7 @@ description: Epic spec for the web-REPL notebook display. Three sprints (A spike
 status: draft
 task_id: 260929_notebook-display-design
 date: '260929'
-adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator)'
+adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator); round5 challenger REVISE (1 MAJOR / 3 MINOR; C4-1, C4-3 CLOSED, C4-2 partial) -> revised 260929 (Revision 5, orchestrator)'
 ---
 # Notebook display epic (web-repl)
 
@@ -1080,6 +1080,9 @@ kernel, i.e. after `viewer = await praxis.viz.viewer3d.dock(deck)`. The layout:
 - On the kernel `close` for the current viewer (for example after `await viewer.stop()`), the
   body shows the "No deck viewer is running." text within 5 s. Only `plr:gone` shows the
   lost-connection text; a `close` is unambiguous, so it never does. *(Round 4, C4-1.)*
+  Mechanism: on the kernel `close` for the current viewer, `dock.js` removes the iframe, so
+  no page is left to retry and emit `plr:gone`; `plr:gone` is also ignored until the next
+  `announce`. *(Round 5, C5-2.)*
 - Re-running the `dock()` cell stops the old viewer (D11); its `announce` reloads the iframe
   with the new id if the panel is open.
 
@@ -1137,7 +1140,7 @@ also triggers (D6, "Drawer behaviour").
 | `web-repl/overlay/assets/visualizer3d-augmentations/socket.js` | create (C4) | A classic script. The factory `makePraxisSocketClass(BroadcastChannelCtor, {acceptTimeoutMs})` is attached to the global, and the script assigns `window.WebSocket` when `document` exists. The viewer id comes from `location.search` (`viewer`); without it the socket posts nothing and closes after the accept timeout. With it, the socket posts `bye` on `close()`, on `pagehide` and on its accept timeout, ignores a late `accept`, and fires `onclose` on its own `evict` (D11). |
 | `web-repl/overlay/assets/visualizer3d-augmentations/embed.js`, `embed.css` | create (C4) | D12 embed mode and status forwarding. |
 | `web-repl/shell/display/__tests__/viz3d_socket.test.js` | create (C4) | Evaluates `socket.js` text against a fake global. Kept here so that no `__tests__` directory lives under `overlay/assets/`, which is staged wholesale (`build_repl.py:551-578`). |
-| `web-repl/shell/display/dock.js` + tests | create (C5) | The deck panel widget per S1, the header, the footer, tiers and sizing per the D6 sizing-case table (CSS, DockPanel layout, inline px + `parent.fit()`, or S1-L), `parent.fit()` after every tier change inside the split, the drawer with its close button, Escape and tier crossing, Follow (skipping `resource: null` stamps, read through `stampOf`), the held preset, the two placeholders (§3.6: "No deck viewer is running." on no viewer, no answer or kernel `close`; the lost-connection text on `plr:gone` only), closed-panel semantics (no iframe while closed, announces ignored except the first, which auto-opens), the iframe `src` with `viewer=<id>` set on each `announce` while open, `query` on mount, and on reopen the iframe created without `src` plus `query`; acting only on `announce` and the kernel `close`; `praxis:toggle-deck-panel`. |
+| `web-repl/shell/display/dock.js` + tests | create (C5) | The deck panel widget per S1, the header, the footer, tiers and sizing per the D6 sizing-case table (CSS, DockPanel layout, inline px + `parent.fit()`, or S1-L), `parent.fit()` after every tier change inside the split, the drawer with its close button, Escape and tier crossing, Follow (skipping `resource: null` stamps, read through `stampOf`), the held preset, the two placeholders (§3.6: "No deck viewer is running." on no viewer, no answer or kernel `close`; the lost-connection text on `plr:gone` only, ignored after a kernel `close`, which removes the iframe), layout sizing only at open and on tier changes when `restore_layout_keeps_iframe` is `false`, closed-panel semantics (no iframe while closed, announces ignored except the first, which auto-opens), the iframe `src` with `viewer=<id>` set on each `announce` while open, `query` on mount, and on reopen the iframe created without `src` plus `query`; acting only on `announce` and the kernel `close`; `praxis:toggle-deck-panel`. |
 | `.github/workflows/repl.yml` | modify (A7, B10, C7) | Each sprint adds its pytest lines in the task that creates each test file (the per-file guard `test_repl_workflow_covers_tests.py` on `main` fails on an unwired file), its `bun test web-repl/shell/display` line in the coxswain job (A5), and its smoke step (A7: `--display-check`; C7: `--dock-check`). |
 
 **Files that must not change:**
@@ -1175,6 +1178,9 @@ Gate shorthands:
     (the table row) that AC-36 is keyed by.
   - The note records `restore_layout_keeps_iframe`: whether `restoreLayout()` keeps the
     widget's iframe loaded (no reload on a clamp).
+  - The note lists every AC-36 width key with its resulting status (`asserted` or
+    `recorded-only`), derived from the sizing case and `restore_layout_keeps_iframe`
+    (D6 note, AC-36). *(Round 5, C5-1.)*
 - **AC-2 (S2 recorded)**:
   - Same record checks as AC-1.
   - The note contains the survivorship table: element and attribute × {trusted live,
@@ -1648,6 +1654,12 @@ Gate shorthands:
     honoured/reachable and case ignored/reachable assert every width key; case
     honoured/unreachable asserts the 1280–1599 keys and asserts the ≥ 1600 keys only if
     `css_limits_refit` (otherwise recorded-only); case S1-L records every width key.
+  - If AC-1 records `restore_layout_keeps_iframe = false`, the open-time width keys and
+    `fit_after_tier_change` keep their case status, while the drag-clamp keys and
+    `resize_within_wide` take the status of the `unreachable` row for the same CSS column:
+    CSS ignored → recorded-only; CSS honoured → CSS for the 1280–1599 drag, and inline px
+    for `resize_within_wide`, asserted only if `css_limits_refit`. AC-39(d) is unaffected
+    (it measures at open). *(Round 5, C5-1.)*
   - At 1600×900 and at 1920×1080, file browser closed: `nb_content_width ≤ 960` (always
     asserted; it is CSS on the notebook), and `panel_width` equals
     `max(420, main_area_width − 960 − nb_h_padding)` within ±8 px (D6) (≥ 1600 width key).
@@ -1663,7 +1675,10 @@ Gate shorthands:
   - `iframe_reloads_during_resize`: the number of deck iframe `load` events during the
     `resize_within_wide` step and the 1280–1599 splitter drag is 0, in every sizing case
     (D6 note on `restore_layout_keeps_iframe`). Asserted, not recorded-only: a build that
-    clamps through a reloading `restoreLayout()` fails it. *(Round 4, C4-2.)*
+    clamps through a reloading `restoreLayout()` fails it. *(Round 4, C4-2.)* Counted in
+    harness code only (AC-39(c)): a `MutationObserver` on the panel records every deck
+    iframe inserted during the step, and a `load` listener on each counts loads, so a build
+    that replaces the element is caught too. *(Round 5, C5-3.)*
   - At 1280×800: `viewer_height ≥ 300`, and `motion_slot_height ≤ 36`.
   - At 1152×800: `drawer_no_reflow`, meaning the notebook content width changes by 0 px when
     the drawer opens, and `drawer_overlays`, meaning the panel is `position: fixed`.
@@ -2028,7 +2043,13 @@ and signals), tests first:
   close button, Escape, tier crossing both ways (D6)
 - Follow (first output with a non-null `resource`, read through `stampOf` from `stale.js`),
   click-to-focus wiring from `interact.js`, the held preset passed to every
-  `focus(name, preset)` (D12), the placeholder, and `praxis:toggle-deck-panel`
+  `focus(name, preset)` (D12), both placeholders ("No deck viewer is running." on no
+  viewer, no answer to `query`, or kernel `close`, where the iframe is removed; the
+  lost-connection text on `plr:gone` only, ignored after a `close` until the next
+  `announce`; unit case: `close` then `plr:gone` leaves the no-viewer text), and
+  `praxis:toggle-deck-panel`
+- when `restore_layout_keeps_iframe` is `false`, layout sizing only at open and on tier
+  changes (unit test: no `ResizeObserver` or drag clamp calls `restoreLayout()`)
 - `announce` listening on `praxis_viz3d`, acting only on `announce` and the kernel `close`
   (`{viewer, reason}`): the iframe `src` set with `viewer=<id>` on every announce while the
   panel is open; closed-panel semantics (no iframe while closed; announces ignored except the
@@ -2486,4 +2507,16 @@ by the orchestrator.
 | R4-2 | C4-2 (MAJOR): `restore_layout_keeps_iframe` was recorded but no branch used it | D1 S1 row (`false` means layout sizing only at open and on tier changes); D6 table note (clamps follow the `unreachable` row); §4 S1 spike row records the key; AC-36 `iframe_reloads_during_resize` = 0, asserted in every case; C7 names it; §7 sizing row |
 | R4-3 | C4-3 (MINOR): E3's threshold was ambiguous | AC-15 E3: more than `max_volume` (360 µL), with a source well that holds enough |
 | R4-4 | C4-4 (MINOR, parser note) | No content change. ACs are `- **AC-n …**` bullets at line start (41 of them), the same form as the persistence spec |
+
+## Revision 5 (260929)
+
+Round 5 (`.praxia/docs/audits/260929_notebook-display-round5-challenger.md`) closed C4-1 and C4-3.
+It found that C4-2 had not reached AC-36, and applied directly:
+
+| Amendment | Finding | Landed |
+|---|---|---|
+| R5-1 | C5-1 (MAJOR): AC-36 asserted clamp keys in the `reachable` cases even when `restore_layout_keeps_iframe = false` | AC-36 `false`-branch clause; AC-1 lists every width key's resulting status |
+| R5-2 | C5-2 (MINOR): no mechanism kept `plr:gone` from showing after a `close` | §3.6 (a `close` removes the iframe, and `plr:gone` is ignored until the next `announce`); C5 unit case; §4 `dock.js` row |
+| R5-3 | C5-3 (MINOR): `iframe_reloads_during_resize` counting was unstated | AC-36 (MutationObserver plus a `load` listener per iframe, in the harness only) |
+| R5-4 | C5-4 (MINOR): task text lagged | C5 names both placeholders and the `false` rule with a unit test; §4 `dock.js` row mirrors it |
 
