@@ -4,7 +4,7 @@ description: Epic spec for the web-REPL notebook display. Three sprints (A spike
 status: draft
 task_id: 260929_notebook-display-design
 date: '260929'
-adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator); round5 challenger REVISE (1 MAJOR / 3 MINOR; C4-1, C4-3 CLOSED, C4-2 partial) -> revised 260929 (Revision 5, orchestrator)'
+adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator); round5 challenger REVISE (1 MAJOR / 3 MINOR; C4-1, C4-3 CLOSED, C4-2 partial) -> revised 260929 (Revision 5, orchestrator); round6 challenger REVISE (1 MAJOR / 1 MINOR) -> revised 260929 (Revision 6: deck panel state machine)'
 ---
 # Notebook display epic (web-repl)
 
@@ -290,16 +290,17 @@ slot shows one row (≤ 36 px) and collapses first.
 - The drawer detaches the widget from the main area and re-attaches it as a fixed-position
   overlay. Moving an iframe in the DOM reloads it: the old client posts `bye` on `pagehide`
   and the socket shim reconnects (D11; the `viewer` id stays in its `src`), so this costs one
-  re-greeting.
+  re-greeting (D11 deck-panel state table, T15).
 
-**Drawer behaviour (1024–1279 px):**
-- The first `announce` opens the drawer over the notebook.
-- A close button in its header, or Escape while focus is in it, hides it. A hidden drawer
-  holds no iframe (D11, "Closed panel").
-  `praxis:toggle-deck-panel` reopens it.
-- Resizing across 1280 px upward re-homes an **open** drawer into the split (one iframe
-  reload) and leaves a **closed** one closed. Crossing below 1280 px does the reverse: an open
-  split panel becomes an open drawer, a closed one stays closed.
+**Drawer behaviour (1024–1279 px).** The drawer is the deck panel in this tier; its lifecycle
+is the D11 deck-panel state table, with no drawer-specific rules:
+- The first `announce` of a page opens it over the notebook (T2).
+- A close button in its header, or Escape while focus is in it, hides it; hiding is the
+  table's "close panel" event (T7, T17, T22), so a hidden drawer holds no iframe.
+  `praxis:toggle-deck-panel` reopens it (T4).
+- Crossing 1280 px either way is the table's "tier crossing" event: an open panel is
+  re-homed between drawer and split, keeping its state and any iframe `src` (T10, T15, T21);
+  a closed one stays closed (T5).
 
 ### D7. Staleness: revision stamps in metadata, announcements on `praxis_repl`, marks in the DOM only.
 
@@ -596,38 +597,106 @@ over `BroadcastChannel("praxis_viz3d")`.
 and `evict` carry `viewer` (the id minted per `DockedViewer3D`) and `client` (the id minted per
 `PraxisSocket`); `announce` and `close` carry `viewer` only; `query` carries neither.
 
-**How the page learns the viewer id.** While the deck panel is open, the shell sets the iframe
-`src` to `assets/visualizer3d/index.html?embed=1&view=top&viewer=<id>` on **every** `announce`,
-which (re)loads the page. `socket.js` reads `viewer` from `location.search`. With no `viewer`
-parameter the shim posts nothing (not even `bye`) and fires `onclose` after 3 s. The page's own
-transport gives up after 60 s (`static/transport.js:26, 73`), so a page loaded without an id
-is not relied on: `dock.js` sets `src` only from an announce.
+**How the page learns the viewer id.** The iframe's `src` is
+`assets/visualizer3d/index.html?embed=1&view=top&viewer=<id>`, and `dock.js` writes it only
+when handling an `announce`, as the deck-panel state table below fixes (T2, T6, T11, T18).
+Writing it (re)loads the page. `socket.js` reads `viewer` from `location.search`. With no
+`viewer` parameter the shim posts nothing (not even `bye`) and fires `onclose` after 3 s. The
+page's own transport gives up after 60 s (`static/transport.js:26, 73`), so a page loaded
+without an id is never created: no iframe exists without a `src` (invariant I1).
 
-**Closed panel** (Revision 2, B-2). A closed deck panel (its tab closed, or the drawer hidden)
-holds **no** iframe, and `dock.js` ignores `announce` while the panel is closed, except that
-the first `announce` a page sees auto-opens it. On reopen (`praxis:toggle-deck-panel`),
-`dock.js` creates the iframe with no `src` and posts `query`; the `src` comes only from the answering `announce`. With no answer the body
-shows the section 3.6 "No deck viewer is running." placeholder.
+**Deck-panel state machine** (Revision 6, R6-1; the single source of truth for the deck
+panel's lifecycle, superseding the Revision 2 "Closed panel" paragraph). Every other section
+(D6 drawer, D12 embed mode, §3.6, §4 `dock.js`, C5, C7, AC-36, AC-38, §7) refers to this
+table and restates none of it. `dock.js` holds three values besides the state: `seen` (whether
+this page has received any `announce` since mount), `current` (the viewer id of the last
+`announce` the panel acted on, or none), and the view preset (D12).
+
+States:
+
+| State | Panel | Iframe in the panel DOM | Body text |
+|---|---|---|---|
+| `closed` | not attached (split tab closed, or drawer hidden) | none | none |
+| `open-waiting` | attached | none | "No deck viewer is running. Run `viewer = await praxis.viz.viewer3d.dock(deck)` in a cell." (§3.6) |
+| `open-connected` | attached | exactly one, `src` carrying `viewer=<current>` | none (the page) |
+| `open-lost` | attached | none | "The deck view lost its connection. Close and reopen the deck panel, or run `dock(deck)` again." (§3.6) |
+
+Events: **mount** (`dock.js` mounts on page load); **announce** (kernel `announce {viewer}`;
+"first" means `seen` was false); **reopen** (`praxis:toggle-deck-panel` while closed);
+**close panel** (the split tab closed, the drawer's close button or Escape, or
+`praxis:toggle-deck-panel` while open); **kernel close** (kernel `close {viewer}`, "current"
+when its `viewer` equals `current`); **plr:gone** (forwarded by `embed.js` as a
+`praxis:dock-status` event, D12); **tier crossing** (the window crosses 1280 px, which moves an
+open panel between split and drawer, D6; a 1600 px crossing only re-sizes the split with
+`parent.fit()`, moves no iframe, and is not a lifecycle event);
+**iframe reload** (the page in the panel's iframe unloads and loads again with the same `src`:
+a harness `iframe.src = iframe.src`, a user reload, or the DOM move of a tier crossing).
+
+| # | State | Event | Next state | Actions |
+|---|---|---|---|---|
+| T1 | (none) | mount | `closed` | `seen = false`, `current` = none; post `query` |
+| T2 | `closed` | announce, first | `open-connected` | `seen = true`; attach the panel in the current tier's home (split or drawer); create one iframe; set its `src` with `viewer=<id>`; `current = id` |
+| T3 | `closed` | announce, not first | `closed` | none (ignored; no iframe is created) |
+| T4 | `closed` | reopen | `open-waiting` | attach the panel with **no** iframe; show the no-viewer text; post `query` |
+| T5 | `closed` | kernel close (any), plr:gone, tier crossing, close panel | `closed` | none |
+| T6 | `open-waiting` | announce (first or not; including the answer to a `query`) | `open-connected` | `seen = true`; hide the text; **create** one new iframe (a removed element is never reused); set its `src` with `viewer=<id>`; `current = id` |
+| T7 | `open-waiting` | close panel | `closed` | detach the panel; `current` = none |
+| T8 | `open-waiting` | kernel close (any) | `open-waiting` | none |
+| T9 | `open-waiting` | plr:gone | `open-waiting` | none (ignored; C5-2) |
+| T10 | `open-waiting` | tier crossing | `open-waiting` | re-home the panel (split ↔ drawer, D6); no `query` is re-sent (an outstanding answer still lands through T6) |
+| T11 | `open-connected` | announce (any id, including `current`) | `open-connected` | set the `src` of the iframe in the panel to `viewer=<id>` (the page reloads); `current = id` |
+| T12 | `open-connected` | kernel close, current | `open-waiting` | remove the iframe; show the no-viewer text (within 5 s); `current` = none |
+| T13 | `open-connected` | kernel close, not current | `open-connected` | none |
+| T14 | `open-connected` | plr:gone | `open-lost` | remove the iframe; show the lost-connection text; keep `current` |
+| T15 | `open-connected` | tier crossing | `open-connected` | re-home the panel with its iframe (one reload, same `src`; C3-3); no `src` write, no `query` |
+| T16 | `open-connected` | iframe reload | `open-connected` | no lifecycle action (the page reconnects from the `viewer` in its `src`; the old client's `bye` and eviction clean up, D11; D12 re-applies the preset on the load) |
+| T17 | `open-connected` | close panel | `closed` | remove the iframe; detach the panel; `current` = none |
+| T18 | `open-lost` | announce | `open-connected` | hide the text; create one new iframe; set its `src` with `viewer=<id>`; `current = id` |
+| T19 | `open-lost` | kernel close, current | `open-waiting` | show the no-viewer text instead of the lost-connection text; `current` = none |
+| T20 | `open-lost` | kernel close, not current; plr:gone | `open-lost` | none |
+| T21 | `open-lost` | tier crossing | `open-lost` | re-home the panel |
+| T22 | `open-lost` | close panel | `closed` | detach the panel; `current` = none |
+
+Every announce also sets `seen = true`, in any state. "iframe reload" has no row for
+`closed`, `open-waiting` or `open-lost`, because those states hold no iframe (I1).
+
+Invariants (C5 checks each after every transition):
+- **I1.** The panel DOM holds an iframe if and only if the state is `open-connected`, and then
+  exactly one, whose `src` carries `viewer=<current>`.
+- **I2.** An iframe `src` is written only in T2, T6, T11 and T18, i.e. only from an
+  `announce`. Reopen, tier crossing and iframe reload never write it.
+- **I3.** `query` is posted only in T1 and T4.
+- **I4.** `plr:gone` changes state only in `open-connected` (T14). So after a kernel `close`
+  it is ignored until an `announce` returns the panel to `open-connected`, and from then on it
+  is honoured again (C5-2, C6-1).
+- **I5.** The no-viewer text is shown if and only if the state is `open-waiting`, and the
+  lost-connection text if and only if it is `open-lost` (C4-1).
+- **I6.** A kernel `close` for the current viewer never shows the lost-connection text.
+
+Re-docking (re-running a `dock()` cell with an open panel) is T12 followed by T6: `dock()`
+awaits the old viewer's `stop()`, whose `close` removes the iframe and shows the no-viewer
+text, and the new viewer's `announce` then creates a fresh iframe with the new id. The
+no-viewer text is visible between the two; this is accepted and stated (C6-1).
 
 | Direction | `kind` | Meaning |
 |---|---|---|
-| kernel → all | `announce` | `{viewer, deck, session}` (`session` is the display session id): a viewer exists. The shell opens the deck panel on the first one a page sees, and sets the iframe `src` on every one while the panel is open. |
-| shell → kernel | `query` | `{}`: sent when `dock.js` mounts or the panel is reopened. A live `DockedViewer3D` answers with `announce`. |
+| kernel → all | `announce` | `{viewer, deck, session}` (`session` is the display session id): a viewer exists. The shell handles it per the deck-panel state table (T2, T3, T6, T11, T18). |
+| shell → kernel | `query` | `{}`: sent on mount (T1) and on reopen (T4). A live `DockedViewer3D` answers with `announce`. |
 | page → kernel | `open` | `{viewer, client}` |
 | kernel → page | `accept` | Then the page receives, in order, the `scene` and `state` messages that `Viewer3D._handler` sends (`server.py:590-593`), as `msg`. |
 | both | `msg` | `{client, data}`: `data` is the exact string the websocket would carry. |
 | page → kernel | `bye` | `{viewer, client}`: the client is gone. Posted on `close()`, on `pagehide`, and on the shim's accept timeout. Ends that client's `VirtualConnection`. |
 | kernel → one page | `evict` | `{viewer, client}`: the kernel dropped this client at the client cap. The shim fires `onclose`, so the page's own reconnect loop recovers. |
-| kernel → all | `close` | `{viewer, reason}`: the viewer stopped. The shell acts only on this kind (and `announce`). |
+| kernel → all | `close` | `{viewer, reason}`: the viewer stopped. The shell acts only on this kind and `announce`, per the deck-panel state table (T12, T19; ignored elsewhere). |
 
 - Without an `accept` within **3 s**, the shim posts `bye`, fires `onclose`, and ignores any
   later `accept` for that client; the page's own reconnect loop retries with a new client.
 - `bye` at `pagehide` is best-effort (a page being torn down may not deliver it). Eviction at
   the cap is the backstop.
 - A synchronous cell that blocks the kernel for more than about 60 s makes the page's
-  transport give up (`static/transport.js:26, 72-74`); the panel then shows the section 3.6
-  lost-connection placeholder (the `plr:gone` state) even though the viewer is still live, and closing and reopening the deck panel
-  recovers through `query`. This is accepted and stated.
+  transport give up (`static/transport.js:26, 72-74`); the panel then enters `open-lost`
+  (state table T14) even though the viewer is still live, and closing and reopening the deck
+  panel recovers through `query` (T22, T4, T6). This is accepted and stated.
 - Traffic uses a **new channel**, not `praxis_viz`: that channel's receiver
   (`visualizer-augmentations/index.js`) would misread these envelopes. It is also not
   `praxis_repl`, per R21.
@@ -670,11 +739,15 @@ exactly **`__init__`, `start` and `stop`**:
   every subscription path are inherited unchanged. `start` answers `query` with `announce`.
 - `stop` calls `super().stop()`, which already skips `_ws_server` and `_httpd` when they are
   `None` (`server.py:841-850`). It then ends every `VirtualConnection` (a queue sentinel),
-  awaits each `_handler` task, and posts `close`.
+  awaits each `_handler` task, and posts `close`. `stop` is idempotent: a second call on a
+  stopped viewer returns at once, raises nothing and posts nothing (so a `dock()` after a
+  user's own `await viewer.stop()` posts no second `close`; Revision 6).
 
 **`dock(deck, **kw)`** is a module function, not an override, so GATE X is unaffected.
 - It keeps a module-level current viewer. If one exists, it awaits that viewer's `stop()`
-  before constructing the next, so re-running a `dock()` cell leaks no subscriptions.
+  before constructing the next, so re-running a `dock()` cell leaks no subscriptions. The
+  shell sees the old viewer's `close` before the new viewer's `announce` (re-docking, state
+  table T12 then T6).
 - After `start()` it awaits `viewer.wait_for_browser(timeout=15)`. A `TimeoutError` is caught
   and stated in one printed line. So the page's first hello prints in the `dock()` cell.
   Later reconnect hellos (iframe reload, drawer move) print in whichever cell is executing,
@@ -698,7 +771,12 @@ PLR's page exposes `window.plrViewer` (`static/app.js:172-223`):
 - `resources()`, `stateOf(name)`, `camera()` and `stats()` answer questions without redrawing.
 
 **The shell drives the panel through it**, calling across the frame: the iframe is
-same-origin with no `sandbox`.
+same-origin with no `sandbox`. Every call goes to the iframe currently in the panel, read
+from the DOM at call time, and only in the D11 state `open-connected` (the only state with an
+iframe, I1). In any other state Follow and Click do nothing, and Iso / Top / Front only
+update the held preset. After every load of the panel's iframe (T2, T6, T11, T15, T16, T18),
+`dock.js` re-applies the held preset with `plrViewer.view(preset)` once the page's
+`plrViewer` exists, since the `src` always carries `view=top` (Revision 6).
 - **Preset.** `dock.js` holds the current view preset, initially `top`. Every focus call is
   `plrViewer.focus(name, preset)`, never `focus(name)`, whose default reframes from the iso
   direction (`app.js:180`) and would override the user's preset.
@@ -721,8 +799,8 @@ forbids. So:
 - A persistent 3D highlight is Next, and needs an upstream PLR API (OQ-5).
 
 **Embed mode.** `embed.js` runs only when `location.search` has `embed=1`. The same query
-string carries `viewer=<id>`, set by the shell on every `announce` while the panel is open
-(D11, "Closed panel") and read only by `socket.js`.
+string carries `viewer=<id>`, written by the shell only from an `announce` (D11 deck-panel
+state table, I2) and read only by `socket.js`.
 - It hides, from inside the page, the navbar (`.navbar`), the left tool rail
   (`#toolbar-left`), the stats footer (`#stats-panel`), the tree (`#sidepanel`) and its
   toggle strip (`#toolbar`). This goes through an injected stylesheet, `embed.css`, and does
@@ -730,7 +808,8 @@ string carries `viewer=<id>`, set by the shell on every `announce` while the pan
 - It sets the page ground to `#EEF1F4`.
 - It forwards the page's `plr:status` and `plr:gone` events (`transport.js:35, 74`) to the
   parent window as `praxis:dock-status` CustomEvents. The navbar that normally shows the
-  status is hidden.
+  status is hidden. What `dock.js` does with a forwarded `plr:gone` is the state table's
+  plr:gone event (D11: T14; ignored in every other state).
 
 MVP hides the tree. DESIGN.md's "collapse behind a toggle" is Next.
 
@@ -1061,38 +1140,37 @@ Nouns: **channel** (never "pip" or "pipette"), **well**, **tip**, **tip rack**, 
 
 ### 3.6 Deck panel
 
-It opens automatically, split right of the current notebook, on the first `announce` from a
-kernel, i.e. after `viewer = await praxis.viz.viewer3d.dock(deck)`. The layout:
+It opens automatically, split right of the current notebook, on the first `announce` a page
+receives, i.e. after `viewer = await praxis.viz.viewer3d.dock(deck)` (D11 deck-panel state
+table, T2). Its whole lifecycle (when it holds an iframe, when the `src` is written, when
+`query` is sent, which text the body shows) is that table; this section only describes what
+each state looks like. The layout:
 
 - **Header:** the deck name, a Follow toggle (on), and Iso / Top / Front (Top is the page's
   default view, `renderer.js:263`).
-- **Body:** the iframe `assets/visualizer3d/index.html?embed=1&view=top&viewer=<id>`. While
-  the panel is open, its `src` is set (and the page reloaded) on every `announce` (D11).
+- **Body:** in `open-connected`, the one iframe
+  `assets/visualizer3d/index.html?embed=1&view=top&viewer=<id>`; in `open-waiting` and
+  `open-lost`, one of the two texts below and no iframe (D11, I1, I5).
 - **Footer:** the focused resource in words, then the one-row motion slot.
 
-**States:**
-- With no viewer running, the body shows "No deck viewer is running.
-  Run `viewer = await praxis.viz.viewer3d.dock(deck)` in a cell."
-- After `plr:gone` (the page gave up after 60 s, possibly while the viewer is still live, see
-  D11), the body shows "The deck view lost its connection. Close and reopen the deck panel,
-  or run `dock(deck)` again." It never claims the viewer is gone, because the shell cannot
-  tell a stopped viewer from a busy kernel. *(Orchestrator, Revision 3.)*
-- On the kernel `close` for the current viewer (for example after `await viewer.stop()`), the
-  body shows the "No deck viewer is running." text within 5 s. Only `plr:gone` shows the
-  lost-connection text; a `close` is unambiguous, so it never does. *(Round 4, C4-1.)*
-  Mechanism: on the kernel `close` for the current viewer, `dock.js` removes the iframe, so
-  no page is left to retry and emit `plr:gone`; `plr:gone` is also ignored until the next
-  `announce`. *(Round 5, C5-2.)*
-- Re-running the `dock()` cell stops the old viewer (D11); its `announce` reloads the iframe
-  with the new id if the panel is open.
+**States** (the texts for the D11 table's states; `closed` shows nothing):
+- `open-waiting`: "No deck viewer is running.
+  Run `viewer = await praxis.viz.viewer3d.dock(deck)` in a cell." Shown with no viewer
+  known: after a reopen until the answering `announce` (or indefinitely with no answer),
+  after a kernel `close` for the current viewer (within 5 s; for example after
+  `await viewer.stop()`), and briefly while re-docking (T12 then T6).
+- `open-lost`: "The deck view lost its connection. Close and reopen the deck panel, or run
+  `dock(deck)` again." Shown only after `plr:gone` from the page in the panel (the page gave
+  up after 60 s, possibly while the viewer is still live, see D11). It never claims the
+  viewer is gone, because the shell cannot tell a stopped viewer from a busy kernel.
+  *(Orchestrator, Revision 3.)* A kernel `close` never shows it (I6; *Round 4, C4-1*), and
+  `plr:gone` is ignored outside `open-connected` (I4; *Round 5, C5-2*).
 
-**Commands and tiers.** Closing the tab (or hiding the drawer) closes the panel: it then holds
-no iframe and ignores announces (D11, "Closed panel"). A registered command,
-`praxis:toggle-deck-panel`, reopens it: the iframe is created with no `src`, `query` is sent,
-and the `src` is set only by the answering `announce`; until then (or with no viewer) the body
-shows the "No deck viewer is running." placeholder. The tiers follow D6; in the
-1024–1279 tier the drawer opens on the first announce, and has a close button that Escape
-also triggers (D6, "Drawer behaviour").
+**Commands and tiers.** The registered command `praxis:toggle-deck-panel` is the table's
+reopen event when the panel is closed (T4) and its close-panel event when it is open (T7,
+T17, T22); closing the split tab, or hiding the drawer with its close button or Escape, is
+also close panel. The tiers follow D6; crossing 1280 px is the table's tier-crossing event
+(T5, T10, T15, T21).
 
 ---
 
@@ -1140,7 +1218,7 @@ also triggers (D6, "Drawer behaviour").
 | `web-repl/overlay/assets/visualizer3d-augmentations/socket.js` | create (C4) | A classic script. The factory `makePraxisSocketClass(BroadcastChannelCtor, {acceptTimeoutMs})` is attached to the global, and the script assigns `window.WebSocket` when `document` exists. The viewer id comes from `location.search` (`viewer`); without it the socket posts nothing and closes after the accept timeout. With it, the socket posts `bye` on `close()`, on `pagehide` and on its accept timeout, ignores a late `accept`, and fires `onclose` on its own `evict` (D11). |
 | `web-repl/overlay/assets/visualizer3d-augmentations/embed.js`, `embed.css` | create (C4) | D12 embed mode and status forwarding. |
 | `web-repl/shell/display/__tests__/viz3d_socket.test.js` | create (C4) | Evaluates `socket.js` text against a fake global. Kept here so that no `__tests__` directory lives under `overlay/assets/`, which is staged wholesale (`build_repl.py:551-578`). |
-| `web-repl/shell/display/dock.js` + tests | create (C5) | The deck panel widget per S1, the header, the footer, tiers and sizing per the D6 sizing-case table (CSS, DockPanel layout, inline px + `parent.fit()`, or S1-L), `parent.fit()` after every tier change inside the split, the drawer with its close button, Escape and tier crossing, Follow (skipping `resource: null` stamps, read through `stampOf`), the held preset, the two placeholders (§3.6: "No deck viewer is running." on no viewer, no answer or kernel `close`; the lost-connection text on `plr:gone` only, ignored after a kernel `close`, which removes the iframe), layout sizing only at open and on tier changes when `restore_layout_keeps_iframe` is `false`, closed-panel semantics (no iframe while closed, announces ignored except the first, which auto-opens), the iframe `src` with `viewer=<id>` set on each `announce` while open, `query` on mount, and on reopen the iframe created without `src` plus `query`; acting only on `announce` and the kernel `close`; `praxis:toggle-deck-panel`. |
+| `web-repl/shell/display/dock.js` + tests | create (C5) | The deck panel widget per S1, the header, the footer, tiers and sizing per the D6 sizing-case table (CSS, DockPanel layout, inline px + `parent.fit()`, or S1-L), `parent.fit()` after every tier change inside the split, the drawer with its close button, Escape and tier crossing, Follow (skipping `resource: null` stamps, read through `stampOf`), the held preset, layout sizing only at open and on tier changes when `restore_layout_keeps_iframe` is `false`, and the deck-panel lifecycle implemented exactly as the D11 deck-panel state table (four states, transitions T1–T22, invariants I1–I6; the §3.6 texts per state), acting on `praxis_viz3d` only for `announce` and the kernel `close`; `praxis:toggle-deck-panel`. |
 | `.github/workflows/repl.yml` | modify (A7, B10, C7) | Each sprint adds its pytest lines in the task that creates each test file (the per-file guard `test_repl_workflow_covers_tests.py` on `main` fails on an unwired file), its `bun test web-repl/shell/display` line in the coxswain job (A5), and its smoke step (A7: `--display-check`; C7: `--dock-check`). |
 
 **Files that must not change:**
@@ -1578,6 +1656,8 @@ Gate shorthands:
   - The fixture's first `scene` message contains no `mesh` key on any model.
   - `stop()` posts `close`, deregisters every callback (`_subscribed` empty), and afterwards
     no `_handler` task is pending (every `VirtualConnection` got its sentinel).
+  - A second `stop()` on the same viewer raises nothing and posts nothing; a `dock()` after
+    a user's own `stop()` posts no second `close` for the old id (D11, Revision 6).
   - **Second dock**: a second `await dock(deck)` in the same process stops the first viewer
     (its `_subscribed` empty, a `close` with the first viewer's id posted) before the second
     `announce`.
@@ -1682,38 +1762,55 @@ Gate shorthands:
   - At 1280×800: `viewer_height ≥ 300`, and `motion_slot_height ≤ 36`.
   - At 1152×800: `drawer_no_reflow`, meaning the notebook content width changes by 0 px when
     the drawer opens, and `drawer_overlays`, meaning the panel is `position: fixed`.
-  - `drawer_dismiss_reopen`: at 1152×800 the first announce opens the drawer; its close
-    button hides it (and no iframe remains in the DOM); `praxis:toggle-deck-panel` reopens it;
-    Escape hides it again.
+  - `drawer_dismiss_reopen`: at 1152×800 the first announce opens the drawer (D11 state
+    table T2); its close button hides it, and no iframe remains in the DOM (T17);
+    `praxis:toggle-deck-panel` reopens it (T4, then T6 on the answering `announce`); Escape
+    hides it again (T17).
   - The drawer keys and the height keys are asserted in every sizing case.
   - `tier_up_rehomes`: resizing an open drawer from 1152 to 1440 wide re-homes it into the
-    split (`panel_is_split_right` holds, `resources()` repopulates within 10 s); a closed
-    drawer resized the same way stays closed.
+    split (T15: `panel_is_split_right` holds, the iframe then in the panel keeps its `src`,
+    `resources()` repopulates within 10 s); a closed drawer resized the same way stays closed
+    (T5).
 - **AC-37 (live state)** [DOCK, K1 continued]:
   - `state_updates`: after an aspirate cell,
     `plrViewer.stateOf(source.get_well("A1").name)` differs from its value before, within 5 s.
     The well name is read from the kernel, not hardcoded.
   - `stale_and_panel`: AC-23's notice text names the deck panel, and the panel is open.
 - **AC-38 (reconnect and stop)** [DOCK, K1 continued]:
-  - `reconnect_after_reload`: after the iframe reloads (the harness sets
+  - **Execution order** (Revision 6, C6-2). The keys run in exactly the order listed below:
+    `reconnect_after_reload`, `drawer_reconnect`, `stop_placeholder`, `redock_reloads`,
+    `late_iframe`, `many_reloads`. `drawer_reconnect` needs a live viewer, so it precedes
+    `stop_placeholder`; `stop_placeholder` runs immediately before `redock_reloads`, so the
+    re-dock's `announce` arrives in an open panel with no iframe and exercises T12 → T6 (the
+    C6-1 path).
+  - **DOM reads** (Revision 6, C6-1). Every key reads the deck iframe by querying the panel's
+    DOM at the moment of each read or write (for example `panel.querySelectorAll('iframe')`),
+    never through an element reference held from an earlier step or key. Wherever a key
+    names "the iframe", exactly one iframe must be in the panel DOM (D11, I1).
+  - `reconnect_after_reload` (T16): after the iframe reloads (the harness sets
     `iframe.src = iframe.src`), `resources()` repopulates within 10 s.
-  - `stop_placeholder`: after `await viewer.stop()`, the body contains the exact string
-    "No deck viewer is running." within 5 s, and does not contain "lost its connection".
-  - `drawer_reconnect`: after crossing into the 1152 tier (the iframe moves), `resources()`
-    repopulates within 10 s.
-  - `redock_reloads`: re-running the `dock()` cell changes the iframe `src`'s `viewer`
-    parameter to the new viewer's id, and `resources()` repopulates within 10 s.
-  - `late_iframe`: the harness closes the deck panel's tab, re-runs `dock()` (only the
-    first `announce` of a page auto-opens the panel, so it stays closed), then reopens it
-    with `praxis:toggle-deck-panel` after `dock()` has returned; `resources()` populates within
-    10 s (`query` → `announce` → `src`). Ordering, observed through a harness
-    `BroadcastChannel("praxis_viz3d")` listener and a `MutationObserver` on the iframe `src`:
-    a `query` was posted after the reopen, the reopened iframe had no `src` until the
-    answering `announce`, and its `src` was first set after that `announce`. While closed, no iframe was in the
-    DOM.
-  - `many_reloads`: 6 sequential iframe reloads (`iframe.src = iframe.src`), each followed
-    by `resources()` repopulating within 10 s. (With the cap at 4, this fails unless dead
-    clients leave through `bye` or eviction, D11.)
+  - `drawer_reconnect` (T15): after resizing to 1152×800 (the panel becomes a drawer and the
+    iframe moves), `resources()` repopulates within 10 s; the harness then resizes back to
+    1440×900 (the drawer is re-homed into the split, T15 again) and `resources()` repopulates
+    within 10 s, so the later keys run in the split tier that `late_iframe`'s tab close needs.
+  - `stop_placeholder` (T12): after `await viewer.stop()`, within 5 s the body contains the
+    exact string "No deck viewer is running.", does not contain "lost its connection", and
+    the panel DOM holds no iframe.
+  - `redock_reloads` (T6): re-running the `dock()` cell yields exactly one iframe in the
+    panel DOM, whose `src`'s `viewer` parameter equals the new viewer's id (read from the
+    kernel), and `resources()` in that iframe repopulates within 10 s.
+  - `late_iframe` (T17, T3, T4, T6): the harness closes the deck panel's tab, re-runs
+    `dock()` (only the first `announce` of a page auto-opens the panel, so it stays closed),
+    then reopens it with `praxis:toggle-deck-panel` after `dock()` has returned; `resources()`
+    populates within 10 s (`query` → `announce` → iframe with `src`). Ordering, observed
+    through a harness `BroadcastChannel("praxis_viz3d")` listener and a `MutationObserver`
+    on the panel subtree (`childList` and the `src` attribute): while closed, no iframe was
+    in the DOM; a `query` was posted after the reopen; between the reopen and the answering
+    `announce` the panel held no iframe; and the first iframe inserted into the panel
+    appeared after that `announce`, with its `src` already carrying the viewer id.
+  - `many_reloads` (T16): 6 sequential iframe reloads (`iframe.src = iframe.src`), each
+    followed by `resources()` repopulating within 10 s. (With the cap at 4, this fails unless
+    dead clients leave through `bye` or eviction, D11.)
 - **AC-39 (sensitivity and hygiene)**:
   - Copy the built dist to `/tmp/claude-1000/nd-neg/`.
   - (a) Remove `shell/display/index.js`, then run
@@ -2008,7 +2105,8 @@ justification comment, and append the ADR §2 addendum (section 4 rows; D11). Ad
   (`evict` plus a sentinel; an own insertion-ordered client map, since `_clients` is a set,
   and synchronous removal from `_clients` before the new `_handler` runs), `bye` ending a connection, `query` → `announce`, dropping
   non-JSON and unknown kinds (D11 threat model)
-- `stop`: end every connection with a sentinel and await its `_handler` task, then `close`
+- `stop`: end every connection with a sentinel and await its `_handler` task, then `close`;
+  idempotent (a second call posts nothing)
 - `dock()`: the module-level current viewer stopped first, and
   `wait_for_browser(timeout=15)` with the timeout stated
 - any S4-B stubs, installed before the vendored import, each named in a module constant and
@@ -2042,25 +2140,31 @@ and signals), tests first:
 - the header, footer, motion slot, tiers, and the drawer: auto-open on first announce,
   close button, Escape, tier crossing both ways (D6)
 - Follow (first output with a non-null `resource`, read through `stampOf` from `stale.js`),
-  click-to-focus wiring from `interact.js`, the held preset passed to every
-  `focus(name, preset)` (D12), both placeholders ("No deck viewer is running." on no
-  viewer, no answer to `query`, or kernel `close`, where the iframe is removed; the
-  lost-connection text on `plr:gone` only, ignored after a `close` until the next
-  `announce`; unit case: `close` then `plr:gone` leaves the no-viewer text), and
-  `praxis:toggle-deck-panel`
+  click-to-focus wiring from `interact.js`, and the held preset passed to every
+  `focus(name, preset)` (D12)
 - when `restore_layout_keeps_iframe` is `false`, layout sizing only at open and on tier
   changes (unit test: no `ResizeObserver` or drag clamp calls `restoreLayout()`)
-- `announce` listening on `praxis_viz3d`, acting only on `announce` and the kernel `close`
-  (`{viewer, reason}`): the iframe `src` set with `viewer=<id>` on every announce while the
-  panel is open; closed-panel semantics (no iframe while closed; announces ignored except the
-  first, which auto-opens); `query` sent on mount, and on reopen after creating the iframe
-  with no `src` (D11, "Closed panel")
+- the deck-panel lifecycle as the D11 deck-panel state table, listening on `praxis_viz3d`
+  and acting only on `announce` and the kernel `close` (`{viewer, reason}`), plus
+  `praxis:toggle-deck-panel`, the drawer's close button and Escape, tier crossings and
+  forwarded `plr:gone`. Tests: **one bun test per table row, T1–T22** (a row that lists
+  several events gets one case per event), each asserting the next state, the actions (iframe
+  created / `src` written / iframe removed / `query` posted / text shown) and invariants
+  I1–I6 read from the fake DOM (never from an element the test held). Sequence tests on top
+  of the rows:
+  - **C6-1 re-dock:** `open-connected` with `v1`, then kernel `close(v1)`, then
+    `announce(v2)` → exactly one iframe in the panel, a newly created element (not the removed
+    one), with `viewer=v2`; a later `plr:gone` from it is honoured again (→ `open-lost`).
+  - **C5-2:** kernel `close(current)`, then `plr:gone` → the no-viewer text stays.
+  - **Reopen:** `closed` → reopen → no iframe and one `query` posted; the answering
+    `announce` then creates the only iframe, already carrying the `src`.
 
 Mount it from `index.js`.
 - Depends on: A5, B9, C4, and AC-1 branch S1-A or S1-B. On S1-C, stop and escalate (D1).
-- Closes: the unit half of AC-35 and AC-36.
+- Closes: the unit half of AC-35 and AC-36, and the unit half of AC-38 (the D11 state
+  table rows).
 - Gate: [BUN].
-- Size: ~380 LOC.
+- Size: ~420 LOC (raised in Revision 6 for the 22 row tests).
 
 **C6: Staging and offline.** Add the C6 paths to `assert_dist_complete` and to
 `test_display_staging.py`. Confirm that manifest collection picks up the vendored Python.
@@ -2072,8 +2176,9 @@ Mount it from `index.js`.
 **C7: `--dock-check` gate and CI wiring.** Add `run_dock_check` with scenarios K1 and K2
 (AC-34 to AC-38), using the full-Chromium launch and SwiftShader args (D16), the
 persistence-ack init script (D16), AC-36 keyed by the recorded D6 sizing case (including
-the 1600→1920 `resize_within_wide` case and `iframe_reloads_during_resize`), AC-38's
-`late_iframe` ordering listener and `many_reloads`, and the harness-only `query`-drop init
+the 1600→1920 `resize_within_wide` case and `iframe_reloads_during_resize`), AC-38 in its
+stated execution order with every iframe read taken from the panel DOM (never a held
+element), AC-38's `late_iframe` ordering listener and `many_reloads`, and the harness-only `query`-drop init
 script for AC-39(e). Run the extended R21 grep (AC-31). Add to CI:
 - a step that checks out PLR main at C2's recorded commit into a temporary directory, followed
   by `vendor_visualizer3d.py --check --src <dir>`
@@ -2139,8 +2244,9 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
 | Vendored three.js tree (~2 MB) grows dist and the offline gate | AC-30 asserts zero CDN URLs, and AC-33 keeps `--probe --offline` green. The build logs the size. |
 | The PLR main source drifts from the vendored copy | `--check` in CI against the pinned commit (C7). Updating is an explicit re-vendor with a new commit in both manifests. |
 | The CI Chromium lacks WebGL2 | D16's full Chromium with SwiftShader args. AC-34 records `hello_backend`, and the canvas check fails loudly rather than passing on a blank frame. |
-| Moving the iframe for the drawer tier reloads it | The `viewer` id stays in its `src`, the old client posts `bye`, the shim reconnects, and AC-38 `drawer_reconnect` and AC-36 `tier_up_rehomes` test it. |
-| A closed deck panel reconnects without exercising `query`, hiding a broken `query` path | A closed panel holds no iframe and ignores announces (except the first, which auto-opens); reopen creates the iframe with no `src` and posts `query`, so the `src` can only come from the answering `announce` (D11). AC-38 `late_iframe` asserts the ordering, and AC-39(e) proves it fails with `query` dropped. |
+| Moving the iframe for the drawer tier reloads it | D11 state table T15: the `viewer` id stays in its `src`, the old client posts `bye`, the shim reconnects, and AC-38 `drawer_reconnect` and AC-36 `tier_up_rehomes` test it. |
+| A closed deck panel reconnects without exercising `query`, hiding a broken `query` path | D11 state table T3, T4, T6: a closed panel ignores every announce but a page's first; reopen attaches an iframe-less panel and posts `query`, so the only iframe is created by the answering `announce`. AC-38 `late_iframe` asserts the ordering, and AC-39(e) proves it fails with `query` dropped. |
+| Piecemeal edits to the deck panel's lifecycle contradict each other (Revisions 4 and 5 each left a neighbouring gap; round 6 found "panel open, no iframe" uncovered after every re-dock) | One authoritative table in D11 (four states, T1–T22, invariants I1–I6); every other section references it. C5 has one test per row plus the C6-1 re-dock sequence; AC-38 runs in a stated order and reads the iframe from the DOM. A future lifecycle change edits the table and its row tests together. |
 | Vendored PLR-main Python imports a submodule the import contract lacks | C2 extends `plr_contract.CONTRACT` with a justification and appends an ADR §2 addendum; `test_contract_covers_imports.py` gates C2 and sprint B (AC-30, AC-41). |
 | A Lumino split ignores CSS min/max, or layout sizing is unreachable | S1 records `css_limits_honoured`, `dock_layout_sizing_reachable` and `css_limits_refit`, which select a row of the D6 sizing-case table; every AC-36 width key then has a mechanism or a recorded-only status (AC-36 is keyed by case). Layout sizing goes through the main DockPanel's `saveLayout()` / `sizes` / `restoreLayout()` (a `DockLayout` has no `setRelativeSizes`); CSS-only reaches ≥ 1600 with inline px limits plus `parent.fit()`, asserted only if `css_limits_refit`. `dock.js` calls `parent.fit()` after every tier change inside the split. AC-36 drags the splitter for real, and AC-39(d) proves the ≥ 1600 check fails on a stock 50/50 split wherever that key is asserted. Under S1-L every width key is recorded only and the drag is unclamped (drawer and height keys stay asserted): a stated deviation, consistent with the user's 260929 "split initially" ruling. Whether Lumino re-reads limits after `fit()` is exactly what S1 measures. If `restoreLayout()` reloads the widget's iframe (`restore_layout_keeps_iframe = false`), layout sizing is limited to open and tier changes, and AC-36 `iframe_reloads_during_resize` = 0 catches any clamp that reloads. |
 | A user-controlled resource name injects markup into a trusted output | D2 escaping (`esc_text` / `esc_attr`, escaped traceback) and D14 matching by `dataset.praxisRes`. AC-9, AC-16 and AC-19 carry hostile-name cases. |
@@ -2235,6 +2341,7 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
   `.praxia/docs/audits/260929_notebook-display-round1-defender.md`.
 - Round 2 review: `.praxia/docs/audits/260929_notebook-display-round2-challenger.md`,
   `.praxia/docs/audits/260929_notebook-display-round2-defender.md`.
+- Rounds 3 to 6: `.praxia/docs/audits/260929_notebook-display-round{3,4,5,6}-challenger.md`.
 - IPython `core/formatters.py:243-250` (per-type `(data, metadata)` unpacking; S3(b′)).
 
 ## Revision 1 (260929)
@@ -2391,7 +2498,9 @@ closes, and where it landed.
   the page learns the viewer id" and new "Closed panel"; D11 table `announce` row; D6 drawer
   behaviour; D12 embed mode; §3.6 body, states, commands; §4 `dock.js` row; AC-36
   `drawer_dismiss_reopen` (no iframe); AC-38 `late_iframe` ordering; AC-39(e); C5, C7; §7 new
-  row.
+  row. *(Superseded by the Revision 6 state table: the "Closed panel" paragraph is replaced by
+  D11's deck-panel state machine, and reopen now attaches an iframe-less panel (T4); the
+  iframe is created by the answering `announce` (T6).)*
 - **B-3 (C2-2 BLOCKER): D6 sizing cases.** Four-case table; S1 records `css_limits_refit`;
   `parent.fit()` after every tier change inside the split; "set once at open" deleted.
   Landed: D1 S1 row; D6 mechanism (table); §4 S1 row; A1; AC-1; AC-36 (keyed by case,
@@ -2477,6 +2586,8 @@ renumbered: every change appends cases or keys to existing ACs or edits existing
   B6.
 - **R3-3 (C3-3, MINOR): tier re-homing is not a reopen.** Moving keeps the iframe's `src`
   (D6 drawer note and §7 drawer row unchanged). Landed: D11 "Closed panel" reopen list.
+  *(Superseded by the Revision 6 state table: that text had been lost from "Closed panel" by
+  Revision 5; the rule now lives in D11 T10, T15 and T21.)*
 - **R3-4 (C3-4, MINOR): E10 and AC-39 wording.** Landed: AC-15 E10 (parenthetical deleted);
   AC-39 last bullet ((a) runs first in sprint A's PR, A7, again in B10) and the AC-40 heading
   restored to its own line.
@@ -2503,7 +2614,7 @@ by the orchestrator.
 
 | Amendment | Finding | Landed |
 |---|---|---|
-| R4-1 | C4-1 (MAJOR): after the `plr:gone` edit, "the same placeholder" after `viewer.stop()` pointed at the lost-connection text | §3.6 States (a kernel `close` shows "No deck viewer is running."; only `plr:gone` shows the lost-connection text); D11 "Closed panel" and §3.6 Commands name the no-viewer text; §4 `dock.js` row names both placeholders; AC-38 `stop_placeholder` asserts the exact string, and the absence of "lost its connection" |
+| R4-1 | C4-1 (MAJOR): after the `plr:gone` edit, "the same placeholder" after `viewer.stop()` pointed at the lost-connection text | §3.6 States (a kernel `close` shows "No deck viewer is running."; only `plr:gone` shows the lost-connection text); D11 "Closed panel" and §3.6 Commands name the no-viewer text; §4 `dock.js` row names both placeholders; AC-38 `stop_placeholder` asserts the exact string, and the absence of "lost its connection". *(Superseded by the Revision 6 state table: the texts are D11 I5/I6 and §3.6 States; "Closed panel" and the §3.6 Commands wording are replaced by references to it.)* |
 | R4-2 | C4-2 (MAJOR): `restore_layout_keeps_iframe` was recorded but no branch used it | D1 S1 row (`false` means layout sizing only at open and on tier changes); D6 table note (clamps follow the `unreachable` row); §4 S1 spike row records the key; AC-36 `iframe_reloads_during_resize` = 0, asserted in every case; C7 names it; §7 sizing row |
 | R4-3 | C4-3 (MINOR): E3's threshold was ambiguous | AC-15 E3: more than `max_volume` (360 µL), with a source well that holds enough |
 | R4-4 | C4-4 (MINOR, parser note) | No content change. ACs are `- **AC-n …**` bullets at line start (41 of them), the same form as the persistence spec |
@@ -2516,7 +2627,54 @@ It found that C4-2 had not reached AC-36, and applied directly:
 | Amendment | Finding | Landed |
 |---|---|---|
 | R5-1 | C5-1 (MAJOR): AC-36 asserted clamp keys in the `reachable` cases even when `restore_layout_keeps_iframe = false` | AC-36 `false`-branch clause; AC-1 lists every width key's resulting status |
-| R5-2 | C5-2 (MINOR): no mechanism kept `plr:gone` from showing after a `close` | §3.6 (a `close` removes the iframe, and `plr:gone` is ignored until the next `announce`); C5 unit case; §4 `dock.js` row |
+| R5-2 | C5-2 (MINOR): no mechanism kept `plr:gone` from showing after a `close` | §3.6 (a `close` removes the iframe, and `plr:gone` is ignored until the next `announce`); C5 unit case; §4 `dock.js` row. *(Superseded by the Revision 6 state table: T12, I4; the Revision 5 text left "panel open, no iframe" without a rule for the next `announce`, round 6 C6-1.)* |
 | R5-3 | C5-3 (MINOR): `iframe_reloads_during_resize` counting was unstated | AC-36 (MutationObserver plus a `load` listener per iframe, in the harness only) |
-| R5-4 | C5-4 (MINOR): task text lagged | C5 names both placeholders and the `false` rule with a unit test; §4 `dock.js` row mirrors it |
+| R5-4 | C5-4 (MINOR): task text lagged | C5 names both placeholders and the `false` rule with a unit test; §4 `dock.js` row mirrors it. *(Placeholder wording superseded by the Revision 6 state table: C5 and the §4 row now reference D11 T1–T22 and I1–I6; the `false` rule is unchanged.)* |
+
+## Revision 6 (260929)
+
+Round 6 (`.praxia/docs/audits/260929_notebook-display-round6-challenger.md`) found 1 MAJOR and
+1 MINOR, both in the deck panel's lifecycle. Revisions 4 and 5 had each patched one
+symptom in lifecycle prose spread over seven sections, and each left a neighbouring gap. The
+cause is fixed: one authoritative state machine in D11, referenced everywhere else. No AC or
+task was added or renumbered; AC-38's bullets are reordered to match their stated execution
+order.
+
+| Amendment | Finding | Landed |
+|---|---|---|
+| R6-1 | C6-1 (MAJOR): `dock()` awaits the old viewer's `stop()`, whose `close` removes the iframe (Revision 5), so every re-dock passes through "panel open, no iframe", which no rule covered; a literal build showed "No deck viewer is running." after every re-dock | D11 "Deck-panel state machine": four states (`closed`, `open-waiting`, `open-connected`, `open-lost`), 22 transitions T1–T22, invariants I1–I6; an announce into an open panel with no iframe **creates** it, then sets `src` (T6, T18); re-docking stated as T12 → T6. Replaces D11 "Closed panel", the D11 `announce`/`query`/`close` rows and the long-cell bullet, D6 drawer behaviour, D12 embed mode, §3.6 (intro, Body, States, Commands and tiers), §4 `dock.js` row, C5, C7 and the §7 drawer and closed-panel rows with references |
+| R6-2 | C6-1: §3.6's "its announce reloads the iframe with the new id" described a removed element; AC-38 `redock_reloads` was ambiguous (held element vs current one) | §3.6 re-dock text removed (now D11 re-docking, T12 → T6); AC-38 DOM-read rule (every iframe read is a fresh query of the panel DOM); `redock_reloads` asserts exactly one iframe carrying the new id; `stop_placeholder` asserts no iframe in the panel DOM |
+| R6-3 | C6-1: tests | C5: one bun test per table row, invariants checked after each, plus sequences: re-dock (`close(v1)` then `announce(v2)` → one new iframe with `viewer=v2`, and a later `plr:gone` honoured again), C5-2, and reopen |
+| R6-4 | C6-2 (MINOR): AC-38 key order unstated; `stop_placeholder` preceded keys that need a live viewer | AC-38 execution order: `reconnect_after_reload`, `drawer_reconnect`, `stop_placeholder`, `redock_reloads`, `late_iframe`, `many_reloads`; bullets reordered to match; C7 names the order |
+| R6-5 | this log and the frontmatter `adversarial_review` entry | frontmatter; Revision 2 B-2, Revision 3 R3-3, Revision 4 R4-1 and Revision 5 R5-2/R5-4 annotated as superseded |
+
+**Consistency fixes made while applying** (whole-spec check of every panel, iframe,
+`announce`, `close`, `plr:gone` and `query` reference):
+- **Reopen no longer creates an iframe.** Revision 2 had reopen create an iframe with no
+  `src`; the table (T4, I1) attaches an iframe-less panel, which is what the task's "src only
+  from the answering announce" needs and removes the only `src`-less iframe from the design.
+  AC-38 `late_iframe` now observes the panel subtree: no iframe between the reopen and the
+  answering `announce`, and the first inserted iframe already carries the `src`. AC-39(e)
+  stays sensitive (with `query` dropped no iframe ever appears).
+- **Tier crossing keeps the `src` (C3-3) was missing.** R3-3 had landed it in "Closed panel",
+  and Revision 5's text no longer said it. Now T10, T15, T21, with a 1600 px crossing defined
+  as sizing only (not a lifecycle event).
+- **`open-lost` removes the iframe** (T14). The page had already given up, so this changes no
+  recovery path (close/reopen, or `dock()` again), makes I1 hold in every state, and means no
+  stale `plr:gone` can arrive from an element the panel no longer shows.
+- **`praxis:toggle-deck-panel` while open** had no defined meaning; it is now close panel
+  (T7, T17, T22), matching its name.
+- **`stop()` is idempotent** (D11 Kernel; C3; new AC-31 bullet). Under the stated AC-38 order
+  `redock_reloads` runs a `dock()` after the user's own `stop()`; a second `stop()` now posts
+  no second `close` and raises nothing.
+- **AC-38 `drawer_reconnect` returns to 1440×900.** It previously left K1 in the 1152 drawer
+  tier, where `late_iframe`'s "closes the deck panel's tab" has no tab to close.
+- **D12 calls only in `open-connected`.** Follow, Click and presets had no rule for a panel
+  without an iframe; they now act only on the iframe in the panel DOM in `open-connected`,
+  and the held preset is re-applied after every iframe load, since the `src` always carries
+  `view=top` (a reload otherwise silently reset the user's preset).
+- AC-36 `drawer_dismiss_reopen` and `tier_up_rehomes` name their table rows; §7 gains a row
+  for the piecemeal-edit risk; C5's size estimate is raised to ~420 LOC and it also closes the
+  unit half of AC-38.
+- References list the round 3 to round 6 audits.
 
