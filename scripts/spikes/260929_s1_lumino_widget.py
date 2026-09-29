@@ -243,6 +243,7 @@ class InputEnv:
 
     script: str
     runner: str
+    harness: str  # sha256 of scripts/repl_smoke.py (loaded by path; D17 "harness" input)
     dist: str
     fixture: str
     chrome: str
@@ -273,6 +274,7 @@ def build_env(args: argparse.Namespace) -> InputEnv:
     return InputEnv(
         script=sha256_file(SCRIPT_PATH),
         runner=sha256_file(RUNNER_PATH),
+        harness=sha256_file(REPL_SMOKE_PATH),
         dist=unit_runner.dist_hash(args.dist),
         fixture=sha256_file(FIXTURE_PATH),
         chrome=sha256_bytes(f"{chrome_path}\n{version}".encode()),
@@ -284,12 +286,13 @@ def build_env(args: argparse.Namespace) -> InputEnv:
 
 
 def compute_inputs(unit: str, env: InputEnv, upstream_sha: dict[str, str]) -> dict[str, str]:
-    """The stamp's ``inputs``: script, runner, dist, fixture, chrome, driver, args, and the
+    """The stamp's ``inputs``: script, runner, harness, dist, fixture, chrome, driver, args, and the
     ``artifact_sha256`` of every upstream unit (a recomputed widget unit invalidates every
     unit that builds on it)."""
     inputs = {
         "script": env.script,
         "runner": env.runner,
+        "harness": env.harness,
         "dist": env.dist,
         "fixture": env.fixture,
         "chrome": env.chrome,
@@ -1683,7 +1686,7 @@ def run_unit_mode(args: argparse.Namespace, *, unit_timeout_s: float = UNIT_TIME
             "traceback_tail": _tail(traceback.format_exc()),
         }
     if env is None:  # build_env itself failed; the stamp still needs inputs (best effort)
-        env = InputEnv("", "", "", "", "", "", getattr(args, "base_path", "/"))
+        env = InputEnv("", "", "", "", "", "", "", getattr(args, "base_path", "/"))
 
     missing = [f for f in spec.required if f not in fields]
     artifact: dict[str, Any] = {"unit": spec.name, "error": error}
@@ -1747,7 +1750,7 @@ def _dry_run(args: argparse.Namespace) -> int:
     }
     try:
         plan["chrome_path"] = str(repl_smoke().resolve_chrome_path(args.chrome_path))
-    except Exception as exc:  # e.g. repl_smoke reads the PLR submodule's version.txt at import
+    except Exception as exc:  # any failure to load repl_smoke or to find Chromium
         plan["chrome_path"] = None
         plan["chrome_error"] = f"{type(exc).__name__}: {str(exc).splitlines()[0]}"
     print(json.dumps(plan, indent=1))
@@ -1860,8 +1863,8 @@ def run_driver(
             if states[u.name].get("complete") and states[u.name]["artifact"].get("error") is not None
         },
         "chrome_path": env.chrome_path, "chrome_version": env.chrome_version,
-        "inputs_hashed": {"script": env.script, "runner": env.runner, "dist": env.dist,
-                          "fixture": env.fixture, "chrome": env.chrome, "driver": env.driver},
+        "inputs_hashed": {"script": env.script, "runner": env.runner, "harness": env.harness,
+                          "dist": env.dist, "fixture": env.fixture, "chrome": env.chrome, "driver": env.driver},
     }
     exit_code = 3
     if all_complete:

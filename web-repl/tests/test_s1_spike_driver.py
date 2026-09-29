@@ -112,7 +112,7 @@ STUB_SCRIPT = textwrap.dedent(
 )
 
 FAKE_ENV = {
-    "script": "s" * 64, "runner": "r" * 64, "dist": "d" * 64, "fixture": "f" * 64,
+    "script": "s" * 64, "runner": "r" * 64, "harness": "h" * 64, "dist": "d" * 64, "fixture": "f" * 64,
     "chrome": "c" * 64, "driver": "v" * 64, "base_path": "/", "chrome_path": "", "chrome_version": "stub",
 }
 
@@ -254,7 +254,7 @@ def test_full_run_completes_stamps_and_evaluates_outcome_fields(h):
         assert stamp["artifact_sha256"] == h.m.sha256_bytes(raw)
         assert stamp["exit"] == 0 and stamp["unit"] == unit and stamp["timeout_s"] == 240.0
         assert art["error"] is None and art["pageerrors"] == ["stub pageerror"]
-        assert set(stamp["inputs"]) >= {"script", "runner", "dist", "fixture", "chrome", "driver", "args"}
+        assert set(stamp["inputs"]) >= {"script", "runner", "harness", "dist", "fixture", "chrome", "driver", "args"}
     # downstream stamps carry the upstream artifact hashes; independent units do not
     up = h.stamp("css_limits")["inputs"]
     assert up["upstream:widget_a"] == h.stamp("widget_a")["artifact_sha256"]
@@ -284,7 +284,7 @@ def test_resume_reuses_verified_units_and_records_source_and_hashes(h):
     for rec in agg["reused"]:
         assert rec["source"].endswith(f"units/{rec['unit']}.json")
         assert rec["artifact_sha256"] == h.stamp(rec["unit"])["artifact_sha256"]
-        assert set(rec["inputs"]) >= {"script", "runner", "dist", "fixture", "chrome", "driver"}
+        assert set(rec["inputs"]) >= {"script", "runner", "harness", "dist", "fixture", "chrome", "driver"}
     assert all(h.count(u) == 1 for u in h.m.UNIT_NAMES), "a reused unit must not run again"
     # outcomes are still evaluated over the FULL unit set when everything was reused
     assert agg["outcome_evaluated"] and json.loads(h.results.read_text())["measurement_valid"] is True
@@ -296,7 +296,7 @@ def test_without_resume_everything_is_recomputed(h):
     assert len(agg["recomputed"]) == 10 and all(h.count(u) == 2 for u in h.m.UNIT_NAMES)
 
 
-@pytest.mark.parametrize("changed", ["chrome", "driver", "dist", "fixture", "runner", "script"])
+@pytest.mark.parametrize("changed", ["chrome", "driver", "dist", "fixture", "runner", "script", "harness"])
 def test_input_mismatch_forces_recompute(h, changed):
     h.driver()
     h.fake_env[changed] = "0" * 64
@@ -304,6 +304,42 @@ def test_input_mismatch_forces_recompute(h, changed):
     assert agg["reused"] == [] and len(agg["recomputed"]) == 10
     assert all(h.count(u) == 2 for u in h.m.UNIT_NAMES)
     assert all(changed in rec["mismatched"] for rec in agg["stale"])
+
+
+def test_build_env_hashes_repl_smoke_as_the_harness_input(s1, tmp_path, monkeypatch):
+    """D17 / AC-1 "Units": the driver loads ``repl_smoke.py`` (``ServedDir``,
+    ``chromium_launch_args``, ``resolve_chrome_path``), so its sha256 is the ``harness``
+    input, in driver mode and ``--unit`` mode alike (both call ``build_env``). Amended
+    before the first S1 run (round 11 C11-3 / round 12 C12-3)."""
+    import argparse
+    import types
+
+    smoke = tmp_path / "repl_smoke_stub.py"
+    smoke.write_text("# harness v1\n")
+    chrome = tmp_path / "chrome"
+    chrome.write_text("#!/bin/sh\necho stub-chrome 1\n")
+    chrome.chmod(0o755)
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "a.txt").write_text("a")
+    monkeypatch.setattr(s1, "REPL_SMOKE_PATH", smoke)
+    # ``uv.lock`` is gitignored (absent in a fresh worktree); this test is about ``harness``
+    monkeypatch.setattr(s1.unit_runner, "driver_input", lambda **kw: "v" * 64)
+    monkeypatch.setattr(
+        s1, "repl_smoke", lambda: types.SimpleNamespace(resolve_chrome_path=lambda explicit: chrome)
+    )
+    args = argparse.Namespace(chrome_path=None, dist=str(dist), base_path="/")
+    env1 = s1.build_env(args)
+    assert env1.harness == s1.sha256_file(smoke)
+    assert env1.harness != env1.runner and env1.harness != env1.script
+    smoke.write_text("# harness v2\n")
+    env2 = s1.build_env(args)
+    assert env2.harness != env1.harness
+    assert env2.runner == env1.runner and env2.script == env1.script
+    # and it reaches the stamp inputs for every unit, with the other inputs unchanged
+    inputs = s1.compute_inputs("widget_a", env2, {})
+    assert inputs["harness"] == env2.harness
+    assert {"script", "runner", "harness", "dist", "fixture", "chrome", "driver", "args"} <= set(inputs)
 
 
 def test_a_tampered_artifact_is_not_reused(h):
@@ -433,10 +469,11 @@ def test_run_unit_timeout_over_a_valid_stamp_defers_to_the_stamp(s1, h, monkeypa
 
 
 def test_missing_plr_submodule_only_affects_real_browser_mode(s1, tmp_path, monkeypatch, caplog):
-    """``repl_smoke.py`` reads the PLR submodule's version at IMPORT time and raises when the
-    submodule is uninitialised (an empty worktree). The driver loads it lazily, only in real
-    browser mode: the stub-registry runs above never load it, ``--dry-run`` degrades to a
-    ``chrome_error`` note, and a real driver run exits 2 with nothing started."""
+    """The driver loads ``repl_smoke.py`` lazily, only in real browser mode: the stub-registry
+    runs above never load it. ``repl_smoke.py`` itself no longer reads the PLR submodule at
+    import (A1c, ``test_repl_smoke_import.py``), but if it fails to load for ANY reason (a
+    stand-in that raises at import here) ``--dry-run`` degrades to a ``chrome_error`` note and
+    a real driver run exits 2 with nothing started."""
     import argparse
 
     broken = tmp_path / "repl_smoke_broken.py"
