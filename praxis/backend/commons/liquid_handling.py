@@ -8,7 +8,7 @@ from praxis.utils import (
   tip_mapping,
   type_check,
 )
-from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.legacy.liquid_handling import LiquidHandler
 from pylabrobot.resources import (
   Container,
   ItemizedResource,

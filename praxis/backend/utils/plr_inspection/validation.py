@@ -4,7 +4,7 @@ from typing import (
   Any,
 )
 
-from pylabrobot.machines.machine import Machine
+from pylabrobot.legacy.machines.machine import Machine
 
 # PyLabRobot Imports
 from pylabrobot.resources import (

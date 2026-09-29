@@ -1293,7 +1293,7 @@ def create_configured_backend(config):
 
 # Try to import LiquidHandlerBackend - may not be available in browser mode
 try:
-  from pylabrobot.liquid_handling.backends import LiquidHandlerBackend
+  from pylabrobot.legacy.liquid_handling.backends import LiquidHandlerBackend
 
   _HAS_PLR = True
 except ImportError:
@@ -1404,8 +1404,8 @@ def bootstrap_playground(namespace=None):
   target = namespace if namespace is not None else {}
 
   try:
-    import pylabrobot.liquid_handling
-    import pylabrobot.liquid_handling.backends
+    import pylabrobot.legacy.liquid_handling
+    import pylabrobot.legacy.liquid_handling.backends
     import pylabrobot.resources
 
     # Core classes
@@ -1427,7 +1427,7 @@ def bootstrap_playground(namespace=None):
 
     # Standard PLR Layouts/Machines if available
     try:
-      from pylabrobot.liquid_handling.backends.hamilton import STAR
+      from pylabrobot.legacy.liquid_handling.backends.hamilton import STAR
 
       target["STAR"] = STAR
     except ImportError:

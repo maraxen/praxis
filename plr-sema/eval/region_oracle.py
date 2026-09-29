@@ -486,7 +486,7 @@ async def _run_fixture_execution(
     outermost first, from the ONE exception this function may catch below.
     `None` when the protocol never raised.
     """
-    from pylabrobot.liquid_handling.strictness import Strictness, get_strictness, set_strictness
+    from pylabrobot.legacy.liquid_handling.strictness import Strictness, get_strictness, set_strictness
     from pylabrobot.resources import set_tip_tracking, set_volume_tracking
     from pylabrobot.resources.tip_tracker import does_tip_tracking
     from pylabrobot.resources.volume_tracker import does_volume_tracking

@@ -36,7 +36,7 @@ class TestReplSession:
 
         # Define a script to initialize a simulator
         script = """
-from pylabrobot.liquid_handling.backends import LiquidHandlerChatterboxBackend
+from pylabrobot.legacy.liquid_handling.backends import LiquidHandlerChatterboxBackend
 from pylabrobot.resources.hamilton import STARLetDeck
 
 # Create a backend

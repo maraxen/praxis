@@ -3,7 +3,7 @@
 import uuid
 from typing import Any, Protocol, runtime_checkable
 
-from pylabrobot.machines import Machine as PLRMachine
+from pylabrobot.legacy.machines import Machine as PLRMachine
 from pylabrobot.resources import Coordinate
 from pylabrobot.resources import Deck as PLRDeck
 from pylabrobot.resources import Resource as PLRResource

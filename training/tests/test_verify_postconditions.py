@@ -74,7 +74,7 @@ def test_execution_failure_fails_verification():
 
 
 def test_global_flags_restored_after_run():
-    from pylabrobot.liquid_handling.strictness import Strictness, get_strictness
+    from pylabrobot.legacy.liquid_handling.strictness import Strictness, get_strictness
     from pylabrobot.resources.volume_tracker import does_volume_tracking
     from pylabrobot.resources.tip_tracker import does_tip_tracking
 
@@ -276,7 +276,7 @@ def test_error_frames_outermost_first_on_reraise(monkeypatch):
     then re-raised at `liquid_handler.py:575-576` -- the re-raise frame
     must appear BEFORE the backend's own original raise frame, not after
     (`traceback.extract_tb` is outermost-first)."""
-    from pylabrobot.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend
+    from pylabrobot.legacy.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend
 
     async def _raising(self, *a, **kw):
         raise RuntimeError("synthetic backend failure")

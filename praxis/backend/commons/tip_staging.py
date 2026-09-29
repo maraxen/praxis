@@ -1,5 +1,5 @@
 from praxis.utils.sanitation import parse_well_name
-from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.legacy.liquid_handling import LiquidHandler
 from pylabrobot.resources import Plate, TipRack, Well
 
 

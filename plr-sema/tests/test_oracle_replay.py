@@ -1686,7 +1686,7 @@ class TestFenceNarrowing:
         this excluded site -- this is the fixture that would fail under
         that implementation and must pass under this one.
         """
-        from pylabrobot.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend
+        from pylabrobot.legacy.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend
 
         async def _raising(self, *a, **kw):
             raise RuntimeError("synthetic backend failure")

@@ -17,7 +17,7 @@ import io
 import time
 from typing import Any, Mapping, Sequence
 
-from pylabrobot.liquid_handling.strictness import (
+from pylabrobot.legacy.liquid_handling.strictness import (
     Strictness,
     get_strictness,
     set_strictness,

@@ -605,8 +605,8 @@ def build_probe_code(host_root: str, expect_praxis_sha: str | None) -> str:
             # set_state is emitted -- the gate then fails for a reason unrelated to
             # the transport, while chatterbox still prints a full pickup.
             try:
-                from pylabrobot.liquid_handling import LiquidHandler
-                from pylabrobot.liquid_handling.backends import (
+                from pylabrobot.legacy.liquid_handling import LiquidHandler
+                from pylabrobot.legacy.liquid_handling.backends import (
                     LiquidHandlerChatterboxBackend,
                 )
                 from pylabrobot.resources import (

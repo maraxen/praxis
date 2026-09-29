@@ -4,7 +4,7 @@ import inspect
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from pylabrobot.machines.machine import Machine
+from pylabrobot.legacy.machines.machine import Machine
 from pylabrobot.resources import Deck, Plate, Resource, ResourceHolder
 from pylabrobot.resources.carrier import Carrier, PlateCarrier, TipCarrier, TroughCarrier
 from pylabrobot.resources.trough import Trough
@@ -736,7 +736,7 @@ class TestGetLiquidHandlerClasses:
     def test_get_liquid_handler_classes_calls_get_all_classes(self, mock_get_all: MagicMock) -> None:
         """Test that it delegates to get_all_classes."""
         try:
-            import pylabrobot.liquid_handling  # noqa: F401
+            import pylabrobot.legacy.liquid_handling  # noqa: F401
         except ImportError:
             pytest.skip("pylabrobot.liquid_handling not available")
 

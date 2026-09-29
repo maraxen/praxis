@@ -21,15 +21,15 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from pylabrobot.liquid_handling import LiquidHandler
-from pylabrobot.liquid_handling.backends.chatterbox import (
+from pylabrobot.legacy.liquid_handling import LiquidHandler
+from pylabrobot.legacy.liquid_handling.backends.chatterbox import (
     LiquidHandlerChatterboxBackend,
 )
-from pylabrobot.liquid_handling.backends.hamilton.STAR_chatterbox import (
+from pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_chatterbox import (
     STARChatterboxBackend,
 )
-from pylabrobot.plate_reading import PlateReader
-from pylabrobot.plate_reading.chatterbox import PlateReaderChatterboxBackend
+from pylabrobot.legacy.plate_reading import PlateReader
+from pylabrobot.legacy.plate_reading.chatterbox import PlateReaderChatterboxBackend
 from pylabrobot.resources import (
     PLT_CAR_L5AC_A00,
     TIP_CAR_480_A00,

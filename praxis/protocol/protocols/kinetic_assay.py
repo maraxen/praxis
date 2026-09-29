@@ -9,7 +9,7 @@ This shows a more advanced `requires_deck=False` protocol with data views.
 
 from typing import Any
 
-from pylabrobot.plate_reading import PlateReader
+from pylabrobot.legacy.plate_reading import PlateReader
 from pylabrobot.resources import Plate
 
 from praxis.backend.core.decorators import protocol_function

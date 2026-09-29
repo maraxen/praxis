@@ -126,19 +126,19 @@ class TestIsPylabrobotAsset:
 
     def test_returns_true_for_runtime_liquid_handler(self) -> None:
         """Test that LiquidHandler class is identified as asset at runtime."""
-        from pylabrobot.liquid_handling import LiquidHandler
+        from pylabrobot.legacy.liquid_handling import LiquidHandler
 
         assert is_pylabrobot_resource(LiquidHandler)
 
     def test_returns_true_for_runtime_plate_reader(self) -> None:
         """Test that PlateReader class is identified as asset at runtime."""
-        from pylabrobot.plate_reading import PlateReader
+        from pylabrobot.legacy.plate_reading import PlateReader
 
         assert is_pylabrobot_resource(PlateReader)
 
     def test_returns_true_for_runtime_shaker(self) -> None:
         """Test that Shaker class is identified as asset at runtime."""
-        from pylabrobot.shaking import Shaker
+        from pylabrobot.legacy.shaking import Shaker
 
         assert is_pylabrobot_resource(Shaker)
 

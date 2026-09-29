@@ -132,8 +132,8 @@ async def _capture(plr_submodule: Path) -> dict[str, Any]:
     # Imported lazily so --help works even if pylabrobot / its deps are not
     # installed in the invoking interpreter.
     from pylabrobot import __version__ as plr_version
-    from pylabrobot.liquid_handling import LiquidHandler
-    from pylabrobot.liquid_handling.backends import LiquidHandlerChatterboxBackend
+    from pylabrobot.legacy.liquid_handling import LiquidHandler
+    from pylabrobot.legacy.liquid_handling.backends import LiquidHandlerChatterboxBackend
     from pylabrobot.resources import (
         PLT_CAR_L5AC_A00,
         TIP_CAR_480_A00,

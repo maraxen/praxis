@@ -3,7 +3,7 @@ import inspect
 import pkgutil
 from typing import TypeVar
 
-from pylabrobot.machines import Machine
+from pylabrobot.legacy.machines import Machine
 
 T = TypeVar("T")
 

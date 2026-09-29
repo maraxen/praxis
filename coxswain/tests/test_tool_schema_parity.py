@@ -55,9 +55,9 @@ def vendored():
         assert Path(pylabrobot.__file__).resolve().is_relative_to(PLR_DIR.resolve()), (
             f"imported {pylabrobot.__file__}, not the vendored copy"
         )
-        from pylabrobot.heating_shaking.heater_shaker import HeaterShaker
-        from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
-        from pylabrobot.plate_reading.plate_reader import PlateReader
+        from pylabrobot.legacy.heating_shaking.heater_shaker import HeaterShaker
+        from pylabrobot.legacy.liquid_handling.liquid_handler import LiquidHandler
+        from pylabrobot.legacy.plate_reading.plate_reader import PlateReader
 
         yield {"liquid_handler": LiquidHandler, "plate_reader": PlateReader, "heater_shaker": HeaterShaker}
     finally:

@@ -18,7 +18,7 @@ from typing import (
   Any,
 )
 
-from pylabrobot.machines.machine import Machine
+from pylabrobot.legacy.machines.machine import Machine
 
 # PyLabRobot Imports
 from pylabrobot.resources import (
@@ -264,7 +264,7 @@ def get_liquid_handler_classes(
   )
   # Import locally to avoid circular imports or import errors if PLR is broken
   try:
-    from pylabrobot.liquid_handling import LiquidHandler
+    from pylabrobot.legacy.liquid_handling import LiquidHandler
 
     return get_all_classes(
       base_module_names=[
@@ -294,7 +294,7 @@ def get_backend_classes(
     stacklevel=2,
   )
   try:
-    from pylabrobot.liquid_handling.backends import LiquidHandlerBackend
+    from pylabrobot.legacy.liquid_handling.backends import LiquidHandlerBackend
 
     return get_all_classes(
       base_module_names=[

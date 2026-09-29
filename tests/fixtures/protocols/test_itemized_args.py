@@ -1,4 +1,4 @@
-from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.legacy.liquid_handling import LiquidHandler
 from pylabrobot.resources import Well
 
 

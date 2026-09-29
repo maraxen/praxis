@@ -28,7 +28,7 @@ class TestExampleProtocolDiscovery:
     def test_plate_reader_assay_requires_no_deck(self, discover_protocol):
         """Test that plate reader protocol correctly declares requires_deck=False."""
         source = '''
-from pylabrobot.plate_reading import PlateReader
+from pylabrobot.legacy.plate_reading import PlateReader
 from pylabrobot.resources import Plate
 from praxis.backend.core.decorators import protocol_function
 
@@ -48,7 +48,7 @@ async def plate_reader_assay(plate_reader: PlateReader, plate: Plate):
     def test_kinetic_assay_requires_no_deck(self, discover_protocol):
         """Test that kinetic assay correctly declares requires_deck=False."""
         source = '''
-from pylabrobot.plate_reading import PlateReader
+from pylabrobot.legacy.plate_reading import PlateReader
 from pylabrobot.resources import Plate
 from praxis.backend.core.decorators import protocol_function
 
@@ -68,7 +68,7 @@ async def kinetic_assay(plate_reader: PlateReader, plate: Plate):
     def test_selective_transfer_requires_deck(self, discover_protocol):
         """Test that selective transfer protocol requires deck (has LiquidHandler)."""
         source = '''
-from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.legacy.liquid_handling import LiquidHandler
 from pylabrobot.resources import Plate, TipRack
 from praxis.backend.core.decorators import protocol_function
 
@@ -113,7 +113,7 @@ async def well_selection_demo(source_plate: Plate, source_wells: str = "A1:A4"):
     def test_inferred_requires_deck_false_without_lh(self, discover_protocol):
         """Test that protocols without LH/Deck params auto-detect requires_deck=False."""
         source = '''
-from pylabrobot.plate_reading import PlateReader
+from pylabrobot.legacy.plate_reading import PlateReader
 from pylabrobot.resources import Plate
 from praxis.backend.core.decorators import protocol_function
 
