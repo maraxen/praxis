@@ -39,7 +39,7 @@ async def test_machine_definition_orm_with_all_fields(db_session: AsyncSession) 
     """Test MachineDefinition with all fields populated."""
     plr_details = {
         "backend_class": "STAR",
-        "module": "pylabrobot.liquid_handling.backends.hamilton",
+        "module": "pylabrobot.legacy.liquid_handling.backends.hamilton",
     }
     rotation = {"x_deg": 0, "y_deg": 0, "z_deg": 0}
     setup_method = {
@@ -49,7 +49,7 @@ async def test_machine_definition_orm_with_all_fields(db_session: AsyncSession) 
 
     machine_def = MachineDefinition(
         name="hamilton_star",
-        fqn="pylabrobot.liquid_handling.backends.hamilton.STAR",
+        fqn="pylabrobot.legacy.liquid_handling.backends.hamilton.STAR",
         machine_category=MachineCategoryEnum.LIQUID_HANDLER,
         description="Hamilton STAR liquid handler",
         material="stainless_steel",

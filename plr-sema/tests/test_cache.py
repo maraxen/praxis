@@ -46,7 +46,7 @@ CONTRACTS_JSON_PATH = PLR_SEMA_ROOT / "data" / "derived_contracts.json"
 # (not a cross-module import of a test file) for the same reason
 # test_check_graph.py does it: this module should not depend on another
 # test module's import-time side effects to define its own fixtures.
-_EXPECTED_SUBMODULE_PIN = "dd79c4c89bc008629a1c598ea614be5e6067d1f9"
+_EXPECTED_SUBMODULE_PIN = "786ac2c4e4f7afe37885af2d98ff5b0afe274c67"
 
 
 @pytest.fixture(scope="module")
@@ -74,7 +74,7 @@ def _fake_stamp(surface_pin: str | None = _EXPECTED_SUBMODULE_PIN) -> SurveyStam
     return SurveyStamp(
         plr=GitState(hash="plr_sha", branch="main", dirty=False),
         praxis=GitState(hash="praxis_sha", branch="main", dirty=False),
-        pylabrobot_version="0.2.2",
+        pylabrobot_version="1.0.0b1",
         stamped_at="2026-09-03T00:00:00+00:00",
         surface="legacy_pinned",
         surface_pin=surface_pin,
@@ -765,11 +765,11 @@ def test_t54_caller_args_sites_round_trip_preserves_linenos(contracts_json: str)
     is ordinary JSON, no custom encoding step."""
     payload = json.loads(contracts_json)
     entry = payload["contracts"]["LiquidHandler.move_resource"]
-    (guard_375,) = [g for g in entry["guards"] if g["site"]["lineno"] == 375]
+    (guard_375,) = [g for g in entry["guards"] if g["site"]["lineno"] == 596]
     sites = guard_375["caller_args_sites"]
     assert sites is not None
     linenos = sorted(s["lineno"] for s in sites)
-    assert linenos == [2079, 2345, 2364]
+    assert linenos == [2310, 2578, 2597]
     round_tripped = json.loads(json.dumps(sites))
     assert sorted(s["lineno"] for s in round_tripped) == linenos
     assert all(isinstance(s["caller_qualname"], str) and s["caller_qualname"] for s in round_tripped)
@@ -813,13 +813,13 @@ def test_t54_pre_t54_table_missing_caller_args_sites_still_decides_pick_up_tips_
 
     payload = json.loads(contracts_json)
     entry = payload["contracts"]["LiquidHandler.pick_up_tips"]
-    (guard_375,) = [g for g in entry["guards"] if g["site"]["lineno"] == 375]
+    (guard_375,) = [g for g in entry["guards"] if g["site"]["lineno"] == 596]
     assert guard_375["caller_args_sites"] is not None  # sanity: T54 populates it today.
     assert guard_375["caller_args"] is not None  # sanity: the OLD field is still there too.
     stripped_guard = dict(guard_375)
     stripped_guard["caller_args_sites"] = None
     new_entry = dict(entry)
-    new_entry["guards"] = [stripped_guard if g["site"]["lineno"] == 375 else g for g in entry["guards"]]
+    new_entry["guards"] = [stripped_guard if g["site"]["lineno"] == 596 else g for g in entry["guards"]]
     payload["contracts"] = dict(payload["contracts"])
     payload["contracts"]["LiquidHandler.pick_up_tips"] = new_entry
     synthetic = json.dumps(payload)
@@ -828,7 +828,7 @@ def test_t54_pre_t54_table_missing_caller_args_sites_still_decides_pick_up_tips_
     findings = [
         f
         for f in report.findings
-        if f.plr_site.lineno == 375 and f.plr_site.qualname == "LiquidHandler._check_args" and f.operation_id == "op_1"
+        if f.plr_site.lineno == 596 and f.plr_site.qualname == "LiquidHandler._check_args" and f.operation_id == "op_1"
     ]
     assert len(findings) == 1
     assert findings[0].verdict is Verdict.SAFE

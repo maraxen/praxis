@@ -140,7 +140,7 @@ from plr_sema.derive.receiver_state import build_plr_function_index
 log = logging.getLogger("t30_measure")
 
 DEFAULT_CONTRACTS = oc.DEFAULT_CONTRACTS
-BENCHMARK_NAME = "tier1-sidecar-gated-dd79c4c89"
+BENCHMARK_NAME = "tier1-sidecar-gated-786ac2c4e"
 
 REASON_UNPARSED = "guard_predicate_unparsed"
 REASON_ENV = "guard_env_dependent"
@@ -154,48 +154,51 @@ CANDIDATE_METHODS = ("pick_up_tips", "transfer", "aspirate", "dispense", "drop_t
 #: individually names. Everything else in the ledger's 54 clusters is
 #: published with `predicted_tier: "not individually tabulated in spec
 #: 260904_plr-sema-predicate-increment.md sec15.1"` rather than guessed.
+#: Line numbers re-anchored 260929 from the dd79c4c89 pin to PLR 1.0.0b1
+#: (`legacy/liquid_handling/liquid_handler.py`) by content alignment -- the
+#: same source line, not the same number (task 260929_plr-1.0-migration).
 PREDICTED_TIER: dict[tuple[str, int], str] = {
-    ("liquid_handler.py", 498): "(i)",
-    ("liquid_handler.py", 502): "(i)",
-    ("liquid_handler.py", 522): "(i)",
-    ("liquid_handler.py", 514): "(ii) backend",
-    ("liquid_handler.py", 375): "(ii) backend signature",
-    ("liquid_handler.py", 383): "(ii) env and backend",
-    ("liquid_handler.py", 409): "(ii) head channel count",
-    ("liquid_handler.py", 321): "(ii) deck membership",
-    ("liquid_handler.py", 576): "(iii)",
-    ("liquid_handler.py", 647): "(i)",
-    ("liquid_handler.py", 651): "(i)",
-    ("liquid_handler.py", 657): "1/2 by decision (numeric Cmp, Open decision 2)",
-    ("liquid_handler.py", 666): "(i) unbindable (loop-append)",
-    ("liquid_handler.py", 726): "(iii)",
-    ("liquid_handler.py", 959): "(i)",
-    ("liquid_handler.py", 1153): "(i)",
-    ("liquid_handler.py", 990): "(i) unbindable (needs gamma)",
-    ("liquid_handler.py", 1202): "(i) unbindable (needs gamma)",
-    ("liquid_handler.py", 875): "(i) [but depth>=1 -- see E-CALL(depth)]",
-    ("liquid_handler.py", 1185): "withdrawn (round 1) -- does not clear",
-    ("liquid_handler.py", 1188): "withdrawn (round 1) -- does not clear",
-    ("liquid_handler.py", 116): "(ii) lid topology",
-    ("liquid_handler.py", 117): "reachability-blocked (E-UNCOND(5))",
-    ("liquid_handler.py", 1067): "(iii)",
-    ("liquid_handler.py", 1271): "(iii)",
-    ("liquid_handler.py", 1335): "(i)",
-    ("liquid_handler.py", 1337): "(i)",
-    ("liquid_handler.py", 1340): "(i)",
-    ("liquid_handler.py", 2092): "derived (iii) (is_dynamic_raise)",
-    ("liquid_handler.py", 1770): "reachability-blocked (else-of-if, E-UNCOND way (1))",
-    ("liquid_handler.py", 1920): "reachability-blocked (else-of-if, E-UNCOND way (1))",
-    ("liquid_handler.py", 1743): "(i)",
-    ("liquid_handler.py", 1893): "(i)",
-    ("liquid_handler.py", 1807): "(i)",
-    ("liquid_handler.py", 1963): "(i)",
-    ("liquid_handler.py", 1778): "(ii) topology",
-    ("liquid_handler.py", 1940): "(ii) topology",
-    ("liquid_handler.py", 1804): "(ii) topology",
-    ("liquid_handler.py", 1960): "(ii) topology",
-    ("volume_tracker.py", 92): "(ii) observation (already evaluated, increment 5)",
-    ("volume_tracker.py", 105): "(ii) observation (already evaluated, increment 5)",
+    ("liquid_handler.py", 720): "(i)",
+    ("liquid_handler.py", 725): "(i)",
+    ("liquid_handler.py", 745): "(i)",
+    ("liquid_handler.py", 737): "(ii) backend",
+    ("liquid_handler.py", 596): "(ii) backend signature",
+    ("liquid_handler.py", 604): "(ii) env and backend",
+    ("liquid_handler.py", 630): "(ii) head channel count",
+    ("liquid_handler.py", 542): "(ii) deck membership",
+    ("liquid_handler.py", 799): "(iii)",
+    ("liquid_handler.py", 871): "(i)",
+    ("liquid_handler.py", 876): "(i)",
+    ("liquid_handler.py", 882): "1/2 by decision (numeric Cmp, Open decision 2)",
+    ("liquid_handler.py", 891): "(i) unbindable (loop-append)",
+    ("liquid_handler.py", 951): "(iii)",
+    ("liquid_handler.py", 1185): "(i)",
+    ("liquid_handler.py", 1379): "(i)",
+    ("liquid_handler.py", 1216): "(i) unbindable (needs gamma)",
+    ("liquid_handler.py", 1428): "(i) unbindable (needs gamma)",
+    ("liquid_handler.py", 1100): "(i) [but depth>=1 -- see E-CALL(depth)]",
+    ("liquid_handler.py", 1411): "withdrawn (round 1) -- does not clear",
+    ("liquid_handler.py", 1414): "withdrawn (round 1) -- does not clear",
+    ("liquid_handler.py", 325): "(ii) lid topology",
+    ("liquid_handler.py", 326): "reachability-blocked (E-UNCOND(5))",
+    ("liquid_handler.py", 1292): "(iii)",
+    ("liquid_handler.py", 1496): "(iii)",
+    ("liquid_handler.py", 1560): "(i)",
+    ("liquid_handler.py", 1562): "(i)",
+    ("liquid_handler.py", 1565): "(i)",
+    ("liquid_handler.py", 2323): "derived (iii) (is_dynamic_raise)",
+    ("liquid_handler.py", 2000): "reachability-blocked (else-of-if, E-UNCOND way (1))",
+    ("liquid_handler.py", 2150): "reachability-blocked (else-of-if, E-UNCOND way (1))",
+    ("liquid_handler.py", 1973): "(i)",
+    ("liquid_handler.py", 2123): "(i)",
+    ("liquid_handler.py", 2037): "(i)",
+    ("liquid_handler.py", 2193): "(i)",
+    ("liquid_handler.py", 2008): "(ii) topology",
+    ("liquid_handler.py", 2170): "(ii) topology",
+    ("liquid_handler.py", 2034): "(ii) topology",
+    ("liquid_handler.py", 2190): "(ii) topology",
+    ("volume_tracker.py", 102): "(ii) observation (already evaluated, increment 5)",
+    ("volume_tracker.py", 117): "(ii) observation (already evaluated, increment 5)",
 }
 
 

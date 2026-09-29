@@ -16,7 +16,7 @@ sys.path.append(str(project_root))
 try:
     # Direct import attempt since discovery was missing STAR
     try:
-        from pylabrobot.liquid_handling.backends.hamilton.STAR_backend import STAR
+        from pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_backend import STAR
         print(f"\nSuccessfully imported STAR from backend module.")
         
         if hasattr(STAR, 'capabilities_config') and STAR.capabilities_config:

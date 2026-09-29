@@ -23,15 +23,15 @@ class TestManufacturerInference:
 
   def test_infer_hamilton(self):
     """Test Hamilton manufacturer inference."""
-    assert infer_manufacturer("pylabrobot.liquid_handling.backends.hamilton.STAR") == "Hamilton"
+    assert infer_manufacturer("pylabrobot.legacy.liquid_handling.backends.hamilton.STAR") == "Hamilton"
 
   def test_infer_opentrons(self):
     """Test Opentrons manufacturer inference."""
-    assert infer_manufacturer("pylabrobot.liquid_handling.backends.opentrons_backend") == "Opentrons"
+    assert infer_manufacturer("pylabrobot.legacy.liquid_handling.backends.opentrons_backend") == "Opentrons"
 
   def test_infer_tecan(self):
     """Test Tecan manufacturer inference."""
-    assert infer_manufacturer("pylabrobot.liquid_handling.backends.tecan.EVO_backend") == "Tecan"
+    assert infer_manufacturer("pylabrobot.legacy.liquid_handling.backends.tecan.EVO_backend") == "Tecan"
 
   def test_infer_unknown(self):
     """Test unknown manufacturer returns None."""

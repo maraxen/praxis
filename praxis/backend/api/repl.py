@@ -114,7 +114,7 @@ async def save_session(request: SaveSessionRequest):
       f"# REPL Session saved at {datetime.now(timezone.utc).isoformat()}",
       "# strict: true",  # default to strict for safety
       "",
-      "from pylabrobot.liquid_handling import LiquidHandler",
+      "from pylabrobot.legacy.liquid_handling import LiquidHandler",
       "from pylabrobot import resources",
       "",
       "async def protocol(lh: LiquidHandler):",

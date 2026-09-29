@@ -2,7 +2,7 @@
 
 from typing import Any, Protocol, runtime_checkable
 
-from pylabrobot.machines.machine import Machine
+from pylabrobot.legacy.machines.machine import Machine
 from pylabrobot.resources.resource import Resource
 
 

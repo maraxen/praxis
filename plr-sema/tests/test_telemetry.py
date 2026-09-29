@@ -3,7 +3,7 @@
 Exactly the five test functions named in §4.2's bullet list
 (test_categories_match_upstream, test_every_will_fail_carries_a_category,
 test_sink_failure_is_swallowed, test_event_carries_stamp,
-test_jsonl_sink_round_trip). AC-4.3's pin (stamp.plr.hash at the dd79c4c89
+test_jsonl_sink_round_trip). AC-4.3's pin (stamp.plr.hash at the 786ac2c4e
 tip) is folded into test_jsonl_sink_round_trip per §4.2's own note that this
 is "as test_jsonl_sink_round_trip, §4.2, already does" -- no separate
 function is added for it.
@@ -43,7 +43,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # scoping to the current checkout state per the round-1 rebuttal (spec
 # AC-4.3) -- not a fact about plr-sema itself, so if the submodule is ever
 # advanced past this pin, this one assertion (only) needs updating.
-_PLR_PIN_SHA = "dd79c4c89bc008629a1c598ea614be5e6067d1f9"
+_PLR_PIN_SHA = "786ac2c4e4f7afe37885af2d98ff5b0afe274c67"
 
 
 @pytest.fixture(autouse=True)
@@ -278,7 +278,7 @@ def test_jsonl_sink_round_trip(tmp_path: Path) -> None:
     AC-4.3 (D15-reworded) is folded in here per the spec's own pointer:
     directly constructing and emitting a Finding-derived event with
     JsonlSink attached must yield a parseable line whose stamp.plr.hash
-    equals the dd79c4c89 pin's full SHA -- self-scoping to the current
+    equals the 786ac2c4e pin's full SHA -- self-scoping to the current
     checkout, confirmed live this session. Uses the real, memoized
     survey_stamp() (T2) rather than a fabricated stamp, since the pin claim
     is specifically about what survey_stamp() reports for THIS checkout.

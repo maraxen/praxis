@@ -3,10 +3,10 @@ from typing import Literal
 import numpy as np
 from praxis.utils.errors import ExperimentError
 from praxis.utils.sanitation import liquid_handler_setup_check, parse_well_name
-from pylabrobot.liquid_handling import LiquidHandler
-from pylabrobot.liquid_handling.standard import GripDirection
-from pylabrobot.plate_reading import PlateReader
-from pylabrobot.resources import CarrierSite, Coordinate, Plate, TipRack, Well
+from pylabrobot.legacy.liquid_handling import LiquidHandler
+from pylabrobot.legacy.liquid_handling.standard import GripDirection
+from pylabrobot.legacy.plate_reading import PlateReader
+from pylabrobot.resources import Coordinate, Plate, ResourceHolder, TipRack, Well
 from pylabrobot.resources.errors import ResourceNotFoundError
 
 # take advantage of traverse and snake
@@ -197,7 +197,7 @@ async def read_plate(
   plate_reader: PlateReader,
   plate: Plate,
   wavelength: int = 580,
-  final_location: CarrierSite | Coordinate | None = None,
+  final_location: ResourceHolder | Coordinate | None = None,
 ):
   """Reads the optical density of a plate at a specified wavelength using a plate reader.
 
@@ -207,7 +207,7 @@ async def read_plate(
     plate_reader (PlateReader): The plate reader used to read the plate.
     plate (Plate): The plate to be read.
     wavelength (int, optional): The wavelength at which to read the plate. Defaults to 580.
-    final_location (Optional[CarrierSite], optional): The final location where the plate will be
+    final_location (Optional[ResourceHolder], optional): The final location where the plate will be
     moved after reading.  If not specified, the plate will be moved to its parent location. Defaults to None.
 
   Returns
@@ -216,16 +216,16 @@ async def read_plate(
 
   Raises
   ------
-    ValueError: If the final location is not a valid CarrierSite.
+    ValueError: If the final location is not a valid ResourceHolder.
 
   """
   if final_location is None:
-    if not isinstance(plate.parent, CarrierSite):
+    if not isinstance(plate.parent, ResourceHolder):
       final_location = plate.get_absolute_location()
     else:
       final_location = plate.parent
 
-  if not isinstance(final_location, (CarrierSite, Coordinate)):
+  if not isinstance(final_location, (ResourceHolder, Coordinate)):
     msg = "Invalid final location"
     raise ValueError(msg)
 

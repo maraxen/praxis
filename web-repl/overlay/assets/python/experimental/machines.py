@@ -15,13 +15,19 @@ target resolves before writing it: ``pylabrobot.storage``'s own
 Incubator``), so the package path below -- not the deeper submodule path --
 is correct, matching every other entry in this map (all six are package-
 level paths, not submodule paths).
+
+PLR 1.0 (pin 786ac2c4e) moved these six frontends to ``pylabrobot.legacy.*`` and
+left the old top-level packages as ``DeprecationWarning`` re-export shims. The
+map names the ``legacy`` homes explicitly so nothing here depends on a shim.
+Each is still a package-level path (``pylabrobot.legacy.storage`` re-exports
+``Incubator`` from ``.incubator``).
 """
 
 _MACHINE_CLASS_MAP = {
-  "LiquidHandler": ("pylabrobot.liquid_handling", "LiquidHandler"),
-  "PlateReader": ("pylabrobot.plate_reading", "PlateReader"),
-  "HeaterShaker": ("pylabrobot.heating_shaking", "HeaterShaker"),
-  "Shaker": ("pylabrobot.shaking", "Shaker"),
-  "Centrifuge": ("pylabrobot.centrifuge", "Centrifuge"),
-  "Incubator": ("pylabrobot.storage", "Incubator"),
+  "LiquidHandler": ("pylabrobot.legacy.liquid_handling", "LiquidHandler"),
+  "PlateReader": ("pylabrobot.legacy.plate_reading", "PlateReader"),
+  "HeaterShaker": ("pylabrobot.legacy.heating_shaking", "HeaterShaker"),
+  "Shaker": ("pylabrobot.legacy.shaking", "Shaker"),
+  "Centrifuge": ("pylabrobot.legacy.centrifuge", "Centrifuge"),
+  "Incubator": ("pylabrobot.legacy.storage", "Incubator"),
 }

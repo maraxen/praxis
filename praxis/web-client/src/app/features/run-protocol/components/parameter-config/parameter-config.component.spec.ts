@@ -129,7 +129,7 @@ describe('ParameterConfigComponent', () => {
                 {
                     accession_id: 'asset-1',
                     name: 'lh',
-                    fqn: 'pylabrobot.liquid_handling.LiquidHandler',
+                    fqn: 'pylabrobot.legacy.liquid_handling.LiquidHandler',
                     type_hint_str: 'LiquidHandler',
                     optional: false,
                     constraints: {
@@ -150,8 +150,8 @@ describe('ParameterConfigComponent', () => {
             parameters: [
                 {
                     name: 'lh',
-                    type_hint: 'pylabrobot.liquid_handling.LiquidHandler',
-                    fqn: 'pylabrobot.liquid_handling.LiquidHandler',
+                    type_hint: 'pylabrobot.legacy.liquid_handling.LiquidHandler',
+                    fqn: 'pylabrobot.legacy.liquid_handling.LiquidHandler',
                     is_deck_param: false,
                     optional: false,
                     constraints: {}

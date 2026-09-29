@@ -6,7 +6,7 @@ Demonstrates iterative well-to-well transfers with dilution factor.
 
 from typing import Any
 
-from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.legacy.liquid_handling import LiquidHandler
 from pylabrobot.resources import Plate, TipRack, Trough
 
 from praxis.backend.core.decorators import protocol_function

@@ -540,6 +540,21 @@ be the `Value` of `op.kwargs[amount_param]`, and let `cells(op)` be resolved by 
 >
 > `tips_dirty` is never cleared. It is a walk-level fact, not a per-channel one, because the
 > unmodelled movements it guards against are not channel-scoped.
+>
+> **260929 amendment (PLR 1.0 bump; owner-approved).** The third bullet — any operation that moves
+> tips without a modelled tip effect, and any departure whose bound channels are `⊤` — **also sets
+> every recorded `("tip", c)` cell to `TOP`**, in addition to setting `tips_dirty`. Setting the flag
+> alone protects only a *later modelled* pickup (`TOP` iff `tips_dirty`); it does nothing about a
+> tip volume already recorded for a tip that has since left, so a later *unmodelled* pickup would
+> leave the departed tip's `[50, +inf]` in place and the round-1 O4 sequence above would report
+> `SAFE` again. This is what happens at PLR 1.0: the rewritten `TipTracker`
+> (`legacy/tip_tracker.py`, state moved behind `_hold`/`_put`) leaves `pick_up_tips`/`drop_tips`
+> with no derived `channel_effect`, so both fall into the third bullet
+> (`plr-sema/src/plr_sema/check/volumestate.py`, `_apply_v5` and `VolumeWalk.reset_tip_cells`).
+> Monotone and conservative: the reset can only move a verdict from `SAFE`/`WILL_FAIL` to
+> `UNKNOWN`, never the reverse; cells of the first two bullets (a modelled pickup/drop) and every
+> container cell are unaffected. Pinned by `plr-sema/tests/test_volumestate_v5.py` and
+> `test_check_graph.py::test_ac_14_5_e_retip_dirty_tip_never_safe`.
 
 **Why V5 is neither of the two simple rules.** *`TOP` on every `HAS_TIP` transition* is sound and
 **destroys the family**: with the cell `TOP = [0, +inf]` at pickup, `aspirate(50)` gives `[50, +inf]`,

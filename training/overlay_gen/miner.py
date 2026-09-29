@@ -4,14 +4,24 @@ Extracts liquid-handling calls from two sources and normalizes them into the
 P2.0 namespace-table shapes:
 
 1. The vendored PLR LH user-guide notebooks
-   (``external/pylabrobot/docs/user_guide/00_liquid-handling/**``, 16
-   notebooks): code cells parsed with :mod:`ast`, never executed, never
+   (``external/pylabrobot/docs/user_guide/00_liquid-handling/**``; 16
+   notebooks at the pre-1.0 pin, 5 at PLR 1.0.0b1): code cells parsed with :mod:`ast`, never executed, never
    imported -- ``external/`` is read-only ground truth.
 2. The runnable protocol corpus (``praxis/protocol/protocols/*.py``, 6 files):
    ``@protocol_function`` function bodies, likewise AST-parsed.
 
 Filtering policy (both recorded and enforced here):
 
+- Receiver gate (PLR 1.0 migration, 260929): the overlay corpus describes calls
+  on the LEGACY ``LiquidHandler`` API (praxis keeps ``pylabrobot.legacy.*``).
+  PLR 1.0 docs also contain modern device-API calls with the same verb names
+  (``prep.pipettes.aspirate(...)``, ``prep.head8.pick_up_tips(...)``) whose
+  signatures and semantics differ; they are NEVER kept and never relabelled as
+  LiquidHandler calls. A call's receiver must positively resolve to a
+  ``LiquidHandler`` (variable bound via ``LiquidHandler(...)`` or annotated
+  ``: LiquidHandler``; conventional ``lh`` / ``liquid_handler`` names are the
+  fallback for unbound receivers). Any other receiver is COUNTED as a
+  ``MinedExclusion`` carrying the receiver text, for every known verb.
 - Verbs outside the phase-2 surface (TOOL_SCHEMA ``experimental`` phantoms,
   96-channel family, tip-return family, heater-shaker family, state/query
   plumbing, manual channel ops, machine lifecycle) are COUNTED then SKIPPED.
@@ -28,6 +38,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -69,7 +80,7 @@ HARDWARE_CONTEXT_ONLY_NOTEBOOKS: dict[str, str] = {
 #: recorded exclusion reason each (mirrors param_namespace.py's include/
 #: exclude record). Extraction counts these calls, then drops them.
 NON_SURFACE_VERB_REASONS: dict[str, str] = {
-    # Phantoms vs vendored HEAD dd79c4c89 (recon §1.4).
+    # Phantoms vs vendored HEAD dd79c4c89, still absent @ 786ac2c4e (recon §1.4).
     "mix": "phantom verb (no vendored method); upstream models via aspirate/dispense mix kwarg",
     "blow_out": "phantom verb; modeled via blow_out_air_volume kwargs",
     "touch_tip": "phantom verb vs vendored HEAD",
@@ -108,6 +119,92 @@ NON_SURFACE_VERB_REASONS: dict[str, str] = {
 }
 
 _KNOWN_VERBS: frozenset[str] = frozenset(TOOL_SCHEMA) | frozenset(NON_SURFACE_VERB_REASONS)
+
+#: Receiver names accepted as a LiquidHandler when no binding is visible in
+#: the parsed source (synthetic cells, or notebooks where the handler is built
+#: in an unparsed/hardware-only cell). Deliberately tiny and conventional.
+_CONVENTIONAL_LH_NAMES: frozenset[str] = frozenset({"lh", "liquid_handler"})
+
+_LH_ANNOTATION = re.compile(r"\bLiquidHandler\b")
+
+
+def _class_name_of_call(call: ast.Call) -> str | None:
+    func = call.func
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    return None
+
+
+def _collect_bindings(tree: ast.AST) -> dict[str, set[str]]:
+    """name -> set of constructor/annotation classes it is bound to in ``tree``.
+
+    ``x = Foo(...)`` records ``Foo``; ``def f(x: Foo)`` / ``x: Foo = ...``
+    records ``Foo`` (``LiquidHandler`` if the annotation mentions it as a whole
+    word, e.g. ``LiquidHandler | None``). Bindings to anything else (literals,
+    other names, subscripts) are not tracked."""
+    bound: dict[str, set[str]] = {}
+
+    def add(name: str, cls: str) -> None:
+        bound.setdefault(name, set()).add(cls)
+
+    def annotation_class(ann: ast.AST) -> str:
+        text = ast.unparse(ann)
+        return "LiquidHandler" if _LH_ANNOTATION.search(text) else text
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
+            cls = _class_name_of_call(node.value)
+            if cls is not None:
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        add(target.id, cls)
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            add(node.target.id, annotation_class(node.annotation))
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            args = node.args
+            for arg in [*args.posonlyargs, *args.args, *args.kwonlyargs]:
+                if arg.annotation is not None:
+                    add(arg.arg, annotation_class(arg.annotation))
+    return bound
+
+
+def _root_name(node: ast.AST) -> str | None:
+    while isinstance(node, ast.Attribute):
+        node = node.value
+    return node.id if isinstance(node, ast.Name) else None
+
+
+def _receiver_rejection(receiver: ast.AST, bindings: dict[str, set[str]]) -> str | None:
+    """None if ``receiver`` resolves to a legacy LiquidHandler; otherwise the
+    recorded reason it does not."""
+    text = ast.unparse(receiver)
+    if isinstance(receiver, ast.Name):
+        classes = bindings.get(receiver.id)
+        if classes is not None:
+            if classes == {"LiquidHandler"}:
+                return None
+            return (
+                f"receiver {text!r} is bound to {'/'.join(sorted(classes))}, "
+                "not a legacy LiquidHandler (modern device API is out of scope)"
+            )
+        if receiver.id in _CONVENTIONAL_LH_NAMES:
+            return None
+        return f"receiver {text!r} is not identifiable as a LiquidHandler"
+    # Attribute chain (prep.pipettes, prep.head8, self.lh, ...).
+    root = _root_name(receiver)
+    if root is not None and root in bindings and bindings[root] != {"LiquidHandler"}:
+        return (
+            f"receiver {text!r} hangs off {root!r} bound to "
+            f"{'/'.join(sorted(bindings[root]))}, not a legacy LiquidHandler "
+            "(modern device API is out of scope)"
+        )
+    tail = receiver.attr if isinstance(receiver, ast.Attribute) else None
+    if tail in _CONVENTIONAL_LH_NAMES:
+        return None
+    return f"receiver {text!r} is not identifiable as a LiquidHandler"
+
 
 _UNEXTRACTABLE = object()  # sentinel for args we refuse to guess at
 
@@ -213,10 +310,17 @@ def _param_positions(tool_name: str) -> tuple[list[tuple[int, str]], dict[str, s
 
 
 class _CallExtractor(ast.NodeVisitor):
-    def __init__(self, module_src: str, source: str, origin_prefix: str) -> None:
+    def __init__(
+        self,
+        module_src: str,
+        source: str,
+        origin_prefix: str,
+        bindings: dict[str, set[str]] | None = None,
+    ) -> None:
         self.module_src = module_src
         self.source = source
         self.origin_prefix = origin_prefix
+        self.bindings = bindings or {}
         self.stats = SourceStats()
 
     # -- visitors -------------------------------------------------------------
@@ -230,6 +334,16 @@ class _CallExtractor(ast.NodeVisitor):
     # -- extraction -----------------------------------------------------------
 
     def _handle(self, verb: str, node: ast.Call, origin: str) -> None:
+        assert isinstance(node.func, ast.Attribute)  # visit_Call only routes attribute calls
+        rejection = _receiver_rejection(node.func.value, self.bindings)
+        if rejection is not None:
+            self.stats.exclusions.append(
+                MinedExclusion(
+                    verb=verb, reason=rejection, source=self.source, origin=origin
+                )
+            )
+            return
+
         if verb in NON_SURFACE_VERB_REASONS:
             self.stats.exclusions.append(
                 MinedExclusion(
@@ -305,14 +419,24 @@ class _CallExtractor(ast.NodeVisitor):
         )
 
 
-def _extract_from_code(code: str, source: str, origin_prefix: str) -> SourceStats:
+def _extract_from_code(
+    code: str,
+    source: str,
+    origin_prefix: str,
+    bindings: dict[str, set[str]] | None = None,
+) -> SourceStats:
+    """``bindings`` carries receiver bindings from sibling code units (other
+    notebook cells); bindings visible in ``code`` itself are merged in."""
     stats = SourceStats()
     try:
         tree = ast.parse(code)
     except SyntaxError:
         stats.parse_errors += 1
         return stats
-    extractor = _CallExtractor(code, source, origin_prefix)
+    merged: dict[str, set[str]] = {k: set(v) for k, v in (bindings or {}).items()}
+    for name, classes in _collect_bindings(tree).items():
+        merged.setdefault(name, set()).update(classes)
+    extractor = _CallExtractor(code, source, origin_prefix, merged)
     extractor.visit(tree)
     return extractor.stats
 
@@ -340,14 +464,27 @@ def mine_notebooks(notebook_root: Path = NOTEBOOK_ROOT) -> dict[str, SourceStats
             stats.parse_errors += 1
             reports[rel] = stats
             continue
+        cells: list[tuple[int, str]] = []
         for i, cell in enumerate(nb.get("cells", [])):
             if cell.get("cell_type") != "code":
                 continue
             code = "".join(cell.get("source", []))
             # Strip IPython magics/shell escapes so ast.parse can handle the cell.
             lines = [ln for ln in code.splitlines() if not ln.lstrip().startswith(("%", "!"))]
+            cells.append((i, "\n".join(lines)))
+        # Receiver bindings are notebook-wide: ``lh = LiquidHandler(...)`` lives
+        # in a different cell than the calls made on it.
+        nb_bindings: dict[str, set[str]] = {}
+        for _, cell_code in cells:
+            try:
+                cell_tree = ast.parse(cell_code)
+            except SyntaxError:
+                continue
+            for name, classes in _collect_bindings(cell_tree).items():
+                nb_bindings.setdefault(name, set()).update(classes)
+        for i, cell_code in cells:
             cell_stats = _extract_from_code(
-                "\n".join(lines), rel, f"{rel}#cell{i}"
+                cell_code, rel, f"{rel}#cell{i}", bindings=nb_bindings
             )
             stats.cells_or_functions += 1
             stats.kept_calls.extend(cell_stats.kept_calls)

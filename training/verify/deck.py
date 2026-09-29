@@ -401,18 +401,18 @@ def capture_observation(setup: SetupHandle) -> dict[str, Any]:
 
     ``backend_class``/``num_channels`` come off the single ``backend``
     attribute PLR assigns once at construction
-    (``external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:
-    155-158``); ``head_channels`` is the SORTED key set of ``machine.head``
+    (``external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:
+    377-379``; re-anchored 260929 for PLR 1.0.0b1, was 155-158 at 0.2.2); ``head_channels`` is the SORTED key set of ``machine.head``
     -- populated only after ``machine.setup()`` runs
-    (``external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:
-    187-197``), which is why the capture point is defined to sit after it.
+    (``external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:
+    418-431``; was 187-197 at 0.2.2), which is why the capture point is defined to sit after it.
     ``arm_slots`` is the SORTED key set of ``machine._resource_pickups``
     (§17.3's R-ARM) -- read at the SAME single capture point, no second
     one. §17.3's stability precondition is what licenses treating that key
     set as fixed for the rest of the program from here on: ``setup``
     rebuilds the dict wholesale
-    (``external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:
-    212``), which is why the capture point sitting after it matters here
+    (``external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:
+    433``; was 212 at 0.2.2), which is why the capture point sitting after it matters here
     too, and the setter for a pickup only ever writes a key that rebuild
     already created.
     """

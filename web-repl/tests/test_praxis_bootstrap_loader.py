@@ -138,8 +138,17 @@ def _install_fake_js(monkeypatch, pong_sha: str | None) -> FakeChannel:
 def _install_fake_micropip(monkeypatch, installed: list) -> None:
     fake_micropip = types.ModuleType("micropip")
 
+    # Wheel URLs land in *installed* (what the tests assert on). Bare requirement
+    # names -- the PLR core deps the bootstrap must request itself because the
+    # wheels install deps=False (PLR 1.0: `typing-extensions`) -- are recorded on
+    # the fake so they can be asserted separately instead of polluting the wheel list.
+    fake_micropip.requested_names = []
+
     async def _install(url, deps=False):
-        installed.append(url)
+        if "/" in url:
+            installed.append(url)
+        else:
+            fake_micropip.requested_names.append(url)
 
     fake_micropip.install = _install
     monkeypatch.setitem(sys.modules, "micropip", fake_micropip)
@@ -382,6 +391,8 @@ def test_ready_reached_on_full_success(loader, monkeypatch) -> None:
     assert "praxis:error" not in types_posted, channel.posted
     assert types_posted[-1] == "praxis:ready"
     assert installed_wheels == [HOST_ROOT + "assets/wheels/pylabrobot-0.1.6+gdeadbeef-py3-none-any.whl"]
+    # PLR 1.0 imports typing_extensions unguarded and the wheels install deps=False.
+    assert sys.modules["micropip"].requested_names == ["typing-extensions"]
 
     # R-ID: exactly one class object per shim name, asserted by identity.
     import builtins

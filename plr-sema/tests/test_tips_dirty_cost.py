@@ -59,8 +59,8 @@ _DOES_VOLUME_TRACKING_ENV = frozenset({"does_volume_tracking"})
 #: tip lifecycle can move.
 _REMOVE_LIQUID_SITE = PlrSite(
     file="external/pylabrobot/pylabrobot/resources/volume_tracker.py",
-    lineno=92,
-    qualname="VolumeTracker.remove_liquid",
+    lineno=102,
+    qualname="VolumeTracker.validate_remove_liquid",
 )
 
 

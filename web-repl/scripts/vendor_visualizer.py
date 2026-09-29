@@ -121,9 +121,10 @@ CDN_STRIP = [
 
 # Both `href="/favicon.png"` (icon <link>) and `src="/favicon.png"` (header
 # <img>) must become relative -- absolute paths break subpath deploys (the
-# site may be served under `/praxis/`). Exactly 2 sites at both the current
-# pin (d9651e2) and the target pin (0.2.2) -- but that count is what we
-# ASSERT, not assume; see fix_favicon_paths().
+# site may be served under `/praxis/`). Exactly 2 sites at d9651e2, 0.2.2 and
+# 1.0.0b1 (786ac2c4e) -- but that count is what we ASSERT, not assume; see
+# fix_favicon_paths(). All four vis.js anchors also still match exactly once at
+# 1.0.0b1; only lib.js (copied byte-identically) changed.
 _FAVICON_RE = re.compile(r'(href|src)="/favicon\.png"')
 
 # Server-side template placeholders (`{{ source_filename }}`, `{{ fs_port }}`,

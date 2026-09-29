@@ -50,13 +50,13 @@ async def test_discover_and_synchronize_machine_types(
         assert len(synced) == 1
         assert synced[0].fqn == "test.machine.MockMachine"
         assert synced[0].name == "MockMachineClass"
-        assert synced[0].frontend_fqn == "pylabrobot.liquid_handling.LiquidHandler"
+        assert synced[0].frontend_fqn == "pylabrobot.legacy.liquid_handling.LiquidHandler"
 
         # Verify in DB
         result = await db_session.execute(select(MachineDefinition).filter_by(fqn="test.machine.MockMachine"))
         db_obj = result.scalar_one()
         assert db_obj is not None
-        assert db_obj.frontend_fqn == "pylabrobot.liquid_handling.LiquidHandler"
+        assert db_obj.frontend_fqn == "pylabrobot.legacy.liquid_handling.LiquidHandler"
 
         # Run sync again (update)
         mock_discovered[0].docstring = "Updated doc"

@@ -48,7 +48,7 @@ export interface DeckManifest {
 export interface MachineEntry {
     param_name: string;              // matches the protocol function parameter name (e.g. 'liquid_handler')
     machine_type: string;            // 'LiquidHandler' | 'PlateReader' | 'HeaterShaker' etc.
-    backend_fqn: string;            // e.g. 'pylabrobot.liquid_handling.backends.hamilton.STAR'
+    backend_fqn: string;            // e.g. 'pylabrobot.legacy.liquid_handling.backends.hamilton.STAR'
     port_id?: string;
     is_simulated: boolean;
     deck?: DeckManifest;             // only for machines that use a deck (LiquidHandler)

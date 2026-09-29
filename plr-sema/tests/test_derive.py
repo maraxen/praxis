@@ -151,14 +151,14 @@ def plr_function_index():
 def test_aspirate_closure_reaches_check_containers(
     survey_index: dict[tuple[str, str], SurveyRecord],
 ) -> None:
-    entry = survey_index[("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.aspirate")]
+    entry = survey_index[("pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler.aspirate")]
 
     # First, prove the regression is genuinely load-bearing: aspirate's OWN
     # body (depth 0 only, i.e. no closure expansion at all) has zero guards
     # whose site is _check_containers -- own-body findings don't mention it.
     own_body_sites = {f.lineno for f in entry.findings}
     check_containers = survey_index[
-        ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler._check_containers")
+        ("pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler._check_containers")
     ]
     check_containers_linenos = {f.lineno for f in check_containers.findings}
     assert not (own_body_sites & check_containers_linenos), (
@@ -282,7 +282,7 @@ def test_unresolved_calls_become_gaps() -> None:
 def test_guard_sites_point_at_defining_file(
     survey_index: dict[tuple[str, str], SurveyRecord],
 ) -> None:
-    entry_module = "pylabrobot.liquid_handling.liquid_handler"
+    entry_module = "pylabrobot.legacy.liquid_handling.liquid_handler"
     entry_qualname = "LiquidHandler.aspirate"
     contract = derive_contract(entry_module, entry_qualname, survey_index)
 
@@ -496,14 +496,20 @@ def test_contract_keys_are_collision_free(survey_records: list[SurveyRecord]) ->
     # Source 2 (NEW, found this task -- not in the original brief's "8"
     # figure): a module-level function name repeated in a DIFFERENT module.
     # (module, qualname) does not collide (module differs), but the bare
-    # contract-table key would, absent disambiguation.
+    # contract-table key would, absent disambiguation. (260929, PLR
+    # 1.0.0b1: the original fixture pair, `_height_of_volume_in_spherical_cap`
+    # in `resources.height_functions` + `resources.height_volume_functions`,
+    # left the analyzed surface -- nothing the legacy API imports reaches
+    # `height_functions` any more, see `plr_sema.derive.surface_files` --
+    # so the fixture is `_parse_scalar`, defined in both
+    # `legacy.storage.inheco.scila.scila_backend` and `...scila.soap`.)
     height_fn = [
         (rec.module, rec.qualname, rec.lineno)
         for rec in survey_records
-        if rec.qualname == "_height_of_volume_in_spherical_cap"
+        if rec.qualname == "_parse_scalar"
     ]
     assert len(height_fn) == 2, (
-        "fixture assumption violated: expected _height_of_volume_in_spherical_cap "
+        "fixture assumption violated: expected _parse_scalar "
         "defined in two distinct modules"
     )
     modules = {rec_key[0] for rec_key in height_fn}
@@ -517,7 +523,7 @@ def test_contract_keys_are_collision_free(survey_records: list[SurveyRecord]) ->
     aspirate_key = [
         (rec.module, rec.qualname, rec.lineno)
         for rec in survey_records
-        if rec.module == "pylabrobot.liquid_handling.liquid_handler" and rec.qualname == "LiquidHandler.aspirate"
+        if rec.module == "pylabrobot.legacy.liquid_handling.liquid_handler" and rec.qualname == "LiquidHandler.aspirate"
     ][0]
     assert keys[aspirate_key] == "LiquidHandler.aspirate"
 
@@ -746,7 +752,7 @@ def test_whole_surface_dropped_receiver_worklist_populated_on_legacy(
 # leaves the hand-maintained registry unchanged.
 # ---------------------------------------------------------------------------
 
-_LIQUID_HANDLER_FILE = "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py"
+_LIQUID_HANDLER_FILE = "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py"
 
 
 @pytest.fixture
@@ -1178,7 +1184,7 @@ def test_ac_13_15_i_transfer_binds_via_aspirate_arity_default(
     on `contracts["LiquidHandler.transfer"]["channel_guards"][0]`, a
     `bound_channels` record with `channels == [0]`, `delegate == "aspirate"`
     and `rule == "arity_default"` -- the rule-3 path, since the `aspirate`
-    call site (`liquid_handler.py:1347-1352`) passes no explicit channel
+    call site (`liquid_handler.py:1572-1577`) passes no explicit channel
     keyword. `dispense`'s call site at `:1355-1361` binds EXPLICITLY to the
     same numeric channel set through the SAME tracker guard (`get_tip`),
     which is what makes this a real tie the fixer's own one-hop-delegate
@@ -1201,7 +1207,7 @@ def test_ac_13_15_i_transfer_binds_via_aspirate_arity_default(
     assert bound["channels"] == [0]
     assert bound["delegate"] == "aspirate"
     assert bound["rule"] == "arity_default"
-    assert bound["site_lineno"] == 1347
+    assert bound["site_lineno"] == 1572
 
     found = [
         (key, g["bound_channels"])
@@ -1321,14 +1327,14 @@ def test_ac_13_3_lid_state_block_is_published_in_shipped_ledger() -> None:
     guards = lid_state["check_no_lid_guards"]
     assert len(guards) == 2
     by_lineno = {g["site"]["lineno"]: g for g in guards}
-    assert set(by_lineno) == {116, 117}
-    assert by_lineno[116]["condition"] == "lidded is resource"
-    assert by_lineno[116]["raises"] == "ValueError"
-    assert by_lineno[116]["site"]["qualname"] == "_check_no_lid"
-    assert by_lineno[116]["site"]["file"].endswith("liquid_handling/liquid_handler.py")
-    assert by_lineno[117]["condition"] is None
-    assert by_lineno[117]["raises"] == "ValueError"
-    assert by_lineno[117]["site"]["qualname"] == "_check_no_lid"
+    assert set(by_lineno) == {325, 326}
+    assert by_lineno[325]["condition"] == "lidded is resource"
+    assert by_lineno[325]["raises"] == "ValueError"
+    assert by_lineno[325]["site"]["qualname"] == "_check_no_lid"
+    assert by_lineno[325]["site"]["file"].endswith("liquid_handling/liquid_handler.py")
+    assert by_lineno[326]["condition"] is None
+    assert by_lineno[326]["raises"] == "ValueError"
+    assert by_lineno[326]["site"]["qualname"] == "_check_no_lid"
 
 
 def test_ac_13_3_lid_state_evidence_is_derived_not_hand_typed() -> None:
@@ -1437,8 +1443,8 @@ def test_ac_14_1_i_b1_binds_op_over_whole_surface(
 
     assert len(tuples) >= 2
     by_method = {t[0]: t for t in tuples}
-    assert by_method["aspirate"] == ("aspirate", "op", "SingleChannelAspiration", (1031, 1035))
-    assert by_method["dispense"] == ("dispense", "op", "SingleChannelDispense", (1231, 1235))
+    assert by_method["aspirate"] == ("aspirate", "op", "SingleChannelAspiration", (1269, 1273))
+    assert by_method["dispense"] == ("dispense", "op", "SingleChannelDispense", (1470, 1474))
 
 
 _B1_TUPLE_TARGET_SOURCE = '''
@@ -1644,7 +1650,7 @@ def test_ac_14_2_i_volume_bridge_matches_aspirate_and_dispense(
     assert liquid["cell_param"] == "resources"
     assert liquid["amount_param"] == "vols"
     assert liquid["direction"] == "decreasing"
-    assert liquid["for_span"] == [1031, 1035]
+    assert liquid["for_span"] == [1269, 1273]
 
     volume = by_raises["TooLittleVolumeError"]
     assert volume["via"] == "op.tip.tracker.add_liquid"
@@ -1658,9 +1664,11 @@ def test_ac_14_2_i_volume_bridge_matches_aspirate_and_dispense(
     tip_side = by_raises_d["TooLittleLiquidError"]
     assert tip_side["via"] == "op.tip.tracker.remove_liquid"
     assert tip_side["direction"] == "decreasing"
-    assert tip_side["for_span"] == [1231, 1235]
-    assert tip_side["site"]["qualname"] == "VolumeTracker.remove_liquid"
-    assert tip_side["site"]["lineno"] == 92
+    assert tip_side["for_span"] == [1470, 1474]
+    # 260929 (PLR 1.0.0b1): the same raise moved into
+    # `VolumeTracker.validate_remove_liquid`, which `remove_liquid` calls first.
+    assert tip_side["site"]["qualname"] == "VolumeTracker.validate_remove_liquid"
+    assert tip_side["site"]["lineno"] == 102
     assert isinstance(tip_side["cell_param"], dict) and tip_side["cell_param"]["local"] is True
 
     well_side = by_raises_d["TooLittleVolumeError"]
@@ -1847,10 +1855,10 @@ def test_ac_14_3_caller_scope_reaches_bridged_guards_with_polarity_and_position(
     ]
     assert tip_dispense["caller_scope"] == ["if does_volume_tracking()", "for op in dispenses"]
 
-    assert well_aspirate["caller_lineno"] == 1034
-    assert tip_aspirate["caller_lineno"] == 1035
-    assert well_dispense["caller_lineno"] == 1234
-    assert tip_dispense["caller_lineno"] == 1235
+    assert well_aspirate["caller_lineno"] == 1272
+    assert tip_aspirate["caller_lineno"] == 1273
+    assert well_dispense["caller_lineno"] == 1473
+    assert tip_dispense["caller_lineno"] == 1474
 
     # (ii): the guard's OWN scope_trail (callee-sourced) is unchanged from
     # the callee's own contract and disjoint from caller_scope.
@@ -1948,8 +1956,8 @@ def test_ac_14_4_fail_closed_env_gate_and_r1_position_recognition() -> None:
     """
     env = frozenset({"does_volume_tracking"})
     base_scope = ["if does_volume_tracking()", "for op in dispenses"]
-    base_lineno = 1235
-    base_span = (1231, 1235)
+    base_lineno = 1474
+    base_span = (1470, 1474)
 
     # The base case itself: fully recognised, may emit WILL_FAIL.
     assert volume_guard_is_unconditional(base_scope, base_lineno, base_span, env) is True
@@ -2243,7 +2251,7 @@ def test_param_defaults_real_transfer_and_pick_up_tips(plr_function_index) -> No
     `target_vols`/`ratios`/`source_vol` -> `None`, and `pick_up_tips` gets
     `offsets`/`use_channels` -> `None` -- read from the REAL vendored PLR
     source at the pinned submodule commit."""
-    key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.transfer")
+    key = ("pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler.transfer")
     lineno = next(ln for (mod, qn, ln) in plr_function_index if (mod, qn) == key)
     node = plr_function_index[(*key, lineno)]
     defaults = param_defaults_from_function(node)
@@ -2251,7 +2259,7 @@ def test_param_defaults_real_transfer_and_pick_up_tips(plr_function_index) -> No
     assert defaults["ratios"] is None
     assert defaults["source_vol"] is None
 
-    key2 = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
+    key2 = ("pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
     lineno2 = next(ln for (mod, qn, ln) in plr_function_index if (mod, qn) == key2)
     node2 = plr_function_index[(*key2, lineno2)]
     defaults2 = param_defaults_from_function(node2)
@@ -2511,7 +2519,7 @@ def test_real_alpha_population_meets_ac_15_2_floor(plr_function_index) -> None:
     drop_tips, and `_check_containers` by name."""
     seen: dict[str, list[dict]] = {}
     for (module, qualname, _lineno), node in plr_function_index.items():
-        if module != "pylabrobot.liquid_handling.liquid_handler":
+        if module != "pylabrobot.legacy.liquid_handling.liquid_handler":
             continue
         for b in compute_all_local_bindings(node):
             if b["idiom"] == "alpha":
@@ -2537,7 +2545,7 @@ def test_real_beta_population_meets_ac_15_2_floor(plr_function_index) -> None:
     than any one guard's `bindings`)."""
     beta: list[tuple[str, dict]] = []
     for (module, qualname, _lineno), node in plr_function_index.items():
-        if module != "pylabrobot.liquid_handling.liquid_handler":
+        if module != "pylabrobot.legacy.liquid_handling.liquid_handler":
             continue
         for b in compute_all_local_bindings(node):
             if b["idiom"] == "beta":
@@ -2561,20 +2569,20 @@ def test_derive_contract_populates_bindings_from_function_index(
     survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index
 ) -> None:
     contract = derive_contract(
-        "pylabrobot.liquid_handling.liquid_handler",
+        "pylabrobot.legacy.liquid_handling.liquid_handler",
         "LiquidHandler.pick_up_tips",
         survey_index,
         function_index=plr_function_index,
     )
     by_lineno = {g.site.lineno: g for g in contract.guards}
-    assert by_lineno[498].bindings[0]["idiom"] == "alpha"
-    assert by_lineno[498].bindings[0]["x"] == "not_tip_spots"
-    assert by_lineno[522].bindings[0]["idiom"] == "beta"
-    assert by_lineno[522].bindings[0]["x"] == "offsets"
-    assert by_lineno[409].bindings[0]["idiom"] == "alpha"  # depth-1 guard, own delegate body
+    assert by_lineno[720].bindings[0]["idiom"] == "alpha"
+    assert by_lineno[720].bindings[0]["x"] == "not_tip_spots"
+    assert by_lineno[745].bindings[0]["idiom"] == "beta"
+    assert by_lineno[745].bindings[0]["x"] == "offsets"
+    assert by_lineno[630].bindings[0]["idiom"] == "alpha"  # depth-1 guard, own delegate body
     # a guard with no binding-eligible free names (e.g. the backend-can-
     # pick-up-tip guard) still has an explicit empty tuple, never a crash.
-    assert by_lineno[514].bindings == ()
+    assert by_lineno[737].bindings == ()
 
 
 def test_derive_contract_without_function_index_leaves_bindings_empty(
@@ -2584,7 +2592,7 @@ def test_derive_contract_without_function_index_leaves_bindings_empty(
     (no `function_index=`) gets `bindings == ()` on every guard -- the
     default-off half of the additive contract."""
     contract = derive_contract(
-        "pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips", survey_index
+        "pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips", survey_index
     )
     assert all(g.bindings == () for g in contract.guards)
 
@@ -2593,12 +2601,12 @@ def test_guard_to_json_emits_bindings_key(
     survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index
 ) -> None:
     contract = derive_contract(
-        "pylabrobot.liquid_handling.liquid_handler",
+        "pylabrobot.legacy.liquid_handling.liquid_handler",
         "LiquidHandler.pick_up_tips",
         survey_index,
         function_index=plr_function_index,
     )
-    (guard_498,) = [g for g in contract.guards if g.site.lineno == 498]
+    (guard_498,) = [g for g in contract.guards if g.site.lineno == 720]
     payload = _guard_to_json(guard_498)
     assert payload["bindings"] == [
         {
@@ -2692,40 +2700,40 @@ def test_real_reachability_clear_pick_up_tips_502_and_522(plr_function_index) ->
     own body before either line (T32's measured defect: these two sites
     produced 0 WILL_FAIL on their own mutants because the pre-T36 default
     fails closed on `None`)."""
-    key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
+    key = ("pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
     lineno = next(ln for (mod, qn, ln) in plr_function_index if (mod, qn) == key)
     node = plr_function_index[(*key, lineno)]
-    assert compute_reachability_clear(node, guard_lineno=502) is True
-    assert compute_reachability_clear(node, guard_lineno=522) is True
+    assert compute_reachability_clear(node, guard_lineno=725) is True
+    assert compute_reachability_clear(node, guard_lineno=745) is True
 
 
 def test_real_reachability_clear_check_no_lid_117_is_false(plr_function_index) -> None:
     """`_check_no_lid`'s own (depth-0) `:117` resolves `False` -- blocked
-    by the earlier `return` at `liquid_handler.py:114` (`if lidded is
+    by the earlier `return` at `liquid_handler.py:323` (`if lidded is
     None: return`). At depth >= 1 (inlined into `aspirate`/`dispense`)
     E-UNCOND(4) already disposes of this site before clause (5) is ever
     reached (`test_check_no_lid_117_by_name_is_unknown_via_depth`,
     `tests/test_predicate.py`); this is the standalone entry where clause
     (5) is the one doing the work, and it agrees with the depth-1 outcome
     for an unrelated reason."""
-    key = ("pylabrobot.liquid_handling.liquid_handler", "_check_no_lid")
+    key = ("pylabrobot.legacy.liquid_handling.liquid_handler", "_check_no_lid")
     lineno = next(ln for (mod, qn, ln) in plr_function_index if (mod, qn) == key)
     node = plr_function_index[(*key, lineno)]
-    assert compute_reachability_clear(node, guard_lineno=117) is False
+    assert compute_reachability_clear(node, guard_lineno=326) is False
 
 
 def test_derive_contract_populates_reachability_clear_from_function_index(
     survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index
 ) -> None:
     contract = derive_contract(
-        "pylabrobot.liquid_handling.liquid_handler",
+        "pylabrobot.legacy.liquid_handling.liquid_handler",
         "LiquidHandler.pick_up_tips",
         survey_index,
         function_index=plr_function_index,
     )
     by_lineno = {g.site.lineno: g for g in contract.guards}
-    assert by_lineno[502].reachability_clear is True
-    assert by_lineno[522].reachability_clear is True
+    assert by_lineno[725].reachability_clear is True
+    assert by_lineno[745].reachability_clear is True
 
 
 def test_derive_contract_without_function_index_leaves_reachability_clear_false(
@@ -2735,7 +2743,7 @@ def test_derive_contract_without_function_index_leaves_reachability_clear_false(
     default-off fixture: every pre-T36 caller of `derive_contract` (no
     `function_index=`) gets `reachability_clear is False` on every guard."""
     contract = derive_contract(
-        "pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips", survey_index
+        "pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips", survey_index
     )
     assert all(g.reachability_clear is False for g in contract.guards)
 
@@ -2744,12 +2752,12 @@ def test_guard_to_json_emits_reachability_clear_key(
     survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index
 ) -> None:
     contract = derive_contract(
-        "pylabrobot.liquid_handling.liquid_handler",
+        "pylabrobot.legacy.liquid_handling.liquid_handler",
         "LiquidHandler.pick_up_tips",
         survey_index,
         function_index=plr_function_index,
     )
-    (guard_502,) = [g for g in contract.guards if g.site.lineno == 502]
+    (guard_502,) = [g for g in contract.guards if g.site.lineno == 725]
     payload = _guard_to_json(guard_502)
     assert payload["reachability_clear"] is True
 
@@ -3114,8 +3122,8 @@ def test_ac_16_2_can_pick_up_tip_whole_tree_probe(plr_function_index) -> None:
         if has_const
     )
     assert constant_return_modules == [
-        "pylabrobot.liquid_handling.backends.chatterbox",
-        "pylabrobot.liquid_handling.backends.serializing_backend",
+        "pylabrobot.legacy.liquid_handling.backends.chatterbox",
+        "pylabrobot.legacy.liquid_handling.backends.serializing_backend",
     ]
 
 
@@ -3137,7 +3145,7 @@ def _constant_return_shape_for_test(node: ast.AST) -> bool:
 
 def test_ac_16_2_abstract_base_can_pick_up_tip_absent_by_name(plr_function_index) -> None:
     """AC-16.2: the abstract base's `@abstractmethod` `can_pick_up_tip`
-    (`external/pylabrobot/pylabrobot/liquid_handling/backends/backend.py:183-187`)
+    (`external/pylabrobot/pylabrobot/legacy/liquid_handling/backends/backend.py:185-189`)
     is asserted absent BY NAME -- the rule is shown biting on real PLR
     source, not only on a synthetic fixture."""
     rows, _n_candidates, _n_absent = build_backend_surface(plr_function_index, frozenset({"can_pick_up_tip"}))
@@ -3148,7 +3156,7 @@ def test_ac_16_2_abstract_base_can_pick_up_tip_absent_by_name(plr_function_index
         node
         for (module, qualname, _lineno), node in plr_function_index.items()
         if qualname == "LiquidHandlerBackend.can_pick_up_tip"
-        and module == "pylabrobot.liquid_handling.backends.backend"
+        and module == "pylabrobot.legacy.liquid_handling.backends.backend"
     )
     assert node.decorator_list != []
     # And the surface still selected other classes' definitions of the
@@ -3649,10 +3657,10 @@ def test_compute_caller_scope_trail_ignores_try_but_still_descends() -> None:
 
 def test_real_compute_caller_args_pick_up_tips_make_sure_channels_exist(plr_function_index) -> None:
     """AC-16.3's own named assertion: `self._make_sure_channels_exist(use_
-    channels)` (`external/pylabrobot/.../liquid_handler.py:520-522`) maps
+    channels)` (`external/pylabrobot/.../liquid_handler.py:743-745`) maps
     `channels` -> `Var("use_channels")`, by NAME."""
-    k_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
-    d_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler._make_sure_channels_exist")
+    k_key = ("pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
+    d_key = ("pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler._make_sure_channels_exist")
     K = plr_function_index[(*k_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == k_key))]
     D = plr_function_index[(*d_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == d_key))]
     assert compute_caller_args(K, D) == {"channels": {"node": "Var", "name": "use_channels"}}
@@ -3664,8 +3672,8 @@ def test_real_compute_caller_args_pick_up_tips_make_sure_channels_exist(plr_func
 def test_real_compute_caller_args_pick_up_tips_assert_resources_exist(plr_function_index) -> None:
     """AC-16.3's second named assertion: `self._assert_resources_exist(tip_
     spots)` maps `resources` -> `Var("tip_spots")`, by NAME."""
-    k_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
-    d_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler._assert_resources_exist")
+    k_key = ("pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
+    d_key = ("pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler._assert_resources_exist")
     K = plr_function_index[(*k_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == k_key))]
     D = plr_function_index[(*d_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == d_key))]
     assert compute_caller_args(K, D) == {"resources": {"node": "Var", "name": "tip_spots"}}
@@ -3683,8 +3691,8 @@ def test_real_compute_caller_args_check_args_strictness_not_parseable(plr_functi
     never a "not a parameter" non-issue. `method`/`backend_kwargs`, whose
     own call-side expressions DO parse (`self.backend.pick_up_tips` -- a
     self-rooted `EnvRef`, and `backend_kwargs`, a bare `Var`), still bind."""
-    k_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
-    d_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler._check_args")
+    k_key = ("pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
+    d_key = ("pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler._check_args")
     K = plr_function_index[(*k_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == k_key))]
     D = plr_function_index[(*d_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == d_key))]
     param_names = {a.arg for a in D.args.posonlyargs} | {a.arg for a in D.args.args}
@@ -3699,13 +3707,13 @@ def test_real_compute_caller_args_check_args_strictness_not_parseable(plr_functi
 def test_real_compute_caller_args_check_args_default_setlit_parses(plr_function_index) -> None:
     """T49 (spec 260909_plr-sema-observation-increment.md §16.1.1, G9): the
     real call site's `default={"ops", "use_channels"}`
-    (`external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:541-546`)
+    (`external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:764-769`)
     now parses as a `Term` -- an `ast.Set` display of `ast.Constant`s, G9's
     ONE further production -- so `"default"` binds in `caller_args` even
     though it never did before this production existed. This is the exact
     fact D5b's `:375`/`:383` site rules read."""
-    k_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
-    d_key = ("pylabrobot.liquid_handling.liquid_handler", "LiquidHandler._check_args")
+    k_key = ("pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips")
+    d_key = ("pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler._check_args")
     K = plr_function_index[(*k_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == k_key))]
     D = plr_function_index[(*d_key, next(ln for (m, q, ln) in plr_function_index if (m, q) == d_key))]
     result = compute_caller_args(K, D)
@@ -3766,7 +3774,7 @@ def test_derive_contract_without_function_index_leaves_caller_args_none(
     `caller_args`/`caller_reachability_clear`/`caller_scope_trail` stays
     `None`, regardless of depth."""
     contract = derive_contract(
-        "pylabrobot.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips", survey_index
+        "pylabrobot.legacy.liquid_handling.liquid_handler", "LiquidHandler.pick_up_tips", survey_index
     )
     assert all(g.caller_args is None for g in contract.guards)
     assert all(g.caller_reachability_clear is None for g in contract.guards)
@@ -3777,12 +3785,12 @@ def test_guard_to_json_emits_caller_args_keys(
     survey_index: dict[tuple[str, str], SurveyRecord], plr_function_index
 ) -> None:
     contract = derive_contract(
-        "pylabrobot.liquid_handling.liquid_handler",
+        "pylabrobot.legacy.liquid_handling.liquid_handler",
         "LiquidHandler.pick_up_tips",
         survey_index,
         function_index=plr_function_index,
     )
-    (guard_409,) = [g for g in contract.guards if g.site.lineno == 409]
+    (guard_409,) = [g for g in contract.guards if g.site.lineno == 630]
     payload = _guard_to_json(guard_409)
     assert payload["caller_args"] == {"channels": {"node": "Var", "name": "use_channels"}}
     assert payload["caller_reachability_clear"] is True
@@ -3796,12 +3804,12 @@ def test_guard_to_json_caller_args_absent_for_depth0_guard(
     three keys (additive-field discipline: present, `None`, never simply
     missing), matching `bindings`/`reachability_clear`'s own convention."""
     contract = derive_contract(
-        "pylabrobot.liquid_handling.liquid_handler",
+        "pylabrobot.legacy.liquid_handling.liquid_handler",
         "LiquidHandler.pick_up_tips",
         survey_index,
         function_index=plr_function_index,
     )
-    (guard_502,) = [g for g in contract.guards if g.site.lineno == 502]
+    (guard_502,) = [g for g in contract.guards if g.site.lineno == 725]
     assert guard_502.depth == 0
     payload = _guard_to_json(guard_502)
     assert payload["caller_args"] is None
@@ -4223,7 +4231,7 @@ def test_state_updated_resolves_to_resource_with_zero_guards_real_plr(
     )
     assert state_updated_contract.guards == ()
 
-    pick_up_module = "pylabrobot.liquid_handling.liquid_handler"
+    pick_up_module = "pylabrobot.legacy.liquid_handling.liquid_handler"
     pick_up_contract = derive_contract(
         pick_up_module, "LiquidHandler.pick_up_resource", survey_index,
         class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
@@ -4256,7 +4264,7 @@ def test_move_family_entry_points_do_not_double_and_add_zero_guards_real_plr(
     root = default_plr_pkg_root()
     class_nodes, class_modules = build_plr_class_index(root)
     bases_index = build_plr_class_bases_index(root, class_nodes)
-    module = "pylabrobot.liquid_handling.liquid_handler"
+    module = "pylabrobot.legacy.liquid_handling.liquid_handler"
     for qualname in ("LiquidHandler.move_lid", "LiquidHandler.move_plate", "LiquidHandler.move_resource"):
         impact = measure_m_inh_entry_point_impact(
             (module, qualname), survey_index, class_nodes, class_modules, bases_index
@@ -4357,7 +4365,7 @@ def test_compute_anchor_guard_states_move_family_real_plr() -> None:
             bases_index=bases_index,
         )
         assert widened_by == {"condition_1": 0, "condition_2": 0, "condition_3": 0}
-        assert guard_states.get(2070) == "ENTRY"
+        assert guard_states.get(2301) == "ENTRY"
     move_resource_node = next(m for m in liquid_handler.body if getattr(m, "name", None) == "move_resource")
     guard_states, _widened, net = compute_anchor_guard_states(
         move_resource_node,
@@ -4367,7 +4375,7 @@ def test_compute_anchor_guard_states_move_family_real_plr() -> None:
         class_modules=class_modules,
         bases_index=bases_index,
     )
-    assert guard_states == {2070: "ENTRY", 2120: "HELD", 2147: "HELD"}
+    assert guard_states == {2301: "ENTRY", 2352: "HELD", 2380: "HELD"}
     assert net == "EMPTY"
 
 
@@ -4380,17 +4388,17 @@ def test_derive_contract_attaches_anchor_state_to_real_guards(survey_index: dict
     class_nodes, class_modules = build_plr_class_index(root)
     bases_index = build_plr_class_bases_index(root, class_nodes)
     function_index = build_plr_function_index(root)
-    module = "pylabrobot.liquid_handling.liquid_handler"
+    module = "pylabrobot.legacy.liquid_handling.liquid_handler"
     contract = derive_contract(
         module, "LiquidHandler.move_resource", survey_index,
         function_index=function_index, class_nodes=class_nodes, class_modules=class_modules, bases_index=bases_index,
         anchor_fields={"LiquidHandler": ("_resource_pickup",)},
     )
     by_lineno = {g.site.lineno: g for g in contract.guards if g.anchor_field is not None}
-    assert by_lineno[2070].anchor_state == "ENTRY"
-    assert by_lineno[2070].anchor_field == "_resource_pickup"
-    assert by_lineno[2120].anchor_state == "HELD"
-    assert by_lineno[2147].anchor_state == "HELD"
+    assert by_lineno[2301].anchor_state == "ENTRY"
+    assert by_lineno[2301].anchor_field == "_resource_pickup"
+    assert by_lineno[2352].anchor_state == "HELD"
+    assert by_lineno[2380].anchor_state == "HELD"
     assert contract.anchor_net_effects == {"_resource_pickup": "EMPTY"}
 
 
@@ -4595,11 +4603,11 @@ def test_ac_17_5_move_family_check_args_admitted_call_site_set_real_plr(
     root = default_plr_pkg_root()
     class_nodes, class_modules = build_plr_class_index(root)
     bases_index = build_plr_class_bases_index(root, class_nodes)
-    module = "pylabrobot.liquid_handling.liquid_handler"
+    module = "pylabrobot.legacy.liquid_handling.liquid_handler"
     expected = {
-        (2345, "LiquidHandler.move_resource"),
-        (2364, "LiquidHandler.move_resource"),
-        (2079, "LiquidHandler.pick_up_resource"),
+        (2578, "LiquidHandler.move_resource"),
+        (2597, "LiquidHandler.move_resource"),
+        (2310, "LiquidHandler.pick_up_resource"),
     }
     for entry_name in ("move_resource", "move_lid", "move_plate"):
         contract = derive_contract(
@@ -4632,7 +4640,7 @@ def test_ac_17_5_move_family_check_args_sites_and_383_stay_half(
     class_nodes, class_modules = build_plr_class_index(root)
     bases_index = build_plr_class_bases_index(root, class_nodes)
     function_index = plr_function_index
-    module = "pylabrobot.liquid_handling.liquid_handler"
+    module = "pylabrobot.legacy.liquid_handling.liquid_handler"
     anchor_fields, _ = compute_singleton_typestate_anchors(class_nodes, class_modules, function_index)
     selected = collect_env_ref_method_names(
         {
@@ -4662,8 +4670,8 @@ def test_ac_17_5_move_family_check_args_sites_and_383_stay_half(
             "guards": [_guard_to_json(g) for g in contract.guards],
             "backend_surface": {"rows": rows},
         }
-        guard_375 = next(g for g in contract_json["guards"] if g["site"]["lineno"] == 375)
-        guard_383 = next(g for g in contract_json["guards"] if g["site"]["lineno"] == 383)
+        guard_375 = next(g for g in contract_json["guards"] if g["site"]["lineno"] == 596)
+        guard_383 = next(g for g in contract_json["guards"] if g["site"]["lineno"] == 604)
         result_375 = evaluate_guard(guard_375, ir.Call(receiver=0, receiver_type="LiquidHandler", method=entry_name, kwargs={}), contract_json, {}, env=env)
         result_383 = evaluate_guard(guard_383, ir.Call(receiver=0, receiver_type="LiquidHandler", method=entry_name, kwargs={}), contract_json, {}, env=env)
         assert result_375.verdict == "safe", f"{entry_name} :375 -> {result_375}"
@@ -4692,9 +4700,18 @@ def test_ac_17_5_surface_counters_by_value_and_drop_resource_row(
         minh_class_nodes=class_nodes, minh_class_modules=class_modules, minh_bases_index=bases_index,
     )
     bs = payload["backend_surface"]
-    assert bs["n_surface_candidates"] == 172
-    assert bs["n_surface_absent_by_c15"] == 73
-    assert bs["n_surface_rows"] == 99
+    # 260929 re-pin (PLR 1.0.0b1, legacy import-closure surface):
+    # 172/73/99 -> 218/98/120. +46 candidates = the new-API driver classes
+    # the legacy STAR backend imports (hamilton/star/driver/features:
+    # `Pipettes`/`Head96`/`CoreGrippers` aspirate/dispense/pick_up_tips/...),
+    # IO-layer `write` definitions, and `Resource.has_resource` (moved up
+    # from `Deck`); +25 absent includes the four `LiquidHandler` methods PLR
+    # 1.0 decorated with `@evented_operation` (C15 clause 1:
+    # `pick_up_resource`/`drop_resource`/`pick_up_tips96`/`drop_tips96`).
+    # The chatterbox rows every verdict reads are byte-identical.
+    assert bs["n_surface_candidates"] == 218
+    assert bs["n_surface_absent_by_c15"] == 98
+    assert bs["n_surface_rows"] == 120
     assert bs["n_surface_candidates"] - bs["n_surface_absent_by_c15"] == bs["n_surface_rows"]
     row = bs["rows"]["LiquidHandlerChatterboxBackend.drop_resource"]
     assert row["params"] == ["drop"]
@@ -4753,3 +4770,44 @@ def test_ac_17_5_no_backend_method_name_literal_in_t54_change() -> None:
         source = path.read_text(encoding="utf-8")
         offenders.extend(_scan_volume_forbidden_literals(source, str(path), forbidden))
     assert offenders == [], f"hand-typed move-family method name found: {offenders}"
+
+
+
+# ---------------------------------------------------------------------------
+# 260929 (task 260929_plr-1.0-migration): the analyzed surface at PLR 1.0 is
+# the static import closure of `pylabrobot/legacy/` (see
+# `plr_sema.derive.surface_files`); a tree without `legacy/` is walked whole.
+# ---------------------------------------------------------------------------
+
+
+def test_surface_files_pre_1_0_tree_is_whole_tree(tmp_path: Path) -> None:
+    from plr_sema.derive import _is_plr_source_file
+    from plr_sema.derive.surface_files import select_surface_files
+
+    pkg = tmp_path / "pylabrobot"
+    (pkg / "a").mkdir(parents=True)
+    for rel in ("__init__.py", "a/__init__.py", "a/x.py", "a/x_tests.py"):
+        (pkg / rel).write_text("", encoding="utf-8")
+    got = select_surface_files(pkg, _is_plr_source_file)
+    assert got == sorted(p for p in pkg.rglob("*.py") if _is_plr_source_file(p))
+    assert len(got) == 3
+
+
+def test_surface_files_legacy_closure_on_the_real_1_0_tree() -> None:
+    from plr_sema.derive import _is_plr_source_file
+    from plr_sema.derive.surface_files import has_legacy_subpackage, select_surface_files
+
+    root = default_plr_pkg_root()
+    assert has_legacy_subpackage(root)
+    legacy = {p.relative_to(root).as_posix() for p in select_surface_files(root, _is_plr_source_file)}
+    every = {p.relative_to(root).as_posix() for p in select_surface_files(root, _is_plr_source_file, "all")}
+    assert legacy < every
+    # the legacy API itself and the shared modules it imports are in ...
+    assert "legacy/liquid_handling/liquid_handler.py" in legacy
+    assert "legacy/tip_tracker.py" in legacy
+    assert "resources/volume_tracker.py" in legacy
+    assert "lib/liquid_handling/channel_positioning.py" in legacy  # importlib.import_module string
+    # ... new-API vendor packages nothing legacy imports are out, and so is
+    # every `import *` shim at an old import path
+    assert not any(p.startswith("agilent/") for p in legacy)
+    assert "liquid_handling/__init__.py" not in legacy

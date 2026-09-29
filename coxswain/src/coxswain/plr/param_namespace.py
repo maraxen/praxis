@@ -15,9 +15,14 @@ onto real vendored kwargs instead of an undocumented convention.
 NFR-1/NFR-2: pure stdlib data, CPython-importable, no ``js``, no ``praxis.*``.
 
 Ground truth: ``inspect.signature`` against ``external/pylabrobot`` at
-submodule HEAD ``dd79c4c89bc008629a1c598ea614be5e6067d1f9`` (PLR 0.2.2),
-verified 260825; enforced continuously by
-``coxswain/tests/test_tool_schema_parity.py`` which pins that SHA.
+submodule HEAD ``786ac2c4e4f7afe37885af2d98ff5b0afe274c67`` (PLR 1.0.0b1),
+re-verified 260929 (first verified 260825 at ``dd79c4c89bc0``, PLR 0.2.2);
+enforced continuously by ``coxswain/tests/test_tool_schema_parity.py`` which pins
+that SHA. The receivers are the LEGACY frontends
+(``pylabrobot.legacy.{liquid_handling,plate_reading,heating_shaking}``): the 1.0 bump
+moved them there and left top-level shims. 260929 drift check: ``inspect.signature``
+of all 20 TOOL_SCHEMA methods (present or ABSENT) is byte-identical between
+dd79c4c89 and 786ac2c4e, so no table row changed.
 
 Scope policy: this table covers the COPILOT-emittable params only. Expert
 kwargs present on vendored signatures (flow rates, offsets, liquid heights,
@@ -233,12 +238,12 @@ PARAM_NAMESPACE: Final[dict[str, tuple[ParamSpec, ...]]] = {
 #   move_resource / move_plate / move_lid     deck transport (gripper verbs).
 #   read_absorbance / read_fluorescence / read_luminescence
 #       PlateReader machine methods exist in vendored PLR (0.2.2 ships
-#       pylabrobot.plate_reading incl. a chatterbox backend): verifiable today.
+#       pylabrobot.legacy.plate_reading incl. a chatterbox backend): verifiable today.
 #
 # EXCLUDED from the phase-2 generation surface (kept in TOOL_SCHEMA with tier
 # metadata intact where they were already authored):
 #   mix, blow_out, touch_tip, dispense_to_waste
-#       PHANTOMS: no such methods on vendored LiquidHandler @ dd79c4c89
+#       PHANTOMS: no such methods on vendored LiquidHandler @ dd79c4c89 (still absent @ 786ac2c4e)
 #       (recon §1.4). Marked experimental+excluded so tier history survives;
 #       upstream models these effects via kwargs (mix lists,
 #       blow_out_air_volume) rather than methods. Parity test FAILS if

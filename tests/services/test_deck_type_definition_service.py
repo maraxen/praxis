@@ -38,7 +38,7 @@ async def test_create_deck_type_definition_with_positions(
 
     deck_def_create = DeckDefinitionCreate(
         name="Hamilton STAR",
-        fqn="pylabrobot.liquid_handling.backends.hamilton.STARDeck",
+        fqn="pylabrobot.legacy.liquid_handling.backends.hamilton.STARDeck",
         version="1.0.0",
         positioning_config=pos_config,
         position_definitions=[pos_def],

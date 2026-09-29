@@ -6,11 +6,11 @@ import uuid
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, cast
 
-from pylabrobot.machines import Machine
+from pylabrobot.legacy.machines import Machine
 from pylabrobot.resources import Deck, Resource
 
 if TYPE_CHECKING:
-  from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
+  from pylabrobot.legacy.liquid_handling.liquid_handler import LiquidHandler
 
   from praxis.backend.core.workcell_runtime.core import WorkcellRuntime
 

@@ -49,11 +49,12 @@ PYLIBFTDI_STUB_DIR = WEB_REPL_ROOT / "scripts" / "pylibftdi_stub"
 OUTPUT_DIR = WEB_REPL_ROOT / "overlay" / "assets" / "wheels"
 
 # The pin this pipeline builds against. Phase 4 (260818) bumped it from
-# d9651e2098cd269fc47e6aff80c9242a82d1b587 (0.1.6) to PLR 0.2.2. There is NO
-# `v0.2.2` tag -- `git tag --points-at` is empty and `git tag -l` tops out at
-# v0.2.1 -- so the full SHA is the only correct way to name it.
+# d9651e2098cd269fc47e6aff80c9242a82d1b587 (0.1.6) to PLR 0.2.2; the PLR 1.0
+# migration (260929) bumped it to 1.0.0b1. There is NO `v1.0.0b1` tag on this
+# commit -- `git describe` reports `v0.2.1-376-g786ac2c4e` -- so the full SHA is
+# the only correct way to name it.
 # This script refuses to build against any other submodule commit.
-EXPECTED_PLR_SHA = "dd79c4c89bc008629a1c598ea614be5e6067d1f9"
+EXPECTED_PLR_SHA = "786ac2c4e4f7afe37885af2d98ff5b0afe274c67"
 
 KNOWN_TARGETS = ("pylabrobot", "pylibftdi")
 
@@ -232,14 +233,20 @@ def uv_build_wheel(src_dir: Path, out_dir: Path, *, offline: bool) -> Path:
 
 # --- self-verification: pkgutil.walk_packages over the BUILT wheel ---------
 
-# PLR ships ~15 intentionally-guarded (try/except ImportError, HAS_SERIAL /
-# USE_USB / HAS_PYLIBFTDI style) call sites AND a handful of genuinely
-# UNGUARDED top-level `import serial` / `from pylibftdi import ...` call
-# sites (verified this session: pylabrobot/sealing/a4s_backend.py,
+# PLR ships intentionally-guarded (try/except ImportError, HAS_SERIAL /
+# USE_USB / HAS_PYLIBFTDI style) call sites AND, historically, a handful of
+# genuinely UNGUARDED top-level `import serial` / `from pylibftdi import ...`
+# call sites (verified at the 0.2.2 pin: pylabrobot/sealing/a4s_backend.py,
 # pylabrobot/storage/cytomat/{cytomat,heraeus_cytomat_backend}.py,
 # pylabrobot/peeling/xpeel_backend.py,
 # pylabrobot/pumps/cole_parmer/masterflex_backend.py, and
-# pylabrobot/plate_reading/agilent/biotek_synergyh1_backend.py). None of
+# pylabrobot/plate_reading/agilent/biotek_synergyh1_backend.py). At the 1.0.0b1
+# pin those moved under pylabrobot/legacy/ and the ones re-checked (a4s,
+# cytomat, xpeel, masterflex, biotek_synergyh1) are now try-guarded, but the
+# stubs below are kept: the walk imports every module and a stray unguarded
+# site is exactly what they exist for. The stubbed names (`serial`, `usb`,
+# `pylibftdi`) are THIRD-PARTY modules, not PLR paths, so PLR's reorganisation
+# does not invalidate them. None of
 # that is a defect in THIS build -- it is exactly why the real browser boot
 # installs native module stubs (ADR Sec 4.3 design (C) / spec T6
 # install_native_stubs()) for `serial`, `serial.tools`,
@@ -361,12 +368,24 @@ if not names:
 """
 
 
+# PLR 1.0's core `dependencies` (typing_extensions, websockets>=14) are imported
+# at module top level across the tree (pylabrobot.resources, the legacy
+# LiquidHandler, visualizer3D), so the throwaway venv -- which installs the wheel
+# --no-deps to avoid dragging in optional hardware extras -- must supply them
+# itself, or every such module reads as a false "test-strip removed too much".
+# The browser gets the same two from Pyodide's own typing-extensions build and the
+# vendored websockets wheel (web-repl/vendored_wheels.json), not from PyPI.
+_PLR_CORE_RUNTIME_DEPS = ("typing_extensions", "websockets>=14")
+
+
 def verify_wheel_importable(
     wheel: Path,
     top_level_names: list[str],
     *,
     extra_wheels: list[Path] | None = None,
     native_stubs: bool = False,
+    runtime_deps: tuple[str, ...] = (),
+    offline: bool = False,
 ) -> None:
     """Install *wheel* (plus any *extra_wheels*, all no-deps) into a throwaway
     venv and walk-import every module it claims to provide. Catches a
@@ -391,6 +410,17 @@ def verify_wheel_importable(
                 raise BuildError(
                     f"self-verification: could not install {whl.name} into a "
                     f"throwaway venv:\n{install.stdout}\n{install.stderr}"
+                )
+        if runtime_deps:
+            dep_cmd = ["uv", "pip", "install", "--python", str(python), *runtime_deps]
+            if offline:
+                dep_cmd.insert(3, "--offline")
+            deps = subprocess.run(dep_cmd, capture_output=True, text=True)
+            if deps.returncode != 0:
+                raise BuildError(
+                    f"self-verification: could not install runtime deps "
+                    f"{list(runtime_deps)} into the throwaway venv:\n"
+                    f"{deps.stdout}\n{deps.stderr}"
                 )
         script = (_NATIVE_STUBS_PRELUDE if native_stubs else "") + _WALK_PROBE
         probe = subprocess.run(
@@ -433,6 +463,8 @@ def build_pylabrobot(
             ["pylabrobot"],
             extra_wheels=[pylibftdi_wheel] if pylibftdi_wheel else None,
             native_stubs=True,
+            runtime_deps=_PLR_CORE_RUNTIME_DEPS,
+            offline=offline,
         )
         return _publish(wheel, "pylabrobot-*.whl")
     finally:

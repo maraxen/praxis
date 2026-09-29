@@ -20,8 +20,10 @@ from coxswain.plr.tool_schema import TOOL_SCHEMA, PHASE2_TOOL_NAMES
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PLR_DIR = REPO_ROOT / "external" / "pylabrobot"
 
-#: external/pylabrobot HEAD at P2.0 reconciliation time (PLR 0.2.2).
-PINNED_PLR_SHA = "dd79c4c89bc008629a1c598ea614be5e6067d1f9"
+#: external/pylabrobot HEAD (PLR 1.0.0b1). Re-pinned 260929 from dd79c4c89 (0.2.2, P2.0
+#: reconciliation) after re-reading the legacy LiquidHandler/PlateReader/HeaterShaker
+#: signatures -- see the 260929 note in coxswain/src/coxswain/plr/param_namespace.py.
+PINNED_PLR_SHA = "786ac2c4e4f7afe37885af2d98ff5b0afe274c67"
 
 #: The four phantom verbs (recon §1.4: not present on vendored LiquidHandler).
 PHANTOM_VERBS = frozenset({"mix", "blow_out", "touch_tip", "dispense_to_waste"})
@@ -55,9 +57,9 @@ def vendored():
         assert Path(pylabrobot.__file__).resolve().is_relative_to(PLR_DIR.resolve()), (
             f"imported {pylabrobot.__file__}, not the vendored copy"
         )
-        from pylabrobot.heating_shaking.heater_shaker import HeaterShaker
-        from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
-        from pylabrobot.plate_reading.plate_reader import PlateReader
+        from pylabrobot.legacy.heating_shaking.heater_shaker import HeaterShaker
+        from pylabrobot.legacy.liquid_handling.liquid_handler import LiquidHandler
+        from pylabrobot.legacy.plate_reading.plate_reader import PlateReader
 
         yield {"liquid_handler": LiquidHandler, "plate_reader": PlateReader, "heater_shaker": HeaterShaker}
     finally:

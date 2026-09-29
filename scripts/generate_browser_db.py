@@ -168,7 +168,7 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
       "ImageReader",  # dual frontend (PlateReader + Imager) — covered by both types
   }
   # Hamilton Pump is a Resource, not a Machine frontend
-  HAMILTON_PUMP_FQN = "pylabrobot.liquid_handling.backends.hamilton.pump.Pump"
+  HAMILTON_PUMP_FQN = "pylabrobot.legacy.liquid_handling.backends.hamilton.pump.Pump"
 
   frontend_machines = [
       m for m in machines
@@ -279,7 +279,7 @@ def discover_machines_static(conn: sqlite3.Connection) -> int:
 
 
 # Define critical decks that must always be included
-# NOTE: Deck FQNs are in pylabrobot.resources, NOT pylabrobot.liquid_handling.backends
+# NOTE: Deck FQNs are in pylabrobot.resources, NOT pylabrobot.legacy.liquid_handling.backends
 # See: external/pylabrobot/pylabrobot/resources/hamilton/__init__.py
 CRITICAL_DECKS = [
   {
@@ -661,22 +661,22 @@ def discover_backends_static(conn: sqlite3.Connection) -> int:
 
   # Map backend types to frontend FQNs
   backend_frontend_fqn_map = {
-    PLRClassType.LH_BACKEND: "pylabrobot.liquid_handling.LiquidHandler",
-    PLRClassType.PR_BACKEND: "pylabrobot.plate_reading.PlateReader",
-    PLRClassType.HS_BACKEND: "pylabrobot.heating_shaking.HeaterShaker",
-    PLRClassType.SHAKER_BACKEND: "pylabrobot.shaking.Shaker",
-    PLRClassType.TEMP_BACKEND: "pylabrobot.temperature_controlling.TemperatureController",
+    PLRClassType.LH_BACKEND: "pylabrobot.legacy.liquid_handling.LiquidHandler",
+    PLRClassType.PR_BACKEND: "pylabrobot.legacy.plate_reading.PlateReader",
+    PLRClassType.HS_BACKEND: "pylabrobot.legacy.heating_shaking.HeaterShaker",
+    PLRClassType.SHAKER_BACKEND: "pylabrobot.legacy.shaking.Shaker",
+    PLRClassType.TEMP_BACKEND: "pylabrobot.legacy.temperature_controlling.TemperatureController",
     PLRClassType.CENTRIFUGE_BACKEND: "pylabrobot.centrifuging.Centrifuge",
-    PLRClassType.THERMOCYCLER_BACKEND: "pylabrobot.thermocycling.Thermocycler",
+    PLRClassType.THERMOCYCLER_BACKEND: "pylabrobot.legacy.thermocycling.Thermocycler",
     PLRClassType.PUMP_BACKEND: "pylabrobot.pumping.Pump",
     PLRClassType.PUMP_ARRAY_BACKEND: "pylabrobot.pumping.PumpArray",
     PLRClassType.FAN_BACKEND: "pylabrobot.fans.Fan",
     PLRClassType.SEALER_BACKEND: "pylabrobot.plate_sealing.Sealer",
     PLRClassType.PEELER_BACKEND: "pylabrobot.plate_peeling.Peeler",
-    PLRClassType.POWDER_DISPENSER_BACKEND: "pylabrobot.powder_dispensing.PowderDispenser",
+    PLRClassType.POWDER_DISPENSER_BACKEND: "pylabrobot.legacy.powder_dispensing.PowderDispenser",
     PLRClassType.INCUBATOR_BACKEND: "pylabrobot.incubating.Incubator",
     PLRClassType.SCARA_BACKEND: "pylabrobot.scara.SCARA",
-    PLRClassType.IMAGER_BACKEND: "pylabrobot.plate_reading.Imager",
+    PLRClassType.IMAGER_BACKEND: "pylabrobot.legacy.plate_reading.Imager",
   }
 
   # NOTE: Frontend definitions are seeded by discover_machines_static().
@@ -787,22 +787,22 @@ def ensure_minimal_backends(conn: sqlite3.Connection) -> None:
 
   # All known frontend types
   frontend_types = [
-    ("LiquidHandler", "pylabrobot.liquid_handling.LiquidHandler"),
-    ("PlateReader", "pylabrobot.plate_reading.PlateReader"),
-    ("HeaterShaker", "pylabrobot.heating_shaking.HeaterShaker"),
-    ("Shaker", "pylabrobot.shaking.Shaker"),
-    ("TemperatureController", "pylabrobot.temperature_controlling.TemperatureController"),
+    ("LiquidHandler", "pylabrobot.legacy.liquid_handling.LiquidHandler"),
+    ("PlateReader", "pylabrobot.legacy.plate_reading.PlateReader"),
+    ("HeaterShaker", "pylabrobot.legacy.heating_shaking.HeaterShaker"),
+    ("Shaker", "pylabrobot.legacy.shaking.Shaker"),
+    ("TemperatureController", "pylabrobot.legacy.temperature_controlling.TemperatureController"),
     ("Centrifuge", "pylabrobot.centrifuging.Centrifuge"),
-    ("Thermocycler", "pylabrobot.thermocycling.Thermocycler"),
+    ("Thermocycler", "pylabrobot.legacy.thermocycling.Thermocycler"),
     ("Pump", "pylabrobot.pumping.Pump"),
     ("PumpArray", "pylabrobot.pumping.PumpArray"),
     ("Fan", "pylabrobot.fans.Fan"),
     ("Sealer", "pylabrobot.plate_sealing.Sealer"),
     ("Peeler", "pylabrobot.plate_peeling.Peeler"),
-    ("PowderDispenser", "pylabrobot.powder_dispensing.PowderDispenser"),
+    ("PowderDispenser", "pylabrobot.legacy.powder_dispensing.PowderDispenser"),
     ("Incubator", "pylabrobot.incubating.Incubator"),
     ("Arm", "pylabrobot.scara.SCARA"),
-    ("Imager", "pylabrobot.plate_reading.Imager"),
+    ("Imager", "pylabrobot.legacy.plate_reading.Imager"),
   ]
 
   for short_name, frontend_fqn in frontend_types:

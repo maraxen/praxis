@@ -40,7 +40,7 @@ CONTRACTS_JSON = PLR_SEMA_ROOT / "data" / "derived_contracts.json"
 # The full SHA at the pin AC-6.7 targets -- same pin as test_telemetry.py's
 # AC-4.3 (external/pylabrobot HEAD, confirmed live this session via
 # `git -C external/pylabrobot rev-parse HEAD`).
-_PLR_PIN_SHA = "dd79c4c89bc008629a1c598ea614be5e6067d1f9"
+_PLR_PIN_SHA = "786ac2c4e4f7afe37885af2d98ff5b0afe274c67"
 
 
 @pytest.fixture(scope="module")
@@ -509,13 +509,13 @@ LIDDED_PLATE_ASPIRATE_FIXTURE = PLR_SEMA_ROOT / "tests" / "fixtures" / "lidded_p
 # The two `_check_no_lid` guard sites (§13.1.1): `:116` is the self-lidded
 # raise (`condition == "lidded is resource"`), `:117` is the
 # ancestor-lidded raise -- the `condition: null` landmine.
-_LID_GUARD_LINENOS = (116, 117)
+_LID_GUARD_LINENOS = (325, 326)
 
 
 def test_lid_family_emits_nothing(contracts_json: str) -> None:
     """AC-13.4, first half: for `setup()` then `aspirate(use_channels=[0])`
     on a (nominally lidded, per the fixture's own name) plate, zero
-    findings carry a `plr_site` at `liquid_handler.py:116`/`:117` with a
+    findings carry a `plr_site` at `liquid_handler.py:325`/`:117` with a
     verdict other than `Verdict.UNKNOWN` -- i.e. the lid family never
     promotes either guard to `SAFE` or `WILL_FAIL`. Also asserts no
     `Finding.reason` contains "lid" anywhere in `report.findings` --
@@ -569,7 +569,7 @@ def test_lid_family_null_condition_guard_is_unknown_not_will_fail(contracts_json
     `:117` guard (whose derived `condition` is `null`) is
     `Verdict.UNKNOWN`, NOT `Verdict.WILL_FAIL`. `null` reads, on its face,
     as "raises unconditionally"; it is not -- `:117`'s raise is reachable
-    only when the early `return` at `liquid_handler.py:113-114` did not
+    only when the early `return` at `liquid_handler.py:322-323` did not
     fire, and the precondition survey's `scope_trail` does not model early
     returns (§13.1.3), so no evaluator today or in this fixture can
     construct that fact. An evaluator that treated a `null` condition as
@@ -595,7 +595,7 @@ def test_lid_family_null_condition_guard_is_unknown_not_will_fail(contracts_json
         for f in report.findings
         if f.plr_site is not None
         and f.plr_site.file.endswith("liquid_handler.py")
-        and f.plr_site.lineno == 117
+        and f.plr_site.lineno == 326
     ]
     assert len(null_condition_findings) == 1, (
         f"expected exactly one Finding for the :117 null-condition guard, got {null_condition_findings!r}"
@@ -614,13 +614,13 @@ def test_lid_family_null_condition_guard_is_unknown_not_will_fail(contracts_json
 
 _REMOVE_LIQUID_SITE = PlrSite(
     file="external/pylabrobot/pylabrobot/resources/volume_tracker.py",
-    lineno=92,
-    qualname="VolumeTracker.remove_liquid",
+    lineno=102,
+    qualname="VolumeTracker.validate_remove_liquid",
 )
 _ADD_LIQUID_SITE = PlrSite(
     file="external/pylabrobot/pylabrobot/resources/volume_tracker.py",
-    lineno=105,
-    qualname="VolumeTracker.add_liquid",
+    lineno=117,
+    qualname="VolumeTracker.validate_add_liquid",
 )
 _DOES_VOLUME_TRACKING_ENV = frozenset({"does_volume_tracking"})
 
@@ -948,7 +948,7 @@ def _t42_synthetic_contracts_json(contracts_json: str, guard_overrides: dict) ->
     deterministic and self-contained (never depends on `self.head`)."""
     payload = json.loads(contracts_json)
     real_contract = payload["contracts"]["LiquidHandler.pick_up_tips"]
-    (real_409,) = [g for g in real_contract["guards"] if g["site"]["lineno"] == 409]
+    (real_409,) = [g for g in real_contract["guards"] if g["site"]["lineno"] == 630]
     guard = {
         "condition": "len(channels) > 0 and flag is not None",
         "predicate": _T42_GUARD_PREDICATE,
@@ -973,8 +973,8 @@ def _t42_synthetic_contracts_json(contracts_json: str, guard_overrides: dict) ->
 
 
 _T42_SITE = PlrSite(
-    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-    lineno=409,
+    file="external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+    lineno=630,
     qualname="LiquidHandler._make_sure_channels_exist",
 )
 
@@ -1106,13 +1106,13 @@ def test_ac_16_3_b_caller_args_top_yields_operand_unknown_not_env_dependent(cont
 # ---------------------------------------------------------------------------
 
 _T43_HEAD_SITE = PlrSite(
-    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-    lineno=409,
+    file="external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+    lineno=630,
     qualname="LiquidHandler._make_sure_channels_exist",
 )
 _T43_CONST_SITE = PlrSite(
-    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-    lineno=514,
+    file="external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+    lineno=737,
     qualname="LiquidHandler.pick_up_tips",
 )
 
@@ -1201,7 +1201,7 @@ def test_ac_16_5_const_declines_for_unobserved_backend_class(contracts_json: str
 def _t43_synthetic_predicate_report(contracts_json: str, predicate: dict, *, env: "frozenset[str]" = frozenset()) -> AnalysisReport:
     payload = json.loads(contracts_json)
     real_contract = payload["contracts"]["LiquidHandler.pick_up_tips"]
-    (real_514,) = [g for g in real_contract["guards"] if g["site"]["lineno"] == 514]
+    (real_514,) = [g for g in real_contract["guards"] if g["site"]["lineno"] == 737]
     guard = {
         "condition": "synthetic T43 probe",
         "predicate": predicate,
@@ -1296,7 +1296,7 @@ def test_ac_16_6_membership_against_general_seq_stays_half_not_true(contracts_js
     }
     payload = json.loads(contracts_json)
     real_contract = payload["contracts"]["LiquidHandler.pick_up_tips"]
-    (real_514,) = [g for g in real_contract["guards"] if g["site"]["lineno"] == 514]
+    (real_514,) = [g for g in real_contract["guards"] if g["site"]["lineno"] == 737]
     guard = {
         "condition": "synthetic T43 membership probe",
         "predicate": predicate,
@@ -1346,10 +1346,27 @@ def test_ac_16_6_membership_against_general_seq_stays_half_not_true(contracts_js
 # than resolving one sub-expression inside it.
 # ---------------------------------------------------------------------------
 
-_T48_ASSERT_RESOURCES_SITE = PlrSite(
-    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-    lineno=321,
-    qualname="LiquidHandler._assert_resources_exist",
+def _d6_site_by_symbol(qualname: str, raises: str, condition: str) -> PlrSite:
+    """The shipped contract table's ONE site whose guard carries this
+    `D6_SITE_RULES` symbol key -- the `PlrSite` a finding at that guard
+    reports. Resolved by symbol, not a hand-typed line (260929 PLR 1.0.0b1
+    re-anchoring: `:321`/`:375`/`:383` at the dd79c4c89 pin moved)."""
+    from plr_sema.check.predicate import d6_site_rule_key
+
+    table = json.loads(CONTRACTS_JSON.read_text(encoding="utf-8"))["contracts"]
+    sites = {
+        (g["site"]["file"], g["site"]["lineno"], g["site"]["qualname"])
+        for entry in table.values()
+        for g in entry.get("guards", ())
+        if d6_site_rule_key(g) == (qualname, raises, condition)
+    }
+    assert len(sites) == 1, (qualname, raises, condition, sorted(sites))
+    ((file, lineno, qual),) = sites
+    return PlrSite(file=file, lineno=lineno, qualname=qual)
+
+
+_T48_ASSERT_RESOURCES_SITE = _d6_site_by_symbol(
+    "LiquidHandler._assert_resources_exist", "ValueError", "not resource_from_deck == resource"
 )
 
 
@@ -1541,16 +1558,25 @@ def test_ac_16_13_a_deck_object_assumption_table_has_five_rows() -> None:
 # parameters.
 # ---------------------------------------------------------------------------
 
-_T49_MISSING_SITE = PlrSite(
-    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-    lineno=375,
-    qualname="LiquidHandler._check_args",
+_T49_MISSING_SITE = _d6_site_by_symbol("LiquidHandler._check_args", "TypeError", "len(missing) > 0")
+_T49_STRICT_SITE = _d6_site_by_symbol(
+    "LiquidHandler._check_args", "TypeError", "strictness == Strictness.STRICT"
 )
-_T49_STRICT_SITE = PlrSite(
-    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-    lineno=383,
-    qualname="LiquidHandler._check_args",
-)
+
+
+def test_d6_site_rule_keys_each_match_exactly_one_site() -> None:
+    """HM-26 (260929 re-anchoring): every `D6_SITE_RULES` key is a symbol
+    key `(qualname, raises, condition)` and matches EXACTLY ONE distinct
+    guard site in the shipped contract table. A PLR change to one of the
+    three guards (or a re-derivation that drops it) turns this red -- the
+    old `(qualname, lineno)` key silently stopped dispatching instead."""
+    from plr_sema.check.predicate import D6_SITE_RULES
+
+    assert len(D6_SITE_RULES) == 3
+    for key in D6_SITE_RULES:
+        site = _d6_site_by_symbol(*key)
+        assert site.qualname == key[0]
+        assert site.file.endswith("liquid_handler.py"), site
 
 
 def test_ac_16_14_375_383_site_rules_flip_safe_under_observation(contracts_json: str) -> None:
@@ -1813,8 +1839,8 @@ def test_ac_16_14_set_lit_parses_and_round_trips() -> None:
 # ---------------------------------------------------------------------------
 
 _PICK_UP_RESOURCE_2055_SITE = PlrSite(
-    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-    lineno=2055,
+    file="external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+    lineno=2286,
     qualname="LiquidHandler.pick_up_resource",
 )
 
@@ -1872,18 +1898,18 @@ def test_ac_17_2_2055_no_observation_stays_unknown(contracts_json: str) -> None:
 # ---------------------------------------------------------------------------
 
 _PICK_UP_RESOURCE_2070_SITE = PlrSite(
-    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-    lineno=2070,
+    file="external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+    lineno=2301,
     qualname="LiquidHandler.pick_up_resource",
 )
 _MOVE_PICKED_UP_RESOURCE_2120_SITE = PlrSite(
-    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-    lineno=2120,
+    file="external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+    lineno=2352,
     qualname="LiquidHandler.move_picked_up_resource",
 )
 _DROP_RESOURCE_2147_SITE = PlrSite(
-    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-    lineno=2147,
+    file="external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+    lineno=2380,
     qualname="LiquidHandler.drop_resource",
 )
 

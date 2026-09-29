@@ -6,7 +6,7 @@ This protocol demonstrates the use of PLR type hints for resources.
 
 from typing import Any
 
-from pylabrobot.liquid_handling import LiquidHandler
+from pylabrobot.legacy.liquid_handling import LiquidHandler
 from pylabrobot.resources import Plate, TipRack
 
 from praxis.backend.core.decorators import protocol_function

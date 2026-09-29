@@ -76,7 +76,7 @@ def infer_manufacturer(module_path: str) -> str | None:
   """Infer manufacturer from module path.
 
   Args:
-    module_path: The module path (e.g., 'pylabrobot.liquid_handling.backends.hamilton.STAR')
+    module_path: The module path (e.g., 'pylabrobot.legacy.liquid_handling.backends.hamilton.STAR')
 
   Returns:
     The manufacturer name if found, None otherwise.

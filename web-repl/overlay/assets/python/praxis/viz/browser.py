@@ -20,7 +20,7 @@ GATE X: if a fifth member ever needs overriding, STOP and escalate to V4
 regression, not a maintenance chore.
 
 Constructor note: ``Visualizer.__init__`` raises when ``HAS_WEBSOCKETS`` is False
-(``visualizer.py:144`` at pin ``dd79c4c8``) -- the guard is in the constructor, not
+(``visualizer.py:168`` at pin ``786ac2c4`` / 1.0.0b1; was ``:144`` at ``dd79c4c8``) -- the guard is in the constructor, not
 in ``setup()``, so subclassing cannot dodge it. ``websockets-17.0.1`` is vendored
 into ``overlay/assets/wheels/`` for exactly this reason; measured true in-kernel
 under ``--offline`` (``repl_smoke.py --probe --offline`` step 2b:

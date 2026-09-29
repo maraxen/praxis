@@ -194,6 +194,25 @@ def throwaway_venv(tmp_path_factory) -> Path:
     assert install.returncode == 0, (
         f"throwaway venv install failed:\n{install.stdout}\n{install.stderr}"
     )
+    # PLR 1.0's core deps (typing_extensions, websockets>=14) are imported at
+    # module top level and --no-deps installs neither. The browser supplies both
+    # anyway (bootstrap requests typing-extensions from the Pyodide lock;
+    # websockets is a vendored wheel), so mirror that here.
+    deps = subprocess.run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            str(python),
+            *build_wheels._PLR_CORE_RUNTIME_DEPS,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert deps.returncode == 0, (
+        f"throwaway venv runtime-deps install failed:\n{deps.stdout}\n{deps.stderr}"
+    )
     return python
 
 
@@ -287,10 +306,51 @@ def test_contract_contains_known_symbols() -> None:
         ("pylabrobot.resources", "Plate"),
         ("pylabrobot.io.serial", "Serial"),
         ("pylabrobot.io.serial", "HAS_SERIAL"),
-        ("pylabrobot.storage", "Incubator"),
+        ("pylabrobot.legacy.storage", "Incubator"),
     }
     missing = known - set(plr_contract.CONTRACT)
     assert not missing, f"expected symbols missing from CONTRACT: {missing}"
+
+
+def test_contract_names_no_deprecated_shim_paths() -> None:
+    """PLR 1.0 turned these top-level packages into DeprecationWarning shims over
+    ``pylabrobot.legacy.*``. The contract must name the explicit ``legacy`` home,
+    never the shim (the wheel-backed probe escalates the warning, so a shim entry
+    could only ever fail; this catches it without needing the wheel).
+    """
+    shims = (
+        "pylabrobot.liquid_handling",
+        "pylabrobot.plate_reading",
+        "pylabrobot.heating_shaking",
+        "pylabrobot.shaking",
+        "pylabrobot.centrifuge",
+        "pylabrobot.storage",
+    )
+    offenders = [
+        (mod, sym)
+        for mod, sym in plr_contract.CONTRACT
+        if any(mod == s or mod.startswith(s + ".") for s in shims)
+    ]
+    assert not offenders, f"contract names deprecated 1.0 shim paths: {offenders}"
+
+
+def test_shim_path_is_observed_failing_against_wheel(
+    throwaway_venv: Path, tmp_path: Path
+) -> None:
+    """Negative control on the REAL 1.0 signal, not a synthetic stub: importing the
+    deprecated top-level ``pylabrobot.liquid_handling`` from the built wheel emits a
+    DeprecationWarning, which the probe's escalation must turn into a contract failure.
+    Together with ``test_contract_conformance_against_wheel`` (the legacy homes
+    pass) this shows the probe distinguishes shim from home rather than passing both.
+    """
+    result = _run_contract_probe(
+        throwaway_venv, [("pylabrobot.liquid_handling", "LiquidHandler")], tmp_path
+    )
+    assert result.returncode == 1, (
+        f"a deprecated shim path passed the probe.\nstdout:\n{result.stdout}\n"
+        f"stderr:\n{result.stderr}"
+    )
+    assert "DeprecationWarning" in result.stderr
 
 
 def test_contract_rejects_the_stale_incubator_path() -> None:
@@ -328,16 +388,16 @@ def test_contract_excludes_out_of_scope_vendor_modules() -> None:
 
 
 def test_deprecation_warning_escalation_is_live(tmp_path: Path) -> None:
-    """Wheel spec T15 (:328): nothing in pylabrobot emits a DeprecationWarning
-    at the pinned submodule sha for any CONTRACT module today (a future pin
-    bump past upstream 14a7766 is what makes several of these modules
-    DeprecationWarning shims -- out of scope for this pin, see the task
-    brief and ADR Sec 4.3). That means `test_contract_conformance_against_
-    wheel` passing tells you NOTHING about whether the escalating filter is
-    actually live -- it could be silently absent and the test would look
-    identical. This arm proves escalation independent of what pylabrobot
-    currently emits: a locally-defined stub module that raises
+    """Wheel spec T15 (:328): no CONTRACT module emits a DeprecationWarning at the
+    pinned submodule sha (the PLR 1.0 shims are deliberately NOT in CONTRACT --
+    ``test_contract_names_no_deprecated_shim_paths``). That means `test_contract_
+    conformance_against_wheel` passing tells you NOTHING about whether the
+    escalating filter is actually live -- it could be silently absent and the
+    test would look identical. This arm proves escalation independent of what
+    CONTRACT currently touches: a locally-defined stub module that raises
     DeprecationWarning on import MUST raise under the same warning context.
+    (``test_shim_path_is_observed_failing_against_wheel`` is the same proof
+    against a real 1.0 shim, through the built wheel.)
     """
     stub = tmp_path / "_plr_contract_warns_stub.py"
     stub.write_text(

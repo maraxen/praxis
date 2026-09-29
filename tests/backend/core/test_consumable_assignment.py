@@ -196,7 +196,7 @@ class TestIsConsumable:
         ("pylabrobot.resources.Reservoir", True),
         ("pylabrobot.resources.Tube", True),
         ("pylabrobot.resources.Well", True),
-        ("pylabrobot.machines.LiquidHandler", False),
+        ("pylabrobot.legacy.machines.LiquidHandler", False),
         ("pylabrobot.resources.Deck", False),
         ("str", False),
     ])
@@ -223,7 +223,7 @@ class TestTypeMatches:
         ("tip", "pylabrobot.resources.tip_rack", True),
         ("tip", "pylabrobot.resources.tiprack", True),
         ("trough", "pylabrobot.resources.reservoir", True),
-        ("plate", "pylabrobot.machines.LiquidHandler", False),
+        ("plate", "pylabrobot.legacy.machines.LiquidHandler", False),
     ])
     def test_type_matching_patterns(self, service, required, resource_fqn, expected):
         """Verify FQN pattern matching logic."""

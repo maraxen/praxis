@@ -74,7 +74,7 @@ def test_execution_failure_fails_verification():
 
 
 def test_global_flags_restored_after_run():
-    from pylabrobot.liquid_handling.strictness import Strictness, get_strictness
+    from pylabrobot.legacy.liquid_handling.strictness import Strictness, get_strictness
     from pylabrobot.resources.volume_tracker import does_volume_tracking
     from pylabrobot.resources.tip_tracker import does_tip_tracking
 
@@ -131,8 +131,8 @@ def test_capture_observation_arm_slots_empty_before_setup_nonempty_after():
     `machine._resource_pickups` -- EMPTY before `await
     setup.machine.setup()` runs (the dict is initialised empty at
     construction,
-    `external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:176`)
-    and non-empty after (`setup` rebuilds it wholesale, `:212`) -- the
+    `external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:397`)
+    and non-empty after (`setup` rebuilds it wholesale, `:433`) -- the
     identical placement argument §16.2.1 already makes for `head_channels`.
     """
     from verify.deck import DeckLayout, build_setup, capture_observation
@@ -273,10 +273,10 @@ def test_error_frames_none_on_deck_build_failure(monkeypatch):
 
 def test_error_frames_outermost_first_on_reraise(monkeypatch):
     """§16.7's own C5 case: an exception raised inside the backend, caught,
-    then re-raised at `liquid_handler.py:575-576` -- the re-raise frame
+    then re-raised at `liquid_handler.py:798-799` (legacy) -- the re-raise frame
     must appear BEFORE the backend's own original raise frame, not after
     (`traceback.extract_tb` is outermost-first)."""
-    from pylabrobot.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend
+    from pylabrobot.legacy.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend
 
     async def _raising(self, *a, **kw):
         raise RuntimeError("synthetic backend failure")
@@ -291,7 +291,7 @@ def test_error_frames_outermost_first_on_reraise(monkeypatch):
     assert frames
     reraise_idx = next(
         i for i, f in enumerate(frames)
-        if f["lineno"] == 576 and f["file"].endswith("liquid_handler.py")
+        if f["lineno"] == 799 and f["file"].endswith("liquid_handler.py")
     )
     backend_idx = next(i for i, f in enumerate(frames) if f["qualname"].endswith("_raising"))
     assert reraise_idx < backend_idx  # outermost (re-raise) before innermost (backend)

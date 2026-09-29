@@ -132,8 +132,8 @@ async def _capture(plr_submodule: Path) -> dict[str, Any]:
     # Imported lazily so --help works even if pylabrobot / its deps are not
     # installed in the invoking interpreter.
     from pylabrobot import __version__ as plr_version
-    from pylabrobot.liquid_handling import LiquidHandler
-    from pylabrobot.liquid_handling.backends import LiquidHandlerChatterboxBackend
+    from pylabrobot.legacy.liquid_handling import LiquidHandler
+    from pylabrobot.legacy.liquid_handling.backends import LiquidHandlerChatterboxBackend
     from pylabrobot.resources import (
         PLT_CAR_L5AC_A00,
         TIP_CAR_480_A00,
@@ -194,8 +194,10 @@ async def _capture(plr_submodule: Path) -> dict[str, Any]:
     before = {n: json.dumps(s, sort_keys=True) for n, s in initial_state.items()}
 
     await lh.pick_up_tips(tip_rack["A1:D1"])
-    plate.get_item("A1").tracker.set_liquids([(None, 100.0)])
-    plate.get_item("B1").tracker.set_liquids([(None, 100.0)])
+    # `set_volume`, not `set_liquids([(None, 100.0)])`: 1.0 deprecates the latter
+    # (it is `set_volume(sum(volumes))`) and would emit a DeprecationWarning here.
+    plate.get_item("A1").tracker.set_volume(100.0)
+    plate.get_item("B1").tracker.set_volume(100.0)
     after = full_state(root)
     delta = {n: s for n, s in after.items() if json.dumps(s, sort_keys=True) != before.get(n)}
     delta_payload = _sanitize_floats(delta)

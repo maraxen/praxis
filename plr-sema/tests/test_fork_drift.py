@@ -495,8 +495,10 @@ def test_git_state_matches_cisternal() -> None:
 
 PLR_SUBMODULE_ROOT = REPO_ROOT / "external" / "pylabrobot"
 
-#: The pin recorded 2026-09-01 (this task's recon): 53 commits behind
-#: upstream `main`'s `3a50a567f` at measurement time. A hand-typed
+#: The pin recorded 2026-09-01 (this task's recon) was `dd79c4c89`, 53
+#: commits behind upstream `main`'s `3a50a567f` at measurement time;
+#: re-pinned 2026-09-29 to PyLabRobot 1.0.0b1 (`786ac2c4e`, task
+#: 260929_plr-1.0-migration, legacy API under `pylabrobot/legacy/`). A hand-typed
 #: expectation BY DESIGN -- the whole point of tier 1 is a fixed value to
 #: diff the LIVE submodule HEAD against; deriving it from the submodule
 #: itself would make the comparison vacuous. Registered as HM-23 in
@@ -505,7 +507,7 @@ PLR_SUBMODULE_ROOT = REPO_ROOT / "external" / "pylabrobot"
 #: each other even though nothing imports one from the other (a test module
 #: is not importable by `_hand_maintained.py` without the same C7 sys.path
 #: shim every other AST-reading row already needs).
-EXPECTED_SUBMODULE_PIN = "dd79c4c89bc008629a1c598ea614be5e6067d1f9"
+EXPECTED_SUBMODULE_PIN = "786ac2c4e4f7afe37885af2d98ff5b0afe274c67"
 
 #: Distance (commits behind origin/main) beyond which tier 2 treats the
 #: drift as "unexpectedly large" and fails loudly rather than just

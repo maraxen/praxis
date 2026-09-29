@@ -1340,8 +1340,8 @@ class TestExcludesSitesThreading:
                         "guards": [
                             {
                                 "site": {
-                                    "file": "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-                                    "lineno": 576,
+                                    "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+                                    "lineno": 799,
                                     "qualname": "LiquidHandler.pick_up_tips",
                                 },
                                 "condition": "error is not None",
@@ -1368,7 +1368,7 @@ class TestExcludesSitesThreading:
         assert st["op_0"]["verdict"] == "unknown"
         assert "guard_env_dependent" in st["op_0"]["reasons"]
         assert len(collected) == 1
-        assert collected[0].lineno == 576
+        assert collected[0].lineno == 799
         assert collected[0].qualname == "LiquidHandler.pick_up_tips"
 
 
@@ -1466,8 +1466,8 @@ class TestT46ObservationThreading:
         rc, report = self._run_main(tmp_path, [row])
 
         by_site = report["n_findings_decided_by_site"]
-        assert any(k.endswith(":409:LiquidHandler._make_sure_channels_exist") for k in by_site), by_site
-        assert any(k.endswith(":514:LiquidHandler.pick_up_tips") for k in by_site), by_site
+        assert any(k.endswith(":630:LiquidHandler._make_sure_channels_exist") for k in by_site), by_site
+        assert any(k.endswith(":737:LiquidHandler.pick_up_tips") for k in by_site), by_site
         assert report["n_resolved_by_rule"]["R-HEAD"] >= 1
         assert report["n_resolved_by_rule"]["R-CONST"] >= 1
         assert report["n_resolved_by_rule"]["R-ATTR"] == 0
@@ -1656,14 +1656,14 @@ class TestFenceFrameCapture:
         """The direct-raise case (spec_version 1's own): 9 tip spots on an
         8-channel backend overflows `_make_sure_channels_exist`'s channel
         check (`external/pylabrobot/pylabrobot/liquid_handling/
-        liquid_handler.py:409`), raised directly -- no capture/re-raise in
+        liquid_handler.py:630`), raised directly -- no capture/re-raise in
         between."""
         positions = [f"tip_rack.{r}1" for r in "ABCDEFGH"] + ["tip_rack.A2"]
         example = _pick_up_tips_example("fence_direct", positions)
         rt = run_runtime(example)
         assert rt.error is not None and "Invalid channels" in rt.error
         assert rt.error_frames
-        site = _load_real_site("LiquidHandler.pick_up_tips", 409)
+        site = _load_real_site("LiquidHandler.pick_up_tips", 630)
         matches = [
             f for f in rt.error_frames
             if f["lineno"] == site.lineno and normalize_plr_path(f["file"]) == normalize_plr_path(site.file)
@@ -1680,13 +1680,13 @@ class TestFenceNarrowing:
 
     def test_reraise_case_is_excused_c5(self, monkeypatch):
         """C5's own defect case: an exception raised INSIDE the backend,
-        caught at `liquid_handler.py:551-556`, re-raised at `:575-576`.
+        caught at `liquid_handler.py:774-779`, re-raised at `:575-576`.
         spec_version 1's `extract_tb(...)[-1]` match (the INNERMOST frame,
         which is the backend's own original raise site) could never equal
         this excluded site -- this is the fixture that would fail under
         that implementation and must pass under this one.
         """
-        from pylabrobot.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend
+        from pylabrobot.legacy.liquid_handling.backends.chatterbox import LiquidHandlerChatterboxBackend
 
         async def _raising(self, *a, **kw):
             raise RuntimeError("synthetic backend failure")
@@ -1698,7 +1698,7 @@ class TestFenceNarrowing:
         assert rt.error is not None and "synthetic backend failure" in rt.error
         assert rt.error_frames
 
-        site = _load_real_site("LiquidHandler.pick_up_tips", 576)
+        site = _load_real_site("LiquidHandler.pick_up_tips", 799)
 
         # The defect this row fixes, made concrete: the INNERMOST frame is
         # NOT the excluded site (it is deep inside the monkeypatched
@@ -1712,7 +1712,7 @@ class TestFenceNarrowing:
 
         excused, matched = excuse_by_frame(rt.error_frames, [site])
         assert excused is True
-        assert matched is not None and matched["lineno"] == 576
+        assert matched is not None and matched["lineno"] == 799
 
         # compare()'s own narrowing sees the same result: a synthetic
         # `safe`+`raised` row is excused (`unsound_scoped` -> False).
@@ -1732,7 +1732,7 @@ class TestFenceNarrowing:
         rt = run_runtime(example)
         assert rt.error_frames
 
-        site = _load_real_site("LiquidHandler.pick_up_tips", 409)
+        site = _load_real_site("LiquidHandler.pick_up_tips", 630)
         excused, matched = excuse_by_frame(rt.error_frames, [site])
         assert excused is True
         assert matched is not None
@@ -1743,23 +1743,23 @@ class TestFenceNarrowing:
         sites), the OUTERMOST one -- earliest in `error_frames` -- decides,
         never the innermost."""
         liquid_handler_py = str(
-            REPO_ROOT / "external" / "pylabrobot" / "pylabrobot" / "liquid_handling" / "liquid_handler.py"
+            REPO_ROOT / "external" / "pylabrobot" / "pylabrobot" / "legacy" / "liquid_handling" / "liquid_handler.py"
         )
         frames = [
-            {"file": liquid_handler_py, "lineno": 409, "qualname": "LiquidHandler._make_sure_channels_exist"},
-            {"file": liquid_handler_py, "lineno": 576, "qualname": "LiquidHandler.pick_up_tips"},
+            {"file": liquid_handler_py, "lineno": 630, "qualname": "LiquidHandler._make_sure_channels_exist"},
+            {"file": liquid_handler_py, "lineno": 799, "qualname": "LiquidHandler.pick_up_tips"},
         ]
-        site_409 = _load_real_site("LiquidHandler.pick_up_tips", 409)
-        site_576 = _load_real_site("LiquidHandler.pick_up_tips", 576)
+        site_409 = _load_real_site("LiquidHandler.pick_up_tips", 630)
+        site_576 = _load_real_site("LiquidHandler.pick_up_tips", 799)
 
         excused, matched = excuse_by_frame(frames, [site_409, site_576])
         assert excused is True
-        assert matched is not None and matched["lineno"] == 409  # the OUTERMOST (first) match
+        assert matched is not None and matched["lineno"] == 630  # the OUTERMOST (first) match
 
         # Reversed frame order flips which match is outermost.
         excused2, matched2 = excuse_by_frame(list(reversed(frames)), [site_409, site_576])
         assert excused2 is True
-        assert matched2 is not None and matched2["lineno"] == 576
+        assert matched2 is not None and matched2["lineno"] == 799
 
     def test_safe_row_with_no_excluded_frame_is_unsound_scoped_not_excused(self):
         """The failure this increment introduces for the first time (§16.7's
@@ -1771,7 +1771,7 @@ class TestFenceNarrowing:
         rt = run_runtime(example)
         assert rt.error_frames
 
-        site_576 = _load_real_site("LiquidHandler.pick_up_tips", 576)
+        site_576 = _load_real_site("LiquidHandler.pick_up_tips", 799)
         excused, matched = excuse_by_frame(rt.error_frames, [site_576])
         assert excused is False
         assert matched is None
@@ -1789,7 +1789,7 @@ class TestFenceNarrowing:
         rt = RuntimeOutcome(
             error=None, exc_class=None, failing_index=None, planned_indices=[0], passed=True,
         )
-        site = _load_real_site("LiquidHandler.pick_up_tips", 576)
+        site = _load_real_site("LiquidHandler.pick_up_tips", 799)
         st = {"op_0": {"verdict": "will_fail", "n_findings": 1, "reasons": ["too_much_volume"], "scoped_verdict": "will_fail"}}
         rows = compare(example, rt, st, excludes_sites=[site])
         assert rows[0]["unsound_scoped"] is True
@@ -1829,8 +1829,8 @@ class TestNormalizePlrPath:
         positions = [f"tip_rack.{r}1" for r in "ABCDEFGH"] + ["tip_rack.A2"]
         example = _pick_up_tips_example("fence_normalize", positions)
         rt = run_runtime(example)
-        site = _load_real_site("LiquidHandler.pick_up_tips", 409)
-        frame = next(f for f in rt.error_frames if f["lineno"] == 409)
+        site = _load_real_site("LiquidHandler.pick_up_tips", 630)
+        frame = next(f for f in rt.error_frames if f["lineno"] == 630)
 
         # The raw strings differ -- one is absolute, one is repo-relative.
         assert frame["file"] != site.file
@@ -1845,5 +1845,5 @@ class TestNormalizePlrPath:
         identities that genuinely coincide, not to force a match.
         """
         foreign = str(REPO_ROOT / "training" / "verify" / "verifier.py")
-        site = _load_real_site("LiquidHandler.pick_up_tips", 409)
+        site = _load_real_site("LiquidHandler.pick_up_tips", 630)
         assert normalize_plr_path(foreign) != normalize_plr_path(site.file)

@@ -42,7 +42,15 @@ def is_source_file(path: Path) -> bool:
 
 
 def iter_source_files(root: Path) -> list[Path]:
-    return sorted(p for p in root.rglob("*.py") if is_source_file(p))
+    """The analyzed surface's source files: at PLR >= 1.0 (a ``legacy/``
+    subpackage exists) the static import closure of ``legacy/``, else the
+    whole tree. Delegates to ``plr_sema.derive.surface_files`` so the
+    surveys and the derive pipeline can never select different file sets
+    (260929, task 260929_plr-1.0-migration).
+    """
+    from plr_sema.derive.surface_files import select_surface_files
+
+    return select_surface_files(root, is_source_file)
 
 
 def module_name(file: Path, root: Path) -> str:

@@ -13,28 +13,28 @@ import { MachineFrontendDefinition, MachineBackendDefinition } from '@features/a
 // Test Fixtures
 // ────────────────────────────────────────────────────────────
 const MOCK_FRONTENDS: MachineFrontendDefinition[] = [
-  { accession_id: 'fdef-lh', name: 'Liquid Handler', fqn: 'pylabrobot.liquid_handling.LiquidHandler', machine_category: 'LiquidHandler', has_deck: true } as any,
-  { accession_id: 'fdef-pr', name: 'Plate Reader', fqn: 'pylabrobot.plate_reading.PlateReader', machine_category: 'PlateReader', has_deck: false } as any,
-  { accession_id: 'fdef-img', name: 'Imager', fqn: 'pylabrobot.plate_reading.Imager', machine_category: 'PlateReader', has_deck: false } as any,
-  { accession_id: 'fdef-hs', name: 'Heater Shaker', fqn: 'pylabrobot.heating_shaking.HeaterShaker', machine_category: 'Shaker', has_deck: false } as any,
+  { accession_id: 'fdef-lh', name: 'Liquid Handler', fqn: 'pylabrobot.legacy.liquid_handling.LiquidHandler', machine_category: 'LiquidHandler', has_deck: true } as any,
+  { accession_id: 'fdef-pr', name: 'Plate Reader', fqn: 'pylabrobot.legacy.plate_reading.PlateReader', machine_category: 'PlateReader', has_deck: false } as any,
+  { accession_id: 'fdef-img', name: 'Imager', fqn: 'pylabrobot.legacy.plate_reading.Imager', machine_category: 'PlateReader', has_deck: false } as any,
+  { accession_id: 'fdef-hs', name: 'Heater Shaker', fqn: 'pylabrobot.legacy.heating_shaking.HeaterShaker', machine_category: 'Shaker', has_deck: false } as any,
 ];
 
 const MOCK_LH_BACKENDS: MachineBackendDefinition[] = [
-  { accession_id: 'bdef-star', name: 'STAR', fqn: 'pylabrobot.liquid_handling.backends.hamilton.STAR', frontend_definition_accession_id: 'fdef-lh', backend_type: 'hardware', manufacturer: 'Hamilton' } as any,
-  { accession_id: 'bdef-sim-lh', name: 'Simulated', fqn: 'pylabrobot.liquid_handling.backends.ChatterboxBackend', frontend_definition_accession_id: 'fdef-lh', backend_type: 'simulator' } as any,
+  { accession_id: 'bdef-star', name: 'STAR', fqn: 'pylabrobot.legacy.liquid_handling.backends.hamilton.STAR', frontend_definition_accession_id: 'fdef-lh', backend_type: 'hardware', manufacturer: 'Hamilton' } as any,
+  { accession_id: 'bdef-sim-lh', name: 'Simulated', fqn: 'pylabrobot.legacy.liquid_handling.backends.ChatterboxBackend', frontend_definition_accession_id: 'fdef-lh', backend_type: 'simulator' } as any,
 ];
 
 const MOCK_PR_BACKENDS: MachineBackendDefinition[] = [
-  { accession_id: 'bdef-clario', name: 'CLARIOstar', fqn: 'pylabrobot.plate_reading.clario_star_backend.CLARIOstarBackend', frontend_definition_accession_id: 'fdef-pr', backend_type: 'hardware', manufacturer: 'BMG Labtech' } as any,
-  { accession_id: 'bdef-sim-pr', name: 'Simulated', fqn: 'pylabrobot.plate_reading.backends.ChatterboxBackend', frontend_definition_accession_id: 'fdef-pr', backend_type: 'simulator' } as any,
+  { accession_id: 'bdef-clario', name: 'CLARIOstar', fqn: 'pylabrobot.legacy.plate_reading.clario_star_backend.CLARIOstarBackend', frontend_definition_accession_id: 'fdef-pr', backend_type: 'hardware', manufacturer: 'BMG Labtech' } as any,
+  { accession_id: 'bdef-sim-pr', name: 'Simulated', fqn: 'pylabrobot.legacy.plate_reading.backends.ChatterboxBackend', frontend_definition_accession_id: 'fdef-pr', backend_type: 'simulator' } as any,
 ];
 
 // Imager has ZERO backends (by design — this is the bug we're fixing)
 const MOCK_IMG_BACKENDS: MachineBackendDefinition[] = [];
 
 const MOCK_HS_BACKENDS: MachineBackendDefinition[] = [
-  { accession_id: 'bdef-ham-hs', name: 'HamiltonHeaterShaker', fqn: 'pylabrobot.heating_shaking.backends.hamilton.HamiltonHeaterShaker', frontend_definition_accession_id: 'fdef-hs', backend_type: 'hardware', manufacturer: 'Hamilton' } as any,
-  { accession_id: 'bdef-sim-hs', name: 'Simulated', fqn: 'pylabrobot.heating_shaking.backends.ChatterboxBackend', frontend_definition_accession_id: 'fdef-hs', backend_type: 'simulator' } as any,
+  { accession_id: 'bdef-ham-hs', name: 'HamiltonHeaterShaker', fqn: 'pylabrobot.legacy.heating_shaking.backends.hamilton.HamiltonHeaterShaker', frontend_definition_accession_id: 'fdef-hs', backend_type: 'hardware', manufacturer: 'Hamilton' } as any,
+  { accession_id: 'bdef-sim-hs', name: 'Simulated', fqn: 'pylabrobot.legacy.heating_shaking.backends.ChatterboxBackend', frontend_definition_accession_id: 'fdef-hs', backend_type: 'simulator' } as any,
 ];
 
 function backendsForFrontend(frontendId: string) {

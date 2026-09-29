@@ -14,7 +14,7 @@ import json
 from typing import TYPE_CHECKING, Any, cast
 
 import inflection  # pyright: ignore[reportMissingImports]
-from pylabrobot.machines.machine import Machine
+from pylabrobot.legacy.machines.machine import Machine
 from pylabrobot.resources import Deck, Resource
 
 from praxis.backend.models import AssetRequirementModel, MachineCategoryEnum, ResourceCategoryEnum
@@ -24,7 +24,7 @@ from .protocols.filesystem import IFileSystem
 from .protocols.workcell import IWorkcell
 
 if TYPE_CHECKING:
-  from pylabrobot.liquid_handling.liquid_handler import LiquidHandler
+  from pylabrobot.legacy.liquid_handling.liquid_handler import LiquidHandler
 
 
 logger = get_logger(__name__)

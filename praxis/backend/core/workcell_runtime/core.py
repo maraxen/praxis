@@ -21,7 +21,7 @@ if TYPE_CHECKING:
   import asyncio
   import uuid
 
-  from pylabrobot.machines import Machine
+  from pylabrobot.legacy.machines import Machine
   from pylabrobot.resources import Deck, Resource
 
   from praxis.backend.models.domain.deck import Deck

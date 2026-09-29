@@ -332,7 +332,8 @@ def extract_properties_from_instance(instance: Any) -> dict[str, Any]:
         tip = spots[0].make_tip()
         props["tip_volume_ul"] = getattr(tip, "maximal_volume", None)
         props["tip_has_filter"] = getattr(tip, "has_filter", None)
-        props["tip_length_mm"] = getattr(tip, "total_tip_length", None)
+        # PLR 1.0: Tip is a Resource; total_tip_length was removed, size_z is the tip length.
+        props["tip_length_mm"] = getattr(tip, "size_z", None)
         props["tip_fitting_depth_mm"] = getattr(tip, "fitting_depth", None)
     except Exception:
       pass

@@ -106,7 +106,11 @@ VERB_PARAPHRASE_LEXICON: Final[dict[str, tuple[str, ...]]] = {
 MATRIX_VERSION: Final[str] = "3"
 
 #: Vendored PLR the namespace table is parity-pinned to (param_namespace.py).
-PLR_SUBMODULE_SHA: Final[str] = "dd79c4c89bc008629a1c598ea614be5e6067d1f9"
+#: Stamped into the manifests floor_gen writes at BUILD time (corpus.py, natural.py).
+#: 260929: dd79c4c89bc008629a1c598ea614be5e6067d1f9 (0.2.2) -> 786ac2c4e (1.0.0b1) with
+#: the parity re-pin. Corpora already on disk keep the sha they were built at; they are
+#: provenance and are not rewritten.
+PLR_SUBMODULE_SHA: Final[str] = "786ac2c4e4f7afe37885af2d98ff5b0afe274c67"
 
 #: F6 amendment backend (b): titanix vLLM, OpenAI-compatible, verified live.
 #: Kept for the smoke-scale lane; NOT used for the full-scale pass (260827

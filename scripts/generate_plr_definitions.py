@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 # PLR imports
-from pylabrobot.machines.machine import Machine
+from pylabrobot.legacy.machines.machine import Machine
 from pylabrobot.resources import (
     Carrier,
     Deck,

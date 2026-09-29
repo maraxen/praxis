@@ -308,8 +308,8 @@ def test_pick_up_tips_emits_set_state_after_set_root_resource() -> None:
     without set_tip_tracking(True) the post-pickup event slice is empty; with it,
     a single batched set_state naming exactly the four picked tipspots.
     """
-    from pylabrobot.liquid_handling import LiquidHandler
-    from pylabrobot.liquid_handling.backends import LiquidHandlerChatterboxBackend
+    from pylabrobot.legacy.liquid_handling import LiquidHandler
+    from pylabrobot.legacy.liquid_handling.backends import LiquidHandlerChatterboxBackend
     from pylabrobot.resources import STARLetDeck, does_tip_tracking, set_tip_tracking
     from pylabrobot.resources.hamilton import (
         hamilton_96_tiprack_1000uL_filter as TipRack1000,
@@ -365,8 +365,8 @@ def test_pick_up_tips_without_tip_tracking_emits_nothing() -> None:
     Anyone hitting an empty slice should reach for set_tip_tracking before
     suspecting BrowserVisualizer.
     """
-    from pylabrobot.liquid_handling import LiquidHandler
-    from pylabrobot.liquid_handling.backends import LiquidHandlerChatterboxBackend
+    from pylabrobot.legacy.liquid_handling import LiquidHandler
+    from pylabrobot.legacy.liquid_handling.backends import LiquidHandlerChatterboxBackend
     from pylabrobot.resources import STARLetDeck, does_tip_tracking, set_tip_tracking
     from pylabrobot.resources.hamilton import (
         hamilton_96_tiprack_1000uL_filter as TipRack1000,

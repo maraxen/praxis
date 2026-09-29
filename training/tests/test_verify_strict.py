@@ -10,7 +10,7 @@ import asyncio
 import json
 from pathlib import Path
 
-from pylabrobot.liquid_handling.strictness import Strictness, get_strictness
+from pylabrobot.legacy.liquid_handling.strictness import Strictness, get_strictness
 
 from verify import verify
 

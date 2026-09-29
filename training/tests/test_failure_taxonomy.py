@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 import pytest
-from pylabrobot.pumps.errors import NotCalibratedError
+from pylabrobot.legacy.pumps.errors import NotCalibratedError
 from pylabrobot.resources.errors import NoTipError
 
 from verify import failure_taxonomy

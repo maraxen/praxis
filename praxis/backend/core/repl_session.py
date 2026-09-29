@@ -25,7 +25,7 @@ class ReplSession:
     """Auto-import useful classes into the context."""
     try:
       from pylabrobot import resources
-      from pylabrobot.liquid_handling import LiquidHandler
+      from pylabrobot.legacy.liquid_handling import LiquidHandler
 
       self.context["LiquidHandler"] = LiquidHandler
       self.context["resources"] = resources

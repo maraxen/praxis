@@ -45,12 +45,12 @@ CONTRACTS_JSON_PATH = PLR_SEMA_ROOT / "data" / "derived_contracts.json"
 TAXONOMY_JSON_PATH = REPO_ROOT / "training" / "verify" / "data" / "plr_exception_taxonomy.json"
 
 _PICK_UP_TIPS_SITE = PlrSite(
-    file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-    lineno=535,
+    file="external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+    lineno=758,
     qualname="LiquidHandler.pick_up_tips",
 )
 _GET_TIP_SITE = PlrSite(
-    file="external/pylabrobot/pylabrobot/resources/tip_tracker.py", lineno=65, qualname="TipTracker.get_tip"
+    file="external/pylabrobot/pylabrobot/legacy/tip_tracker.py", lineno=118, qualname="TipTracker.get_tip"
 )
 # 260904 (increment 6, T31): plr_sema.check.predicate now correctly
 # DECIDES a handful of non-tip-family guards whose only operand is a
@@ -67,23 +67,23 @@ _GET_TIP_SITE = PlrSite(
 _UNIQUE_CHANNELS_SITES = frozenset(
     {
         PlrSite(
-            file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-            lineno=502,
+            file="external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            lineno=725,
             qualname="LiquidHandler.pick_up_tips",
         ),
         PlrSite(
-            file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-            lineno=959,
+            file="external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            lineno=1185,
             qualname="LiquidHandler.aspirate",
         ),
         PlrSite(
-            file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-            lineno=1153,
+            file="external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            lineno=1379,
             qualname="LiquidHandler.dispense",
         ),
         PlrSite(
-            file="external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py",
-            lineno=651,
+            file="external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            lineno=876,
             qualname="LiquidHandler.drop_tips",
         ),
     }
@@ -137,7 +137,7 @@ def test_ac_10_1_will_fail_on_repeated_pickup(contracts_json: str) -> None:
     assert will_fail, "the second pick_up_tips must produce at least one WILL_FAIL"
     assert all(f.category == "precondition_state" for f in will_fail)
     assert any(f.plr_site == _PICK_UP_TIPS_SITE for f in will_fail), (
-        "AC-10.1's literal pin: one WILL_FAIL must be sited at liquid_handler.py:535"
+        "AC-10.1's literal pin: one WILL_FAIL must be sited at liquid_handler.py:758"
     )
     # See this module's docstring: §10.2.6 predicts a SECOND, additive
     # WILL_FAIL from the bridged TipTracker.add_tip guard -- disclosed, not
@@ -506,7 +506,7 @@ def test_ac_10_10_family_selection_is_published(contracts_json: str) -> None:
     rs = ReceiverState(
         channel_attr=lh["channel_attr"],
         tracker_class=lh["tracker_class"],
-        tracker_module="pylabrobot.resources.tip_tracker",
+        tracker_module="pylabrobot.legacy.tip_tracker",
         bool_view_attr=lh["bool_view"]["attr"],
         bool_view_field=lh["bool_view"]["field"],
         true_when=lh["bool_view"]["true_when"],

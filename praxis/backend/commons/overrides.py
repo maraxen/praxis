@@ -3,7 +3,7 @@ import inspect
 import pkgutil
 from typing import TypeVar
 
-from pylabrobot.machines import Machine
+from pylabrobot.legacy.machines import Machine
 
 T = TypeVar("T")
 
@@ -79,7 +79,7 @@ def patch_subclasses() -> dict[str, type[Machine]]:
   """
   new_objs = {}
   for obj in get_class_members(
-    library_name="pylabrobot", subpackage="machines", base_class_name=Machine.__name__,
+    library_name="pylabrobot", subpackage="legacy.machines", base_class_name=Machine.__name__,
   ).values():
     if inspect.isclass(obj) and issubclass(obj, Machine):
       obj.__init__ = new_init  # type: ignore

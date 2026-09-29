@@ -1,8 +1,8 @@
 {
   "generator": "vendor_visualizer.py",
   "generator_version": "1.0.0",
-  "source_sha": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
-  "pylabrobot_version": "0.2.2",
+  "source_sha": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
+  "pylabrobot_version": "1.0.0b1",
   "files": [
     {
       "path": "favicon.png",
@@ -51,8 +51,8 @@
     },
     {
       "path": "lib.js",
-      "sha256": "f7cb2cdd9cc010ae9dfedd58001738c3aa1aff15bd9c3aa0be4a6d60f92df1df",
-      "bytes": 213771
+      "sha256": "90ff6eafbcae858445a9755844ee1910d1a4e30e18f6e5c4ea34761e52e123aa",
+      "bytes": 214010
     },
     {
       "path": "main.css",

@@ -56,6 +56,21 @@ PLR_RESOURCE_TYPES: frozenset[str] = frozenset({
   "Resource",
   # Lids
   "Lid",
+  # Tips and head tools. PLR 1.0 made these Resources (a tip is its holder's child in
+  # the resource tree; head tools/grippers/shafts mount on a head) -- added at the
+  # 1.0.0b1 bump so the live-class drift guard in
+  # tests/common/test_type_inspection_plr_matching.py names them.
+  "Tip",
+  "HeadTool",
+  "HamiltonTool",
+  "HamiltonTip",
+  "HamiltonCoreGripperTool",
+  "HamiltonCoreGrippers",
+  "TecanTip",
+  "MechanicalGripper",
+  "NChannelPipette",
+  "TipMountingShaft",
+  "LinkBody",
   # Machine frontends
   "LiquidHandler",
   "PlateReader",

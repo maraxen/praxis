@@ -240,7 +240,7 @@ describe('DeckCatalogService', () => {
 
             it('should return Hamilton deck from connection info', () => {
                 const machine: any = {
-                    connection_info: { backend: 'pylabrobot.liquid_handling.backends.hamilton.STAR' }
+                    connection_info: { backend: 'pylabrobot.legacy.liquid_handling.backends.hamilton.STAR' }
                 };
                 expect(service.getDeckTypeForMachine(machine)).toBe('pylabrobot.resources.hamilton.HamiltonSTARDeck');
             });

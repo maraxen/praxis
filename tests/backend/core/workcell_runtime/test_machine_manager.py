@@ -61,7 +61,7 @@ async def test_initialize_machine_auto_assigns_deck():
   # Mock Machine Definition
   machine_def = MagicMock(spec=MachineDefinition)
   machine_def.accession_id = uuid4()
-  machine_def.fqn = "pylabrobot.liquid_handling.LiquidHandler"
+  machine_def.fqn = "pylabrobot.legacy.liquid_handling.LiquidHandler"
   machine_def.deck_definition = deck_def
 
   # Machine Model Mock
@@ -69,7 +69,7 @@ async def test_initialize_machine_auto_assigns_deck():
   machine_model.id = 1
   machine_model.accession_id = uuid4()
   machine_model.name = "STAR1"
-  machine_model.fqn = "pylabrobot.liquid_handling.LiquidHandler"
+  machine_model.fqn = "pylabrobot.legacy.liquid_handling.LiquidHandler"
   machine_model.properties_json = {}
   machine_model.machine_definition = machine_def
   machine_model.is_resource = False
@@ -84,7 +84,7 @@ async def test_initialize_machine_auto_assigns_deck():
   ) as mock_get_class:
 
     def side_effect(fqn):
-      if fqn == "pylabrobot.liquid_handling.LiquidHandler":
+      if fqn == "pylabrobot.legacy.liquid_handling.LiquidHandler":
         return MockLH
       if fqn == "pylabrobot.resources.Deck":
         return MockDeck
@@ -133,7 +133,7 @@ async def test_initialize_machine_does_not_overwrite_existing_deck():
   machine_model.id = 1
   machine_model.accession_id = uuid4()
   machine_model.name = "STAR1"
-  machine_model.fqn = "pylabrobot.liquid_handling.LiquidHandler"
+  machine_model.fqn = "pylabrobot.legacy.liquid_handling.LiquidHandler"
   machine_model.properties_json = {"deck": existing_deck}
   machine_model.machine_definition = machine_def
   machine_model.is_resource = False

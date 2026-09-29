@@ -105,7 +105,7 @@ async def test_asset_requirement_orm_persist_to_database(
         name="liquid_handler",
         type_hint_str="LiquidHandler",
         actual_type_str="STAR",
-        fqn="pylabrobot.liquid_handling.backends.hamilton.STAR",
+        fqn="pylabrobot.legacy.liquid_handling.backends.hamilton.STAR",
         optional=False,
         description="Hamilton STAR liquid handler",
     )
@@ -124,7 +124,7 @@ async def test_asset_requirement_orm_persist_to_database(
     assert retrieved.name == "liquid_handler"
     assert retrieved.type_hint_str == "LiquidHandler"
     assert retrieved.actual_type_str == "STAR"
-    assert retrieved.fqn == "pylabrobot.liquid_handling.backends.hamilton.STAR"
+    assert retrieved.fqn == "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR"
     assert retrieved.optional is False
     assert retrieved.description == "Hamilton STAR liquid handler"
 
@@ -307,7 +307,7 @@ async def test_asset_requirement_orm_relationship_to_protocol(
         name="asset2",
         type_hint_str="LiquidHandler",
         actual_type_str="STAR",
-        fqn="pylabrobot.liquid_handling.backends.hamilton.STAR",
+        fqn="pylabrobot.legacy.liquid_handling.backends.hamilton.STAR",
     )
 
     db_session.add(asset1)

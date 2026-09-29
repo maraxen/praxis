@@ -1,15 +1,14 @@
 """Extraction-correctness tests for the P2.4 corpus miner (AC-2.4 smoke gate).
 
 Covers synthetic cells with known shapes first, then pins real-corpus
-behavior (hamilton-star/basic.ipynb, OT2 notebooks, protocols) so drift in
-the vendored docs or protocol corpus is caught loudly.
+behavior (the 5 notebooks at PLR 1.0.0b1, incl. the modern-API prep demo that
+must yield zero LiquidHandler calls, plus the protocols) so drift in the
+vendored docs or protocol corpus is caught loudly.
 """
 
 from __future__ import annotations
 
 import json
-
-import pytest
 
 from overlay_gen.miner import (
     HARDWARE_CONTEXT_ONLY_NOTEBOOKS,
@@ -114,62 +113,151 @@ def test_syntax_error_cell_counted_not_fatal():
 # --- real corpus ------------------------------------------------------------
 
 
-def test_hamilton_basic_notebook_mined():
-    rel = "external/pylabrobot/docs/user_guide/00_liquid-handling/hamilton-star/basic.ipynb"
+#: The LH user-guide notebooks that exist at the vendored PLR 1.0.0b1 pin
+#: (786ac2c4e), mapped to the number of kept LiquidHandler calls each yields.
+#: At the pre-1.0 pin this tree had 16 notebooks / 26 kept calls; the
+#: hamilton-star + OT2 notebooks were removed or moved out of
+#: ``00_liquid-handling`` and the plate-washer notebook was deleted. A change
+#: here means the submodule pin (or the receiver gate) moved -- re-mine on purpose.
+_LH_NB = "external/pylabrobot/docs/user_guide/00_liquid-handling/"
+EXPECTED_NOTEBOOK_KEPT: dict[str, int] = {
+    _LH_NB + "container_no_go_zones.ipynb": 1,
+    _LH_NB + "hamilton-prep/prep_basic_demo.ipynb": 0,  # modern Prep device API only
+    _LH_NB + "mixing.ipynb": 3,
+    _LH_NB + "moving-channels-around.ipynb": 1,
+    _LH_NB + "tutorial_tip_inventory_consolidation.ipynb": 2,
+}
+PREP_NB = _LH_NB + "hamilton-prep/prep_basic_demo.ipynb"
+
+
+def test_notebook_set_and_kept_counts_pinned():
     reports = mine_notebooks(NOTEBOOK_ROOT)
-    stats = reports[rel]
-    names = sorted(c.name for c in stats.kept_calls)
-    assert names == [
-        "aspirate",
-        "aspirate",
-        "dispense",
-        "dispense",
-        "drop_tips",
-        "pick_up_tips",
-    ]
-    asp = next(c for c in stats.kept_calls if c.name == "aspirate")
-    assert asp.params["volume_ul"] == [100.0, 50.0, 200.0]
+    assert set(reports) == set(EXPECTED_NOTEBOOK_KEPT)  # loses/gains a notebook -> fails
+    assert {src: len(s.kept_calls) for src, s in reports.items()} == EXPECTED_NOTEBOOK_KEPT
+    assert all(s.parse_errors == 0 and s.unextractable == 0 for s in reports.values())
 
 
-def test_ot2_simulator_use_channels_dropped():
-    rel = "external/pylabrobot/docs/user_guide/00_liquid-handling/opentrons/ot2/ot2-simulator.ipynb"
+def test_prep_basic_demo_modern_api_calls_never_kept():
+    """prep.pipettes.* / prep.head8.* share verb names with LiquidHandler but are
+    the modern device API: excluded and recorded, never relabelled as LH calls."""
+    stats = mine_notebooks(NOTEBOOK_ROOT)[PREP_NB]
+    assert stats.kept_calls == []
+    modern = [e for e in stats.exclusions if e.reason.startswith("receiver ")]
+    by_verb = {}
+    for e in modern:
+        by_verb[e.verb] = by_verb.get(e.verb, 0) + 1
+    # 10 modern pipetting calls + get_mounted_tips + setup/stop of Prep objects.
+    assert by_verb == {
+        "pick_up_tips": 3,
+        "drop_tips": 3,
+        "aspirate": 2,
+        "dispense": 2,
+        "get_mounted_tips": 1,
+        "setup": 2,
+        "stop": 2,
+    }
+    assert all("not a legacy LiquidHandler" in e.reason for e in modern)
+
+
+def _cell_line(nb_rel: str, origin: str) -> str:
+    """Source text of the call line an origin ``...#cell<N>@<line>`` points at
+    (same magic-stripping as the miner), for an independent receiver check."""
+    _, _, tail = origin.partition("#cell")
+    cell_no, _, line_no = tail.partition("@")
+    nb = json.loads((REPO_ROOT / nb_rel).read_text(encoding="utf-8"))
+    code = "".join(nb["cells"][int(cell_no)]["source"])
+    lines = [ln for ln in code.splitlines() if not ln.lstrip().startswith(("%", "!"))]
+    return lines[int(line_no) - 1]
+
+
+def test_every_kept_notebook_call_is_on_a_liquid_handler_receiver():
     reports = mine_notebooks(NOTEBOOK_ROOT)
-    stats = reports[rel]
-    picks = [c for c in stats.kept_calls if c.name == "pick_up_tips"]
-    assert len(picks) == 2
-    assert any(c.dropped_kwargs == ("use_channels",) for c in picks)
-    assert all("use_channels" not in c.params for c in stats.kept_calls)
-
-
-def test_hello_world_discard_and_exclusions():
-    rel = "external/pylabrobot/docs/user_guide/00_liquid-handling/opentrons/ot2/hello-world.ipynb"
-    reports = mine_notebooks(NOTEBOOK_ROOT)
-    names = [c.name for c in reports[rel].kept_calls]
-    assert "discard_tips" in names
-    excl = {e.verb for e in reports[rel].exclusions}
-    assert "return_tips" in excl
+    kept = [c for s in reports.values() for c in s.kept_calls]
+    assert len(kept) == sum(EXPECTED_NOTEBOOK_KEPT.values()) == 7
+    for call in kept:
+        line = _cell_line(call.source, call.origin)
+        assert f"lh.{call.name}(" in line, (call.origin, line)
+        assert "prep" not in line
 
 
 def test_hardware_context_only_notebooks_skipped_unparsed():
     reports = mine_notebooks(NOTEBOOK_ROOT)
-    assert len(reports) == 16  # every notebook accounted for
     skipped = {
-        src: stats.skip_reason
-        for src, stats in reports.items()
-        if stats.skip_reason is not None
+        src for src, stats in reports.items() if stats.skip_reason is not None
     }
-    assert len(skipped) == len(HARDWARE_CONTEXT_ONLY_NOTEBOOKS)
-    probing = [
-        src for src in skipped if "z-probing" in src or "core-grippers" in src
-    ]
-    assert len(probing) >= 2
+    # Whatever hardware-context-only notebooks exist on disk at this pin are
+    # skipped whole; none of them survive at PLR 1.0.0b1 (the dict is retained
+    # for the pre-1.0 pin).
+    on_disk = {
+        (NOTEBOOK_ROOT / key).relative_to(REPO_ROOT).as_posix()
+        for key in HARDWARE_CONTEXT_ONLY_NOTEBOOKS
+        if (NOTEBOOK_ROOT / key).is_file()
+    }
+    assert skipped == on_disk
 
 
-@pytest.mark.parametrize("notebook_count", [16])
-def test_all_notebooks_present(notebook_count):
-    nb = json.loads((NOTEBOOK_ROOT / "hamilton-star" / "basic.ipynb").read_text())
-    assert any(c["cell_type"] == "code" for c in nb["cells"])
-    assert len(mine_notebooks(NOTEBOOK_ROOT)) == notebook_count
+def test_all_notebooks_present():
+    assert len(mine_notebooks(NOTEBOOK_ROOT)) == len(EXPECTED_NOTEBOOK_KEPT) == 5
+
+
+# --- receiver gate (synthetic) ---------------------------------------------
+
+
+def test_modern_device_api_receiver_excluded_not_kept():
+    code = (
+        "prep = Prep(deck=deck)\n"
+        "await prep.pipettes.pick_up_tips(tip_spots, use_channels=[0, 1])\n"
+        "await prep.pipettes.aspirate(source, piston_volumes=[35.0])\n"
+        "await prep.head8.dispense(containers=dest, volume=15.0)\n"
+    )
+    stats = _extract_from_code(code, "s", "s#0")
+    assert stats.kept_calls == []
+    assert [e.verb for e in stats.exclusions] == ["pick_up_tips", "aspirate", "dispense"]
+    assert all("not a legacy LiquidHandler" in e.reason for e in stats.exclusions)
+    assert "prep.pipettes" in stats.exclusions[0].reason
+
+
+def test_receiver_bound_to_liquid_handler_is_kept_whatever_its_name():
+    code = (
+        "handler = LiquidHandler(backend=b, deck=d)\n"
+        "await handler.aspirate(plate['A1'], vols=[10])\n"
+    )
+    (call,) = _extract_from_code(code, "s", "s#0").kept_calls
+    assert call.name == "aspirate" and call.receiver_type == "liquid_handler"
+
+
+def test_annotated_liquid_handler_parameter_is_kept():
+    code = (
+        "async def proto(robot: LiquidHandler | None, other: Prep):\n"
+        "    await robot.discard_tips()\n"
+        "    await other.discard_tips()\n"
+    )
+    stats = _extract_from_code(code, "s", "s#0")
+    assert [c.name for c in stats.kept_calls] == ["discard_tips"]
+    assert len(stats.exclusions) == 1 and "'other'" in stats.exclusions[0].reason
+
+
+def test_binding_overrides_conventional_name():
+    """`lh = Prep(...)` is NOT a LiquidHandler just because it is called lh."""
+    stats = _extract_from_code(
+        "lh = Prep(deck=deck)\nawait lh.aspirate(plate['A1'], vols=[10])\n", "s", "s#0"
+    )
+    assert stats.kept_calls == []
+    assert "bound to Prep" in stats.exclusions[0].reason
+
+
+def test_unidentifiable_receiver_excluded_with_reason():
+    stats = _extract_from_code("await mystery.aspirate(plate['A1'], vols=[10])", "s", "s#0")
+    assert stats.kept_calls == []
+    assert "not identifiable as a LiquidHandler" in stats.exclusions[0].reason
+
+
+def test_binding_from_sibling_cell_is_honoured():
+    bindings = {"rig": {"LiquidHandler"}}
+    stats = _extract_from_code(
+        "await rig.pick_up_tips(tip_rack['A1'])", "s", "s#0", bindings=bindings
+    )
+    assert [c.name for c in stats.kept_calls] == ["pick_up_tips"]
 
 
 def test_simple_transfer_protocol_mined():
@@ -197,7 +285,7 @@ def test_protocol_corpus_complete():
     reports = mine_protocols(PROTOCOL_DIR)
     assert len(reports) == 6
     total = sum(len(s.kept_calls) for s in reports.values())
-    assert total > 0
+    assert total == 14  # unchanged by the PLR 1.0 bump (protocols use pylabrobot.legacy)
 
 
 def test_iter_kept_calls_deterministic():

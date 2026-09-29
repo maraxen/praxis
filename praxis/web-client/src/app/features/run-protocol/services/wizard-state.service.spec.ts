@@ -481,7 +481,7 @@ describe('WizardStateService', () => {
                     {
                         param_name: 'liquid_handler',
                         machine_type: 'LiquidHandler',
-                        backend_fqn: 'pylabrobot.liquid_handling.backends.hamilton.STAR.STAR',
+                        backend_fqn: 'pylabrobot.legacy.liquid_handling.backends.hamilton.STAR.STAR',
                         is_simulated: true
                     }
                 ];

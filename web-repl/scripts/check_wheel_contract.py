@@ -154,6 +154,19 @@ def build_throwaway_venv(venv_dir: Path, *, web_repl_root: Path, repo_root: Path
     )
     if install.returncode != 0:
         raise ContractError(f"throwaway venv install failed:\n{install.stdout}\n{install.stderr}")
+
+    # PLR 1.0's core deps (typing_extensions, websockets>=14) are imported at module
+    # top level, and --no-deps installs neither. The browser gets them anyway -- the
+    # bootstrap requests typing-extensions from the Pyodide lock and websockets is a
+    # vendored wheel -- so the throwaway venv must supply the same two, or the probe
+    # fails on ModuleNotFoundError instead of testing the contract.
+    deps = subprocess.run(
+        ["uv", "pip", "install", "--python", str(python), *build_wheels._PLR_CORE_RUNTIME_DEPS],
+        capture_output=True,
+        text=True,
+    )
+    if deps.returncode != 0:
+        raise ContractError(f"throwaway venv runtime-deps install failed:\n{deps.stdout}\n{deps.stderr}")
     return python
 
 

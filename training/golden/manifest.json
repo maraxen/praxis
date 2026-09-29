@@ -66,7 +66,7 @@
   "gap_fields_policy": "missing_required/unresolved_slots derived deterministically via coxswain.plr.slot_derivation (D11); NEVER authored or model-predicted",
   "pair_linkage": "sidecar line N <-> pairs line N; utterance equality asserted in tests",
   "phase2_tool_count": 13,
-  "plr_source_sha": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+  "plr_source_sha": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
   "provenance": "human-authored golden corpus (D9 regeneration-exempt); generator re-derives byte-for-byte for drift detection",
   "scaffold": "functiongemma-native/research-s2a-developer-scaffold/no-date-injection(D6-rev2)",
   "sizing_rule": {
