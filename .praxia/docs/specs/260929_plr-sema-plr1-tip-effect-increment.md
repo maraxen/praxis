@@ -19,7 +19,8 @@ adversarial_review: ''
 > 5's V5 rule, including its 260929 amendment, is **unchanged** (L5). `schema_version` stays 1,
 > `REASON_VOCABULARY` gets no new member, and no new registry row is added (L0).
 >
-> **Status: revision r3, after adversarial rounds 1–3** (the revision log is §18.17). Where this document asserts a number it names the file it
+> **Status: revision r3 — adversarial review converged** (rounds 1–3 REVISE, round 4 ACCEPT: ready
+> for implementation; the revision log is §18.17). Owner ruling still pending on OI-21 (A-CALLBACK-INERT). Where this document asserts a number it names the file it
 > was read from. Where a claim is reasoned from reading source rather than measured, it says
 > *(reasoned)*. The recon's *(exploratory)* numbers are **not** evidence here and are quoted only as
 > labelled expectations. The owner's locked decisions L0–L7 (§18.2) are inputs, not open questions.
@@ -311,9 +312,9 @@ AC-18.1, keep this out (redefined in r2, C8/C9):
     That scan counts only `ast.Assign`. It would miss `__init__`'s
     `self._before: object = _NOTHING_PENDING`, an `AnnAssign`
     (`external/pylabrobot/pylabrobot/legacy/tip_tracker.py:46`), and would silently miss
-    `setattr`/`AugAssign`/tuple-target writers. Any new writer breaks CI rather
-  than silently leaving a method `UNTOUCHED`. The snapshots at the pin *(read this revision from
-  `external/pylabrobot/pylabrobot/legacy/tip_tracker.py`)* are:
+    `setattr`/`AugAssign`/tuple-target writers.
+  - Any new writer breaks CI rather than silently leaving a method `UNTOUCHED`. The snapshots at the
+    pin *(read this revision from `external/pylabrobot/pylabrobot/legacy/tip_tracker.py`)* are:
   - `_holder_ref` → `{__init__}` (`:41`);
   - `_before` → `{__init__, _tip (setter), _hold, commit, rollback, clear, load_state}` (`:46`, `:72`,
     `:77`, `:174`, `:186`, `:191`, `:211`).
@@ -363,10 +364,10 @@ when `m` is called. No 1.0 `TipTracker` method contains one *(verified by readin
 > - **The only D-3-shaped call in either tracker is the callback invocation `self._callback()`.** It
 >   passes no argument at all. C15 below states the assumption that covers it.
 > - **X1 (r3) is also zero cost at both pins** *(orchestrator-verified)*. In 1.0
->   `legacy/tip_tracker.py` and in the old pin's `resources/tip_tracker.py`, the only bare `self` token
->   that is not an attribute base is inside `add_tip`'s multi-line parameter declaration. That token is
->   an `ast.arg`, a parameter, not a `Name` in Load context, so X1 does not fire on it. Every other
->   `self` in both files is the `value` of an `Attribute`.
+>   `legacy/tip_tracker.py` and in the old pin's `resources/tip_tracker.py`, every `self` that is not
+>   an attribute base is a method's own parameter declaration (an `ast.arg`, not a `Name` in Load
+>   context), so X1 does not fire on it. Every `self` inside a method body in both files is the
+>   `value` of an `Attribute` (round-4 challenger read the 1.0 file in full).
 
 **Self-calls.** Every `ast.Call` in the body, at any expression position (statement, RHS, argument,
 `await`), whose `func` is exactly `Attribute(value=Name("self"), attr=h)` is a candidate self-call to
@@ -1287,8 +1288,8 @@ same `oracle_replay.main`), and adds these (r1 additions marked):
        (`plr-sema/eval/oracle_common.py:1003`). The wrapper is chain-composed: it calls the original,
        appends its return value to a list, and returns it unchanged. It is restored in `finally`. The
        list is correlated with `FINDINGS_SINK` / `LOWERED_SINK` **by position**, and the script
-       hard-asserts the same three-way length invariant `t30_measure` uses
-       (`plr-sema/eval/t30_measure.py:677`). A mismatch raises, the run produces no `result.json`, and
+       hard-asserts a four-way length invariant (eligible rows, findings, lowered, env), extending
+       the three-way precedent at `plr-sema/eval/t30_measure.py:677`. A mismatch raises, the run produces no `result.json`, and
        the outcome is FAIL by construction. **`run_static_calls` is unchanged.**
      - **Topology.** The script runs `rack_topology_disturbers` over each row's lowered bytecode, the
        `bc` that `LOWERED_SINK` delivers, and derives `rack_topology_prefix_ok` at the operation's pc
