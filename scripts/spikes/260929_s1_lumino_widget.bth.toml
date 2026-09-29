@@ -1,0 +1,203 @@
+# Pre-registration sidecar for spike S1 (task 260929_notebook-display-design, backlog #5623 A1
+# part A1b-1, epic #5648). Spec: .praxia/docs/specs/260929_notebook-display-epic.md, D1 row S1,
+# D6 (sizing cases), D16 (shared unit runner, bounded teardown), D17 (units, resume,
+# completeness), AC-1, AC-42.
+#
+# THIS FILE AND scripts/spikes/260929_s1_lumino_widget.py ARE COMMITTED BEFORE ANY RUN. No
+# browser has been launched against this probe when this file was written: the outcome
+# criteria below were chosen from the spec, not from numbers. Run it with `bth`, never
+# `uv run bth` (which silently skips sidecar enforcement):
+#
+#   bth run --project-slug praxis --out outputs/spikes/260929_s1/result.json -- \
+#     uv run --no-sync python3 scripts/spikes/260929_s1_lumino_widget.py \
+#       --out-dir outputs/spikes/260929_s1 [--resume]
+#
+# Verify the run by its RECORD (bth compact first if it is not visible yet):
+#   bth sql "SELECT id, status, outcome, exit_code, command FROM runs WHERE id LIKE '<prefix>%'"
+#
+# The driver writes the flat fields below to $BTH_RESULTS_PATH ONLY when every unit is
+# complete. An incomplete run (a timeout, a stampless crash, a blocked unit) exits 3 and writes
+# no result, so bathos records no outcome, and the next `--resume` run is a new run record.
+
+[experiment]
+hypothesis = "In the praxis JupyterLite lab build, with no labextension build, a plain script can obtain a real Lumino Widget and add it to the main area next to an open notebook with app.shell.add(w, 'main', {mode: 'split-right', ref}). Either (S1-A) the root Widget class is reachable by walking the prototype chain of an existing shell widget and identified structurally (its prototype owns processMessage and onAfterAttach and its own prototype is Object.prototype), so new Ctor({node}) works, or (S1-B) the stock command help:open creates a main-area iframe widget whose iframe allows scripts and same origin and which can be re-added with split-right. Independently, the widget's width is limited either by CSS min-width/max-width on its node (css_limits_honoured; css_limits_refit says whether Lumino re-reads inline px limits after parent.fit()), or by the main DockPanel's saveLayout -> edit split-area sizes -> restoreLayout (dock_layout_sizing_reachable), or by neither (S1-L, every AC-36 width key recorded-only); restore_layout_keeps_iframe records whether restoreLayout() keeps an iframe in the widget loaded. The five cell states (not run, ran, running, error, edited since run) each expose a CSS hook, a model signal, or neither; the notebook's windowingMode and the signal that fires when a virtualised cell's DOM is re-attached are recorded. The prior is S1-A with a layout-sizing or CSS-limit mechanism, but the prior is NOT a criterion: every branch is a pre-registered outcome and the run is only INVALID (residual) if the instrument itself failed (an error finding, an uncontrolled or inconsistent measurement, or a negative control that did not fail as required)."
+stage_name = "exploration"
+novel = true
+
+# ---------------------------------------------------------------------------------------
+# [outcomes]: one outcome per D1 branch, over the flat fields the driver writes when all ten
+# units are complete. widget_branch is S1-A if widget_a is usable, else S1-B if widget_b is
+# usable, else S1-C. sizing_branch is css_limits if css_limits_honoured, else dock_layout if
+# dock_layout_sizing_reachable, else S1-L. measurement_valid is the conjunction of the named
+# validity checks (no unit carries an error finding; negative control failed as required;
+# positive control passed; five states reached; windowing mode recorded; and, for S1-A/B: the
+# drag control worked, css limits / layout sizing / refit / restore all measured (non-null),
+# the iframe reload control detected a reload, split_right_ok agrees with the picked widget
+# and every downstream unit used the same widget_source). Any error finding, anywhere,
+# therefore lands in `invalid`: an error never satisfies a positive outcome.
+# ---------------------------------------------------------------------------------------
+
+[outcomes.s1_a]
+condition = "all_units_complete = true AND measurement_valid = true AND widget_branch = 'S1-A' AND sizing_branch <> 'S1-L'"
+decision = "S1-A: the deck panel is a real widget from new Ctor({node}); sprint C task C5 proceeds. Sizing per the recorded D6 case (css_limits or dock_layout); AC-36 width keys per the case and restore_layout_keeps_iframe."
+reasoning = "The constructor route works and at least one size-limit mechanism is reachable, so every D6 row except S1-L applies."
+is_residual = false
+
+[outcomes.s1_a_l]
+condition = "all_units_complete = true AND measurement_valid = true AND widget_branch = 'S1-A' AND sizing_branch = 'S1-L'"
+decision = "S1-A with S1-L: real widget, but neither CSS limits nor layout sizing works. The split opens at Lumino's own size, the drag is unclamped and every AC-36 width key is recorded-only (drawer and height keys stay asserted): the stated deviation accepted per the user's 260929 ruling."
+reasoning = "Widget branch A, sizing branch L are independent axes; both are pre-registered."
+is_residual = false
+
+[outcomes.s1_b]
+condition = "all_units_complete = true AND measurement_valid = true AND widget_branch = 'S1-B' AND sizing_branch <> 'S1-L'"
+decision = "S1-B: A failed, the stock help:open iframe widget is re-homed and its content replaced; sprint C task C5 proceeds on that widget. Sizing per the recorded D6 case."
+reasoning = "The constructor route failed but the stock-command route passed every check (iframe sandbox, same origin, split-right re-add), and a size-limit mechanism is reachable."
+is_residual = false
+
+[outcomes.s1_b_l]
+condition = "all_units_complete = true AND measurement_valid = true AND widget_branch = 'S1-B' AND sizing_branch = 'S1-L'"
+decision = "S1-B with S1-L: stock-command widget, unclamped split, every AC-36 width key recorded-only."
+reasoning = "Widget branch B and sizing branch L are independent axes."
+is_residual = false
+
+[outcomes.s1_c]
+condition = "all_units_complete = true AND measurement_valid = true AND widget_branch = 'S1-C'"
+decision = "S1-C: both routes failed with valid controls. STOP sprint C task C5 and escalate: the user's decision (a real JupyterLab widget) cannot be met without a labextension. Offer the degraded option (a shell-owned fixed panel with #main narrowed by CSS). Sprints A and B do not depend on the widget and still merge."
+reasoning = "No widget constructor is reachable without a labextension; the downstream sizing units record nulls by design."
+is_residual = false
+
+# The residual: the instrument did not produce a valid measurement. Not evidence for any branch.
+[outcomes.invalid]
+condition = "all_units_complete = true AND measurement_valid = false"
+decision = "INVALID: at least one unit carries an error finding, or a control did not behave as required (including a negative control that errored, which has NOT failed as required), or a sizing key is unmeasured or the units disagree. Fix the probe, commit, and re-run under this sidecar's design; cite no branch from this run."
+reasoning = "A verdict that could be a probe bug is never reported without a control that proves the instrument can say the opposite."
+is_residual = true
+
+[result_schema]
+all_units_complete = "bool"
+n_units = "int"
+n_error_units = "int"
+measurement_valid = "bool"
+widget_branch = "str"
+sizing_branch = "str"
+sizing_case = "str"
+d1_branch = "str"
+split_right_ok = "bool"
+css_limits_honoured = "bool"
+dock_layout_sizing_reachable = "bool"
+css_limits_refit = "bool"
+restore_layout_keeps_iframe = "bool"
+windowing_mode = "str"
+reattach_signal = "str"
+negative_control_failed_as_required = "bool"
+positive_control_structural_pass = "bool"
+all_states_reached = "bool"
+all_states_derivable = "bool"
+n_states_with_css_hook = "int"
+
+# ---------------------------------------------------------------------------------------
+# D17 design statement: pre-registered here, committed before the first run.
+# ---------------------------------------------------------------------------------------
+
+[design]
+spec = ".praxia/docs/specs/260929_notebook-display-epic.md D1 (S1 row), D6, D16, D17, AC-1, AC-42"
+driver = "scripts/spikes/260929_s1_lumino_widget.py (argparse + logging); shared runner scripts/unit_runner.py; launch pattern and ServedDir/chromium_launch_args/resolve_chrome_path from scripts/repl_smoke.py, loaded by path"
+unit_list = ["widget_a", "widget_b", "split_right", "css_limits", "dock_layout_sizing", "css_limits_refit", "restore_layout_keeps_iframe", "cell_hooks", "windowing", "neg_wrong_ctor"]
+statement = "Each unit runs in its own subprocess (<script> --unit <name> --out-dir <dir>) and its own browser context, started by the driver through unit_runner.run_unit with timeout = 4 min + 60 s, and self-bounded by a unit_runner.Watchdog armed at 4 min as its first act after ensure_token(). The unit then deletes its own stamp, artifact and timeout marker, probes, writes <out>/units/<name>.json with unit_runner.write_atomic under the watchdog lock, runs the bounded teardown (browser and Playwright closed, kill_tree over residual descendants, output flushed), commits <out>/units/<name>.stamp.json last through Watchdog.commit, and then calls only os._exit(stamp.exit). There is no whole-run timeout. Outcomes are evaluated over the FULL unit set regardless of reuse: the driver writes its result (and so bathos evaluates [outcomes]) only when all ten units are complete, reused or recomputed; a run with an incomplete unit writes no outcome and exits 3."
+stamp = "{unit, inputs: {name: sha256}, artifact_sha256, started, finished, exit, timeout_s}; exit is 0 only if the probe did not raise and every pre-registered field is present."
+hashed_inputs = ["script (this driver)", "runner (scripts/unit_runner.py)", "dist (unit_runner.dist_hash of the served dist)", "fixture (web-repl/tests/fixtures/notebooks/s1_cell_states.ipynb)", "chrome (resolved path + chrome --version)", "driver (unit_runner.driver_input: Playwright version + uv.lock sha256)", "args (unit, viewport 1440x900, base path; an addition to the D17 list, strictly more conservative)", "upstream:widget_a and upstream:widget_b (artifact_sha256) for split_right, css_limits, dock_layout_sizing, css_limits_refit, restore_layout_keeps_iframe"]
+resume_rule = "--resume skips a unit only if its stamp exists, stamp.exit == 0, stamp.inputs equal the current inputs, stamp.artifact_sha256 equals the sha256 of the artifact on disk, the artifact has no error finding, and every field pre-registered for that unit (below) is present. Anything else is recomputed. A recomputed widget unit changes its artifact_sha256 and so invalidates the units that build on it."
+completeness = "A unit is complete when its artifact and a matching stamp (inputs equal the current inputs, artifact_sha256 equal to the artifact on disk) exist. A probe that raises is caught, recorded in the artifact as an error finding {type, message, traceback_tail <= 4 KiB}, and the unit still writes its artifact and stamp: it is complete, the error counts toward [outcomes] (an error never satisfies a positive outcome: measurement_valid is false and the outcome is `invalid`; a negative control that errors has NOT failed as required), and it is never reused. Only a timeout (exit 124, no stamp, no artifact, a timeout marker) or a stampless crash makes a unit incomplete. A unit whose upstream unit is incomplete is not started (blocked) and is incomplete. If the driver's run_unit times out over a valid stamp, the stamp governs and the driver logs a warning."
+teardown_order = "1 write artifact; 2 close browser and Playwright (errors logged, keys unchanged); 3 kill_tree over residual descendants; 4 flush stdout/stderr/logging; 5 Watchdog.commit(stamp); then only os._exit(stamp.exit). A hang in 1-4 is a timeout."
+reads = "Every result is read from the notebook/shell models and the DOM via page.evaluate, never from printed console text."
+
+[design.timeouts]
+unit_s = 240
+driver_kill_s = 300
+whole_run_timeout = "none"
+note = "D17 S1 row: 4 min each; estimates from the spec, not measurements."
+
+[design.tolerances]
+drag_control_px = 12
+css_limit_px = 3
+layout_fraction = 0.05
+min_layout_swing_fraction = 0.25
+viewport = "1440x900"
+drag_requests_px = [300, 700]
+css_limits_px = [420, 480]
+layout_requested_fractions = [0.3, 0.7]
+
+[design.derivations]
+widget_branch = "S1-A if widget_a.usable, else S1-B if widget_b.usable, else S1-C (an errored widget unit is never usable)"
+sizing_branch = "css_limits if css_limits_honoured; else dock_layout if dock_layout_sizing_reachable; else S1-L; null on S1-C or if either key is null"
+sizing_case = "D6 table row from (css_limits_honoured, dock_layout_sizing_reachable): honoured_reachable, ignored_reachable, honoured_unreachable, S1-L"
+width_key_status = "AC-36 width keys (open_width_1280_1599, drag_clamp_1280_1599, open_width_ge_1600, fit_after_tier_change[tier_1280_1599, tier_ge_1600], resize_within_wide, ac39d_ge1600_negative) as asserted or recorded-only, from the sizing case, css_limits_refit and restore_layout_keeps_iframe per the D6 table, its restore_layout_keeps_iframe=false note and AC-36's case paragraph; written to <out>/result.json (details), not to the bathos result"
+cell_state_hooks = "per state, the features present in that state's cell and in none of the other four; mechanism css (a unique class/data attribute/output mime), model (a unique prompt text or model signal, or a unique combination of model features), or none; selection/focus classes are excluded"
+reattach_signal = "priority: cell.inViewportChanged emitted true, then an after-attach message on the cell widget, then a DOM re-insertion of the cell node; recorded from the scroll-back phase only; null if the cell never detached"
+validity_checks = "no_error_findings, negative_control_failed_as_required, positive_control_structural_pass, all_states_reached, windowing_mode_recorded; for S1-A/B also drag_control_ok, css_limits_measured, layout_sizing_measured, css_limits_refit_measured, restore_measured, reload_control_detected, split_right_consistent, downstream_source_agrees"
+
+[design.controls]
+positive = "neg_wrong_ctor applies the structural check to the real root class, which must pass; css_limits' unconstrained drag must reach the requested widths; restore_layout_keeps_iframe's deliberate iframe re-insertion must produce a load event and lose the token; cell_hooks reaches each state by model ground truth independent of the hooks under test"
+negative = "neg_wrong_ctor: deliberately wrong constructor candidates (Object, Array, the notebook panel's own leaf class, a subclass of the real root) must ALL fail the structural check. A negative control that errors has NOT failed as required."
+plumbing = "web-repl/tests/test_s1_spike_driver.py exercises driver, unit, stamp, resume, completeness and outcome gating against stub probes, with no browser"
+
+[design.units.widget_a]
+timeout_s = 240
+upstream = []
+required_fields = ["usable", "structural_found", "chain", "root_index", "root_ctor_name", "constructed_ok", "is_widget_instance", "attached_ok", "split_right_ok", "recipe", "reason"]
+description = "S1-A constructor walk. Open the seeded fixture notebook, walk the prototype chain of the notebook panel (a shell widget) to the root class (the last prototype before Object.prototype), apply the structural check (its prototype OWNS processMessage and onAfterAttach and its own prototype is Object.prototype), construct new Ctor({node}), add it with shell.add(w, 'main', {mode: 'split-right', ref: <notebook id>}). usable = structural_found AND constructed_ok AND is_widget_instance AND attached_ok AND split_right_ok (attached, in the document, side by side with the notebook)."
+
+[design.units.widget_b]
+timeout_s = 240
+upstream = []
+required_fields = ["usable", "command_registered", "widget_created", "iframe_found", "sandbox_attr", "sandbox_allows_scripts_same_origin", "same_origin_readable", "split_right_ok", "recipe", "reason"]
+description = "S1-B stock-command widget. Execute the stock command help:open with a same-origin url; the new main-area widget must contain an iframe whose sandbox attribute is absent or allows both allow-scripts and allow-same-origin, whose contentDocument is readable (same origin), and which can be re-added with split-right. Run in its own unit whether or not widget_a is usable, so both branches are always measured."
+
+[design.units.split_right]
+timeout_s = 240
+upstream = ["widget_a", "widget_b"]
+required_fields = ["widget_source", "split_right_ok", "notebook_rect_before", "notebook_rect_after", "widget_rect", "side_by_side", "orientation", "reason"]
+description = "The picked widget (widget_a if usable, else widget_b) added with split-right next to the open notebook: the saved DockPanel layout has a horizontal split-area holding both, the widget lies to the right of the notebook, the notebook is narrower than before. split_right_ok must agree with the widget unit that picked the source."
+
+[design.units.css_limits]
+timeout_s = 240
+upstream = ["widget_a", "widget_b"]
+required_fields = ["widget_source", "css_limits_honoured", "drag_control_ok", "control_widths", "limited_widths", "dock_width_px", "limits_px", "tolerance_px", "reason"]
+description = "Real splitter drag (page.mouse) at 1440x900. Control first: the same drags on a widget WITHOUT CSS limits must land within 12 px of 300 and 700 px (drag_control_ok). Then the widget with the D6 rule (inside @media 1280-1599: min-width 420px; max-width 480px; class on the node before its first fit): css_limits_honoured iff the 300 px drag clamps to 420 and the 700 px drag to 480 within 3 px. If the control fails the value is null (inconclusive), never false."
+
+[design.units.dock_layout_sizing]
+timeout_s = 240
+upstream = ["widget_a", "widget_b"]
+required_fields = ["widget_source", "dock_panel_found", "dock_accessor", "save_layout_ok", "split_area_found", "sizes_before", "requested_fractions", "measured_fractions", "dock_width_px", "restore_called", "dock_layout_sizing_reachable", "reason"]
+description = "saveLayout on the main DockPanel (located by capability), edit the widget's split-area sizes to [0.3, 0.7] then restoreLayout, measure widget width / dock width, then the same for 0.7. dock_layout_sizing_reachable iff both land within 0.05 of the request and the two measurements differ by at least 0.25. Null (inconclusive) if the layout saved but the widget was not found in a split-area."
+
+[design.units.css_limits_refit]
+timeout_s = 240
+upstream = ["widget_a", "widget_b"]
+required_fields = ["widget_source", "css_limits_refit", "baseline_width_px", "target_width_px", "width_before_fit_px", "width_after_fit_px", "width_after_viewport_nudge_px", "fit_called", "parent_is_dock_panel", "reason"]
+description = "No CSS limits at add time. Set inline px min-width = max-width (420, or 800 if the baseline is within 100 px of 420) on the widget node, measure BEFORE any fit, call widget.parent.fit(), measure AFTER. css_limits_refit iff fit was callable and the width after is within 3 px of the target. A viewport nudge is recorded for information only."
+
+[design.units.restore_layout_keeps_iframe]
+timeout_s = 240
+upstream = ["widget_a", "widget_b"]
+required_fields = ["widget_source", "restore_layout_keeps_iframe", "reload_control_detected", "token_set", "load_events_control", "load_events_delta", "token_survived", "iframe_same_node", "iframe_reinserted", "restore_called", "reason"]
+description = "The widget carries an iframe (S1-A: one is appended to the node; S1-B: the help iframe). A load listener, a JS token in the iframe's window and a MutationObserver count reloads and re-insertions. Positive control: re-inserting the iframe MUST produce a load event and lose the token (reload_control_detected). Measurement: two restoreLayout() size edits; restore_layout_keeps_iframe iff zero load events, the token survived, the same node is still connected and it was never re-inserted. Null if restoreLayout was not reachable."
+
+[design.units.cell_hooks]
+timeout_s = 240
+upstream = []
+required_fields = ["kernel_ready", "states_reached", "all_states_reached", "snapshots", "hooks", "all_states_derivable", "n_states_with_css_hook"]
+description = "Boot the kernel, run the fixture's five state cells (not run: never executed; ran: print; running: top-level await asyncio.sleep(3600), read while running; error: raise; edited since run: executed, then its source edited through the shared model), with a neutral padding cell active. Each state's cell is snapshotted from the DOM and the models. A state is reached only by model ground truth. Hooks: per state, features present in that cell and none of the other four (CSS class, data attribute, output mime; prompt text; model signals; or a unique combination of model features)."
+
+[design.units.windowing]
+timeout_s = 240
+upstream = []
+required_fields = ["windowing_mode", "windowing_mode_reads", "windowing_exercised", "detach_observed", "reattach_raw", "reattach_signal", "cell_count"]
+description = "Read the notebook's windowingMode (notebookConfig.windowingMode, then content.windowingMode). Instrument cell 0 (inViewportChanged signal, Lumino messages on the cell widget, DOM re-insertion), scroll the windowed panel to the bottom (detach observed if the cell node leaves the document or inViewport is false), reset, scroll back to the top, and record what fired. Re-attach signal priority: inViewportChanged emitted true, then an after-attach message, then a DOM re-insertion."
+
+[design.units.neg_wrong_ctor]
+timeout_s = 240
+upstream = []
+required_fields = ["positive_control_structural_pass", "wrong_candidates", "negative_control_failed_as_required"]
+description = "Negative control (and its positive pair). The structural check is applied to deliberately wrong constructor candidates (Object, Array, the notebook panel's own leaf class, and a subclass of the real root); ALL must fail. The same check applied to the real root must pass. negative_control_failed_as_required = positive passes AND every wrong candidate fails. A unit that ERRORS has NOT failed as required."

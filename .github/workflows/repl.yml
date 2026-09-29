@@ -19,6 +19,7 @@ on:
       - 'coxswain/**'
       - 'scripts/repl_smoke.py'
       - 'scripts/unit_runner.py'
+      - 'scripts/spikes/260929_s1_lumino_widget.py'
       - 'external/pylabrobot'
       - '.github/workflows/repl.yml'
       - 'pyproject.toml'
@@ -29,6 +30,7 @@ on:
       - 'coxswain/**'
       - 'scripts/repl_smoke.py'
       - 'scripts/unit_runner.py'
+      - 'scripts/spikes/260929_s1_lumino_widget.py'
       - 'external/pylabrobot'
       - '.github/workflows/repl.yml'
       - 'pyproject.toml'
@@ -259,6 +261,7 @@ jobs:
           uv run python -m pytest web-repl/tests/test_prune_pyodide.py -q
           uv run python -m pytest web-repl/tests/test_repl_workflow_covers_tests.py -q
           uv run python -m pytest web-repl/tests/test_rid_invariant.py -q
+          uv run python -m pytest web-repl/tests/test_s1_spike_driver.py -q
           uv run python -m pytest web-repl/tests/test_stamp_loader_shas.py -q
           uv run python -m pytest web-repl/tests/test_theme_staging.py -q
           uv run python -m pytest web-repl/tests/test_transport.py -q
