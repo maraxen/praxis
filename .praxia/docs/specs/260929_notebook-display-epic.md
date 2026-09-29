@@ -4,7 +4,7 @@ description: Epic spec for the web-REPL notebook display. Three sprints (A spike
 status: active
 task_id: 260929_notebook-display-design
 date: '260929'
-adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator); round5 challenger REVISE (1 MAJOR / 3 MINOR; C4-1, C4-3 CLOSED, C4-2 partial) -> revised 260929 (Revision 5, orchestrator); round6 challenger REVISE (1 MAJOR / 1 MINOR) -> revised 260929 (Revision 6: deck panel state machine); round7 challenger REVISE (2 MAJOR vs user preemption rule / 6 MINOR / 1 SUGGESTION; state machine sound) -> revised 260929 (Revision 7); round8 challenger REVISE (2 MAJOR / 5 MINOR; resume design otherwise sound) -> revised 260929 (Revision 8); round9 challenger REVISE (1 MAJOR / 5 MINOR) -> revised 260929 (Revision 9); round10 challenger ACCEPT (0 BLOCKER / 0 MAJOR; 4 MINOR for the sprint) -> CONVERGED 260929'
+adversarial_review: 'round1 challenger REVISE (2 BLOCKER / 13 MAJOR / 14 MINOR) / defender REVISE (A-1..A-20) -> revised 260929 (Revision 1); round2 challenger REVISE (2 BLOCKER / 7 MAJOR / 3 MINOR; all round1 CLOSED) / defender REVISE (B-1..B-12) -> revised 260929 (Revision 2); round3 challenger REVISE (2 MAJOR / 2 MINOR; all round2 CLOSED; both MAJORs verified against PLR 0.2.2) -> revised 260929 (Revision 3); round4 challenger REVISE (2 MAJOR / 2 MINOR; all round3 CLOSED) -> revised 260929 (Revision 4, orchestrator); round5 challenger REVISE (1 MAJOR / 3 MINOR; C4-1, C4-3 CLOSED, C4-2 partial) -> revised 260929 (Revision 5, orchestrator); round6 challenger REVISE (1 MAJOR / 1 MINOR) -> revised 260929 (Revision 6: deck panel state machine); round7 challenger REVISE (2 MAJOR vs user preemption rule / 6 MINOR / 1 SUGGESTION; state machine sound) -> revised 260929 (Revision 7); round8 challenger REVISE (2 MAJOR / 5 MINOR; resume design otherwise sound) -> revised 260929 (Revision 8); round9 challenger REVISE (1 MAJOR / 5 MINOR) -> revised 260929 (Revision 9); round10 challenger ACCEPT (0 BLOCKER / 0 MAJOR; 4 MINOR for the sprint) -> CONVERGED 260929; Revision 10 (PLR 1.0 pin + runner corrections) 260929, challenger round 11 pending'
 ---
 # Notebook display epic (web-repl)
 
@@ -19,9 +19,10 @@ This epic makes three surfaces work as one system:
   moves. Four PLR errors render as a plain statement of what went wrong and where.
 - **Notebook chrome.** A status rail replaces the `[ ]:` prompts, outputs belong visibly to
   their cell, and the Light theme gets the design's steel/sheet palette.
-- **Deck panel.** PLR main's `Visualizer3D` (PyLabRobot #1378, BioCam / Camillo Moschner,
-  merged 2026-09-27) runs in a JupyterLab main-area split beside the notebook, in an embed
-  mode, and follows the cell you are working in.
+- **Deck panel.** PLR's `Visualizer3D` (PyLabRobot #1378, BioCam / Camillo Moschner,
+  merged 2026-09-27; shipped in the 1.0.0b1 pin as `pylabrobot.visualizer3D`) runs in a
+  JupyterLab main-area split beside the notebook, in an embed mode, and follows the cell you
+  are working in.
 
 Inputs, all read for this spec:
 
@@ -37,15 +38,25 @@ Inputs, all read for this spec:
   `web-repl/overlay/assets/visualizer-augmentations/index.js`, `scripts/repl_smoke.py`, and
   the visualizer transport spec `.praxia/docs/specs/260817_spec-visualizer-transport-shim.md`
   (R19, R21).
-- PLR main's `pylabrobot/visualizer3D/`, fetched to `/tmp/claude-1000/plr-main/pylabrobot/visualizer3D/`.
-- The pinned PLR 0.2.2 (`external/pylabrobot`, `dd79c4c89`) for error sites and tracker behaviour.
+- The pinned PLR **1.0.0b1** (`external/pylabrobot`, `786ac2c4e4f7afe37885af2d98ff5b0afe274c67`,
+  pinned on `origin/main` by `a176bac7`, PR #184 "plr-1.0-bump") for error sites, tracker
+  behaviour and `pylabrobot/visualizer3D/`. That commit is the same one the spec first fetched
+  as "PLR main" to `/tmp/claude-1000/plr-main/pylabrobot/visualizer3D/` (OQ-7, resolved). The
+  spec was first written against the earlier pin 0.2.2 (`dd79c4c89`); Revision 10 re-checked
+  every PLR-dependent claim against 1.0.0b1
+  (`.praxia/docs/research/260929_notebook-display-plr10-premises.md`, "the PLR 1.0 recon"
+  below; exploratory, not pre-registered: the AC-15/16 test files re-verify it).
+- **PLR line anchors.** Unless a reference says otherwise, a PLR anchor is at the 1.0.0b1 pin,
+  and `LH` means `pylabrobot/legacy/liquid_handling/liquid_handler.py`. An anchor marked
+  "(0.2.2)" is historical and was not re-checked by the recon.
 
 **Base.** File references below are to branch `design/notebook-display` at `fd987728`. That
 branch predates the persistence ladder (`.praxia/docs/specs/260922_repl-persistence-ladder.md`),
 which also appends an IIFE to `praxis-shell.js`, extends `stage_shell`, adds
 `test_repl_workflow_covers_tests.py` and adds a `--persistence-check` gate. Every sprint branches
 from `origin/main`, not from the design branch. Where this spec says "append", it means after
-whatever IIFEs `main` already carries.
+whatever IIFEs `main` already carries. Where a reference says "on origin/main a176bac7", the
+line number was read at that commit (the PLR 1.0 recon).
 
 ---
 
@@ -61,7 +72,7 @@ pre-registered spike (D17). Each sprint that depends on a spike names the branch
 | **S1** (sprint A) | Can a plain script, with no labextension build, construct a Lumino `Widget` and add it with `app.shell.add(w, 'main', {mode: 'split-right', ref})`? Does Lumino honour CSS `min-width`/`max-width` on the widget node? Which DOM hooks or model signals give each cell's state (not run, ran, running, error, edited since run)? | **S1-A**: walk the prototype chain of an existing shell widget to the root class. Identify it structurally: its prototype owns `processMessage` and `onAfterAttach`, and its own prototype is `Object.prototype`. `new Ctor({node})` then gives the deck panel as a real widget. **S1-B**: A fails, but a stock command (candidate `help:open`) creates a main-area iframe widget, its iframe allows scripts and same-origin, and it can be re-added with `split-right`. The deck panel then re-homes that widget and replaces its content. **S1-C**: both fail. **Stop** sprint C task C5 and escalate: the user's decision (a real JupyterLab widget) cannot be met without a labextension. The degraded option offered to the user is a shell-owned fixed panel with `#main` narrowed by CSS. Size limits (a second, independent axis): if CSS limits are honoured, use them. Otherwise the shell sizes through the main DockPanel's layout: `saveLayout()`, edit the split area's `sizes`, then `restoreLayout()` (a main-area `split-right` lives in a `DockLayout`, which has no `setRelativeSizes`). S1 records `css_limits_honoured`, `dock_layout_sizing_reachable` and `css_limits_refit` (whether Lumino re-reads a widget's CSS `min-width`/`max-width` after `parent.fit()`). S1 also records `restore_layout_keeps_iframe`: whether `restoreLayout()` keeps an iframe in the widget loaded, so that a layout-sizing clamp causes no reload. If it is `false`, layout sizing is used only at open and on tier changes (one reload each, like a drawer move), never for `ResizeObserver` or drag clamps; for those the row is read as if layout sizing were unreachable (CSS or inline px where honoured, otherwise recorded-only). *(Round 4, C4-2.)* The combination selects one row of the D6 sizing-case table, which fixes, per AC-36 width key, the mechanism or the recorded-only status. **S1-L**: neither CSS limits nor layout sizing works. The split opens at Lumino's own size, the drag is unclamped, and **every** AC-36 width key is recorded-only (the drawer and height keys stay asserted). This is a stated deviation, accepted per the user's 260929 ruling "split initially. we can figure out a more ergonomic layout later." Cell state: each state uses a CSS hook where one exists. Otherwise `chrome.js` computes it from model signals and writes `data-praxis-cell-state` on the cell node. S1 also records the notebook's `windowingMode` and the signal that fires when a virtualised cell's DOM is re-attached (used by D7 marking). |
 | **S2** (sprint A) | For a notebook reopened untrusted in our JupyterLite build, which mimetype does JupyterLab choose from `{text/html, text/plain}`? What does its sanitizer keep of our HTML and SVG? The spike tests elements `svg g path rect text title details summary table`; attributes `fill stroke stroke-width stroke-dasharray class style role aria-label tabindex data-*`; and `viewBox`. S2 probes two reopen paths and records the trust state and chosen mimetype of each: a **crafted** notebook written to the drive (never executed, so untrusted; this also stands for download/upload), and a notebook **executed, saved and reopened** in the same browser. | **S2-T**: the executed-saved-reopened notebook reopens **trusted**. It renders as live, and the branches below then apply only to the crafted path. **S2-A**: `text/html` is chosen and SVG survives with `class`. Full design, with token-mapped CSS (D3) applied to reopened outputs. **S2-A'**: SVG survives, but `class` and/or `style` are stripped. Reopened outputs keep their inline light palette (D3) and scale freely without the D5 `min-width` until re-run. Accepted and stated. **S2-B**: SVG is stripped, but `text/html` is still chosen. Reopened outputs show name line, sentence, ledger table and error text, with no drawings until re-run. Accepted: "survives trust loss" is met by the text. **S2-C**: `text/plain` is chosen. Reopened outputs show the summary sentence. Accepted; OQ-9 asks whether a labextension is wanted later. **In every branch the live output format is identical (D2).** Interaction on reopened outputs (hover, keyboard, click to focus) works only if `data-*` and `tabindex` survive. If they are stripped, it returns when the cell is re-run. |
 | **S3** (sprint A) | In the JupyterLite Pyodide kernel (`pyodide_kernel-0.8.2`; IPython 9.12.0 per the cached `pyodide-lock.json`), four things, (b) with a variant (b′): (a) Is `get_ipython()` non-None? (b) Does `display_formatter.mimebundle_formatter.for_type(cls, fn)` work, with `fn` returning `(data, metadata)`? (b′) Does `display_formatter.formatters['text/html'].for_type(cls, fn)`, with `fn` returning `(html, {"praxis": stamp})`, put the stamp at the output's `metadata["text/html"]["praxis"]`? (IPython `core/formatters.py:243-250` unpacks a per-type `(data, metadata)` return into `md_dict[format_type]`; verified by the orchestrator on 9.13.0, 260929.) (c) Is a `set_custom_exc` handler invoked for an exception raised in a plain cell **and** in a top-level-`await` cell? Does `display()` inside the handler emit, does the returned structured traceback become the cell's `error` output, and does Run All stop? (d) Does `events.register('post_run_cell', cb)` fire? | **S3-A**: all yes. Design as written. **S3-B**: (b) fails and (b′) holds. Register `text/html` and `text/plain` separately via `formatters[...].for_type`; the `text/html` function returns `(html, {"praxis": stamp})`, so the D7 stamp is carried at `metadata["text/html"]["praxis"]`. Every reader goes through one accessor, `stampOf` (D2), so staleness, Follow and AC-21 behave identically under S3-A and S3-B. A DOM-attribute carrier is rejected: S2 may strip `data-*`. If (b′) also fails, **stop** B7 and B9 and escalate. **S3-C**: (c) fails. Wrap the kernel shell **instance's** `showtraceback`: an instance attribute that handles the four classes and delegates everything else. PLR and IPython classes are not modified. If that is also not honoured, stop B6 and escalate (MVP item 3 cannot be met). **S3-D**: (d) fails. The kernel announces from PLR state-update callbacks, debounced with `loop.call_later(0.1, ...)`. |
-| **S4** (sprint C) | Does the vendored `plr_visualizer3d` package import in the Pyodide kernel? Check `http.server`, `webbrowser`, `socket.gethostname()`, `websockets.asyncio.server` and `websockets.http11`. Does `DockedViewer3D(deck)` construct and `start()` without threads? Does WebLoop support `call_later` and `call_soon_threadsafe` as the viewer uses them? How many bytes is the fixture deck's first `scene` message? What does the stock `plr_visualizer3d.server.PACKAGE_ROOT` resolve to in the kernel (expected: the contents drive `/drive`, because loose sources land relative to the kernel's working directory), and what is it after `viewer3d.py`'s rebind (D11)? How long does the first `_models_on_disk(PACKAGE_ROOT)` walk take over the rebound root (it is no longer pre-warmed by `start`; its first call is the inherited scene build, `server.py:417`)? | **S4-A**: all yes. Design as written. **S4-B**: a stdlib import or `gethostname` fails. `praxis/viz/viewer3d.py` installs minimal named stubs into `sys.modules` **before** importing `plr_visualizer3d`, the same mechanism `stages.install_native_stubs` uses. Each stub is listed and tested. Vendored files stay byte-identical. **S4-C**: WebLoop lacks `call_later`. Making it work would need a fourth override (`_mark_scene_dirty`), which trips GATE X (D11). **Stop** and escalate. The recommended path is to upstream a transport hook to PLR. |
+| **S4** (sprint C) | Does the pin's `pylabrobot.visualizer3D` package, which the REPL's PLR wheel already contains, import in the Pyodide kernel, with `websockets` (17.0.1) from its vendored wheel (Revision 10; the PLR 1.0 recon)? Check `http.server`, `webbrowser`, `socket.gethostname()`, `websockets.asyncio.server` and `websockets.http11`. Does `DockedViewer3D(deck)` construct and `start()` without threads? Does WebLoop support `call_later` and `call_soon_threadsafe` as the viewer uses them? How many bytes is the fixture deck's first `scene` message? What does the stock `pylabrobot.visualizer3D.server.PACKAGE_ROOT` resolve to in the kernel (expected: inside the installed PLR package in site-packages, which at the pin ships 63 `.glb` model files; the PLR 1.0 recon), and what is it after `viewer3d.py`'s rebind (D11)? How long does the first `_models_on_disk(PACKAGE_ROOT)` walk take over the rebound root (it is no longer pre-warmed by `start`; its first call is the inherited scene build, `server.py:417`)? | **S4-A**: all yes. Design as written. **S4-B**: a stdlib import or `gethostname` fails. `praxis/viz/viewer3d.py` installs minimal named stubs into `sys.modules` **before** importing `pylabrobot.visualizer3D`, the same mechanism `stages.install_native_stubs` uses. Each stub is listed and tested. No PLR file is modified. **S4-C**: WebLoop lacks `call_later`. Making it work would need a fourth override (`_mark_scene_dirty`), which trips GATE X (D11). **Stop** and escalate. The recommended path is to upstream a transport hook to PLR. |
 
 S1, S2 and S3 are sprint A tasks A1–A3. S4 is sprint C task C1. No task downstream of a spike
 starts until that spike's record exists (AC-1..AC-3, AC-29).
@@ -99,9 +110,12 @@ separately and the stamp rides at `metadata["text/html"]["praxis"]` (D1, S3(b′
 exported from `shell/display/stale.js`, imported by `dock.js`, and the `--display-check` and
 `--dock-check` harnesses evaluate the same expression. No other code reads
 `metadata.praxis` directly. The registered classes are
-`Plate`, `TipRack`, `Deck` and `Container`, with IPython resolving subclasses by MRO. PLR at
-the pin defines no `_repr_html_` or `_repr_*_` anywhere under `external/pylabrobot/pylabrobot`
-(grep: 0 hits), so nothing is shadowed. PLR is never patched.
+`Plate`, `TipRack`, `Deck` and `Container`, with IPython resolving subclasses by MRO (at the
+pin `tips_300` is an `EmbeddedTipRack`, a `TipRack` subclass, so it resolves to the `TipRack`
+formatter; no code dispatches on a type-name string). PLR 0.2.2 defined no `_repr_html_` or
+`_repr_*_` anywhere under `external/pylabrobot/pylabrobot` (grep: 0 hits), so nothing was
+shadowed; the same grep at the 1.0.0b1 pin is to be verified by B2 (it is part of B2's gate:
+0 hits, or B2 stops and reports). PLR is never patched.
 
 **MVP figures** are `Plate`, `TipRack`, `Deck` and `Well`. Every other `Container` subclass
 (Trough, Tube, PetriDish, Trash, ...) gets the name line and the sentence only, with
@@ -233,12 +247,16 @@ shrink.
 - A Cor 96 plate at `s_n = 3`: well 6.86 mm → 20.6 px.
 - `s_min = 2.64`, so the figure's `min-width` is about 390 px, which fits the ~710 px
   notebook width seen with the file browser open.
-- The STARLet deck (`STARLET_SIZE_X = 1005` mm, `hamilton_decks.py:22`): `s_n = 880/1005 ≈
-  0.876`, so `s_min = max(0.771, 0.6) ≈ 0.771`. Labels render at ≥ 11 px. The deck's
+- The STARLet deck (`STARLET_SIZE_X = 1005` mm, `hamilton_decks.py:811` at the pin;
+  `:22` is `STARPLUS_NUM_TRACKS`): `s_n = 880/1005 ≈ 0.876`, so
+  `s_min = max(0.771, 0.6) ≈ 0.771`. Labels render at ≥ 11 px. The deck's
   `min-width` is about 775 px, so at the ~710 px notebook width it scrolls by about 65 px,
   which this decision allows.
 - A 384-well plate on that deck: its wells are about 3.6 mm → 2.8 px at `s_min`, so it is
   drawn as a block. The Cor 96 plate on the deck: 6.86 mm → 5.3 px, so it is drawn in full.
+- The fixture's `tips_300` on that deck: its tip spots are 7.2 mm at the pin (9.0 mm at
+  0.2.2; the PLR 1.0 recon) → 7.2 × 0.771 ≈ 5.55 px ≥ 4, so it is drawn in full. No D5
+  threshold or number changes at the pin.
 
 **S2-A' branch.** If S2 finds inline `style` stripped on reopened outputs, the floor holds
 only for live outputs. `interact.js` can re-apply `min-width` from `data-praxis-minw` when
@@ -311,12 +329,41 @@ is the D11 deck-panel state table, with no drawer-specific rules:
 - `exec` names the cell execution that drew the output.
 
 When a resource is drawn, `stale.py` subscribes idempotently to the drawn resource and every
-descendant (`register_state_update_callback`, `resource.py:924`), and to structural changes
-(`register_did_assign_resource_callback` / `unassign`, `resource.py:806-830`). Any callback
-increments the `rev` of every drawn ancestor. Callbacks that change only pending tracker state
-(a failed op's residue, `volume_tracker.py:98-99`) also bump `rev`, correctly: ordinary outputs
-draw `get_used_volume()`, which includes pending. Ledger and error outputs carry
-`rev: null` (D2), subscribe nothing and never enter an announcement.
+descendant (`register_state_update_callback`, `resource.py:1364` at the pin), and to structural
+changes (`register_did_assign_resource_callback` / `unassign`, `resource.py:1236-1251`).
+Idempotency comes from `stale.py`'s own `_subscribed` set: at the pin PLR's callback
+registration **appends** where 0.2.2 replaced (the PLR 1.0 recon, MAJOR-4), so a second
+registration would fire twice.
+
+**Rev bumps are filtered on the drawn state** (Revision 10). At the pin a callback does not
+always mean a change: `VolumeTracker.rollback()` now fires callbacks, so a failed op fires
+them on the source plate and on the tip's origin spot although nothing changed (0.2.2 fired
+none), and a pick-up fires `did_unassign` eight times on the rack and on the deck (tips are
+tree children). An unconditional bump would therefore mark an output "Changed since" after
+every failed op. So:
+- For each drawn resource, `stale.py` keeps `(rev, digest)`. The **digest** is the sha256 of a
+  canonical serialisation of exactly what an ordinary output of that resource draws: for each
+  container in its subtree, `(name, get_used_volume())`; for each tip spot, `(name, tip
+  present as drawn)`; and the subtree's structure (each child's name, parent and location).
+- A callback only marks every drawn ancestor **dirty**. A dirty resource is **settled** by
+  recomputing its digest: if the digest differs from the stored one, `rev` increments and the
+  digest is stored; otherwise nothing changes.
+- Settling happens at `post_run_cell` (before the announcement is built) and **before any
+  render of that resource**, so a stamp always carries the rev that matches what its output
+  draws (a cell that aspirates and then draws the plate stamps the settled rev and is not
+  marked by its own announcement).
+- Consequences: a failed aspirate or dispense, whose rollback restores every tracker at the
+  pin, bumps nothing and posts nothing. A change that alters only pending tracker state
+  (residue of a failed `pick_up_tips`/`drop_tips`, or a user's own uncommitted tracker call;
+  pending bump at `volume_tracker.py:111-112`) still bumps `rev`, correctly: ordinary outputs
+  draw `get_used_volume()`, which includes pending (D8 "Panel drawing").
+- *Why not filter on committed state* (the literal form of the Revision 10 brief): that would
+  suppress the pending-only bump that D7 has required since Revision 2 (B-8; AC-18), leaving
+  a drawing of pending volume unmarked after it changed. For the rollback case both filters
+  agree; the drawn-state filter is the one that never hides a change an output drew.
+
+Ledger and error outputs carry `rev: null` (D2), subscribe nothing and never enter an
+announcement.
 
 **Announcement.** At `post_run_cell` (S3-D has the fallback), if any rev changed during the
 cell, the kernel posts exactly one message on the existing **`praxis_repl`** BroadcastChannel,
@@ -339,13 +386,32 @@ shell derives each notebook panel's current session from that panel's own output
 
 **Why `praxis_repl` does not break R21.** R21 (visualizer transport spec) forbids *visualizer*
 traffic on `praxis_repl` and greps `praxis/viz/`, `visualizer/` and `visualizer-augmentations/`
-for the name. That grep must still exit 1 exactly (AC-18), and from sprint C it also covers
-the new visualizer paths (AC-31). These announcements come from `praxis/display/`, send at
+for the name. That grep must exit 1 exactly (AC-18), and from sprint C it also covers
+the new visualizer paths (AC-31). **The plain grep already exits 0 on `main`** (Revision 10;
+the PLR 1.0 recon, BLOCKER-3; pre-existing, the same at `e74ad0fa` and on the design branch):
+`web-repl/overlay/assets/python/praxis/viz/transport.py:10,11` (module docstring) and `:26`
+(a `#` comment) mention the name as the RST inline literal ` ``praxis_repl`` `, to say the
+visualizer does **not** use it. The gate therefore strips that documentation form before
+matching (the "R21 check" below). Exempting only `#` comment lines would not suffice: `:10`
+and `:11` are docstring lines. These announcements come from `praxis/display/`, send at
 most one message per cell, carry a typed `type`, and are ignored
 by every other listener:
 - `praxis-shell.js:84-93` acts only on `praxis:shell-ping`.
 - `praxis_bootstrap._setup_broadcast_listener` acts only on `praxis:execute` and
   `praxis:interaction_response` (`praxis_bootstrap.py:212-214`).
+
+**R21 check** (Revision 10). Every R21 gate in this spec (AC-18, AC-31, B7, C3, C7) runs, after
+`test -d`/`test -f` on each path, exactly this pipeline over its path list `<paths>`:
+
+```
+grep -rn "praxis_repl" <paths> | sed 's/``praxis_repl``//g' | grep "praxis_repl"
+```
+
+It must exit **1 exactly** (no line names the channel outside the RST documentation form). It
+still catches every code use: a Python or JS string literal (`"praxis_repl"`, `'praxis_repl'`,
+a JS template literal), a bare identifier, and a mention on the same line as a documentation
+mention (the `sed` removes only the double-backtick form, never the whole line). Any exit
+other than 1 fails the gate: 0 means a real hit, 2 an error.
 
 **Marking.** The shell (`stale.js`) keeps the latest rev per `(session, resource)`. An output
 whose stamp has a non-null `rev` older than that gets a DOM notice, **"Changed since, see deck
@@ -353,7 +419,8 @@ panel."**, inserted in its output node. Outputs with `rev: null` (ledger, error)
 marked "Changed since". The notice is never written to the notebook model, so it is not
 saved. Once `panelSession[P]` is known, an output in P of any kind whose
 `stamp.session ≠ panelSession[P]` gets **"Drawn in an earlier session."** The shell maps model outputs to DOM nodes through the notebook widget's output
-areas, following the model-first pattern of `repl_smoke.py:1300-1381`.
+areas, following the model-first pattern of `repl_smoke.py` (`:1300-1381` at the base
+`fd987728`; the model-first reads are at `:1572` and `:1624` on origin/main a176bac7).
 
 **Marks survive re-rendering.** JupyterLab re-renders outputs and, with windowing, detaches
 off-screen cells. `stale.js` therefore keeps its marks in memory and re-applies them
@@ -363,7 +430,8 @@ signal S1 records for the observed `windowingMode`), and on `activeCellChanged`.
 ### D8. Errors: four classes, context from the traceback, no PLR patch.
 
 The display handles `TooLittleLiquidError`, `TooLittleVolumeError`, `HasTipError` and
-`NoTipError` from `pylabrobot.resources.errors` (`errors.py:8-22`). Everything else gets the
+`NoTipError` from `pylabrobot.resources.errors` (`errors.py:8-22`, byte-identical at the
+1.0.0b1 pin; the PLR 1.0 recon). Everything else gets the
 normal IPython traceback, styled by Praxis CSS on the stderr/error output. Nothing is
 intercepted. This includes the `RuntimeError`s that bare `discard_tips()` ("No tips have been
 picked up and no channels were specified.") and bare `return_tips()` ("No tips have been
@@ -371,17 +439,31 @@ picked up.") raise with no tip mounted: they are not one of the four classes and
 styled traceback (AC-15 negatives). Errors raised inside a `*96` (96-head) op are out of MVP scope: they get the
 generic panel (step 2; orchestrator ruling 260929, MVP item 3 names four classes and no heads).
 
-**What PLR's message omits (read at the pin):**
+**Classes the code checks, by non-shim home** (Revision 10; the PLR 1.0 recon, MAJOR-8):
+`LiquidHandler` from `pylabrobot.legacy.liquid_handling`, `TipTracker` from
+`pylabrobot.legacy.tip_tracker` (the `pylabrobot.resources.tip_tracker` path is a
+`DeprecationWarning` shim at the pin), and `VolumeTracker` from
+`pylabrobot.resources.volume_tracker`. No `praxis/display/` module imports a shim home:
+`web-repl/tests/plr_contract.py` has a "CONTRACT names no shim" test and a probe that escalates
+warnings to errors (sprint B "Import contract").
+
+**What PLR's message omits (read at the 1.0.0b1 pin; the PLR 1.0 recon):**
 - `TooLittleLiquidError`: "Not enough liquid in container: {volume}uL > {used}uL."
-  (`volume_tracker.py:92-94`). No container name.
-- `TooLittleVolumeError`: "Not enough space in container: ..." (`:105-107`). No container
-  name, and the container may be a **tip** (the tip's tracker receives `add_liquid` during an
-  aspirate, `liquid_handler.py:1035`).
-- `HasTipError`: "Channel has tip" (`liquid_handler.py:535`), with no channel number, or
-  "{thing} already has a tip." (`tip_tracker.py:92`).
-- `NoTipError`: "{thing} does not have a tip." (`tip_tracker.py:65, 105`). Here `thing` is
-  "Channel N" for head trackers (`liquid_handler.py:197`) but just "Tip spot" for every tip
-  spot (`tip_rack.py:52`).
+  (`volume_tracker.py:102`, in `validate_remove_liquid`, called at `:108`). No container name.
+- `TooLittleVolumeError`: "Not enough space in container: ..." (`:117`,
+  `validate_add_liquid`). No container name, and the container may be a **tip** (the tip's
+  tracker receives `add_liquid` during an aspirate, LH:1273).
+- `HasTipError`: "Channel has tip" (LH:758), with no channel number, or
+  "{thing} already has a tip." (`legacy/tip_tracker.py:153`).
+- `NoTipError`: "{thing} does not have a tip." (`legacy/tip_tracker.py:118, 166`). Here `thing`
+  is "Channel N" for head trackers (LH:418). For a tip spot it is, at the pin, the spot's own
+  name (`TipTracker(thing=spot.name)`): `'tips_300_tipspot_A2 already has a tip.'`,
+  `'tips_300_tipspot_A1 does not have a tip.'`. At 0.2.2 it was just "Tip spot". The panel's
+  heading still names the rack and spot in Praxis words (§3.3); PLR's text appears only in the
+  verbatim "PyLabRobot raised" line, which no AC asserts beyond equalling `str(exc)`.
+- A container's volume tracker's `thing` is `"<name>_volume_tracker"` (`container.py:87`). At
+  the pin a well's name is its deck name (`assay_well_A1_volume_tracker`; 0.2.2 gave
+  `well_0_0_volume_tracker`), so owner rule (d) below resolves wells too.
 
 **Context resolution** is a pure function, `context.resolve(exc, tb) -> ErrorContext | None`,
 over the traceback frames. It only reads them:
@@ -391,11 +473,14 @@ over the traceback frames. It only reads them:
    local.
 2. **Op.** Only frames whose `self` is a `LiquidHandler` **and** whose `f_code.co_name` is a
    key of `glossary.ACTIONS` count. The `co_name` filter also excludes any `<listcomp>` or
-   `<genexpr>` frame; this is defence only, with no test case (on Python 3.12, PEP 709
-   inlines list comprehensions, and no generator expression raises at the pin).
+   `<genexpr>` frame; this is defence only, with no test case (on Python 3.12 and later,
+   including the kernel's CPython 3.14, PEP 709 inlines list comprehensions, and no generator
+   expression raises at the pin). At the pin it also excludes the `wrapper` frames that
+   `pylabrobot/events/bus.py:331` and `legacy/machines/machine.py:58` add around LH methods
+   (the PLR 1.0 recon).
    - **`*96` short-circuit.** If any such frame is a `*96` op (`pick_up_tips96`,
      `drop_tips96`, `return_tips96`, `discard_tips96`, `aspirate96`, `dispense96`;
-     `liquid_handler.py:1448-1847`), `resolve` returns `None` at once and the
+     LH:1674-2229), `resolve` returns `None` at once and the
      generic panel is shown. The `*96` glossary names and ledger wrappers exist for the
      ledger only (D9, section 3.5).
    - The **innermost** such frame supplies the locals:
@@ -403,7 +488,10 @@ over the traceback frames. It only reads them:
      - `op_resources` (local `resources` or `tip_spots`)
      - `use_channels` and `vols`
      - for `HasTipError("Channel has tip")`, the loop locals `channel` and `op`
-       (`liquid_handler.py:533-535`)
+       (the pick-up queue loop, LH:755-761; raised at LH:758)
+     - a frame that raised before its queue loop binds fewer locals: the taken-spot `NoTipError`
+       of a pick-up is raised at LH:727 (through `TipSpot.get_tip`) with only `tip_spots` and
+       `use_channels` bound (E7). Missing locals are read as absent, never guessed.
    - The **outermost** such frame supplies `action`: the user's call. So `return_tips`
      onto an occupied spot reads "Return tips", not the inner `drop_tips`.
 3. **Owner, by identity, in this order:**
@@ -411,12 +499,14 @@ over the traceback frames. It only reads them:
      spot)
    - (b) `lh.head[c] is tracker`, which gives the channel
    - (c) a mounted tip whose `.tracker is tracker`, which gives the tip on channel `c` (a TLV
-     overflow on aspirate, or a TLL on dispense, `liquid_handler.py:1235`)
-   - (d) with no LH frame: parse `tracker.thing`. `"<name>_volume_tracker"`
-     (`container.py:85`) gives the container name, and `"Channel N"` gives the channel.
+     overflow on aspirate, LH:1273, or a TLL on dispense)
+   - (d) with no LH frame: parse `tracker.thing`, in this order. `"Channel N"` gives the
+     channel. `"<name>_volume_tracker"` (`container.py:87`) gives the container name, wells
+     included (deck names at the pin). Any other value is, at the pin, a tip spot's own name
+     (`TipTracker(thing=spot.name)`) and is looked up as a resource name. A name that matches
+     nothing gives no owner (`None`, AC-15 negative).
    - (e) no tracker frame, a `HasTipError`, and an LH frame with a `channel` local
-     (`liquid_handler.py:533-535` raises before any tracker is touched): the owner is that
-     channel.
+     (LH:758 raises before any tracker is touched): the owner is that channel.
 4. **Offending set and numbers: committed state only.** PLR raises on the first failing
    channel only, and its message mixes in pending state ("Panel drawing" below). Every number
    and every mark in the panel is therefore computed from **committed** state, with demand
@@ -433,11 +523,15 @@ over the traceback frames. It only reads them:
      op (a channel that already holds a tip for Pick up, an empty spot for Pick up, an
      occupied spot for Drop/Return, a channel with no committed tip, for any op that uses a
      mounted tip (Aspirate, Dispense, Transfer, Drop tips, Return tips, Discard tips)).
-   - **Pending residue.** PLR checks pending state (`volume_tracker.py:91,114-116`,
-     `tip_tracker.py:91,104`), so an earlier failed op's uncommitted changes can cause a raise
-     that committed state does not explain (a retry after E9; a pick-up after a failed
-     pick-up). If the resolved owner is **not** in the committed offending set, `resolve`
-     returns `None`. Otherwise step 5 applies.
+   - **Pending residue.** PLR validates against pending state (`validate_remove_liquid`,
+     `volume_tracker.py:102`, verified at the pin by the E13 setup; `validate_add_liquid`,
+     `:117`, to be verified at the pin by E15; the tip trackers,
+     `legacy/tip_tracker.py:118, 153, 166`), so uncommitted changes can cause a raise that
+     committed state does not explain. At the pin such residue comes only from a failed
+     `pick_up_tips`/`drop_tips` (E14) or from direct tracker use (E13, E15); a failed
+     aspirate or dispense leaves none ("Panel drawing" below). If the resolved owner is
+     **not** in the committed offending set, `resolve` returns `None`. Otherwise step 5
+     applies.
    - `{avail}` is the committed value and `{req}` is the summed request (per channel for a
      tip owner).
    - PLR's own number appears only in the verbatim "PyLabRobot raised" line.
@@ -455,24 +549,45 @@ over the traceback frames. It only reads them:
 - If the exception was raised inside a `RunLedger`, it reads the step with
   `ledger.step_for(exc)` (D9), which also removes the entry, and the panel names the step.
 
-**Panel drawing: committed volume, not pending.** At the pin, the tracker queue loops
-(`liquid_handler.py:1031-1035` aspirate, `:533-538` pick up, `:677-684` drop) are outside the
-`try` that later commits or rolls back (`:1048-1064`). A tracker error on channel k therefore
-leaves channels 0..k-1 with **uncommitted pending** changes, and the backend was never called.
+**Panel drawing: committed volume, not pending** (rewritten in Revision 10; the PLR 1.0
+recon, BLOCKER-1/2). What a failed op leaves behind differs by op at the 1.0.0b1 pin:
+- **`aspirate` and `dispense` leave no residue.** They queue their tracker changes **inside**
+  the `try`, and a tracker refusal rolls every channel back (LH ~1265 aspirate, ~1466
+  dispense). Verified independently by the orchestrator on the 1.0.0b1 wheel: after E9 the
+  trough reads committed 100 / pending 100 and every tip 0 / 0, and a retry of the same op
+  raises nothing from residue. (At 0.2.2 these loops sat outside the `try` and left channels
+  0..k-1 pending; that premise is false at the pin.)
+- **`pick_up_tips` and `drop_tips` still leave residue.** Their queue loops are still outside
+  the `try` (LH ~755-761 pick up, ~901-911 drop): a tracker error on channel k leaves
+  channels 0..k-1 with **uncommitted pending** tip changes (E14 confirmed at the pin).
+- **Direct tracker use leaves residue.** A user's own `tracker.remove_liquid(v)` or
+  `add_liquid(v)` with no commit changes pending state only (E13, E15).
+
 Consequences:
-- The panel draws each container's **committed** `tracker.volume` (a public attribute).
-- The panel may state "Nothing was aspirated/dispensed" because the backend was not reached.
+- The panel draws each container's **committed** `tracker.volume` (a public attribute), and
+  its numbers and marks use committed state (step 4). For aspirate and dispense at the pin,
+  committed equals pending after the failed op, so this changes nothing visible; the rule is a
+  **defence** for the pick-up/drop residue, for direct tracker use, and for a future pin that
+  moves a queue loop again.
+- The panel may state "Nothing was aspirated/dispensed": a tracker refusal is raised before
+  the backend is called, so the backend was not reached. This ordering is to be verified at
+  the pin by B6 against LH ~1265 and ~1466 (a chatterbox backend spy records no aspirate or
+  dispense call on E1); if the backend is reached first, B6 stops and reports, and the
+  sentence is not emitted.
 - The panel never describes the other channels' tracker state.
 - Other outputs keep drawing PLR's own `get_used_volume()`, which includes pending, as the
-  prototype fixture does. OQ-6 records the upstream question.
-- A later raise caused only by that pending residue resolves to `None` and gets the generic
-  panel (step 4, "Pending residue").
+  prototype fixture does; at the pin this differs from committed only after a failed
+  pick-up/drop or direct tracker use. OQ-6 records the upstream question, now for the tip ops.
+- A later raise caused only by residue resolves to `None` and gets the generic panel (step 4,
+  "Pending residue"; AC-15 E13, E14, E15).
 
-**Tracking.** PLR tip/volume tracking is off by default (`tip_tracker.py:14`,
-`volume_tracker.py`); the fixture enables it.
+**Tracking.** PLR tip/volume tracking is off by default (`resources/tip_tracking.py:5`,
+`volume_tracker.py:14` at the pin); the fixture enables it.
 - Spot-side HasTip/NoTip and both volume errors fire only with tracking on.
-- Head-side `HasTipError`/`NoTipError` fire regardless (`liquid_handler.py:534, 655, 974`),
-  and resolve by rules (b), (d) and (e) with tracking off (AC-15 E4-off, E6-off).
+- Head-side `HasTipError`/`NoTipError` fire regardless (HasTip at LH:758; the 0.2.2 sites
+  were `liquid_handler.py:534, 655, 974`, and the head-side NoTip sites at the pin are to be
+  re-anchored by B5), and resolve by rules (b), (d) and (e) with tracking off (AC-15 E4-off,
+  E6-off).
 
 ### D9. `RunLedger` is an explicit context manager that shadows one instance's methods.
 
@@ -486,8 +601,9 @@ Consequences:
   method.
 - **Nesting.** Any wrapped op called while another wrapped op is in flight becomes a child row
   of it. So a `transfer` owns the aspirate and dispense rows it causes, and `discard_tips` /
-  `return_tips` each own the one `drop_tips` row they cause (`liquid_handler.py:775, 833,
-  1646, 1678`). Steps, tip cycles and µL moved count **top-level rows only**.
+  `return_tips` each own the one `drop_tips` row they cause (`return_tips` → `drop_tips`
+  LH:1000, `discard_tips` → `drop_tips` LH:1058; the `*96` pair LH:1876, :1908). Steps, tip
+  cycles and µL moved count **top-level rows only**.
 - On exit, it deletes the instance attributes and, unless `show=False`, calls `display(run)`.
   This holds on the error path too: `__exit__` with an exception still displays the ledger,
   which therefore appears before the error panel, and does not suppress the exception.
@@ -502,9 +618,15 @@ exception unchanged. The error handler (D8) reads it with `ledger.step_for(exc)`
 returns the step and removes the entry.
 
 **Why not PLR's logger.** PLR logs every command through `_log_command` → `logger.debug` on
-the package logger `"pylabrobot"` (`liquid_handler.py:82, 411-424`), with the arguments
+the package logger `"pylabrobot"` (LH:88 and LH:643-645), with the arguments
 flattened to strings. Capturing it would mean raising the user's `"pylabrobot"` logger to
-DEBUG, which also fills PLR's own `FileHandler` (`pylabrobot/__init__.py:67-89`). Rejected.
+DEBUG, which also fills PLR's own `FileHandler` (`pylabrobot/__init__.py:67-89`, 0.2.2).
+Rejected.
+
+**Why not PLR's event bus** (Revision 10). The pin adds an opt-in `pylabrobot.events` bus
+(`evented_operation` on pick-up, drop, aspirate and dispense; the PLR 1.0 recon). It does not
+wrap `return_tips`, `discard_tips` or `transfer`, so it cannot give the nested rows D9 needs.
+Method shadowing stays; the bus is a possible later alternative, not specified here.
 
 An automatic ledger for every liquid-moving cell is Next (OQ-8).
 
@@ -529,10 +651,21 @@ Every rule obeys the file's load-bearing header: `--jp-*` overrides only under
 `body[data-jp-theme-name=...]`, never `:root` or `data-jp-theme-light`, and no `transition`,
 `animation` or `@keyframes`.
 
-### D11. Visualizer3D delivery: vendored bytes, three overrides, a socket shim over `praxis_viz3d`.
+### D11. Visualizer3D delivery: the pin's `pylabrobot.visualizer3D`, a vendored static page, three overrides, a socket shim over `praxis_viz3d`.
 
-**Static page.** `web-repl/scripts/vendor_visualizer3d.py` copies PLR main's
-`pylabrobot/visualizer3D/static/` to `web-repl/overlay/assets/visualizer3d/`.
+*Revision 10 (orchestrator ruling, binding).* The 1.0.0b1 pin ships `pylabrobot/visualizer3D`,
+the REPL's PLR wheel already contains it, and `websockets` (17.0.1) is a vendored wheel (the
+PLR 1.0 recon, MAJOR-2). The Revision 1-9 design (five vendored `.py` files renamed to
+`plr_visualizer3d`, an ADR §2 addendum and an extra contract entry) is therefore dropped: its
+stated reason, "never collides with a future pin that ships it", is inverted now that the pin
+ships it. No PLR Python is copied into the overlay. Only `static/` is vendored, because the
+page must be HTTP-served from the dist and the wheel's copy lives inside the kernel's
+site-packages, which nothing serves.
+
+**Static page.** `web-repl/scripts/vendor_visualizer3d.py` copies the pin's
+`pylabrobot/visualizer3D/static/` to `web-repl/overlay/assets/visualizer3d/`. Its source is
+`--src`, default `external/pylabrobot` (the submodule at the pin, the same tree the REPL's PLR
+wheel is built from).
 - Every file except `index.html` stays **byte-identical**. The script checks sha256 of source
   against output, and the manifest records it.
 - `index.html` is transformed in exactly three ways:
@@ -548,41 +681,47 @@ Every rule obeys the file's load-bearing header: `--jp-*` overrides only under
   (`vendor_visualizer.py` pattern).
 - After the transform, `index.html` has zero `https://` URLs, and the vendored tree has zero
   `cdn.jsdelivr.net` hits.
-- `VENDOR_MANIFEST.json` records the PLR source commit and per-file sha256.
+- `VENDOR_MANIFEST.json` records the PLR source commit (read from the source checkout's
+  `HEAD`; at the pin `786ac2c4e4f7afe37885af2d98ff5b0afe274c67`) and per-file sha256.
+- `--check` fails, with the differing paths, if any committed file differs from the source,
+  or if the recorded commit differs from the source's `HEAD`. A pin bump that touches
+  `static/`, or any pin bump at all, therefore fails `--check` until the static tree is
+  explicitly re-vendored. CI runs `--check` against the submodule the REPL job already
+  initialises (evidence: `repl_smoke.py` reads the submodule's `version.txt` at import,
+  `:1426-1441` on origin/main a176bac7, so every job that runs it has the submodule).
+- The pin also ships 63 `.glb` model files elsewhere in the package (byonoy, hamilton
+  `resource_model`, ...; the wheel grew from 1.26 to 10.2 MB; the PLR 1.0 recon, MAJOR-3).
+  None is vendored.
 
-**Python.** The same script copies `{__init__,facility,grids,scene,server}.py` (excluding
-`*_tests.py`, `demo.py` and `model_demo.py`) to
-`web-repl/overlay/assets/python/plr_visualizer3d/`, byte-identical.
-- The package is **renamed** so that it can never collide with a future PLR pin that ships
-  `pylabrobot.visualizer3D`. Its imports still resolve: they are relative (`.scene`,
-  `.grids`, ...) or absolute into `pylabrobot.resources.{coordinate,resource}`
-  (`server.py:30-31`, `scene.py:16-17`, `grids.py:11`, `facility.py:7-8`), which exist at
-  the pin.
-- These are loose fetched files, covered by the D2 manifest. `build_manifest.collect_sources`
-  already walks every `*.py` under `assets/python/`. This extends the ADR's "praxis's own
-  browser Python ships as loose fetched files" (§2) to one vendored third-party package,
-  recorded here as a deliberate extension. Task C2 appends a matching addendum to ADR §2.
-- **Import contract.** The vendored files import `pylabrobot.resources.resource`, which
-  `web-repl/tests/plr_contract.py`'s `CONTRACT` does not list, and they cannot be edited. C2
-  therefore adds `("pylabrobot.resources.resource", "Resource")` to `CONTRACT` with a
-  justification comment, and `test_contract_covers_imports.py` gates C2. Every sprint B task
-  that adds a new `pylabrobot.*` import under `praxis/display/` adds its own contract entry
-  in the same task.
-- **`PACKAGE_ROOT` is rebound** (Revision 2, B-4). The stock
-  `PACKAGE_ROOT = dirname(dirname(abspath(__file__)))` (`server.py:98`) resolves to the
-  kernel's working directory, the contents drive `/drive`, because loose sources are fetched
-  relative to it (`bootstrap/transport.py:210,247`). `_models_on_disk(PACKAGE_ROOT)` would
-  then `os.walk` the user's files, and a user `.glb` named after a PLR model would become a
-  `mesh` whose URL nothing serves. So `viewer3d.py` rebinds
-  `plr_visualizer3d.server.PACKAGE_ROOT` to `tempfile.mkdtemp()` (an empty directory it owns)
-  **once, before the first viewer is constructed**. `_register_meshes` reads the global at
-  call time, and `_models_on_disk` is cached per root (`server.py:104`), so the rebind takes
-  effect for every call. It is a module global, not a class attribute: GATE X holds and no
-  vendored byte changes. This is the **one deliberate runtime rebinding** of vendored state.
-- **Meshes are unsupported.** Zero `.glb` files are vendored, PLR 0.2.2 has zero
-  `reference_glb`, and the rebound root is empty, so every model is drawn as a box and the
-  removed file server is never needed for a `mesh/<id>` URL. AC-31 asserts the fixture scene
-  has no `mesh`, and that a `.glb` under the old root yields none.
+**Python: import the pin's package.** `praxis/viz/viewer3d.py` imports
+`pylabrobot.visualizer3D` from the kernel's installed PLR wheel and subclasses its
+`server.Viewer3D`. It edits no PLR file and copies none.
+- **Import contract.** `viewer3d.py` imports `pylabrobot.visualizer3D.server`, which lives
+  under `assets/python/` and is therefore scanned by `test_contract_covers_imports.py`. C3
+  adds `("pylabrobot.visualizer3D.server", "Viewer3D")` to `plr_contract.CONTRACT` with a
+  justification comment, by the same per-task rule every sprint B task follows (sprint B
+  "Import contract"). This is the ordinary entry for the task's own import, not the dropped
+  Revision 1-9 entry for uneditable vendored files. `pylabrobot.visualizer3D` is not a shim
+  home; that it imports with warnings escalated to errors is to be verified by C3 (the
+  contract probe is C3's gate).
+- **`PACKAGE_ROOT` is rebound** (Revision 2, B-4; load-bearing at the pin, Revision 10). The
+  stock `PACKAGE_ROOT = dirname(dirname(abspath(__file__)))` (`server.py:98`) resolves inside
+  the installed PLR package in site-packages, which at the pin holds 63 `.glb` files.
+  `_models_on_disk(PACKAGE_ROOT)` (`server.py:104-105`) would find them, and any whose name
+  matches a fixture model would become a `mesh` whose `mesh/<id>` URL nothing serves (there is
+  no file server). So `viewer3d.py` rebinds `pylabrobot.visualizer3D.server.PACKAGE_ROOT` to
+  `tempfile.mkdtemp()` (an empty directory it owns) **once, before the first viewer is
+  constructed**. `_register_meshes` (`server.py:216`) reads the global at call time (`:224`),
+  and `_models_on_disk` is cached per root (`:104`), so the rebind takes effect for every
+  call. It is a module global, not a class attribute, so the override set stays at three
+  (GATE X). This is the **one deliberate runtime rebinding** of PLR state. Rebinding a module
+  global of the installed package changes it for the whole kernel process; nothing else in
+  the REPL reads it (`viz3d` appears nowhere else in the repo; the PLR 1.0 recon).
+- **Meshes are unsupported.** Zero `.glb` files are vendored or served, and the rebound root
+  is empty, so every model is drawn as a box and no `mesh/<id>` URL is ever emitted. That the
+  rebind alone removes every `mesh` from the fixture scene at the pin (no other code path
+  emits one, for example from a resource's own model reference) is to be verified by C1 (S4
+  records the scene) and asserted by AC-31, which also shows the rebind is what removes it.
 
 **Transport.** No file vendored from PLR is edited. The page's only socket is
 `new WebSocket(window.WS_URL)` (`static/transport.js:63`). `socket.js` replaces
@@ -790,14 +929,25 @@ exactly **`__init__`, `start` and `stop`**:
   or nowhere if none is. This is accepted and stated. Gates read the hello from
   `viewer.clients_seen`, never from printed output.
 
-**GATE X** (the same discipline as `praxis/viz/browser.py:18-20`): AC-31 asserts that the
-override set is exactly these three. A fourth override is a design regression. Stop, and
-upstream a transport hook to PLR.
+**GATE X** (the same discipline as `praxis/viz/browser.py:18-20`; re-derived in Revision 10
+for a design with no vendored Python bytes at all). It asserts three things:
+1. **Overrides.** The override set of `DockedViewer3D` over the pin's
+   `pylabrobot.visualizer3D.server.Viewer3D` is exactly `{__init__, start, stop}` (AC-31,
+   against the real pin in CI). A fourth override is a design regression. Stop, and upstream
+   a transport hook to PLR.
+2. **No PLR Python in the overlay, none modified.** No `plr_visualizer3d` package or other
+   copy of PLR Python exists under `web-repl/`, and `viewer3d.py`'s only deviation from stock
+   PLR state is the `PACKAGE_ROOT` rebind (AC-31).
+3. **Static bytes.** Every file under `web-repl/overlay/assets/visualizer3d/` other than the
+   transformed `index.html` is byte-identical to the pin's `static/`, each hashed in
+   `VENDOR_MANIFEST.json`, and `vendor_visualizer3d.py --check` against the submodule exits 0
+   (AC-30).
 
-`praxis_viz3d` and `DockedViewer3D` live under `praxis/viz/`, so the R21 grep (no `praxis_repl`
-under `praxis/viz/`) continues to exit 1. From sprint C the grep also covers
-`web-repl/overlay/assets/visualizer3d/`, `web-repl/overlay/assets/visualizer3d-augmentations/`
-and `web-repl/shell/display/dock.js`, each checked with `test -e` first (AC-31).
+`praxis_viz3d` and `DockedViewer3D` live under `praxis/viz/`, so the R21 check (D7: no
+`praxis_repl` under `praxis/viz/` outside the RST documentation form) continues to exit 1.
+From sprint C it also covers `web-repl/overlay/assets/visualizer3d/`,
+`web-repl/overlay/assets/visualizer3d-augmentations/` and `web-repl/shell/display/dock.js`,
+each checked with `test -e` first (AC-31).
 
 ### D12. Deck panel behaviour uses the page's own public API. Selection colour is the page's.
 
@@ -859,8 +1009,11 @@ with no test-only switch in product code. `viz3d-motion` is unmerged: STAR v1 dr
 
 ### D13. The display installs as a non-fatal bootstrap stage.
 
-`praxis_bootstrap.praxis_main` is a fail-closed ledger (`praxis_bootstrap.py:289-398`). A new
-step runs after step 12 (`stages.verify_identity()`) and before `praxis:ready`:
+`praxis_bootstrap.praxis_main` is a fail-closed ledger (`praxis_bootstrap.py:289-421` on
+origin/main a176bac7; `:289-398` at the base). A new step runs after step 12
+(`stages.verify_identity()`, `:415`) and before `praxis:ready` (`:421`). The PLR 1.0 bump
+added a `micropip.install("typing-extensions")` earlier in the ledger (~`:384`); the insertion
+point is unchanged:
 
 ```
 try: import praxis.display; praxis.display.install()
@@ -895,10 +1048,11 @@ A new directory, `web-repl/shell/display/`, holds ES modules loaded by one IIFE 
 ### D15. At the pin, the liquid's identity is not available. Blue shows volume only.
 
 The user decided: "Blue is volume, always ... The liquid's identity appears on hover and in the
-text." At PLR 0.2.2 the tracker no longer records liquids:
+text." The tracker no longer records liquids (read at 0.2.2; unchanged at the 1.0.0b1 pin,
+the PLR 1.0 recon; the anchors below are 0.2.2's):
 - `get_liquids` is deprecated, with the docstring "The volume tracker no longer tracks
-  individual liquids." (`volume_tracker.py:122-138`).
-- `set_liquids` collapses to a volume (`:74-86`).
+  individual liquids." (`volume_tracker.py:122-138`, 0.2.2).
+- `set_liquids` collapses to a volume (`:74-86`, 0.2.2).
 
 Hover and text therefore show volume only. The colour rule is unaffected. **Decided by the
 user, 260929:** "keep blue as volume, we can make things more complicated later." Volume only
@@ -908,12 +1062,38 @@ is the MVP; identity returns when PLR tracks it. OQ-2 is closed.
 
 The harness is `scripts/repl_smoke.py` at the **repo root** (not under `web-repl/scripts/`).
 Two new flags follow the shape of `run_notebook_check` (`repl_smoke.py:1226-1430` at the base
-`fd987728`; on `origin/main` it starts at `:1463`): `ServedDir`, `chromium_launch_args`,
+`fd987728`; on origin/main a176bac7 it starts at `:1482`): `ServedDir`, `chromium_launch_args`,
 model-first output reads, and a `result` dict whose keys are the ACs. They do **not** copy its
 run shape: `run_notebook_check` builds one `RESULT` and prints it once at the end
-(`origin/main` `:1769`), and CI bounds it only by the job-level `timeout-minutes: 45`
-(`.github/workflows/repl.yml:43`). The new checks are split into units, persisted per unit,
+(`:1788` on origin/main a176bac7), and CI bounds it only by the job-level
+`timeout-minutes: 45` (`.github/workflows/repl.yml:43` on origin/main a176bac7, `:45` on the
+sprint A branch). The new checks are split into units, persisted per unit,
 and resumable ("Preemption-safe harness design" below; Revision 7, C7-1).
+
+**Import-time submodule dependency** (Revision 10; the PLR 1.0 recon, MAJOR-7). On origin/main
+a176bac7, `repl_smoke.py` derives the expected PLR version from the submodule's `version.txt`
+**at import** (`NOTEBOOK_EXPECTED`, `:1449`, via `:1426-1441`): importing or loading it by path
+without an initialised submodule raises `VizCheckError`, and a checkout whose submodule is
+still at 0.2.2 expects `"0.2.2+g"` and fails against a 1.0 dist. So:
+- **Pure plumbing never loads `repl_smoke.py`.** The harness's pure functions (the unit table
+  with listed keys, input hashing, stamp validation, the skip rule, the aggregate, and
+  `run_scenario`'s ordering with injected browser, runner and watchdog seams) live in a
+  separate module, `scripts/repl_smoke_units.py`, which imports neither `repl_smoke.py` nor
+  Playwright. `repl_smoke.py` loads it by path; `test_repl_smoke_resume.py` loads **it**, never
+  `repl_smoke.py`. `test_unit_runner.py` and `test_repl_workflow_scenarios.py` do not load
+  `repl_smoke.py` either (if the CI-only real-Chromium case resolves Chromium through it, it
+  loads it by path inside the test body, never at collection).
+- **Spike drivers lazy-load it.** A spike script (D17) loads `repl_smoke.py` by path for
+  `ServedDir`, `chromium_launch_args` and `resolve_chrome_path` **only inside its
+  real-browser `--unit <name>` branch**, never at module import and never in its driver
+  (scheduling, resume and `[outcomes]`), so the driver runs, and `--resume` evaluates stamps,
+  in any checkout.
+- **`--display-check` and `--dock-check` are `repl_smoke.py` itself**, so every invocation of
+  them (scenario, driver and `--aggregate-only`) needs the submodule initialised at the pin.
+  Local runs therefore happen in a checkout branched from origin/main with
+  `git submodule update --init external/pylabrobot` at the pin (not the main checkout while its
+  submodule is at 0.2.2). CI initialises the submodule and is authoritative ("Local runs"
+  below).
 
 - **`--display-check`** (sprint A adds its chrome scenarios; sprint B adds the rest). It seeds
   the drive with `web-repl/tests/fixtures/notebooks/display_check.ipynb` through
@@ -941,8 +1121,10 @@ the local form needs no outer `timeout`. `unit_runner.py --reap` refuses to run 
 without `--force` (C9-2). The real-Chromium case in `test_unit_runner.py` runs in CI only,
 never locally (C9-5). Local runs need `dangerouslyDisableSandbox: true`, and per project
 memory they should run with no `--chrome-path` before a local result is called green: local
-chromium-1234 differs from CI's bundled build. pytest runs one file at a time; there are no
-whole-suite runs (local compute limits).
+chromium-1234 differs from CI's bundled build. Every local `repl_smoke.py` run and every
+local spike `--unit` needs the submodule initialised at the pin (the import-time dependency
+above; Revision 10). pytest runs one file at a time; there are no whole-suite runs (local
+compute limits).
 
 #### Preemption-safe harness design (Revision 7, C7-1)
 
@@ -1008,38 +1190,52 @@ single whole-run timeout. *(Orchestrator, Revision 7.)*
        that passes the check is a **verified** member.
     3. Collect the process group id of every verified pid. A group signal (`os.killpg`) is
        sent only while at least one verified member of that group is still alive.
-    4. `SIGTERM` each of those process groups and each verified pid.
-    5. After `grace_s`, repeat the step 1 fixpoint, which catches a child forked during the
-       grace window by, for example, a `SIGTERM` handler. Then `SIGKILL` each verified pid
-       still alive, and each process group with a verified live member.
+    4. `SIGTERM` each of those process groups and each verified pid, then **immediately
+       `SIGCONT`** each of them (Revision 10). A stopped process cannot run a signal handler,
+       so without the `SIGCONT` a `SIGTERM` handler could never run, or fork, during the grace
+       window, contradicting the fixpoint case (AC-42); the Revision 8-9 text had this
+       contradiction, found by the A1a implementation.
+    5. After `grace_s`, **re-freeze** (`SIGSTOP`) every verified pid still alive, repeat the
+       step 1 fixpoint (which stops each new find, for example a child forked during the
+       grace window by a `SIGTERM` handler), then `SIGKILL` each verified pid still alive, and
+       each process group with a verified live member.
     Steps 1 to 5 run inside a `try` whose `finally` sends `SIGCONT` to every pid it stopped
-    (C9-2). An exception or a Ctrl-C mid-walk therefore never leaves a process stopped. Only
+    and that is still alive (C9-2). An exception or a Ctrl-C mid-walk therefore never leaves a
+    process stopped. Only
     a `SIGKILL` of the caller can skip the `finally`. The stopped processes still carry the
     token, so `--reap` removes them: in CI its `if: always()` step does this, and locally
     `--reap --force` does. `kill_tree` never signals the caller, the caller's ancestors or
     the caller's own process group. It logs any survivor with `logging.error` (none is
     expected).
-  - `run_unit(argv, timeout_s, *, env, cwd) -> UnitOutcome(exit, timed_out, killed)`: mints
-    a fresh `PRAXIS_UNIT_TOKEN` (uuid4) into the child's environment **at exec**, so it is
-    visible in the child's `/proc/<pid>/environ`. Playwright passes the environment on to its
-    driver and to Chromium. `run_unit` starts the child with `start_new_session=True`, and on
-    expiry calls `kill_tree` with that token.
+  - `run_unit(argv, timeout_s, *, env, cwd, grace_s=5) -> UnitOutcome(exit, timed_out,
+    killed)`: mints a fresh `PRAXIS_UNIT_TOKEN` (uuid4) into the child's environment **at
+    exec**, so it is visible in the child's `/proc/<pid>/environ`. Playwright passes the
+    environment on to its driver and to Chromium. `run_unit` starts the child with
+    `start_new_session=True`, and on expiry calls `kill_tree` with that token and `grace_s`.
+    `UnitOutcome.killed` means "`kill_tree` ran" (Revision 10): true only on a timeout or
+    when the caller raised while waiting. A unit that exits normally and leaves an orphan is
+    **not** swept by `run_unit`; its own bounded teardown (below) and CI's `--reap` step cover
+    that case.
   - `ensure_token()` (Revision 9, C9-4): if `PRAXIS_UNIT_TOKEN` is absent from the
     environment, mint one and re-exec the current process with it set
     (`os.execve(sys.executable, [sys.executable, *sys.argv], env)`). A token assigned to
     `os.environ` after exec is invisible in `/proc/self/environ`, so the sweep could not see
     it; the re-exec fixes that. It is a no-op when the token is already set, as it is under
     `run_unit`.
-  - `Watchdog(budget_s, on_expire)`: a daemon timer. A unit's entry point arms it as its
+  - `Watchdog(budget_s, on_expire=None)`: a daemon timer (`on_expire` is optional, Revision
+    10, so the AC-42 cases' `Watchdog(1)` is valid). A unit's entry point arms it as its
     **first act** after `ensure_token()`, before it deletes any file or launches anything
     (C9-4). It owns the stamp lock:
     - `commit(write_stamp)` runs the stamp rename under the lock, then disarms the watchdog.
-      If the watchdog has already fired, it refuses and returns `False`.
+      If the watchdog has already fired, it refuses and returns `False`. A second call to
+      `commit` raises (Revision 10).
+    - `disarm()` stops the timer without committing (Revision 10).
     - On expiry, under the same lock, it does nothing if a stamp was already committed.
-      Otherwise it marks itself fired, calls `on_expire` (which deletes the unit's result
-      file if present, writes the timeout marker and prints the timeout line; C9-6), then
-      releases the lock, runs `kill_tree(os.getpid(), token)` over its own descendants and
-      calls `os._exit(124)`.
+      Otherwise it marks itself fired, calls `on_expire` if given (which deletes the unit's
+      result file if present, writes the timeout marker and prints the timeout line; C9-6),
+      then releases the lock, runs `kill_tree(os.getpid(), token)` over its own descendants
+      and calls `os._exit(124)`. An `on_expire` that raises is logged with `logging.error`,
+      and the kill and the exit still happen (Revision 10).
   - **Bounded teardown** (Revision 9, C9-1). Every unit, harness or spike, ends in this order,
     all inside the watchdog-bounded region:
     1. write the result or artifact;
@@ -1055,17 +1251,43 @@ single whole-run timeout. *(Orchestrator, Revision 7.)*
     hang after the stamp. A hang in steps 1 to 4 is a timeout (exit 124, no stamp, no
     result).
   - `write_atomic(path, bytes)` (temporary file, fsync, rename), `dist_hash(dir)` (the
-    `dist` input below) and `driver_input()` (the `driver` input below, C8-6).
+    `dist` input below) and `driver_input()` (the `driver` input below, C8-6). Exact
+    contracts (Revision 10, as implemented in A1a):
+    - `dist_hash(dir)`: one line `"<rel>\t<sha256>\n"` per file, where `<rel>` is the file's
+      path relative to `dir` in posix form, lines sorted by `<rel>`; the result is the sha256
+      of the concatenated lines. An empty directory hashes to the sha256 of nothing. A
+      missing directory **raises** (a missing dist is never hashed as empty).
+    - `driver_input()` reads `uv.lock`, which is gitignored (CI creates it); a missing
+      `uv.lock` **raises**.
+  - Public helpers `emit_line`, `read_proc_stat` and `reap()` (the function behind `--reap`).
+    Their contracts are the merged module's docstrings and its tests; the spec does not
+    restate them (Revision 10).
+  - **Injectable seams.** The fault cases of AC-42 (environ reader, `/proc` reader, walk,
+    pidfd availability, Playwright version, `uv.lock` bytes) are injected through
+    keyword-only parameters, never through module globals the tests patch (Revision 10).
   - A CLI, `uv run python scripts/unit_runner.py --reap` (Revision 9, C9-2). It collects
     every distinct `PRAXIS_UNIT_TOKEN` value found by the environ sweep and runs `kill_tree`
     once per token (with no root, the sweep and the fixpoint only), excluding itself and its
-    ancestors. It **refuses** (exit 2, signalling nothing) unless the `CI` environment
+    ancestors. `--token <t>` (repeatable) restricts the reap to those tokens (Revision 10).
+    It **refuses** (exit 2, signalling nothing) unless the `CI` environment
     variable is set (GitHub Actions sets `CI=true`) or `--force` is given, so a stray local
     invocation cannot kill another session's units. It serves CI's `if: always()` reap step.
     Written with argparse and logging.
+  - **Open risk: Chromium and the token** (Revision 10). The environ sweep assumes Chromium's
+    processes keep `PRAXIS_UNIT_TOKEN=<token>` readable in `/proc/<pid>/environ`. Chromium
+    may rewrite its process-title area, which on Linux can overwrite the environ region. The
+    C10-1 positive control in the CI-only real-Chromium case settles it (a live Chromium
+    process must be seen carrying the token before the kill is asserted). If that control
+    fails, it is a **finding**, not a test bug: it is reported to the orchestrator, and the
+    fallback is to match by process group and session recorded from the runner's own start,
+    with the token sweep kept as the belt. Caveat on the fallback: Playwright launches
+    Chromium with `detached: true` (`processLauncher.js:108-111`), which in Node makes the
+    child a new process-group **and session** leader, so a session match alone would not
+    reach it; the descendant walk (which reaches Chromium while its driver parent lives)
+    remains the primary net. Which combination works is to be verified by the C10-1 control.
   Consumers load it by path (`importlib.util.spec_from_file_location` on
   `Path(__file__).resolve()` up to `scripts/unit_runner.py`), as the tests load
-  `repl_smoke.py`; nothing edits `sys.path`.
+  `repl_smoke_units.py`; nothing edits `sys.path`.
 - **`--scenario` is self-bounded** (Revision 8, C8-2). A direct `--scenario <id>` run (the
   local gate form in A7, B10 and C7, and every CI scenario step) first calls
   `unit_runner.ensure_token()`, which re-execs with `PRAXIS_UNIT_TOKEN` set if the driver did
@@ -1104,10 +1326,11 @@ single whole-run timeout. *(Orchestrator, Revision 7.)*
   harness exits 2 otherwise, so a negative or a copied dist can never overwrite the default
   results (Revision 8, C8-5).
 - **Inputs hashed** (sha256), per unit:
-  - `dist`: the sha256 of the sorted `path<TAB>sha256` lines of every file under the served
-    dist (`--serve-dir`, or the default build dir);
+  - `dist`: `unit_runner.dist_hash` of the served dist (`--serve-dir`, or the default build
+    dir): the sha256 of the sorted `<rel>\t<sha256>\n` lines of every file under it;
   - `notebook`: `web-repl/tests/fixtures/notebooks/display_check.ipynb`;
-  - `harness`: `scripts/repl_smoke.py`;
+  - `harness`: `scripts/repl_smoke.py` and `scripts/repl_smoke_units.py` (Revision 10), as the
+    sha256 of their `<rel>\t<sha256>\n` lines;
   - `runner` (Revision 9, C9-6): `scripts/unit_runner.py`, so a change to the kill, watchdog
     or write logic recomputes every unit, as it already does for spike and nd units (D17);
   - `chrome`: the string `<resolved chrome path>\n<chrome --version output>`;
@@ -1169,7 +1392,8 @@ single whole-run timeout. *(Orchestrator, Revision 7.)*
     runs without `--force`, because GitHub Actions sets `CI=true` (C9-2);
   - one `actions/upload-artifact` step with `if: always()` that uploads every
     `result.<id>.json`, stamp, timeout marker and `result.json`, for diagnosis only;
-  - the job-level `timeout-minutes` at `repl.yml:43` stays only as a backstop, raised to at
+  - the job-level `timeout-minutes` (`repl.yml:43` on origin/main a176bac7, `:45` on the
+    sprint A branch) stays only as a backstop, raised to at
     least 45 plus the sum of the job's scenario step timeouts (60 after sprint A, 92 after
     sprint B, 137 after sprint C), so it is never the limit that ends a unit. The reap step's
     1 minute sits inside the 45-minute allowance and is not added to the sum.
@@ -1205,7 +1429,7 @@ spike is a driver over named units, not one process that writes its outcome at t
 | S1 | `widget_a` (S1-A constructor walk), `widget_b` (S1-B stock-command widget), `split_right`, `css_limits`, `dock_layout_sizing`, `css_limits_refit`, `restore_layout_keeps_iframe`, `cell_hooks` (the five states), `windowing` (`windowingMode` and the re-attach signal), `neg_wrong_ctor` (negative control) | 4 min each |
 | S2 | `live` (trusted live), `crafted` (untrusted reopened), `executed_saved_reopened`, `neg_script_onclick` (negative control, its own crafted notebook) | 5 min each |
 | S3 | one declared bounded unit, `ipython_hooks`: (a), (b), (b′), (c) plain and top-level `await`, (d) and the negative control share one kernel, so they are one unit | 10 min |
-| S4 | one declared bounded unit, `viewer3d_pyodide`: the imports, construction, `start`, the loop checks, the scene bytes, both `PACKAGE_ROOT`s, the walk time and the negative control share one kernel | 10 min |
+| S4 | one declared bounded unit, `viewer3d_pyodide`: the imports (the pin's `pylabrobot.visualizer3D` from the dist's PLR wheel), construction, `start`, the loop checks, the scene bytes (and whether it carries any `mesh`), both `PACKAGE_ROOT`s, the walk time and the negative control share one kernel | 10 min |
 
 - **Per-unit output.** A unit first calls `unit_runner.ensure_token()`, then arms its
   `unit_runner.Watchdog` (Revision 9, C9-4). Only then does it delete its own artifact,
@@ -1217,7 +1441,9 @@ spike is a driver over named units, not one process that writes its outcome at t
   `{unit, inputs: {name: sha256}, artifact_sha256, started, finished, exit, timeout_s}`.
   Inputs hashed: the spike script, `scripts/unit_runner.py`, the dist manifest (the same
   `dist` hash as D16, from `unit_runner.dist_hash`), the fixture (the seeded notebook or
-  crafted notebook JSON, and for S4 the five staged `.py` files), the chrome path and
+  crafted notebook JSON, and for S4 the probe's kernel code; the PLR wheel that carries
+  `pylabrobot.visualizer3D` is covered by the `dist` hash, Revision 10), `scripts/repl_smoke.py`
+  (which each `--unit` lazy-loads, D16 "Import-time submodule dependency"), the chrome path and
   version, `driver` (the Playwright version and `uv.lock` sha256, `unit_runner.driver_input`,
   as in D16; Revision 8, C8-6), and, for a unit that builds on another unit's result, that
   unit's `artifact_sha256`. The S1 sizing, refit, restore and split units take the widget
@@ -1277,8 +1503,8 @@ unit's budget + 60 s; the harness's own `--scenario` watchdog fires at the budge
 into the default `outputs/repl_smoke/<check>/` or into its own served dist (which would change
 its `dist` hash). Its own records go to its `--out-dir`, default
 `outputs/nd_sensitivity/sprint_<a|b|c>/`: `units/<negative>.json` plus a stamp, written after
-clearing its own earlier files (C8-3) (inputs: the driver and entry script, `repl_smoke.py`,
-`unit_runner.py`, the pristine and the mutated dist hashes, the chrome path and version, and
+clearing its own earlier files (C8-3) (inputs: the driver and entry script, `repl_smoke.py`
+and `repl_smoke_units.py`, `unit_runner.py`, the pristine and the mutated dist hashes, the chrome path and version, and
 `driver`, C8-6). It supports `--resume`, which skips a negative only if its stamp exists with
 `exit == 0`, its inputs and artifact sha256 match, its artifact carries every pre-registered
 field (`harness_exit`, `failing_keys`, `outcome`), and its recorded outcome passed; a missed
@@ -1394,7 +1620,9 @@ an `error` finding, counts as a failed outcome and is never reused.
 
 1. **Name line.** The resource name (Roboto Flex, `font-stretch` condensed, weight 600), then
    its PLR type and model in ink-soft: `source  Plate  Cor_96_wellplate_360ul_Fb`. The model
-   string is PLR's `model` attribute, verbatim.
+   string is PLR's `model` attribute, verbatim (the example is the design fixture's at 0.2.2;
+   after B2's port to `cor_96_wellplate_360uL_Fb` it is whatever that attribute holds at the
+   pin, and tests read it from the resource rather than hardcoding it).
 2. **The drawing.**
    - It is to scale per D5, with the front edge at the bottom.
    - Well grids show row letters and column numbers.
@@ -1420,7 +1648,11 @@ an `error` finding, counts as a failed outcome and is never reused.
 
 **Deck** figures add a rail ruler along the front edge, numbered at rail 1 and every 5th rail.
 Carriers are drawn in rail outline with condensed name labels, and labware in ink. The deck
-tiers follow D5.
+tiers follow D5. *(Revision 10.)* At the pin PLR calls rails **tracks**: the ruler's count is
+`deck.num_tracks` (30 for the STARLet; the deprecated `deck.num_rails` reads 32), and a
+carrier's rail number is its track (`assign_child_resource(..., track=3)` places at the same x
+as the deprecated `rails=3`; the PLR 1.0 recon). The labels 1, 5, ..., 30 are unchanged. The
+user-facing word stays "rail", as DESIGN.md has it.
 
 ### 3.3 Run ledger and error panel
 
@@ -1467,14 +1699,14 @@ formatted as in 3.2:
 | NoTip, channel | "Channel {c} has no tip." | "{Action} needs a tip on every channel it uses." | "Pick up tips before you {action}." |
 | NoTip, tip spot (pick up) | "{rack} {spot} has no tip." | "Pick up asked for a tip that has already been taken." | "Pick up from a position that still has a tip." |
 
-For the stamp, a tip owner counts as a channel owner: `resource: null` (D2). A raise that `resolve` returns `None` for (no owner, pending residue, or a `*96` op;
+For the stamp, a tip owner counts as a channel owner: `resource: null` (D2). A raise that `resolve` returns `None` for (no owner, residue of uncommitted tracker state, or a `*96` op;
 D8 steps 2, 4, 5) gets the generic panel: "PyLabRobot raised X: message" plus the traceback,
 with no heading template. A raise outside the four classes, including the `RuntimeError` of a
 bare `discard_tips()` or `return_tips()` with no tip mounted, gets no panel at all: the plain
 IPython traceback, styled by Praxis CSS (D8).
 
-With the fixture's error cell (`make_fixture.py:97-99`: 80 µL from assay A1:H1, which holds
-50 µL), the panel reads "Not enough liquid in assay A1:H1." / "Each well holds 50 µL; the
+With the fixture's error cell (`make_fixture.py:97-99` before B2's port to the pin: 80 µL
+from assay A1:H1, which holds 50 µL), the panel reads "Not enough liquid in assay A1:H1." / "Each well holds 50 µL; the
 aspirate asked for 80 µL. Nothing was aspirated."
 
 ### 3.4 Interaction (shell script; no `<script>` in outputs)
@@ -1561,25 +1793,27 @@ also close panel. The tiers follow D6; crossing 1280 px is the table's tier-cros
 
 | Path | Action | Contents |
 |---|---|---|
-| `scripts/unit_runner.py` | create (A1); used by A2, A3, A7, B10, C1, C7 | The one shared unit runner (D16 "Shared unit runner"; Revision 8, C8-1; Revision 9, C9-1..C9-4): `kill_tree` (descendant walk over `/proc/<pid>/task/*/children` and the exact NUL-delimited `PRAXIS_UNIT_TOKEN=<token>` environ sweep, iterated to a fixpoint with `SIGSTOP` on each find, skipping unreadable or empty environs; pid-reuse guard by pidfd where available, else a `/proc/<pid>/stat` starttime check; group signals only with a verified live member; `SIGTERM`, a second fixpoint after the grace, then `SIGKILL`; `SIGCONT` to every stopped pid in a `finally`), `run_unit` (fresh token at exec, `start_new_session=True`, `kill_tree` on expiry), `ensure_token` (re-exec with the token set), `Watchdog` (armed first; owns the stamp lock through `commit`; on expiry deletes the result, writes the marker, kills the tree, exits 124), the bounded-teardown order (browser and Playwright closed before the stamp, only `os._exit(stamp.exit)` after it), `write_atomic`, `dist_hash`, `driver_input`, and the `--reap` CLI (`kill_tree` per token found; refuses without `CI` or `--force`). Loaded by path by `repl_smoke.py`, the spike scripts and the sensitivity driver; no other module kills unit processes. argparse and logging. |
-| `web-repl/tests/test_unit_runner.py` | create (A1) | AC-42 runner cases. All but one use real short-lived processes and no browser: a `setsid` grandchild does not survive `run_unit`'s timeout; a `setsid` grandchild whose parent has already exited is killed by the token sweep; a `Watchdog` child exits 124 at its budget with its `setsid` grandchild gone; a child that hangs after its stamp (a blocking `atexit` handler and a non-daemon thread) still exits with `stamp.exit` within budget + grace; the fixpoint catches a child forked during the grace by a sweep-found orphan; an unreadable or empty environ is skipped, and only the exact token entry matches; `SIGCONT` in the `finally` leaves no stopped process after an interrupted walk; `ensure_token` re-execs so `/proc/self/environ` carries the token; the pid-reuse guard; `kill_tree` never signals the caller's process group; `--reap` refuses without `CI` or `--force`, and with either it kills a token-carrying orphan; `driver_input` changes when the Playwright version or `uv.lock` changes (both injected). The exception is one real-Chromium case (C9-5), which runs in CI only, never locally: headless Chromium under `run_unit` leaves no process carrying the token. Wired into `repl.yml` in A1, in the REPL job, which has Playwright's Chromium. |
-| `scripts/spikes/260929_s{1,2,3,4}_*.py` (all four rows below) | create (A1–A3, C1) | Each is a unit driver per D17 "Units, resume and chunking": the units listed there, each started as `--unit <name>` through `unit_runner.run_unit` in its own subprocess and browser context, self-bounded by a `unit_runner.Watchdog` at its timeout (armed first, after `ensure_token`); the unit clears its own files next; browser and Playwright teardown run before the stamp is committed, and only `os._exit(stamp.exit)` follows it (C9-1); `units/<name>.json` plus a stamp with input (including `driver`) and artifact sha256; a raised probe recorded as an `error` finding (complete, never reused); `--out-dir` and `--resume`; `[outcomes]` evaluated over the full unit set. The sidecar pre-registers the units, timeouts, hashed inputs, artifact fields, resume rule and completeness definition. |
+| `scripts/unit_runner.py` | create (A1); used by A2, A3, A7, B10, C1, C7 | The one shared unit runner (D16 "Shared unit runner"; Revision 8, C8-1; Revision 9, C9-1..C9-4): `kill_tree` (descendant walk over `/proc/<pid>/task/*/children` and the exact NUL-delimited `PRAXIS_UNIT_TOKEN=<token>` environ sweep, iterated to a fixpoint with `SIGSTOP` on each find, skipping unreadable or empty environs; pid-reuse guard by pidfd where available, else a `/proc/<pid>/stat` starttime check; group signals only with a verified live member; `SIGTERM` then an immediate `SIGCONT` so handlers run during the grace (Revision 10), then a re-freeze, a second fixpoint and `SIGKILL`; `SIGCONT` to every stopped live pid in a `finally`), `run_unit` (fresh token at exec, `start_new_session=True`, `kill_tree` on expiry, `grace_s=5`, `killed` = "`kill_tree` ran"), `ensure_token` (re-exec with the token set), `Watchdog(budget_s, on_expire=None)` (armed first; owns the stamp lock through `commit`, which raises on a second call; `disarm()`; on expiry deletes the result, writes the marker, kills the tree, exits 124, even if `on_expire` raises), the bounded-teardown order (browser and Playwright closed before the stamp, only `os._exit(stamp.exit)` after it), `write_atomic`, `dist_hash` (`<rel>\t<sha256>\n` lines, posix, sorted; empty dir = sha256 of nothing; missing dir raises), `driver_input` (missing `uv.lock` raises), the public helpers `emit_line`, `read_proc_stat` and `reap()`, keyword-only injectable seams for the fault cases, and the `--reap` CLI (`kill_tree` per token found, `--token` repeatable to restrict; refuses without `CI` or `--force`). Merged on the sprint branch by A1a (Revision 10 makes this row say what that code does). Loaded by path by `repl_smoke.py`, `repl_smoke_units.py`, the spike scripts and the sensitivity driver; no other module kills unit processes. argparse and logging. |
+| `web-repl/tests/test_unit_runner.py` | create (A1) | AC-42 runner cases. All but one use real short-lived processes and no browser: a `setsid` grandchild does not survive `run_unit`'s timeout; a `setsid` grandchild whose parent has already exited is killed by the token sweep; a `Watchdog` child exits 124 at its budget with its `setsid` grandchild gone; a child that hangs after its stamp (a blocking `atexit` handler and a non-daemon thread) still exits with `stamp.exit` within budget + grace; the fixpoint catches a child forked during the grace by a sweep-found orphan; an unreadable or empty environ is skipped, and only the exact token entry matches; `SIGCONT` in the `finally` leaves no stopped process after an interrupted walk; `ensure_token` re-execs so `/proc/self/environ` carries the token; the pid-reuse guard; `kill_tree` never signals the caller's process group; `--reap` refuses without `CI` or `--force`, and with either it kills a token-carrying orphan; `driver_input` changes when the Playwright version or `uv.lock` changes (both injected); plus the Revision 10 contract cases (a `SIGTERM` handler runs because of the `SIGCONT`; `Watchdog(1)` with no `on_expire`; a second `commit` raises; a raising `on_expire` still kills and exits 124; `dist_hash` line format, empty and missing dir; `driver_input` with no `uv.lock` raises; `--reap --token` restricts; `killed` false for a normal exit). The exception is one real-Chromium case (C9-5), which runs in CI only, never locally: after the C10-1 positive control, headless Chromium under `run_unit` leaves no process carrying the token. Does not load `repl_smoke.py` at collection (D16, Revision 10). Wired into `repl.yml` in A1, in the REPL job, which has Playwright's Chromium. |
+| `scripts/spikes/260929_s{1,2,3,4}_*.py` (all four rows below) | create (A1–A3, C1) | Each is a unit driver per D17 "Units, resume and chunking": the units listed there, each started as `--unit <name>` through `unit_runner.run_unit` in its own subprocess and browser context (`repl_smoke.py` loaded by path only inside the `--unit` branch, never by the driver; D16 "Import-time submodule dependency", Revision 10), self-bounded by a `unit_runner.Watchdog` at its timeout (armed first, after `ensure_token`); the unit clears its own files next; browser and Playwright teardown run before the stamp is committed, and only `os._exit(stamp.exit)` follows it (C9-1); `units/<name>.json` plus a stamp with input (including `driver`) and artifact sha256; a raised probe recorded as an `error` finding (complete, never reused); `--out-dir` and `--resume`; `[outcomes]` evaluated over the full unit set. The sidecar pre-registers the units, timeouts, hashed inputs, artifact fields, resume rule and completeness definition. |
 | `scripts/negatives/260929_nd_sensitivity.py`, `260929_nd_sensitivity_sprint_{a,b,c}.py` + `.bth.toml` each | create (A7), used (B10, C7) | The AC-39 sensitivity driver and its per-sprint entry scripts and sidecars (D17, C7-8): one unit per negative, each on its own mutated dist copy (`/tmp/claude-1000/nd-neg/<negative>/dist/`) with its own `--out-dir` (`.../<negative>/out/`, C8-5), running only its own harness unit through `unit_runner.run_unit`; `driver` hashed; one outcome per negative. |
 | `scripts/spikes/260929_s1_lumino_widget.py` + `.bth.toml` | create (A1) | Playwright probe over a built dist, `lab/` entry. It tries S1-A, then S1-B. It records `split_right_ok`, `css_limits_honoured`, `dock_layout_sizing_reachable` (the DockPanel `saveLayout`/`restoreLayout` path), `css_limits_refit` (inline px `min-width`/`max-width` then `parent.fit()`: does the widget take the new width?), `restore_layout_keeps_iframe` (does a `restoreLayout()` clamp reload an iframe in the widget?), the resulting D6 sizing case, the per-state cell hooks, the notebook's `windowingMode` and the cell re-attach signal, with the negative control from D17. Written with argparse and logging. |
 | `scripts/spikes/260929_s2_sanitizer.py` + `.bth.toml` | create (A2) | It writes a notebook JSON with crafted outputs to the drive, which is untrusted because it was never executed, reopens it, and records the chosen mimetype and survivorship per element and attribute. It repeats the check for the same bundle displayed live (trusted), and for a notebook executed, saved and reopened in the same browser, recording that path's trust state and mimetype (S2-T or not). Negative control from D17. |
 | `scripts/spikes/260929_s3_ipython_hooks.py` + `.bth.toml` | create (A3) | It runs S3's (a), (b), (b′), (c) and (d) in the kernel; for (b′) it reads the output model's `metadata["text/html"]["praxis"]` through a seeded notebook, and records the IPython version, `run_code` path evidence and outputs by model. Negative control from D17. |
-| `scripts/spikes/260929_s4_viewer3d_pyodide.py` + `.bth.toml` | create (C1) | It imports the staged `plr_visualizer3d` in the kernel, constructs and starts `DockedViewer3D` on the fixture deck, and records the stubs needed, the `scene` bytes, the stock and the rebound `PACKAGE_ROOT` (D11), and the time of the first `_models_on_disk(PACKAGE_ROOT)` walk over the rebound root. Negative control from D17. |
+| `scripts/spikes/260929_s4_viewer3d_pyodide.py` + `.bth.toml` | create (C1) | It imports the pin's `pylabrobot.visualizer3D` from the dist's PLR wheel in the kernel (nothing staged; Revision 10), constructs and starts a throwaway `DockedViewer3D` prototype on the fixture deck, and records the stubs needed, the `scene` bytes and whether any model carries `mesh`, the stock and the rebound `PACKAGE_ROOT` (D11), and the time of the first `_models_on_disk(PACKAGE_ROOT)` walk over the rebound root. Negative control from D17. |
 | `web-repl/overlay/assets/theme/praxis-theme.css` | modify (A4) | Appends sections for the status rail, prompt removal, output inset, the Light steel/sheet ground and syntax palette (Light only), `.praxis-out` token mapping (D3), the stale notice, the error panel, traceback accents, the hover readout, the focus ring, and the deck panel header and footer. It follows the header rules; no animation. |
 | `web-repl/tests/test_display_css.py` | create (A4) | Text invariants on the new rules: no HC name, no `data-jp-theme-light`, no bare-`:root` `--jp-*`, no animation. Every colour in a `.praxis-*` rule is `var(--jp-*)`, `var(--praxis-*)` or one of the DESIGN hexes for moonstone, rose, rose ink or brick. The Light block carries `#EEF1F4`. |
 | `web-repl/shell/display/index.js` | create (A5) | `mount(window)`: waits for `jupyterapp` and `restored`, then mounts `chrome`, and from sprint B `stale` and `interact`, and from sprint C `dock`. |
 | `web-repl/shell/display/chrome.js` | create (A5) | Cell-state derivation from the model: a pure `cellState(model, {running, snapshot})`, where `snapshot` is the cell source captured when an execution is observed (or at first observation for a loaded cell), with precedence running > stale > error > ran > not-run (section 3.1); `stale` only with a non-null execution count and a snapshot. Plus the snapshot bookkeeping, an observed-execution event (cell, panel) that `stale.js` uses for `panelSession` (D7), and the DOM writer for `data-praxis-cell-state` and `data-praxis-exec`, per the S1 result. |
 | `web-repl/shell/display/__tests__/fakes.js`, `chrome.test.js` | create (A5) | Fakes for cells, notebook, app, BroadcastChannel and the DOM, following `web-repl/shell/coxswain/__tests__/dom_stub.js`. |
 | `web-repl/shell/praxis-shell.js` | modify, append only (A5) | One loader IIFE for `display/index.js`, gated to `/lab/`. Existing IIFEs untouched, including the persistence IIFE on `main`. |
-| `web-repl/scripts/build_repl.py` | modify (A6, B9, C6) | A6: `stage_shell` removes and then copies `shell/display/`, skipping `__tests__`, and `assert_dist_complete` requires `shell/display/{index,chrome}.js`. B9: adds `stale.js` and `interact.js` to the required list. C6: adds `dock.js`, `assets/visualizer3d/index.html`, `assets/visualizer3d/vendor/three.webgpu.min.js`, `assets/visualizer3d-augmentations/{socket,embed}.js` and `embed.css`, `assets/python/plr_visualizer3d/server.py`, `assets/python/praxis/viz/viewer3d.py`, and `assets/python/praxis/display/__init__.py`, the last from B8. |
+| `web-repl/scripts/build_repl.py` | modify (A6, B9, C6) | A6: `stage_shell` (`build_repl.py:1016` on origin/main a176bac7) removes and then copies `shell/display/`, skipping `__tests__`, and `assert_dist_complete` (`:1193`) requires `shell/display/{index,chrome}.js`. B9: adds `stale.js` and `interact.js` to the required list. C6: adds `dock.js`, `assets/visualizer3d/index.html`, `assets/visualizer3d/vendor/three.webgpu.min.js`, `assets/visualizer3d-augmentations/{socket,embed}.js` and `embed.css`, `assets/python/praxis/viz/viewer3d.py`, and `assets/python/praxis/display/__init__.py`, the last from B8. (No `plr_visualizer3d` path: Revision 10.) |
 | `web-repl/tests/test_display_staging.py` | create (A6), extend (B9, C6) | Stages to `tmp`: no `__tests__`, a stale file is removed, and `assert_dist_complete` raises on a missing required file. |
-| `web-repl/tests/fixtures/notebooks/display_check.ipynb` | create (A7), extend (B10, C7) | The gate notebook. Boot cell, the fixture deck from `make_fixture.py`'s `assemble()` with tracking on, cells that draw the deck, a plate and a tip rack, a `RunLedger` cell, one cell per error case, a sleep cell (running state), and a marker cell after an error (Run All stops). Not shipped in dist; the harness seeds it. |
-| `scripts/repl_smoke.py` (repo root) | modify (A7, B10, C7) | Adds `--display-check` and `run_display_check`, and later `--dock-check` and `run_dock_check`. Each is added to the "nothing to do" list and gets a `main()` branch. Both follow D16 "Preemption-safe harness design": `--scenario <id>` runs one unit in one process: `ensure_token`, then arming a `unit_runner.Watchdog` at its table budget as its first act (exit 124, timeout marker, result deleted, no stamp), then clearing its own files, and closing the browser and Playwright before the stamp commit, after which only `os._exit(stamp.exit)` runs (C9-1, C9-4, C9-6); with no `--scenario` the flag is the driver (one subprocess per unit through `unit_runner.run_unit` with budget + 60 s as timeout, stamp-matched resume requiring `exit == 0` and every listed key present and holding, aggregate `result.json` recording reused, timed-out, missing and stale units; a `run_unit` timeout over a valid stamp defers to the stamp and is logged); `--out-dir` (required with a non-default `--serve-dir` or any `--neg`), `--fresh`, `--aggregate-only` (never deletes), and the harness-only `--neg drop-query` (AC-39(e)). Hashed inputs include `driver` (C8-6) and `runner` (C9-6). The unit table (with listed keys), stamp writer, input hashing, reuse rule and aggregate are pure functions, testable without a browser; process start, kill and atomic writes come from `scripts/unit_runner.py` only. A7 adds the driver and D1/D1-dark, B10 adds D2–D4, C7 adds K1a, K1b, K2 and N-d. |
-| `web-repl/tests/test_repl_smoke_resume.py` | create (A7), extend (B10, C7) | AC-42: loads `scripts/repl_smoke.py` by path and drives the pure driver functions with fake unit runners; the `--scenario` watchdog case runs `run_scenario` in a short-lived child process with a hanging fake runner. Revision 9 adds: `run_scenario(<id>)` arms the `Watchdog` with that unit's table budget before anything else (C9-4); a hanging fake teardown exits 124 within budget + grace; a `run_unit` timeout over a valid stamp defers to the stamp (C9-1); a `runner` hash change forces a recompute (C9-6). |
+| `web-repl/design/notebook-display/make_fixture.py`, `fixture.js` | modify, regenerate (B2) | Port the design fixture to the 1.0.0b1 pin (Revision 10; the PLR 1.0 recon, MAJOR-6): non-deprecated names `hamilton_tip_carrier_L5`, `hamilton_plate_carrier_L5_ac`, `cor_96_wellplate_360uL_Fb`; `assign_child_resource(..., track=3)` (same x as `rails=3`); `deck.num_tracks` (30) instead of `num_rails`; imports from non-shim homes (D8). `tips_300` is now an `EmbeddedTipRack` (a `TipRack` subclass) with 7.2 mm tip spots; no code dispatches on the type-name string. `deck.serialize()` changed shape (`num_tracks`, no `rotation`/`barcode`), so `fixture.js` is regenerated from the port, never hand-edited, and `display.js` is checked against the new shape. `_as_in_kernel` rewrites paths to `/lib/python3.12/...`, but the kernel is CPython 3.14: it is corrected to the kernel's version or made version-independent. The volumes, wells and error cell keep their values, so AC-9's strings are unchanged. |
+| `web-repl/tests/fixtures/notebooks/display_check.ipynb` | create (A7), extend (B10, C7) | The gate notebook. Boot cell, the fixture deck from `make_fixture.py`'s `assemble()` (as ported by B2; A7 adds only the D1 cells, and the fixture cells arrive with B10) with tracking on, cells that draw the deck, a plate and a tip rack, a `RunLedger` cell, one cell per error case, a sleep cell (running state), and a marker cell after an error (Run All stops). Not shipped in dist; the harness seeds it. |
+| `scripts/repl_smoke_units.py` | create (A7), extend (B10, C7) | The harness's pure functions (Revision 10; D16 "Import-time submodule dependency"): the D16 unit table with listed keys, input hashing (through `unit_runner.dist_hash` and `driver_input`), stamp validation and the skip rule, the aggregate builder, and `run_scenario`'s ordering (`ensure_token`, arm the watchdog, clear files, run, write the result, teardown, flush, commit, `os._exit`) with injected browser, runner and watchdog seams. Imports neither `repl_smoke.py` nor Playwright, so it runs without the submodule. Loaded by path by `repl_smoke.py` and `test_repl_smoke_resume.py`. argparse-free; logging. |
+| `scripts/repl_smoke.py` (repo root) | modify (A7, B10, C7) | Adds `--display-check` and `run_display_check`, and later `--dock-check` and `run_dock_check`. Each is added to the "nothing to do" list and gets a `main()` branch. Both follow D16 "Preemption-safe harness design": `--scenario <id>` runs one unit in one process: `ensure_token`, then arming a `unit_runner.Watchdog` at its table budget as its first act (exit 124, timeout marker, result deleted, no stamp), then clearing its own files, and closing the browser and Playwright before the stamp commit, after which only `os._exit(stamp.exit)` runs (C9-1, C9-4, C9-6); with no `--scenario` the flag is the driver (one subprocess per unit through `unit_runner.run_unit` with budget + 60 s as timeout, stamp-matched resume requiring `exit == 0` and every listed key present and holding, aggregate `result.json` recording reused, timed-out, missing and stale units; a `run_unit` timeout over a valid stamp defers to the stamp and is logged); `--out-dir` (required with a non-default `--serve-dir` or any `--neg`), `--fresh`, `--aggregate-only` (never deletes), and the harness-only `--neg drop-query` (AC-39(e)). Hashed inputs include `driver` (C8-6) and `runner` (C9-6). The unit table (with listed keys), stamp writer, input hashing, reuse rule and aggregate are pure functions in `scripts/repl_smoke_units.py` (Revision 10), testable without a browser or the submodule; `repl_smoke.py` keeps the CLI flags and the real-browser scenario bodies. Process start, kill and atomic writes come from `scripts/unit_runner.py` only. A7 adds the driver and D1/D1-dark, B10 adds D2–D4, C7 adds K1a, K1b, K2 and N-d. |
+| `web-repl/tests/test_repl_smoke_resume.py` | create (A7), extend (B10, C7) | AC-42: loads `scripts/repl_smoke_units.py` by path (never `repl_smoke.py`, which needs the submodule at import; Revision 10) and drives the pure driver functions with fake unit runners; the `--scenario` watchdog case runs `run_scenario` in a short-lived child process with a hanging fake runner. Revision 9 adds: `run_scenario(<id>)` arms the `Watchdog` with that unit's table budget before anything else (C9-4); a hanging fake teardown exits 124 within budget + grace; a `run_unit` timeout over a valid stamp defers to the stamp (C9-1); a `runner` hash change forces a recompute (C9-6). |
 | `web-repl/tests/test_repl_workflow_scenarios.py` | create (A7), extend (B10, C7) | AC-42: parses `repl.yml` and checks one step per unit with its step-level `timeout-minutes`, the `--aggregate-only` steps and that their hashed arguments equal the scenario steps', the `if: always()` reap step and upload, and the job-level backstop. |
 | `web-repl/overlay/assets/python/praxis/display/__init__.py` | create (B8) | Exports `install`, `RunLedger` and `render`. `render(obj)` returns the bundle, for tests and explicit use. |
 | `.../praxis/display/svg.py` | create (B1) | Path builders (circle as two arcs, rounded rect, cross), a text element with a font size in user units, number formatting, and `esc_text` / `esc_attr` (D2 escaping; the only escape helpers). No PLR import. |
@@ -1589,21 +1823,19 @@ also close panel. The tiers follow D6; crossing 1280 px is the table's tier-cros
 | `.../praxis/display/deck.py` | create (B3) | Deck plan, rail ruler, carriers, labware at their detail level, the deck sentence. |
 | `.../praxis/display/glossary.py` | create (B4) | `ACTIONS` and nouns (section 3.5). The only home of action strings. |
 | `.../praxis/display/ledger.py` | create (B4) | `RunLedger` (D9): rows, in-flight nesting, top-level counts, tip cycles, the after-state figures, the bundle (stamp `resource: null`, `rev: null`, D2); `_ERROR_STEPS` and `step_for(exc)`. |
-| `.../praxis/display/context.py` | create (B5) | `resolve(exc, tb) -> ErrorContext | None` (D8), with the frame filter on `glossary.ACTIONS`, the `*96` short-circuit, owner rules (a)–(e), the committed offending set (per channel for a tip owner) and the pending-residue rule (owner outside the offending set → `None`). |
+| `.../praxis/display/context.py` | create (B5) | `resolve(exc, tb) -> ErrorContext | None` (D8), with the frame filter on `glossary.ACTIONS`, the `*96` short-circuit, owner rules (a)–(e) (rule (d) parsing `"Channel N"`, `"<name>_volume_tracker"` and bare tip-spot names), `isinstance` checks against the non-shim `LiquidHandler`, `TipTracker` and `VolumeTracker` homes (D8), the committed offending set (per channel for a tip owner) and the pending-residue rule (owner outside the offending set → `None`). |
 | `.../praxis/display/errors.py` | create (B6) | Panel rendering (section 3.3, including the tip-owner TLL row and the generic panel, with the step line from `ledger.step_for`; stamp per D2: the labware name or `null`, `rev: null`) and `handler(shell, etype, value, tb, tb_offset=None)`. |
-| `.../praxis/display/stale.py` | create (B7) | Display session id, revs (none for `rev: null` stamps), subscriptions, the `post_run_cell` announcer. It posts nothing else (no session message; D7). It takes an injected `post(str)`. `import js` appears only inside `make_repl_poster()`, as in `browser.py:179-192`. |
+| `.../praxis/display/stale.py` | create (B7) | Display session id, revs (none for `rev: null` stamps), subscriptions (idempotent through its own `_subscribed` set), the drawn-state digest filter (callbacks mark dirty; settling at `post_run_cell` and before each render bumps `rev` only when the digest changed; D7, Revision 10), the `post_run_cell` announcer. It posts nothing else (no session message; D7). It takes an injected `post(str)`. `import js` appears only inside `make_repl_poster()`, as in `browser.py:179-192`. |
 | `.../praxis/display/install.py` | create (B8) | `install(shell=None)`: registers the D2 formatters (with the S3-B fallback: separate `text/html` / `text/plain` registration, the `text/html` function returning `(html, {"praxis": stamp})`), the D8 handler (with the S3-C fallback), the D7 hooks (with the S3-D fallback), and mints the display session id. It is idempotent. |
 | `web-repl/bootstrap/praxis_bootstrap.py` | modify (B8) | Adds the D13 non-fatal stage between step 12 and `praxis:ready`. |
 | `web-repl/shell/display/stale.js`, `interact.js` + tests | create (B9) | `stampOf` (D2, exported; the only stamp reader). D7 marking: `panelSession[P]` per notebook panel (from `chrome.js`'s observed executions and P's `sessionContext`), no "Changed since" on `rev: null` stamps, in-memory marks re-applied on `outputs.changed`, the S1 re-attach signal and `activeCellChanged`. D14 hover, keyboard, click and the live region; matching by `dataset.praxisRes`; the grid hit-test (pure). |
-| `web-repl/tests/plr_contract.py` | modify (C2; B2–B8 as needed) | C2 adds `("pylabrobot.resources.resource", "Resource")` with a justification comment (D11). Each sprint B task adds an entry for any new `pylabrobot.*` submodule it imports. |
-| `.praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md` | modify, append only (C2) | ADR §2 addendum: one vendored third-party package (`plr_visualizer3d`, from PLR main) ships as loose fetched files beside the pinned 0.2.2 wheel, with the contract entry above. |
-| `web-repl/tests/test_display_{labware,deck,floor,budget,ledger,context,errors,stale,install,glossary,colorblind}.py` | create (B1–B8) | CPython tests. They load `praxis/display` by path under the synthetic package `_praxis_display_under_test` and never touch `sys.path` (README rule 2; the `test_browser_visualizer.py:33-51` pattern). They use real PLR 0.2.2 resources and `LiquidHandlerChatterboxBackend`. |
-| `web-repl/scripts/vendor_visualizer3d.py` | create (C2) | D11 vendoring: static and Python, with `--src` pointing at a PLR main checkout and `--check`, which verifies the committed trees against the source. Written with argparse and logging, and fails loud. |
+| `web-repl/tests/plr_contract.py` | modify (C3; B2–B8 as needed) | C3 adds `("pylabrobot.visualizer3D.server", "Viewer3D")` with a justification comment, for `viewer3d.py`'s own import (D11; Revision 10 dropped the Revision 1-9 `("pylabrobot.resources.resource", "Resource")` entry for vendored files). Each sprint B task adds an entry for any new `pylabrobot.*` submodule it imports, always from a non-shim home (the contract's "names no shim" test). |
+| `web-repl/tests/test_display_{labware,deck,floor,budget,ledger,context,errors,stale,install,glossary,colorblind}.py` | create (B1–B8) | CPython tests. They load `praxis/display` by path under the synthetic package `_praxis_display_under_test` and never touch `sys.path` (README rule 2; the `test_browser_visualizer.py:33-51` pattern). They use real PLR resources at the 1.0.0b1 pin, `LiquidHandler` from `pylabrobot.legacy.liquid_handling`, and the chatterbox backend, imported from non-shim homes (D8; the backend's non-shim home is to be verified by B2 against `plr_contract.py`). |
+| `web-repl/scripts/vendor_visualizer3d.py` | create (C2) | D11 vendoring of `static/` only (Revision 10), with `--src` defaulting to `external/pylabrobot` (the submodule at the pin) and `--check`, which verifies the committed tree's bytes and recorded commit against the source. Written with argparse and logging, and fails loud. |
 | `web-repl/overlay/assets/visualizer3d/**` | generated, committed (C2) | The vendored static tree, `VENDOR_MANIFEST.json`, and the transformed `index.html`. |
-| `web-repl/overlay/assets/python/plr_visualizer3d/**` | generated, committed (C2) | Five vendored `.py` files and `VENDOR_MANIFEST.json`. |
 | `web-repl/tests/test_vendor_visualizer3d.py` | create (C2) | AC-30. |
-| `web-repl/overlay/assets/python/praxis/viz/viewer3d.py` | create (C3) | The one-time `plr_visualizer3d.server.PACKAGE_ROOT` rebind to `tempfile.mkdtemp()` before the first viewer (D11). `DockedViewer3D` (the 4-client cap with oldest-client eviction via `evict`, `bye` ending a connection, `query` answer, drop of non-JSON and unknown kinds, `stop` ending every connection, posting `close` and then unsubscribing from `praxis_viz3d`), `VirtualConnection`, `ChannelTransport` (injected), `make_viz3d_channel()` (the only `import js`), and `async def dock(deck, **kw)` (module-level current viewer stopped first; awaits `wait_for_browser(timeout=15)`). |
-| `web-repl/tests/test_viewer3d_docked.py` | create (C3) | AC-31. Loads `plr_visualizer3d` and `praxis/viz` under synthetic names. |
+| `web-repl/overlay/assets/python/praxis/viz/viewer3d.py` | create (C3) | Imports the pin's `pylabrobot.visualizer3D` and subclasses its `server.Viewer3D` (Revision 10). The one-time `pylabrobot.visualizer3D.server.PACKAGE_ROOT` rebind to `tempfile.mkdtemp()` before the first viewer (D11). `DockedViewer3D` (the 4-client cap with oldest-client eviction via `evict`, `bye` ending a connection, `query` answer, drop of non-JSON and unknown kinds, `stop` ending every connection, posting `close` and then unsubscribing from `praxis_viz3d`), `VirtualConnection`, `ChannelTransport` (injected), `make_viz3d_channel()` (the only `import js`), and `async def dock(deck, **kw)` (module-level current viewer stopped first; awaits `wait_for_browser(timeout=15)`). |
+| `web-repl/tests/test_viewer3d_docked.py` | create (C3) | AC-31. Imports the pin's `pylabrobot.visualizer3D` from the root environment's PLR, and loads `praxis/viz` under a synthetic name. |
 | `web-repl/overlay/assets/visualizer3d-augmentations/socket.js` | create (C4) | A classic script. The factory `makePraxisSocketClass(BroadcastChannelCtor, {acceptTimeoutMs})` is attached to the global, and the script assigns `window.WebSocket` when `document` exists. The viewer id comes from `location.search` (`viewer`); without it the socket posts nothing and closes after the accept timeout. With it, the socket posts `bye` on `close()`, on `pagehide` and on its accept timeout, ignores a late `accept`, and fires `onclose` on its own `evict` (D11). |
 | `web-repl/overlay/assets/visualizer3d-augmentations/embed.js`, `embed.css` | create (C4) | D12 embed mode and status forwarding. |
 | `web-repl/shell/display/__tests__/viz3d_socket.test.js` | create (C4) | Evaluates `socket.js` text against a fake global. Kept here so that no `__tests__` directory lives under `overlay/assets/`, which is staged wholesale (`build_repl.py:551-578`). |
@@ -1616,6 +1848,7 @@ also close panel. The tiers follow D6; crossing 1280 px is the table's tier-cros
 - the existing IIFEs in `praxis-shell.js`
 - `web-repl/overlay/assets/visualizer/**` and `visualizer-augmentations/**`
 - every byte vendored from PLR other than the transformed `index.html`
+- no PLR Python is copied into the overlay at all (Revision 10; GATE X, D11)
 
 ---
 
@@ -1758,7 +1991,8 @@ Gate shorthands:
     its `text/html`. A container with infinite `max_volume` reads "{name} holds {v} µL.".
 - **AC-11 (deck repr)** [PY:test_display_deck.py]:
   - Ruler labels are exactly rails 1, 5, 10, 15, 20, 25, 30 for the STARLet deck
-    (`deck.num_rails`).
+    (`deck.num_tracks` = 30 at the pin; the deprecated `num_rails` is not read; §3.2,
+    Revision 10).
   - The carrier labels "tip_carrier" and "plate_carrier" are present.
   - The fixture deck's `text/html` is ≤ 49,152 bytes.
   - The deck sentence equals the section 3.2 example.
@@ -1805,24 +2039,35 @@ Gate shorthands:
   - With `show=True` and an op that raises, `__exit__` displays the ledger bundle (a
     recording `display`) and the exception still propagates.
   - The ledger bundle's stamp has `kind == "ledger"`, `resource` null and `rev` null (D2).
-- **AC-15 (error context)** [PY:test_display_context.py]. Real PLR at the pin, chatterbox
-  backend, tracking on unless the case says off. Each case raises the real error and asserts
-  `resolve(exc, exc.__traceback__)`:
+- **AC-15 (error context)** [PY:test_display_context.py]. Real PLR at the 1.0.0b1 pin,
+  chatterbox backend, tracking on unless the case says off. Each case raises the real error and
+  asserts `resolve(exc, exc.__traceback__)`. No case asserts PLR's message text beyond what it
+  states (tip-spot messages name the spot at the pin, D8). *(Revision 10: every case was
+  re-checked against the pin by the PLR 1.0 recon; E13 and E15 were replaced because their
+  0.2.2 setups no longer raise.)*
   - **E1** (fixture): aspirate 80 µL from assay A1:H1, which holds 50 → owner assay A1,
     op wells A1:H1, offending A1:H1, requested 80, available 50 (committed), action
     `aspirate`.
-  - **E2**: dispense 400 µL into a 360 µL well → TLV, owner a well.
+  - **E2**: setup: a tip on channel 0 preset with `lh.head[0].get_tip().tracker.set_volume(400)`,
+    so the tip's removal cannot raise TLL first; then dispense 400 µL into a 360 µL well → TLV,
+    owner a well. *(Revision 10: the setup was implicit and a bare 400 µL dispense raises TLL
+    on the tip first; the PLR 1.0 recon, MAJOR-9.)*
   - **E3**: aspirate more than the tip's `max_volume` (360 µL for the fixture's
-    `hamilton_96_tiprack_300uL_filter`, not its 300 µL nominal) from a well holding at least
-    that much (set it with `tracker.set_volume`, so the well's removal cannot raise TLL first)
-    → TLV, owner the tip on channel 0. *(Round 4, C4-3.)*
+    `hamilton_96_tiprack_300uL_filter`, not its 300 µL nominal; for example 400 µL) from a
+    source well preset with `well.tracker.set_volume(500)`, so the well's removal cannot raise
+    TLL first → TLV, owner the tip on channel 0. *(Round 4, C4-3; preset value fixed in
+    Revision 10, MAJOR-9.)*
   - **E4**: `pick_up_tips` with tips already on → HasTip, owner the channel from the loop
     local, by rule (e) (no tracker frame).
-  - **E5**: `drop_tips` onto an occupied spot → HasTip, owner the tip spot.
+  - **E5**: `drop_tips` onto an occupied spot → HasTip, owner the tip spot (PLR's message
+    names the spot at the pin, e.g. `'tips_300_tipspot_A2 already has a tip.'`; not
+    asserted).
   - **E6**: aspirate with no tips → NoTip, channel from `"Channel N"`.
-  - **E7**: pick up from a taken spot → NoTip, owner the tip spot, by identity.
+  - **E7**: pick up from a taken spot → NoTip, owner the tip spot, by identity. At the pin it
+    is raised before the queue loop (LH:727 through `TipSpot.get_tip`) with only `tip_spots`
+    and `use_channels` bound in the LH frame; it leaves no pending residue.
   - **E8**: `well.tracker.remove_liquid(999)` outside any LH → owner from
-    `thing` = `"<name>_volume_tracker"`.
+    `thing` = `"<name>_volume_tracker"` (the well's deck name at the pin).
   - **E9** (repeated resource): aspirate 30 µL on 8 channels from one trough holding 100 µL
     committed → TLL, owner the trough, requested 240 (summed), available 100 (committed),
     offending = {trough}. The resolved numbers do not come from PLR's message.
@@ -1834,24 +2079,46 @@ Gate shorthands:
     channel.
   - **E12**: dispense 100 µL from an empty tip → TLL, owner the tip on channel 0 (rule (c)),
     requested 100, available 0 (committed, per channel), action `dispense`.
-  - **E13** (pending residue): directly after E9's failure (the trough at 100 µL committed,
-    earlier channels' removals still pending), a retry of 10 µL on 8 channels raises TLL →
-    `None`: the owner is not in the committed offending set (80 ≤ 100).
-  - **E14** (pending residue): a `pick_up_tips` that fails mid-loop leaves earlier channels
-    with pending tips (`liquid_handler.py:533-538`); a second pick-up on those channels raises
-    from that pending state with no committed conflict → `None`.
+  - **E13** (residue from direct tracker use; replaced in Revision 10, because at the pin
+    E9's rollback leaves no residue and the old retry does not raise; setup verified by the
+    orchestrator on the 1.0.0b1 wheel, 260929), step by step:
+    1. `pick_up_tips` of one 300 µL filter tip (`max_volume` 360) on channel 0;
+    2. `trough.tracker.set_volume(100)`, so the trough reads committed 100;
+    3. `trough.tracker.remove_liquid(10)` called directly and **not** committed (committed
+       100, pending 90);
+    4. `lh.aspirate([trough], vols=[95.0], use_channels=[0])` raises
+       `TooLittleLiquidError: Not enough liquid in container: 95.0uL > 90.0uL.`, although
+       95 ≤ committed 100.
+    → `None`: the owner (the trough) is not in the committed offending set (95 ≤ 100). The
+    test also asserts the failed op's rollback: afterwards the trough's pending volume is
+    back to 100.
+  - **E14** (pending residue; confirmed at the pin): a `pick_up_tips` on several channels that
+    fails inside its queue loop (LH ~755-761; not the pre-loop taken-spot check of E7, which
+    leaves no residue) leaves earlier channels with pending tips; a second pick-up on those
+    channels raises `HasTipError` from that pending state, with no tracker frame and no
+    committed conflict → `None`.
   - **E-96** (negative, `*96` out of scope): a real `aspirate96` that raises TLL → `None`
-    (step 2 short-circuit). *Buildable at the pin (orchestrator, 260929):* on the fixture
-    layout with the chatterbox backend, `pick_up_tips96(tips_300)` then
-    `aspirate96(assay, volume=50)` raises `TooLittleLiquidError: Not enough liquid in
-    container: 50.0uL > 0uL.`
-  - **E15** (TLV, tip owner, committed room; verified on PLR 0.2.2 with chatterbox, 260929):
-    300 µL filter tips (`max_volume` 360); source A1:C1 at 200 µL and D1 at 100 µL;
-    `pick_up_tips(tips A1:D1)`; `aspirate(source A1:D1, vols=[200]*4, use_channels=[0,1,2,3])`
-    raises `TooLittleLiquidError` ("200.0uL > 100uL"), leaving tip 0 at committed 0 / pending
-    200; then `aspirate(source A2, vols=[200], use_channels=[0])` raises
-    `TooLittleVolumeError: Not enough space in container: 200.0uL > 160.0uL.` → `None`: the
-    committed room is 360 ≥ 200, so the tip owner is not in the committed offending set.
+    (step 2 short-circuit). *Buildable (orchestrator, 260929, at 0.2.2; the recipe holds at
+    the 1.0.0b1 pin, the PLR 1.0 recon):* on the fixture layout with the chatterbox backend,
+    `pick_up_tips96(tips_300)` then `aspirate96(assay, volume=50)` raises
+    `TooLittleLiquidError` (at 0.2.2: "Not enough liquid in container: 50.0uL > 0uL."; the
+    message text is not asserted).
+  - **E15** (TLV, tip owner, committed room; replaced in Revision 10, because at the pin the
+    0.2.2 setup's first aspirate rolls back and the second does not raise). Synthetic
+    tip-side residue, the E13 pattern on the tip's tracker:
+    1. `pick_up_tips` of one 300 µL filter tip (`max_volume` 360) on channel 0;
+    2. `lh.head[0].get_tip().tracker.add_liquid(200)` called directly and **not** committed
+       (committed 0, pending 200);
+    3. a source well preset with `well.tracker.set_volume(300)`; then
+       `lh.aspirate([well], vols=[200.0], use_channels=[0])`, expected to raise
+       `TooLittleVolumeError` (room 160 pending).
+    → `None`: the committed room is 360 ≥ 200, so the tip owner is not in the committed
+    offending set. *To be verified by B5:* that `validate_add_liquid`
+    (`volume_tracker.py:117`) checks pending state at the pin and step 3 raises as stated
+    (the orchestrator verified only the remove side, E13). If it does not raise
+    `TooLittleVolumeError`, B5 stops and reports the observed behaviour; the orchestrator
+    rules whether E15 is dropped (the committed-room rule of D8 step 4 then has no raising
+    case at the pin and stays as a defence, like the rest of the committed-state rule).
   - **E16** (NoTip, channel, drop-family op; verified 260929): `discard_tips(use_channels=[0])`
     with no tip mounted raises `NoTipError: Channel 0 does not have a tip.` → owner channel 0,
     action `discard_tips` (the outermost ACTIONS frame).
@@ -1870,7 +2137,9 @@ Gate shorthands:
   - The fix is the section 3.3 text.
   - Fault wells carry both a brick ring path and a cross path.
   - The drawing uses committed `tracker.volume`, checked by forcing a pending ≠ committed
-    well.
+    well **by direct tracker use** (`well.tracker.remove_liquid(v)` left uncommitted before
+    the failing op), since at the pin a failed aspirate or dispense leaves no residue (D8
+    "Panel drawing"; Revision 10).
   - The traceback is inside `<details>`, has no ANSI escape, and is HTML-escaped (a frame
     containing `<b>` appears as `&lt;b&gt;`).
   - `text/plain` contains the heading and the body.
@@ -1893,9 +2162,10 @@ Gate shorthands:
   - Exactly the four classes are registered.
   - The handler returns a list of one string, `"<Name>: <message>"`.
   - The handler displays exactly one bundle.
-  - An unresolvable context displays the generic panel. **E13** (AC-15, pending residue)
-    displays the generic panel, whose stamp has `resource` null. **E15** (AC-15, tip owner
-    with committed room) displays the generic panel likewise.
+  - An unresolvable context displays the generic panel. **E13** (AC-15, residue from direct
+    tracker use; the Revision 10 setup) displays the generic panel, whose stamp has `resource`
+    null. **E15** (AC-15, tip owner with committed room; the Revision 10 setup, subject to its
+    B5 verification) displays the generic panel likewise.
   - For an exception with a `ledger._ERROR_STEPS` entry, the handler's displayed bundle names
     that step, and the entry is gone afterwards. Order check with a real `RunLedger(lh)`
     (show on) around a failing op: the recorded `display` calls are the ledger bundle, then
@@ -1918,12 +2188,23 @@ Gate shorthands:
   - Registering a drawn output whose stamp has `resource` null or `rev` null (a ledger or
     error stamp, built by hand in the test) subscribes nothing (`_subscribed` unchanged) and
     adds nothing to any later announcement.
-  - A pending-only change (a tracker `remove_liquid` queued and not committed,
-    `volume_tracker.py:98-99`) bumps the drawn resource's rev (D7).
+  - A pending-only change (a tracker `remove_liquid` queued and not committed; pending bump
+    at `volume_tracker.py:111-112`) bumps the drawn resource's rev (D7).
+  - **Rollback does not bump** (Revision 10, D7 drawn-state filter): with the trough drawn, a
+    failed aspirate (the AC-15 E9 setup, whose rollback fires tracker callbacks at the pin)
+    leaves the trough's rev and every other drawn rev unchanged, and the simulated
+    `post_run_cell` posts nothing. A recording callback confirms the callbacks did fire, so the case is not
+    passing vacuously.
+  - **Settle before render** (Revision 10): a cell that sets a well's volume and then renders
+    its plate stamps the settled rev, and that cell's own announcement carries the same rev
+    (the fresh output is not older than the announcement).
   - The channel name `praxis_repl` appears in `praxis/display/stale.py` only.
-  - `test -d` on the three paths, then
-    `grep -rn "praxis_repl" web-repl/overlay/assets/python/praxis/viz/ web-repl/overlay/assets/visualizer/ web-repl/overlay/assets/visualizer-augmentations/`
-    exits **1 exactly** (R21). From sprint C the extended form in AC-31 replaces this one.
+  - `test -d` on the three paths, then the D7 "R21 check" over
+    `web-repl/overlay/assets/python/praxis/viz/ web-repl/overlay/assets/visualizer/ web-repl/overlay/assets/visualizer-augmentations/`
+    exits **1 exactly** (R21). The plain `grep -rn "praxis_repl"` over these paths exits 0 on
+    `main` because of three RST documentation mentions in `praxis/viz/transport.py:10,11,26`
+    (Revision 10; the PLR 1.0 recon, BLOCKER-3); the check strips only that form. From
+    sprint C the extended form in AC-31 replaces this one.
 - **AC-19 (shell stale and interaction)** [BUN]:
   - `stale.js`, given stamps and announcements, marks only outputs with an older rev in the
     same session, marks other-session outputs "Drawn in an earlier session.", is idempotent,
@@ -2035,25 +2316,40 @@ Gate shorthands:
   - The note lists the stubs required (possibly none), `call_later` support, the fixture
     `scene` bytes and the time of the first `_models_on_disk(PACKAGE_ROOT)` walk, and names
     the branch.
-  - The note records the stock `PACKAGE_ROOT` resolved in the kernel, the rebound root
-    (D11), and states that the timed walk ran over the rebound root.
-- **AC-30 (vendoring)** [PY:test_vendor_visualizer3d.py], plus
-  `uv run python web-repl/scripts/vendor_visualizer3d.py --check --src <plr-main>`, which exits
-  0 in CI after the PLR main checkout step C7 adds:
-  - Every static file other than `index.html` has a sha256 equal to its source.
+  - The note records the stock `PACKAGE_ROOT` resolved in the kernel (expected inside the
+    installed PLR package in site-packages; Revision 10), the rebound root (D11), and states
+    that the timed walk ran over the rebound root.
+  - The note records that the pin's `pylabrobot.visualizer3D` was imported from the dist's
+    PLR wheel with nothing staged, and whether the fixture's first `scene` carries any `mesh`
+    under the rebound root (Revision 10).
+- **AC-30 (vendoring; GATE X part 3)** [PY:test_vendor_visualizer3d.py], plus
+  `uv run python web-repl/scripts/vendor_visualizer3d.py --check`, which reads the submodule
+  `external/pylabrobot` at the pin by default and exits 0 locally (with the submodule
+  initialised) and in CI (Revision 10: no separate PLR checkout step):
+  - Every static file other than `index.html` has a sha256 equal to its source in the pin's
+    `pylabrobot/visualizer3D/static/`.
   - `index.html` has 0 `{{`, exactly one `socket.js` tag, which is the **first** `<script`
     element in the document and is immediately followed by the original `index.html:319`
     `<script` tag (the classic gif.js tag), and exactly one `embed.js` tag before `</body>`.
   - 0 `https://` in `index.html`, and 0 `cdn.jsdelivr.net` in the whole vendored tree.
-  - Both manifests record the source commit and every file.
-  - The five `.py` files are byte-identical, and there are no `*_tests.py`.
+  - `VENDOR_MANIFEST.json` records the source commit (the pin,
+    `786ac2c4e4f7afe37885af2d98ff5b0afe274c67`) and every file with its sha256.
+  - `--check` exits nonzero, naming the path, on a synthetic source whose one static file
+    differs, and on a synthetic source whose `HEAD` differs from the recorded commit.
   - Running the vendor script twice gives identical manifests.
-  - [PY:test_contract_covers_imports.py] passes, with
-    `("pylabrobot.resources.resource", "Resource")` in `plr_contract.CONTRACT` (D11), and the
-    ADR §2 addendum is present
-    (`grep -c plr_visualizer3d .praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md` ≥ 1).
-- **AC-31 (DockedViewer3D)** [PY:test_viewer3d_docked.py], CPython, with a recording channel:
-  - GATE X: `{n for n in vars(DockedViewer3D) if callable(getattr(Viewer3D, n, None))} == {"__init__", "start", "stop"}`.
+  - `! test -e web-repl/overlay/assets/python/plr_visualizer3d` (no PLR Python is vendored;
+    GATE X part 2).
+- **AC-31 (DockedViewer3D)** [PY:test_viewer3d_docked.py], CPython, with a recording channel,
+  against the pin's `pylabrobot.visualizer3D` from the root environment's PLR:
+  - GATE X part 1: `{n for n in vars(DockedViewer3D) if callable(getattr(Viewer3D, n, None))} == {"__init__", "start", "stop"}`,
+    where `Viewer3D` is `pylabrobot.visualizer3D.server.Viewer3D` and
+    `DockedViewer3D.__mro__[1] is Viewer3D`.
+  - GATE X part 2 (Revision 10): `viewer3d.py`'s `pylabrobot` imports (by AST) are
+    `pylabrobot.visualizer3D` modules plus any contract-listed resource modules, and
+    `grep -rn plr_visualizer3d web-repl/overlay/ web-repl/scripts/` exits 1 (the tests
+    directory is not searched, so this test's own literal cannot match).
+    [PY:test_contract_covers_imports.py] passes with
+    `("pylabrobot.visualizer3D.server", "Viewer3D")` in `plr_contract.CONTRACT`.
   - With `websockets.serve`, `threading.Thread` and `webbrowser.open` monkeypatched to raise,
     `start()` succeeds.
   - An `open` from client X yields `accept`, then a `msg` whose `data` decodes to event
@@ -2080,10 +2376,16 @@ Gate shorthands:
   - `bye` from a client ends its `VirtualConnection`: its `_handler` task ends and it leaves
     `_clients`.
   - **`PACKAGE_ROOT` rebind**: after the first viewer is constructed,
-    `plr_visualizer3d.server.PACKAGE_ROOT` is an existing, empty directory different from the
-    stock value, and a second viewer does not rebind it again. With a `.glb` named after a
-    fixture model placed under the stock root, the first `scene` message has no `mesh` key on
-    any model.
+    `pylabrobot.visualizer3D.server.PACKAGE_ROOT` is an existing, empty directory different
+    from the stock value, and a second viewer does not rebind it again. Load-bearing check
+    (Revision 10; the stock root is the installed PLR package, which the test never writes
+    into): before the first construction, the test sets `PACKAGE_ROOT` to a temporary
+    directory holding a `.glb` named after a fixture model (standing in for the stock root's
+    63 models) and clears the `_models_on_disk` cache for it. Positive control: the inherited
+    scene build over that directory, with no rebind, puts a `mesh` key on that model. Then,
+    after the first viewer's rebind, the first `scene` message has no `mesh` key on any model.
+    If the positive control finds no `mesh`, C3 stops and reports (the check would be
+    vacuous).
   - A non-JSON message and a message with an unknown `kind` are ignored: no exception, no
     post.
   - `dock()` with a fake viewer whose `wait_for_browser` raises `TimeoutError` returns the
@@ -2092,8 +2394,9 @@ Gate shorthands:
   - R21, extended from sprint C: `test -d` on the five directories
     (`web-repl/overlay/assets/python/praxis/viz/`, `visualizer/`, `visualizer-augmentations/`,
     `visualizer3d/`, `visualizer3d-augmentations/`, the last four under
-    `web-repl/overlay/assets/`) and `test -f web-repl/shell/display/dock.js`, then
-    `grep -rn "praxis_repl"` over all six paths exits **1 exactly**.
+    `web-repl/overlay/assets/`) and `test -f web-repl/shell/display/dock.js`, then the D7
+    "R21 check" over all six paths exits **1 exactly** (the plain grep exits 0 on the
+    `transport.py:10,11,26` documentation mentions; Revision 10).
 - **AC-32 (socket shim)** [BUN]:
   - `readyState` goes `CONNECTING` → `OPEN` on `accept`.
   - `send` while `CONNECTING` throws a `DOMException`-named `InvalidStateError`.
@@ -2112,7 +2415,8 @@ Gate shorthands:
 - **AC-33 (staging and offline)**:
   - [PY:test_display_staging.py] passes with the C6 paths.
   - After a build, `jq '.sources[].path' web-repl/dist/assets/wheels/manifest.json` lists
-    `assets/python/plr_visualizer3d/server.py` and `assets/python/praxis/viz/viewer3d.py`.
+    `assets/python/praxis/viz/viewer3d.py` and no path under `assets/python/plr_visualizer3d/`
+    (Revision 10: the viewer imports the pin's `pylabrobot.visualizer3D` from the PLR wheel).
   - [PY:test_contract_covers_imports.py] passes.
   - CI's `--probe --offline` gate stays green.
 - **AC-34 (viewer draws in the deck panel)** [DOCK, scenario K1a: its own unit and subprocess,
@@ -2315,8 +2619,9 @@ Gate shorthands:
 - **AC-41 (no regressions, sprints B and C)**:
   - AC-8's list is green on each sprint's head.
   - [PY:test_contract_covers_imports.py] passes on each sprint's head. Every `pylabrobot.*`
-    submodule imported under `praxis/display/` or `plr_visualizer3d/` has a
-    `plr_contract.CONTRACT` entry with a justification comment (D11).
+    submodule imported under `praxis/display/` or by `praxis/viz/viewer3d.py` has a
+    `plr_contract.CONTRACT` entry with a justification comment, from a non-shim home (D8,
+    D11; Revision 10).
   - R19: `test -d web-repl/overlay/assets/visualizer-augmentations`, then
     `grep -rnE 'requestDevice|requestPort' web-repl/overlay/assets/visualizer-augmentations/ web-repl/overlay/assets/visualizer3d-augmentations/ web-repl/shell/display/`
     exits **1 exactly**.
@@ -2363,14 +2668,35 @@ Gate shorthands:
       and nothing without a token;
     - `driver_input()` changes when the injected Playwright version changes and when the
       injected `uv.lock` bytes change;
+    - **Revision 10 contract cases** (the A1a implementation's behaviour; A1 adds any the
+      merged suite lacks): in the fixpoint case the orphan's `SIGTERM` handler actually runs
+      (it writes a marker file) because `kill_tree` sends `SIGCONT` right after `SIGTERM`,
+      and its child forked in the grace window is re-frozen, collected by the second
+      fixpoint and killed; `Watchdog(1)` with no `on_expire` fires, kills and exits 124; a
+      second `Watchdog.commit` raises; `disarm()` prevents the expiry; an `on_expire` that
+      raises is logged and the child still exits 124 with its `setsid` grandchild gone;
+      `dist_hash` equals the sha256 of the sorted `"<rel>\t<sha256>\n"` lines of a small
+      tree, equals the sha256 of nothing for an empty directory, and raises for a missing
+      one; `driver_input()` raises when `uv.lock` is missing; `--reap --token <t>` kills only
+      the orphan carrying `t` and leaves another token's orphan alive; `UnitOutcome.killed` is
+      false for a child that exits normally before its timeout and true after a timeout;
+
     - **Real Chromium** (Revision 9, C9-5; **CI only, never run locally**, per the local
       compute rule): marked `skipif` unless `CI` is set. In CI it fails, and never skips, if
       Chromium cannot be resolved. A child launches headless Chromium through Playwright and
-      then hangs. After `run_unit`'s timeout, no process whose environ carries that unit's
-      token survives the grace period. A1's local gate runs the file with this case skipped;
-      the CI run is authoritative for it.
+      then hangs. Positive control first (C10-1): before the timeout, a live Chromium process
+      (by `comm`/`exe`) carries the token and sits in a pgid different from the child's.
+      After `run_unit`'s timeout, no process whose environ carries that unit's token survives
+      the grace period. If the positive control fails (Chromium does not keep the token
+      readable), that is a **finding** reported to the orchestrator, not a test bug to patch
+      around (D16 "Open risk: Chromium and the token"; Revision 10). A1's local gate runs the
+      file with this case skipped; the CI run is authoritative for it.
   - The driver's unit table equals D16's (ids, check, budget, listed keys); `--scenario <id>`
     runs exactly that unit.
+  - `test_repl_smoke_resume.py` loads `scripts/repl_smoke_units.py` and never
+    `scripts/repl_smoke.py`, and `repl_smoke_units.py` imports neither `repl_smoke` nor
+    `playwright` (an AST and string check of both files; Revision 10, D16 "Import-time
+    submodule dependency").
   - With fake unit runners: every unit is started as its own `run_unit` call with its own
     budget + 60 s as timeout; no call carries a whole-run timeout.
   - A unit writes `result.<id>.json` before `result.<id>.stamp.json`; a runner killed between
@@ -2461,6 +2787,14 @@ action (project memory, "praxis main merge policy").
   Commit these to the sprint branch before the probe work, so A2 and A3 can start on them.
   A1 is the first sprint A task to need a unit runner (A1–A3 start before A7), so it owns
   the module; every later unit kind uses it and none reimplements process killing.
+  *(Revision 10.)* This part is already merged on the sprint branch as A1a
+  (`scripts/unit_runner.py`, 39 passing cases). D16 now states what that code does (the
+  `SIGCONT` after `SIGTERM` and the re-freeze before `SIGKILL`, the optional `on_expire`,
+  `disarm`, `commit` raising on a second call, `dist_hash`'s line format, `driver_input`'s
+  `uv.lock` read, `killed`, `emit_line`/`read_proc_stat`/`reap()`, `--reap --token`,
+  `grace_s`, the keyword-only seams). The remaining A1 work adds any AC-42 Revision 10
+  contract case the merged suite lacks and the C10-1 positive control, then proceeds to the
+  probe.
 - The probe is a unit driver (D17 "Units, resume and chunking"): the S1 units, each started
   as `--unit <name>` through `unit_runner.run_unit` in its own subprocess and browser
   context, 4 min each and self-bounded by a `unit_runner.Watchdog` armed as its first act,
@@ -2469,6 +2803,13 @@ action (project memory, "praxis main merge policy").
   recorded as an `error` finding, `--resume`; the sidecar pre-registers the units, timeouts,
   hashed inputs, artifact fields, resume rule and completeness definition (D17, C8-7), and
   evaluates `[outcomes]` over the full unit set.
+- **`repl_smoke.py` is lazy-loaded** (Revision 10; D16 "Import-time submodule dependency").
+  The probe takes `ServedDir`, `chromium_launch_args` and `resolve_chrome_path` from
+  `repl_smoke.py`, which raises `VizCheckError` at import without the submodule initialised
+  at the pin. It loads it by path only inside the `--unit` branch; the driver, `--resume` and
+  the `[outcomes]` evaluation never load it. The `bth run` itself happens in a checkout whose
+  submodule is initialised at the pin (CI-equivalent), and the probe hashes `repl_smoke.py`
+  into each unit's inputs (D17).
 - Run it with `bth run`, verify by record, and file the research note, which records each
   unit as recomputed or reused and lists any `error` findings.
 - Depends on: none (a built dist).
@@ -2487,7 +2828,9 @@ saved and reopened in the same browser (record its trust state; S2-T if trusted)
 path and the negative control is its own D17 unit (`live`, `crafted`,
 `executed_saved_reopened`, `neg_script_onclick`), in its own subprocess and browser context,
 5 min each, started and bounded through `scripts/unit_runner.py` (A1), with stamps (inputs
-including `driver`), the D17 completeness rule and `--resume`.
+including `driver`), the D17 completeness rule and `--resume`. As in A1, `repl_smoke.py` is
+loaded by path only inside the `--unit` branch, and the run happens with the submodule
+initialised at the pin (Revision 10).
 - Depends on: A1's `scripts/unit_runner.py` only (Revision 8, C8-1; not A1's spike run).
 - Closes: AC-2.
 - Gate: AC-2 record query.
@@ -2500,7 +2843,8 @@ top-level-`await` cell, reading results from the notebook model (for (b′), the
 `ipython_hooks`, with a 10 min timeout (a `unit_runner.Watchdog` in the unit, `run_unit` at
 10 min + 60 s in the driver), a stamp (inputs including `driver`), the D17 completeness rule
 (a raised sub-probe is an `error` finding in the one artifact) and `--resume`; the sidecar
-says so.
+says so. As in A1, `repl_smoke.py` is loaded by path only inside the `--unit` branch, and the
+run happens with the submodule initialised at the pin (Revision 10).
 - Depends on: A1's `scripts/unit_runner.py` only (Revision 8, C8-1).
 - Closes: AC-3.
 - Gate: AC-3 record query.
@@ -2548,7 +2892,9 @@ and `run_display_check` to `repl_smoke.py`:
 - add scenario D1 (Light) and scenario D1-dark (default Dark), per AC-7
 - add the context init script that pre-sets the persistence ack key (D16)
 - build the D16 "Preemption-safe harness design" machinery, tests first
-  (`test_repl_smoke_resume.py`): the unit table with listed keys, `--scenario <id>` (one
+  (`test_repl_smoke_resume.py`), with its pure functions in `scripts/repl_smoke_units.py`
+  (Revision 10: the test loads that module, never `repl_smoke.py`, which needs the submodule
+  at import): the unit table with listed keys, `--scenario <id>` (one
   unit per process: `unit_runner.ensure_token`, then a `unit_runner.Watchdog` armed at its
   table budget as the first act (exit 124, timeout marker, result deleted, no stamp), then
   clearing its own files; browser and Playwright closed before the stamp commit, only
@@ -2576,8 +2922,8 @@ run AC-39(a) through `bth run` (D17).
 - Closes: AC-7, AC-8, AC-40 for its sprint A keys, and AC-42 for the display units D1 and
   D1-dark.
 - Gate: interim, a local unsandboxed run of each unit (`--scenario D1`, `--scenario
-  D1-dark`) on a fresh build per D16, then the driver resuming over their stamps (both
-  listed under `reused`); [PY:test_repl_smoke_resume.py], [PY:test_repl_workflow_scenarios.py],
+  D1-dark`) on a fresh build per D16, in a checkout with the submodule initialised at the pin,
+  then the driver resuming over their stamps (both listed under `reused`); [PY:test_repl_smoke_resume.py], [PY:test_repl_workflow_scenarios.py],
   [PY:test_repl_workflow_covers_tests.py]. Final: a green REPL workflow on the PR head.
 - Size: ~420 LOC (raised in Revision 7 for the driver, stamps and the two tests).
 
@@ -2590,7 +2936,12 @@ A5); then A7. *(Revision 8, C8-1: A2 and A3 previously had no dependency.)*
 **Import contract (every task B2–B8).** A task that adds an import of a `pylabrobot.*`
 submodule not already in `web-repl/tests/plr_contract.py`'s `CONTRACT` adds the entry, with a
 justification comment, in the same task, and its gate includes
-[PY:test_contract_covers_imports.py] (D11, AC-41).
+[PY:test_contract_covers_imports.py] (D11, AC-41). *(Revision 10.)* Every import uses the
+pin's non-shim home: `pylabrobot.legacy.liquid_handling` for `LiquidHandler`,
+`pylabrobot.legacy.tip_tracker` for `TipTracker`, `pylabrobot.resources.volume_tracker` for
+`VolumeTracker`, `pylabrobot.resources.errors` for the four classes. A shim home (for example
+`pylabrobot.resources.tip_tracker`) fails the contract's "names no shim" test and its
+warnings-as-errors probe (D8; the PLR 1.0 recon, MAJOR-8).
 
 **B1: Primitives, floor and budget.** Create `svg.py` (including `esc_text` / `esc_attr`),
 `floor.py` (both `s_min` forms, D5) and `budget.py` (including `cap_tail`), with
@@ -2602,7 +2953,12 @@ lines.
 - Gate: the two [PY] files.
 - Size: ~260 LOC.
 
-**B2: Labware reprs.** Create `labware.py`, and `test_display_labware.py` first:
+**B2: Labware reprs.** First port the design fixture to the pin (section 4
+`make_fixture.py`/`fixture.js` row; Revision 10): non-deprecated constructors, `track=`
+instead of `rails=`, `num_tracks`, non-shim imports, the `_as_in_kernel` path fix, and a
+regenerated `fixture.js`; confirm `grep -rn '_repr_html_\|_repr_[a-z]*_' external/pylabrobot/pylabrobot`
+finds 0 hits at the pin (D2), or stop and report. Then create `labware.py`, and
+`test_display_labware.py` first:
 - sentences
 - well-range compression, with cases for a full column, a block, and scattered wells
 - the grid descriptor
@@ -2611,12 +2967,16 @@ lines.
 - escaping of every interpolated string through `svg.py`, with the hostile-name case
 - the S2 branch's attribute set: emit every attribute; the branch only changes what survives
   on reopen
+- tip racks resolved through the `TipRack` class (an `EmbeddedTipRack` is one), never by the
+  type-name string
 
 Add the test's `repl.yml` line.
 - Depends on: B1.
 - Closes: AC-9, AC-10.
-- Gate: [PY:test_display_labware.py], [PY:test_contract_covers_imports.py].
-- Size: ~320 LOC.
+- Gate: [PY:test_display_labware.py], [PY:test_contract_covers_imports.py], the `_repr_`
+  grep above (0 hits), and `fixture.js` regenerated from the ported `make_fixture.py` and
+  committed with it.
+- Size: ~370 LOC (raised in Revision 10 for the fixture port).
 
 **B3: Deck repr.** Create `deck.py`, and `test_display_deck.py` first, including the 384-,
 1536-, narrower-than-880-mm and oversize cases for AC-12 and AC-13. Add its `repl.yml` line.
@@ -2639,9 +2999,12 @@ the ledger stamp (`resource` null, `rev` null, D2). Add their `repl.yml` lines.
 E1–E16, E4-off, E6-off, E-96 and the four negatives (including the two bare-call
 `RuntimeError`s), using real PLR at the pin. Implement D8
 steps 1–5: the `glossary.ACTIONS` frame filter (defence against comprehension frames, no
-case), the `*96` short-circuit, owner rules (a)–(e) (no `head96` in rule (b)), the committed,
-summed offending set (per channel for a tip owner), and the pending-residue rule (owner
-outside the committed offending set → `None`). Add its `repl.yml` line.
+case), the `*96` short-circuit, owner rules (a)–(e) (no `head96` in rule (b); rule (d) with
+the pin's `thing` forms), the committed, summed offending set (per channel for a tip owner),
+and the pending-residue rule (owner outside the committed offending set → `None`). E13 and
+E15 use the Revision 10 synthetic-residue setups; E15's raise is verified first (AC-15: if it
+does not raise `TooLittleVolumeError` at the pin, stop and report). Re-anchor the head-side
+NoTip sites at the pin in the test's comments (D8 "Tracking"). Add its `repl.yml` line.
 - Depends on: B4 (`glossary.ACTIONS`).
 - Closes: AC-15.
 - Gate: [PY:test_display_context.py], [PY:test_contract_covers_imports.py].
@@ -2651,8 +3014,10 @@ outside the committed offending set → `None`). Add its `repl.yml` line.
 Implement the handler per D8, using S3-A or the S3-C fallback as recorded in AC-3, with the
 escaped, capped traceback (D2, D4) and the step line from `ledger.step_for` (D9). Include the
 tip-owner TLL row (E12), the "NoTip, channel" row naming "Discard tips" (E16), the generic
-panel for every `None` result (including E13 and E15), and the
-error stamp by owner (D2). Add its `repl.yml` line.
+panel for every `None` result (including E13 and E15, in their Revision 10 setups), the
+committed-volume drawing checked by direct tracker use (AC-16), the "Nothing was
+aspirated/dispensed" ordering check (D8 "Panel drawing": a backend spy records no call on
+E1; stop and report if it does), and the error stamp by owner (D2). Add its `repl.yml` line.
 - Depends on: B2, B4 (glossary, ledger), B5.
 - Closes: AC-16, and AC-13's error-panel case.
 - Gate: [PY:test_display_errors.py], [PY:test_contract_covers_imports.py].
@@ -2660,18 +3025,19 @@ error stamp by owner (D2). Add its `repl.yml` line.
 
 **B7: Staleness, kernel side.** Create `stale.py`, and `test_display_stale.py` first (D7:
 revs, the announcer, no subscription or rev for `rev: null` stamps, the pending-only bump;
-no session message). Use an injected poster, with `import js` only in `make_repl_poster()`.
+no session message; Revision 10: idempotent subscription through `_subscribed`, the
+drawn-state digest filter with its rollback and settle-before-render cases). Use an injected poster, with `import js` only in `make_repl_poster()`.
 Add its `repl.yml` line. If AC-3 recorded (b) and (b′) both failing, do not start; escalate
 (D1, S3-B).
 - Depends on: B2.
 - Closes: AC-18.
-- Gate: [PY:test_display_stale.py], plus the R21 grep, [PY:test_contract_covers_imports.py].
-- Size: ~220 LOC.
+- Gate: [PY:test_display_stale.py], plus the D7 R21 check, [PY:test_contract_covers_imports.py].
+- Size: ~260 LOC (raised in Revision 10 for the digest filter).
 
 **B8: Install and bootstrap stage.** Create `install.py` and `praxis/display/__init__.py`, and
 `test_display_install.py` first. It covers the fake shell and the S3-B (the
 `(html, {"praxis": stamp})` carrier), S3-C and S3-D fallbacks, and the generic panel for
-E13 and E15. Add the D13 stage to `praxis_bootstrap.py`, and extend
+E13 and E15 (their Revision 10 setups). Add the D13 stage to `praxis_bootstrap.py`, and extend
 `test_praxis_bootstrap_loader.py` for its order and its non-fatal failure. Add the `repl.yml`
 line. Extend `assert_dist_complete` with `assets/python/praxis/display/__init__.py`.
 - Depends on: B2, B3, B4, B6, B7.
@@ -2717,9 +3083,11 @@ can start after B7; then B10.
 
 ### Sprint C: Visualizer3D deck panel (merges alone; needs the AC-1 branch to be S1-A or S1-B)
 
-**C1: Spike S4 (Viewer3D in Pyodide).** Discipline as in A1. The probe stages a throwaway copy
-of the five vendored files. It does not wait for C2. It records D1's S4 questions, the
-scene bytes, the stock `PACKAGE_ROOT` as resolved in the kernel, and the first
+**C1: Spike S4 (Viewer3D in Pyodide).** Discipline as in A1 (including the lazy load of
+`repl_smoke.py`). The probe imports the pin's `pylabrobot.visualizer3D` from the dist's PLR
+wheel and stages nothing (Revision 10; it previously staged a throwaway copy of five vendored
+files). It does not wait for C2. It records D1's S4 questions, the scene bytes and whether
+any model carries `mesh`, the stock `PACKAGE_ROOT` as resolved in the kernel, and the first
 `_models_on_disk(PACKAGE_ROOT)` time after rebinding the root to an empty temporary
 directory, as `viewer3d.py` will (D11). S4 declares itself one bounded D17 unit,
 `viewer3d_pyodide`, with a 10 min timeout (a `unit_runner.Watchdog` in the unit, `run_unit`
@@ -2728,26 +3096,30 @@ including `driver`), the D17 completeness rule and `--resume`; the sidecar says 
 - Depends on: A1's `scripts/unit_runner.py` (merged with sprint A, so already on `main`).
 - Closes: AC-29.
 - Gate: AC-29 record query.
-- Size: ~180 LOC.
+- Size: ~160 LOC (lowered in Revision 10: nothing is staged).
 
-**C2: Vendoring script and committed trees.** First write `test_vendor_visualizer3d.py` over a
-tiny synthetic source tree (anchors, placeholders, tag positions, sha identity, and a
-mismatch that must fail with context). Then write `vendor_visualizer3d.py`, run it against a
-PLR main checkout **at a named commit** (the #1378 merge or later, recorded in both
-manifests), and commit the two generated trees. Add
-`("pylabrobot.resources.resource", "Resource")` to `plr_contract.CONTRACT` with a
-justification comment, and append the ADR §2 addendum (section 4 rows; D11). Add the
-`repl.yml` line. The `--check` step and the PLR main checkout step land in C7.
+**C2: Vendoring script and the static tree** (Revision 10: `static/` only). First write
+`test_vendor_visualizer3d.py` over a tiny synthetic source tree (anchors, placeholders, tag
+positions, sha identity, a mismatching file and a mismatching recorded commit that must each
+fail with context). Then write `vendor_visualizer3d.py`, run it against the submodule
+`external/pylabrobot` at the pin (`786ac2c4e`, recorded in the manifest; OQ-7), and commit the
+generated `web-repl/overlay/assets/visualizer3d/` tree. No Python is vendored, no ADR addendum
+is written and no contract entry is added here (D11; the contract entry for `viewer3d.py`'s
+own import is C3's). Add the `repl.yml` line. The CI `--check` step lands in C7.
 - Depends on: none.
 - Closes: AC-30 (local).
-- Gate: [PY:test_vendor_visualizer3d.py], [PY:test_contract_covers_imports.py], and
-  `vendor_visualizer3d.py --check` exits 0 locally.
-- Size: ~300 LOC, plus the generated trees.
+- Gate: [PY:test_vendor_visualizer3d.py], and `vendor_visualizer3d.py --check` exits 0
+  locally with the submodule initialised at the pin.
+- Size: ~200 LOC, plus the generated tree (lowered in Revision 10 from ~300).
 
 **C3: DockedViewer3D.** Write `test_viewer3d_docked.py` first, then `viewer3d.py`:
+- `import pylabrobot.visualizer3D` (the pin's package) and subclass its `server.Viewer3D`;
+  add `("pylabrobot.visualizer3D.server", "Viewer3D")` to `plr_contract.CONTRACT` with a
+  justification comment (D11; Revision 10)
 - the three overrides, `VirtualConnection`, the injected channel, and `dock()`
-- the one-time `plr_visualizer3d.server.PACKAGE_ROOT` rebind to `tempfile.mkdtemp()` before
-  the first viewer (module code, not an override; D11)
+- the one-time `pylabrobot.visualizer3D.server.PACKAGE_ROOT` rebind to `tempfile.mkdtemp()`
+  before the first viewer (module code, not an override; D11), with AC-31's load-bearing
+  check and its positive control
 - `start`: no `_models_on_disk` pre-warm, the 4-client cap with oldest-client eviction
   (`evict` plus a sentinel; an own insertion-ordered client map, since `_clients` is a set,
   and synchronous removal from `_clients` before the new `_handler` runs), `bye` ending a connection, `query` → `announce`, dropping
@@ -2757,15 +3129,17 @@ justification comment, and append the ADR §2 addendum (section 4 rows; D11). Ad
   no `open`, C7-3); idempotent (a second call posts nothing)
 - `dock()`: the module-level current viewer stopped first, and
   `wait_for_browser(timeout=15)` with the timeout stated
-- any S4-B stubs, installed before the vendored import, each named in a module constant and
-  asserted by the test
+- any S4-B stubs, installed before the `pylabrobot.visualizer3D` import, each named in a
+  module constant and asserted by the test
 
 Add the test's `repl.yml` line. If the tests need `websockets.asyncio.server` in the root env
 and it is missing, stop and report; do not vendor it.
-- Depends on: C1 (the branch), C2.
-- Closes: AC-31, except its extended R21 grep, which needs C4's and C5's paths and is closed
+- Depends on: C1 (the branch). C2 is no longer a dependency (Revision 10: `viewer3d.py` needs
+  only the pin's package, not the static tree).
+- Closes: AC-31, except its extended R21 check, which needs C4's and C5's paths and is closed
   by C7.
-- Gate: [PY:test_viewer3d_docked.py], plus the AC-18 R21 grep.
+- Gate: [PY:test_viewer3d_docked.py], [PY:test_contract_covers_imports.py], plus the AC-18
+  R21 check.
 - Size: ~290 LOC.
 
 **C4: Socket shim and embed mode.** Write `viz3d_socket.test.js` first, then `socket.js`
@@ -2830,7 +3204,8 @@ Mount it from `index.js`.
   `viewerPanel` and the preset wait).
 
 **C6: Staging and offline.** Add the C6 paths to `assert_dist_complete` and to
-`test_display_staging.py`. Confirm that manifest collection picks up the vendored Python.
+`test_display_staging.py`. Confirm that manifest collection picks up `viewer3d.py` and that
+no `plr_visualizer3d` path is staged (AC-33; Revision 10: there is no vendored Python).
 - Depends on: C2, C3, C4, C5.
 - Closes: AC-33 (local parts).
 - Gate: [PY:test_display_staging.py], [PY:test_contract_covers_imports.py], and a build.
@@ -2847,9 +3222,9 @@ stated execution order (including `preset_survives_reload`, `redock_live` and
 `restart_placeholder`) with every iframe read taken from the panel DOM (never a held
 element), AC-38's `late_iframe` ordering listener and `many_reloads`, and the harness-only
 `--neg drop-query` init script for AC-39(e). Extend the two AC-42 tests for the dock units.
-Run the extended R21 grep (AC-31). Add to CI:
-- a step that checks out PLR main at C2's recorded commit into a temporary directory, followed
-  by `vendor_visualizer3d.py --check --src <dir>`
+Run the extended R21 check (AC-31). Add to CI:
+- a `vendor_visualizer3d.py --check` step against the submodule the REPL job already
+  initialises (Revision 10: no separate PLR checkout step, since the pin is the source)
 - one `--dock-check --scenario <id>` step per unit K1a, K1b, K2 (step timeouts 12, 16, 17,
   `if: ${{ !cancelled() }}`), each self-bounded by the `--scenario` watchdog, the
   `--dock-check --aggregate-only --base-path /praxis/` step (hashed arguments equal to the
@@ -2860,7 +3235,7 @@ Commit `260929_nd_sensitivity_sprint_c.py` and its sidecar (one outcome each for
 (d), (e)), then run them through `bth run` (D17), each negative with its own `--serve-dir`
 and `--out-dir` under `/tmp/claude-1000/nd-neg/<negative>/` (C8-5).
 - Depends on: C6.
-- Closes: AC-30 (CI), AC-31's extended R21 grep, AC-33 (CI), AC-34 to AC-39, AC-40 for its
+- Closes: AC-30 (CI), AC-31's extended R21 check, AC-33 (CI), AC-34 to AC-39, AC-40 for its
   sprint C key, AC-41 for sprint C, and AC-42 for the dock units.
 - Gate: interim, a local unsandboxed run of each unit alone (D16). Final: a green REPL
   workflow on the PR head.
@@ -2879,7 +3254,7 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
 | A6 | A | staging | A5 | AC-6 |
 | A7 | A | `--display-check` driver, units D1, D1-dark + CI + AC-39(a) sidecar | A1, A4, A5, A6 | AC-7, AC-8, AC-40 (A), AC-42 (D1, D1-dark) |
 | B1 | B | svg, floor, budget | none | AC-12/13 (pure) |
-| B2 | B | labware reprs | B1 | AC-9, AC-10 |
+| B2 | B | fixture port to the pin + labware reprs | B1 | AC-9, AC-10 |
 | B3 | B | deck repr | B2 | AC-11, AC-12, AC-13 (except error-panel case) |
 | B4 | B | glossary + RunLedger | B2 | AC-14, AC-28 |
 | B5 | B | error context | B4 | AC-15 |
@@ -2889,12 +3264,12 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
 | B9 | B | shell stale + interaction | A5, B7 | AC-19 |
 | B10 | B | `--display-check` units D2–D4 | B8, B9 | AC-21 to AC-26, AC-41 (B), AC-42 (D2–D4) |
 | C1 | C | S4 spike | A1 (`unit_runner.py`, on `main` since sprint A) | AC-29 |
-| C2 | C | vendoring + trees | none | AC-30 (local) |
-| C3 | C | DockedViewer3D | C1, C2 | AC-31 (except extended R21 grep) |
+| C2 | C | vendoring `static/` + tree | none | AC-30 (local) |
+| C3 | C | DockedViewer3D over the pin's `pylabrobot.visualizer3D` | C1 | AC-31 (except extended R21 check) |
 | C4 | C | socket shim + embed | C2 | AC-32 |
 | C5 | C | deck panel widget | A5, B9, C4, S1-A/B | AC-35/36 (unit) |
 | C6 | C | staging + offline | C2–C5 | AC-33 (local) |
-| C7 | C | `--dock-check` units K1a, K1b, K2, N-d + CI + AC-39 sidecar | C6 | AC-30, AC-31 (extended R21 grep), AC-33 to AC-40 (C), AC-41 (C), AC-42 (dock units) |
+| C7 | C | `--dock-check` units K1a, K1b, K2, N-d + CI + AC-39 sidecar | C6 | AC-30, AC-31 (extended R21 check), AC-33 to AC-40 (C), AC-41 (C), AC-42 (dock units) |
 
 ---
 
@@ -2908,27 +3283,31 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
 | `mimebundle_formatter` does not accept `(data, metadata)` in the kernel (S3-B), so the stamp has no carrier | S3(b′) tests the per-type `text/html` formatter's `(html, {"praxis": stamp})` return (verified in IPython `core/formatters.py:243-250`); the stamp then rides at `metadata["text/html"]["praxis"]`, and one reader, `stampOf`, serves `stale.js`, `dock.js` and both harnesses, so AC-21 holds unconditionally. If (b′) also fails, B7 and B9 stop and escalate. |
 | Frame-local names in PLR (`op`, `channel`, `resources`) change on a pin bump | Owner resolution is by **identity** first and `thing` second. Frame locals are used only for the loop channel (including owner rule (e)), the op wells and `vols`, and only from frames whose `co_name` is in `glossary.ACTIONS`. AC-15 runs against the real pin, so a bump that breaks it fails CI. |
 | The panel's numbers differ from PLR's message (PLR's include pending state) | By design (D8 step 4): the body uses committed state summed per resource, and PLR's message is shown verbatim in the "PyLabRobot raised" line. AC-15 E9 and AC-16 check the two never mix. |
-| A PLR mid-loop tracker error leaves pending volumes on earlier channels, so drawings mislead | The error panel draws committed volume (D8), and AC-16 forces the case. Other outputs follow PLR's own `get_used_volume()`, and pending-only callbacks bump `rev` for them (D7). A later raise caused only by that pending residue, where the resolved owner is not in the committed offending set, resolves to `None` and gets the generic panel rather than numbers that describe no fault (D8 step 4; AC-15 E13/E14, AC-17 E13). OQ-6 raises it upstream. |
+| Uncommitted tracker state (residue) makes drawings or error numbers mislead | Revised in Revision 10 for the 1.0.0b1 pin: a failed `aspirate`/`dispense` rolls every channel back and leaves **no** residue; only a failed `pick_up_tips`/`drop_tips` (queue loops still outside the `try`) and direct tracker use leave pending state (D8 "Panel drawing"; the PLR 1.0 recon). The error panel draws committed volume and uses committed numbers, a defence for exactly those paths (AC-16 forces it by direct tracker use). Other outputs follow PLR's own `get_used_volume()`, and a pending-only change bumps `rev` for them (D7). A raise caused only by residue, where the resolved owner is not in the committed offending set, resolves to `None` and gets the generic panel rather than numbers that describe no fault (D8 step 4; AC-15 E13, E14, E15, AC-17 E13, E15). OQ-6 raises the tip-op case upstream. |
+| A pin bump silently changes what an AC case exercises (0.2.2's E13 and E15 stopped raising at 1.0.0b1) | Every AC-15 case raises the real error at the pin in CI, so a case that stops raising fails its test rather than passing vacuously; B5 verifies E15's synthetic setup before relying on it. The Revision 10 recon re-checked every PLR-dependent claim; the next pin bump repeats that check. |
+| PLR 1.0 rollback fires tracker callbacks, so a failed op would mark outputs "Changed since" although nothing changed | D7 drawn-state digest filter: callbacks only mark dirty; `rev` bumps only when what the output draws changed; settled before each render and at `post_run_cell`. AC-18 "Rollback does not bump" (with a recording callback proving the callbacks fired) and "Settle before render". PLR's registration now appends, so `stale.py` enforces idempotency with its own `_subscribed` set. |
 | Errors inside `*96` ops bind different locals (`containers`, a scalar `volume`) | Out of MVP scope (orchestrator ruling 260929): D8 step 2 short-circuits to `None` and the generic panel; AC-15 E-96 checks it. The `*96` glossary names and ledger wrappers remain, for the ledger only. |
 | `RunLedger` instance shadowing breaks a user's own wrapper on `lh` | It shadows only inside the `with` block, restores on exit even on error (AC-14), and is only used when the user writes it. |
-| Staleness announcements on `praxis_repl` disturb device authorization | At most one small typed message per cell (4 KiB cap); there is no session message (the current session is derived per notebook panel from its outputs, D7). Both existing listeners ignore unknown types (`praxis-shell.js:84-88`, `praxis_bootstrap.py:212-214`). R21's grep still guards `praxis/viz/`. Rollback: move `stale.py` to its own channel; the shell change is one constant. |
+| Staleness announcements on `praxis_repl` disturb device authorization | At most one small typed message per cell (4 KiB cap); there is no session message (the current session is derived per notebook panel from its outputs, D7). Both existing listeners ignore unknown types (`praxis-shell.js:84-88`, `praxis_bootstrap.py:212-214`). The D7 R21 check still guards `praxis/viz/` (the plain grep exits 0 on three documentation mentions on `main`; the check strips only that form, Revision 10). Rollback: move `stale.py` to its own channel; the shell change is one constant. |
 | Viewer3D stream messages are structured-cloned to every `praxis_viz3d` listener, including the shell | The shell acts only on `announce` and the kernel `close` (`{viewer, reason}`). The clone cost of a scene message is unmeasured; S4 records the scene bytes. If it matters, the announcements move to a separate small channel. |
 | Two notebooks each start a viewer | Non-goal. The ids in the protocol keep messages unambiguous, and the most recent `announce` wins. Within one kernel, re-running `dock()` stops the previous viewer first (D11, AC-31). Two notebooks with two kernels never mark each other's outputs "Drawn in an earlier session": the current session is per panel (D7, AC-19). |
 | Dead page clients (reloads, drawer moves, 60 s give-ups, a long synchronous cell delaying `accept`) fill the 4-client cap | The shim posts `bye` on `close()`, `pagehide` and its accept timeout, and ignores a late `accept`; at the cap the kernel evicts the oldest client (`evict`), so a new page always gets `accept` (D11). AC-31 (eviction), AC-32 (`bye`, `evict`) and AC-38 `many_reloads` (6 reloads) test it. With more than 4 live pages, eviction rotates: accepted under the multi-viewer non-goal. |
-| The stock `PACKAGE_ROOT` resolves to the contents drive, so the model walk scans the user's files and a user `.glb` becomes an unserved `mesh` | `viewer3d.py` rebinds `plr_visualizer3d.server.PACKAGE_ROOT` to an empty `tempfile.mkdtemp()` once, before the first viewer: a module global, so GATE X holds and no vendored byte changes (D11). S4 records both roots and the walk time (AC-29); AC-31 asserts the rebind and that a `.glb` under the old root yields no `mesh`. |
+| The stock `PACKAGE_ROOT` resolves inside the installed PLR package, which at the pin ships 63 `.glb` files, so fixture models could become `mesh` entries whose URLs nothing serves | `viewer3d.py` rebinds `pylabrobot.visualizer3D.server.PACKAGE_ROOT` to an empty `tempfile.mkdtemp()` once, before the first viewer: a module global, so the override set stays at three and no PLR file changes (D11, GATE X). Load-bearing at the pin (Revision 10). S4 records both roots, the walk time and whether the scene carries `mesh` (AC-29); AC-31 asserts the rebind, with a positive control showing a seeded `.glb` yields a `mesh` without it and none with it. |
 | A same-origin page (another project page on the shared `*.github.io` origin) drives `praxis_viz3d` | D11 threat model: such a page already has kernel code execution through `praxis:execute` on `praxis_repl`, so no nonce is added. Inbound traffic is bounded: 4 virtual clients (the oldest evicted at the cap), non-JSON and unknown kinds dropped (AC-31). |
 | Vendored three.js tree (~2 MB) grows dist and the offline gate | AC-30 asserts zero CDN URLs, and AC-33 keeps `--probe --offline` green. The build logs the size. |
-| The PLR main source drifts from the vendored copy | `--check` in CI against the pinned commit (C7). Updating is an explicit re-vendor with a new commit in both manifests. |
+| The PLR wheel grew from 1.26 to 10.2 MB at the pin (the PLR 1.0 recon), which may lengthen boots and push units past their budgets | Budgets are estimates; the first CI run of each unit records its wall time, and a budget is revised only with the orchestrator's approval, at ≥ 1.5× the measured time, never as a whole-run timeout (D16). A timeout names its unit, so the cost is visible per unit. |
+| A pin bump changes the vendored `static/` or the pin's `Viewer3D` | `vendor_visualizer3d.py --check` in CI against the submodule fails on any byte difference and on a recorded commit that differs from the pin (C7, AC-30); updating is an explicit re-vendor. GATE X part 1 runs against the real pin in CI (AC-31), so a bump that needs a fourth override fails there. |
+| `repl_smoke.py` raises at import without the submodule initialised at the pin (`NOTEBOOK_EXPECTED`, `:1449` on origin/main a176bac7), breaking local spike drivers and tests | D16 "Import-time submodule dependency": pure plumbing lives in `repl_smoke_units.py` and never loads `repl_smoke.py`; spike drivers load it only inside `--unit`; local browser runs use a checkout with the submodule at the pin; CI is authoritative. AC-42 checks the resume test never loads it. |
 | The CI Chromium lacks WebGL2 | D16's full Chromium with SwiftShader args. AC-34 records `hello_backend`, and the canvas check fails loudly rather than passing on a blank frame. |
 | Moving the iframe for the drawer tier reloads it | D11 state table T15: the `viewer` id stays in its `src`, the old client posts `bye`, the shim reconnects, and AC-38 `drawer_reconnect` and AC-36 `tier_up_rehomes` test it. |
 | A closed deck panel reconnects without exercising `query`, hiding a broken `query` path | D11 state table T3, T4, T6: a closed panel ignores every announce but a page's first; reopen attaches an iframe-less panel and posts `query`, so the only iframe is created by the answering `announce`. AC-38 `late_iframe` asserts the ordering, and AC-39(e) proves it fails with `query` dropped. |
 | Piecemeal edits to the deck panel's lifecycle contradict each other (Revisions 4 and 5 each left a neighbouring gap; round 6 found "panel open, no iframe" uncovered after every re-dock) | One authoritative table in D11 (four states, T1–T27, invariants I1–I6); every other section references it. C5 has one test per row plus the C6-1 re-dock sequence; AC-38 runs in a stated order and reads the iframe from the DOM. A future lifecycle change edits the table and its row tests together. |
 | A preempted, crashed or hung browser run loses every finished scenario, and one whole-run timeout hides which scenario hung | D16 "Preemption-safe harness design": one unit per scenario, one subprocess per unit with its own budget, a per-unit result and stamp written as each unit completes, resume over stamp-matched units, and one CI step per unit with a step-level timeout (the job timeout is only a backstop). A direct `--scenario` run bounds itself with a watchdog, armed as its first act at the unit's table budget (Revision 8, C8-2; Revision 9, C9-4). Browser and Playwright teardown run inside that bounded region before the stamp, and only `os._exit(stamp.exit)` follows the stamp, so a hang in teardown is a timeout and nothing can hang after the stamp (C9-1). A driver timeout over a valid stamp defers to the stamp and is logged. Spikes and AC-39 runs follow the same design (D17). AC-42 tests it, including a hang after the stamp and a hang in teardown. |
-| A hung Chromium survives a unit timeout, because Playwright launches it detached as its own process-group leader (`processLauncher.js:108-111`), so a process-group kill or a CI step timeout orphans it and it holds CPU, memory or ports into the next unit | One shared `scripts/unit_runner.py` (D16, C8-1) used by every unit kind: `kill_tree` stops and walks every descendant and sweeps the per-unit `PRAXIS_UNIT_TOKEN` (exact entry; unreadable environs skipped) for re-parented orphans, repeating both to a fixpoint before the kill and again after the grace. It guards against pid reuse with a pidfd, or with a starttime check where pidfd is unavailable, and sends group signals only while a verified member lives. It sends `SIGCONT` in a `finally`, and terminates every collected pid and process group (Revision 9, C9-2, C9-3). A direct run re-execs so the token is visible in `/proc/self/environ` (C9-4). CI adds an `if: always()` `--reap` step, which refuses to run outside CI without `--force`. AC-42's runner cases prove that a `setsid` grandchild dies, with and without its parent, and that a grace-window fork dies. A CI-only case proves that no real headless Chromium survives (C9-5). Rollback: revert the module and its callers together (no caller kills processes itself). |
+| A hung Chromium survives a unit timeout, because Playwright launches it detached as its own process-group leader (`processLauncher.js:108-111`), so a process-group kill or a CI step timeout orphans it and it holds CPU, memory or ports into the next unit | One shared `scripts/unit_runner.py` (D16, C8-1) used by every unit kind: `kill_tree` stops and walks every descendant and sweeps the per-unit `PRAXIS_UNIT_TOKEN` (exact entry; unreadable environs skipped) for re-parented orphans, repeating both to a fixpoint before the kill and again (after a re-freeze) after the grace; `SIGTERM` is followed at once by `SIGCONT`, so a handler can run and fork during the grace and the second fixpoint catches the fork (Revision 10). It guards against pid reuse with a pidfd, or with a starttime check where pidfd is unavailable, and sends group signals only while a verified member lives. It sends `SIGCONT` in a `finally`, and terminates every collected pid and process group (Revision 9, C9-2, C9-3). Open (Revision 10): whether Chromium keeps the token readable in `/proc/<pid>/environ`; the C10-1 positive control in CI settles it, a failure is a finding, and the fallback is a process-group/session match from the runner's start with the token sweep as the belt (D16). A direct run re-execs so the token is visible in `/proc/self/environ` (C9-4). CI adds an `if: always()` `--reap` step, which refuses to run outside CI without `--force`. AC-42's runner cases prove that a `setsid` grandchild dies, with and without its parent, and that a grace-window fork dies. A CI-only case proves that no real headless Chromium survives (C9-5). Rollback: revert the module and its callers together (no caller kills processes itself). |
 | Resume reuses a stale or tampered result and a gate passes on old evidence | A unit is reused only when every input sha256 (dist, notebook, harness, runner, chrome, args, driver; `runner` added in Revision 9, C9-6) and its result sha256 match, its stamp has `exit == 0`, and every listed key is present and holds. A unit clears its own result and stamp before running, and its watchdog deletes any result it wrote before timing out, so a timed-out re-run leaves nothing to reuse (C8-3, C9-6). The aggregate lists every reused unit with its source and hashes; `--aggregate-only` never deletes, so a mismatch stays diagnosable (C8-4). CI never reuses across workflow runs. The pass rule is unchanged by reuse (AC-42). |
 | A negative run overwrites real results, or a spike unit whose probe raised is silently treated as absent or reused | Each AC-39 negative has its own `--serve-dir` and `--out-dir` under `/tmp/claude-1000/nd-neg/<negative>/`, and the harness refuses a non-default dist or `--neg` without `--out-dir` (C8-5). A raised spike probe is a complete unit with an `error` finding that counts toward `[outcomes]` and is never reused; only a timeout or a stampless crash is incomplete, as each sidecar pre-registers (D17, C8-7). |
 | A kernel restart leaves a frozen deck that looks live (the dead kernel posts no `close`) | D11 kernel-restart event on the viewer's kernel's `sessionContext` (T25, T26), treated like a kernel `close` for the current viewer; C5 unit cases and AC-38 `restart_placeholder`. The residual case (viewer's kernel unknown with several live kernels) is stated under the multi-notebook non-goal. |
-| Vendored PLR-main Python imports a submodule the import contract lacks | C2 extends `plr_contract.CONTRACT` with a justification and appends an ADR §2 addendum; `test_contract_covers_imports.py` gates C2 and sprint B (AC-30, AC-41). |
+| A new import names a shim home or a module the import contract lacks | Revised in Revision 10: no PLR Python is vendored. `viewer3d.py`'s own `pylabrobot.visualizer3D.server` import gets its contract entry in C3, and every sprint B import uses the pin's non-shim homes (D8); `test_contract_covers_imports.py` and the contract's no-shim test and warnings-as-errors probe gate C3 and sprint B (AC-31, AC-41). |
 | A Lumino split ignores CSS min/max, or layout sizing is unreachable | S1 records `css_limits_honoured`, `dock_layout_sizing_reachable` and `css_limits_refit`, which select a row of the D6 sizing-case table; every AC-36 width key then has a mechanism or a recorded-only status (AC-36 is keyed by case). Layout sizing goes through the main DockPanel's `saveLayout()` / `sizes` / `restoreLayout()` (a `DockLayout` has no `setRelativeSizes`); CSS-only reaches ≥ 1600 with inline px limits plus `parent.fit()`, asserted only if `css_limits_refit`. `dock.js` calls `parent.fit()` after every tier change inside the split. AC-36 drags the splitter for real, and AC-39(d) proves the ≥ 1600 check fails on a stock 50/50 split wherever that key is asserted. Under S1-L every width key is recorded only and the drag is unclamped (drawer and height keys stay asserted): a stated deviation, consistent with the user's 260929 "split initially" ruling. Whether Lumino re-reads limits after `fit()` is exactly what S1 measures. If `restoreLayout()` reloads the widget's iframe (`restore_layout_keeps_iframe = false`), layout sizing is limited to open and tier changes, and AC-36 `iframe_reloads_during_resize` = 0 catches any clamp that reloads. |
 | A user-controlled resource name injects markup into a trusted output | D2 escaping (`esc_text` / `esc_attr`, escaped traceback) and D14 matching by `dataset.praxisRes`. AC-9, AC-16 and AC-19 carry hostile-name cases. |
 | The detail-floor math is wrong in the browser because CSS scales SVGs | D5 puts an explicit `min-width` on each SVG, and AC-12 checks the math. Rendered sizes are a human check (H1). If S2-A' strips `style`, the floor holds only for live outputs (stated). |
@@ -2943,7 +3322,8 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
 
 - **OQ-1.** Should the REPL's default theme change from JupyterLab Dark (`jupyter-lite.json:18`)
   to Light, where the design is complete? The default is no (D10).
-- **OQ-2. Closed (user, 260929).** At PLR 0.2.2 no liquid identity is tracked (D15). The user
+- **OQ-2. Closed (user, 260929).** At PLR 0.2.2 no liquid identity is tracked, nor at the
+  1.0.0b1 pin (D15). The user
   decided: "keep blue as volume, we can make things more complicated later." Volume only is
   the MVP; identity returns when PLR records it.
 - **OQ-3.** The 1024–1279 drawer is built and gated functionally. Are human quality checks at
@@ -2952,14 +3332,17 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
   wanted, for example 720 px?
 - **OQ-5.** The 3D selection keeps the page's own blue, transient box (D12). Should a request
   go to PLR upstream for a persistent, colourable highlight API?
-- **OQ-6.** At the pin, a tracker error mid-loop leaves earlier channels with uncommitted
-  pending state (`liquid_handler.py:1031-1035`, `:533-538`, `:677-684`). Should this be
-  reported upstream?
-- **OQ-7.** Is the PLR main commit to vendor the #1378 merge commit, or the newest main at C2
-  time? The spec requires only a named commit recorded in both manifests. *Orchestrator,
-  260929:* the 56-file `pylabrobot/visualizer3D/` tree that was fetched and measured matches
-  PLR main `786ac2c4e4f7afe37885af2d98ff5b0afe274c67` blob for blob (the `git/trees`
-  listing was compared by sha256). That is the commit the 260929 WebGL2 measurement used.
+- **OQ-6.** At the 1.0.0b1 pin, a tracker error inside a `pick_up_tips` or `drop_tips`
+  queue loop leaves earlier channels with uncommitted pending tip state (LH ~755-761,
+  ~901-911), because those loops are still outside the `try`. `aspirate` and `dispense` no
+  longer do: they queue inside the `try` and roll every channel back (LH ~1265, ~1466), so
+  they leave no residue (Revision 10; the PLR 1.0 recon). Should the tip-op case be reported
+  upstream?
+- **OQ-7. Resolved (Revision 10).** The question was which PLR main commit to vendor. The
+  1.0.0b1 pin (`origin/main` a176bac7) is `786ac2c4e4f7afe37885af2d98ff5b0afe274c67`, the
+  commit whose 56-file `pylabrobot/visualizer3D/` tree was fetched and measured (matched blob
+  for blob by the orchestrator, 260929; the 260929 WebGL2 measurement used it). C2 vendors
+  `static/` from the submodule at the pin and records that commit; a pin bump re-vendors.
 - **OQ-8.** Is an automatic ledger for every liquid-moving cell wanted after MVP? It would
   need a capture mechanism that D9 rejected for now.
 - **OQ-9.** If S2 lands on S2-C (`text/plain` for untrusted), is a labextension later worth
@@ -2997,26 +3380,42 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
   - `transport.py:10-18` (channel separation, origin scope)
   - `visualizer-augmentations/index.js` (augmentation, queueing)
   - `web-repl/scripts/vendor_visualizer.py` (anchors, placeholders, manifest)
-  - `build_repl.py:830-895` (shell staging), `:979-1047` (`assert_dist_complete`)
-  - `praxis_bootstrap.py:289-398` (stage ledger)
+  - `build_repl.py:830-895` (shell staging), `:979-1047` (`assert_dist_complete`) at the
+    base; on origin/main a176bac7 `stage_shell` is at `:1016` and `assert_dist_complete` at
+    `:1193`
+  - `praxis_bootstrap.py:289-398` (stage ledger) at the base; `:289-421` on origin/main
+    a176bac7 (`verify_identity` `:415`, `praxis:ready` `:421`)
   - `praxis-shell.js:54-105` (channel listener)
   - `scripts/repl_smoke.py` (repo root): `:101-184` (Chromium resolution, launch args),
-    `:1226-1430` (`run_notebook_check`) at the base `fd987728`; on `origin/main`
-    `run_notebook_check` starts at `:1463` and prints its single `RESULT` at `:1769`
+    `:1226-1430` (`run_notebook_check`) at the base `fd987728`; on origin/main a176bac7
+    `run_notebook_check` starts at `:1482`, prints its single `RESULT` at `:1788`, reads
+    outputs model-first at `:1572` and `:1624`, and derives `NOTEBOOK_EXPECTED` at import
+    (`:1449`, via `:1426-1441`)
   - `.github/workflows/repl.yml:146-226`; `:43` (the single job-level `timeout-minutes: 45`,
-    `origin/main`)
-- PLR main Visualizer3D (`/tmp/claude-1000/plr-main/pylabrobot/visualizer3D/`):
-  - `server.py:155` (class), `:353` (`_broadcast`), `:559-603` (hello and `_handler`),
-    `:711-783` (`__init__`), `:785-811` (`start`), `:829-850` (`stop`)
+    origin/main a176bac7; `:45` on the sprint A branch)
+  - `web-repl/overlay/assets/python/praxis/viz/transport.py:10,11,26` (the three RST
+    documentation mentions of `praxis_repl` the D7 R21 check strips)
+- PLR Visualizer3D at the 1.0.0b1 pin (`external/pylabrobot/pylabrobot/visualizer3D/`; the same
+  tree as the earlier fetch to `/tmp/claude-1000/plr-main/pylabrobot/visualizer3D/`):
+  - `server.py:98` (`PACKAGE_ROOT`), `:104-105` (`_models_on_disk`), `:155` (class),
+    `:216`/`:224` (`_register_meshes` and its global read), `:353` (`_broadcast`),
+    `:559-603` (hello and `_handler`, `:590`), `:711-783` (`__init__`), `:785-811` (`start`),
+    `:829-850` (`stop`)
   - `static/transport.js:56-93`, `static/index.html:319-339`, `static/app.js:172-223`
     (`window.plrViewer`), `static/renderer.js:117-121, 261-264`, `static/constants.js:118-121`
-- PLR 0.2.2 (`external/pylabrobot`, `dd79c4c89`):
+- PLR 1.0.0b1 pin (`external/pylabrobot`, `786ac2c4e`; `LH` =
+  `pylabrobot/legacy/liquid_handling/liquid_handler.py`), per the PLR 1.0 recon:
   - `resources/errors.py:8-22`
-  - `resources/volume_tracker.py:88-143`
-  - `resources/tip_tracker.py:57-110`
-  - `resources/container.py:85`, `resources/tip_rack.py:52`, `resources/well.py:19-28`
-  - `resources/resource.py:806-934`
-  - `liquid_handling/liquid_handler.py:197, 411-424, 489-576, 637-684, 878-1067`
+  - `resources/volume_tracker.py:14` (tracking default), `:102`/`:108`
+    (`validate_remove_liquid`), `:111-112` (pending bump), `:117` (`validate_add_liquid`)
+  - `legacy/tip_tracker.py:118, 153, 166`; `resources/tip_tracking.py:5`
+  - `resources/container.py:87`, `resources/resource.py:1236-1251, 1364`
+  - LH `:88`, `:418`, `:643-645`, `:727`, `:755-761` (`:758`), `~901-911`, `:998`, `:1000`,
+    `:1047`, `:1058`, `~1265`, `:1273`, `~1466`, `:1674-2229`, `:1876`, `:1908`
+  - `hamilton_decks.py:811` (`STARLET_SIZE_X`)
+- PLR 0.2.2 (`external/pylabrobot`, `dd79c4c89`; historical, the pin before a176bac7):
+  - `resources/volume_tracker.py:74-86, 122-138` (D15)
+  - `resources/well.py:19-28`
   - `pylabrobot/__init__.py:67-118`
 - Upstream: PyLabRobot #1378 (Visualizer3D, merged 2026-09-27); PLR #1308 (Petri dishes, Next);
   `stefangolas/pylabrobot@viz3d-motion` (unmerged, slot only).
@@ -3025,6 +3424,9 @@ Sprint C order: C1 and C2 in parallel; C3 and C4; C5; C6; C7.
 - Round 2 review: `.praxia/docs/audits/260929_notebook-display-round2-challenger.md`,
   `.praxia/docs/audits/260929_notebook-display-round2-defender.md`.
 - Rounds 3 to 9: `.praxia/docs/audits/260929_notebook-display-round{3,4,5,6,7,8,9}-challenger.md`.
+- Round 10: `.praxia/docs/audits/260929_notebook-display-round10-challenger.md`.
+- The PLR 1.0 recon (Revision 10's evidence):
+  `.praxia/docs/research/260929_notebook-display-plr10-premises.md`.
 - Playwright's detached Chromium launch:
   `praxis/web-client/node_modules/playwright-core/lib/server/utils/processLauncher.js:108-111`
   (`detached: process.platform !== "win32"`; verified by the orchestrator, 260929, round 8).
@@ -3073,7 +3475,10 @@ where it landed.
 - **A-6 (C1-3): import contract.** C2 adds `("pylabrobot.resources.resource", "Resource")`
   and an ADR §2 addendum; each sprint B task adds entries for its new `pylabrobot.*`
   imports; the contract test gates C2 and B2–B8. Landed: D11 Python; §4 (`plr_contract.py`,
-  ADR rows); AC-30; AC-41; sprint B preamble; B2–B8 gates; C2; §7 new row.
+  ADR rows); AC-30; AC-41; sprint B preamble; B2–B8 gates; C2; §7 new row. *(Superseded in
+  part by Revision 10: no PLR Python is vendored, so the `pylabrobot.resources.resource`
+  entry and the ADR addendum are dropped; C3 adds the entry for `viewer3d.py`'s own
+  `pylabrobot.visualizer3D.server` import. The sprint B rule stands.)*
 - **A-7 (C1-4, C1-19, C1-20): error context.** Frame filter on `glossary.ACTIONS` (innermost
   supplies locals, outermost supplies `action`); owner rule (e); offending set and body
   numbers from committed state with demand summed per resource; tracking note corrected.
@@ -3199,7 +3604,9 @@ closes, and where it landed.
   first viewer; module global, GATE X holds, the one deliberate runtime rebinding. Landed:
   D11 Python (new bullet, meshes bullet) and Kernel `__init__` note; D1 S4 row; §4 S4 and
   `viewer3d.py` rows; AC-29 (both roots, walk over rebound root); AC-31 (rebind,
-  `.glb`-no-mesh); C1, C3; §7 new row.
+  `.glb`-no-mesh); C1, C3; §7 new row. *(Kept and made load-bearing by Revision 10: the
+  rebound global is now `pylabrobot.visualizer3D.server.PACKAGE_ROOT`, whose stock value is
+  inside the installed PLR package with 63 `.glb` files.)*
 - **B-5 (C2-7): S3(b′) carrier.** `formatters['text/html'].for_type` returning
   `(html, {"praxis": stamp})`, carrier `metadata["text/html"]["praxis"]`; one reader
   `stampOf`; escalate if (b′) fails. Landed: D1 S3 row (question and S3-B branch); D2
@@ -3222,7 +3629,9 @@ closes, and where it landed.
 - **B-8 (C2-4): pending residue → `None`.** Owner outside the committed offending set →
   `None`, generic panel; pending-only callbacks bump `rev`. Landed: D8 steps 4 and 5, panel
   drawing; D7 (one sentence); §2 G5; §3.3 note; §4 `context.py` row; AC-15 E13, E14; AC-17
-  E13; AC-18 (pending-only bump); B5, B6, B8; §7 pending row.
+  E13; AC-18 (pending-only bump); B5, B6, B8; §7 pending row. *(Amended by Revision 10: at
+  the 1.0.0b1 pin a failed aspirate/dispense leaves no residue, so E13 became a
+  direct-tracker-use case; the rule stands for pick-up/drop residue and direct tracker use.)*
 - **B-9 (C2-5): tip-owner TLL and `*96`.** New §3.3 row "TLL, owner is a tip (dispense)";
   step 4 compares per channel for a tip owner; step 2 `*96` short-circuit; `head96` removed
   from rule (b); rule (c) names TLL on dispense. Landed: D8 intro, steps 2–5, rule (b), rule
@@ -3267,6 +3676,8 @@ renumbered: every change appends cases or keys to existing ACs or edits existing
 - **R3-1 (C3-1, MAJOR): TLV tip owner uses committed room.** The tip on channel c offends
   only if channel c's request > `max_volume − tracker.volume` (committed); `{avail}` is that
   room. Landed: D8 step 4; AC-15 E15 (→ `None`); AC-17 (E15 generic panel); B5, B6, B8.
+  *(Amended by Revision 10: the 0.2.2 E15 setup does not raise at the 1.0.0b1 pin; E15 is now
+  a synthetic tip-side residue case, to be verified by B5. The rule stands.)*
 - **R3-2 (C3-2, MAJOR): NoTip channel for every tip-using op.** "A channel with no committed
   tip, for any op that uses a mounted tip (Aspirate, Dispense, Transfer, Drop tips, Return
   tips, Discard tips)". Bare `discard_tips()` / `return_tips()` `RuntimeError`s get the plain
@@ -3508,10 +3919,60 @@ task and no file. It adds one runner function (`ensure_token`), one `Watchdog` m
   case would have hit the new refusal.
 - A1 size ~370 → ~450 LOC. The ACs still number 42; the tasks still number 24.
 
-## Convergence (260929)
+## Revision 10 (260929)
 
-**Converged after 10 challenger rounds.** Round 10
+After round 10 converged, `origin/main` a176bac7 (PR #184 "plr-1.0-bump") moved the PyLabRobot
+pin from 0.2.2 (`dd79c4c89`) to 1.0.0b1 (`786ac2c4e`). A recon re-checked every PLR-dependent
+claim against the built 1.0.0b1 wheel:
+`.praxia/docs/research/260929_notebook-display-plr10-premises.md` (exploratory, not
+pre-registered; the AC-15/16 test files re-verify it under their own gates). The orchestrator
+independently re-verified the two BLOCKER facts (a failed aspirate rolls every channel back;
+the E13 retry and E15's second aspirate do not raise) and the synthetic residue setup now used
+by E13, and issued one binding ruling (C2/D11, below). Revision 10 also makes D16 say what the
+merged A1a `scripts/unit_runner.py` does. AC, task, state-table row and invariant numbers are
+unchanged; Revision 10 adds no AC and no task. It adds one file,
+`scripts/repl_smoke_units.py` (A7), and removes the vendored Python package, the ADR addendum
+and one contract entry.
+
+| Amendment | Finding (the PLR 1.0 recon unless noted) | Landed |
+|---|---|---|
+| R10-1 | BLOCKER-1: E13 and E15 no longer raise at the pin | AC-15 E13 replaced by a synthetic residue case from direct tracker use (setup verified by the orchestrator), E15 by a synthetic tip-side residue case (to be verified by B5, with a stop-and-report rule); E14 kept and clarified (a failure inside the queue loop, not E7's pre-loop check); AC-17; B5, B6, B8; §7 new "pin bump changes an AC case" row; Revision 2 B-8 and Revision 3 R3-1 annotated |
+| R10-2 | BLOCKER-2: the "pending residue" premise is false for aspirate/dispense | D8 step 4 "Pending residue" and "Panel drawing" rewritten (aspirate/dispense roll back; pick-up/drop and direct tracker use still leave residue; the committed-numbers rule is a defence for those paths; "Nothing was aspirated" ordering to be verified by B6); AC-16 forces pending ≠ committed by direct tracker use; §7 residue row; OQ-6 reworded for the tip ops; §2 G5 unchanged |
+| R10-3 | BLOCKER-3: the R21 grep exits 0 on `main` (`transport.py:10,11,26`, pre-existing) | D7 new "R21 check" (strip the RST ` ``praxis_repl`` ` form, then grep; exit 1 exactly), used by AC-18, AC-31, B7, C3, C7 and the §7 `praxis_repl` row. Chosen over "exempt comment lines" because `:10` and `:11` are docstring lines, not `#` comments |
+| R10-4 | MAJOR-1: tip-spot messages name the spot; well trackers carry deck names | D8 "What PLR's message omits" and owner rule (d) (wells resolve; bare tip-spot names looked up); AC-15 E5, E7, E8 notes; no message text asserted beyond `str(exc)` |
+| R10-5 | MAJOR-2, MAJOR-3 and the orchestrator's binding ruling: the pin ships `pylabrobot/visualizer3D`, the REPL wheel contains it, `websockets` is a vendored wheel | D11 rewritten: import `pylabrobot.visualizer3D`, subclass its `Viewer3D`, rebind its `PACKAGE_ROOT` (load-bearing: the stock root holds 63 `.glb` files); only `static/` vendored, from the submodule at the pin; `--check` on bytes and recorded commit. GATE X re-derived (part 1 overrides, part 2 no PLR Python in the overlay, part 3 static bytes in the manifest). D1 S4 row; D17 S4 unit and inputs; §4 rows (vendor script, contract, `viewer3d.py`, S4 spike, `build_repl.py`, test rows; the `plr_visualizer3d/**` and ADR rows deleted); AC-29, AC-30, AC-31 (GATE X parts 1-2, load-bearing rebind with a positive control), AC-33, AC-41; C1 (~160), C2 (~200, static only), C3 (adds the `pylabrobot.visualizer3D.server` contract entry; no longer depends on C2), C6, C7 (no PLR checkout step); §6 table; §7 rows; OQ-7 resolved; Revision 1 A-6 and Revision 2 B-4 annotated |
+| R10-6 | MAJOR-4: rollback fires callbacks; registration appends; pick-up fires `did_unassign` ×8 | D7 drawn-state digest filter (callbacks mark dirty; settle at `post_run_cell` and before each render; bump only on a changed digest) and idempotency via `_subscribed`; AC-18 "Rollback does not bump" and "Settle before render"; §4 `stale.py` row; B7 (~260); §7 new row. **Deviation from the brief, stated:** the brief asked to filter on committed state; that contradicts D7's pending-only bump (Revision 2 B-8, AC-18), so the filter keys on the drawn state, which agrees with the committed filter in the rollback case |
+| R10-7 | MAJOR-6: deprecated fixture names; `num_rails`; `fixture.js`; `EmbeddedTipRack`; `serialize()` shape; `_as_in_kernel` | §4 new `make_fixture.py`/`fixture.js` row; B2 (fixture port first, `_repr_` grep, ~370 LOC); §3.2 rail/track note and model-string note; AC-11 `num_tracks`; D2 (`EmbeddedTipRack` resolves by MRO, no type-name dispatch); D5 worked check (7.2 mm tips, thresholds unchanged) |
+| R10-8 | MAJOR-7: `repl_smoke.py` needs the submodule at import | D16 "Import-time submodule dependency" (pure plumbing in `repl_smoke_units.py`; spike drivers lazy-load in `--unit` only; the harness needs the submodule; CI authoritative), "Local runs", `harness` input covers both files; D17 inputs; §4 new `repl_smoke_units.py` row, `repl_smoke.py`, spike, resume-test and `test_unit_runner.py` rows; A1, A2, A3, A7 notes; AC-42 check that the resume test never loads `repl_smoke.py`; §7 new row |
+| R10-9 | MAJOR-8: legacy/non-shim homes; the contract's no-shim test | D8 "Classes the code checks"; sprint B "Import contract"; §4 contract, `context.py` and test rows; AC-41 |
+| R10-10 | MAJOR-9, MAJOR-10: E2/E3 setups; E7's site | AC-15 E2 (tip preset to 400), E3 (source preset to 500), E7 (LH:727, pre-loop, only `tip_spots`/`use_channels` bound; D8 step 2 note on missing locals) |
+| R10-11 | MAJOR-5 and the MINOR anchors | Every PLR anchor re-anchored to the pin (inputs note: `LH` = the legacy path; D5, D7, D8, D9, D13, D16, §4, References); base-commit numbers cited "on origin/main a176bac7" (`repl_smoke.py`, `praxis_bootstrap.py`, `build_repl.py`, `repl.yml`); the wheel-size risk (1.26 → 10.2 MB) added to §7; D9 notes the pin's `pylabrobot.events` bus and why D9 keeps shadowing |
+| R10-12 | A1a implementation (orchestrator note in the recon): `SIGSTOP` then `SIGTERM` could not let a handler fork in the grace window, contradicting AC-42's fixpoint case | D16 `kill_tree` steps 4-5 (`SIGCONT` right after `SIGTERM`; re-freeze, second fixpoint, then `SIGKILL`); `Watchdog(budget_s, on_expire=None)`, `disarm()`, `commit` raising on a second call, a raising `on_expire` still kills and exits; `run_unit(..., grace_s=5)` and `killed` = "`kill_tree` ran"; `dist_hash` and `driver_input` contracts; `emit_line`, `read_proc_stat`, `reap()`; `--reap --token`; keyword-only seams; the Chromium-token open risk and its fallback (with the `detached`/session caveat); §4 `unit_runner.py` and `test_unit_runner.py` rows; AC-42 Revision 10 contract cases and C10-1 positive control; A1 note; §7 runner row |
+| R10-13 | this log, the frontmatter `adversarial_review` entry and the Convergence section | frontmatter; inputs; References (the recon, round 10) |
+
+**Consistency fixes made while applying:**
+- C3 no longer depends on C2: `viewer3d.py` imports the pin's package, and C2 now vendors only
+  the static page, which C4 (tag positions) and C6 still need.
+- The CI PLR checkout step (C7) is gone: `--check` reads the submodule, which every job that
+  runs `repl_smoke.py` already has initialised (its import-time `version.txt` read).
+- C1's probe no longer stages files; it constructs a throwaway `DockedViewer3D` prototype over
+  the imported package, since C3 has not landed when C1 runs.
+- AC-31's `.glb` check can no longer place a file under the stock root (the installed PLR
+  package); it seeds `PACKAGE_ROOT` with a temporary directory and adds a positive control, so
+  the check cannot pass vacuously.
+- The AC-15 preamble states that no case asserts PLR's message text beyond what it names, and
+  E-96's message text is no longer asserted (it was read at 0.2.2).
+- Sizes: B2 ~320 → ~370, B7 ~220 → ~260, C1 ~180 → ~160, C2 ~300 → ~200 LOC. The ACs still
+  number 42; the tasks still number 24.
+
+## Convergence (260929; re-opened for Revision 10)
+
+**Converged after 10 challenger rounds, then re-opened.** Round 10
 (`.praxia/docs/audits/260929_notebook-display-round10-challenger.md`) found no BLOCKER and no MAJOR.
+The PLR 1.0 pin bump on `origin/main` (a176bac7) then invalidated several PLR-dependent
+premises (`.praxia/docs/research/260929_notebook-display-plr10-premises.md`), and Revision 10
+applied them with the orchestrator's C2/D11 ruling and the A1a runner corrections. The spec is
+**not converged** until challenger round 11 clears Revision 10.
 
 | Round | BLOCKER | MAJOR | MINOR | Fixed by |
 |---|---|---|---|---|
@@ -3525,11 +3986,14 @@ task and no file. It adds one runner function (`ensure_token`), one `Watchdog` m
 | 8 | 0 | 2 | 5 | Revision 8 (shared unit runner) |
 | 9 | 0 | 1 | 5 | Revision 9 (bounded teardown) |
 | 10 | 0 | 0 | 4 | none: recorded below for the sprint |
+| (pin bump) | 3 | 10 | anchors | Revision 10 (PLR 1.0 recon, not a challenger round) |
+| 11 | pending | | | |
 
 **For the implementing sprint (non-blocking MINORs, round 10). Fold them into A1's tests-first work:**
 - **C10-1:** the real-Chromium `test_unit_runner.py` case gets a positive control. Before the
   timeout, a live Chromium process (by `comm`/`exe`) carries the token and sits in a pgid different
-  from the child's. Only then assert that none survive.
+  from the child's. Only then assert that none survive. *(Folded into AC-42 by Revision 10; a
+  failing control is a finding, D16 "Open risk: Chromium and the token".)*
 - **C10-2:** `Watchdog.write_result` does the result/artifact write under the lock, checking
   `fired`, so "no result" after a timeout is guaranteed.
 - **C10-3:** the watchdog's timeout line is written with a non-blocking `os.write(1, ...)`
