@@ -911,14 +911,31 @@ def test_the_default_poster_builds_the_praxis_repl_message(inst, monkeypatch):
 
 
 def test_after_uninstall_nothing_is_announced(inst):
+    """PLR callbacks cannot be unsubscribed, so a change AFTER uninstall still schedules the announcer's
+    timer and would flush: the poster is gated on the handle being active."""
     shell, handle, posted, loop, _r = make(inst)
     _deck, _lh, _tips, source, _assay = world()
     shell.display(source)
-    source.get_item("A1").tracker.set_volume(120)
-    handle.uninstall()
+    source.get_item("A1").tracker.set_volume(120)  # a pending announcement ...
+    handle.uninstall()  # ... whose timer uninstall cancels
+    source.get_item("A1").tracker.set_volume(80)  # a callback after uninstall schedules a new one
+    assert len(loop.live()) == 1
     loop.fire()
+    handle.session.flush()
     shell.events.trigger("post_run_cell", object())
     assert posted == []
+
+
+def test_the_announcement_control_the_same_change_announces_while_installed(inst):
+    """Positive control for the test above: the very same two changes DO post while installed."""
+    shell, _h, posted, loop, _r = make(inst)
+    _deck, _lh, _tips, source, _assay = world()
+    shell.display(source)
+    source.get_item("A1").tracker.set_volume(120)
+    loop.fire()
+    source.get_item("A1").tracker.set_volume(80)
+    loop.fire()
+    assert len(posted) == 2
 
 
 # --------------------------------------------------------------------------- the error handler through install (AC-17)

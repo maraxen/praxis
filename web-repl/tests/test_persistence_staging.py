@@ -209,6 +209,8 @@ def test_assert_dist_complete_passes_with_all_persistence_modules(tmp_path: Path
     (dist / "assets" / "python" / "web_bridge.py").write_text("# bridge\n")
     (dist / "assets" / "python" / "praxis" / "__init__.py").write_text("")
     (dist / "assets" / "python" / "praxis" / "interactive.py").write_text("# interactive\n")
+    (dist / "assets" / "python" / "praxis" / "display").mkdir(parents=True)  # B8: required too
+    (dist / "assets" / "python" / "praxis" / "display" / "__init__.py").write_text("# display\n")
     (dist / "assets" / "visualizer").mkdir(parents=True)
     (dist / "assets" / "visualizer" / "lib.js").write_text("// lib\n")
     (dist / "assets" / "visualizer" / "index.html").write_text("<html></html>")

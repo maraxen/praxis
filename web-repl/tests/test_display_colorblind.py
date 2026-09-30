@@ -348,9 +348,8 @@ def render_evidence(labware_module):
         "liquid_is_filled_disk": liquid["fill"].startswith("#") and liquid.get("stroke", "none") in ("", "none"),
         "changed_is_unfilled_ring": changed["fill"] == "none" and changed["stroke"].startswith("#"),
         "fault_is_unfilled_ring": fault["fill"] == "none" and fault["stroke"].startswith("#"),
-        # D3: every brick well mark also carries a cross glyph (a second path); a changed mark has none
+        # D3: every brick well mark also carries a cross glyph (a second path, with real geometry)
         "fault_has_cross": bool(cross.get("d")) and cross["fill"] == "none",
-        "changed_has_no_cross": "sv-changed-x" not in paths,
     }
     return colours, cues
 
@@ -550,7 +549,6 @@ def test_the_render_carries_the_non_colour_cues(evidence):
         "changed_is_unfilled_ring": True,
         "fault_is_unfilled_ring": True,
         "fault_has_cross": True,
-        "changed_has_no_cross": True,
     }
 
 

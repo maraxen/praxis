@@ -1227,6 +1227,9 @@ def assert_dist_complete(out_dir: Path, *, with_coxswain: bool = False) -> None:
         out_dir / "assets" / "python" / "web_bridge.py",
         out_dir / "assets" / "python" / "praxis" / "__init__.py",
         out_dir / "assets" / "python" / "praxis" / "interactive.py",
+        # B8: the kernel-side display package the bootstrap's D13 stage imports. Without it the
+        # failure would surface only at runtime, as a praxis:display-error.
+        out_dir / "assets" / "python" / "praxis" / "display" / "__init__.py",
         out_dir / "assets" / "visualizer" / "lib.js",
         out_dir / "assets" / "visualizer" / "index.html",
         out_dir / "assets" / "visualizer-augmentations" / "index.js",
