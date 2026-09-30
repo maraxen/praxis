@@ -4458,7 +4458,7 @@ def _dsrc(dnb, cid):
 
 def test_dock_cells_parse_with_top_level_await(dnb):
     for cell in dnb["cells"]:
-        _ast.parse("".join(cell["source"]), flags=_ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
+        compile("".join(cell["source"]), cell["id"], "exec", flags=_ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
 
 
 def test_dock_cells_say_what_ac34_ac35_ac37_and_ac38_need(dnb):
@@ -4568,18 +4568,22 @@ class FakeDock:
             value = read()
         return value, bool(ok(value))
 
-    def restart_kernel(self) -> dict[str, Any]:
+    def restart_kernel(self, after_accept: Any = None) -> dict[str, Any]:
         self._log("restart_kernel")
         self.restarted = True
         if self.state in ("open-connected", "open-lost"):  # T25: the viewer's kernel went away
             self._remove_frames()
             self.current, self.state, self.text = None, "open-waiting", NO_VIEWER_TEXT
-        return {"via": "kernelmenu:restart"}
+        out: dict[str, Any] = {"via": "kernelmenu:restart"}
+        if after_accept is not None:
+            out["watch"] = after_accept()
+        return out
 
     def report(self, index: int, res: str | None = None) -> dict[str, Any]:
         cid = self.ids[index]
         changed = self.source_changed if (cid == "draw-source" and res == "source") else 0
-        return {"index": index, "res": {"found": True, "changed_notices": changed, "svg_count": 1}}
+        return {"index": index, "execution_count": 1, "outputs": [],
+                "res": {"found": True, "changed_notices": changed, "svg_count": 1}}
 
     # -- world ----------------------------------------------------------------------------------------------
     def _remove_frames(self) -> None:
@@ -4729,6 +4733,10 @@ class FakeDock:
     def wait_resources(self, timeout_s: float = 10.0) -> bool:
         self._log("wait_resources")
         return len(self.frames) == 1 and "no_resources" not in self.broken
+
+    def wait_load(self, since: Any, timeout_s: float = 15.0) -> bool:
+        self._log("wait_load")
+        return isinstance(since, int) and self.loads_n > since
 
     def _focus(self, name: str) -> None:
         self.footer, self.at, self.cam_dir = name, POS[name], self.preset
@@ -4943,9 +4951,9 @@ def test_k1b_action_sequence_follows_the_ac38_execution_order(rs, nb, dnbf):
     acts = [c for c in d.calls if c[0] in ("run_cell", "reload_frame", "set_viewport", "click_preset", "close_deck_tab",
                                            "toggle_panel", "restart_kernel")]
     flat = [c[1] if c[0] == "run_cell" else c[0] + (":" + str(c[1]) if len(c) > 1 else "") for c in acts]
-    setup = ["boot", "assemble", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck", "dock"]
-    assert flat[:8] == setup
-    tail = flat[8:]
+    setup = ["boot", "assemble", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck", "dock", "viewer-id"]
+    assert flat[:9] == setup, "the first viewer's id is read once, right after the first dock()"
+    tail = flat[9:]
     # reconnect_after_reload: a reload; preset_survives_reload: Front then a reload; drawer_reconnect: 1152 then back to 1440
     assert tail[:4] == ["reload_frame", "click_preset:front", "reload_frame", "set_viewport:1152"]
     assert tail[4] == "set_viewport:1440"
@@ -5344,7 +5352,7 @@ needs_bun = pytest.mark.skipif(not Path(_BUN).exists(), reason="bun not installe
 
 
 @needs_bun
-@pytest.mark.parametrize("name", ["DOCK_CHECK_JS", "DOCK_MONITOR_INIT_SCRIPT", "DROP_QUERY_INIT_SCRIPT", "DOCK_MEASURE_CANVAS_JS"])
+@pytest.mark.parametrize("name", ["DOCK_CHECK_JS", "DOCK_MONITOR_INIT_SCRIPT", "DROP_QUERY_INIT_SCRIPT"])
 def test_in_page_code_parses_as_javascript(rs, tmp_path, name):
     text = getattr(rs, name)
     script = tmp_path / "p.js"
@@ -5374,9 +5382,9 @@ other.postMessage("not json");
 other.postMessage(JSON.stringify({{kind: "query"}}));
 await new Promise((r) => setTimeout(r, 200));
 const log = window.__praxisDockLog;
-console.log(JSON.stringify(log.events.map((e) => [e.seq, e.type, e.kind, e.viewer])));
+process.stdout.write(JSON.stringify(log.events.map((e) => [e.seq, e.type, e.kind, e.viewer])) + "\\n");
 log.push({{type: "mark", name: "m"}});
-console.log(log.events.at(-1).seq, log.loads);
+process.stdout.write(log.events.at(-1).seq + " " + log.loads + "\\n");
 window.__praxisDockChannel.close(); other.close();
 """
     script = tmp_path / "m.mjs"
@@ -5399,7 +5407,7 @@ a.postMessage(JSON.stringify({{kind: "announce", viewer: "v"}}));
 a.postMessage("plain string");
 a.postMessage({{kind: "query"}});
 await new Promise((r) => setTimeout(r, 200));
-console.log(JSON.stringify(got), window.__praxisDropQuery.dropped);
+process.stdout.write(JSON.stringify(got) + " " + window.__praxisDropQuery.dropped + "\\n");
 a.close(); b.close();
 """
     script = tmp_path / "d.mjs"
@@ -5407,7 +5415,7 @@ a.close(); b.close();
     done = subprocess.run([_BUN, str(script)], capture_output=True, text=True, timeout=60)
     assert done.returncode == 0, done.stderr
     got, dropped = done.stdout.strip().splitlines()[-1].rsplit(" ", 1)
-    assert json.loads(got) == [json.dumps({"kind": "announce", "viewer": "v"}), "plain string"]
+    assert json.loads(got) == [json.dumps({"kind": "announce", "viewer": "v"}, separators=(",", ":")), "plain string"]
     assert dropped == "2", "both the JSON-string query and the object query were dropped"
 
 
@@ -5416,7 +5424,7 @@ def test_init_scripts_do_nothing_in_a_child_frame(rs, tmp_path):
     js = _JS_PRELUDE.replace("window.top = window;", "window.top = {};") + f"""
 {rs.DOCK_MONITOR_INIT_SCRIPT}
 {rs.DROP_QUERY_INIT_SCRIPT}
-console.log(String(window.__praxisDockLog), String(window.__praxisDropQuery));
+process.stdout.write(String(window.__praxisDockLog) + " " + String(window.__praxisDropQuery) + "\\n");
 """
     script = tmp_path / "f.mjs"
     script.write_text(js)
@@ -5533,7 +5541,7 @@ def test_the_dock_aggregate_only_path_starts_no_unit_and_deletes_nothing(rs, ur,
     assert all(after[k] == v for k, v in before.items() if k != "result.json")
 
 
-def test_a_dock_unit_hang_exits_124_with_marker_and_no_stamp_or_result(rs, ur, tmp_path):
+def test_every_dock_unit_arms_its_watchdog_once_with_its_d16_budget_before_any_deletion(rs, ur, tmp_path):
     """The K-unit watchdog is the table's budget (AC-42: armed once, before the first deletion and the browser)."""
     for uid, minutes in zip(DOCK_IDS, DOCK_BUDGET_MIN):
         armed: list[tuple[float, bool]] = []

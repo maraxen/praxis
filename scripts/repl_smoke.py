@@ -69,6 +69,7 @@ Hard constraints (verified 2026-08-17, see plan section 5.6):
 from __future__ import annotations
 
 import argparse
+import ast
 import base64
 import contextlib
 import dataclasses
@@ -5159,17 +5160,25 @@ class DisplaySession:
             self._browser = self._pw.chromium.launch(
                 executable_path=env.chrome_path,
                 headless=True,
-                args=chromium_launch_args(offline=False),
+                args=self._launch_args(),
             )
             width, height = unit.viewports[0]
             context = self._browser.new_context(viewport={"width": width, "height": height})
-            for script in display_context_init_scripts(neg=self._neg):
+            for script in self._init_scripts():
                 context.add_init_script(script)
             self.page = context.new_page()
             self.page.on("pageerror", lambda exc: self.pageerrors.append(format_pageerror(exc)))
         except BaseException:
             self.close()
             raise
+
+    def _launch_args(self) -> list[str]:
+        """Chromium's launch args. ``DockSession`` overrides this (SwiftShader WebGL)."""
+        return chromium_launch_args(offline=False)
+
+    def _init_scripts(self) -> list[str]:
+        """The context init scripts. ``DockSession`` overrides this (the event monitor, the drop-query negative)."""
+        return display_context_init_scripts(neg=self._neg)
 
     @property
     def lab_url(self) -> str:
@@ -5181,7 +5190,7 @@ class DisplaySession:
         Returns ``(page, blocked)``: ``blocked`` collects the URL of every aborted request."""
         width, height = unit.viewports[0]
         context = self._browser.new_context(viewport={"width": width, "height": height})
-        for script in display_context_init_scripts(neg=self._neg):
+        for script in self._init_scripts():
             context.add_init_script(script)
         blocked: list[str] = []
         for glob in block:
@@ -6131,10 +6140,11 @@ class DisplayDriver:
                 break
         return last
 
-    def restart_kernel(self) -> dict[str, Any]:
+    def restart_kernel(self, after_accept: Any = None) -> dict[str, Any]:
         """Restart the kernel of the current notebook with ``kernelmenu:restart`` (the Restart dialog accepted if it
         appears) and wait for the restart status vocabulary then ``idle``. Falls back to the kernel API only if the
-        command does not exist (recorded in ``via``)."""
+        command does not exist (recorded in ``via``). ``after_accept`` (a zero-argument callable, K1b's watch) runs
+        right after the dialog is accepted, before the wait for the restart to finish; its result is ``evidence["watch"]``."""
         from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
         page = self.page
@@ -6158,6 +6168,8 @@ class DisplayDriver:
             )
             if not done.get("ok"):
                 raise DisplayCheckError(f"kernel.restart() failed: {done.get('error')!r}")
+        if after_accept is not None:
+            evidence["watch"] = after_accept()
         statuses, ok = poll_until(
             lambda: self._dc("statusLog()")[before:], restart_finished,
             timeout_s=DISPLAY_KERNEL_TIMEOUT_MS / 1000.0, interval_s=0.5, sleep=self.sleep,
@@ -7395,6 +7407,1221 @@ def derive_nd_keys(raw: Any, *, record: dict[str, bool] | None = None) -> dict[s
     }
 
 
+# -- the dock notebook ---------------------------------------------------------------------------------------------
+
+DOCK_NOTEBOOK_NAME = "dock_check.ipynb"
+#: Fixture cells cloned as they are (so the ``notebook`` input hash covers them): the world, the tips on the head, the
+#: four drawings and the aspirate. The cells the dock units add follow them.
+_DOCK_CLONED = ("boot", "assemble", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck", "aspirate")
+#: The cells this harness adds. ``hello`` and ``viewer-id`` EVALUATE an expression (the output model carries its repr):
+#: D11 and AC-34 read ``viewer.clients_seen[-1]`` in a cell, not the line ``dock()`` prints. ``ledger`` is a cell whose
+#: only Praxis output is the ledger (``resource`` null), for AC-35's ``follow_skips_null``.
+DOCK_CELL_SOURCES: dict[str, str] = {
+    "dock": "from praxis.viz.viewer3d import dock\nviewer = await dock(deck)",
+    "hello": "viewer.clients_seen[-1]",
+    "viewer-id": "viewer.viewer_id",
+    "well-name": 'source.get_well("A1").name',
+    "ledger": (
+        "from praxis.display import RunLedger\n\nwith RunLedger(lh):\n"
+        '    await lh.aspirate(source["A2:H2"], vols=[5.0] * 8)'
+    ),
+    "stop": "await viewer.stop()",
+}
+DOCK_CELL_IDS: tuple[str, ...] = _DOCK_CLONED + tuple(DOCK_CELL_SOURCES)
+#: The Light theme (AC-34, AC-38 "Light theme"); K2 uses it too.
+DOCK_THEME = THEME_NAMES[True]
+TOGGLE_DECK_COMMAND = "praxis:toggle-deck-panel"
+
+
+def build_dock_notebook(notebook: dict[str, Any]) -> dict[str, Any]:
+    """The notebook every dock unit seeds: ``_DOCK_CLONED`` cloned from the fixture (never executed, no outputs), then
+    ``DOCK_CELL_SOURCES``. Derived, so ``display_check.ipynb`` stays the one fixture and its hash covers every cloned
+    cell. Raises ``KeyError`` naming a missing fixture cell."""
+    idx = require_cells(notebook, *_DOCK_CLONED)
+    cells: list[dict[str, Any]] = []
+    for cid in _DOCK_CLONED:
+        cell = json.loads(json.dumps(notebook["cells"][idx[cid]]))
+        cell["execution_count"], cell["outputs"] = None, []
+        cells.append(cell)
+    template = json.loads(json.dumps(cells[0]))
+    for cid, source in DOCK_CELL_SOURCES.items():
+        cell = dict(template)
+        cell.update({"id": cid, "source": source, "outputs": [], "execution_count": None, "metadata": {}})
+        cells.append(cell)
+    out = {k: json.loads(json.dumps(v)) for k, v in notebook.items() if k != "cells"}
+    out["cells"] = cells
+    return out
+
+
+def parse_py_repr(text: Any) -> Any:
+    """What a cell evaluated to: ``ast.literal_eval`` of its ``text/plain`` (a str, a dict ...), or ``None`` if it is
+    not a literal (a traceback, an object repr, nothing)."""
+    if not isinstance(text, str) or not text.strip():
+        return None
+    try:
+        return ast.literal_eval(text.strip())
+    except (ValueError, SyntaxError, MemoryError, RecursionError):
+        return None
+
+
+# -- the in-page code ----------------------------------------------------------------------------------------------
+
+
+# -- the in-page code (harness-only; nothing here ships in dist) --------------------------------------------------
+
+#: Context init script, PARENT FRAME ONLY, installed at document start, so it is in place before ``dock.js`` mounts.
+#: It opens its OWN BroadcastChannel object on ``praxis_viz3d`` (created before dock.js's, so its listener runs first
+#: for a message both receive) and logs every JSON message as ``bc`` (kind, viewer), plus every deck iframe's
+#: ``load`` (a capture listener on the document), insertion and removal (a MutationObserver over the document, which
+#: catches a replaced element, and an element moved inside a re-homed panel), in ONE ``seq`` order. It writes nothing
+#: to the page and posts nothing. ``log.push`` is how the harness drops a named ``mark`` into the same sequence.
+DOCK_MONITOR_INIT_SCRIPT = r"""(() => {
+  try {
+    if (window.top !== window) return;
+    const log = (window.__praxisDockLog = { seq: 0, events: [], loads: 0 });
+    const push = (e) => {
+      log.seq += 1;
+      e.seq = log.seq;
+      e.t = Math.round(performance.now());
+      log.events.push(e);
+      if (log.events.length > 4000) log.events.splice(0, 1000);
+      return e.seq;
+    };
+    log.push = push;
+    const viewerOf = (src) => { try { return new URL(src, location.href).searchParams.get("viewer"); } catch (e) { return null; } };
+    const isDeck = (n) => !!n && n.nodeType === 1 && n.localName === "iframe" && n.classList.contains("praxis-deck-panel__frame");
+    const ch = new BroadcastChannel("praxis_viz3d");
+    ch.addEventListener("message", (ev) => {
+      let m = null;
+      try { m = JSON.parse(ev.data); } catch (e) { m = null; }
+      if (m && typeof m === "object" && !Array.isArray(m)) {
+        push({ type: "bc", kind: typeof m.kind === "string" ? m.kind : null, viewer: typeof m.viewer === "string" ? m.viewer : null });
+      }
+    });
+    window.__praxisDockChannel = ch;
+    document.addEventListener("load", (e) => {
+      if (isDeck(e.target)) { log.loads += 1; push({ type: "iframe_load", src_viewer: viewerOf(e.target.getAttribute("src")) }); }
+    }, true);
+    const scan = (nodes, type) => {
+      for (const n of nodes) {
+        if (!n || n.nodeType !== 1) continue;
+        const found = isDeck(n) ? [n] : Array.from(n.querySelectorAll ? n.querySelectorAll("iframe.praxis-deck-panel__frame") : []);
+        for (const f of found) push({ type, src_viewer: viewerOf(f.getAttribute("src")) });
+      }
+    };
+    new MutationObserver((records) => {
+      for (const r of records) {
+        if (r.type === "childList") { scan(r.addedNodes, "iframe_inserted"); scan(r.removedNodes, "iframe_removed"); }
+        else if (r.type === "attributes" && isDeck(r.target)) push({ type: "iframe_src", src_viewer: viewerOf(r.target.getAttribute("src")) });
+      }
+    }).observe(document, { childList: true, subtree: true, attributes: true, attributeFilter: ["src"] });
+  } catch (e) { /* the monitor must never break the page */ }
+})();"""
+
+#: AC-39(e), harness-only (``--neg drop-query``; no product switch): in the PARENT page, every ``postMessage`` of a
+#: ``query`` (a JSON string or an object) on any BroadcastChannel is dropped, and counted, so a build whose reopen
+#: depends on ``query`` -> ``announce`` cannot get its iframe. ``window.__praxisDropQuery.dropped`` proves it fired.
+DROP_QUERY_INIT_SCRIPT = r"""(() => {
+  try {
+    if (window.top !== window) return;
+    const original = BroadcastChannel.prototype.postMessage;
+    const state = (window.__praxisDropQuery = { dropped: 0 });
+    BroadcastChannel.prototype.postMessage = function (message) {
+      try {
+        const m = typeof message === "string" ? JSON.parse(message) : message;
+        if (m && typeof m === "object" && m.kind === "query") { state.dropped += 1; return undefined; }
+      } catch (e) { /* not JSON: not a query */ }
+      return original.apply(this, arguments);
+    };
+  } catch (e) { /* never break the page */ }
+})();"""
+
+#: Installed after ``DISPLAY_CHECK_JS`` and ``DISPLAY_CHECK_OUTPUT_JS`` (``DockDriver._install``) as
+#: ``window.__praxisDockCheck``. READS the DOM, the dock controller (``window.__praxisDisplay.controllers.dock``, the
+#: object ``index.js`` records) and the viewer page's ``plrViewer`` in the iframe currently in the panel, always
+#: queried at call time (AC-38: never a held element). The few WRITES are named harness actions: ``reloadFrame``
+#: (``iframe.src = iframe.src``, AC-38), ``collapseLeft`` (AC-36 step 7), ``stockSplit`` (AC-39(d)), and ``mark``.
+DOCK_CHECK_JS = r"""
+(() => {
+  const app = () => window.jupyterapp;
+  const dockCtl = () => { const d = window.__praxisDisplay; return d && d.controllers ? d.controllers.dock : null; };
+  const panelNode = () => document.querySelector(".praxis-deck-panel");
+  const frames = () => { const p = panelNode(); return p ? Array.from(p.querySelectorAll("iframe")) : []; };
+  const viewerOf = (src) => { try { return new URL(src, location.href).searchParams.get("viewer"); } catch (e) { return null; } };
+  const box = (el) => {
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
+  };
+  const plr = () => { try { const f = frames()[0]; return f && f.contentWindow && f.contentWindow.plrViewer ? f.contentWindow.plrViewer : null; } catch (e) { return null; } };
+  const cellAt = (i) => { try { return app().shell.currentWidget.content.widgets[i] || null; } catch (e) { return null; } };
+  const notebookPanel = () => document.querySelector(".jp-NotebookPanel");
+  const notebookNode = () => document.querySelector(".jp-NotebookPanel .jp-Notebook");
+  const dockPanelNode = () => document.getElementById("jp-main-dock-panel");
+  const stampOf = (output) => output.metadata?.praxis ?? output.metadata?.["text/html"]?.praxis;
+  const outputJson = (m, j) => { const x = m.outputs.get(j); return x && x.toJSON ? x.toJSON() : x; };
+  const outputCount = (m) => (m.outputs ? (m.outputs.length ?? m.outputs.size ?? 0) : 0);
+  const joined = (v) => (Array.isArray(v) ? v.join("") : typeof v === "string" ? v : null);
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  // The same predicate for a real screenshot and for the two synthetic controls: a pixel DIFFERS from the page
+  // ground when any channel is more than `tol` away from it.
+  const countDiff = (data, ground, tol) => {
+    let diff = 0;
+    const n = data.length / 4;
+    for (let p = 0; p < n; p++) {
+      const o = p * 4;
+      if (Math.abs(data[o] - ground[0]) > tol || Math.abs(data[o + 1] - ground[1]) > tol || Math.abs(data[o + 2] - ground[2]) > tol) diff += 1;
+    }
+    return { diff, total: n };
+  };
+  const D = (window.__praxisDockCheck = {});
+
+  D.snap = () => { const d = dockCtl(); try { return d ? d.snapshot() : null; } catch (e) { return null; } };
+
+  D.facts = () => {
+    const node = panelNode();
+    const style = node ? getComputedStyle(node) : null;
+    const nb = notebookNode();
+    const nbStyle = nb ? getComputedStyle(nb) : null;
+    const body = node ? node.querySelector(".praxis-deck-panel__body") : null;
+    const focus = node ? node.querySelector(".praxis-deck-panel__footer [data-praxis-deck-focus]") : null;
+    const follow = node ? node.querySelector(".praxis-deck-panel__follow") : null;
+    const motion = node ? node.querySelector(".praxis-deck-panel__motion") : null;
+    const pressed = node
+      ? Array.from(node.querySelectorAll(".praxis-deck-panel__views button"))
+          .filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.textContent.trim().toLowerCase())
+      : [];
+    let leftCollapsed = null;
+    try { leftCollapsed = app().shell.leftCollapsed; } catch (e) { leftCollapsed = null; }
+    return {
+      present: !!node, in_document: node ? document.contains(node) : false,
+      state: node ? node.getAttribute("data-praxis-deck-state") : null,
+      position: style ? style.position : null,
+      panel_rect: box(node), notebook_panel_rect: box(notebookPanel()),
+      nb_content_width: nb ? nb.getBoundingClientRect().width : null,
+      nb_h_padding: nbStyle ? (parseFloat(nbStyle.paddingLeft) || 0) + (parseFloat(nbStyle.paddingRight) || 0) : null,
+      main_width: dockPanelNode() ? dockPanelNode().getBoundingClientRect().width : null,
+      frames: frames().map((f) => ({ src: f.getAttribute("src"), src_viewer: viewerOf(f.getAttribute("src")), height: f.getBoundingClientRect().height })),
+      text: body ? body.textContent : "",
+      footer: focus ? focus.textContent : null,
+      follow_checked: follow ? follow.getAttribute("aria-checked") === "true" : null,
+      pressed, motion_height: motion ? motion.getBoundingClientRect().height : null,
+      left_collapsed: leftCollapsed, inner_width: window.innerWidth,
+    };
+  };
+
+  // -- the viewer page in the iframe now in the panel (plrViewer: static/app.js:172)
+  D.resources = () => { const v = plr(); try { return v ? Array.from(v.resources()) : null; } catch (e) { return null; } };
+  D.camera = () => { const v = plr(); try { const c = v ? v.camera() : null; return c ? { from: c.from, at: c.at } : null; } catch (e) { return null; } };
+  D.stateOf = (a) => {
+    const v = plr();
+    try { if (!v) return null; const s = v.stateOf(a.name); return s === null || s === undefined ? null : JSON.stringify(s); } catch (e) { return null; }
+  };
+  D.embedHidden = (a) => {
+    const f = frames()[0];
+    let doc = null;
+    try { doc = f ? f.contentDocument : null; } catch (e) { doc = null; }
+    const out = {};
+    for (const sel of a.selectors) {
+      const el = doc ? doc.querySelector(sel) : null;
+      out[sel] = el ? doc.defaultView.getComputedStyle(el).display : null;
+    }
+    return out;
+  };
+
+  // -- the canvas (AC-34): a screenshot decoded and counted page-side, plus two synthetic controls run through the
+  //    SAME counting function (an all-ground image must read 0, a 5%-marked one must read above the threshold)
+  D.measureCanvas = async (a) => {
+    const bytes = Uint8Array.from(atob(a.b64), (c) => c.charCodeAt(0));
+    const bmp = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
+    const cv = new OffscreenCanvas(bmp.width, bmp.height);
+    const ctx = cv.getContext("2d");
+    ctx.drawImage(bmp, 0, 0);
+    return countDiff(ctx.getImageData(0, 0, bmp.width, bmp.height).data, a.ground, a.tol);
+  };
+  D.canvasControls = (a) => {
+    const n = 10000;
+    const blank = new Uint8ClampedArray(n * 4);
+    const marked = new Uint8ClampedArray(n * 4);
+    for (let p = 0; p < n; p++) {
+      const o = p * 4;
+      blank[o] = marked[o] = a.ground[0]; blank[o + 1] = marked[o + 1] = a.ground[1]; blank[o + 2] = marked[o + 2] = a.ground[2];
+      blank[o + 3] = marked[o + 3] = 255;
+      if (p % 20 === 0) { marked[o] = 200; marked[o + 1] = 40; marked[o + 2] = 40; }
+    }
+    return { blank: countDiff(blank, a.ground, a.tol), marked: countDiff(marked, a.ground, a.tol) };
+  };
+
+  // -- real-input targets: rectangles in client coordinates; the click itself is a Playwright mouse event
+  D.resourceRect = (a) => {
+    const cell = cellAt(a.i);
+    if (!cell) return null;
+    // a resource name is user data: compared as a string, never put in a selector
+    const el = Array.from(cell.node.querySelectorAll("[data-praxis-res]")).find((e) => e.dataset.praxisRes === a.name);
+    if (!el) return null;
+    el.scrollIntoView({ block: "center", inline: "center" });
+    return box(el);
+  };
+  D.cellInputRect = (a) => {
+    const cell = cellAt(a.i);
+    const el = cell ? cell.node.querySelector(".jp-InputArea-editor") : null;
+    if (!el) return null;
+    el.scrollIntoView({ block: "center" });
+    return box(el);
+  };
+  D.deckTabCloseRect = () => {
+    const tab = Array.from(document.querySelectorAll(".lm-TabBar-tab")).find((t) => {
+      const label = t.querySelector(".lm-TabBar-tabLabel");
+      return label && label.textContent.trim() === "Deck";
+    });
+    return box(tab ? tab.querySelector(".lm-TabBar-tabCloseIcon") : null);
+  };
+  D.handleRect = () => {
+    const dockNode = dockPanelNode();
+    const widget = panelNode() || document.querySelector(".praxis-nd-stock");
+    if (!dockNode || !widget) return null;
+    const w = box(widget);
+    const handles = Array.from(dockNode.querySelectorAll(".lm-DockPanel-handle"))
+      .filter((h) => !h.classList.contains("lm-mod-hidden"))
+      .map((h) => ({ r: box(h) })).filter((x) => x.r.width > 0 && x.r.height > 0);
+    handles.sort((x, y) => Math.abs(x.r.left + x.r.width / 2 - w.left) - Math.abs(y.r.left + y.r.width / 2 - w.left));
+    return handles.length ? { handle: handles[0].r, widget: w, n_handles: handles.length } : null;
+  };
+  D.collapseLeft = () => {
+    const shell = app().shell;
+    try { if (shell.leftCollapsed === false) shell.collapseLeft(); } catch (e) { return null; }
+    return shell.leftCollapsed;
+  };
+
+  // -- the harness actions on the deck iframe, and the ordered log (the init-script monitor)
+  D.reloadFrame = () => {
+    const f = frames()[0];
+    if (!f) return { ok: false };
+    f.src = f.src; // AC-38: "the harness sets iframe.src = iframe.src"
+    return { ok: true };
+  };
+  D.loads = () => (window.__praxisDockLog ? window.__praxisDockLog.loads : null);
+  D.mark = (a) => (window.__praxisDockLog ? window.__praxisDockLog.push({ type: "mark", name: a.name }) : null);
+  D.eventsSince = (a) => (window.__praxisDockLog ? window.__praxisDockLog.events.filter((e) => e.seq >= a.seq) : []);
+  D.neg = () => ({ dropped: window.__praxisDropQuery ? window.__praxisDropQuery.dropped : 0 });
+
+  // -- what a cell produced, read from the notebook MODEL
+  D.cellText = (a) => {
+    const cell = cellAt(a.i);
+    if (!cell) return null;
+    const m = cell.model;
+    let streamed = null;
+    for (let j = 0; j < outputCount(m); j++) {
+      const o = outputJson(m, j);
+      if (o.output_type === "execute_result" || o.output_type === "display_data") {
+        const plain = joined((o.data || {})["text/plain"]);
+        if (plain !== null) return plain;
+      } else if (o.output_type === "stream") {
+        streamed = (streamed || "") + (joined(o.text) || "");
+      }
+    }
+    return streamed;
+  };
+  D.stampResources = (a) => {
+    const cell = cellAt(a.i);
+    const out = [];
+    if (!cell) return out;
+    for (let j = 0; j < outputCount(cell.model); j++) {
+      const st = stampOf(outputJson(cell.model, j));
+      if (st !== undefined && st !== null) out.push(st.resource === undefined ? null : st.resource);
+    }
+    return out;
+  };
+  D.noticeText = (a) => {
+    const cell = cellAt(a.i);
+    if (!cell) return null;
+    const holder = Array.from(cell.node.querySelectorAll(".jp-OutputArea-output")).find(
+      (n) => Array.from(n.querySelectorAll("[data-praxis-res]")).some((e) => e.dataset.praxisRes === a.res));
+    const m = holder ? /Changed since[^.]*\./.exec(holder.textContent || "") : null;
+    return m ? m[0] : null;
+  };
+
+  // -- AC-39(d): a STOCK split-right widget of the harness's own (no dock.js sizing). The root Widget class is found
+  //    structurally, as dock.js and spike S1 do: its prototype owns processMessage and onAfterAttach and its own
+  //    prototype is Object.prototype.
+  D.stockSplit = async (a) => {
+    const shell = app().shell;
+    const ref = shell.currentWidget;
+    let Root = null;
+    let proto = ref ? Object.getPrototypeOf(ref) : null;
+    for (let depth = 0; proto && depth < 64; depth++, proto = Object.getPrototypeOf(proto)) {
+      if (Object.prototype.hasOwnProperty.call(proto, "processMessage") && Object.prototype.hasOwnProperty.call(proto, "onAfterAttach")
+          && Object.getPrototypeOf(proto) === Object.prototype && typeof proto.constructor === "function") { Root = proto.constructor; break; }
+    }
+    if (!Root) return { ok: false, error: "no root Lumino Widget constructor reachable from the current widget" };
+    const node = document.createElement("div");
+    node.className = "praxis-nd-stock";
+    const frame = document.createElement("iframe");
+    frame.setAttribute("src", a.src);
+    frame.style.cssText = "width:100%;height:100%;border:0";
+    node.appendChild(frame);
+    const widget = new Root({ node });
+    widget.id = "praxis-nd-stock-split";
+    widget.title.label = "stock";
+    shell.add(widget, "main", { mode: "split-right", ref: ref.id, activate: false });
+    return { ok: true };
+  };
+  D.stockRects = async () => {
+    await wait(1500);
+    const stock = document.querySelector(".praxis-nd-stock");
+    const nb = notebookNode();
+    const nbStyle = nb ? getComputedStyle(nb) : null;
+    return {
+      panel: stock ? stock.getBoundingClientRect().width : null,
+      notebook: notebookPanel() ? notebookPanel().getBoundingClientRect().width : null,
+      main: dockPanelNode() ? dockPanelNode().getBoundingClientRect().width : null,
+      padding: nbStyle ? (parseFloat(nbStyle.paddingLeft) || 0) + (parseFloat(nbStyle.paddingRight) || 0) : null,
+    };
+  };
+})()
+"""
+
+
+# -- the browser: a FULL Chromium with SwiftShader ----------------------------------------------------------------
+
+#: D16: the headless shell had neither WebGPU nor WebGL2 (measured 260929); full Chromium drew the fixture deck on
+#: WebGL2/SwiftShader with these two extra args.
+DOCK_EXTRA_LAUNCH_ARGS = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
+
+
+def dock_launch_args() -> list[str]:
+    return list(BASE_CHROMIUM_ARGS) + list(DOCK_EXTRA_LAUNCH_ARGS)
+
+
+def is_full_chromium(chrome_path: Any) -> bool:
+    """False for a headless shell (``chromium_headless_shell-*`` / ``chrome-headless-shell`` / ``headless_shell``) and
+    for an empty path. ``resolve_chrome_path`` only ever globs ``chromium*/chrome-linux*/chrome``; an explicit
+    ``--chrome-path`` or ``$PRAXIS_CHROME_PATH`` could still point at a shell, which would fail every WebGL key."""
+    text = str(chrome_path or "")
+    return bool(text) and "headless_shell" not in text and "headless-shell" not in text
+
+
+def dock_context_init_scripts(neg: Any = ()) -> list[str]:
+    """Every dock context's init scripts: the display ones (the persistence ack and its first-save monitor), the
+    parent-frame event monitor, and, only for ``--neg drop-query``, the query-dropping script (AC-39(e))."""
+    scripts = [*display_context_init_scripts(neg=neg), DOCK_MONITOR_INIT_SCRIPT]
+    if "drop-query" in tuple(neg or ()):
+        scripts.append(DROP_QUERY_INIT_SCRIPT)
+    return scripts
+
+
+class DockSession(DisplaySession):
+    """``DisplaySession`` in a full Chromium with SwiftShader and the dock init scripts. Refuses a headless shell
+    before it launches anything."""
+
+    def __init__(self, unit: HarnessUnit, args: argparse.Namespace, env: HashEnv) -> None:
+        if not is_full_chromium(env.chrome_path):
+            raise DockCheckError(
+                f"--dock-check needs a FULL Chromium (WebGL2 via SwiftShader), not {env.chrome_path!r}: "
+                "the headless shell has neither WebGL2 nor WebGPU (D16)"
+            )
+        super().__init__(unit, args, env)
+
+    def _launch_args(self) -> list[str]:
+        return dock_launch_args()
+
+    def _init_scripts(self) -> list[str]:
+        return dock_context_init_scripts(neg=self._neg)
+
+
+def _dock_eval(page: Any, expr: str, arg: Any = None) -> Any:
+    """``page.evaluate`` of ``window.__praxisDockCheck.<expr>`` (an expression body over ``a``)."""
+    return page.evaluate(f"async (a) => window.__praxisDockCheck.{expr}", arg)
+
+
+def _center(rect: Any, *, x_max: float | None = None) -> tuple[float, float] | None:
+    if not isinstance(rect, dict) or not all(_num(rect.get(k)) for k in ("left", "top", "width", "height")):
+        return None
+    w = rect["width"] if x_max is None else min(rect["width"], x_max)
+    return rect["left"] + w / 2, rect["top"] + rect["height"] / 2
+
+
+class DockDriver(DisplayDriver):
+    """One Playwright page, seen as the calls the dock scenarios make. Every method is one bounded interaction or one
+    page read; a click is a real Playwright mouse or keyboard event (AC-35 "a real click"). Exercised only by a real
+    browser run; the scenarios are tested against a scripted fake of this surface."""
+
+    def _install(self) -> None:
+        super()._install()
+        self.page.evaluate(DOCK_CHECK_JS)
+
+    def _dk(self, expr: str, arg: Any = None) -> Any:
+        return _dock_eval(self.page, expr, arg)
+
+    # -- reads (each queries the DOM at call time) ---------------------------------------------------------------------
+    def snap(self) -> dict[str, Any] | None:
+        return self._dk("snap()")
+
+    def facts(self) -> dict[str, Any]:
+        return self._dk("facts()") or {}
+
+    def resources(self) -> list[str] | None:
+        return self._dk("resources()")
+
+    def camera(self) -> dict[str, Any] | None:
+        return self._dk("camera()")
+
+    def state_of(self, name: str) -> str | None:
+        return self._dk("stateOf(a)", {"name": name})
+
+    def kernel_text(self, index: int) -> str | None:
+        return self._dk("cellText(a)", {"i": index})
+
+    def stamp_resources(self, index: int) -> list[Any]:
+        return self._dk("stampResources(a)", {"i": index}) or []
+
+    def notice_text(self, index: int, res: str) -> str | None:
+        return self._dk("noticeText(a)", {"i": index, "res": res})
+
+    def embed_hidden(self) -> dict[str, Any]:
+        return self._dk("embedHidden(a)", {"selectors": list(EMBED_HIDDEN_SELECTORS)})
+
+    def loads(self) -> int | None:
+        return self._dk("loads()")
+
+    def neg_dropped(self) -> int:
+        got = self._dk("neg()") or {}
+        return int(got.get("dropped") or 0)
+
+    def mark(self, name: str) -> int | None:
+        return self._dk("mark(a)", {"name": name})
+
+    def events_since(self, seq: int) -> list[dict[str, Any]]:
+        return self._dk("eventsSince(a)", {"seq": seq}) or []
+
+    # -- waits ---------------------------------------------------------------------------------------------------------
+    def wait_resources(self, timeout_s: float = 10.0) -> bool:
+        """``resources()`` of the iframe now in the panel is non-empty within ``timeout_s`` (the page re-greeted)."""
+        _, ok = poll_until(
+            self.resources, lambda r: isinstance(r, list) and len(r) > 0, timeout_s=timeout_s, interval_s=0.25, sleep=self.sleep
+        )
+        return ok
+
+    def wait_load(self, since: int | None, timeout_s: float = 15.0) -> bool:
+        """A deck iframe ``load`` was counted after ``since`` (so a read is of the NEW page, not the old one)."""
+        if not _num(since):
+            return False
+        _, ok = poll_until(
+            self.loads, lambda n: _num(n) and n > since, timeout_s=timeout_s, interval_s=0.25, sleep=self.sleep
+        )
+        return ok
+
+    def wait_connected(self, timeout_s: float = 10.0) -> bool:
+        """The panel is ``open-connected`` with exactly one iframe and that page's ``resources()`` is non-empty."""
+
+        def read() -> bool:
+            snap = self.snap() or {}
+            frames = self.facts().get("frames") or []
+            res = self.resources()
+            return snap.get("state") == "open-connected" and len(frames) == 1 and isinstance(res, list) and len(res) > 0
+
+        _, ok = poll_until(read, bool, timeout_s=timeout_s, interval_s=0.5, sleep=self.sleep)
+        return ok
+
+    # -- real input ----------------------------------------------------------------------------------------------------
+    def set_viewport(self, width: int, height: int) -> None:
+        self.page.set_viewport_size({"width": width, "height": height})
+        self.page.wait_for_timeout(400)
+
+    def click_resource(self, index: int, name: str) -> bool:
+        point = _center(self._dk("resourceRect(a)", {"i": index, "name": name}))
+        if point is None:
+            return False
+        self.page.mouse.click(*point)
+        return True
+
+    def click_cell_input(self, index: int) -> bool:
+        """A real click in the cell's editor (not its output, whose click-to-focus would focus a resource itself)."""
+        point = _center(self._dk("cellInputRect(a)", {"i": index}), x_max=80.0)
+        if point is None:
+            return False
+        self.page.mouse.click(*point)
+        return True
+
+    def click_follow(self) -> None:
+        self.page.click(".praxis-deck-panel__follow", timeout=10_000)
+
+    def click_preset(self, name: str) -> None:
+        self.page.click(f'.praxis-deck-panel__views button:has-text("{name.capitalize()}")', timeout=10_000)
+
+    def click_drawer_close(self) -> None:
+        self.page.click(".praxis-deck-panel__close", timeout=10_000)
+
+    def press_escape(self) -> None:
+        """Focus a control INSIDE the panel, then Escape (D6: Escape hides the drawer while focus is in it)."""
+        self.page.focus(".praxis-deck-panel__follow", timeout=10_000)
+        self.page.keyboard.press("Escape")
+
+    def toggle_panel(self) -> None:
+        self.page.evaluate(_DC_CMD_JS, {"id": "praxis:toggle-deck-panel", "wait": False})
+
+    def close_deck_tab(self) -> None:
+        point = _center(self._dk("deckTabCloseRect()"))
+        if point is None:
+            raise DockCheckError("no 'Deck' tab close icon is in the page (.lm-TabBar-tab with label Deck)")
+        self.page.mouse.click(*point)
+
+    def drag_splitter_to(self, width: float) -> float | None:
+        """A real drag of the splitter nearest the panel until the panel is ``width`` px wide (spike S1's drag); returns
+        the panel's measured width afterwards, or ``None`` when no splitter handle is found."""
+        geo = self._dk("handleRect()")
+        if not geo:
+            return None
+        h, w = geo["handle"], geo["widget"]
+        x0, y = h["left"] + h["width"] / 2, h["top"] + h["height"] / 2
+        x1 = w["right"] - width - h["width"] / 2
+        self.page.mouse.move(x0, y)
+        self.page.mouse.down()
+        self.page.mouse.move(x1, y, steps=15)
+        self.page.mouse.up()
+        self.page.wait_for_timeout(500)
+        rect = self.facts().get("panel_rect") or {}
+        return rect.get("width")
+
+    def collapse_left(self) -> bool:
+        collapsed = self._dk("collapseLeft()")
+        self.page.wait_for_timeout(500)
+        return collapsed is True
+
+    def reload_frame(self) -> bool:
+        return bool((self._dk("reloadFrame()") or {}).get("ok"))
+
+    # -- measurements --------------------------------------------------------------------------------------------------
+    def canvas_measure(self) -> dict[str, Any]:
+        """AC-34 ``canvas_nonblank``: a screenshot of the iframe viewport, counted page-side against ``#EEF1F4``, and
+        the same count over two synthetic controls (blank: must read 0; 5% marked: must read above 1%)."""
+        png = self.page.locator("iframe.praxis-deck-panel__frame").first.screenshot(timeout=15_000)
+        arg = {"ground": list(CANVAS_GROUND_RGB), "tol": CANVAS_CHANNEL_TOL}
+        got = self._dk("measureCanvas(a)", {**arg, "b64": base64.b64encode(png).decode()})
+        controls = self._dk("canvasControls(a)", arg)
+        blank, marked = controls["blank"], controls["marked"]
+        return {
+            "diff_pixels": got["diff"], "total_pixels": got["total"],
+            "control_blank": blank["diff"] / blank["total"], "control_marked": marked["diff"] / marked["total"],
+        }
+
+    def stock_split(self) -> dict[str, Any]:
+        """AC-39(d): add a STOCK split-right widget holding the viewer page (harness code, no dock.js sizing) and
+        measure it."""
+        src = f"{self.session.origin}{self.session.prefix}assets/visualizer3d/index.html?embed=1&view=top"
+        added = self._dk("stockSplit(a)", {"src": src})
+        if not (added or {}).get("ok"):
+            raise DockCheckError(f"could not add the stock split-right widget: {(added or {}).get('error')!r}")
+        return self._dk("stockRects()")
+
+
+# -- the scenario bodies ---------------------------------------------------------------------------------------------
+
+
+def _guard(evidence: dict[str, Any], name: str, fn: Any, default: Any = None) -> Any:
+    """Run one step. A failing step (a timeout, a missing element, a DockCheckError) is recorded under
+    ``evidence["step_errors"]`` and yields ``default``, so its key fails by name and the later steps still run (an
+    ``error`` finding names no key, and AC-39's negatives need the key named)."""
+    try:
+        return fn()
+    except Exception as exc:  # noqa: BLE001 - recorded, never swallowed
+        LOG.warning("dock step %s failed: %s: %s", name, type(exc).__name__, exc)
+        evidence.setdefault("step_errors", {})[name] = f"{type(exc).__name__}: {str(exc)[:300]}"
+        return default
+
+
+def _frames_of(facts: dict[str, Any]) -> list[dict[str, Any]]:
+    return [f for f in (facts.get("frames") or []) if isinstance(f, dict)]
+
+
+def _view(driver: Any) -> dict[str, Any]:
+    """The panel as it is NOW: the DOM's state attribute, the dock's home, and the iframes in the panel subtree."""
+    facts = driver.facts()
+    snap = driver.snap() or {}
+    frames = _frames_of(facts)
+    return {"state": facts.get("state"), "home": snap.get("home"), "iframes": len(frames),
+            "src": frames[0].get("src") if frames else None, "frames": frames, "facts": facts}
+
+
+def _step_view(view: dict[str, Any], *, src: bool = False) -> dict[str, Any]:
+    out = {"state": view["state"], "home": view["home"], "iframes": view["iframes"]}
+    if src:
+        out["src"] = view["src"]
+    return out
+
+
+def _focus(driver: Any) -> dict[str, Any]:
+    cam = driver.camera()
+    return {"footer": driver.facts().get("footer"), "at": (cam or {}).get("at"), "camera": cam}
+
+
+def _setup_dock_world(driver: Any, nb: dict[str, Any], idx: dict[str, int], *, theme: bool, pickup: bool, draws: bool) -> None:
+    driver.open_lab()
+    if theme:
+        driver.set_theme(DOCK_THEME)
+    driver.seed_and_open(DOCK_NOTEBOOK_NAME, nb)
+    driver.wait_kernel_idle()
+    for key in ("boot", "assemble", *(("pickup",) if pickup else ())):
+        _run_setup(driver, idx, key)
+    if draws:
+        for key in ("draw_source", "draw_assay", "draw_tips", "draw_deck"):
+            driver.run_cell(idx[FIXTURE_CELLS[key]])
+
+
+def run_k1a(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
+    """K1a (AC-34, AC-35, AC-37): boot and draw in Light at 1440x900, ``dock()``, then in this order: AC-34's reads,
+    AC-37's aspirate, AC-35's clicks and presets. Every read after ``dock()`` is guarded, so a viewer that never gets
+    a scene (AC-39(b), socket.js removed) fails ``viewer_resources`` BY NAME instead of raising."""
+    nb = build_dock_notebook(fixture)
+    idx = require_cells(nb, *DOCK_CELL_IDS)
+    ev: dict[str, Any] = {"step_errors": {}}
+    _setup_dock_world(driver, nb, idx, theme=True, pickup=True, draws=True)
+    driver.run_cell(idx["dock"])
+    ev["connected"] = driver.wait_connected(90.0)
+    raw: dict[str, Any] = {}
+
+    # AC-34
+    def panel() -> dict[str, Any]:
+        view = _view(driver)
+        facts = view["facts"]
+        return {
+            "state": view["state"], "home": view["home"],
+            "panel_left": (facts.get("panel_rect") or {}).get("left"),
+            "notebook_right": (facts.get("notebook_panel_rect") or {}).get("right"),
+        }
+
+    raw["panel"] = _guard(ev, "panel", panel, {})
+    raw["resources"], _ = _guard(
+        ev, "resources", lambda: driver.poll(driver.resources, lambda r: isinstance(r, list) and len(r) > 0, 15.0), (None, False)
+    )
+
+    def hello() -> Any:
+        driver.run_cell(idx["hello"])
+        return parse_py_repr(driver.kernel_text(idx["hello"]))
+
+    hello_value = _guard(ev, "hello", hello, None)
+    raw["hello"] = hello_value if isinstance(hello_value, dict) else None
+    raw["canvas"] = _guard(ev, "canvas_nonblank", driver.canvas_measure, {})
+    raw["embed"] = _guard(ev, "embed_hidden", driver.embed_hidden, {})
+
+    # AC-37: the aspirate runs with the viewer live; the well name comes from the kernel
+    source_i, assay_i = idx["draw-source"], idx["draw-assay"]
+    tips_i, deck_i, ledger_i = idx["draw-tips"], idx["draw-deck"], idx["ledger"]
+
+    def live_state() -> dict[str, Any]:
+        driver.run_cell(idx["well-name"])
+        well = parse_py_repr(driver.kernel_text(idx["well-name"]))
+        before, _ = driver.poll(lambda: driver.state_of(well), lambda s: s is not None, 10.0)
+        driver.run_cell(idx["aspirate"])
+        after, _ = driver.poll(lambda: driver.state_of(well), lambda s: s is not None and s != before, 5.0)
+        return {"well": well if isinstance(well, str) else "", "before": before, "after": after}
+
+    raw["state"] = _guard(ev, "state_updates", live_state, {})
+
+    def stale() -> dict[str, Any]:
+        read, _ = driver.poll(
+            lambda: driver.report(source_i, "source"), lambda r: (_notices(_res(r), "changed_notices") or 0) >= 1, 5.0
+        )
+        return {
+            "changed_notices": _notices(_res(read), "changed_notices"), "notice_text": driver.notice_text(source_i, "source"),
+            "panel_state": driver.facts().get("state"),
+        }
+
+    raw["stale"] = _guard(ev, "stale_and_panel", stale, {})
+
+    # AC-35. The ledger cell runs FIRST, so it already has its output when it is next activated by a click.
+    _guard(ev, "ledger_run", lambda: driver.run_cell(ledger_i))
+
+    def click_focus() -> dict[str, Any]:
+        driver.click_cell_input(deck_i)
+        before = _focus(driver)
+        driver.click_resource(deck_i, "source")
+        after, _ = driver.poll(lambda: _focus(driver), lambda s: s["footer"] == "source", 5.0)
+        return {"footer_before": before["footer"], "footer_after": after["footer"], "at_before": before["at"], "at_after": after["at"]}
+
+    raw["click"] = _guard(ev, "click_focuses", click_focus, {})
+
+    def follow_focus() -> dict[str, Any]:
+        if driver.facts().get("follow_checked") is not True:
+            driver.click_follow()
+        enabled = driver.facts().get("follow_checked")
+        before = _focus(driver)
+        driver.click_cell_input(assay_i)
+        after, _ = driver.poll(lambda: _focus(driver), lambda s: s["footer"] == "assay", 5.0)
+        return {"enabled": enabled, "focused": (driver.snap() or {}).get("focused"), "footer": after["footer"],
+                "at_before": before["at"], "at_after": after["at"]}
+
+    raw["follow_on"] = _guard(ev, "follow_focuses", follow_focus, {})
+
+    def follow_off() -> dict[str, Any]:
+        driver.click_follow()
+        enabled = driver.facts().get("follow_checked")
+        before = _focus(driver)
+        driver.click_cell_input(tips_i)
+        driver.settle(1500)
+        after = _focus(driver)
+        return {"enabled": enabled, "footer_before": before["footer"], "footer_after": after["footer"],
+                "at_before": before["at"], "at_after": after["at"]}
+
+    raw["follow_off"] = _guard(ev, "follow_off_holds", follow_off, {})
+
+    def follow_null() -> dict[str, Any]:
+        driver.click_follow()
+        enabled = driver.facts().get("follow_checked")
+        driver.click_cell_input(tips_i)  # Follow on: the focus moves to tips_300
+        driver.poll(lambda: _focus(driver), lambda s: s["footer"] == "tips_300", 5.0)
+        before = _focus(driver)
+        driver.click_cell_input(ledger_i)  # the cell whose only Praxis output is the ledger
+        driver.settle(1500)
+        after = _focus(driver)
+        return {"enabled": enabled, "ledger_resources": driver.stamp_resources(ledger_i), "footer_before": before["footer"],
+                "footer_after": after["footer"], "at_before": before["at"], "at_after": after["at"]}
+
+    raw["follow_null"] = _guard(ev, "follow_skips_null", follow_null, {})
+
+    def press(name: str) -> Any:
+        driver.click_preset(name)
+        cam, _ = driver.poll(driver.camera, lambda c: preset_ok(c, name), 5.0)
+        return cam
+
+    raw["presets"] = {name: _guard(ev, f"preset_{name}", lambda n=name: press(n), None) for name in ("top", "front", "iso")}
+
+    def follow_keeps() -> dict[str, Any]:
+        driver.click_preset("top")
+        pressed = (driver.facts().get("pressed") or [None])[0]
+        before = _focus(driver)["footer"]
+        driver.click_cell_input(source_i)  # Follow is on: this focuses `source`, with the held preset
+        after, _ = driver.poll(lambda: _focus(driver), lambda s: s["footer"] == "source", 5.0)
+        return {"pressed": pressed, "camera": after["camera"], "footer_before": before, "footer_after": after["footer"]}
+
+    raw["follow_keeps"] = _guard(ev, "follow_keeps_preset", follow_keeps, {})
+
+    keys = derive_k1a_keys(raw)
+    ev.update({k: v for k, v in raw.items() if k != "resources"})
+    ev["resources"] = raw["resources"]
+    keys["evidence"] = ev
+    return keys
+
+
+def _ensure_connected(driver: Any, idx: dict[str, int], ev: dict[str, Any], after: str) -> None:
+    """Between K1b's keys: if the panel is not connected (the previous key left it so, a failure that is already
+    recorded), re-run ``dock()`` and say so, so the later keys still measure what they name."""
+    if driver.wait_connected(3.0):
+        return
+    ev["recoveries"].append(after)
+    driver.run_cell(idx["dock"])
+    driver.wait_connected(45.0)
+
+
+def run_k1b(driver: Any, fixture: dict[str, Any], *, neg: Any = ()) -> dict[str, Any]:
+    """K1b (AC-38), atomic, the keys in AC-38's fixed order (``K1B_ORDER``). Every iframe fact is read from the panel
+    DOM at the moment of the read (``facts()``/``_view``), never through an element held across steps."""
+    nb = build_dock_notebook(fixture)
+    idx = require_cells(nb, *DOCK_CELL_IDS)
+    ev: dict[str, Any] = {"step_errors": {}, "recoveries": []}
+    _setup_dock_world(driver, nb, idx, theme=True, pickup=True, draws=True)
+    driver.run_cell(idx["dock"])
+    ev["connected"] = driver.wait_connected(90.0)
+
+    def kernel_value(cell: str) -> Any:
+        driver.run_cell(idx[cell])
+        return parse_py_repr(driver.kernel_text(idx[cell]))
+
+    v1 = _guard(ev, "viewer_id", lambda: kernel_value("viewer-id"), None)
+    raw: dict[str, Any] = {}
+
+    def reload_round() -> dict[str, Any]:
+        """One iframe reload (``iframe.src = iframe.src``): the load is awaited, then ``resources()`` repopulating."""
+        before = driver.loads()
+        n_before = len(_frames_of(driver.facts()))
+        reloaded = driver.reload_frame()
+        loaded = driver.wait_load(before)
+        resources_ok = driver.wait_resources(10.0)
+        after = driver.loads()
+        return {"iframes_before": n_before, "iframes_after": len(_frames_of(driver.facts())), "iframes": len(_frames_of(driver.facts())),
+                "load_delta": (after - before) if _num(before) and _num(after) else None,
+                "resources_ok": bool(reloaded and loaded and resources_ok)}
+
+    def k_reconnect() -> dict[str, Any]:
+        return reload_round()
+
+    def k_preset() -> dict[str, Any]:
+        driver.click_preset("front")
+        pressed = (driver.facts().get("pressed") or [None])[0]
+        rnd = reload_round()
+        cam, _ = driver.poll(driver.camera, lambda c: preset_ok(c, "front"), 10.0)
+        return {"pressed": pressed, "camera": cam, "iframes": rnd["iframes"], "load_delta": rnd["load_delta"],
+                "resources_ok": rnd["resources_ok"]}
+
+    def resized(width: int, height: int) -> dict[str, Any]:
+        before = driver.loads()
+        driver.set_viewport(width, height)
+        loaded = driver.wait_load(before)
+        resources_ok = driver.wait_resources(10.0)
+        after = driver.loads()
+        view = _view(driver)
+        return {"home": view["home"], "iframes": view["iframes"], "resources_ok": bool(loaded and resources_ok),
+                "load_delta": (after - before) if _num(before) and _num(after) else None}
+
+    def k_drawer() -> dict[str, Any]:
+        first = resized(1152, 800)
+        second = resized(1440, 900)
+        return {"drawer": first, "split": second}
+
+    def k_redock_live() -> dict[str, Any]:
+        seq = driver.mark("redock_live")
+        driver.run_cell(idx["dock"])
+        v2 = kernel_value("viewer-id")
+        ok = driver.wait_resources(10.0)
+        return {"v1": v1, "v2": v2, "events": driver.events_since(seq), "iframes_final": _view(driver)["frames"],
+                "resources_ok": ok}
+
+    def k_stop() -> dict[str, Any]:
+        driver.run_cell(idx["stop"])
+        read, _ = driver.poll(
+            lambda: driver.facts(), lambda f: NO_VIEWER_PHRASE in (f.get("text") or ""), 5.0
+        )
+        return {"text": read.get("text"), "iframes": len(_frames_of(read)), "state": read.get("state")}
+
+    def k_redock_reloads() -> dict[str, Any]:
+        driver.run_cell(idx["dock"])
+        v = kernel_value("viewer-id")
+        ok = driver.wait_connected(30.0)
+        view = _view(driver)
+        return {"iframes": view["frames"], "kernel_viewer": v, "resources_ok": ok, "state": view["state"]}
+
+    def k_late_iframe() -> dict[str, Any]:
+        driver.close_deck_tab()
+        closed, _ = driver.poll(lambda: _view(driver), lambda v: v["state"] == "closed", 5.0)
+        after_tab = _step_view(closed)
+        driver.run_cell(idx["dock"])  # only the FIRST announce of a page auto-opens the panel: it stays closed
+        after_dock = _step_view(_view(driver))
+        seq = driver.mark("late_iframe_reopen")
+        driver.toggle_panel()
+        ok = driver.wait_connected(30.0)
+        final = _view(driver)
+        return {"after_tab_close": after_tab, "after_dock_closed": after_dock, "events": driver.events_since(seq),
+                "final": {"state": final["state"], "iframes": final["frames"]}, "resources_ok": ok}
+
+    def k_many() -> dict[str, Any]:
+        return {"rounds": [reload_round() for _ in range(MANY_RELOADS)]}
+
+    def k_restart() -> dict[str, Any]:
+        seq = driver.mark("restart")
+        watched: dict[str, Any] = {}
+
+        def watch() -> None:
+            read, _ = driver.poll(lambda: driver.facts(), lambda f: NO_VIEWER_PHRASE in (f.get("text") or ""), 5.0)
+            watched.update(text=read.get("text"), iframes=len(_frames_of(read)), state=read.get("state"))
+
+        driver.restart_kernel(after_accept=watch)
+        closes = [e for e in driver.events_since(seq) if e.get("type") == "bc" and e.get("kind") == "close"]
+        return {**watched, "closes_posted": len(closes)}
+
+    steps = {
+        "reconnect_after_reload": (k_reconnect, "reconnect"),
+        "preset_survives_reload": (k_preset, "preset"),
+        "drawer_reconnect": (k_drawer, "drawer_reconnect"),
+        "redock_live": (k_redock_live, "redock_live"),
+        "stop_placeholder": (k_stop, "stop"),
+        "redock_reloads": (k_redock_reloads, "redock_reloads"),
+        "late_iframe": (k_late_iframe, "late_iframe"),
+        "many_reloads": (k_many, "many_reloads"),
+        "restart_placeholder": (k_restart, "restart"),
+    }
+    needs_live = {"preset_survives_reload", "drawer_reconnect", "redock_live", "stop_placeholder", "late_iframe", "many_reloads",
+                  "restart_placeholder"}
+    for i, key in enumerate(K1B_ORDER):
+        fn, slot = steps[key]
+        driver.mark(f"key:{key}")
+        raw[slot] = _guard(ev, key, fn, {})
+        nxt = K1B_ORDER[i + 1] if i + 1 < len(K1B_ORDER) else None
+        if nxt in needs_live:
+            _guard(ev, f"recover_after_{key}", lambda k=key: _ensure_connected(driver, idx, ev, k))
+
+    keys = derive_k1b_keys(raw)
+    keys["neg_dropped_queries"] = driver.neg_dropped()
+    keys["neg"] = list(neg or ())
+    ev.update(raw)
+    keys["evidence"] = ev
+    return keys
+
+
+def run_k2(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | None = None) -> dict[str, Any]:
+    """K2 (AC-36): ONE page, ONE kernel and ONE ``dock()``; every viewport change is a ``setViewportSize`` on that
+    page and every later open is ``praxis:toggle-deck-panel``. The nine ordered steps of ``K2_STEPS``. Each
+    measurement step is guarded, so a step that fails (no splitter handle, say) fails its keys by name and the later
+    steps still run."""
+    nb = build_dock_notebook(fixture)
+    idx = require_cells(nb, *DOCK_CELL_IDS)
+    ev: dict[str, Any] = {"step_errors": {}, "recoveries": []}
+    raw: dict[str, Any] = {"reloads": {}}
+    _setup_dock_world(driver, nb, idx, theme=True, pickup=False, draws=True)
+
+    def measures() -> dict[str, Any]:
+        f = driver.facts()
+        return {"panel": (f.get("panel_rect") or {}).get("width"), "main": f.get("main_width"), "padding": f.get("nb_h_padding"),
+                "nb": f.get("nb_content_width")}
+
+    def settled_wide() -> dict[str, Any]:
+        read, _ = driver.poll(
+            measures, lambda m: wide_width_ok(m["panel"], m["main"], m["padding"]), 5.0
+        )
+        return read
+
+    def reopen() -> None:
+        driver.toggle_panel()  # close
+        driver.toggle_panel()  # reopen: T4, then T6 on the answering announce
+        driver.wait_connected(20.0)
+
+    # 1. 1152x800: boot, draw, measure, dock() (its first announce opens the drawer, T2)
+    def step_drawer() -> dict[str, Any]:
+        nb_before = driver.facts().get("nb_content_width")
+        driver.run_cell(idx["dock"])
+        ev["connected"] = driver.wait_connected(90.0)
+        view = _view(driver)
+        return {"nb_before": nb_before, "nb_open": view["facts"].get("nb_content_width"),
+                "position": view["facts"].get("position"), "home": view["home"], "state": view["state"]}
+
+    raw["drawer"] = _guard(ev, "drawer_overlays", step_drawer, {})
+
+    # 2. drawer_dismiss_reopen: close button (T17), toggle (T4 -> T6), Escape (T17), toggle (T4 -> T6)
+    def step_dismiss() -> dict[str, Any]:
+        out = {"first_open": _step_view(_view(driver))}
+        driver.click_drawer_close()
+        out["after_close_button"] = _step_view(driver.poll(lambda: _view(driver), lambda v: v["state"] == "closed", 5.0)[0])
+        driver.toggle_panel()
+        driver.wait_connected(20.0)
+        out["after_toggle"] = _step_view(_view(driver))
+        driver.press_escape()
+        out["after_escape"] = _step_view(driver.poll(lambda: _view(driver), lambda v: v["state"] == "closed", 5.0)[0])
+        driver.toggle_panel()
+        driver.wait_connected(20.0)
+        out["after_reopen"] = _step_view(_view(driver))
+        return out
+
+    raw["dismiss"] = _guard(ev, "drawer_dismiss_reopen", step_dismiss, {})
+
+    # 3. tier_up_rehomes: 1440 (T15), back to 1152 (T15), close button (T17), 1440 stays closed (T5), toggle (T4 -> T6)
+    def split_right(view: dict[str, Any]) -> bool:
+        f = view["facts"]
+        left, right = (f.get("panel_rect") or {}).get("left"), (f.get("notebook_panel_rect") or {}).get("right")
+        return bool(_num(left) and _num(right) and left >= right - 1.0)
+
+    def step_tier_up() -> dict[str, Any]:
+        before_view = _view(driver)
+        out: dict[str, Any] = {"before": _step_view(before_view, src=True)}
+        loads0 = driver.loads()
+        driver.set_viewport(1440, 900)
+        driver.wait_load(loads0)
+        ok = driver.wait_resources(10.0)
+        up = _view(driver)
+        out["after_up"] = {**_step_view(up, src=True), "split_right": split_right(up), "resources_ok": ok}
+        loads1 = driver.loads()
+        driver.set_viewport(1152, 800)
+        driver.wait_load(loads1)
+        driver.wait_connected(20.0)
+        out["back_down"] = _step_view(_view(driver))
+        driver.click_drawer_close()
+        out["after_button_close"] = _step_view(driver.poll(lambda: _view(driver), lambda v: v["state"] == "closed", 5.0)[0])
+        driver.set_viewport(1440, 900)
+        driver.settle(800)
+        out["after_up_closed"] = _step_view(_view(driver))
+        driver.toggle_panel()
+        driver.wait_connected(20.0)
+        out["reopen"] = _step_view(_view(driver))
+        return out
+
+    raw["tier_up"] = _guard(ev, "tier_up_rehomes", step_tier_up, {})
+
+    # 4. 1440x900: open-time width, then real drags to 300 and 700 px, counting deck iframe loads over the drags
+    def medium(label: str) -> dict[str, Any]:
+        out: dict[str, Any] = {"open": (driver.facts().get("panel_rect") or {}).get("width")}
+        loads0 = driver.loads()
+        out["drag_low"] = _guard(ev, f"drag_low_{label}", lambda: driver.drag_splitter_to(300))
+        out["drag_high"] = _guard(ev, f"drag_high_{label}", lambda: driver.drag_splitter_to(700))
+        raw["reloads"][f"drag_{label}"] = (driver.loads() - loads0) if _num(loads0) and _num(driver.loads()) else None
+        return out
+
+    raw["medium"] = {"1440": _guard(ev, "medium_1440", lambda: medium("1440"), {})}
+
+    # 5. fit_after_tier_change: 1440 -> 1600 -> 1440
+    def step_fit() -> dict[str, Any]:
+        driver.set_viewport(1600, 900)
+        wide = settled_wide()
+        driver.set_viewport(1440, 900)
+        back, _ = driver.poll(measures, lambda m: open_width_ok(m["panel"]), 5.0)
+        return {"wide": {k: wide[k] for k in ("panel", "main", "padding")}, "medium": {"panel": back["panel"]}}
+
+    raw["fit"] = _guard(ev, "fit_after_tier_change", step_fit, {})
+
+    # 6. 1280x800: close and reopen; the 1280-1599 keys; the height keys
+    def step_1280() -> dict[str, Any]:
+        driver.set_viewport(1280, 800)
+        reopen()
+        out = medium("1280")
+        view = _view(driver)
+        raw["heights"] = {"viewer": (view["frames"][0].get("height") if view["frames"] else None),
+                          "motion": view["facts"].get("motion_height")}
+        return out
+
+    raw["medium"]["1280"] = _guard(ev, "medium_1280", step_1280, {})
+    raw.setdefault("heights", {})
+
+    # 7. file browser closed, 1600x900, close and reopen: the notebook cap and the >= 1600 width key
+    def step_1600() -> dict[str, Any]:
+        ev["left_collapsed"] = driver.collapse_left()
+        driver.set_viewport(1600, 900)
+        reopen()
+        return settled_wide()
+
+    wide_1600 = _guard(ev, "wide_1600", step_1600, {})
+
+    # 8. resize_within_wide: 1600 -> 1920 with the panel open, counting deck iframe loads
+    def step_resize() -> dict[str, Any]:
+        loads0 = driver.loads()
+        driver.set_viewport(1920, 900)
+        out = settled_wide()
+        loads1 = driver.loads()
+        raw["reloads"]["resize_within_wide"] = (loads1 - loads0) if _num(loads0) and _num(loads1) else None
+        return {k: out[k] for k in ("panel", "main", "padding")}
+
+    raw["resize"] = _guard(ev, "resize_within_wide", step_resize, {})
+
+    # 9. 1920x1080: close and reopen: the notebook cap and the >= 1600 width key at open
+    def step_1920() -> dict[str, Any]:
+        driver.set_viewport(1920, 1080)
+        reopen()
+        return settled_wide()
+
+    wide_1920 = _guard(ev, "wide_1920", step_1920, {})
+    raw["wide"] = {"1600": wide_1600, "1920": wide_1920}
+
+    keys = derive_k2_keys(raw, record=record)
+    ev.update(raw)
+    keys["evidence"] = ev
+    return keys
+
+
+def run_nd(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | None = None) -> dict[str, Any]:
+    """N-d (AC-39(d), negative only): at 1600x900 add the viewer page in a STOCK split-right widget of the harness's
+    own and measure it (an even split); the AC-36 >= 1600 predicate must report failure. Nothing is booted or docked:
+    no kernel, no ``dock()``, no dock.js sizing. Skipped, and recorded as such, where the key is recorded-only."""
+    rec = dict(SIZING_RECORD if record is None else record)
+    if ac39d_status(width_key_status(**rec)) == "skipped":
+        return derive_nd_keys({}, record=rec)
+    nb = build_dock_notebook(fixture)
+    driver.open_lab()
+    driver.seed_and_open(DOCK_NOTEBOOK_NAME, nb)
+    measured = driver.stock_split()
+    return derive_nd_keys(measured, record=rec)
+
+
+def run_dock_scenario(session: Any, unit: HarnessUnit, env: Any, *, notebook: dict | None = None) -> dict[str, Any]:
+    """The scenario body of one ``--dock-check`` unit: K1a, K1b, K2 or N-d. One unit, one process, one browser; the
+    session is closed by ``run_scenario``'s bounded teardown."""
+    if unit.id not in {u.id for u in DOCK_UNITS}:
+        raise DockCheckError(f"no scenario body for unit {unit.id!r}")
+    fixture = notebook if notebook is not None else json.loads(DISPLAY_NOTEBOOK_PATH.read_text())
+    driver = DockDriver(session)
+    if unit.id == "K1a":
+        return run_k1a(driver, fixture)
+    if unit.id == "K1b":
+        return run_k1b(driver, fixture, neg=tuple(getattr(session, "_neg", ()) or ()))
+    if unit.id == "K2":
+        return run_k2(driver, fixture)
+    return run_nd(driver, fixture)
+
+
+# -- The --dock-check entry point -----------------------------------------------------------------------------------
+
+
+def run_dock_check(
+    args: argparse.Namespace,
+    *,
+    runner: Any = None,
+    hash_env: HashEnv | None = None,
+    unit_argv_prefix: list[str] | None = None,
+    scenario_entry: Any = None,
+) -> int:
+    """``--dock-check``: one unit (``--scenario``), the driver over K1a, K1b and K2, or ``--aggregate-only``.
+
+    The same machinery as ``run_display_check`` (``run_scenario``, ``run_units_driver``). ``N-d`` runs only as a
+    ``--scenario`` (the sensitivity driver starts it) and is never part of the aggregate. ``--neg drop-query`` belongs to
+    ``--scenario K1b`` alone. Returns the exit code (2 for a usage error, raised before anything launches)."""
+    problem = out_dir_rule_error(args)
+    if problem is None and args.aggregate_only and (args.fresh or args.scenario):
+        problem = "--aggregate-only recomputes nothing: it cannot be combined with --fresh or --scenario"
+    known = [u.id for u in DOCK_UNITS]
+    if problem is None and args.scenario and args.scenario not in known:
+        problem = f"unknown --dock-check scenario {args.scenario!r}; units are {known}"
+    if problem is None and args.neg and args.scenario != "K1b":
+        problem = f"--neg {args.neg[0]} is AC-39(e)'s negative and belongs to --dock-check --scenario K1b alone"
+    if problem is not None:
+        LOG.error("%s", problem)
+        return 2
+    table = list(DOCK_AGGREGATE_UNITS)
+    out_dir = Path(args.out_dir).resolve() if args.out_dir else default_out_dir(DOCK_CHECK)
+    neg = tuple(args.neg)
+
+    def make_env() -> HashEnv:
+        if hash_env is not None:
+            return hash_env
+        return build_hash_env(args, str(resolve_chrome_path(args.chrome_path)))
+
+    if args.scenario:
+        entry = scenario_entry or run_scenario
+        return entry(
+            args.scenario,
+            out_dir=out_dir,
+            env_fn=make_env,
+            session_factory=lambda unit, env: DockSession(unit, args, env),
+            scenario_fn=run_dock_scenario,
+            neg=neg,
+        )
+
+    try:
+        env = make_env()
+    except (FileNotFoundError, RuntimeError, OSError) as exc:
+        LOG.error("cannot build the input set: %s: %s", type(exc).__name__, exc)
+        return 2
+    prefix = unit_argv_prefix if unit_argv_prefix is not None else [sys.executable, str(Path(__file__).resolve())]
+
+    def argv_for(unit: HarnessUnit) -> list[str]:
+        argv = prefix + [
+            "--dock-check", "--scenario", unit.id,
+            "--base-path", args.base_path,
+            "--out-dir", str(out_dir),
+            "--serve-dir", str(Path(args.serve_dir).resolve()),
+        ]
+        if env.chrome_path:
+            argv += ["--chrome-path", env.chrome_path]
+        return argv
+
+    status = width_key_status(**SIZING_RECORD)
+    _, code = run_units_driver(
+        table=table,
+        out_dir=out_dir,
+        inputs_for=lambda unit: unit_inputs(unit, env, neg),
+        argv_for=argv_for,
+        runner=runner or unit_runner_module(),
+        fresh=args.fresh,
+        aggregate_only=args.aggregate_only,
+        cwd=str(REPO_ROOT),
+        check=DOCK_CHECK,
+        meta={
+            "chrome_path": env.chrome_path,
+            "chrome_version": env.chrome_version,
+            "base_path": env.base_path,
+            "sizing_record": dict(SIZING_RECORD),
+            "sizing_case": sizing_case(SIZING_RECORD["css_limits_honoured"], SIZING_RECORD["layout_sizing_reachable"]),
+            "width_key_status": status,
+            "ac39d": ac39d_status(status),
+        },
+    )
+    return code
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -7668,10 +8895,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--dock-check",
+        action="store_true",
+        help=(
+            "Visualizer3D deck-panel gates (epic 260929_notebook-display-design, D16, task C7). With "
+            "--scenario <id> runs exactly ONE unit (K1a, K1b, K2, or the negative-only N-d) in this process, "
+            "bounded by its own watchdog, in a FULL Chromium with SwiftShader WebGL (never headless_shell); with "
+            "no --scenario it is the driver over K1a, K1b and K2 (N-d is never part of the aggregate). Same "
+            "stamps, resume, --aggregate-only and --out-dir rules as --display-check. Needs a fresh web-repl/dist."
+        ),
+    )
+    p.add_argument(
         "--scenario",
         default=None,
         metavar="ID",
-        help="--display-check only. Run exactly this unit (one process, one browser). Default: the driver.",
+        help=(
+            "--display-check or --dock-check only. Run exactly this unit (one process, one browser). "
+            "Default: the driver."
+        ),
     )
     p.add_argument(
         "--out-dir",
@@ -7687,13 +8928,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--fresh",
         action="store_true",
-        help="--display-check driver only. Ignore every stamp and recompute every unit.",
+        help="--display-check / --dock-check driver only. Ignore every stamp and recompute every unit.",
     )
     p.add_argument(
         "--aggregate-only",
         action="store_true",
         help=(
-            "--display-check only. Recompute nothing, start no unit subprocess and NEVER delete: "
+            "--display-check / --dock-check only. Recompute nothing, start no unit subprocess and NEVER delete: "
             "judge the stamps on disk against the current inputs and write <out-dir>/result.json. "
             "Give it the same hashed arguments (--base-path, and --serve-dir/--out-dir when "
             "non-default) as the scenario runs. CI's final step."
@@ -7705,8 +8946,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=[],
         choices=["drop-query"],
         help=(
-            "Harness-only negative flag (AC-39(e), --dock-check K1b; sprint C). Hashed into the "
-            "unit's args input; requires --out-dir. --display-check has none and rejects it."
+            "Harness-only negative flag (AC-39(e): --dock-check --scenario K1b --neg drop-query; sprint C). "
+            "Hashed into the unit's args input; requires --out-dir. --display-check has none and rejects it, "
+            "and so does every --dock-check unit but K1b."
         ),
     )
     p.add_argument("--out", type=Path, default=None, help="Also write the JSON result to this path.")
@@ -7732,18 +8974,21 @@ def main(argv: list[str] | None = None) -> int:
         and not args.restart_check
         and not args.persistence_check
         and not args.display_check
+        and not args.dock_check
         and not args.expect_fail
     ):
         LOG.error(
             "nothing to do: pass --probe, --viz-check, --notebook-check, "
             "--completion-check, --typeahead-check, --fresh-boot-check, "
             "--autosetup-fault-check, --restart-check, --persistence-check, "
-            "--display-check, and/or --expect-fail"
+            "--display-check, --dock-check, and/or --expect-fail"
         )
         return 2
 
     if args.display_check:
         return run_display_check(args)
+    if args.dock_check:
+        return run_dock_check(args)
 
     try:
         chrome_path = resolve_chrome_path(args.chrome_path)
