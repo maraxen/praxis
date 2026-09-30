@@ -500,6 +500,315 @@ def test_confirmed_mirror_token_names_against_the_bundled_themes() -> None:
     assert used <= defined, (path, sorted(used - defined))
 
 
+# --- the Light sheet must win the cascade in command mode (D1, AC-7) -----------------
+#
+# JupyterLab's own stylesheet makes the active, selected code cell TRANSPARENT in
+# command mode, at specificity (0,6,0). The Light sheet rule above has to out-rank
+# it or the cell shows the steel ground, not the white sheet (first real-browser D1
+# run on CI: `light_sheet` measured rgba(0, 0, 0, 0)). This is a text check, so it
+# carries a small specificity calculator and selector matcher, and both are
+# exercised on synthetic input below (positive and negative controls).
+
+_IDENT = re.compile(r"-?[_a-zA-Z][-\w]*")
+_LEGACY_PSEUDO_ELEMENTS = {":before", ":after", ":first-line", ":first-letter"}
+
+
+def _compound_list(selector: str) -> list[str]:
+  """Compounds of a selector that uses descendant combinators only (raises on `>`, `+`, `~`)."""
+  if re.search(r"[>+~]", re.sub(r"\[[^\]]*\]|\([^)]*\)", "", selector)):
+    raise ValueError(f"only descendant combinators are supported: {selector!r}")
+  return [c for c in _split_top_level(selector, " ") if c]
+
+
+def _simple_selectors(compound: str) -> list[tuple]:
+  out, i = [], 0
+  while i < len(compound):
+    ch = compound[i]
+    if ch == "[":
+      j = compound.index("]", i)
+      out.append(("attr", compound[i + 1 : j]))
+      i = j + 1
+    elif ch == ":":
+      m = re.compile(r"::?" + _IDENT.pattern).match(compound, i)
+      if not m:
+        raise ValueError(f"bad pseudo in {compound!r}")
+      name, i, arg = m.group(0), m.end(), None
+      if i < len(compound) and compound[i] == "(":
+        depth, j = 0, i
+        while True:
+          depth += {"(": 1, ")": -1}.get(compound[j], 0)
+          if depth == 0:
+            break
+          j += 1
+        arg, i = compound[i + 1 : j], j + 1
+      out.append(("pseudo", name, arg))
+    elif ch in ".#":
+      m = _IDENT.match(compound, i + 1)
+      if not m:
+        raise ValueError(f"bad selector in {compound!r}")
+      out.append(("class" if ch == "." else "id", m.group(0)))
+      i = m.end()
+    elif ch == "*":
+      out.append(("universal",))
+      i += 1
+    else:
+      m = _IDENT.match(compound, i)
+      if not m:
+        raise ValueError(f"bad selector in {compound!r}")
+      out.append(("type", m.group(0)))
+      i = m.end()
+  return out
+
+
+def _specificity(selector: str) -> tuple[int, int, int]:
+  """(ids, classes+attributes+pseudo-classes, types+pseudo-elements).
+
+  `:not(X)` and `:is(X)` count as their most specific argument, `:where()` as zero.
+  """
+  a = b = c = 0
+  for compound in _compound_list(selector):
+    for s in _simple_selectors(compound):
+      if s[0] == "id":
+        a += 1
+      elif s[0] in ("class", "attr"):
+        b += 1
+      elif s[0] == "type":
+        c += 1
+      elif s[0] == "pseudo":
+        _, name, arg = s
+        if name.startswith("::") or name in _LEGACY_PSEUDO_ELEMENTS:
+          c += 1
+        elif name in (":not", ":is", ":matches", ":any"):
+          best = max((_specificity(x) for x in _split_top_level(arg or "", ",")), default=(0, 0, 0))
+          a, b, c = a + best[0], b + best[1], c + best[2]
+        elif name != ":where":
+          b += 1
+  return (a, b, c)
+
+
+def _el(tag: str, classes: str = "", **attrs: str) -> dict:
+  return {"tag": tag, "classes": set(classes.split()), "attrs": {k.replace("_", "-"): v for k, v in attrs.items()}}
+
+
+def _compound_matches(compound: str, el: dict) -> bool:
+  """Whether one compound matches one element. Pseudo-elements never match an element, and a
+  pseudo-class that needs runtime state (`:hover`, `:focus-visible`) is treated as not matching."""
+  for s in _simple_selectors(compound):
+    kind = s[0]
+    if kind == "type" and s[1] != el["tag"]:
+      return False
+    if kind == "class" and s[1] not in el["classes"]:
+      return False
+    if kind == "id" and el["attrs"].get("id") != s[1]:
+      return False
+    if kind == "attr":
+      name, _, value = s[1].partition("=")
+      if name.strip() not in el["attrs"] or (value and el["attrs"][name.strip()] != value.strip("'\" ")):
+        return False
+    if kind == "pseudo":
+      _, name, arg = s
+      parts = _split_top_level(arg or "", ",")
+      if name == ":not":
+        if any(_compound_matches(p, el) for p in parts):
+          return False
+      elif name in (":is", ":matches", ":any"):
+        if not any(_compound_matches(p, el) for p in parts):
+          return False
+      elif name != ":where":
+        return False
+  return True
+
+
+def _matches(selector: str, chain: list[dict]) -> bool:
+  """`chain` runs outermost to subject; descendant combinators, with backtracking."""
+  compounds = _compound_list(selector)
+
+  def fit(ci: int, ei: int) -> bool:  # compounds[ci] must match chain[ei] or an ancestor of it
+    if ci < 0:
+      return True
+    for k in range(ei, -1, -1):
+      if _compound_matches(compounds[ci], chain[k]) and fit(ci - 1, k - 1):
+        return True
+      if ci == len(compounds) - 1:  # the subject compound is pinned to the last element
+        return False
+    return False
+
+  return fit(len(compounds) - 1, len(chain) - 1)
+
+
+_CMD = "jp-Notebook jp-mod-commandMode"
+_CELL = "jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-active jp-mod-selected"
+
+
+def _cell_chain(theme: str = "JupyterLab Light", notebook: str = _CMD, cell: str = _CELL) -> list[dict]:
+  return [
+    _el("body", data_jp_theme_name=theme),
+    _el("div", notebook),
+    _el("div", "jp-WindowedPanel-outer"),
+    _el("div", cell),
+  ]
+
+
+# JupyterLab core CSS (web-repl/dist/build/jlab_core.*.js, 260828 dist), verbatim selectors
+# that give a cell a background, with the values they set.
+_JL_COMMAND_SELECTED = ".jp-Notebook.jp-mod-commandMode .jp-Cell.jp-mod-active.jp-mod-selected:not(.jp-mod-multiSelected)"
+_JL_COMMAND_MULTI = ".jp-Notebook.jp-mod-commandMode .jp-Cell.jp-mod-selected"
+_JL_CELL_BACKGROUNDS = [
+  (".jp-Cell", "transparent"),
+  (_JL_COMMAND_MULTI, "var(--jp-notebook-multiselected-color)"),
+  (_JL_COMMAND_SELECTED, "transparent"),
+]
+_SHEET_VALUE = "var(--jp-layout-color0)"
+
+
+def _cell_background(rules: list[_Rule], chain: list[dict]) -> tuple[tuple, str] | None:
+  """Highest-specificity `background` among `rules` matching the cell (later wins a tie)."""
+  best = None
+  for rule in rules:
+    if "background" not in rule.decls:
+      continue
+    for sel in rule.selectors:
+      if _matches(sel, chain):
+        cand = (_specificity(sel), rule.decls["background"])
+        best = cand if best is None or cand[0] >= best[0] else best
+  return best
+
+
+def _jl_cell_background(chain: list[dict]) -> tuple[tuple, str] | None:
+  return _cell_background([_Rule(sel, f"background: {val}") for sel, val in _JL_CELL_BACKGROUNDS], chain)
+
+
+def _sheet_wins(rules: list[_Rule], chain: list[dict]) -> bool:
+  """The sheet is painted on the cell. Strictly greater than JupyterLab's rule: whether
+  the overlay loads before or after the core CSS is not visible to a text check, so a tie
+  is not trusted."""
+  ours, theirs = _cell_background(rules, chain), _jl_cell_background(chain)
+  return ours is not None and ours[1] == _SHEET_VALUE and (theirs is None or ours[0] > theirs[0])
+
+
+_OLD_SHEET_RULE = f"""
+{_LIGHT} .jp-Notebook .jp-CodeCell,
+{_LIGHT} .jp-Notebook .jp-CodeCell.jp-mod-active.jp-mod-selected {{ background: {_SHEET_VALUE}; }}
+"""
+_FIXED_SHEET_RULE = f"""
+{_LIGHT} .jp-Notebook .jp-CodeCell,
+{_LIGHT} .jp-Notebook.jp-mod-commandMode .jp-CodeCell.jp-mod-active.jp-mod-selected:not(.jp-mod-multiSelected)
+  {{ background: {_SHEET_VALUE}; }}
+"""
+# Exactly JupyterLab's specificity (0,6,0): no theme-name element, six class-level parts.
+_TIED_SELECTOR = "[data-jp-theme-name='JupyterLab Light'] .jp-Notebook.jp-mod-commandMode .jp-CodeCell.jp-mod-active:not(.jp-mod-multiSelected)"
+_TIED_SHEET_RULE = f"{_TIED_SELECTOR} {{ background: {_SHEET_VALUE}; }}"
+_WRONG_THEME_RULE = f"""
+body[data-jp-theme-name='JupyterLab Dark'] .jp-Notebook.jp-mod-commandMode .jp-CodeCell.jp-mod-active.jp-mod-selected:not(.jp-mod-multiSelected)
+  {{ background: {_SHEET_VALUE}; }}
+"""
+
+
+@pytest.mark.parametrize(
+  ("selector", "expected"),
+  [
+    ("a", (0, 0, 1)),
+    (".a.b", (0, 2, 0)),
+    ("#i .c", (1, 1, 0)),
+    (":not(.a)", (0, 1, 0)),
+    (":is(.a, #b .c)", (1, 1, 0)),
+    (":where(.a)", (0, 0, 0)),
+    ("[x='y z']", (0, 1, 0)),
+    ("a::before", (0, 0, 2)),
+    ("a:hover", (0, 1, 1)),
+    (_JL_COMMAND_SELECTED, (0, 6, 0)),
+    (_JL_COMMAND_MULTI, (0, 4, 0)),
+    (f"{_LIGHT} .jp-Notebook .jp-CodeCell.jp-mod-active.jp-mod-selected", (0, 5, 1)),
+    (f"{_LIGHT} .jp-Notebook.jp-mod-commandMode .jp-CodeCell.jp-mod-active.jp-mod-selected:not(.jp-mod-multiSelected)", (0, 7, 1)),
+    ("body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-CodeCell", (0, 3, 1)),
+  ],
+)
+def test_specificity_calculator_controls(selector: str, expected: tuple[int, int, int]) -> None:
+  """Known values from the CSS spec (and a mismatch would show the calculator is not constant)."""
+  assert _specificity(selector) == expected
+
+
+def test_selector_matcher_controls() -> None:
+  """Positive: JupyterLab's command-mode rule matches the active, selected cell. Negative: it
+  does not match in edit mode, for a multi-selected cell, or an unrelated element."""
+  assert _matches(_JL_COMMAND_SELECTED, _cell_chain())
+  assert not _matches(_JL_COMMAND_SELECTED, _cell_chain(notebook="jp-Notebook jp-mod-editMode"))
+  assert not _matches(_JL_COMMAND_SELECTED, _cell_chain(cell=_CELL + " jp-mod-multiSelected"))
+  assert _matches(_JL_COMMAND_MULTI, _cell_chain(cell=_CELL + " jp-mod-multiSelected"))
+  assert not _matches(_JL_COMMAND_SELECTED, _cell_chain()[:2])
+  assert _matches(f"{_LIGHT} .jp-CodeCell", _cell_chain())
+  assert not _matches(f"{_LIGHT} .jp-CodeCell", _cell_chain(theme="JupyterLab Dark"))
+  assert not _matches(".jp-CodeCell::before", _cell_chain()), "a pseudo-element is not the cell"
+  assert not _matches(".jp-CodeCell:hover", _cell_chain()), "state-dependent pseudo-classes do not match"
+
+
+def test_sheet_check_passes_on_the_fixed_rule_and_fails_on_every_negative_control() -> None:
+  chain = _cell_chain()
+  assert _sheet_wins(_parse(_FIXED_SHEET_RULE), chain), "positive control: the fixed selector must win"
+  for name, css in {
+    "current selector (0,5,1) < (0,6,0)": _OLD_SHEET_RULE,
+    "tie at (0,6,0)": _TIED_SHEET_RULE,
+    "wrong theme attribute": _WRONG_THEME_RULE,
+  }.items():
+    assert not _sheet_wins(_parse(css), chain), f"negative control passed: {name}"
+  assert _specificity(_TIED_SELECTOR) == (0, 6, 0)
+
+
+def test_light_sheet_beats_jupyterlabs_transparent_active_cell_in_command_mode() -> None:
+  """The active, selected cell, in command mode, reads the white sheet (D1 `light_sheet`)."""
+  chain = _cell_chain()
+  ours, theirs = _cell_background(_rules(), chain), _jl_cell_background(chain)
+  assert theirs == ((0, 6, 0), "transparent"), theirs  # the rule this has to beat
+  assert ours is not None and ours[1] == _SHEET_VALUE, ours
+  assert ours[0] > theirs[0], f"sheet selector {ours[0]} does not beat JupyterLab's {theirs[0]}"
+
+
+@pytest.mark.parametrize(
+  "chain",
+  [
+    _cell_chain(notebook="jp-Notebook jp-mod-editMode"),
+    _cell_chain(cell="jp-Cell jp-CodeCell jp-Notebook-cell"),
+    _cell_chain(cell="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-active"),
+  ],
+  ids=["edit-mode-active", "idle-cell", "active-not-selected"],
+)
+def test_light_sheet_shows_in_the_other_cell_states(chain: list[dict]) -> None:
+  assert _sheet_wins(_rules(), chain)
+
+
+def test_light_sheet_leaves_multi_select_to_jupyterlab() -> None:
+  """A multi-selected cell keeps JupyterLab's highlight: no sheet selector out-ranks its (0,4,0) rule."""
+  chain = _cell_chain(cell=_CELL + " jp-mod-multiSelected")
+  theirs = _jl_cell_background(chain)
+  assert theirs == ((0, 4, 0), "var(--jp-notebook-multiselected-color)"), theirs
+  ours = _cell_background(_rules(), chain)
+  assert ours is None or ours[0] < theirs[0], f"sheet {ours} hides the multi-select highlight"
+  # Negative control: the old second selector matched this state at (0,5,1) and did hide it.
+  old = _cell_background(_parse(_OLD_SHEET_RULE), chain)
+  assert old is not None and old[0] > theirs[0]
+
+
+def test_dark_theme_has_no_cell_background() -> None:
+  """Dark deliberately keeps JupyterLab's transparent sheet: no cell background rule reaches it."""
+  assert _cell_background(_rules(), _cell_chain(theme="JupyterLab Dark")) is None
+
+
+def test_no_important_anywhere_in_the_file() -> None:
+  """Repo style: the cascade is won by specificity, never `!important`. Control: it fires."""
+  assert "!important" not in _strip_comments(_CSS.read_text(encoding="utf-8"))
+  assert "!important" in _strip_comments("a { background: red !important }")
+
+
+def test_jupyterlab_rules_quoted_here_are_in_the_bundled_core_css() -> None:
+  """Re-confirms the quoted JupyterLab selectors against the built dist (skipped when absent)."""
+  bundles = sorted((_WEB_REPL_ROOT / "dist" / "build").glob("jlab_core.*.js"))
+  if not bundles:
+    pytest.skip("web-repl/dist/build/jlab_core.*.js absent: build with build_repl.py to confirm")
+  text = " ".join(bundles[0].read_text(encoding="utf-8").replace("\\n", " ").split())
+  for selector, _ in _JL_CELL_BACKGROUNDS[1:]:
+    assert selector in text, selector
+
+
 # --- .praxis-out token mapping (D3) -------------------------------------------------
 
 
