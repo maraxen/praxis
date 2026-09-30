@@ -4800,10 +4800,29 @@ class FakeDock:
         if self.state != "closed" and self.home == "split":
             self._close()
 
+    last_drag: dict[str, Any] | None = None
+
+    def layout(self) -> dict[str, Any]:
+        """The annotated layout snapshot of the world (the real driver's ``layout()`` returns the same shape)."""
+        self._log("layout")
+        pw = self._panel_width()
+        left_w = 309.0 if self.left_open else 29.0  # FakeDock._main() = width - 29 - (280 if the file browser is open)
+        snap = good_layout(panel_w=pw or 0.0, inner=self.w, left_w=left_w, handle_w=0.0)
+        snap["left_collapsed"] = not self.left_open
+        if pw is None:
+            snap["rects"]["deck_panel"], snap["styles"]["deck_panel"] = None, None
+        return self.rs.annotate_layout(snap)
+
     def drag_splitter_to(self, width: float) -> float | None:
         self._log("drag_splitter_to", width)
+        self.last_drag = None
         if "no_handle" in self.broken or self.state == "closed" or self.home != "split":
             return None
+        self.last_drag = {
+            "x0": 703.0, "y": 300.0, "x1": 900.0 - width, "handle": {"left": 700.0, "width": 6.0}, "widget": {"right": 1200.0},
+            "n_handles": 1, "steps": 15, "target_width": width,
+            "sent": [["move", 703.0, 300.0], ["down"], ["move", 900.0 - width, 300.0, 15], ["up"]], "trace": [],
+        }
         if self.tier == "medium" and "lost_clamp" not in self.broken:
             width = min(480.0, max(420.0, width))
         self.drag_w = width
@@ -5718,3 +5737,309 @@ def test_other_errors_plain_reads_the_stock_kernels_ename_form_exactly(rs):
         "<class 'ValueError'> extra", " <class 'ValueError'>", "<class 'builtins.ValueError'>x", None,
     ):
         assert plain(wrong) is False, wrong
+
+
+# =========================================================================== #
+# C7a follow-up: DIAGNOSTIC EVIDENCE for K2's 1280 drag_clamp_low failure (evidence only; no rule changed)
+# =========================================================================== #
+#
+# First real K2 run: at 1280 the panel opened at 473.5, a drag to 300 left it there (expected 420 +-2) and a drag to 700
+# moved it to 480. The evidence below decides whether that is the product, the harness's drag, or Lumino's semantics:
+# one layout snapshot per instant, the drag geometry the harness used, and what the page actually received.
+
+LAYOUT_RECTS = ("dock_panel", "main_content_panel", "main_split_panel", "left_stack", "right_stack", "notebook_panel",
+                "notebook", "deck_panel")
+
+
+def _rect(left, width, top=0.0, height=600.0):
+    return {"left": left, "right": left + width, "width": width, "top": top, "bottom": top + height, "height": height}
+
+
+def good_layout(panel_w=473.5, *, inner=1280, left_w=318.0, handle_w=6.0):
+    """A plausible snapshot: a left area, then the main dock holding the notebook, one handle and the deck panel."""
+    main = inner - left_w
+    nb_w = main - panel_w - handle_w
+    return {
+        "inner_width": inner, "inner_height": 800, "scroll_width": inner, "client_width": inner,
+        "left_collapsed": False, "right_collapsed": True,
+        "rects": {
+            "dock_panel": _rect(left_w, main), "main_content_panel": _rect(left_w, main), "main_split_panel": _rect(0.0, inner),
+            "left_stack": _rect(29.0, left_w - 29.0), "right_stack": None,
+            "notebook_panel": _rect(left_w, nb_w), "notebook": _rect(left_w, nb_w),
+            "deck_panel": _rect(left_w + nb_w + handle_w, panel_w),
+        },
+        "sidebars": [{"rect": _rect(0.0, 29.0), "classes": ["lm-TabBar", "jp-SideBar", "jp-mod-left"]}],
+        "handles": [{"rect": _rect(left_w + nb_w, handle_w), "classes": ["lm-DockPanel-handle", "lm-mod-horizontal"], "visible": True}],
+        "styles": {
+            "notebook_panel": {"min_width": "240px", "max_width": "none", "flex": "0 1 auto", "width": f"{nb_w}px"},
+            "notebook": {"min_width": "0px", "max_width": "none", "flex": "0 1 auto", "width": f"{nb_w}px"},
+            "deck_panel": {"min_width": "420px", "max_width": "480px", "flex": "0 1 auto", "width": f"{panel_w}px"},
+        },
+        "notebook_scroll_width": nb_w, "notebook_client_width": nb_w,
+        "split_sizes": [{"orientation": "horizontal", "sizes": [0.5, 0.5]}],
+    }
+
+
+def test_layout_snapshot_positive_control_is_well_formed(rs):
+    assert rs.layout_snapshot_problems(good_layout()) == []
+
+
+@pytest.mark.parametrize(
+    "mutate,fragment",
+    [
+        (lambda s: s.pop("inner_width"), "inner_width"),
+        (lambda s: s.update(scroll_width="wide"), "scroll_width"),
+        (lambda s: s["rects"].pop("dock_panel"), "dock_panel"),
+        (lambda s: s["rects"].update(deck_panel={"left": 1}), "deck_panel"),
+        (lambda s: s["rects"].update(notebook_panel="x"), "notebook_panel"),
+        (lambda s: s.update(handles="none"), "handles"),
+        (lambda s: s.update(handles=[{"rect": _rect(0, 5)}]), "handles"),
+        (lambda s: s.update(styles=None), "styles"),
+        (lambda s: s["styles"].pop("deck_panel"), "deck_panel"),
+        (lambda s: s.pop("rects"), "rects"),
+    ],
+)
+def test_layout_snapshot_negative_controls_name_what_is_malformed(rs, mutate, fragment):
+    snap = good_layout()
+    mutate(snap)
+    problems = rs.layout_snapshot_problems(snap)
+    assert problems and any(fragment in p for p in problems), problems
+
+
+def test_layout_snapshot_problems_never_raise_on_garbage(rs):
+    for bad in (None, 3, "x", [], {}):
+        assert rs.layout_snapshot_problems(bad), bad
+
+
+def test_an_absent_node_is_a_none_rect_not_a_problem(rs):
+    snap = good_layout()
+    snap["rects"]["deck_panel"] = None  # the panel is closed
+    snap["styles"]["deck_panel"] = None
+    assert rs.layout_snapshot_problems(snap) == []
+
+
+def test_layout_summary_computes_the_slack_between_the_dock_and_what_fills_it(rs):
+    s = rs.layout_summary(good_layout())
+    assert s["dock_width"] == 962.0 and s["deck_width"] == 473.5 and s["handles_width"] == 6.0
+    assert s["notebook_panel_width"] == pytest.approx(482.5)
+    assert s["slack"] == pytest.approx(0.0), "dock = notebook + handle + deck: nothing else takes room"
+    assert s["left_area_width"] == 318.0 and s["overflow_x"] == 0 and s["deck_min_width"] == "420px"
+    assert s["notebook_panel_min_width"] == "240px" and s["deck_max_width"] == "480px"
+    over = good_layout()
+    over["scroll_width"] = 1400
+    assert rs.layout_summary(over)["overflow_x"] == 120, "the page is wider than the window"
+
+
+def test_layout_summary_uses_only_visible_handles_and_tolerates_absent_nodes(rs):
+    snap = good_layout()
+    snap["handles"].append({"rect": _rect(10, 50), "classes": ["lm-DockPanel-handle"], "visible": False})
+    assert rs.layout_summary(snap)["handles_width"] == 6.0
+    snap["rects"]["deck_panel"] = None
+    s = rs.layout_summary(snap)
+    assert s["deck_width"] is None and s["slack"] is None
+    assert rs.layout_summary(None)["dock_width"] is None
+
+
+def test_annotate_layout_keeps_the_raw_snapshot_and_adds_a_summary_and_its_problems(rs):
+    snap = good_layout()
+    out = rs.annotate_layout(snap)
+    assert {k: out[k] for k in snap} == snap and out["problems"] == [] and out["summary"]["dock_width"] == 962.0
+    bad = rs.annotate_layout({"inner_width": 1})
+    assert bad["problems"] and bad["summary"]["dock_width"] is None
+    assert rs.annotate_layout(None) == {"problems": ["no snapshot"], "summary": rs.layout_summary(None)}
+
+
+# -- the drag geometry (a pure plan, the same numbers the old inline code used) ------------------------------------------
+
+
+def test_drag_plan_is_the_spike_s1_geometry(rs):
+    geo = {"handle": _rect(700.0, 6.0, top=100.0, height=400.0), "widget": _rect(706.0, 474.0, top=50.0), "n_handles": 1}
+    plan = rs.drag_plan(geo, 300, inner_width=1280)
+    assert (plan["x0"], plan["y"], plan["x1"]) == (703.0, 300.0, 1180.0 - 300 - 3.0)
+    assert plan["target_width"] == 300 and plan["n_handles"] == 1 and plan["handle"] == geo["handle"] and plan["widget"] == geo["widget"]
+    assert plan["x1_in_window"] is True and plan["steps"] == 15
+
+
+def test_drag_plan_flags_a_target_outside_the_window_and_refuses_missing_geometry(rs):
+    geo = {"handle": _rect(700.0, 6.0, top=100.0, height=400.0), "widget": _rect(706.0, 474.0), "n_handles": 2}
+    assert rs.drag_plan(geo, 1500, inner_width=1280)["x1_in_window"] is False, "x1 is negative: off the left of the window"
+    assert rs.drag_plan(geo, 300)["x1_in_window"] is None, "no window width given: unknown"
+    for bad in (None, {}, {"handle": None, "widget": _rect(0, 1)}, {"handle": _rect(0, 1), "widget": {"right": "x"}}):
+        assert rs.drag_plan(bad, 300) is None, bad
+
+
+# -- the in-page reader against a fake DOM (bun) ---------------------------------------------------------------------------
+
+
+_LAYOUT_NODES = r"""
+const R = (left, width, top = 0, height = 500) => ({ left, right: left + width, top, bottom: top + height, width, height });
+const el = (rect, style = {}, cls = []) => ({ getBoundingClientRect: () => rect, __style: style,
+  classList: { contains: (c) => cls.includes(c), [Symbol.iterator]: function* () { yield* cls; } }, className: cls.join(" "),
+  scrollWidth: rect.width + 7, clientWidth: rect.width });
+window.innerWidth = 1280; window.innerHeight = 800;
+document.documentElement = { scrollWidth: 1290, clientWidth: 1280 };
+const nbPanel = el(R(318, 480), { minWidth: "240px", maxWidth: "none", flex: "0 1 auto", width: "480px" }, ["jp-NotebookPanel"]);
+const notebook = el(R(318, 480), { minWidth: "0px", maxWidth: "none", flex: "0 1 auto", width: "480px" }, ["jp-Notebook"]);
+const deck = el(R(804, 473.5), { minWidth: "420px", maxWidth: "480px", flex: "0 1 auto", width: "473.5px" }, ["praxis-deck-panel"]);
+const handle = el(R(798, 6), {}, ["lm-DockPanel-handle", "lm-mod-horizontal"]);
+const hidden = el(R(0, 0), {}, ["lm-DockPanel-handle", "lm-mod-hidden"]);
+const dockPanel = el(R(318, 962), {}, []);
+dockPanel.querySelectorAll = (sel) => (sel === ".lm-DockPanel-handle" ? [handle, hidden] : []);
+nodes["#jp-main-dock-panel"] = dockPanel;
+nodes["#jp-main-content-panel"] = el(R(318, 962));
+nodes["#jp-main-split-panel"] = el(R(0, 1280));
+nodes["#jp-left-stack"] = el(R(29, 289));
+nodes["#jp-right-stack"] = null;
+nodes[".jp-NotebookPanel"] = nbPanel;
+nodes[".jp-NotebookPanel .jp-Notebook"] = notebook;
+nodes[".praxis-deck-panel"] = deck;
+nodes[".jp-SideBar*"] = [el(R(0, 29), {}, ["lm-TabBar", "jp-SideBar", "jp-mod-left"])];
+window.jupyterapp = { shell: { leftCollapsed: false, rightCollapsed: true, currentWidget: nbPanel,
+  _dockPanel: { saveLayout: () => ({ main: { type: "split-area", orientation: "horizontal", sizes: [0.5, 0.5],
+    children: [{ type: "tab-area", widgets: [] }, { type: "tab-area", widgets: [] }] } }) } } };
+"""
+
+
+@needs_bun
+def test_layout_reader_returns_every_rect_handle_style_and_the_window_against_a_fake_dom(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _LAYOUT_NODES + "return D.layout();")
+    assert rs.layout_snapshot_problems(got) == [], rs.layout_snapshot_problems(got)
+    assert (got["inner_width"], got["inner_height"], got["scroll_width"], got["client_width"]) == (1280, 800, 1290, 1280)
+    assert got["left_collapsed"] is False and got["right_collapsed"] is True
+    r = got["rects"]
+    assert r["dock_panel"]["width"] == 962 and r["deck_panel"]["width"] == 473.5 and r["notebook_panel"]["left"] == 318
+    assert r["left_stack"]["width"] == 289 and r["right_stack"] is None and r["notebook"]["width"] == 480
+    assert [(h["rect"]["left"], h["visible"]) for h in got["handles"]] == [(798, True), (0, False)]
+    assert got["handles"][0]["classes"] == ["lm-DockPanel-handle", "lm-mod-horizontal"]
+    assert got["styles"]["deck_panel"] == {"min_width": "420px", "max_width": "480px", "flex": "0 1 auto", "width": "473.5px"}
+    assert got["styles"]["notebook_panel"]["min_width"] == "240px" and got["styles"]["notebook"]["min_width"] == "0px"
+    assert got["sidebars"][0]["classes"] == ["lm-TabBar", "jp-SideBar", "jp-mod-left"]
+    assert got["notebook_scroll_width"] == 487 and got["notebook_client_width"] == 480
+    assert got["split_sizes"] == [{"orientation": "horizontal", "sizes": [0.5, 0.5]}]
+
+
+@needs_bun
+def test_layout_reader_on_an_empty_page_is_well_formed_with_none_rects_and_never_throws(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, "window.innerHeight = 800; document.documentElement = { scrollWidth: 1, clientWidth: 1 };"
+                                     " return D.layout();")
+    assert rs.layout_snapshot_problems(got) == [], rs.layout_snapshot_problems(got)
+    assert all(got["rects"][k] is None for k in LAYOUT_RECTS) and got["handles"] == [] and got["split_sizes"] is None
+
+
+@needs_bun
+def test_mouse_trace_records_what_the_page_actually_received_and_stops(rs, tmp_path):
+    body = r"""
+const listeners = {};
+window.addEventListener = (t, f, c) => { (listeners[t] = listeners[t] || []).push(f); };
+window.removeEventListener = (t, f) => { listeners[t] = (listeners[t] || []).filter((x) => x !== f); };
+const fire = (t, x, y, buttons) => (listeners[t] || []).forEach((f) => f({ type: t, clientX: x, clientY: y, buttons }));
+D.mouseTrace({ op: "start" });
+fire("mousedown", 703, 300, 1); fire("mousemove", 600, 300, 1); fire("mousemove", 500, 300, 1); fire("mouseup", 500, 300, 0);
+const got = D.mouseTrace({ op: "stop" });
+fire("mousemove", 1, 1, 0);
+return { got, after: D.mouseTrace({ op: "read" }), listeners: Object.values(listeners).flat().length };
+"""
+    got = _run_dock_js(rs, tmp_path, body)
+    assert [(e["type"], e["x"], e["y"], e["buttons"]) for e in got["got"]] == [
+        ("mousedown", 703, 300, 1), ("mousemove", 600, 300, 1), ("mousemove", 500, 300, 1), ("mouseup", 500, 300, 0)]
+    assert got["after"] == got["got"], "nothing after stop is recorded"
+    assert got["listeners"] == 0, "the listeners are removed on stop"
+
+
+# -- the scenario records the layout around every drag and at the wide steps; the old keys are untouched ------------------
+
+
+def _layout_fake(rs, dnbf, **kw):
+    d = FakeDock(rs, dnbf, start=(1152, 800), **kw)
+    return d
+
+
+def test_medium_keeps_its_old_keys_and_adds_the_layout_before_and_after_each_drag(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+    keys = rs.run_k2(d, nb)
+    for label in ("1440", "1280"):
+        m = keys["evidence"]["medium"][label]
+        assert {"open", "drag_low", "drag_high"} <= set(m), "the keys derive_k2_keys reads are unchanged"
+        assert {"geo_before", "geo_after_low", "geo_after_high", "drag_low_xy", "drag_high_xy"} <= set(m)
+        for g in ("geo_before", "geo_after_low", "geo_after_high"):
+            assert m[g]["problems"] == [] and m[g]["summary"]["dock_width"] is not None, (label, g)
+        assert m["drag_low_xy"]["target_width"] == 300 and m["drag_high_xy"]["target_width"] == 700
+        assert m["geo_before"]["summary"]["deck_width"] == m["open"]
+        assert m["geo_after_low"]["summary"]["deck_width"] == m["drag_low"]
+        assert m["geo_after_high"]["summary"]["deck_width"] == m["drag_high"]
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], []), "no rule changed: every key still holds"
+
+
+def test_the_layout_is_read_before_the_first_drag_and_after_each_drag_in_that_order(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+    rs.run_k2(d, nb)
+    names = [c[0] for c in d.calls]
+    drags = [i for i, c in enumerate(d.calls) if c[0] == "drag_splitter_to"]
+    assert len(drags) == 4
+    for first in (drags[0], drags[2]):  # 1440's pair, then 1280's pair
+        second = first + 2  # layout, drag, layout, drag, layout
+        assert names[first - 1] == "layout" and names[first + 1] == "layout" and names[second] == "drag_splitter_to"
+        assert names[second + 1] == "layout"
+
+
+def test_the_drag_geometry_and_the_mouse_trace_are_stored_under_the_new_keys(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+    m = rs.run_k2(d, nb)["evidence"]["medium"]["1280"]
+    xy = m["drag_low_xy"]
+    assert {"x0", "y", "x1", "handle", "widget", "n_handles", "steps", "target_width", "sent", "trace"} <= set(xy)
+    assert xy["sent"][0][0] == "move" and xy["sent"][1][0] == "down" and xy["sent"][-1][0] == "up"
+    assert m["drag_high_xy"]["target_width"] == 700 and m["drag_high_xy"] is not xy
+
+
+def test_the_wide_steps_record_their_layout_under_evidence_geo_and_the_fit_measures_keep_their_shape(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+    keys = rs.run_k2(d, nb)
+    ev = keys["evidence"]
+    assert set(ev["geo"]) == {"fit_wide", "fit_medium", "wide_1600", "resize_wide", "wide_1920"}
+    for name, snap in ev["geo"].items():
+        assert snap["problems"] == [] and snap["summary"]["dock_width"] is not None, name
+    assert set(ev["fit"]["wide"]) == {"panel", "main", "padding"} and set(ev["fit"]["medium"]) == {"panel"}
+    assert ev["geo"]["fit_wide"]["summary"]["dock_width"] == ev["fit"]["wide"]["main"], "the snapshot explains the measured main"
+    assert ev["geo"]["fit_wide"]["left_collapsed"] is False, "step 5 runs with the file browser open (it is closed in step 7)"
+    assert ev["geo"]["wide_1600"]["left_collapsed"] is True and ev["geo"]["wide_1920"]["left_collapsed"] is True
+
+
+def test_a_layout_reader_that_fails_is_recorded_and_changes_no_key(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+
+    def boom():
+        raise rs.DockCheckError("no dock panel node")
+
+    d.layout = boom
+    keys = rs.run_k2(d, nb)
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], [])
+    assert any(k.startswith("layout_") for k in keys["evidence"]["step_errors"])
+    assert keys["evidence"]["medium"]["1280"]["geo_before"] is None
+
+
+def test_an_old_driver_without_the_new_methods_still_runs_k2(rs, nb, dnbf):
+    class Old(FakeDock):
+        layout = property(lambda self: (_ for _ in ()).throw(AttributeError("layout")))  # no such method
+
+        def drag_splitter_to(self, width):
+            out = super().drag_splitter_to(width)
+            self.__dict__.pop("last_drag", None)  # and no trace of the drag either
+            return out
+
+    del FakeDock.last_drag  # the class default too: `getattr(driver, "last_drag", None)` must cope
+    try:
+        keys = rs.run_k2(Old(rs, dnbf, start=(1152, 800)), nb)
+    finally:
+        FakeDock.last_drag = None
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], [])
+    assert keys["evidence"]["medium"]["1280"]["drag_low_xy"] is None
+
+
+def test_the_real_driver_builds_its_drag_from_drag_plan_and_records_last_drag_and_the_page_trace(rs):
+    import inspect
+    src = inspect.getsource(rs.DockDriver.drag_splitter_to)
+    assert "drag_plan(" in src and "self.last_drag" in src and "mouseTrace" in src
+    assert "self.page.mouse.move(" in src and "self.page.mouse.down()" in src and "self.page.mouse.up()" in src
+    layout_src = inspect.getsource(rs.DockDriver.layout)
+    assert "annotate_layout(" in layout_src and 'self._dk("layout()")' in layout_src
+    assert rs.DockDriver.drag_splitter_to.__annotations__["return"] == "float | None", "the return shape is unchanged"
