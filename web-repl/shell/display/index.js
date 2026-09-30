@@ -5,8 +5,10 @@
 //
 // `mount(window)` waits for `window.jupyterapp` (the app handle the shell
 // already uses) and for `app.restored`, then mounts each display module in
-// order. Sprint A has one, `chrome`; `stale` and `interact` (sprint B) and
-// `dock` (sprint C) become further rows of MODULES.
+// order: `chrome` (sprint A), then `stale` and `interact` (sprint B, B9), and
+// `dock` (sprint C) becomes a further row of MODULES. `stale` reads the chrome's
+// controller (observed executions) and `interact` reads a later `controllers.dock`
+// at click time, both through the `controllers` they are handed.
 //
 // NON-FATAL BY CONTRACT (D13). A broken drawing layer must not take the REPL
 // away from the user, so `mount` never rejects and never throws: a module that
@@ -19,10 +21,16 @@
 /** One row per display module: how to load it and which export mounts it. Each
  * mount function receives `{app, win, logger, controllers}`, where `controllers`
  * holds what earlier modules returned (`controllers.chrome`, for `stale`). */
-const MODULES = [{ name: "chrome", mount: "mountChrome" }];
+const MODULES = [
+  { name: "chrome", mount: "mountChrome" },
+  { name: "stale", mount: "mountStale" },
+  { name: "interact", mount: "mountInteract" },
+];
 
 const DEFAULT_LOADERS = {
   chrome: () => import("./chrome.js"),
+  stale: () => import("./stale.js"),
+  interact: () => import("./interact.js"),
 };
 
 function waitForJupyterApp(win) {
@@ -43,7 +51,8 @@ function waitForJupyterApp(win) {
  * @param {Window} win
  * @param {object} [options]
  * @param options.modules  name -> () => Promise<module>; defaults to the real
- *                         modules (a test seam)
+ *                         modules (a test seam). A row this table has no loader
+ *                         for is skipped, so a caller can mount a subset.
  * @param options.logger   console-like; defaults to `console`
  * @returns {Promise<{status: "mounted"|"failed", errors: Array<{module: string,
  *   message: string, error: unknown}>, controllers: object}>}
@@ -66,8 +75,10 @@ export async function mount(win, { modules = DEFAULT_LOADERS, logger = console }
     const app = await waitForJupyterApp(win);
     await app.restored;
     for (const spec of MODULES) {
+      const load = modules[spec.name];
+      if (typeof load !== "function" && modules !== DEFAULT_LOADERS) continue; // a subset was asked for
       try {
-        const mod = await modules[spec.name]();
+        const mod = await load();
         if (typeof mod[spec.mount] !== "function") {
           throw new Error(`display/${spec.name}.js does not export ${spec.mount}()`);
         }

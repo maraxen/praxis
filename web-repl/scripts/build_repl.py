@@ -1090,11 +1090,13 @@ _REQUIRED_PERSISTENCE_MODULES = (
     "panel.js",
 )
 
-# Required under dist/shell/display/. Later tasks append one line each (B9:
-# stale.js, interact.js; C6: dock.js).
+# Required under dist/shell/display/. Later tasks append one line each (C6:
+# dock.js).
 _REQUIRED_DISPLAY_MODULES = (
     "index.js",
     "chrome.js",
+    "stale.js",
+    "interact.js",
 )
 
 

@@ -734,6 +734,34 @@ describe("mountStale: the chrome's execution events", () => {
     expect(w.stale.panelSession(panel)).toBe("sB");
   });
 
+  test("within a cell the LAST stamped output speaks, not the first, and unstamped outputs are skipped", () => {
+    const c = createFakeCell({ source: "x" });
+    const panel = createFakeNotebookPanel({ cells: [c] });
+    const w = world({ panels: [panel] });
+    c.model.execute(1, {
+      outputs: [
+        praxisOutput(stamp({ resource: "assay", session: "sFirst", exec: 1 })),
+        "stream",
+        praxisOutput(stamp({ resource: "assay", session: "sLast", exec: 1 })),
+        "stream",
+      ],
+    });
+    expect(w.stale.panelSession(panel)).toBe("sLast");
+  });
+
+  test("a cell removed from the panel no longer speaks for it", () => {
+    const a = createFakeCell({ source: "a" });
+    const b = createFakeCell({ source: "b" });
+    const panel = createFakeNotebookPanel({ cells: [a, b] });
+    const w = world({ panels: [panel] });
+    draw(a, 1, stamp({ resource: "assay", session: "sA", exec: 1 }));
+    draw(b, 2, stamp({ resource: "assay", session: "sB", exec: 2 }));
+    expect(w.stale.panelSession(panel)).toBe("sB");
+    panel.content.widgets.splice(panel.content.widgets.indexOf(b), 1);
+    a.model.setOutputs([praxisOutput(stamp({ resource: "assay", session: "sA", exec: 1 }))]);
+    expect(w.stale.panelSession(panel)).toBe("sA");
+  });
+
   test("a kernel switch (kernelChanged) also forgets the session", () => {
     const d = createFakeCell({ source: "draw" });
     const panel = createFakeNotebookPanel({ cells: [d] });

@@ -240,10 +240,10 @@ def test_assert_dist_complete_passes_with_all_persistence_modules(tmp_path: Path
     (dist / "shell" / "persistence" / "core.js").write_text("// core\n")
     (dist / "shell" / "persistence" / "panel.js").write_text("// panel\n")
 
-    # A6: assert_dist_complete also requires the display modules.
+    # A6, B9: assert_dist_complete also requires the display modules.
     (dist / "shell" / "display").mkdir(parents=True)
-    (dist / "shell" / "display" / "index.js").write_text("// display index\n")
-    (dist / "shell" / "display" / "chrome.js").write_text("// display chrome\n")
+    for name in ("index.js", "chrome.js", "stale.js", "interact.js"):
+        (dist / "shell" / "display" / name).write_text(f"// display {name}\n")
 
     # assert_dist_complete should not raise
     build_repl.assert_dist_complete(dist, with_coxswain=False)  # must not raise

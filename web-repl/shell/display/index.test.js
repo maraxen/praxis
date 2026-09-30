@@ -218,7 +218,7 @@ describe("mount(window): the stale and interact rows (B9)", () => {
     const { modules, order } = rows({ chrome: new Error("chrome blew up") });
     const result = await mount(createFakeWindow({ app: createFakeApp() }), { modules, logger: recordingLogger() });
     expect(result.errors.map((e) => e.module)).toEqual(["chrome"]);
-    expect(order).toContain(["stale sees chrome", undefined]);
+    expect(order).toContainEqual(["stale sees chrome", undefined]);
     expect(order).toContain("interact");
   });
 

@@ -222,7 +222,7 @@ const scenarios = {
   },
 
   clickFocusesTheExactResourceName(mod) {
-    for (const name of ["assay", "<b>&\"'x", "__proto__", "a b\n\"c\""]) {
+    for (const name of ["assay", "<b>&\"'x", "__proto__", "a b\n\"c\"", "Plate_ÅB-1"]) {
       const w = setup({ mod });
       const desc = descriptor({ res: name });
       const { g, out, svg } = labwareFigure(w.document, desc);
@@ -547,15 +547,18 @@ describe("interact.js: the deck-shaped output (B3)", () => {
   test("keyboard: focus lands on the OUTER group; with no grid there is no ring, no live text, no key handling", () => {
     const w = setup();
     const f = deckFigure(w.document);
+    const quiet = () => {
+      expect(ringOf(f.outer)).toBeUndefined();
+      expect(ringOf(f.labware)).toBeUndefined();
+      expect(liveEl(w.document).textContent).toBe("");
+    };
     f.outer.dispatch("focusin", {});
+    quiet();
     for (const key of ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "Escape"]) {
       const ev = f.outer.dispatch("keydown", { key });
       expect(ev.defaultPrevented).toBe(false);
+      quiet(); // checked after EVERY key, not only at the end
     }
-    expect(ringOf(f.outer)).toBeUndefined();
-    expect(ringOf(f.labware)).toBeUndefined();
-    const live = liveEl(w.document);
-    expect(!live || live.textContent === "").toBe(true);
     expect(w.logger.errors).toEqual([]);
   });
 
