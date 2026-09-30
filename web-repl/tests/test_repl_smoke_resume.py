@@ -5699,3 +5699,22 @@ return { seq, since: D.eventsSince({ seq }).map((e) => e.type), loads: D.loads()
 def test_the_helpers_that_need_the_monitor_say_so_when_it_is_absent(rs, tmp_path):
     got = _run_dock_js(rs, tmp_path, "return { mark: D.mark({ name: 'x' }), since: D.eventsSince({ seq: 0 }), loads: D.loads(), neg: D.neg() };")
     assert got == {"mark": None, "since": [], "loads": None, "neg": {"dropped": 0}}
+
+
+def test_other_errors_plain_reads_the_stock_kernels_ename_form_exactly(rs):
+    """The stock pyodide_kernel (0.8.2, interpreter.py `_showtraceback`) sends ``ename`` as ``str(etype)``, i.e.
+    ``"<class 'ValueError'>"``; the first real D2 run (2026-09-30) measured exactly that. Both that form and the
+    bare class name name ValueError; nothing that merely CONTAINS the name does."""
+
+    def plain(ename: str) -> bool:
+        report_ = value_error_report()
+        report_["outputs"][0]["ename"] = ename
+        return rs.derive_error_keys(error_reports(), report_, runall_reports())["other_errors_plain"]
+
+    assert plain("<class 'ValueError'>") is True  # what the real kernel sends
+    assert plain("ValueError") is True  # the bare form stays accepted
+    for wrong in (
+        "<class 'TypeError'>", "TypeError", "", "<class 'NotAValueError'>", "NotAValueError", "ValueErrorX",
+        "<class 'ValueError'> extra", " <class 'ValueError'>", "<class 'builtins.ValueError'>x", None,
+    ):
+        assert plain(wrong) is False, wrong

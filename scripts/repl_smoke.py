@@ -5608,6 +5608,13 @@ def _last_output_type(report: Any) -> str | None:
     return outputs[-1].get("output_type") if outputs and isinstance(outputs[-1], dict) else None
 
 
+def _names_value_error(ename: Any) -> bool:
+    """Does this ``ename`` name exactly ``ValueError``? The stock pyodide_kernel (0.8.2 ``_showtraceback``) sends
+    ``str(etype)`` -- ``"<class 'ValueError'>"``, measured by the first real D2 run -- so both that form and the
+    bare name count. An exact match on either: a name that merely contains it does not."""
+    return ename in ("ValueError", "<class 'ValueError'>")
+
+
 def derive_error_keys(errors: dict[str, Any], value_error: Any, runall: dict[str, Any]) -> dict[str, Any]:
     """AC-22: the four PLR error cells, the plain ``ValueError`` cell and the Run All pair."""
     panels = status = True
@@ -5619,7 +5626,7 @@ def derive_error_keys(errors: dict[str, Any], value_error: Any, runall: dict[str
     plain = (
         _last_output_type(value_error) == "error"
         and ((value_error or {}).get("error") or {}).get("praxis_error_nodes") == 0
-        and any(o.get("ename") == "ValueError" for o in (value_error or {}).get("outputs") or [])
+        and any(_names_value_error(o.get("ename")) for o in (value_error or {}).get("outputs") or [])
     )
     ran = all((runall.get(c) or {}).get("execution_count") is not None for c in ("assemble", "transfers", "pickup", "e1"))
     stops = (
