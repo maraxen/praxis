@@ -6906,3 +6906,248 @@ def test_the_real_driver_probes_before_the_press_and_after_the_release_and_share
     assert "_perform_drag(" in inspect.getsource(rs.DockDriver.drag_splitter_to)
     assert "_perform_drag(" in inspect.getsource(rs.DockDriver.drag_splitter_by) and "drag_plan_by(" in inspect.getsource(rs.DockDriver.drag_splitter_by)
     assert rs.DockDriver.drag_splitter_to.__annotations__["return"] == "float | None"
+
+
+# =========================================================================== #
+# C7a round 3: PACED drags (a fix to HOW the real drag is sent; nothing asserted changes)
+# =========================================================================== #
+#
+# Hypothesis H (unverified; only the next real run decides): Playwright sends down / move / up in a burst faster than the page
+# renders a frame. The backdrop Lumino adds on press is not yet hit-testable, so the first moves (and the release) go to the
+# iframe under the pointer and the drag is left unfinished. A human mouse has a frame between events. The fake page below models
+# EXACTLY that, so these tests prove the pacing is what the code sends and that, IF H holds, the burst loses the release.
+
+DRAG_W_MIN, DRAG_W_MAX = 420.0, 480.0
+
+
+class PacedFakePage:
+    """A Playwright-page stand-in that records every mouse call, wait and page helper IN ORDER (``log``) and models the suspected
+    race: after ``mouse.down()`` nothing is delivered to Lumino until a frame has passed (a ``paceFrames`` evaluate, or a
+    ``wait_for_timeout`` of at least one frame); events sent before that go to the iframe and are lost, including the release."""
+
+    def __init__(self, panel: float = 473.5, *, frame_ms: float = 16.0) -> None:
+        self.panel, self.frame_ms = panel, frame_ms
+        self.widget_right = 1242.5
+        self._x = 0.0
+        self.log: list[tuple[Any, ...]] = []
+        self.pressed = self.ready = False
+        self.delivered: list[float] = []
+        self.lost: list[tuple[str, float | None]] = []
+        self.release_lost = False
+        self.mouse = self  # `page.mouse.move(...)`: the page is its own mouse
+
+    # -- geometry --------------------------------------------------------------------------------
+    def _handle_left(self) -> float:
+        return self.widget_right - self.panel - 6.0
+
+    # -- page.mouse ------------------------------------------------------------------------------
+    def move(self, x: float, y: float, steps: int | None = None) -> None:
+        points = [x] if not steps else [self._x + (x - self._x) * k / steps for k in range(1, steps + 1)]
+        self.log.append(("move", x, y) if not steps else ("move", x, y, steps))
+        for px in points:
+            self._move_one(px)
+        self._x = x
+
+    def _move_one(self, x: float) -> None:
+        if not self.pressed:
+            return
+        if self.ready:
+            self.delivered.append(x)
+        else:
+            self.lost.append(("move", x))  # over the iframe: the backdrop is not hit-testable yet
+
+    def down(self) -> None:
+        self.log.append(("down",))
+        self.pressed, self.ready, self.delivered, self.lost, self.release_lost = True, False, [], [], False
+
+    def up(self) -> None:
+        self.log.append(("up",))
+        if not self.pressed:
+            return
+        if self.ready:
+            if self.delivered:  # Lumino completes the drag: the handle follows the last delivered pointer position
+                self.panel = min(DRAG_W_MAX, max(DRAG_W_MIN, self.widget_right - self.delivered[-1] - 3.0))
+        else:
+            self.release_lost = True  # the release went to the iframe: Lumino's drag is left open
+        self.pressed = False
+
+    # -- page ------------------------------------------------------------------------------------
+    def wait_for_timeout(self, ms: float) -> None:
+        self.log.append(("wait", ms))
+        if self.pressed and ms >= self.frame_ms:
+            self.ready = True
+
+    def evaluate(self, expr: str, arg: Any = None) -> Any:
+        if "paceFrames(" in expr:
+            self.log.append(("frames", arg["n"]))
+            if self.pressed and arg["n"] >= 1:
+                self.ready = True
+            return {"frames": arg["n"], "capped": False, "ms": self.frame_ms * arg["n"]}
+        if "handleRect(" in expr:
+            left = self._handle_left()
+            return {"handle": _rect(left, 6.0, top=100.0, height=400.0), "widget": _rect(left + 6.0, self.panel, top=50.0), "n_handles": 1}
+        if "pointsAt(" in expr:
+            return {"points": [{"x": x, "y": y, "element": _good_element()} for x, y in arg["points"]],
+                    "active_element": _good_element("BODY", classes=[], inside_handle=False, is_handle=False)}
+        if "dockProbe(" in expr:
+            return _good_dock_probe()
+        if "mouseTrace(" in expr:
+            return [] if arg["op"] != "start" else True
+        if "facts(" in expr:
+            return {"panel_rect": _rect(self._handle_left() + 6.0, self.panel), "inner_width": 1280}
+        raise AssertionError(f"unexpected page call: {expr}")
+
+
+def _paced_driver(rs, page=None, **kw):
+    page = page or PacedFakePage(**kw)
+    return rs.DockDriver(None, page=page), page
+
+
+def _kinds(log):
+    return [e[0] for e in log]
+
+
+def test_the_drag_waits_frames_after_the_press_between_every_move_and_before_the_release(rs):
+    driver, page = _paced_driver(rs)
+    driver.drag_splitter_to(300)
+    log = [e for e in page.log if e[0] in ("move", "down", "frames", "up")]
+    i_down = _kinds(log).index("down")
+    after_down = log[i_down + 1:]
+    assert after_down[0] == ("frames", 2), "two animation frames after the press, BEFORE the first move"
+    moves_after = [i for i, e in enumerate(after_down) if e[0] == "move"]
+    assert len(moves_after) == 15, "the same 15 steps, each its own mouse.move (no `steps=` burst)"
+    assert all(len(after_down[i]) == 3 for i in moves_after), "single-event moves"
+    for i in moves_after:
+        assert after_down[i + 1] == ("frames", 1), "one frame after EVERY move (between moves, and before the release)"
+    assert after_down[-1] == ("up",) and after_down[-2] == ("frames", 1), "a frame right before mouse.up()"
+    assert _kinds(page.log[:i_down + 1])[-2:] == ["move", "down"], "the press position is moved to first, as before"
+
+
+def test_the_paced_drag_reaches_its_target_where_the_fake_loses_a_burst(rs):
+    driver, page = _paced_driver(rs)
+    width = driver.drag_splitter_to(300)
+    assert width == 420.0 and rs.clamp_low_ok(width) is True and page.release_lost is False and page.lost == []
+    assert len(page.delivered) == 15
+
+
+def _burst_drag(page, plan):
+    """The pre-round-3 sequence, replayed on the same fake: press, then 15 steps and the release with no frame between."""
+    page.mouse.move(plan["x0"], plan["y"])
+    page.mouse.down()
+    page.mouse.move(plan["x1"], plan["y"], steps=plan["steps"])
+    page.mouse.up()
+
+
+def test_negative_control_a_burst_loses_the_release_and_the_low_clamp_key_would_fail(rs):
+    """The simulation is not vacuous: sent as a burst (no frame after the press) the drag is left unfinished, the panel
+    stays where it was, and the keyed predicate for `drag_clamp_low` reports failure. Paced, the same fake passes it."""
+    page = PacedFakePage()
+    plan = rs.drag_plan({"handle": _rect(page._handle_left(), 6.0, top=100.0, height=400.0), "widget": _rect(769.0, 473.5), "n_handles": 1}, 300)
+    _burst_drag(page, plan)
+    assert page.release_lost is True and len(page.lost) == 15 and page.delivered == []
+    assert page.panel == 473.5 and rs.clamp_low_ok(page.panel) is False, "the key would fail: 473.5 is not 420 +- 2"
+    paced_driver, paced_page = _paced_driver(rs)
+    assert rs.clamp_low_ok(paced_driver.drag_splitter_to(300)) is True and paced_page.release_lost is False
+
+
+def test_a_press_with_only_a_fixed_frame_length_wait_also_counts_as_a_frame_in_the_fake(rs):
+    """Sanity of the model itself: a wait of a frame or more after the press makes later events deliverable (and a shorter one does not)."""
+    page = PacedFakePage()
+    page.down()
+    page.wait_for_timeout(5)
+    assert page.ready is False
+    page.wait_for_timeout(16)
+    assert page.ready is True
+
+
+def test_the_short_right_drag_is_paced_too_and_moves_the_panel_only_when_paced(rs):
+    driver, page = _paced_driver(rs)
+    width = driver.drag_splitter_by(30)
+    assert width == pytest.approx(443.5) and page.release_lost is False
+    log = [e for e in page.log if e[0] in ("move", "down", "frames", "up")]
+    assert log[_kinds(log).index("down") + 1] == ("frames", 2) and log[-2] == ("frames", 1) and log[-1] == ("up",)
+
+
+def test_each_drag_records_its_pacing_beside_the_rest_of_its_evidence(rs):
+    driver, page = _paced_driver(rs)
+    driver.drag_splitter_to(300)
+    d = driver.last_drag
+    assert d["pacing"]["down_settle_frames"] == 2 and d["pacing"]["up_settle_frames"] == 1
+    assert "animation frame" in d["pacing"]["step_wait"] and d["pacing"]["frame_cap_ms"] == rs.DRAG_FRAME_CAP_MS
+    assert d["pacing"]["drag_cap_s"] == rs.DRAG_MAX_S and d["pacing"]["frames_waited"] == 17 and d["pacing"]["cap_hit"] is False
+    assert {"x0", "y", "x1", "handle", "widget", "n_handles", "steps", "sent", "trace", "elements", "dock_probe_before",
+            "dock_probe_after_up", "problems"} <= set(d), "everything that was recorded before is still recorded"
+    assert d["steps"] == 15 and d["sent"][0][0] == "move" and d["sent"][-1] == ["up"]
+    assert d["problems"] == []
+
+
+def test_a_drag_that_runs_past_its_wall_time_cap_stops_waiting_but_still_completes_and_says_so(rs):
+    driver, page = _paced_driver(rs)
+    ticks = iter([0.0] + [100.0] * 100)  # the clock jumps past the cap right after the drag starts
+    driver.clock = lambda: next(ticks)
+    width = driver.drag_splitter_to(300)
+    frames = [e for e in page.log if e[0] == "frames"]
+    assert len(frames) < 17, "waits after the cap are skipped"
+    moves = [e for e in page.log if e[0] == "move" and len(e) == 3]
+    assert len(moves) == 16 and ("up",) in page.log, "every move and the release are still sent"
+    assert driver.last_drag["pacing"]["cap_hit"] is True and driver.last_drag["pacing"]["frames_waited"] == len(frames)
+    assert width is not None
+
+
+def test_no_drag_is_sent_when_there_is_no_handle_and_nothing_is_recorded(rs):
+    class NoHandle(PacedFakePage):
+        def evaluate(self, expr, arg=None):
+            return None if "handleRect(" in expr else super().evaluate(expr, arg)
+
+    driver, page = _paced_driver(rs, NoHandle())
+    assert driver.drag_splitter_to(300) is None and driver.last_drag is None
+    assert not [e for e in page.log if e[0] in ("move", "down", "up", "frames")]
+
+
+def test_every_keyed_and_evidence_drag_goes_through_the_one_paced_routine(rs):
+    import inspect
+    src = inspect.getsource(rs.DockDriver)
+    assert src.count("mouse.down()") == 1 and src.count("mouse.up()") == 1, "the only place a drag is sent is _perform_drag"
+    perform = inspect.getsource(rs.DockDriver._perform_drag)
+    assert 'self._dk("paceFrames(a)"' in perform and "step_points(plan)" in perform and "steps=" not in perform
+    assert perform.index("self.page.mouse.down()") < perform.index("paceFrames") < perform.index("self.page.mouse.move(", perform.index("paceFrames"))
+
+
+def test_step_points_are_the_same_fifteen_steps_the_old_steps_argument_made(rs):
+    plan = rs.drag_plan(GEO, 300)
+    pts = rs.step_points(plan)
+    assert len(pts) == plan["steps"] == 15 and pts[-1] == [plan["x1"], plan["y"]]
+    step = (plan["x1"] - plan["x0"]) / 15
+    assert [p[0] for p in pts] == pytest.approx([plan["x0"] + k * step for k in range(1, 16)]) and {p[1] for p in pts} == {plan["y"]}
+    assert rs.step_points(None) == [] and rs.step_points({}) == []
+
+
+def test_assemble_drag_evidence_carries_pacing_and_old_callers_still_work(rs):
+    plan = rs.drag_plan(GEO, 300)
+    out = rs.assemble_drag_evidence(plan, [], [], _good_probe_points(), _good_dock_probe(), _good_dock_probe(), pacing={"down_settle_frames": 2})
+    assert out["pacing"] == {"down_settle_frames": 2}
+    assert rs.assemble_drag_evidence(plan, [], [], _good_probe_points(), _good_dock_probe(), _good_dock_probe())["pacing"] is None
+
+
+def test_the_added_worst_case_time_fits_the_k2_budget_with_room(rs):
+    """Six drags per K2 run (1440: low, high; 1280: low, high, short, retry), each at most 2 + 15 frame waits, each wait capped."""
+    per_drag_s = min(rs.DRAG_MAX_S, (2 + 15) * rs.DRAG_FRAME_CAP_MS / 1000.0)
+    k2_added_s = 6 * per_drag_s
+    assert per_drag_s == pytest.approx(4.25) and k2_added_s == pytest.approx(25.5)
+    measured_k2_s = 167.1  # the first real K2 run (result.K2.json started -> finished)
+    budget_s = rs.UNIT_BY_ID["K2"].budget_s
+    assert budget_s == 900.0 and (measured_k2_s + k2_added_s) * 1.5 < budget_s, "D16: a budget stays at least 1.5x the measured time"
+    assert budget_s + 120 == 17 * 60 + 60, "the CI step timeout (17 min) is budget + 2 min"
+
+
+@needs_bun
+def test_pace_frames_resolves_after_n_frames_and_gives_up_at_its_cap(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, r"""
+window.requestAnimationFrame = (f) => setTimeout(f, 4);
+const two = await D.paceFrames({ n: 2, cap_ms: 500 });
+window.requestAnimationFrame = () => 0;   // a throttled page: frames never come
+const capped = await D.paceFrames({ n: 1, cap_ms: 30 });
+return { two, capped };
+""")
+    assert got["two"]["frames"] == 2 and got["two"]["capped"] is False
+    assert got["capped"]["frames"] == 0 and got["capped"]["capped"] is True and got["capped"]["ms"] >= 25
