@@ -112,10 +112,17 @@ Hashed inputs (stamp `inputs`, identical across units except upstream artifact h
   the same node, its `load` event count did not change (delta 0) and the page token set before the
   call survived; the deliberate re-insertion control produced a load event and lost the token
   (`reload_control_detected = true`). So a clamp via layout sizing causes no iframe reload.
-- **Cell-state hooks (five states, all reached by model ground truth):** `not_run`, `ran`, `running`
-  via the **model** (output types / execution count / kernel state); `error` and `stale` via a **CSS
-  hook** (`error`: an output with mime `application/vnd.jupyter.stderr`; `stale`: see the unit
-  artifact `hooks.stale.css`); `n_states_with_css_hook = 2`. `all_states_derivable = true`.
+- **Cell-state hooks (five states, all reached by model ground truth; `all_states_derivable = true`):**
+  - `not_run`: model (no execution count and no outputs); the prompt text is `[ ]:`.
+  - `running`: model (`exec_state: running`); the prompt text is `[*]:`.
+  - `ran`: a combination of model features (execution count set, not dirty, no error output).
+  - `error`: a **CSS hook**, the class `jp-mime-... application/vnd.jupyter.stderr` output feature
+    (recorded as `mime:application/vnd.jupyter.stderr`), with model `out_types: error`.
+  - `stale` (edited since run): a **CSS hook**, the class **`jp-mod-dirty`** on the cell (model
+    `dirty: true`).
+  - `n_states_with_css_hook = 2`; the other three come from the model, so chrome.js (A5) should read
+    the notebook model for `not_run`/`ran`/`running` and may use the two CSS features for `error`
+    and `stale`.
 - **Windowing.** `windowing_mode = contentVisibility` (read from `notebookConfig`); the 65-cell fixture
   scrolled with no DOM detach observed (`detach_observed = false`, `windowing_exercised = false`), so
   there is **no re-attach signal** (`reattach_signal = null`) and none is needed in this mode.
