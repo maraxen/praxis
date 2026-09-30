@@ -1,0 +1,9 @@
+# 260929_s2_sanitizer.bth.bf83a4e6-b026-4cd4-a75c-362d7b1c91d8.bth.lock.toml — written at run time, never modified
+[manifest]
+written_at = "2026-09-30T01:17:18.091410+00:00"
+sidecar_sha256 = "fd6b02b71ca111bc393039fdb9c4aadca0c6bb3b5bd5628612259cff4008b4de"
+sidecar_path = "/tmp/praxis-nd-a/scripts/spikes/260929_s2_sanitizer.bth.toml"
+git_sha = "0271c6f4da9e7db9a32fa15fd70114c17652f199"
+script_sha256 = "b3bd8be00a27df2692c9fd0a3bbc288a3f36fab115ea090619d2946cc6ade027"
+run_id = "bf83a4e6-b026-4cd4-a75c-362d7b1c91d8"
+agent_id = null
