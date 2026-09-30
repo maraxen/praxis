@@ -7460,6 +7460,14 @@ DRAG_STEP_SETTLE_FRAMES = 1
 DRAG_UP_SETTLE_FRAMES = 1  # the wait after the LAST move, right before the release
 DRAG_FRAME_CAP_MS = 250
 DRAG_MAX_S = 8.0
+#: Round 4 (evidence only). Each frame wait is recorded (``pacing.waits``: measured ms, frames got, capped or skipped), at most this many
+#: per drag; the counters still cover every wait and ``waits_dropped`` says how many were not kept.
+DRAG_WAITS_MAX = 40
+#: Page-side samples taken after a press on the handle (``D.pressSamples``): one in a microtask (before Lumino's own handler has run),
+#: then after each of these delays in ms. After the release the driver polls for the ones still pending, at most this many times.
+PRESS_SAMPLE_DELAYS_MS = (0, 50, 250, 750)
+PRESS_SAMPLES_POLLS = 10
+PRESS_SAMPLES_POLL_MS = 100
 
 
 def _rect_ok(rect: Any) -> bool:
@@ -7685,8 +7693,54 @@ def dock_probe_problems(probe: Any) -> list[str]:
     return problems
 
 
+def press_samples_problems(samples: Any) -> list[str]:
+    """What is malformed about the list ``D.pressSamples`` returns: each sample ``{label, t, since_down_ms, backdrop_count, backdrop,
+    body_override_cursor, first_move, handle_centre, ...}`` where ``backdrop`` is ``None`` (none in the document) or carries a rect and
+    four computed styles, and ``first_move`` / ``handle_centre`` say what sat under that point (``element``, ``is_backdrop``)."""
+    if not isinstance(samples, list):
+        return ["press_samples is not a list"]
+    if not samples:
+        return ["no press samples (no pointerdown reached the page)"]
+    out: list[str] = []
+    for i, smp in enumerate(samples):
+        where = f"samples[{i}]"
+        if not isinstance(smp, dict):
+            out.append(f"{where} is not an object")
+            continue
+        if not isinstance(smp.get("label"), str):
+            out.append(f"{where}.label missing or not a string")
+        for k in ("t", "since_down_ms"):
+            if not _num(smp.get(k)):
+                out.append(f"{where}.{k} missing or not a number")
+        count = smp.get("backdrop_count")
+        if not (isinstance(count, int) and not isinstance(count, bool)):
+            out.append(f"{where}.backdrop_count is not an int")
+        bd = smp.get("backdrop")
+        if bd is not None:
+            if not isinstance(bd, dict):
+                out.append(f"{where}.backdrop is not an object")
+            else:
+                rect = bd.get("rect")
+                if not (isinstance(rect, dict) and all(_num(rect.get(k)) for k in ("left", "top", "width", "height"))):
+                    out.append(f"{where}.backdrop.rect is malformed")
+                out += [f"{where}.backdrop.{k} missing" for k in ("position", "z_index", "pointer_events", "display") if k not in bd]
+        if not isinstance(smp.get("body_override_cursor"), bool):
+            out.append(f"{where}.body_override_cursor is not a bool")
+        for name in ("first_move", "handle_centre"):
+            hit = smp.get(name)
+            if not isinstance(hit, dict):
+                out.append(f"{where}.{name} missing")
+                continue
+            out += _element_problems(f"{where}.{name}.element", hit.get("element"))
+            if not isinstance(hit.get("is_backdrop"), bool):
+                out.append(f"{where}.{name}.is_backdrop is not a bool")
+    return out
+
+
 def assemble_drag_evidence(
-    plan: dict[str, Any], sent: Any, trace: Any, elements: Any, dock_before: Any, dock_after_up: Any, *, pacing: Any = None
+    plan: dict[str, Any], sent: Any, trace: Any, elements: Any, dock_before: Any, dock_after_up: Any, *, pacing: Any = None,
+    press_samples: Any = None, press_samples_reason: Any = None, press_samples_pending: Any = None, iframe_events: Any = None,
+    iframe_events_reason: Any = None,
 ) -> dict[str, Any]:
     """One drag as evidence: the plan (``x0``, ``y``, ``x1``, handle, widget, ``n_handles``, ``x1_in_window``...), what the
     harness SENT, the page's trace (``trace``, ``trace_n``, ``trace_counts``), the elements under the pointer before the press,
@@ -7695,10 +7749,13 @@ def assemble_drag_evidence(
     problems = [f"elements: {p}" for p in element_probe_problems(elements, len(path_points(plan)))]
     problems += [f"dock_probe_before: {p}" for p in dock_probe_problems(dock_before)]
     problems += [f"dock_probe_after_up: {p}" for p in dock_probe_problems(dock_after_up)]
+    if isinstance(press_samples, list):  # None is "not collected" (an old caller, or the probe failed: the reason says which)
+        problems += [f"press_samples: {p}" for p in press_samples_problems(press_samples)]
     return {
         **plan, "sent": sent, "trace": summary["events"], "trace_n": summary["n"], "trace_counts": summary["counts"],
         "elements": elements, "dock_probe_before": dock_before, "dock_probe_after_up": dock_after_up, "pacing": pacing,
-        "problems": problems,
+        "press_samples": press_samples, "press_samples_reason": press_samples_reason, "press_samples_pending": press_samples_pending,
+        "iframe_events": iframe_events, "iframe_events_reason": iframe_events_reason, "problems": problems,
     }
 
 
@@ -8259,6 +8316,162 @@ __NOTEBOOK_HELPER__
     };
     requestAnimationFrame(tick);
   });
+  // -- press samples (read-only)
+  // What the page looks like just after a press on the splitter handle, taken at a microtask (our window-capture listener runs
+  // before Lumino's own handler, so that one is the state BEFORE Lumino acted) and after each delay in `delays_ms`: is Lumino's
+  // cursor backdrop in the document (count, rect, computed position / z-index / pointer-events / display), does the body carry
+  // the override-cursor class, and what does elementFromPoint answer at the FIRST move target and at the handle centre (is it
+  // the backdrop? the deck iframe?). `backdrop_covers_iframe` compares the backdrop's rect with the deck iframe's. Only reads.
+  const PRESS_DELAYS = [0, 50, 250, 750];
+  const rectOf = (el) => {
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { left: r.left, top: r.top, width: r.width, height: r.height };
+  };
+  const hitAt = (pt) => {
+    if (!Array.isArray(pt)) return null;
+    let el = null;
+    try { el = document.elementFromPoint(pt[0], pt[1]); } catch (e) { el = null; }
+    return { x: pt[0], y: pt[1], element: descElement(el),
+             is_backdrop: !!(el && el.classList && el.classList.contains && el.classList.contains("lm-cursor-backdrop")) };
+  };
+  D.sampleNow = (a) => {
+    let backdrops = [];
+    try { backdrops = Array.from(document.querySelectorAll(".lm-cursor-backdrop")); } catch (e) { backdrops = []; }
+    const bd = backdrops[0] || null;
+    let css = null;
+    if (bd) {
+      const cs = getComputedStyle(bd);
+      css = { rect: rectOf(bd), position: cs.position ?? null, z_index: cs.zIndex ?? null, pointer_events: cs.pointerEvents ?? null,
+              display: cs.display ?? null };
+    }
+    let frame = null;
+    try { frame = document.querySelector("iframe.praxis-deck-panel__frame"); } catch (e) { frame = null; }
+    const frameRect = rectOf(frame);
+    let covers = null;
+    if (css && css.rect && frameRect) {
+      const b = css.rect;
+      covers = b.left <= frameRect.left + 0.5 && b.top <= frameRect.top + 0.5
+        && b.left + b.width >= frameRect.left + frameRect.width - 0.5 && b.top + b.height >= frameRect.top + frameRect.height - 0.5;
+    }
+    let override = false;
+    try { const body = document.body; const cl = body && body.classList; override = !!(cl && cl.contains("lm-mod-override-cursor")); } catch (e) { override = false; }
+    return { t: Math.round(performance.now() * 10) / 10, backdrop_count: backdrops.length, backdrop: css, body_override_cursor: override,
+             first_move: hitAt(a.first_move), handle_centre: hitAt(a.handle_centre), deck_iframe_rect: frameRect, backdrop_covers_iframe: covers };
+  };
+  // `arm` (installs ONE window-capture pointerdown listener; the first press starts the schedule, later ones are ignored),
+  // `read` ({samples, pending}) and `disarm`. A sample that throws is recorded with its error and still counted.
+  D.pressSamples = (a) => {
+    const prev = window.__praxisPressSamples;
+    const detach = () => { if (prev && prev.listener) window.removeEventListener("pointerdown", prev.listener, true); };
+    if (a.op === "arm") {
+      detach();
+      const st = { samples: [], pending: 0, pressed: false, listener: null, t0: 0 };
+      const delays = Array.isArray(a.delays_ms) ? a.delays_ms : PRESS_DELAYS;
+      const take = (label, at) => {
+        try {
+          const since = Math.round((performance.now() - st.t0) * 10) / 10;
+          st.samples.push({ label, at_ms: at, since_down_ms: since, ...D.sampleNow(a) });
+        } catch (e) {
+          st.samples.push({ label, at_ms: at, error: String(e) });
+        }
+        st.pending -= 1;
+      };
+      st.listener = () => {
+        if (st.pressed) return;
+        st.pressed = true;
+        st.t0 = performance.now();
+        st.pending = 1 + delays.length;
+        queueMicrotask(() => take("microtask", 0));
+        delays.forEach((d) => setTimeout(() => take(`+${d} ms`, d), d));
+      };
+      window.addEventListener("pointerdown", st.listener, true);
+      window.__praxisPressSamples = st;
+      return true;
+    }
+    if (a.op === "disarm") { detach(); return true; }
+    if (!prev) return { samples: [], pending: 0 };
+    return { samples: prev.samples.slice(), pending: prev.pending };
+  };
+  // -- end press samples
+  // -- deck iframe probe (read-only)
+  // The deck's iframe described once (sandbox, src or srcdoc, the origin of src against the page's, whether its document is
+  // readable from here) and, where it is readable, the events its OWN window receives between `arm` and `read` (window capture
+  // listeners inside the iframe: if a drag's moves go to the iframe they show up here, never on the parent page).
+  const deckFrame = () => {
+    try { return document.querySelector("iframe.praxis-deck-panel__frame"); } catch (e) { return null; }
+  };
+  D.iframeInfo = () => {
+    const f = deckFrame();
+    if (!f) return { present: false };
+    const attr = (k) => (f.hasAttribute && f.hasAttribute(k) ? f.getAttribute(k) : null);
+    const src = attr("src");
+    const srcdoc = attr("srcdoc");
+    const kind = srcdoc !== null ? "srcdoc" : (src !== null ? "src" : "none");
+    let pageOrigin = null;
+    try { pageOrigin = new URL(location.href).origin; } catch (e) { pageOrigin = null; }
+    let srcOrigin = null;
+    if (kind === "src") { try { srcOrigin = new URL(src, location.href).origin; } catch (e) { srcOrigin = null; } }
+    const same = kind === "src" && srcOrigin !== null && pageOrigin !== null ? srcOrigin === pageOrigin : null;
+    let readable = false;
+    let error = null;
+    let href = null;
+    try {
+      const w = f.contentWindow;
+      if (!w) { error = "no contentWindow"; }
+      else {
+        void w.document.documentElement;
+        readable = true;
+        try { href = String(w.location.href); } catch (e) { href = null; }
+      }
+    } catch (e) { error = e && e.name ? e.name : String(e); }
+    let computed = null;
+    try { computed = getComputedStyle(f).pointerEvents ?? null; } catch (e) { computed = null; }
+    return { present: true, sandbox: attr("sandbox"), allow: attr("allow"), title: attr("title"), src_kind: kind,
+             src: kind === "src" ? String(src).slice(0, 300) : null, src_origin: srcOrigin, page_origin: pageOrigin, same_origin_src: same,
+             content_document_readable: readable, content_document_error: error, content_href: href, rect: rectOf(f),
+             pointer_events: computed, inline_pointer_events: f.style ? f.style.pointerEvents : null };
+  };
+  const IFRAME_TYPES = ["pointerdown", "pointermove", "pointerup", "pointercancel", "mousedown", "mousemove", "mouseup"];
+  D.iframeEvents = (a) => {
+    if (a.op === "arm") {
+      const prev = window.__praxisIframeEvents;
+      if (prev && prev.win) { try { prev.handlers.forEach(([ty, h]) => prev.win.removeEventListener(ty, h, true)); } catch (e) { /* gone */ } }
+      window.__praxisIframeEvents = null;
+      const f = deckFrame();
+      if (!f) return { armed: false, reason: "no deck iframe" };
+      let w = null;
+      try {
+        w = f.contentWindow;
+        if (!w) return { armed: false, reason: "no contentWindow" };
+        void w.document.documentElement;
+      } catch (e) {
+        return { armed: false, reason: "contentWindow.document is not readable: " + (e && e.name ? e.name : String(e)) };
+      }
+      const st = { win: w, frame: f, counts: {}, first: {}, last: {}, handlers: [] };
+      IFRAME_TYPES.forEach((ty) => {
+        st.counts[ty] = 0;
+        const h = (e) => {
+          st.counts[ty] += 1;
+          const rec = { x: e.clientX, y: e.clientY, target: e.target && e.target.tagName ? e.target.tagName : null };
+          if (!(ty in st.first)) st.first[ty] = rec;
+          st.last[ty] = rec;
+        };
+        w.addEventListener(ty, h, true);
+        st.handlers.push([ty, h]);
+      });
+      window.__praxisIframeEvents = st;
+      return { armed: true, reason: null };
+    }
+    const st = window.__praxisIframeEvents;
+    if (!st) return { counts: null, first: null, last: null, reason: "not armed", window_replaced: null };
+    window.__praxisIframeEvents = null;
+    let replaced = null;
+    try { const f = deckFrame(); replaced = !f || f !== st.frame || f.contentWindow !== st.win; } catch (e) { replaced = true; }
+    try { st.handlers.forEach(([ty, h]) => st.win.removeEventListener(ty, h, true)); } catch (e) { /* the window is gone */ }
+    return { counts: st.counts, first: st.first, last: st.last, reason: null, window_replaced: replaced };
+  };
+  // -- end deck iframe probe
   D.mouseTrace = (a) => {
     const TYPES = ["pointerdown", "pointermove", "pointerup", "pointercancel", "mousedown", "mousemove", "mouseup"];
     const BASES = [["window:capture", window, true], ["document:capture", document, true], ["window:bubble", window, false]];
@@ -8631,10 +8844,45 @@ class DockDriver(DisplayDriver):
         plan = drag_plan_by(self._dk("handleRect()"), dx, inner_width=self.facts().get("inner_width"))
         return self._perform_drag(plan)
 
-    def _perform_drag(self, plan: dict[str, Any] | None) -> float | None:
+    def iframe_info(self) -> dict[str, Any] | None:
+        """The deck iframe described (evidence, read once per K2 run): sandbox, src or srcdoc, origins, whether its document is readable."""
+        return self._dk("iframeInfo()")
+
+    def sample_now(self, first_move: Any, handle_centre: Any) -> dict[str, Any] | None:
+        """One press sample NOW (``D.sampleNow``): the backdrop, the body override-cursor class and what sits under the two points."""
+        return self._dk("sampleNow(a)", {"first_move": first_move, "handle_centre": handle_centre})
+
+    def _evidence_call(self, read: Any) -> tuple[Any, str | None]:
+        """One page read made only for evidence (``read`` is a no-argument callable): ``(value, None)``, or
+        ``(None, "<ErrorType>: <message>")`` when it raised. A probe that cannot be read never stops a drag and never becomes a step
+        error; the reason is kept in the drag's evidence."""
+        try:
+            return read(), None
+        except Exception as exc:  # noqa: BLE001 - recorded in the evidence
+            return None, f"{type(exc).__name__}: {str(exc)[:300]}"
+
+    def _read_press_samples(self) -> tuple[Any, str | None, int | None]:
+        """The press samples, waiting (at most ``PRESS_SAMPLES_POLLS`` x ``PRESS_SAMPLES_POLL_MS``) for the ones still pending."""
+        got, err = self._evidence_call(lambda: self._dk("pressSamples(a)", {"op": "read"}))
+        polls = 0
+        while err is None and isinstance(got, dict) and (got.get("pending") or 0) > 0 and polls < PRESS_SAMPLES_POLLS:
+            self.page.wait_for_timeout(PRESS_SAMPLES_POLL_MS)
+            polls += 1
+            got, err = self._evidence_call(lambda: self._dk("pressSamples(a)", {"op": "read"}))
+        if err is not None:
+            return None, err, None
+        if not isinstance(got, dict) or not isinstance(got.get("samples"), list):
+            return None, f"unexpected reply: {str(got)[:120]}", None
+        return got["samples"], None, int(got.get("pending") or 0)
+
+    def _perform_drag(self, plan: dict[str, Any] | None, sequence: Any = None) -> float | None:
         """Press on the handle, move, release: real Playwright mouse events. Diagnostic evidence (``last_drag``): what sat
         under the pointer along the path BEFORE the press, Lumino's state before and right after the release, what was sent
-        and what the page received (the trace is armed before the move to ``x0``)."""
+        and what the page received (the trace is armed before the move to ``x0``), the press samples (what the page looked
+        like at a microtask, +0, +50, +250 and +750 ms after the press), each frame wait and the wall time, and what the deck
+        iframe's own window received. ``sequence`` (a disposable spike only, default ``None`` = the paced drag below) is
+        ``sequence(driver, plan, settle)``: it sends its own press, moves and release, waits through ``settle(n_frames)`` and
+        returns what it sent (or ``None``)."""
         self.last_drag = None
         if plan is None:
             return None
@@ -8642,38 +8890,80 @@ class DockDriver(DisplayDriver):
         sent = [["move", x0, y], ["down"], ["move", x1, y, steps], ["up"]]
         elements = self._dk("pointsAt(a)", {"points": path_points(plan)})
         dock_before = self._dk("dockProbe()")
+        first = step_points(plan)
+        arm = {"op": "arm", "first_move": first[0] if first else None, "handle_centre": [x0, y], "delays_ms": list(PRESS_SAMPLE_DELAYS_MS)}
+        _, press_err = self._evidence_call(lambda: self._dk("pressSamples(a)", arm))
+        armed, iframe_err = self._evidence_call(lambda: self._dk("iframeEvents(a)", {"op": "arm"}))
+        if iframe_err is None and isinstance(armed, dict) and not armed.get("armed"):
+            iframe_err = str(armed.get("reason") or "the deck iframe could not be armed")
         self._dk("mouseTrace(a)", {"op": "start"})
         dock_after_up = None
         pace = {"frames_waited": 0, "cap_hit": False}
-        deadline = self.clock() + DRAG_MAX_S
+        waits: list[dict[str, Any]] = []
+        dropped = [0]
+        t_start = self.clock()
+        deadline = t_start + DRAG_MAX_S
+        stamps: dict[str, float | None] = {"press": None, "release": None}
         try:
             self.page.mouse.move(x0, y)
-            self.page.mouse.down()
+            stamps["press"] = self.clock()
+            if sequence is None:
+                self.page.mouse.down()
 
             def settle(n: int) -> None:
-                """Wait ``n`` animation frames (bounded: per wait by DRAG_FRAME_CAP_MS, per drag by DRAG_MAX_S)."""
+                """Wait ``n`` animation frames (bounded: per wait by DRAG_FRAME_CAP_MS, per drag by DRAG_MAX_S); each wait is recorded."""
+
+                def note(rec: dict[str, Any]) -> None:
+                    if len(waits) < DRAG_WAITS_MAX:
+                        waits.append(rec)
+                    else:
+                        dropped[0] += 1
+
                 if self.clock() > deadline:
                     pace["cap_hit"] = True
+                    note({"n": n, "skipped": True})
                     return
                 got = self._dk("paceFrames(a)", {"n": n, "cap_ms": DRAG_FRAME_CAP_MS * n}) or {}
-                pace["frames_waited"] += int(got.get("frames") or 0)
-                pace["cap_hit"] = pace["cap_hit"] or bool(got.get("capped"))
+                frames = int(got.get("frames") or 0)
+                capped = bool(got.get("capped"))
+                pace["frames_waited"] += frames
+                pace["cap_hit"] = pace["cap_hit"] or capped
+                note({"n": n, "frames": frames, "ms": got.get("ms"), "capped": capped})
 
-            settle(DRAG_DOWN_SETTLE_FRAMES)
-            for px, py in step_points(plan):
-                self.page.mouse.move(px, py)
-                settle(DRAG_STEP_SETTLE_FRAMES)  # between moves; after the last one it is the frame before the release
-            self.page.mouse.up()
+            if sequence is None:
+                settle(DRAG_DOWN_SETTLE_FRAMES)
+                for px, py in step_points(plan):
+                    self.page.mouse.move(px, py)
+                    settle(DRAG_STEP_SETTLE_FRAMES)  # between moves; after the last one it is the frame before the release
+                self.page.mouse.up()
+            else:
+                sent = sequence(self, plan, settle) or sent
+            stamps["release"] = self.clock()
             dock_after_up = self._dk("dockProbe()")
             self.page.wait_for_timeout(500)
         finally:
             trace = self._dk("mouseTrace(a)", {"op": "stop"}) or []
+            wall_s = round(self.clock() - t_start, 3)
+            iframe_events = None
+            if iframe_err is None:
+                read, iframe_err = self._evidence_call(lambda: self._dk("iframeEvents(a)", {"op": "read"}))
+                if iframe_err is None and isinstance(read, dict) and read.get("counts") is not None:
+                    iframe_events = {k: read.get(k) for k in ("counts", "first", "last", "window_replaced")}
+                elif iframe_err is None:
+                    iframe_err = str((read or {}).get("reason") or "no iframe events were read")
+            samples, samples_err, pending = (None, press_err, None) if press_err else self._read_press_samples()
+        both = stamps["press"] is not None and stamps["release"] is not None
         pacing = {
             "down_settle_frames": DRAG_DOWN_SETTLE_FRAMES, "up_settle_frames": DRAG_UP_SETTLE_FRAMES,
             "step_wait": f"{DRAG_STEP_SETTLE_FRAMES} animation frame (page requestAnimationFrame, capped) after every move",
             "frame_cap_ms": DRAG_FRAME_CAP_MS, "drag_cap_s": DRAG_MAX_S, **pace,
+            "waits": waits, "waits_dropped": dropped[0], "wall_s": wall_s,
+            "press_to_release_s": round(stamps["release"] - stamps["press"], 3) if both else None,  # type: ignore[operator]
         }
-        self.last_drag = assemble_drag_evidence(plan, sent, trace, elements, dock_before, dock_after_up, pacing=pacing)
+        self.last_drag = assemble_drag_evidence(
+            plan, sent, trace, elements, dock_before, dock_after_up, pacing=pacing, press_samples=samples,
+            press_samples_reason=samples_err, press_samples_pending=pending, iframe_events=iframe_events,
+            iframe_events_reason=iframe_err)
         rect = self.facts().get("panel_rect") or {}
         return rect.get("width")
 
@@ -9136,9 +9426,20 @@ def run_k2(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | No
     steps still run."""
     nb = build_dock_notebook(fixture)
     idx = require_cells(nb, *DOCK_CELL_IDS)
-    ev: dict[str, Any] = {"step_errors": {}, "recoveries": []}
+    ev: dict[str, Any] = {"step_errors": {}, "recoveries": [], "deck_iframe": None}
     raw: dict[str, Any] = {"reloads": {}}
     _setup_dock_world(driver, nb, idx, theme=True, pickup=False, draws=True)
+    described = {"iframe": False}
+
+    def describe_iframe_once() -> None:
+        """Diagnostic evidence: the deck iframe's sandbox, src origin and readability, read ONCE (the first ``medium`` step). A driver
+        without ``iframe_info`` leaves it ``None``; a failing read is a step error and moves no key."""
+        if described["iframe"]:
+            return
+        described["iframe"] = True
+        read = getattr(driver, "iframe_info", None)
+        if read is not None:
+            ev["deck_iframe"] = _guard(ev, "deck_iframe", read, None)
 
     def measures() -> dict[str, Any]:
         f = driver.facts()
@@ -9234,6 +9535,7 @@ def run_k2(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | No
 
     # 4. 1440x900: open-time width, then real drags to 300 and 700 px, counting deck iframe loads over the drags
     def medium(label: str) -> dict[str, Any]:
+        describe_iframe_once()
         out: dict[str, Any] = {"open": (driver.facts().get("panel_rect") or {}).get("width")}
         out["geo_before"] = snapshot(f"medium_{label}_before")
         loads0 = driver.loads()

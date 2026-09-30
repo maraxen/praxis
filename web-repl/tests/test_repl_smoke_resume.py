@@ -7063,7 +7063,7 @@ def test_the_drag_waits_frames_after_the_press_between_every_move_and_before_the
     for i in moves_after:
         assert after_down[i + 1] == ("frames", 1), "one frame after EVERY move (between moves, and before the release)"
     assert after_down[-1] == ("up",) and after_down[-2] == ("frames", 1), "a frame right before mouse.up()"
-    assert _kinds(page.log[:i_down + 1])[-2:] == ["move", "down"], "the press position is moved to first, as before"
+    assert _kinds(log[:i_down + 1])[-2:] == ["move", "down"], "the press position is moved to first, as before"
 
 
 def test_the_paced_drag_reaches_its_target_where_the_fake_loses_a_burst(rs):
@@ -7217,8 +7217,8 @@ def _plan_for(page, rs, width=300):
 
 def test_the_press_samples_are_armed_before_the_press_with_the_first_move_target_and_the_handle_centre(rs):
     driver, page = _paced_driver(rs)
+    plan = _plan_for(page, rs)  # before the drag: the drag moves the panel and with it the handle
     driver.drag_splitter_to(300)
-    plan = _plan_for(page, rs)
     kinds = _sent_kinds(page)
     assert kinds.index("press_samples") < kinds.index("down"), "armed BEFORE the press (the page-side listener sits at window capture)"
     arm = page.press_arm
