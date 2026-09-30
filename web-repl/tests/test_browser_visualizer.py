@@ -402,3 +402,146 @@ def test_pick_up_tips_without_tip_tracking_emits_nothing() -> None:
         f"nothing -- got {after}. If this now emits, the precondition documented "
         "in the sibling test no longer holds and GATE G6's text should be updated."
     )
+
+
+# --------------------------------------------------------------------------
+# PR-2 (PLR 1.0 migration, D4): the rail grid.
+#
+# The vendored lib.js draws a Hamilton deck's rail lines from ``num_rails``
+# (lib.js:928, 1362-1363, 1417, 1453). PLR 1.0 serializes ``num_tracks``, so the
+# grid silently vanished (39 shapes: 32 rail lines + 7 labels on STARLet). lib.js
+# must stay byte-identical to upstream, so the data path adds ``num_rails``.
+# --------------------------------------------------------------------------
+add_legacy_num_rails = browser_mod.add_legacy_num_rails
+
+
+def _all_nodes(tree: dict):
+    yield tree
+    for child in tree.get("children", []):
+        yield from _all_nodes(child)
+
+
+def _serialized_tree(resource) -> dict:
+    from pylabrobot.visualizer.visualizer import _serialize_resource_tree
+
+    return _serialize_resource_tree(resource)
+
+
+def test_adapter_gives_starlet_deck_num_rails_two_beyond_tracks() -> None:
+    """(a) a 1.0-serialized STARLet/STAR deck gains the correct ``num_rails``.
+
+    Expected values are the 0.2.2 ones (``STARLET_NUM_RAILS = 32``,
+    ``STAR_NUM_RAILS = 56`` at dd79c4c89), written as literals so the test cannot
+    pass by restating the adapter's own formula.
+    """
+    from pylabrobot.resources import STARDeck, STARLetDeck
+
+    for deck, tracks, rails in ((STARLetDeck(), 30, 32), (STARDeck(), 54, 56)):
+        raw = _serialized_tree(deck)
+        assert raw["type"] == "HamiltonSTARDeck"
+        assert raw["num_tracks"] == tracks, "sanity: 1.0 serializes num_tracks"
+        adapted = add_legacy_num_rails(raw)
+        assert adapted["num_tracks"] == tracks
+        assert adapted["num_rails"] == rails
+
+
+def test_adapter_matches_plr_own_deprecated_num_rails_property() -> None:
+    """Cross-check against PLR itself, not against a copy of the formula."""
+    import warnings
+
+    from pylabrobot.resources import STARDeck, STARLetDeck
+
+    for deck in (STARLetDeck(), STARDeck()):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            plr_value = deck.num_rails
+        assert add_legacy_num_rails(_serialized_tree(deck))["num_rails"] == plr_value
+
+
+def test_adapter_never_overwrites_an_existing_num_rails() -> None:
+    """(b) a deck already carrying ``num_rails`` is unchanged."""
+    node = {"type": "HamiltonSTARDeck", "name": "d", "num_tracks": 30, "num_rails": 99}
+    assert add_legacy_num_rails(node) == node
+    assert add_legacy_num_rails(node)["num_rails"] == 99
+
+    # Tecan decks serialize num_rails themselves and have no num_tracks.
+    tecan = {"type": "TecanDeck", "name": "t", "num_rails": 67}
+    assert add_legacy_num_rails(tecan) == tecan
+
+
+def test_adapter_leaves_a_non_rail_deck_untouched() -> None:
+    """(c) negative control: an OT-2 deck has no ``num_tracks`` and must not change."""
+    from pylabrobot.resources import OTDeck
+
+    raw = _serialized_tree(OTDeck())
+    assert not any("num_tracks" in n for n in _all_nodes(raw)), "sanity: OT-2 has no tracks"
+    adapted = add_legacy_num_rails(raw)
+    assert adapted == raw
+    assert not any("num_rails" in n for n in _all_nodes(adapted))
+
+
+def test_adapter_does_not_mutate_its_input_and_recurses() -> None:
+    inner = {"type": "HamiltonSTARDeck", "name": "deck", "num_tracks": 30, "children": []}
+    outer = {"type": "LiquidHandler", "name": "lh", "children": [inner]}
+    adapted = add_legacy_num_rails(outer)
+    assert "num_rails" not in inner, "input tree was mutated"
+    assert adapted["children"][0]["num_rails"] == 32
+    assert "num_rails" not in adapted
+
+
+def test_adapter_offset_is_zero_for_other_hamilton_decks() -> None:
+    """PLR's ``HamiltonDeck._rails_beyond_tracks`` is 0; only the STAR decks add 2."""
+    assert add_legacy_num_rails({"type": "NimbusDeck", "num_tracks": 30})["num_rails"] == 30
+    assert add_legacy_num_rails({"type": "HamiltonSTARDeck", "num_tracks": 30})["num_rails"] == 32
+
+
+def test_set_root_resource_over_the_wire_carries_num_rails() -> None:
+    """End to end through ``BrowserVisualizer``: what the renderer really receives."""
+    from pylabrobot.resources import OTDeck, STARLetDeck
+
+    async def scenario(resource):
+        viz, tr, _ = _make(resource)
+        await viz.setup()
+        await _settle()
+        return tr.decoded(0)
+
+    star = asyncio.run(scenario(STARLetDeck()))
+    assert star["event"] == "set_root_resource"
+    assert star["data"]["resource"]["num_tracks"] == 30
+    assert star["data"]["resource"]["num_rails"] == 32
+
+    ot2 = asyncio.run(scenario(OTDeck()))
+    assert ot2["event"] == "set_root_resource"
+    assert not any("num_rails" in n for n in _all_nodes(ot2["data"]["resource"]))
+
+
+def test_resource_assigned_is_adapted_and_other_events_are_not() -> None:
+    deck_tree = {"type": "HamiltonSTARDeck", "name": "deck", "num_tracks": 30, "children": []}
+
+    async def scenario():
+        viz, tr, _ = _make()
+        await viz.setup()
+        await _settle()
+        tr.clear()
+        await viz.send_command("resource_assigned", {"resource": deck_tree}, wait_for_response=False)
+        await viz.send_command("set_state", {"resource": deck_tree}, wait_for_response=False)
+        return tr.decoded(0), tr.decoded(1)
+
+    assigned, state = asyncio.run(scenario())
+    assert assigned["data"]["resource"]["num_rails"] == 32
+    assert "num_rails" not in state["data"]["resource"], "only tree events are adapted"
+    assert "num_rails" not in deck_tree, "the caller's dict was mutated"
+
+
+def test_checked_in_fixture_deck_carries_num_rails() -> None:
+    """The golden fixture must be the adapted payload the browser receives.
+
+    Without this the viz gate would assert the rail-less render (355 shapes) again.
+    """
+    fixture = (
+        Path(__file__).resolve().parent / "fixtures" / "visualizer" / "set_root_resource.json"
+    )
+    tree = json.loads(fixture.read_text())["resource"]
+    decks = [n for n in _all_nodes(tree) if n.get("type") == "HamiltonSTARDeck"]
+    assert len(decks) == 1
+    assert decks[0]["num_rails"] == decks[0]["num_tracks"] + 2
