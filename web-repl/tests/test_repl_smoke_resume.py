@@ -3434,3 +3434,143 @@ def test_r21_extended_control_a_missing_directory_or_dock_js_is_an_error_not_a_p
     del files["web-repl/shell/display/dock.js"]
     res = rs.r21_extended_check(_mini_tree(tmp_path / "nodock", files))
     assert res["ok"] is False and res["paths_exist"] is False
+
+
+# =========================================================================== #
+# Sprint C (C7): the D6 sizing table as a pure function (AC-36 "keyed by the D6 sizing case", AC-39(d) skip rule)
+# =========================================================================== #
+
+ASSERTED, RECORDED = "asserted", "recorded-only"
+MEDIUM_CATS = ("open_width_1280_1599", "drag_clamp_1280_1599", "fit_after_tier_change_1280_1599")
+WIDE_CATS = ("open_width_ge_1600", "fit_after_tier_change_ge_1600", "resize_within_wide")
+
+
+def _status(rs, hon, reach, refit, keeps=True):
+    return rs.width_key_status(
+        css_limits_honoured=hon, layout_sizing_reachable=reach, css_limits_refit=refit, restore_layout_keeps_iframe=keeps
+    )
+
+
+def test_sizing_case_names_follow_the_d6_table(rs):
+    assert rs.sizing_case(True, True) == "honoured_reachable"
+    assert rs.sizing_case(False, True) == "ignored_reachable"
+    assert rs.sizing_case(True, False) == "honoured_unreachable"
+    assert rs.sizing_case(False, False) == "ignored_unreachable", "S1-L"
+    assert rs.SIZING_CASES == ("honoured_reachable", "ignored_reachable", "honoured_unreachable", "ignored_unreachable")
+
+
+def test_the_width_categories_are_the_six_the_s1_record_names(rs):
+    assert tuple(rs.WIDTH_CATEGORIES) == MEDIUM_CATS + WIDE_CATS
+
+
+@pytest.mark.parametrize("refit", [True, False])
+def test_case_honoured_reachable_asserts_every_width_key(rs, refit):
+    s = _status(rs, True, True, refit)
+    assert s == {c: ASSERTED for c in MEDIUM_CATS + WIDE_CATS}
+
+
+@pytest.mark.parametrize("refit", [True, False])
+def test_case_ignored_reachable_asserts_every_width_key(rs, refit):
+    s = _status(rs, False, True, refit)
+    assert s == {c: ASSERTED for c in MEDIUM_CATS + WIDE_CATS}
+
+
+def test_case_honoured_unreachable_with_refit_asserts_every_width_key(rs):
+    assert _status(rs, True, False, True) == {c: ASSERTED for c in MEDIUM_CATS + WIDE_CATS}
+
+
+def test_case_honoured_unreachable_without_refit_asserts_1280_1599_and_records_the_wide_keys_only(rs):
+    s = _status(rs, True, False, False)
+    assert {c: s[c] for c in MEDIUM_CATS} == {c: ASSERTED for c in MEDIUM_CATS}
+    assert {c: s[c] for c in WIDE_CATS} == {c: RECORDED for c in WIDE_CATS}
+
+
+@pytest.mark.parametrize("refit", [True, False])
+def test_case_s1_l_records_every_width_key(rs, refit):
+    assert _status(rs, False, False, refit) == {c: RECORDED for c in MEDIUM_CATS + WIDE_CATS}
+
+
+def test_restore_layout_not_keeping_the_iframe_moves_drag_and_resize_to_the_unreachable_row(rs):
+    """Spec AC-36: open-time keys and fit_after_tier_change keep their case status; the drag-clamp keys and
+    resize_within_wide take the status of the `unreachable` row for the same CSS column."""
+    # CSS ignored -> recorded-only for both
+    s = _status(rs, False, True, True, keeps=False)
+    assert s["drag_clamp_1280_1599"] == RECORDED and s["resize_within_wide"] == RECORDED
+    assert s["open_width_1280_1599"] == ASSERTED and s["open_width_ge_1600"] == ASSERTED
+    assert s["fit_after_tier_change_1280_1599"] == ASSERTED and s["fit_after_tier_change_ge_1600"] == ASSERTED
+    # CSS honoured -> the 1280-1599 drag is CSS (asserted); resize_within_wide is inline px, asserted iff css_limits_refit
+    s = _status(rs, True, True, True, keeps=False)
+    assert s["drag_clamp_1280_1599"] == ASSERTED and s["resize_within_wide"] == ASSERTED
+    s = _status(rs, True, True, False, keeps=False)
+    assert s["drag_clamp_1280_1599"] == ASSERTED and s["resize_within_wide"] == RECORDED
+    assert s["open_width_ge_1600"] == ASSERTED, "the open-time keys keep their case status (honoured/reachable: asserted)"
+
+
+def test_keeps_iframe_true_changes_nothing_relative_to_the_default(rs):
+    for hon in (True, False):
+        for reach in (True, False):
+            for refit in (True, False):
+                assert _status(rs, hon, reach, refit, True) == rs.width_key_status(
+                    css_limits_honoured=hon, layout_sizing_reachable=reach, css_limits_refit=refit
+                )
+
+
+def test_ac39d_runs_only_where_the_ge_1600_key_is_asserted(rs):
+    """D6: AC-39(d) is skipped, and recorded as skipped, wherever the >= 1600 key is recorded-only."""
+    assert rs.ac39d_status(_status(rs, True, True, True)) == "run"
+    assert rs.ac39d_status(_status(rs, False, True, False)) == "run"
+    assert rs.ac39d_status(_status(rs, True, False, True)) == "run"
+    assert rs.ac39d_status(_status(rs, True, False, False)) == "skipped", "honoured/unreachable without css_limits_refit"
+    assert rs.ac39d_status(_status(rs, False, False, True)) == "skipped", "S1-L"
+
+
+def test_the_recorded_s1_case_is_honoured_reachable_keeping_the_iframe_and_asserts_everything(rs):
+    """AC-1 (S1 run 1e0cab6d): css_limits_honoured, dock_layout_sizing_reachable, css_limits_refit and
+    restore_layout_keeps_iframe are all true."""
+    assert rs.SIZING_RECORD == {
+        "css_limits_honoured": True, "layout_sizing_reachable": True, "css_limits_refit": True,
+        "restore_layout_keeps_iframe": True,
+    }
+    assert rs.sizing_case(rs.SIZING_RECORD["css_limits_honoured"], rs.SIZING_RECORD["layout_sizing_reachable"]) == "honoured_reachable"
+    assert rs.SIZING_STATUS == {c: ASSERTED for c in MEDIUM_CATS + WIDE_CATS}
+    assert rs.ac39d_status(rs.SIZING_STATUS) == "run"
+
+
+# -- the wide-tier width formula and the clamp predicates (D6, AC-36) ------------------------------------------
+
+
+def test_wide_panel_width_expected_is_the_d6_formula(rs):
+    assert rs.wide_panel_width_expected(1571.0, 0.0) == 611.0, "main - 960 - padding"
+    assert rs.wide_panel_width_expected(1571.0, 20.0) == 591.0
+    assert rs.wide_panel_width_expected(1300.0, 0.0) == 420.0, "max(420, ...)"
+    assert rs.wide_panel_width_expected(1891.0, 0.0) == 931.0
+
+
+@pytest.mark.parametrize(
+    "panel,ok",
+    [(611.0, True), (603.0, True), (619.0, True), (602.9, False), (619.1, False), (785.0, False), (420.0, False), (None, False), ("611", False)],
+)
+def test_wide_width_ok_is_plus_minus_eight_px_around_the_formula(rs, panel, ok):
+    assert rs.wide_width_ok(panel, 1571.0, 0.0) is ok
+
+
+def test_wide_width_ok_needs_its_measurements(rs):
+    assert rs.wide_width_ok(611.0, None, 0.0) is False
+    assert rs.wide_width_ok(611.0, 1571.0, None) is False
+
+
+@pytest.mark.parametrize(
+    "width,ok", [(420.0, True), (450.0, True), (480.0, True), (419.0, True), (481.5, True), (417.9, False), (482.1, False), (300.0, False), (None, False)]
+)
+def test_open_width_ok_is_420_to_480_with_a_subpixel_allowance(rs, width, ok):
+    assert rs.open_width_ok(width) is ok
+
+
+@pytest.mark.parametrize("width,ok", [(420.0, True), (421.9, True), (418.1, True), (300.0, False), (450.0, False), (None, False)])
+def test_clamp_low_ok_means_a_drag_to_300_ends_at_420(rs, width, ok):
+    assert rs.clamp_low_ok(width) is ok
+
+
+@pytest.mark.parametrize("width,ok", [(480.0, True), (478.1, True), (481.9, True), (700.0, False), (450.0, False), (None, False)])
+def test_clamp_high_ok_means_a_drag_to_700_ends_at_480(rs, width, ok):
+    assert rs.clamp_high_ok(width) is ok
