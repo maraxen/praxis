@@ -3276,3 +3276,161 @@ def test_d2_evidence_keeps_the_raw_reports_behind_the_error_keys(rs):
     assert missing('evidence.update(restart=restart)\n keys["evidence"] = evidence') == [
         "error_reports", "value_error", "runall",
     ]
+
+
+# =========================================================================== #
+# Sprint C (C7): the static greps the dock gate closes -- AC-39(c), R19 (AC-41), the extended R21 (AC-31)
+# =========================================================================== #
+#
+# Pure functions over a source tree (no browser). Each has a POSITIVE control on the real tree (it must pass
+# now) and a NEGATIVE control on a synthetic tree (a forbidden token planted in it must be found).
+
+R21_SIX = (
+    "web-repl/overlay/assets/python/praxis/viz/",
+    "web-repl/overlay/assets/visualizer/",
+    "web-repl/overlay/assets/visualizer-augmentations/",
+    "web-repl/overlay/assets/visualizer3d/",
+    "web-repl/overlay/assets/visualizer3d-augmentations/",
+    "web-repl/shell/display/dock.js",
+)
+R21_BASH = (
+    """grep -rn "praxis_repl" {paths} | sed 's/``praxis_repl``//g' | grep "praxis_repl"; s=("${{PIPESTATUS[@]}}")\n"""
+    """echo "${{s[@]}}"\n"""
+)
+
+
+def _bash_r21(paths: list[str], cwd: Path) -> list[int]:
+    out = subprocess.run(
+        ["bash", "-c", R21_BASH.format(paths=" ".join(paths))], capture_output=True, text=True, cwd=str(cwd), timeout=120
+    )
+    return [int(x) for x in out.stdout.strip().splitlines()[-1].split()]
+
+
+def _mini_tree(root: Path, files: dict[str, str]) -> Path:
+    for rel, text in files.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text)
+    return root
+
+
+def test_grep_tree_is_grep_rn_with_include_and_exclude_dir(rs, tmp_path):
+    root = _mini_tree(tmp_path, {
+        "a/one.js": "x\nfoo bar\n", "a/two.txt": "foo\n", "a/__tests__/t.js": "foo\n", "a/sub/three.js": "no\nfoo\n",
+    })
+    hits = rs.grep_tree(root, ["a"], r"foo", include=("*.js",), exclude_dirs=("__tests__",))
+    assert hits == [("a/one.js", 2, "foo bar"), ("a/sub/three.js", 2, "foo")], "the .txt and the __tests__ file are skipped"
+    assert rs.grep_tree(root, ["a"], r"foo") != hits, "without include/exclude the other two files are found too"
+    assert rs.grep_tree(root, ["a"], r"absent-token") == []
+    with pytest.raises(FileNotFoundError):  # grep exits 2 on an unreadable path; never read as "no hit"
+        rs.grep_tree(root, ["nope"], r"foo")
+
+
+def test_ac39c_no_test_hooks_in_the_product_js_on_the_real_tree(rs):
+    """AC-39(c) verbatim: grep -rnE '__praxis_test|data-praxis-test' shell/display + visualizer3d-augmentations
+    --include='*.js' --exclude-dir=__tests__ finds nothing. (It used to find dock.test.js's own regex literal.)"""
+    assert rs.ac39c_hits(rs.REPO_ROOT) == []
+
+
+@pytest.mark.parametrize("rel", [
+    "web-repl/shell/display/x.js", "web-repl/overlay/assets/visualizer3d-augmentations/y.js", "web-repl/shell/display/x.test.js",
+])
+@pytest.mark.parametrize("token", ["__praxis_test", "data-praxis-test"])
+def test_ac39c_control_finds_a_planted_hook_in_both_trees_and_in_a_test_file(rs, tmp_path, rel, token):
+    root = _mini_tree(tmp_path, {
+        "web-repl/shell/display/ok.js": "1\n", "web-repl/overlay/assets/visualizer3d-augmentations/ok.js": "1\n",
+        rel: f"const a = 1;\nwindow.{token} = 1;\n",
+    })
+    assert [h[0] for h in rs.ac39c_hits(root)] == [rel]
+
+
+def test_ac39c_ignores_the_one_exclusion_the_spec_states(rs, tmp_path):
+    quiet = _mini_tree(tmp_path, {
+        "web-repl/shell/display/ok.js": "1\n", "web-repl/overlay/assets/visualizer3d-augmentations/ok.js": "1\n",
+        "web-repl/shell/display/__tests__/t.js": "__praxis_test\n",
+    })
+    assert rs.ac39c_hits(quiet) == []
+
+
+def test_r19_requestdevice_and_requestport_are_absent_on_the_real_tree(rs):
+    """AC-41 R19: the grep exits 1 EXACTLY -- it finds nothing, and every path exists (2 would be an error)."""
+    assert rs.r19_check(rs.REPO_ROOT) == (True, [])
+
+
+R19_DIRS = (
+    "web-repl/overlay/assets/visualizer-augmentations", "web-repl/overlay/assets/visualizer3d-augmentations",
+    "web-repl/shell/display",
+)
+
+
+@pytest.mark.parametrize("token", ["requestDevice", "requestPort"])
+def test_r19_control_fires_on_either_token(rs, tmp_path, token):
+    base = {f"{d}/ok.js": "1\n" for d in R19_DIRS}
+    bad = _mini_tree(tmp_path / "bad", {**base, f"{R19_DIRS[1]}/serial.js": f"navigator.serial.{token}();\n"})
+    ok, hits = rs.r19_check(bad)
+    assert ok is False and [h[0] for h in hits] == [f"{R19_DIRS[1]}/serial.js"]
+    assert rs.r19_check(_mini_tree(tmp_path / "clean", base)) == (True, [])
+
+
+def test_r19_control_a_missing_path_is_not_a_pass(rs, tmp_path):
+    ok, _hits = rs.r19_check(tmp_path / "empty")  # grep exits 2 on a missing path
+    assert ok is False
+
+
+def test_r21_extended_passes_on_the_real_tree_and_is_not_vacuous(rs):
+    res = rs.r21_extended_check(rs.REPO_ROOT)
+    assert res["ok"] is True and res["residual"] == [] and res["paths_exist"] is True
+    assert res["first_grep_status"] == 0, "the documentation mentions ARE found (transport.py and viewer3d.py)"
+    assert len(res["hits"]) >= 3
+    assert {h[0] for h in res["hits"]} <= {
+        "web-repl/overlay/assets/python/praxis/viz/transport.py", "web-repl/overlay/assets/python/praxis/viz/viewer3d.py",
+    }, "only RST documentation mentions remain after the strip; no code use anywhere on the six paths"
+
+
+def test_r21_extended_python_form_agrees_with_the_bash_gate_on_the_real_tree(rs):
+    assert _bash_r21(list(R21_SIX), rs.REPO_ROOT) == [0, 0, 1]
+    assert list(rs.R21_EXTENDED_PATHS) == list(R21_SIX), "the six paths: five directories and dock.js"
+
+
+def _r21_base_files() -> dict[str, str]:
+    return {
+        "web-repl/overlay/assets/python/praxis/viz/ok.py": "x = 1\n", "web-repl/overlay/assets/visualizer/ok.js": "1\n",
+        "web-repl/overlay/assets/visualizer-augmentations/ok.js": "1\n", "web-repl/overlay/assets/visualizer3d/ok.js": "1\n",
+        "web-repl/overlay/assets/visualizer3d-augmentations/ok.js": "1\n", "web-repl/shell/display/dock.js": "1\n",
+    }
+
+
+@pytest.mark.parametrize(
+    "rel,text",
+    [
+        ("web-repl/overlay/assets/visualizer3d/app.js", 'const c = new BroadcastChannel("praxis_repl");\n'),
+        ("web-repl/overlay/assets/visualizer3d-augmentations/socket.js", "const c = new BroadcastChannel(`praxis_repl`);\n"),
+        ("web-repl/shell/display/dock.js", "const CH = 'praxis_repl';\n"),
+        ("web-repl/overlay/assets/python/praxis/viz/viewer3d.py", 'see ``praxis_repl`` and post to "praxis_repl"\n'),
+    ],
+)
+def test_r21_extended_control_fires_on_a_code_use_on_each_new_path_and_the_bash_gate_agrees(rs, tmp_path, rel, text):
+    files = _r21_base_files()
+    files[rel] = files.get(rel, "") + text
+    root = _mini_tree(tmp_path, files)
+    res = rs.r21_extended_check(root)
+    assert res["ok"] is False and res["residual"], res
+    assert _bash_r21(list(R21_SIX), root)[2] == 0, "the spec's bash gate finds the same residual code use"
+
+
+def test_r21_extended_control_ignores_the_documentation_form(rs, tmp_path):
+    files = _r21_base_files()
+    files["web-repl/overlay/assets/python/praxis/viz/doc.py"] = '"""NOT ``praxis_repl``."""\n'
+    res = rs.r21_extended_check(_mini_tree(tmp_path, files))
+    assert res["ok"] is True and res["first_grep_status"] == 0 and res["residual"] == []
+
+
+def test_r21_extended_control_a_missing_directory_or_dock_js_is_an_error_not_a_pass(rs, tmp_path):
+    files = _r21_base_files()
+    del files["web-repl/overlay/assets/visualizer3d-augmentations/ok.js"]
+    res = rs.r21_extended_check(_mini_tree(tmp_path / "nodir", files))
+    assert res["ok"] is False and res["paths_exist"] is False
+    files = _r21_base_files()
+    del files["web-repl/shell/display/dock.js"]
+    res = rs.r21_extended_check(_mini_tree(tmp_path / "nodock", files))
+    assert res["ok"] is False and res["paths_exist"] is False
