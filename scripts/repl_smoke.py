@@ -4968,6 +4968,22 @@ def display_context_init_scripts(neg: Any = ()) -> list[str]:
     return [PERSISTENCE_ACK_INIT_SCRIPT]
 
 
+DISPLAY_PAGEERROR_STACK_CHARS = 600
+
+
+def format_pageerror(exc: Any) -> str:
+    """One ``pageerrors`` entry: the message, then the JavaScript stack cut to 600 characters.
+
+    Still a single string, so the key stays a list of strings and is empty exactly when there
+    were no page errors. ``stack`` is absent on a plain exception and None when the page gave none.
+    """
+    message = str(exc)
+    stack = getattr(exc, "stack", None)
+    if not stack:
+        return message
+    return f"{message}\n{str(stack)[:DISPLAY_PAGEERROR_STACK_CHARS]}"
+
+
 class DisplaySession:
     """A served dist + Playwright + one fresh Chromium context and page.
 
@@ -4999,7 +5015,7 @@ class DisplaySession:
             for script in display_context_init_scripts(neg=tuple(getattr(args, "neg", ()) or ())):
                 context.add_init_script(script)
             self.page = context.new_page()
-            self.page.on("pageerror", lambda exc: self.pageerrors.append(str(exc)))
+            self.page.on("pageerror", lambda exc: self.pageerrors.append(format_pageerror(exc)))
         except BaseException:
             self.close()
             raise
