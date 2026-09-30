@@ -7419,6 +7419,118 @@ def derive_nd_keys(raw: Any, *, record: dict[str, bool] | None = None) -> dict[s
     }
 
 
+# -- K2 diagnostic evidence: one layout snapshot, the drag plan (evidence only; no pass/fail rule reads any of it) ------
+
+#: The rectangles one layout snapshot carries (each ``None`` when the node is not in the document).
+LAYOUT_RECT_NAMES = (
+    "dock_panel", "main_content_panel", "main_split_panel", "left_stack", "right_stack", "notebook_panel", "notebook",
+    "deck_panel",
+)
+LAYOUT_STYLE_NAMES = ("notebook_panel", "notebook", "deck_panel")
+LAYOUT_NUMBER_FIELDS = ("inner_width", "inner_height", "scroll_width", "client_width")
+#: Steps of the drag's ``mouse.move`` (spike S1's drag) and the most page-received mouse events kept per drag.
+DRAG_STEPS = 15
+TRACE_EVENTS_MAX = 80
+
+
+def _rect_ok(rect: Any) -> bool:
+    return rect is None or (isinstance(rect, dict) and all(_num(rect.get(k)) for k in ("left", "right", "width")))
+
+
+def layout_snapshot_problems(snap: Any) -> list[str]:
+    """What is malformed about a page-side layout snapshot (``D.layout()``); ``[]`` when it is well formed. An absent
+    node is a ``None`` rect or style, never a problem; a MISSING key or a non-number is."""
+    if not isinstance(snap, dict):
+        return ["snapshot is not an object"]
+    problems = [f"{k} missing or not a number" for k in LAYOUT_NUMBER_FIELDS if not _num(snap.get(k))]
+    rects = snap.get("rects")
+    if not isinstance(rects, dict):
+        problems.append("rects missing")
+    else:
+        for name in LAYOUT_RECT_NAMES:
+            if name not in rects:
+                problems.append(f"rects.{name} missing")
+            elif not _rect_ok(rects[name]):
+                problems.append(f"rects.{name} malformed")
+    handles = snap.get("handles")
+    if not isinstance(handles, list):
+        problems.append("handles missing")
+    else:
+        for i, h in enumerate(handles):
+            if not (isinstance(h, dict) and isinstance(h.get("rect"), dict) and _rect_ok(h["rect"]) and isinstance(h.get("classes"), list)):
+                problems.append(f"handles[{i}] malformed (needs rect and classes)")
+    styles = snap.get("styles")
+    if not isinstance(styles, dict):
+        problems.append("styles missing")
+    else:
+        for name in LAYOUT_STYLE_NAMES:
+            if name not in styles:
+                problems.append(f"styles.{name} missing")
+            elif styles[name] is not None and not isinstance(styles[name], dict):
+                problems.append(f"styles.{name} malformed")
+    return problems
+
+
+def layout_summary(snap: Any) -> dict[str, Any]:
+    """The numbers that explain a layout: the dock's width against what fills it (``slack`` is the room that neither the
+    notebook, the deck panel nor a visible splitter handle takes), the area left of the dock, horizontal overflow and the
+    CSS limits. Every number is ``None`` where its input is absent."""
+    s = snap if isinstance(snap, dict) else {}
+    rects = s.get("rects") if isinstance(s.get("rects"), dict) else {}
+    styles = s.get("styles") if isinstance(s.get("styles"), dict) else {}
+
+    def width(name: str) -> float | None:
+        r = rects.get(name)
+        return float(r["width"]) if isinstance(r, dict) and _num(r.get("width")) else None
+
+    def css(name: str, prop: str) -> Any:
+        st = styles.get(name)
+        return st.get(prop) if isinstance(st, dict) else None
+
+    handles = [h for h in (s.get("handles") or []) if isinstance(h, dict) and h.get("visible") is not False]
+    handle_widths = [float(h["rect"]["width"]) for h in handles if isinstance(h.get("rect"), dict) and _num(h["rect"].get("width"))]
+    handles_width = sum(w for w in handle_widths if w > 0)
+    dock, deck, nb = width("dock_panel"), width("deck_panel"), width("notebook_panel")
+    dock_rect = rects.get("dock_panel")
+    inner, scroll = s.get("inner_width"), s.get("scroll_width")
+    return {
+        "dock_width": dock, "deck_width": deck, "notebook_panel_width": nb, "handles_width": handles_width,
+        "slack": (dock - nb - deck - handles_width) if None not in (dock, deck, nb) else None,
+        "left_area_width": dock_rect.get("left") if isinstance(dock_rect, dict) else None,
+        "overflow_x": (scroll - inner) if _num(scroll) and _num(inner) else None,
+        "notebook_panel_min_width": css("notebook_panel", "min_width"),
+        "notebook_panel_max_width": css("notebook_panel", "max_width"),
+        "deck_min_width": css("deck_panel", "min_width"), "deck_max_width": css("deck_panel", "max_width"),
+    }
+
+
+def annotate_layout(snap: Any) -> dict[str, Any]:
+    """The raw snapshot plus its ``summary`` and ``problems`` (never raises; a missing snapshot says so)."""
+    if snap is None:
+        return {"problems": ["no snapshot"], "summary": layout_summary(None)}
+    out = dict(snap) if isinstance(snap, dict) else {}
+    out["problems"] = layout_snapshot_problems(snap)
+    out["summary"] = layout_summary(snap)
+    return out
+
+
+def drag_plan(geo: Any, width: float, *, inner_width: Any = None) -> dict[str, Any] | None:
+    """The splitter drag the harness makes to leave the panel ``width`` px wide (spike S1's geometry): press on the centre
+    of the handle, move to ``widget.right - width - handle.width / 2`` at the same height. ``x1_in_window`` says whether
+    that point is inside the window (``None`` when ``inner_width`` is not given). ``None`` for unusable geometry."""
+    g = geo if isinstance(geo, dict) else {}
+    h, w = g.get("handle"), g.get("widget")
+    if not (isinstance(h, dict) and isinstance(w, dict) and all(_num(h.get(k)) for k in ("left", "top", "width", "height"))
+            and _num(w.get("right"))):
+        return None
+    x0, y = h["left"] + h["width"] / 2, h["top"] + h["height"] / 2
+    x1 = w["right"] - width - h["width"] / 2
+    return {
+        "x0": x0, "y": y, "x1": x1, "handle": h, "widget": w, "n_handles": g.get("n_handles"), "target_width": width,
+        "steps": DRAG_STEPS, "x1_in_window": None if not _num(inner_width) else bool(0 <= x1 <= inner_width),
+    }
+
+
 # -- the dock notebook ---------------------------------------------------------------------------------------------
 
 DOCK_NOTEBOOK_NAME = "dock_check.ipynb"
@@ -7703,6 +7815,74 @@ DOCK_CHECK_JS = r"""
     handles.sort((x, y) => Math.abs(x.r.left + x.r.width / 2 - w.left) - Math.abs(y.r.left + y.r.width / 2 - w.left));
     return handles.length ? { handle: handles[0].r, widget: w, n_handles: handles.length } : null;
   };
+  // -- diagnostic evidence (read-only): ONE instant of the whole layout. Every rect is null when its node is not in the
+  //    document; `handles` lists every `.lm-DockPanel-handle` of the main dock with its class list and whether it is
+  //    visible (not `lm-mod-hidden`, and non-empty); `split_sizes` is the dock's own saved layout (saveLayout reads,
+  //    it changes nothing), one entry per horizontal/vertical split area.
+  D.layout = () => {
+    const at = (el) => (el ? box(el) : null);
+    const style = (el) => {
+      if (!el) return null;
+      const c = getComputedStyle(el);
+      return { min_width: c.minWidth, max_width: c.maxWidth, flex: c.flex, width: c.width };
+    };
+    const classes = (el) => Array.from(el.classList || []);
+    let nbPanel = null;
+    try { const w = app().shell.currentWidget; nbPanel = w && w.node && w.node.classList && w.node.classList.contains("jp-NotebookPanel") ? w.node : null; } catch (e) { nbPanel = null; }
+    nbPanel = nbPanel || notebookPanel();
+    const nb = notebookNode();
+    const deck = panelNode();
+    const dockNode = dockPanelNode();
+    const byId = (id) => document.getElementById(id) || null;
+    let leftCollapsed = null, rightCollapsed = null, splitSizes = null;
+    try { leftCollapsed = app().shell.leftCollapsed; rightCollapsed = app().shell.rightCollapsed; } catch (e) { /* no shell */ }
+    try {
+      const cfg = app().shell._dockPanel.saveLayout();
+      const out = [];
+      const walk = (a) => {
+        if (a && a.type === "split-area") { out.push({ orientation: a.orientation, sizes: Array.from(a.sizes) }); (a.children || []).forEach(walk); }
+      };
+      walk(cfg && cfg.main);
+      splitSizes = out;
+    } catch (e) { splitSizes = null; }
+    const root = document.documentElement || {};
+    return {
+      inner_width: window.innerWidth, inner_height: window.innerHeight,
+      scroll_width: root.scrollWidth, client_width: root.clientWidth,
+      left_collapsed: leftCollapsed, right_collapsed: rightCollapsed,
+      rects: {
+        dock_panel: at(dockNode), main_content_panel: at(byId("jp-main-content-panel")), main_split_panel: at(byId("jp-main-split-panel")),
+        left_stack: at(byId("jp-left-stack")), right_stack: at(byId("jp-right-stack")),
+        notebook_panel: at(nbPanel), notebook: at(nb), deck_panel: at(deck),
+      },
+      sidebars: Array.from(document.querySelectorAll(".jp-SideBar")).map((el) => ({ rect: box(el), classes: classes(el) })),
+      handles: dockNode
+        ? Array.from(dockNode.querySelectorAll(".lm-DockPanel-handle")).map((el) => {
+            const r = box(el);
+            return { rect: r, classes: classes(el), visible: !el.classList.contains("lm-mod-hidden") && r.width > 0 && r.height > 0 };
+          })
+        : [],
+      styles: { notebook_panel: style(nbPanel), notebook: style(nb), deck_panel: style(deck) },
+      notebook_scroll_width: nb ? nb.scrollWidth : null, notebook_client_width: nb ? nb.clientWidth : null,
+      split_sizes: splitSizes,
+    };
+  };
+  // The mouse events the PAGE received during a drag (window capture listeners): `start`, then `stop` (which removes
+  // the listeners and returns them), or `read`. Evidence of what actually arrived, next to what the harness sent.
+  D.mouseTrace = (a) => {
+    const TYPES = ["mousedown", "mousemove", "mouseup"];
+    if (a.op === "start") {
+      const t = { events: [], on: true };
+      t.handler = (e) => { if (t.events.length < 400) t.events.push({ type: e.type, x: e.clientX, y: e.clientY, buttons: e.buttons }); };
+      TYPES.forEach((ty) => window.addEventListener(ty, t.handler, true));
+      window.__praxisMouseTrace = t;
+      return true;
+    }
+    const t = window.__praxisMouseTrace;
+    if (!t) return [];
+    if (a.op === "stop" && t.on) { t.on = false; TYPES.forEach((ty) => window.removeEventListener(ty, t.handler, true)); }
+    return t.events.slice();
+  };
   D.collapseLeft = () => {
     const shell = app().shell;
     try { if (shell.leftCollapsed === false) shell.collapseLeft(); } catch (e) { return null; }
@@ -7858,6 +8038,9 @@ def _center(rect: Any, *, x_max: float | None = None) -> tuple[float, float] | N
 
 
 class DockDriver(DisplayDriver):
+    #: The plan, what was sent and what the page received for the LAST ``drag_splitter_to`` (``None`` before one).
+    last_drag: dict[str, Any] | None = None
+
     """One Playwright page, seen as the calls the dock scenarios make. Every method is one bounded interaction or one
     page read; a click is a real Playwright mouse or keyboard event (AC-35 "a real click"). Exercised only by a real
     browser run; the scenarios are tested against a scripted fake of this surface."""
@@ -7985,19 +8168,29 @@ class DockDriver(DisplayDriver):
     def drag_splitter_to(self, width: float) -> float | None:
         """A real drag of the splitter nearest the panel until the panel is ``width`` px wide (spike S1's drag); returns
         the panel's measured width afterwards, or ``None`` when no splitter handle is found."""
-        geo = self._dk("handleRect()")
-        if not geo:
+        self.last_drag = None
+        plan = drag_plan(self._dk("handleRect()"), width, inner_width=self.facts().get("inner_width"))
+        if plan is None:
             return None
-        h, w = geo["handle"], geo["widget"]
-        x0, y = h["left"] + h["width"] / 2, h["top"] + h["height"] / 2
-        x1 = w["right"] - width - h["width"] / 2
-        self.page.mouse.move(x0, y)
-        self.page.mouse.down()
-        self.page.mouse.move(x1, y, steps=15)
-        self.page.mouse.up()
-        self.page.wait_for_timeout(500)
+        x0, y, x1, steps = plan["x0"], plan["y"], plan["x1"], plan["steps"]
+        sent = [["move", x0, y], ["down"], ["move", x1, y, steps], ["up"]]
+        self._dk("mouseTrace(a)", {"op": "start"})
+        try:
+            self.page.mouse.move(x0, y)
+            self.page.mouse.down()
+            self.page.mouse.move(x1, y, steps=steps)
+            self.page.mouse.up()
+            self.page.wait_for_timeout(500)
+        finally:
+            trace = self._dk("mouseTrace(a)", {"op": "stop"}) or []
+        # What was planned, what was sent, and what the PAGE received (diagnostic evidence only).
+        self.last_drag = {**plan, "sent": sent, "trace": trace[:TRACE_EVENTS_MAX], "trace_n": len(trace)}
         rect = self.facts().get("panel_rect") or {}
         return rect.get("width")
+
+    def layout(self) -> dict[str, Any]:
+        """One instant of the whole layout (``D.layout``), with its summary and any malformation noted."""
+        return annotate_layout(self._dk("layout()"))
 
     def collapse_left(self) -> bool:
         collapsed = self._dk("collapseLeft()")
@@ -8390,6 +8583,16 @@ def run_k2(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | No
         driver.toggle_panel()  # reopen: T4, then T6 on the answering announce
         driver.wait_connected(20.0)
 
+    raw["geo"] = {}
+
+    def snapshot(name: str) -> Any:
+        """Diagnostic evidence: the whole layout at this instant. Guarded, and read by no key."""
+        return _guard(ev, f"layout_{name}", lambda: driver.layout())
+
+    def last_drag() -> Any:
+        got = getattr(driver, "last_drag", None)
+        return dict(got) if isinstance(got, dict) else None
+
     # 1. 1152x800: boot, draw, measure, dock() (its first announce opens the drawer, T2)
     def step_drawer() -> dict[str, Any]:
         nb_before = driver.facts().get("nb_content_width")
@@ -8453,9 +8656,14 @@ def run_k2(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | No
     # 4. 1440x900: open-time width, then real drags to 300 and 700 px, counting deck iframe loads over the drags
     def medium(label: str) -> dict[str, Any]:
         out: dict[str, Any] = {"open": (driver.facts().get("panel_rect") or {}).get("width")}
+        out["geo_before"] = snapshot(f"medium_{label}_before")
         loads0 = driver.loads()
         out["drag_low"] = _guard(ev, f"drag_low_{label}", lambda: driver.drag_splitter_to(300))
+        out["drag_low_xy"] = last_drag()
+        out["geo_after_low"] = snapshot(f"medium_{label}_after_low")
         out["drag_high"] = _guard(ev, f"drag_high_{label}", lambda: driver.drag_splitter_to(700))
+        out["drag_high_xy"] = last_drag()
+        out["geo_after_high"] = snapshot(f"medium_{label}_after_high")
         raw["reloads"][f"drag_{label}"] = (driver.loads() - loads0) if _num(loads0) and _num(driver.loads()) else None
         return out
 
@@ -8465,8 +8673,10 @@ def run_k2(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | No
     def step_fit() -> dict[str, Any]:
         driver.set_viewport(1600, 900)
         wide = settled_wide()
+        raw["geo"]["fit_wide"] = snapshot("fit_wide")
         driver.set_viewport(1440, 900)
         back, _ = driver.poll(measures, lambda m: open_width_ok(m["panel"]), 5.0)
+        raw["geo"]["fit_medium"] = snapshot("fit_medium")
         return {"wide": {k: wide[k] for k in ("panel", "main", "padding")}, "medium": {"panel": back["panel"]}}
 
     raw["fit"] = _guard(ev, "fit_after_tier_change", step_fit, {})
@@ -8489,7 +8699,9 @@ def run_k2(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | No
         ev["left_collapsed"] = driver.collapse_left()
         driver.set_viewport(1600, 900)
         reopen()
-        return settled_wide()
+        out = settled_wide()
+        raw["geo"]["wide_1600"] = snapshot("wide_1600")
+        return out
 
     wide_1600 = _guard(ev, "wide_1600", step_1600, {})
 
@@ -8498,6 +8710,7 @@ def run_k2(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | No
         loads0 = driver.loads()
         driver.set_viewport(1920, 900)
         out = settled_wide()
+        raw["geo"]["resize_wide"] = snapshot("resize_wide")
         loads1 = driver.loads()
         raw["reloads"]["resize_within_wide"] = (loads1 - loads0) if _num(loads0) and _num(loads1) else None
         return {k: out[k] for k in ("panel", "main", "padding")}
@@ -8508,7 +8721,9 @@ def run_k2(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | No
     def step_1920() -> dict[str, Any]:
         driver.set_viewport(1920, 1080)
         reopen()
-        return settled_wide()
+        out = settled_wide()
+        raw["geo"]["wide_1920"] = snapshot("wide_1920")
+        return out
 
     wide_1920 = _guard(ev, "wide_1920", step_1920, {})
     raw["wide"] = {"1600": wide_1600, "1920": wide_1920}
