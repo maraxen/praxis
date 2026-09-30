@@ -3942,3 +3942,215 @@ def test_canvas_nonblank_fraction_is_strictly_above_one_percent(rs):
     assert rs.canvas_fraction({"diff_pixels": 1, "total_pixels": 4}) == 0.25
     assert rs.canvas_fraction({"diff_pixels": 1, "total_pixels": 0}) is None
     assert rs.canvas_fraction(None) is None
+
+
+# =========================================================================== #
+# Sprint C (C7): K1b -- AC-38. The pure key derivation over the page evidence and the ordered event log.
+# =========================================================================== #
+#
+# The event log is what the harness's in-page monitor saw, in ONE sequence: `bc` (a praxis_viz3d message: kind,
+# viewer), `iframe_inserted` / `iframe_removed` / `iframe_load` (deck iframes, with the `viewer` parameter of their
+# `src`) and `mark` (a named point the harness drew). Ordering claims are read off `seq`, never off timestamps.
+
+
+def cam_for_name(name):
+    """A camera pointing along a preset direction (no fixture: pure constants)."""
+    v = {"iso": (-0.7, -1.0, 0.85), "top": (0.0, -0.001, 1.0), "front": (0.0, -1.0, 0.12)}[name]
+    return {"from": [10.0 * c for c in v], "at": [0.0, 0.0, 0.0]}
+
+
+def ev(seq, type_, **kw):
+    return {"seq": seq, "type": type_, **kw}
+
+
+def redock_events():
+    return [
+        ev(1, "mark", name="redock_live"),
+        ev(2, "bc", kind="close", viewer="v-1"),
+        ev(3, "iframe_removed", src_viewer="v-1"),
+        ev(4, "bc", kind="announce", viewer="v-2"),
+        ev(5, "iframe_inserted", src_viewer="v-2"),
+        ev(6, "iframe_load", src_viewer="v-2"),
+    ]
+
+
+def late_events():
+    return [
+        ev(10, "mark", name="late_iframe_reopen"),
+        ev(11, "bc", kind="query", viewer=None),
+        ev(12, "bc", kind="announce", viewer="v-9"),
+        ev(13, "iframe_inserted", src_viewer="v-9"),
+        ev(14, "iframe_load", src_viewer="v-9"),
+    ]
+
+
+def good_k1b(rs):
+    return {
+        "reconnect": {"iframes_before": 1, "iframes_after": 1, "load_delta": 1, "resources_ok": True},
+        "preset": {"pressed": "front", "camera": cam_for(rs, "front"), "iframes": 1, "load_delta": 1, "resources_ok": True},
+        "drawer_reconnect": {
+            "drawer": {"home": "drawer", "iframes": 1, "load_delta": 1, "resources_ok": True},
+            "split": {"home": "split", "iframes": 1, "load_delta": 1, "resources_ok": True},
+        },
+        "redock_live": {"v1": "v-1", "v2": "v-2", "events": redock_events(), "iframes_final": [{"src_viewer": "v-2"}],
+                        "resources_ok": True},
+        "stop": {"text": "No deck viewer is running. Run `viewer = await praxis.viz.viewer3d.dock(deck)` in a cell.",
+                 "iframes": 0, "state": "open-waiting"},
+        "redock_reloads": {"iframes": [{"src_viewer": "v-3"}], "kernel_viewer": "v-3", "resources_ok": True,
+                           "state": "open-connected"},
+        "late_iframe": {
+            "after_tab_close": {"state": "closed", "iframes": 0},
+            "after_dock_closed": {"state": "closed", "iframes": 0},
+            "events": late_events(), "final": {"state": "open-connected", "iframes": [{"src_viewer": "v-9"}]},
+            "resources_ok": True,
+        },
+        "many_reloads": {"rounds": [{"resources_ok": True, "iframes": 1, "load_delta": 1} for _ in range(6)]},
+        "restart": {"text": "No deck viewer is running. Run `viewer = ...` in a cell.", "iframes": 0, "state": "open-waiting",
+                    "closes_posted": 0},
+    }
+
+
+def test_k1b_positive_control_every_listed_key_holds_in_the_listed_order(rs):
+    keys = rs.derive_k1b_keys(good_k1b(rs))
+    unit = rs.UNIT_BY_ID["K1b"]
+    assert rs.evaluate_unit_result(unit, keys) == ([], []), keys
+    assert list(keys)[: len(K1B_KEYS)] == list(K1B_KEYS), "derived in the AC-38 execution order"
+
+
+def test_k1b_empty_or_garbage_evidence_fails_every_key_without_raising(rs):
+    for raw in ({}, None, {"reconnect": 3, "redock_live": None, "late_iframe": "x"}):
+        keys = rs.derive_k1b_keys(raw)
+        missing, failing = rs.evaluate_unit_result(rs.UNIT_BY_ID["K1b"], keys)
+        assert missing == [] and set(failing) == set(K1B_KEYS), (raw, failing)
+
+
+def _mutk1b(rs, fn):
+    raw = copy.deepcopy(good_k1b(rs))
+    fn(raw)
+    return rs.evaluate_unit_result(rs.UNIT_BY_ID["K1b"], rs.derive_k1b_keys(raw))[1]
+
+
+def _events(path, fn):
+    """Apply ``fn`` to the event list at ``raw[path[0]]['events']``."""
+    def apply(raw):
+        raw[path]["events"] = fn(raw[path]["events"])
+    return apply
+
+
+def _drop(seq):
+    return lambda events: [e for e in events if e["seq"] != seq]
+
+
+def _edit(target, **changes):
+    return lambda events: [dict(e, **changes) if e["seq"] == target else e for e in events]
+
+
+def _append(*more):
+    return lambda events: events + list(more)
+
+
+@pytest.mark.parametrize(
+    "key,fn",
+    [
+        # reconnect_after_reload (T16)
+        ("reconnect_after_reload", _set(("reconnect", "resources_ok"), False)),
+        ("reconnect_after_reload", _set(("reconnect", "iframes_after"), 2)),  # I1: exactly one iframe in the panel DOM
+        ("reconnect_after_reload", _set(("reconnect", "iframes_after"), 0)),
+        ("reconnect_after_reload", _set(("reconnect", "load_delta"), 0)),  # nothing reloaded: the key would be vacuous
+        ("reconnect_after_reload", _set(("reconnect", "iframes_before"), 0)),
+        # preset_survives_reload (T16, D12)
+        ("preset_survives_reload", _set(("preset", "camera"), None)),
+        ("preset_survives_reload", _set(("preset", "camera"), cam_for_name("iso"))),
+        ("preset_survives_reload", _set(("preset", "resources_ok"), False)),
+        ("preset_survives_reload", _set(("preset", "pressed"), "top")),  # the harness must have pressed Front
+        ("preset_survives_reload", _set(("preset", "load_delta"), 0)),
+        ("preset_survives_reload", _set(("preset", "iframes"), 2)),
+        # drawer_reconnect (T15, twice)
+        ("drawer_reconnect", _set(("drawer_reconnect", "drawer", "resources_ok"), False)),
+        ("drawer_reconnect", _set(("drawer_reconnect", "split", "resources_ok"), False)),
+        ("drawer_reconnect", _set(("drawer_reconnect", "drawer", "home"), "split")),
+        ("drawer_reconnect", _set(("drawer_reconnect", "split", "home"), "drawer")),
+        ("drawer_reconnect", _set(("drawer_reconnect", "split", "iframes"), 0)),
+        ("drawer_reconnect", _set(("drawer_reconnect", "drawer", "load_delta"), 0)),
+        # redock_live (T12 -> T6)
+        ("redock_live", _set(("redock_live", "resources_ok"), False)),
+        ("redock_live", _set(("redock_live", "v2"), "v-1")),  # the new viewer has the old id: nothing was re-docked
+        ("redock_live", _set(("redock_live", "v2"), None)),
+        ("redock_live", _set(("redock_live", "iframes_final"), [{"src_viewer": "v-2"}, {"src_viewer": "v-2"}])),
+        ("redock_live", _set(("redock_live", "iframes_final"), [{"src_viewer": "v-1"}])),
+        ("redock_live", _events("redock_live", _drop(2))),  # no close for v1 at all
+        ("redock_live", _events("redock_live", _edit(2, viewer="v-0"))),  # a close for another viewer
+        ("redock_live", _events("redock_live", _edit(2, seq=5))),  # the close arrives AFTER the announce
+        ("redock_live", _events("redock_live", _drop(3))),  # the v1 iframe was never removed
+        ("redock_live", _events("redock_live", _edit(3, src_viewer="v-x"))),
+        ("redock_live", _events("redock_live", _drop(5))),  # no iframe inserted after the announce
+        ("redock_live", _events("redock_live", _edit(5, src_viewer="v-1"))),  # inserted pointing at the old viewer
+        ("redock_live", _events("redock_live", _edit(5, src_viewer=None))),
+        ("redock_live", _events("redock_live", _append(ev(7, "iframe_inserted", src_viewer="v-2")))),  # two inserts
+        ("redock_live", _events("redock_live", _drop(4))),  # no announce
+        # stop_placeholder (T12)
+        ("stop_placeholder", _set(("stop", "text"), "The deck view lost its connection. Close and reopen the deck panel.")),
+        ("stop_placeholder", _set(("stop", "text"), "No deck viewer is running. The deck view lost its connection.")),
+        ("stop_placeholder", _set(("stop", "iframes"), 1)),
+        ("stop_placeholder", _set(("stop", "text"), "")),
+        ("stop_placeholder", _set(("stop", "text"), None)),
+        ("stop_placeholder", _set(("stop", "state"), "open-lost")),
+        # redock_reloads (T6)
+        ("redock_reloads", _set(("redock_reloads", "iframes"), [])),
+        ("redock_reloads", _set(("redock_reloads", "iframes"), [{"src_viewer": "v-3"}, {"src_viewer": "v-3"}])),
+        ("redock_reloads", _set(("redock_reloads", "kernel_viewer"), "v-4")),  # src names another viewer than the kernel's
+        ("redock_reloads", _set(("redock_reloads", "kernel_viewer"), None)),
+        ("redock_reloads", _set(("redock_reloads", "resources_ok"), False)),
+        ("redock_reloads", _set(("redock_reloads", "state"), "open-waiting")),
+        # late_iframe (T17, T3, T4, T6)
+        ("late_iframe", _set(("late_iframe", "resources_ok"), False)),
+        ("late_iframe", _set(("late_iframe", "after_tab_close"), {"state": "open-connected", "iframes": 0})),
+        ("late_iframe", _set(("late_iframe", "after_tab_close"), {"state": "closed", "iframes": 1})),
+        ("late_iframe", _set(("late_iframe", "after_dock_closed"), {"state": "open-connected", "iframes": 1})),
+        ("late_iframe", _set(("late_iframe", "after_dock_closed"), {"state": "closed", "iframes": 1})),
+        ("late_iframe", _events("late_iframe", _drop(11))),  # no query posted after the reopen (AC-39(e)'s mutation)
+        ("late_iframe", _events("late_iframe", _edit(11, kind="accept"))),
+        ("late_iframe", _events("late_iframe", _drop(12))),  # no announce
+        ("late_iframe", _events("late_iframe", _edit(11, seq=12.5))),  # the query comes AFTER the announce
+        ("late_iframe", _events("late_iframe", _edit(13, seq=11.5))),  # an iframe inserted before the announce
+        ("late_iframe", _events("late_iframe", _edit(13, src_viewer=None))),  # src not yet carrying the viewer id
+        ("late_iframe", _events("late_iframe", _edit(13, src_viewer="v-0"))),
+        ("late_iframe", _events("late_iframe", _drop(13))),
+        ("late_iframe", _set(("late_iframe", "final"), {"state": "open-connected", "iframes": []})),
+        ("late_iframe", _set(("late_iframe", "final"), {"state": "open-connected", "iframes": [{"src_viewer": "v-9"}] * 2})),
+        ("late_iframe", _set(("late_iframe", "final"), {"state": "open-waiting", "iframes": [{"src_viewer": "v-9"}]})),
+        # many_reloads (T16)
+        ("many_reloads", _set(("many_reloads", "rounds"), [{"resources_ok": True, "iframes": 1, "load_delta": 1}] * 5)),
+        ("many_reloads", _set(("many_reloads", "rounds"), [{"resources_ok": True, "iframes": 1, "load_delta": 1}] * 7)),
+        ("many_reloads", _set(("many_reloads", "rounds"), [])),
+        ("many_reloads", _set(("many_reloads", "rounds"), [{"resources_ok": True, "iframes": 1, "load_delta": 1}] * 5
+                                                          + [{"resources_ok": False, "iframes": 1, "load_delta": 1}])),
+        ("many_reloads", _set(("many_reloads", "rounds"), [{"resources_ok": True, "iframes": 1, "load_delta": 1}] * 5
+                                                          + [{"resources_ok": True, "iframes": 2, "load_delta": 1}])),
+        ("many_reloads", _set(("many_reloads", "rounds"), [{"resources_ok": True, "iframes": 1, "load_delta": 0}] * 6)),
+        # restart_placeholder (T25)
+        ("restart_placeholder", _set(("restart", "text"), "The deck view lost its connection.")),
+        ("restart_placeholder", _set(("restart", "iframes"), 1)),
+        ("restart_placeholder", _set(("restart", "closes_posted"), 1)),  # a close drove it: not the restart
+        ("restart_placeholder", _set(("restart", "closes_posted"), None)),
+        ("restart_placeholder", _set(("restart", "text"), None)),
+    ],
+)
+def test_k1b_negative_controls_each_violation_fails_exactly_its_key(rs, key, fn):
+    assert _mutk1b(rs, fn) == [key]
+
+
+def test_the_ordering_helpers_read_seq_not_list_position(rs):
+    """A log whose LIST order is shuffled but whose `seq` is right must give the same verdict."""
+    raw = good_k1b(rs)
+    raw["redock_live"]["events"] = list(reversed(raw["redock_live"]["events"]))
+    raw["late_iframe"]["events"] = list(reversed(raw["late_iframe"]["events"]))
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K1b"], rs.derive_k1b_keys(raw)) == ([], [])
+
+
+def test_redock_live_ok_requires_the_inserted_iframe_to_be_the_only_one_after_the_announce(rs):
+    ok = rs.redock_live_ok(good_k1b(rs)["redock_live"])
+    assert ok is True
+    raw = good_k1b(rs)["redock_live"]
+    raw["events"] = redock_events() + [ev(7, "iframe_removed", src_viewer="v-2"), ev(8, "iframe_inserted", src_viewer="v-2")]
+    assert rs.redock_live_ok(raw) is False, "a replaced element after the announce is a second insertion"
