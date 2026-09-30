@@ -4524,6 +4524,8 @@ class FakeDock:
         self.restarted = False
         self.closes_by_restart = 0
         self.tab_closed = 0
+        self.active: int | None = None  # the notebook's active cell index
+        self.nb_current = True  # is the notebook the shell's current widget? (`deck_steals_current` breaks it)
 
     # -- plumbing -----------------------------------------------------------------------------------------
     def _log(self, *call: Any) -> None:
@@ -4621,6 +4623,7 @@ class FakeDock:
     def run_cell(self, index: int) -> None:
         cid = self.ids[index]
         self._log("run_cell", cid)
+        self.active = index
         if cid == "dock":
             if self.kernel_viewer is not None and not self.stopped:  # dock() stops the previous viewer first
                 self._ev("bc", kind="close", viewer=self.kernel_viewer)
@@ -4751,7 +4754,11 @@ class FakeDock:
     def click_cell_input(self, index: int) -> bool:
         cid = self.ids[index]
         self._log("click_cell_input", cid)
-        if self.follow and self.state == "open-connected" and "no_resources" not in self.broken:
+        if "deck_steals_current" in self.broken and not self.nb_current:
+            return False  # cellAt reads shell.currentWidget, which is the deck panel: no rect, no click
+        changed = index != self.active  # Lumino emits activeCellChanged only on a CHANGE
+        self.active = index
+        if changed and self.follow and self.state == "open-connected" and "no_resources" not in self.broken:
             res = next((r for r in self.stamps.get(cid, []) if r), None)
             if res:
                 self._focus(res)
@@ -4760,9 +4767,39 @@ class FakeDock:
     def click_follow(self) -> None:
         self._log("click_follow")
         self.follow = not self.follow
+        if "deck_steals_current" in self.broken:
+            self.nb_current = False
+
+    def observe(self) -> dict[str, Any]:
+        cam = self.camera()
+        return {
+            "active_cell_index": self.active, "current_widget_id": "nb-1" if self.nb_current else "praxis-deck-panel",
+            "current_widget_is_notebook": self.nb_current, "notebook_widget_id": "nb-1", "n_cells": len(self.ids),
+            "follow_checked": self.follow, "deck_state": self.state, "footer": self.footer if self.footer else "No resource focused.",
+            "camera_at": (cam or {}).get("at"),
+        }
+
+    def cell_probe(self, index: int) -> dict[str, Any]:
+        cid = self.ids[index]
+        outs = []
+        for j, res in enumerate(self.stamps.get(cid, [])):
+            kind = "ledger" if cid == "ledger" else "plate"
+            outs.append({"index": j, "output_type": "display_data", "mimes": ["text/html", "text/plain"],
+                         "stamp": {"v": 1, "kind": kind, "resource": res, "rev": None if res is None else 1, "session": "s", "exec": 1},
+                         "ename": None, "evalue": None})
+        real = [o["stamp"]["resource"] for o in outs]
+        steals = "deck_steals_current" in self.broken and not self.nb_current
+        return self.rs.annotate_probe({
+            "found": True, "index": index, "in_document": True, "rect": {"left": 0, "right": 900, "width": 900, "top": 0, "bottom": 100, "height": 100},
+            "content_visibility": "visible", "execution_count": 1, "execution_state": "idle", "outputs": outs,
+            "output_dom": {"count": len(outs), "res_names": [r for r in real if r]},
+            "stamp_resources_notebook": real, "stamp_resources_current": [] if steals else real,
+        })
 
     def click_preset(self, name: str) -> None:
         self._log("click_preset", name)
+        if "deck_steals_current" in self.broken:
+            self.nb_current = False
         self.preset = name
         if self.state == "open-connected" and "no_resources" not in self.broken:
             self.cam_dir = name
@@ -4861,6 +4898,8 @@ class FakeDock:
         return {"diff_pixels": 54000, "total_pixels": 360000, "control_blank": 0.0, "control_marked": 0.05}
 
     def stamp_resources(self, index: int) -> list[Any]:
+        if "deck_steals_current" in self.broken and not self.nb_current:
+            return []  # D.stampResources -> cellAt -> shell.currentWidget.content: the deck panel has none
         return list(self.stamps.get(self.ids[index], []))
 
     def notice_text(self, index: int, res: str) -> str | None:
@@ -6043,3 +6082,315 @@ def test_the_real_driver_builds_its_drag_from_drag_plan_and_records_last_drag_an
     layout_src = inspect.getsource(rs.DockDriver.layout)
     assert "annotate_layout(" in layout_src and 'self._dk("layout()")' in layout_src
     assert rs.DockDriver.drag_splitter_to.__annotations__["return"] == "float | None", "the return shape is unchanged"
+
+
+# =========================================================================== #
+# C7a follow-up: DIAGNOSTIC EVIDENCE for K1a's follow_skips_null / follow_keeps_preset failures (evidence only)
+# =========================================================================== #
+#
+# First real K1a run: two Follow keys failed and in both the footer never moved after `click_cell_input`. Static reading:
+# dock.js follows `panel.content.activeCellChanged` (an active-cell CHANGE; re-clicking the active cell emits nothing), and
+# the harness's `cellAt` / `_DC_RUN_JS` read the notebook through `shell.currentWidget`, which is the deck widget once its
+# Follow button has been clicked. The evidence below decides which it was, without changing any key.
+
+
+def _obs(**over):
+    base = {"active_cell_index": 6, "current_widget_id": "nb-1", "current_widget_is_notebook": True, "notebook_widget_id": "nb-1",
+            "n_cells": 14, "follow_checked": True, "deck_state": "open-connected", "footer": "assay",
+            "camera_at": [1.0, 2.0, 3.0]}
+    base.update(over)
+    return base
+
+
+def _step(**over):
+    base = dict(
+        step="follow_null", cell_index=4, cell_id="draw-tips",
+        actions=[{"name": "click_follow", "returned": None}, {"name": "click_cell_input", "cell": 4, "returned": True}],
+        polls=[{"name": "footer == tips_300", "timed_out": False}],
+        before=_obs(active_cell_index=6), mid=_obs(active_cell_index=6, follow_checked=True),
+        after=_obs(active_cell_index=4, footer="tips_300", camera_at=[9.0, 2.0, 3.0]),
+        snap_before={"state": "open-connected", "follow": True, "focused": "assay"},
+        snap_after={"state": "open-connected", "follow": True, "focused": "tips_300"},
+        events=[{"seq": 7, "type": "mark", "name": "k1a:follow_null"}],
+    )
+    base.update(over)
+    return base
+
+
+def test_observation_positive_control_and_negative_controls(rs):
+    assert rs.observation_problems(_obs()) == []
+    assert rs.observation_problems(_obs(active_cell_index=None, footer=None, camera_at=None, deck_state=None, follow_checked=None)) == []
+    for over, fragment in (
+        ({"active_cell_index": "4"}, "active_cell_index"), ({"active_cell_index": True}, "active_cell_index"),
+        ({"current_widget_is_notebook": "yes"}, "current_widget_is_notebook"), ({"follow_checked": 1}, "follow_checked"),
+        ({"footer": 3}, "footer"), ({"deck_state": []}, "deck_state"), ({"camera_at": [1, 2]}, "camera_at"),
+    ):
+        problems = rs.observation_problems(_obs(**over))
+        assert problems and any(fragment in p for p in problems), (over, problems)
+    missing = _obs()
+    del missing["footer"]
+    assert any("footer" in p for p in rs.observation_problems(missing))
+    for bad in (None, 3, []):
+        assert rs.observation_problems(bad), bad
+
+
+def test_click_trace_positive_control_a_click_that_made_the_cell_active_and_moved_the_focus(rs):
+    t = rs.assemble_click_trace(**_step())
+    assert t["problems"] == [] and t["step"] == "follow_null" and t["cell_index"] == 4 and t["cell_id"] == "draw-tips"
+    s = t["summary"]
+    assert s["clicked_ok"] is True and s["clicked_cell_became_active"] is True and s["active_changed"] is True
+    assert s["footer_changed"] is True and s["camera_moved"] is True and s["any_poll_timed_out"] is False
+    assert s["current_widget_was_notebook_before"] is True and s["current_widget_was_notebook_after"] is True
+    assert s["current_widget_left_notebook"] is False and s["follow_before"] is True and s["follow_after"] is True
+    assert t["before"] == _obs(active_cell_index=6) and t["snap_after"]["focused"] == "tips_300" and t["events"]
+    assert t["actions"][1]["returned"] is True and t["polls"][0]["timed_out"] is False
+
+
+def test_click_trace_marks_a_click_the_harness_never_delivered(rs):
+    """The suspected harness failure: `click_cell_input` returned False (no rect: the notebook is not the current widget),
+    so the active cell never changed and Follow was never triggered."""
+    t = rs.assemble_click_trace(**_step(
+        actions=[{"name": "click_cell_input", "cell": 4, "returned": False}],
+        polls=[{"name": "footer == tips_300", "timed_out": True}],
+        mid=_obs(active_cell_index=6, current_widget_id="praxis-deck-panel", current_widget_is_notebook=False),
+        after=_obs(active_cell_index=6, current_widget_id="praxis-deck-panel", current_widget_is_notebook=False),
+    ))
+    s = t["summary"]
+    assert s["clicked_ok"] is False and s["clicked_cell_became_active"] is False and s["active_changed"] is False
+    assert s["footer_changed"] is False and s["camera_moved"] is False and s["any_poll_timed_out"] is True
+    assert s["current_widget_was_notebook_before"] is False and s["current_widget_left_notebook"] is False, (
+        "it was never the notebook in this window; `left_notebook` is about a change"
+    )
+    assert t["problems"] == []
+
+
+def test_click_trace_marks_the_current_widget_leaving_the_notebook_during_the_step(rs):
+    t = rs.assemble_click_trace(**_step(after=_obs(current_widget_id="praxis-deck-panel", current_widget_is_notebook=False)))
+    assert t["summary"]["current_widget_left_notebook"] is True
+
+
+def test_click_trace_for_the_case_the_cell_was_already_active_says_no_change_event_was_possible(rs):
+    """Lumino emits activeCellChanged only on a CHANGE: clicking the active cell again is not a Follow trigger."""
+    t = rs.assemble_click_trace(**_step(before=_obs(active_cell_index=4), mid=_obs(active_cell_index=4),
+                                        after=_obs(active_cell_index=4)))
+    s = t["summary"]
+    assert s["active_changed"] is False and s["clicked_cell_was_already_active"] is True and s["clicked_cell_became_active"] is True
+    assert s["footer_changed"] is False
+
+
+def test_click_trace_uses_the_observation_after_the_follow_toggle_as_the_click_baseline_and_tolerates_none(rs):
+    t = rs.assemble_click_trace(**_step(before=_obs(follow_checked=False), mid=_obs(follow_checked=True)))
+    assert t["summary"]["follow_before"] is False and t["summary"]["follow_click_baseline"] is True
+    t = rs.assemble_click_trace(**_step(mid=None))
+    assert t["summary"]["follow_click_baseline"] is True, "without a mid observation the baseline is `before`"
+
+
+@pytest.mark.parametrize(
+    "over,fragment",
+    [({"before": None}, "before"), ({"after": None}, "after"), ({"before": _obs(active_cell_index="x")}, "before"),
+     ({"actions": "none"}, "actions"), ({"polls": [{"name": "p"}]}, "polls"), ({"events": "x"}, "events"),
+     ({"cell_index": "4"}, "cell_index")],
+)
+def test_click_trace_negative_controls_name_what_is_missing_or_malformed(rs, over, fragment):
+    t = rs.assemble_click_trace(**_step(**over))
+    assert t["problems"] and any(fragment in p for p in t["problems"]), t["problems"]
+    assert isinstance(t["summary"], dict), "a malformed step still yields a summary (all None), never raises"
+
+
+def test_first_resource_of_is_the_dock_js_replica(rs):
+    """dock.js firstResource: the first output whose stamp has a NON-EMPTY STRING resource."""
+    st = lambda res: {"stamp": {"resource": res}}  # noqa: E731
+    assert rs.first_resource_of([st(None)]) is None, "a ledger stamp (resource null)"
+    assert rs.first_resource_of([st(None), st("assay"), st("source")]) == "assay"
+    assert rs.first_resource_of([{"stamp": None}, st("")]) is None
+    assert rs.first_resource_of([st(7)]) is None and rs.first_resource_of([]) is None and rs.first_resource_of(None) is None
+    assert rs.first_resource_of([{"stamp": {"kind": "ledger"}}]) is None, "no resource key at all"
+
+
+def _probe(**over):
+    base = {
+        "found": True, "index": 12, "in_document": True, "rect": {"left": 0, "right": 900, "width": 900, "top": 10, "bottom": 300, "height": 290},
+        "content_visibility": "visible", "execution_count": 5, "execution_state": "idle",
+        "outputs": [{"index": 0, "output_type": "display_data", "mimes": ["text/html", "text/plain"],
+                     "stamp": {"v": 1, "kind": "ledger", "resource": None, "rev": None, "session": "s", "exec": 5},
+                     "ename": None, "evalue": None}],
+        "output_dom": {"count": 1, "res_names": []},
+        "stamp_resources_notebook": [None], "stamp_resources_current": [None],
+    }
+    base.update(over)
+    return base
+
+
+def test_cell_probe_positive_control_and_the_dock_replica_reads_the_ledger_as_no_resource(rs):
+    out = rs.annotate_probe(_probe())
+    assert out["problems"] == [] and out["first_resource"] is None and out["outputs"][0]["stamp"]["kind"] == "ledger"
+    assert out["summary"] == {"n_outputs": 1, "n_stamped": 1, "has_error_output": False,
+                              "stamp_resources_agree": True, "output_dom_count": 1}
+
+
+def test_cell_probe_flags_the_two_reads_disagreeing_and_an_error_output(rs):
+    out = rs.annotate_probe(_probe(stamp_resources_current=[]))
+    assert out["summary"]["stamp_resources_agree"] is False, "the currentWidget-based read saw nothing the notebook read saw"
+    err = rs.annotate_probe(_probe(outputs=[{"index": 0, "output_type": "error", "mimes": [], "stamp": None,
+                                             "ename": "NoTipError", "evalue": "Channel 0 has no tip."}],
+                                   stamp_resources_notebook=[], stamp_resources_current=[]))
+    assert err["summary"]["has_error_output"] is True and err["summary"]["n_stamped"] == 0 and err["first_resource"] is None
+
+
+def test_cell_probe_of_a_stamped_resource_cell_yields_its_first_resource(rs):
+    out = rs.annotate_probe(_probe(outputs=[{"index": 0, "output_type": "display_data", "mimes": ["text/html"],
+                                             "stamp": {"kind": "plate", "resource": "assay", "rev": 3}, "ename": None, "evalue": None}],
+                                   stamp_resources_notebook=["assay"], stamp_resources_current=["assay"]))
+    assert out["first_resource"] == "assay" and out["summary"]["stamp_resources_agree"] is True
+
+
+@pytest.mark.parametrize(
+    "over,fragment",
+    [({"found": "yes"}, "found"), ({"outputs": "none"}, "outputs"), ({"outputs": [{"mimes": []}]}, "outputs"),
+     ({"outputs": [{"output_type": "display_data", "mimes": "x"}]}, "outputs"), ({"in_document": 1}, "in_document"),
+     ({"stamp_resources_notebook": "x"}, "stamp_resources_notebook")],
+)
+def test_cell_probe_negative_controls_name_what_is_malformed(rs, over, fragment):
+    problems = rs.annotate_probe(_probe(**over))["problems"]
+    assert problems and any(fragment in p for p in problems), problems
+
+
+def test_a_cell_that_is_not_found_is_a_probe_not_an_error(rs):
+    out = rs.annotate_probe({"found": False, "index": 9, "in_document": False, "outputs": [], "output_dom": {"count": 0, "res_names": []},
+                             "stamp_resources_notebook": [], "stamp_resources_current": []})
+    assert out["problems"] == [] and out["first_resource"] is None
+    assert rs.annotate_probe(None)["problems"] == ["no probe"]
+
+
+# -- the in-page readers against a fake DOM (bun) ---------------------------------------------------------------------------
+
+_NB_FAKE = r"""
+const cls = (list) => ({ contains: (c) => list.includes(c), [Symbol.iterator]: function* () { yield* list; } });
+const out = (o) => ({ toJSON: () => o });
+const mk = (outputs, inDoc = true) => ({
+  model: { executionCount: 5, executionState: "idle", outputs: { length: outputs.length, get: (j) => out(outputs[j]) } },
+  node: { classList: cls(["jp-Cell"]), __attached: inDoc, __style: { contentVisibility: "auto" },
+    getBoundingClientRect: () => ({ left: 0, right: 900, top: 10, bottom: 300, width: 900, height: 290 }),
+    querySelectorAll: (sel) => (sel === ".jp-OutputArea-output" ? outputs.map(() => ({})) : sel === "[data-praxis-res]" ? [{ dataset: { praxisRes: "assay" } }] : []) },
+});
+const ledger = { output_type: "display_data", data: { "text/html": "x", "text/plain": "y" },
+                 metadata: { praxis: { v: 1, kind: "ledger", resource: null, rev: null, session: "s", exec: 5 } } };
+const plate = { output_type: "display_data", data: { "text/html": "x" }, metadata: { "text/html": { praxis: { kind: "plate", resource: "assay", rev: 3 } } } };
+const err = { output_type: "error", ename: "NoTipError", evalue: "Channel 0 has no tip.", traceback: [] };
+const cells = [mk([plate]), mk([ledger]), mk([err]), mk([])];
+const notebook = { id: "nb-1", content: { activeCellIndex: 3, widgets: cells }, node: { classList: cls(["jp-NotebookPanel"]) } };
+const deck = { id: "praxis-deck-panel", node: { classList: cls(["praxis-deck-panel"]) } };
+window.jupyterapp = { shell: { currentWidget: deck, widgets: (area) => (area === "main" ? [deck, notebook] : []) } };
+"""
+
+
+@needs_bun
+def test_notebook_state_reads_the_notebook_even_when_the_current_widget_is_the_deck_panel(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _NB_FAKE + "return D.notebookState();")
+    assert got == {"current_widget_id": "praxis-deck-panel", "current_widget_is_notebook": False, "notebook_widget_id": "nb-1",
+                   "active_cell_index": 3, "n_cells": 4}
+
+
+@needs_bun
+def test_notebook_state_with_no_notebook_is_all_none_and_never_throws(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, "window.jupyterapp = { shell: { currentWidget: null, widgets: () => [] } }; return D.notebookState();")
+    assert got == {"current_widget_id": None, "current_widget_is_notebook": False, "notebook_widget_id": None,
+                   "active_cell_index": None, "n_cells": None}
+
+
+@needs_bun
+def test_cell_probe_reads_outputs_stamps_verbatim_and_shows_the_two_stamp_reads_diverge_when_the_deck_is_current(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _NB_FAKE + "return { ledger: D.cellProbe({ i: 1 }), plate: D.cellProbe({ i: 0 }), err: D.cellProbe({ i: 2 }), none: D.cellProbe({ i: 9 }) };")
+    ledger = got["ledger"]
+    assert rs.annotate_probe(ledger)["problems"] == []
+    assert ledger["found"] is True and ledger["in_document"] is True and ledger["content_visibility"] == "auto"
+    assert ledger["outputs"] == [{"index": 0, "output_type": "display_data", "mimes": ["text/html", "text/plain"],
+                                  "stamp": {"v": 1, "kind": "ledger", "resource": None, "rev": None, "session": "s", "exec": 5},
+                                  "ename": None, "evalue": None}], "stampOf, verbatim (kind/rev/resource/session/exec)"
+    assert ledger["stamp_resources_notebook"] == [None], "the notebook read sees the ledger stamp, resource null"
+    assert ledger["stamp_resources_current"] == [], "the currentWidget-based read (D.stampResources) sees NOTHING while the deck is current"
+    assert ledger["output_dom"] == {"count": 1, "res_names": ["assay"]} and ledger["execution_count"] == 5
+    assert got["plate"]["outputs"][0]["stamp"] == {"kind": "plate", "resource": "assay", "rev": 3}, "the S3-B carrier is read too"
+    assert got["err"]["outputs"][0]["output_type"] == "error" and got["err"]["outputs"][0]["ename"] == "NoTipError"
+    assert got["err"]["stamp_resources_notebook"] == []
+    assert got["none"]["found"] is False and got["none"]["outputs"] == []
+
+
+# -- run_k1a records the traces; every old key, shape and derive result is unchanged ----------------------------------------
+
+K1A_OLD_EVIDENCE = ("step_errors", "connected", "panel", "resources", "hello", "canvas", "embed", "state", "stale", "click",
+                    "follow_on", "follow_off", "follow_null", "presets", "follow_keeps")
+TRACE_STEPS = ("follow_focus", "follow_off", "follow_null", "follow_keeps")
+
+
+def test_k1a_keeps_every_old_evidence_key_and_adds_the_follow_trace_and_the_cell_probes(rs, nb, dnbf):
+    keys = rs.run_k1a(FakeDock(rs, dnbf), nb)
+    ev = keys["evidence"]
+    assert set(K1A_OLD_EVIDENCE) <= set(ev)
+    assert set(ev["follow_trace"]) == set(TRACE_STEPS)
+    assert set(ev["cell_probes_before"]) == set(ev["cell_probes_after"]) == {"ledger", "draw-source", "draw-tips", "draw-assay", "draw-deck"}
+    assert _evaluate(rs, "K1a", keys) == ([], []), "no rule changed: the old fixture still passes every key"
+    assert ev["follow_null"]["ledger_resources"] == [None] and ev["follow_keeps"]["pressed"] == "top", "old shapes untouched"
+
+
+def test_each_follow_step_records_before_after_actions_polls_snapshots_and_events(rs, nb, dnbf):
+    ev = rs.run_k1a(FakeDock(rs, dnbf), nb)["evidence"]["follow_trace"]
+    for name, t in ev.items():
+        assert t["problems"] == [], (name, t["problems"])
+        assert t["before"] is not None and t["after"] is not None and t["snap_before"] and t["snap_after"], name
+        assert t["events"] and t["events"][0]["type"] == "mark", "the harness monitor's events since the step began"
+        assert t["cell_id"] in ("draw-assay", "draw-tips", "draw-source"), name
+        assert all(set(p) == {"name", "timed_out"} for p in t["polls"])
+    assert ev["follow_focus"]["cell_id"] == "draw-assay" and ev["follow_off"]["cell_id"] == "draw-tips"
+    assert ev["follow_null"]["cell_id"] == "draw-tips" and ev["follow_keeps"]["cell_id"] == "draw-source"
+    # follow_null has two clicks: the cell first (tips, which moves the focus), then the ledger cell: both are recorded
+    actions = [(a["name"], a.get("cell")) for a in ev["follow_null"]["actions"]]
+    assert actions == [("click_follow", None), ("click_cell_input", "draw-tips"), ("click_cell_input", "ledger")]
+
+
+def test_the_ledger_click_is_the_subject_of_follow_null_and_the_tips_click_is_its_setup(rs, nb, dnbf):
+    t = rs.run_k1a(FakeDock(rs, dnbf), nb)["evidence"]["follow_trace"]["follow_null"]
+    assert t["cell_id"] == "ledger" and t["summary"]["clicked_ok"] is True
+    assert t["summary"]["clicked_cell_became_active"] is True and t["summary"]["footer_changed"] is False, "Follow skipped the null cell"
+
+
+def test_the_trace_shows_a_harness_click_that_did_nothing_because_the_deck_took_over_as_current_widget(rs, nb, dnbf):
+    """Simulates the suspected harness fault: after a click inside the deck panel, the notebook is no longer the current
+    widget, so every `click_cell_input` is a silent no-op. The keys fail (as in the real run) and the evidence says why."""
+    d = FakeDock(rs, dnbf, broken=("deck_steals_current",))
+    keys = rs.run_k1a(d, nb)
+    missing, failing = _evaluate(rs, "K1a", keys)
+    assert missing == [] and {"follow_skips_null", "follow_keeps_preset"} <= set(failing)
+    ev = keys["evidence"]
+    tr = ev["follow_trace"]
+    assert tr["follow_focus"]["summary"]["clicked_ok"] is True and tr["follow_focus"]["summary"]["footer_changed"] is True
+    for step in ("follow_off", "follow_null", "follow_keeps"):
+        s = tr[step]["summary"]
+        assert s["clicked_ok"] is False and s["clicked_cell_became_active"] is False, step
+        assert s["current_widget_was_notebook_before"] is False, step
+    assert tr["follow_keeps"]["summary"]["any_poll_timed_out"] is True
+    after = ev["cell_probes_after"]["ledger"]
+    assert after["stamp_resources_notebook"] == [None] and after["stamp_resources_current"] == []
+    assert after["summary"]["stamp_resources_agree"] is False
+
+
+def test_a_driver_without_the_new_readers_still_runs_k1a_and_records_why(rs, nb, dnbf):
+    class Old(FakeDock):
+        observe = property(lambda self: (_ for _ in ()).throw(AttributeError("observe")))
+        cell_probe = property(lambda self: (_ for _ in ()).throw(AttributeError("cell_probe")))
+
+    keys = rs.run_k1a(Old(rs, dnbf), nb)
+    assert _evaluate(rs, "K1a", keys) == ([], [])
+    ev = keys["evidence"]
+    assert any(k.startswith("trace_") or k.startswith("probe_") for k in ev["step_errors"])
+    assert set(ev["follow_trace"]) == set(TRACE_STEPS), "a trace is still assembled from what could be read"
+    assert ev["follow_trace"]["follow_null"]["before"] is None and ev["follow_trace"]["follow_null"]["problems"]
+
+
+def test_the_real_driver_reads_the_notebook_through_the_shell_widget_list_not_the_current_widget(rs):
+    import inspect
+    src = inspect.getsource(rs.DockDriver.observe)
+    assert 'self._dk("notebookState()")' in src and "self.facts()" in src and "self.camera()" in src
+    assert 'self._dk("cellProbe(a)"' in inspect.getsource(rs.DockDriver.cell_probe)
+    assert "annotate_probe(" in inspect.getsource(rs.DockDriver.cell_probe)
+    assert 'widgets("main")' in rs.DOCK_CHECK_JS, "the notebook is found among the main-area widgets"
