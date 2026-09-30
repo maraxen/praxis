@@ -40,6 +40,7 @@ import re
 import subprocess
 import sys
 import threading
+import types
 from pathlib import Path
 from typing import Any, Callable
 
@@ -973,7 +974,7 @@ class TestStop:
             viewer = mod.DockedViewer3D(make_deck(), channel_factory=bus.endpoint, session="s")
             await viewer.start()
             rig = Rig(mod, viewer, None, bus)
-            pages = await open_pages(rig, 3)
+            await open_pages(rig, 3)
             assert len(pending_handlers()) == 3  # positive control
             assert viewer._subscribed, "the viewer listens to its tree before stop"
             await asyncio.wait_for(viewer.stop(), 5)
@@ -1233,5 +1234,101 @@ class TestDock:
             answer_announces_with_a_page(bus, mod)
             v = await mod.dock(make_deck(), channel_factory=bus.endpoint, session="s")  # works afterwards
             await v.stop()
+
+        run(scenario)
+
+
+# --------------------------------------------------------------------------------------------------
+# The real channel adapter, against fakes of ``js`` and ``pyodide.ffi`` (the JS side is not testable here)
+# --------------------------------------------------------------------------------------------------
+class FakeJsChannel:
+    def __init__(self, name: str) -> None:
+        self.name, self.posted, self.listeners, self.closed = name, [], [], False
+
+    def postMessage(self, message):  # noqa: N802 - the JS name
+        self.posted.append(message)
+
+    def addEventListener(self, kind, proxy):  # noqa: N802
+        assert kind == "message"
+        self.listeners.append(proxy)
+
+    def removeEventListener(self, kind, proxy):  # noqa: N802
+        assert kind == "message"
+        self.listeners.remove(proxy)
+
+    def close(self):
+        self.closed = True
+
+
+class FakeProxy:
+    def __init__(self, fn) -> None:
+        self.fn, self.destroyed = fn, False
+
+    def __call__(self, event):
+        return self.fn(event)
+
+    def destroy(self):
+        self.destroyed = True
+
+
+def event(data):
+    return types.SimpleNamespace(data=data)
+
+
+class TestRealChannelAdapter:
+    def _install_fakes(self, monkeypatch):
+        made: list[FakeJsChannel] = []
+        js = types.ModuleType("js")
+        js.BroadcastChannel = types.SimpleNamespace(new=lambda name: made.append(FakeJsChannel(name)) or made[-1])
+        ffi = types.ModuleType("pyodide.ffi")
+        ffi.create_proxy = FakeProxy
+        pyodide = types.ModuleType("pyodide")
+        pyodide.ffi = ffi
+        monkeypatch.setitem(sys.modules, "js", js)
+        monkeypatch.setitem(sys.modules, "pyodide", pyodide)
+        monkeypatch.setitem(sys.modules, "pyodide.ffi", ffi)
+        return made
+
+    def test_make_viz3d_channel_opens_the_named_channel_and_round_trips(self, monkeypatch):
+        made = self._install_fakes(monkeypatch)
+        mod = load_viewer3d()
+        channel = mod.make_viz3d_channel()
+        assert [c.name for c in made] == ["praxis_viz3d"]
+        channel.post('{"kind": "x"}')
+        assert made[0].posted == ['{"kind": "x"}']
+        heard = []
+        channel.add_listener(heard.append)
+        assert len(made[0].listeners) == 1
+        made[0].listeners[0](event('{"kind": "query"}'))
+        assert heard == ['{"kind": "query"}']  # the listener gets the event's data, a string
+
+    def test_remove_listener_detaches_and_destroys_the_proxy_and_close_closes(self, monkeypatch):
+        made = self._install_fakes(monkeypatch)
+        mod = load_viewer3d()
+        channel = mod.make_viz3d_channel()
+        a, b = (lambda d: None), (lambda d: None)
+        channel.add_listener(a)
+        channel.add_listener(b)
+        proxies = list(made[0].listeners)
+        channel.remove_listener(a)
+        assert made[0].listeners == [proxies[1]] and proxies[0].destroyed and not proxies[1].destroyed
+        channel.remove_listener(a)  # a second removal is harmless
+        channel.close()
+        assert made[0].listeners == [] and proxies[1].destroyed and made[0].closed
+
+    def test_a_docked_viewer_runs_end_to_end_on_the_adapter(self, monkeypatch):
+        made = self._install_fakes(monkeypatch)
+        mod = load_viewer3d()
+
+        async def scenario():
+            viewer = mod.DockedViewer3D(make_deck(), session="s")  # default factory: the real adapter
+            await viewer.start()
+            (fake,) = made
+            assert [json.loads(m)["kind"] for m in fake.posted] == ["announce"]
+            fake.listeners[0](event(json.dumps({"kind": "query"})))
+            assert [json.loads(m)["kind"] for m in fake.posted] == ["announce", "announce"]
+            await viewer.stop()
+            assert fake.listeners == [] and fake.closed
+            assert json.loads(fake.posted[-1])["kind"] == "close"
 
         run(scenario)
