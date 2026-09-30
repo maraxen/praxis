@@ -6339,10 +6339,10 @@ def test_each_follow_step_records_before_after_actions_polls_snapshots_and_event
         assert t["problems"] == [], (name, t["problems"])
         assert t["before"] is not None and t["after"] is not None and t["snap_before"] and t["snap_after"], name
         assert t["events"] and t["events"][0]["type"] == "mark", "the harness monitor's events since the step began"
-        assert t["cell_id"] in ("draw-assay", "draw-tips", "draw-source"), name
+        assert t["cell_id"] in ("draw-assay", "draw-tips", "draw-source", "ledger"), name
         assert all(set(p) == {"name", "timed_out"} for p in t["polls"])
     assert ev["follow_focus"]["cell_id"] == "draw-assay" and ev["follow_off"]["cell_id"] == "draw-tips"
-    assert ev["follow_null"]["cell_id"] == "draw-tips" and ev["follow_keeps"]["cell_id"] == "draw-source"
+    assert ev["follow_null"]["cell_id"] == "ledger" and ev["follow_keeps"]["cell_id"] == "draw-source"
     # follow_null has two clicks: the cell first (tips, which moves the focus), then the ledger cell: both are recorded
     actions = [(a["name"], a.get("cell")) for a in ev["follow_null"]["actions"]]
     assert actions == [("click_follow", None), ("click_cell_input", "draw-tips"), ("click_cell_input", "ledger")]

@@ -7531,6 +7531,151 @@ def drag_plan(geo: Any, width: float, *, inner_width: Any = None) -> dict[str, A
     }
 
 
+# -- K1a diagnostic evidence: what one Follow click did, and what each cell's outputs are (evidence only) -------------
+
+#: The notebook/deck state read at one instant around a click: ``(field, type)``; every field may be ``None``.
+OBSERVATION_FIELDS = (
+    ("active_cell_index", "int"), ("current_widget_id", "str"), ("current_widget_is_notebook", "bool"),
+    ("notebook_widget_id", "str"), ("n_cells", "int"), ("follow_checked", "bool"), ("deck_state", "str"),
+    ("footer", "str"), ("camera_at", "vec3"),
+)
+
+
+def _type_ok(kind: str, value: Any) -> bool:
+    if value is None:
+        return True
+    if kind == "int":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if kind == "str":
+        return isinstance(value, str)
+    if kind == "bool":
+        return isinstance(value, bool)
+    return _vec3(value) is not None
+
+
+def observation_problems(obs: Any) -> list[str]:
+    """What is malformed about a state observation (``DockDriver.observe``); ``[]`` when well formed."""
+    if not isinstance(obs, dict):
+        return ["observation is not an object"]
+    problems = []
+    for name, kind in OBSERVATION_FIELDS:
+        if name not in obs:
+            problems.append(f"{name} missing")
+        elif not _type_ok(kind, obs[name]):
+            problems.append(f"{name} is not a {kind}")
+    return problems
+
+
+def first_resource_of(outputs: Any) -> str | None:
+    """A REPLICA of dock.js ``firstResource`` over harness-read outputs (each ``{stamp: {...} | None}``): the first whose
+    stamp has a non-empty string ``resource``. The dock controller does not expose the name it computed (its ``snapshot()``
+    has ``focused``, the last name it focused), so this is what the same rule gives, labelled as a replica."""
+    if not isinstance(outputs, list):
+        return None
+    for out in outputs:
+        stamp = out.get("stamp") if isinstance(out, dict) else None
+        res = stamp.get("resource") if isinstance(stamp, dict) else None
+        if isinstance(res, str) and res != "":
+            return res
+    return None
+
+
+def _ne(a: Any, b: Any) -> bool | None:
+    return None if a is None or b is None else a != b
+
+
+def assemble_click_trace(
+    *, step: str, cell_index: Any, cell_id: Any, actions: Any, polls: Any, before: Any, after: Any, snap_before: Any,
+    snap_after: Any, events: Any, mid: Any = None,
+) -> dict[str, Any]:
+    """One Follow step as evidence: the observation BEFORE, optionally ``mid`` (after the Follow switch was clicked, before the
+    cell click: the click's baseline) and AFTER, the dock controller's ``snapshot()`` before and after, every action with what
+    it returned (a click that found no target returns False), every poll with whether it timed out, and the monitor events.
+    ``summary`` answers the questions that separate a product fault from a harness one: did the click land
+    (``clicked_ok``), did the clicked cell become the ACTIVE cell (``clicked_cell_became_active``; Follow listens to a
+    CHANGE of it, so ``clicked_cell_was_already_active`` means no event was possible), did the footer or camera move, did a
+    poll time out, and was the notebook still the shell's current widget. Never raises; ``problems`` lists what is malformed."""
+    problems: list[str] = []
+    for name, obs in (("before", before), ("after", after)):
+        if obs is None:
+            problems.append(f"{name} missing")
+        else:
+            problems += [f"{name}: {p}" for p in observation_problems(obs)]
+    if mid is not None:
+        problems += [f"mid: {p}" for p in observation_problems(mid)]
+    if not (isinstance(actions, list) and all(isinstance(a, dict) and isinstance(a.get("name"), str) for a in actions)):
+        problems.append("actions malformed (a list of {name, returned})")
+    if not (isinstance(polls, list) and all(isinstance(q, dict) and isinstance(q.get("name"), str) and isinstance(q.get("timed_out"), bool) for q in polls)):
+        problems.append("polls malformed (a list of {name, timed_out})")
+    if not isinstance(events, list):
+        problems.append("events is not a list")
+    if cell_index is not None and not _type_ok("int", cell_index):
+        problems.append("cell_index is not an int")
+
+    def g(obs: Any, key: str) -> Any:
+        return obs.get(key) if isinstance(obs, dict) else None
+
+    base = mid if isinstance(mid, dict) else before
+    clicks = [a for a in actions if isinstance(a, dict) and a.get("name") == "click_cell_input"] if isinstance(actions, list) else []
+    a_before, a_after = g(base, "active_cell_index"), g(after, "active_cell_index")
+    cam_b, cam_a = g(base, "camera_at"), g(after, "camera_at")
+    was, now = g(base, "current_widget_is_notebook"), g(after, "current_widget_is_notebook")
+    summary = {
+        "clicked_ok": all(a.get("returned") is True for a in clicks) if clicks else None,
+        "active_before": a_before, "active_after": a_after, "active_changed": _ne(a_before, a_after),
+        "clicked_cell_became_active": (a_after == cell_index) if _type_ok("int", a_after) and a_after is not None and cell_index is not None else None,
+        "clicked_cell_was_already_active": (a_before == cell_index) if a_before is not None and cell_index is not None else None,
+        "footer_changed": _ne(g(base, "footer"), g(after, "footer")),
+        "camera_moved": _moved(cam_b, cam_a) if _vec3(cam_b) is not None and _vec3(cam_a) is not None else None,
+        "any_poll_timed_out": any(isinstance(q, dict) and q.get("timed_out") is True for q in polls) if isinstance(polls, list) else None,
+        "current_widget_was_notebook_before": was, "current_widget_was_notebook_after": now,
+        "current_widget_left_notebook": (was is True and now is False) if was is not None and now is not None else None,
+        "follow_before": g(before, "follow_checked"), "follow_click_baseline": g(base, "follow_checked"),
+        "follow_after": g(after, "follow_checked"),
+    }
+    return {
+        "step": step, "cell_index": cell_index, "cell_id": cell_id, "actions": actions, "polls": polls, "before": before,
+        "mid": mid, "after": after, "snap_before": snap_before, "snap_after": snap_after, "events": events,
+        "summary": summary, "problems": problems,
+    }
+
+
+def annotate_probe(probe: Any) -> dict[str, Any]:
+    """A cell probe (``D.cellProbe``) plus ``first_resource`` (the dock.js rule over its outputs), a ``summary`` and its
+    ``problems``. ``summary.stamp_resources_agree`` is False when the notebook-based stamp read and the
+    ``shell.currentWidget``-based one (what ``D.stampResources`` / K1a's ``ledger_resources`` use) disagree."""
+    empty = {"n_outputs": None, "n_stamped": None, "has_error_output": None, "stamp_resources_agree": None, "output_dom_count": None}
+    if not isinstance(probe, dict):
+        return {"problems": ["no probe"], "first_resource": None, "outputs": [], "summary": empty}
+    problems: list[str] = []
+    if not isinstance(probe.get("found"), bool):
+        problems.append("found is not a bool")
+    if not isinstance(probe.get("in_document"), bool):
+        problems.append("in_document is not a bool")
+    outputs = probe.get("outputs")
+    if not isinstance(outputs, list):
+        problems.append("outputs is not a list")
+        outputs = []
+    for i, o in enumerate(outputs):
+        if not (isinstance(o, dict) and isinstance(o.get("output_type"), str) and isinstance(o.get("mimes"), list)):
+            problems.append(f"outputs[{i}] malformed (needs output_type and mimes)")
+    for name in ("stamp_resources_notebook", "stamp_resources_current"):
+        if not isinstance(probe.get(name), list):
+            problems.append(f"{name} is not a list")
+    dom = probe.get("output_dom") if isinstance(probe.get("output_dom"), dict) else {}
+    good = [o for o in outputs if isinstance(o, dict)]
+    out = dict(probe)
+    out["problems"] = problems
+    out["first_resource"] = first_resource_of(good)
+    out["summary"] = {
+        "n_outputs": len(outputs), "n_stamped": sum(1 for o in good if isinstance(o.get("stamp"), dict)),
+        "has_error_output": any(o.get("output_type") == "error" for o in good),
+        "stamp_resources_agree": probe.get("stamp_resources_notebook") == probe.get("stamp_resources_current"),
+        "output_dom_count": dom.get("count"),
+    }
+    return out
+
+
 # -- the dock notebook ---------------------------------------------------------------------------------------------
 
 DOCK_NOTEBOOK_NAME = "dock_check.ipynb"
@@ -7883,6 +8028,51 @@ DOCK_CHECK_JS = r"""
     if (a.op === "stop" && t.on) { t.on = false; TYPES.forEach((ty) => window.removeEventListener(ty, t.handler, true)); }
     return t.events.slice();
   };
+  // -- diagnostic evidence (read-only): the notebook is found among the MAIN-AREA widgets, never through
+  //    shell.currentWidget (which is the deck panel once something inside it has had focus). `cellAt` and `D.stampResources`
+  //    DO use currentWidget; `cellProbe` reports what both reads give, side by side.
+  const notebookWidget = () => {
+    try {
+      return Array.from(app().shell.widgets("main")).find((w) => w && w.content && w.node && w.node.classList && w.node.classList.contains("jp-NotebookPanel")) || null;
+    } catch (e) { return null; }
+  };
+  D.notebookState = () => {
+    const nbw = notebookWidget();
+    let cur = null;
+    try { cur = app().shell.currentWidget; } catch (e) { cur = null; }
+    return {
+      current_widget_id: cur ? cur.id : null,
+      current_widget_is_notebook: !!(cur && cur.node && cur.node.classList && cur.node.classList.contains("jp-NotebookPanel")),
+      notebook_widget_id: nbw ? nbw.id : null,
+      active_cell_index: nbw ? nbw.content.activeCellIndex : null,
+      n_cells: nbw ? nbw.content.widgets.length : null,
+    };
+  };
+  D.cellProbe = (a) => {
+    const nbw = notebookWidget();
+    const cell = nbw ? nbw.content.widgets[a.i] || null : null;
+    if (!cell) {
+      return { found: false, index: a.i, in_document: false, outputs: [], output_dom: { count: 0, res_names: [] },
+               stamp_resources_notebook: [], stamp_resources_current: D.stampResources({ i: a.i }) };
+    }
+    const m = cell.model;
+    const outputs = [];
+    for (let j = 0; j < outputCount(m); j++) {
+      const o = outputJson(m, j);
+      const st = stampOf(o);
+      outputs.push({ index: j, output_type: o.output_type ?? null, mimes: Object.keys(o.data || {}), stamp: st === undefined ? null : st,
+                     ename: o.ename ?? null, evalue: o.evalue ?? null });
+    }
+    const res = Array.from(cell.node.querySelectorAll("[data-praxis-res]")).map((e) => e.dataset.praxisRes);
+    return {
+      found: true, index: a.i, in_document: document.contains(cell.node), rect: box(cell.node),
+      content_visibility: getComputedStyle(cell.node).contentVisibility ?? null,
+      execution_count: m.executionCount ?? null, execution_state: m.executionState ?? null, outputs,
+      output_dom: { count: cell.node.querySelectorAll(".jp-OutputArea-output").length, res_names: res },
+      stamp_resources_notebook: outputs.filter((o) => o.stamp !== null).map((o) => (o.stamp.resource === undefined ? null : o.stamp.resource)),
+      stamp_resources_current: D.stampResources({ i: a.i }),
+    };
+  };
   D.collapseLeft = () => {
     const shell = app().shell;
     try { if (shell.leftCollapsed === false) shell.collapseLeft(); } catch (e) { return null; }
@@ -8188,6 +8378,19 @@ class DockDriver(DisplayDriver):
         rect = self.facts().get("panel_rect") or {}
         return rect.get("width")
 
+    def observe(self) -> dict[str, Any]:
+        """The notebook and deck state at this instant (evidence): the active cell and current widget from the shell's own
+        widget list, the Follow switch, the deck's state attribute, the footer and the camera's ``at``."""
+        nb = self._dk("notebookState()") or {}
+        facts = self.facts()
+        cam = self.camera()
+        return {**nb, "follow_checked": facts.get("follow_checked"), "deck_state": facts.get("state"),
+                "footer": facts.get("footer"), "camera_at": (cam or {}).get("at")}
+
+    def cell_probe(self, index: int) -> dict[str, Any]:
+        """One cell's outputs as the harness sees them (stamps verbatim), its DOM, and both stamp reads (evidence)."""
+        return annotate_probe(self._dk("cellProbe(a)", {"i": index}))
+
     def layout(self) -> dict[str, Any]:
         """One instant of the whole layout (``D.layout``), with its summary and any malformation noted."""
         return annotate_layout(self._dk("layout()"))
@@ -8341,6 +8544,38 @@ def run_k1a(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
     # AC-35. The ledger cell runs FIRST, so it already has its output when it is next activated by a click.
     _guard(ev, "ledger_run", lambda: driver.run_cell(ledger_i))
 
+    # Diagnostic evidence (read by no key): what each Follow step did, and each cell's outputs before and after them.
+    cell_ids = {i: name for name, i in idx.items()}
+    ev["follow_trace"] = {}
+
+    def probes(phase: str) -> dict[str, Any]:
+        return {cid: _guard(ev, f"probe_{cid}_{phase}", lambda cid=cid: driver.cell_probe(idx[cid]))
+                for cid in ("ledger", "draw-source", "draw-tips", "draw-assay", "draw-deck")}
+
+    def begin(step: str) -> dict[str, Any]:
+        t: dict[str, Any] = {"step": step, "actions": [], "polls": []}
+        t["before"] = _guard(ev, f"trace_{step}_before", lambda: driver.observe())
+        t["snap_before"] = _guard(ev, f"trace_{step}_snap_before", lambda: driver.snap())
+        t["seq"] = _guard(ev, f"trace_{step}_mark", lambda: driver.mark(f"k1a:{step}"))
+        return t
+
+    def did(t: dict[str, Any], name: str, returned: Any = None, cell: int | None = None) -> None:
+        t["actions"].append({"name": name, **({} if cell is None else {"cell": cell_ids.get(cell)}), "returned": returned})
+
+    def polled(t: dict[str, Any], name: str, ok: bool) -> None:
+        t["polls"].append({"name": name, "timed_out": not ok})
+
+    def end(t: dict[str, Any], cell_index: int) -> None:
+        after = _guard(ev, f"trace_{t['step']}_after", lambda: driver.observe())
+        snap_after = _guard(ev, f"trace_{t['step']}_snap_after", lambda: driver.snap())
+        events = _guard(ev, f"trace_{t['step']}_events", lambda: driver.events_since(t["seq"]), None) or []
+        ev["follow_trace"][t["step"]] = assemble_click_trace(
+            step=t["step"], cell_index=cell_index, cell_id=cell_ids.get(cell_index), actions=t["actions"], polls=t["polls"],
+            before=t["before"], mid=t.get("mid"), after=after, snap_before=t["snap_before"], snap_after=snap_after, events=events,
+        )
+
+    ev["cell_probes_before"] = probes("before")
+
     def click_focus() -> dict[str, Any]:
         driver.click_cell_input(deck_i)
         before = _focus(driver)
@@ -8351,40 +8586,59 @@ def run_k1a(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
     raw["click"] = _guard(ev, "click_focuses", click_focus, {})
 
     def follow_focus() -> dict[str, Any]:
-        if driver.facts().get("follow_checked") is not True:
-            driver.click_follow()
-        enabled = driver.facts().get("follow_checked")
-        before = _focus(driver)
-        driver.click_cell_input(assay_i)
-        after, _ = driver.poll(lambda: _focus(driver), lambda s: s["footer"] == "assay", 5.0)
-        return {"enabled": enabled, "focused": (driver.snap() or {}).get("focused"), "footer": after["footer"],
-                "at_before": before["at"], "at_after": after["at"]}
+        t = begin("follow_focus")
+        try:
+            if driver.facts().get("follow_checked") is not True:
+                driver.click_follow()
+                did(t, "click_follow")
+            enabled = driver.facts().get("follow_checked")
+            before = _focus(driver)
+            did(t, "click_cell_input", driver.click_cell_input(assay_i), assay_i)
+            after, ok = driver.poll(lambda: _focus(driver), lambda s: s["footer"] == "assay", 5.0)
+            polled(t, "footer == assay", ok)
+            return {"enabled": enabled, "focused": (driver.snap() or {}).get("focused"), "footer": after["footer"],
+                    "at_before": before["at"], "at_after": after["at"]}
+        finally:
+            end(t, assay_i)
 
     raw["follow_on"] = _guard(ev, "follow_focuses", follow_focus, {})
 
     def follow_off() -> dict[str, Any]:
-        driver.click_follow()
-        enabled = driver.facts().get("follow_checked")
-        before = _focus(driver)
-        driver.click_cell_input(tips_i)
-        driver.settle(1500)
-        after = _focus(driver)
-        return {"enabled": enabled, "footer_before": before["footer"], "footer_after": after["footer"],
-                "at_before": before["at"], "at_after": after["at"]}
+        t = begin("follow_off")
+        try:
+            driver.click_follow()
+            did(t, "click_follow")
+            enabled = driver.facts().get("follow_checked")
+            t["mid"] = _guard(ev, "trace_follow_off_mid", lambda: driver.observe())
+            before = _focus(driver)
+            did(t, "click_cell_input", driver.click_cell_input(tips_i), tips_i)
+            driver.settle(1500)
+            after = _focus(driver)
+            return {"enabled": enabled, "footer_before": before["footer"], "footer_after": after["footer"],
+                    "at_before": before["at"], "at_after": after["at"]}
+        finally:
+            end(t, tips_i)
 
     raw["follow_off"] = _guard(ev, "follow_off_holds", follow_off, {})
 
     def follow_null() -> dict[str, Any]:
-        driver.click_follow()
-        enabled = driver.facts().get("follow_checked")
-        driver.click_cell_input(tips_i)  # Follow on: the focus moves to tips_300
-        driver.poll(lambda: _focus(driver), lambda s: s["footer"] == "tips_300", 5.0)
-        before = _focus(driver)
-        driver.click_cell_input(ledger_i)  # the cell whose only Praxis output is the ledger
-        driver.settle(1500)
-        after = _focus(driver)
-        return {"enabled": enabled, "ledger_resources": driver.stamp_resources(ledger_i), "footer_before": before["footer"],
-                "footer_after": after["footer"], "at_before": before["at"], "at_after": after["at"]}
+        t = begin("follow_null")
+        try:
+            driver.click_follow()
+            did(t, "click_follow")
+            enabled = driver.facts().get("follow_checked")
+            t["mid"] = _guard(ev, "trace_follow_null_mid", lambda: driver.observe())
+            did(t, "click_cell_input", driver.click_cell_input(tips_i), tips_i)  # Follow on: the focus should move to tips_300
+            _, tips_ok = driver.poll(lambda: _focus(driver), lambda s: s["footer"] == "tips_300", 5.0)
+            polled(t, "footer == tips_300", tips_ok)
+            before = _focus(driver)
+            did(t, "click_cell_input", driver.click_cell_input(ledger_i), ledger_i)  # the cell whose only Praxis output is the ledger
+            driver.settle(1500)
+            after = _focus(driver)
+            return {"enabled": enabled, "ledger_resources": driver.stamp_resources(ledger_i), "footer_before": before["footer"],
+                    "footer_after": after["footer"], "at_before": before["at"], "at_after": after["at"]}
+        finally:
+            end(t, ledger_i)
 
     raw["follow_null"] = _guard(ev, "follow_skips_null", follow_null, {})
 
@@ -8396,15 +8650,23 @@ def run_k1a(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
     raw["presets"] = {name: _guard(ev, f"preset_{name}", lambda n=name: press(n), None) for name in ("top", "front", "iso")}
 
     def follow_keeps() -> dict[str, Any]:
-        driver.click_preset("top")
-        pressed = (driver.facts().get("pressed") or [None])[0]
-        before = _focus(driver)["footer"]
-        driver.click_cell_input(source_i)  # Follow is on: this focuses `source`, with the held preset
-        after, _ = driver.poll(lambda: _focus(driver), lambda s: s["footer"] == "source", 5.0)
-        return {"pressed": pressed, "camera": after["camera"], "footer_before": before, "footer_after": after["footer"]}
+        t = begin("follow_keeps")
+        try:
+            driver.click_preset("top")
+            did(t, "click_preset")
+            pressed = (driver.facts().get("pressed") or [None])[0]
+            t["mid"] = _guard(ev, "trace_follow_keeps_mid", lambda: driver.observe())
+            before = _focus(driver)["footer"]
+            did(t, "click_cell_input", driver.click_cell_input(source_i), source_i)  # Follow is on: this should focus `source`
+            after, ok = driver.poll(lambda: _focus(driver), lambda s: s["footer"] == "source", 5.0)
+            polled(t, "footer == source", ok)
+            return {"pressed": pressed, "camera": after["camera"], "footer_before": before, "footer_after": after["footer"]}
+        finally:
+            end(t, source_i)
 
     raw["follow_keeps"] = _guard(ev, "follow_keeps_preset", follow_keeps, {})
 
+    ev["cell_probes_after"] = probes("after")
     keys = derive_k1a_keys(raw)
     ev.update({k: v for k, v in raw.items() if k != "resources"})
     ev["resources"] = raw["resources"]
