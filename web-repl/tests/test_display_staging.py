@@ -10,7 +10,12 @@ temporary dist: that is AC-6's `test -f dist/shell/display/index.js` and
 `! test -e dist/shell/display/__tests__` without the wheel/JupyterLite build.
 
 B9 (this file's second revision) adds stale.js and interact.js to the required
-list. Later tasks (C6) extend the staged/required lists and this file.
+list. B8 (third revision) adds the kernel-side package: assert_dist_complete also
+requires assets/python/praxis/display/__init__.py (spec section 4, build_repl.py row:
+"C6 ... and assets/python/praxis/display/__init__.py, the last from B8"). Without it a
+dist could ship a bootstrap whose D13 stage imports a package that is not there, and
+the failure would surface only as a runtime praxis:display-error. Later tasks (C6)
+extend the staged/required lists and this file.
 """
 
 from __future__ import annotations
@@ -29,6 +34,9 @@ import build_repl  # noqa: E402 -- path setup must precede this import
 # What a dist requires under shell/display/. A6: index.js, chrome.js. B9 appends
 # stale.js and interact.js; C6 appends dock.js in its own commit.
 _REQUIRED_DISPLAY = ("index.js", "chrome.js", "stale.js", "interact.js")
+
+# The kernel-side package B8 adds (path relative to dist/).
+_DISPLAY_PY_INIT = "assets/python/praxis/display/__init__.py"
 
 
 def _make_shell_source_tree(tmp_path: Path) -> tuple[Path, Path]:
@@ -72,6 +80,7 @@ def _write_complete_dist(dist: Path) -> None:
         "assets/python/web_bridge.py": "# bridge\n",
         "assets/python/praxis/__init__.py": "",
         "assets/python/praxis/interactive.py": "# interactive\n",
+        _DISPLAY_PY_INIT: "# display\n",
         "assets/visualizer/lib.js": "// lib\n",
         "assets/visualizer/index.html": "<html></html>",
         "assets/visualizer-augmentations/index.js": "// aug\n",
@@ -236,3 +245,42 @@ def test_assert_dist_complete_requires_display_dir(tmp_path: Path) -> None:
     msg = str(exc.value).replace("\\", "/")
     for name in _REQUIRED_DISPLAY:
         assert f"shell/display/{name}" in msg
+
+
+def test_assert_dist_complete_requires_the_display_python_package(tmp_path: Path) -> None:
+    """B8: with only ``praxis/display/__init__.py`` missing (the fixture is otherwise complete, as the
+    positive control above shows) it raises BuildAssertionError naming exactly that file."""
+    dist = _make_dist_dir(tmp_path)
+    _write_complete_dist(dist)
+    (dist / _DISPLAY_PY_INIT).unlink()
+
+    with pytest.raises(build_repl.BuildAssertionError) as exc:
+        build_repl.assert_dist_complete(dist, with_coxswain=False)
+
+    msg = str(exc.value).replace("\\", "/")
+    assert "missing required staged path" in msg
+    assert _DISPLAY_PY_INIT in msg
+    # and only that one path is missing
+    assert msg.count("\n  ") == 1, msg
+
+
+def test_assert_dist_complete_requires_the_display_python_package_dir(tmp_path: Path) -> None:
+    """No ``praxis/display/`` directory at all: still named."""
+    dist = _make_dist_dir(tmp_path)
+    _write_complete_dist(dist)
+    (dist / _DISPLAY_PY_INIT).unlink()
+    (dist / "assets" / "python" / "praxis" / "display").rmdir()
+
+    with pytest.raises(build_repl.BuildAssertionError) as exc:
+        build_repl.assert_dist_complete(dist, with_coxswain=False)
+
+    assert _DISPLAY_PY_INIT in str(exc.value).replace("\\", "/")
+
+
+def test_the_real_overlay_ships_the_display_python_package() -> None:
+    """The source tree has what the dist requires: the overlay's ``praxis/display/__init__.py`` exists
+    (``stage_overlay`` copies ``overlay/assets/`` wholesale, so this is what lands in dist)."""
+    init = (
+        Path(__file__).resolve().parents[1] / "overlay" / "assets" / "python" / "praxis" / "display" / "__init__.py"
+    )
+    assert init.is_file(), init

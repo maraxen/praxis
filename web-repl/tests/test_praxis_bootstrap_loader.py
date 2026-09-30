@@ -24,6 +24,17 @@ failing at each required point, per this task's brief:
     negative tests above are testing a real gate, not a function that
     always raises (``test_ready_reached_on_full_success``)
 
+Notebook display epic, task B8 (spec D13, AC-20): step 13 installs ``praxis.display`` AFTER
+``verify_identity`` and BEFORE ``praxis:ready``, as the ONE deliberate exception to fail-closed. An
+exception in ``import praxis.display`` or in ``install()`` is caught, logged with ``console.error`` and
+posted as ``{"type": "praxis:display-error", "reason": ...}``, and the REPL still reaches
+``praxis:ready`` (the ``display`` fixture below stands in for the package; the real ``install()`` is
+tested in ``test_display_install.py``):
+
+  - ``test_display_stage_runs_after_verify_identity_and_before_ready`` (order, by source and by run)
+  - ``test_display_failure_is_non_fatal_and_loud`` / ``test_missing_display_package_is_non_fatal``
+  - ``test_display_stage_is_not_reached_when_an_earlier_stage_fails``
+
 Per ADR Sec 2.4, ``web-repl/overlay/assets/python`` is never added to
 ``sys.path`` here -- every fetched file in these tests is synthetic content
 served by ``FakeXHR`` and written under ``tmp_path``, never the real
@@ -32,6 +43,7 @@ served by ``FakeXHR`` and written under ``tmp_path``, never the real
 
 from __future__ import annotations
 
+import ast
 import asyncio
 import hashlib
 import json
@@ -117,11 +129,14 @@ class _FakeEvent:
 
 
 class FakeConsole:
+    def __init__(self):
+        self.errors: list[tuple] = []
+
     def log(self, *a, **k):
         pass
 
     def error(self, *a, **k):
-        pass
+        self.errors.append(a)
 
 
 def _install_fake_js(monkeypatch, pong_sha: str | None) -> FakeChannel:
@@ -228,7 +243,7 @@ def _clean_builtin_shims():
             delattr(builtins, name)
 
 
-def _install_success_routes(monkeypatch, installed_wheels: list) -> None:
+def _install_success_routes(monkeypatch, installed_wheels: list, web_bridge_source: str | None = None) -> None:
     """Helper to install the standard success-path routes (shims, web_bridge,
     manifest with pylabrobot wheel entry) for tests that exercise a full
     successful bootstrap. Reuses _ROUTES_HOLDER pattern.
@@ -239,8 +254,9 @@ def _install_success_routes(monkeypatch, installed_wheels: list) -> None:
         path = f"assets/shims/{filename}"
         sources.append({"path": path, "sha256": _sha(text)})
         routes[HOST_ROOT + path] = (200, text)
-    sources.append({"path": "assets/python/web_bridge.py", "sha256": _sha(_WEB_BRIDGE_SOURCE)})
-    routes[HOST_ROOT + "assets/python/web_bridge.py"] = (200, _WEB_BRIDGE_SOURCE)
+    bridge = _WEB_BRIDGE_SOURCE if web_bridge_source is None else web_bridge_source
+    sources.append({"path": "assets/python/web_bridge.py", "sha256": _sha(bridge)})
+    routes[HOST_ROOT + "assets/python/web_bridge.py"] = (200, bridge)
 
     manifest = {
         "praxis_git_sha": "dev",
@@ -258,6 +274,49 @@ def _install_success_routes(monkeypatch, installed_wheels: list) -> None:
     }
     routes[HOST_ROOT + "assets/wheels/manifest.json"] = (200, json.dumps(manifest))
     _ROUTES_HOLDER["routes"] = routes
+
+
+class FakeDisplay:
+    """Stands in for ``praxis.display`` (D13's stage does ``import praxis.display; praxis.display.install()``).
+
+    ``calls`` records, at the moment ``install()`` runs, what had already been posted on the channel and
+    whether the once-guard flag was set, so a test can prove WHERE in the ledger the stage sits.
+    ``behaviour`` is what ``install()`` does: return, or raise.
+    """
+
+    def __init__(self):
+        self.calls: list[dict] = []
+        self.behaviour = lambda: None
+        self.channel: FakeChannel | None = None
+
+    def install(self, *args, **kwargs):
+        import builtins
+
+        self.calls.append(
+            {
+                "posted": [m["type"] for m in (self.channel.posted if self.channel else [])],
+                "boot_done": getattr(builtins, "_PRAXIS_BOOT_DONE", False),
+                "args": args,
+                "kwargs": kwargs,
+            }
+        )
+        return self.behaviour()
+
+
+@pytest.fixture(autouse=True)
+def display(monkeypatch):
+    """A fake ``praxis`` package with a fake ``praxis.display`` for every test in this file, so the
+    display stage has something to import and the existing ledger tests are not polluted by an
+    import failure (a real ``praxis`` may be importable from the repo root, and must not be touched)."""
+    fake = FakeDisplay()
+    pkg = types.ModuleType("praxis")
+    pkg.__path__ = []
+    mod = types.ModuleType("praxis.display")
+    mod.install = fake.install
+    pkg.display = mod
+    monkeypatch.setitem(sys.modules, "praxis", pkg)
+    monkeypatch.setitem(sys.modules, "praxis.display", mod)
+    return fake
 
 
 @pytest.fixture()
@@ -780,3 +839,227 @@ def test_source_tree_ships_the_placeholder_empty() -> None:
         "the source tree must ship the pin dict EMPTY so an unbuilt tree fails "
         f"closed; got {marker_lines[0]!r}"
     )
+
+
+# --------------------------------------------------------------------------- D13: the display stage (B8, AC-20)
+
+_BOOTSTRAP_PATH = _BOOTSTRAP_DIR / "praxis_bootstrap.py"
+
+# A web_bridge whose bootstrap re-binds builtins.WebSerial to a second class object: exactly what the
+# R-ID identity check (step 12, stages.verify_identity) exists to catch.
+_REBINDING_WEB_BRIDGE = (
+    "import builtins\n\n"
+    "def bootstrap_playground(namespace=None):\n"
+    "    builtins.WebSerial = type('WebSerial', (), {})\n\n"
+    "def register_broadcast_channel(channel):\n"
+    "    pass\n\n"
+    "def handle_interaction_response(id_, value):\n"
+    "    pass\n"
+)
+
+
+def _boot_success(loader, monkeypatch, display, *, web_bridge_source=None):
+    """Wire every fake for a full ledger run and return the recording channel."""
+    # step 10 does `import web_bridge`: a copy cached by an earlier test would hide this test's source
+    monkeypatch.delitem(sys.modules, "web_bridge", raising=False)
+    channel = _install_fake_js(monkeypatch, pong_sha="dev")
+    display.channel = channel
+    installed_wheels: list[str] = []
+    _install_fake_micropip(monkeypatch, installed_wheels)
+    _install_fake_pylabrobot(monkeypatch, source_sha="deadbeef")
+    _install_success_routes(monkeypatch, installed_wheels, web_bridge_source)
+    return channel
+
+
+def _main_source_lines() -> dict[str, list[int]]:
+    """Source line numbers, in ``praxis_main``, of the calls the D13 order is stated over."""
+    tree = ast.parse(_BOOTSTRAP_PATH.read_text())
+    (main,) = [n for n in tree.body if isinstance(n, ast.AsyncFunctionDef) and n.name == "praxis_main"]
+    found: dict[str, list[int]] = {"verify_identity": [], "import_display": [], "install": [], "ready": [],
+                                   "display_error": []}
+    for node in ast.walk(main):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            if node.func.attr == "verify_identity":
+                found["verify_identity"].append(node.lineno)
+            if node.func.attr == "install" and ast.unparse(node.func.value) == "praxis.display":
+                found["install"].append(node.lineno)
+        if isinstance(node, ast.Import) and any(a.name == "praxis.display" for a in node.names):
+            found["import_display"].append(node.lineno)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_post":
+            for arg in node.args:
+                if isinstance(arg, ast.Dict):
+                    values = [ast.literal_eval(v) for v in arg.values if isinstance(v, ast.Constant)]
+                    if "praxis:ready" in values:
+                        found["ready"].append(node.lineno)
+                    if "praxis:display-error" in values:
+                        found["display_error"].append(node.lineno)
+    return found
+
+
+def test_display_stage_source_order_is_after_verify_identity_and_before_ready() -> None:
+    """D13: the stage runs after step 12 (``stages.verify_identity()``) and before the final
+    ``praxis:ready`` post (the once-guard branch's earlier ready post is a different code path)."""
+    lines = _main_source_lines()
+    assert len(lines["verify_identity"]) == 1, lines
+    assert len(lines["import_display"]) == 1 and len(lines["install"]) == 1, lines
+    final_ready = max(lines["ready"])
+    assert len(lines["ready"]) == 2, "the once-guard re-post and the final post"
+    assert lines["verify_identity"][0] < lines["import_display"][0] < lines["install"][0] < final_ready
+    assert len(lines["display_error"]) == 1
+
+
+def test_display_stage_is_a_narrow_exception_guard_that_never_reraises() -> None:
+    """The one deliberate exception to fail-closed: ``except Exception`` around the display stage ONLY,
+    posting ``praxis:display-error`` and not re-raising (the outer ``praxis:error`` guard is untouched)."""
+    tree = ast.parse(_BOOTSTRAP_PATH.read_text())
+    (main,) = [n for n in tree.body if isinstance(n, ast.AsyncFunctionDef) and n.name == "praxis_main"]
+    guards = [
+        n for n in ast.walk(main)
+        if isinstance(n, ast.Try)
+        and any(isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute) and c.func.attr == "install"
+                and ast.unparse(c.func.value) == "praxis.display" for b in n.body for c in ast.walk(b))
+    ]
+    inner = [g for g in guards if len(g.body) <= 3]  # the narrow one, not the outer stage ledger
+    assert len(inner) == 1
+    (guard,) = inner
+    (handler,) = guard.handlers
+    assert ast.unparse(handler.type) == "Exception"
+    assert not any(isinstance(n, ast.Raise) for h in guard.handlers for n in ast.walk(h))
+    assert any(
+        isinstance(n, ast.Constant) and n.value == "praxis:display-error" for n in ast.walk(handler)
+    )
+    # the other stages still sit under the fail-closed guard: exactly one bare-Exception handler posts praxis:error
+    error_posts = [
+        n for n in ast.walk(main)
+        if isinstance(n, ast.Constant) and n.value == "praxis:error"
+    ]
+    assert len(error_posts) == 1
+
+
+def test_display_stage_runs_after_verify_identity_and_before_ready(loader, monkeypatch, display) -> None:
+    channel = _boot_success(loader, monkeypatch, display)
+
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+
+    types_posted = [m["type"] for m in channel.posted]
+    assert len(display.calls) == 1, "install() runs exactly once"
+    (call,) = display.calls
+    assert call["args"] == () and call["kwargs"] == {}, "the stage calls praxis.display.install() bare"
+    assert "praxis:ready" not in call["posted"], "install() ran BEFORE praxis:ready was posted"
+    assert "praxis:error" not in call["posted"]
+    assert "praxis:error" not in types_posted and "praxis:display-error" not in types_posted
+    assert types_posted[-1] == "praxis:ready"
+    # Everything before the stage had already run: the D1 handshake was answered and the shell was pinged.
+    assert "praxis:shell-ping" in call["posted"]
+
+
+def test_display_stage_runs_only_after_the_identity_check_passes(loader, monkeypatch, display) -> None:
+    """The order, by run: with step 12 (verify_identity) failing, the display stage is never reached, the
+    ledger fails closed with ``praxis:error`` and neither ``praxis:display-error`` nor ``praxis:ready``
+    is posted. (Positive control: the same wiring without the rebinding bridge reaches the stage.)"""
+    channel = _boot_success(loader, monkeypatch, display, web_bridge_source=_REBINDING_WEB_BRIDGE)
+
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+
+    types_posted = [m["type"] for m in channel.posted]
+    assert "praxis:error" in types_posted
+    assert display.calls == []
+    assert "praxis:ready" not in types_posted and "praxis:display-error" not in types_posted
+    error = [m for m in channel.posted if m["type"] == "praxis:error"][0]
+    assert "single-class-object invariant" in error["reason"]
+
+
+def test_display_stage_is_not_reached_when_an_earlier_stage_fails(loader, monkeypatch, display) -> None:
+    channel = _install_fake_js(monkeypatch, pong_sha="dev")
+    display.channel = channel
+    _install_fake_micropip(monkeypatch, installed=[])
+    _ROUTES_HOLDER["routes"] = _bootstrap_self_fetch_routes()  # no manifest
+
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+
+    assert display.calls == []
+    assert "praxis:error" in [m["type"] for m in channel.posted]
+
+
+def test_display_failure_is_non_fatal_and_loud(loader, monkeypatch, display) -> None:
+    """AC-20: with an ``install()`` that raises, ``praxis:ready`` is still posted, and exactly one
+    ``praxis:display-error`` message precedes it. It is loud: a console error names it too."""
+    channel = _boot_success(loader, monkeypatch, display)
+
+    def boom():
+        raise RuntimeError("boom: cannot draw")
+
+    display.behaviour = boom
+
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+
+    types_posted = [m["type"] for m in channel.posted]
+    assert "praxis:error" not in types_posted, channel.posted
+    assert types_posted.count("praxis:display-error") == 1
+    assert types_posted[-2:] == ["praxis:display-error", "praxis:ready"]
+    message = [m for m in channel.posted if m["type"] == "praxis:display-error"][0]
+    assert message == {"type": "praxis:display-error", "reason": "boom: cannot draw"}
+    console_errors = sys.modules["js"].console.errors
+    assert any("boom: cannot draw" in " ".join(str(x) for x in args) for args in console_errors), console_errors
+
+    import builtins
+
+    assert builtins._PRAXIS_BOOT_DONE is True, "a failed display does not fail the boot: the once-guard is set"
+
+
+def test_display_failure_does_not_raise_even_with_raise_on_error(loader, monkeypatch, display) -> None:
+    channel = _boot_success(loader, monkeypatch, display)
+    display.behaviour = lambda: (_ for _ in ()).throw(ValueError("nope"))
+
+    asyncio.run(loader.praxis_main(HOST_ROOT, raise_on_error=True))  # must not raise
+
+    assert [m["type"] for m in channel.posted][-2:] == ["praxis:display-error", "praxis:ready"]
+
+
+def test_display_failure_with_an_empty_message_still_gives_a_reason(loader, monkeypatch, display) -> None:
+    channel = _boot_success(loader, monkeypatch, display)
+    display.behaviour = lambda: (_ for _ in ()).throw(KeyError())  # str(KeyError()) == ""
+
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+
+    message = [m for m in channel.posted if m["type"] == "praxis:display-error"][0]
+    assert message["reason"] and "KeyError" in message["reason"]
+
+
+def test_missing_display_package_is_non_fatal(loader, monkeypatch, display) -> None:
+    """An unstaged ``praxis/display/`` (import error) takes the same non-fatal, loud path."""
+    channel = _boot_success(loader, monkeypatch, display)
+    monkeypatch.setitem(sys.modules, "praxis.display", None)  # `import praxis.display` -> ImportError
+
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+
+    types_posted = [m["type"] for m in channel.posted]
+    assert types_posted[-2:] == ["praxis:display-error", "praxis:ready"]
+    message = [m for m in channel.posted if m["type"] == "praxis:display-error"][0]
+    assert "praxis.display" in message["reason"]
+    assert display.calls == []
+
+
+def test_display_stage_does_not_rerun_on_the_once_guard_path(loader, monkeypatch, display) -> None:
+    channel = _boot_success(loader, monkeypatch, display)
+
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+    channel.posted.clear()
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+
+    assert [m["type"] for m in channel.posted] == ["praxis:ready"]
+    assert len(display.calls) == 1
+
+
+def test_a_display_failure_is_retried_nowhere_and_does_not_block_a_second_boot(loader, monkeypatch, display) -> None:
+    """The boot succeeded (only the drawing layer did not), so the once-guard holds: a second call
+    re-posts ``praxis:ready`` and does not try the display again."""
+    channel = _boot_success(loader, monkeypatch, display)
+    display.behaviour = lambda: (_ for _ in ()).throw(RuntimeError("once"))
+
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+    channel.posted.clear()
+    asyncio.run(loader.praxis_main(HOST_ROOT))
+
+    assert [m["type"] for m in channel.posted] == ["praxis:ready"]
+    assert len(display.calls) == 1
