@@ -1,0 +1,37 @@
+{
+ "class": "m3_lid_on_tip_rack",
+ "report": {
+  "by_class": {
+   "m3_lid_on_tip_rack": {
+    "n_construction_skipped": 0,
+    "n_error": 0,
+    "n_raised_as_expected": 289,
+    "n_ran": 289,
+    "n_runtime_harness_error": 0,
+    "n_runtime_raised_at_338": 289,
+    "n_static_338_safe": 0,
+    "n_static_error": 0,
+    "n_total": 289,
+    "static_verdict_at_raising_index": {
+     "none": 0,
+     "safe": 0,
+     "unknown": 289,
+     "will_fail": 0
+    },
+    "unsound_safe_where_simulator_raised": [],
+    "unsound_will_fail_where_simulator_ran_clean": []
+   }
+  },
+  "classes": [
+   "m3_lid_on_tip_rack"
+  ],
+  "gate_passed": true,
+  "hard_violations": [],
+  "n_corpus_bases": 285,
+  "n_example_bases": 4,
+  "n_move_corpus_bases": 0,
+  "n_move_example_bases": 0
+ },
+ "tool": "tip_mutants",
+ "unit": "m3"
+}

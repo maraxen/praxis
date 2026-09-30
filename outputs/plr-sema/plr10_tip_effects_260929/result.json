@@ -1,0 +1,239 @@
+{
+  "control_fires": true,
+  "real_rows_executed": 343,
+  "real_rows_setup_error": 0,
+  "real_operations_executed": 548,
+  "real_unsound": 0,
+  "real_unsound_scoped": 0,
+  "real_totality_violations": 0,
+  "real_check_graph_exceptions": 0,
+  "real_n_operations_scope_verdict_safe": 216,
+  "real_pick_up_tips_scope_safe": 216,
+  "real_pick_up_tips_n_ops": 223,
+  "real_n_findings_decided": 3906,
+  "real_n_tip_racks_decided": 288,
+  "real_n_tip_racks_attempted": 288,
+  "n_338_pickups_attempted": 223,
+  "n_338_pickups_safe": 223,
+  "n_338_declined_kind": 0,
+  "n_338_declined_observation": 0,
+  "n_338_declined_deck": 0,
+  "n_338_declined_topology_prefix": 0,
+  "n_338_declined_topology_loop": 0,
+  "n_338_declined_unattributed": 0,
+  "n_338_safe_with_reason": 0,
+  "n_pickups_with_preceding_disturber_indep": 0,
+  "all_safe_unsound": 7,
+  "all_safe_operations_executed": 548,
+  "runtime_raised_ops_all_safe_arm": 7,
+  "m1_will_fail_fired": true,
+  "m2_will_fail_fired": true,
+  "m1_attempted": 199,
+  "m1_achieved": 199,
+  "m2_attempted": 289,
+  "m2_achieved": 289,
+  "p3a_attempted": 164,
+  "p3a_achieved": 0,
+  "mutants_hard_violations_excl_p3a_floor": 0,
+  "mutants_unsound": 0,
+  "mutants_criterion_ii": 0,
+  "m3_attempted": 289,
+  "runtime_raised_m3": 289,
+  "static_338_safe_on_m3": 0,
+  "v1_attempted": 67,
+  "v1_achieved": 67,
+  "v1_gate_passed": true,
+  "load_state_channel_effect": "widen",
+  "baseline_divergences": 1,
+  "baseline_intended_divergences": 1,
+  "baseline_parity_matched": 10,
+  "baseline_parity_total": 11,
+  "n_ops_load_state": 0,
+  "units": {
+    "real": {
+      "status": "computed",
+      "source": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/outputs/plr-sema/plr10_tip_effects_260929/units/real.json",
+      "inputs": {
+        "derived_contracts_json": "bc3c94f41cc5feac3f7486bbdaa89730a16f88fbfae254409dbc0cba7999a408",
+        "corpus": {
+          "training/assemble/out/corpus_p25.jsonl": "9803b5b8d5220040e5f1d67380d1f67a301b6efc01482b746c1351b6f17c8f83"
+        },
+        "sidecar": {
+          "training/assemble/out/corpus_p25_sidecar.jsonl": "134ecb8e555a251043ece667df66bdf6145537b4b558ced3a23525e1c29ef94b"
+        },
+        "crosscheck": {
+          "training/out/corpus_p23_floor.jsonl": "33a69e95c9f103acc79ecd6fc13b9cf4c794c3f476b772561397e1b79a77a353",
+          "training/overlay_gen/out/overlay_full.jsonl": "483ae6456d509613485a7566d5868307b40c45ba0859f1416766bb25a454f9be"
+        },
+        "git_head": "f1a02465b5e2970ed5de8b6d04484faeae7681ed",
+        "code_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mutant_examples_sha256": "c9db3926e16366e8110da559396749d22bb12597bc890e361889156eba0d1a0a",
+        "pylabrobot_head": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
+        "chatterbox_runner_sha256": "2d59d1dc8a48af346747fb64a71c626f6179b75b3c78075f28267352a7a78bfb",
+        "limit": null
+      },
+      "output_sha256": "a2da507c1fbe58fec16dfb9f983c7c4db427efb9e95c36df34eb757f1abbbae3",
+      "elapsed_s": 200.22880273102783
+    },
+    "all_safe": {
+      "status": "computed",
+      "source": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/outputs/plr-sema/plr10_tip_effects_260929/units/all_safe.json",
+      "inputs": {
+        "derived_contracts_json": "bc3c94f41cc5feac3f7486bbdaa89730a16f88fbfae254409dbc0cba7999a408",
+        "corpus": {
+          "training/assemble/out/corpus_p25.jsonl": "9803b5b8d5220040e5f1d67380d1f67a301b6efc01482b746c1351b6f17c8f83"
+        },
+        "sidecar": {
+          "training/assemble/out/corpus_p25_sidecar.jsonl": "134ecb8e555a251043ece667df66bdf6145537b4b558ced3a23525e1c29ef94b"
+        },
+        "crosscheck": {
+          "training/out/corpus_p23_floor.jsonl": "33a69e95c9f103acc79ecd6fc13b9cf4c794c3f476b772561397e1b79a77a353",
+          "training/overlay_gen/out/overlay_full.jsonl": "483ae6456d509613485a7566d5868307b40c45ba0859f1416766bb25a454f9be"
+        },
+        "git_head": "f1a02465b5e2970ed5de8b6d04484faeae7681ed",
+        "code_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mutant_examples_sha256": "c9db3926e16366e8110da559396749d22bb12597bc890e361889156eba0d1a0a",
+        "pylabrobot_head": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
+        "chatterbox_runner_sha256": "2d59d1dc8a48af346747fb64a71c626f6179b75b3c78075f28267352a7a78bfb",
+        "limit": null
+      },
+      "output_sha256": "3f07c0ac93265142c189eec864529575e4ea68e36602577e449a7711ddb6ae56",
+      "elapsed_s": 181.87354025698733
+    },
+    "m1": {
+      "status": "computed",
+      "source": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/outputs/plr-sema/plr10_tip_effects_260929/units/m1.json",
+      "inputs": {
+        "derived_contracts_json": "bc3c94f41cc5feac3f7486bbdaa89730a16f88fbfae254409dbc0cba7999a408",
+        "corpus": {
+          "training/assemble/out/corpus_p25.jsonl": "9803b5b8d5220040e5f1d67380d1f67a301b6efc01482b746c1351b6f17c8f83"
+        },
+        "sidecar": {
+          "training/assemble/out/corpus_p25_sidecar.jsonl": "134ecb8e555a251043ece667df66bdf6145537b4b558ced3a23525e1c29ef94b"
+        },
+        "crosscheck": {
+          "training/out/corpus_p23_floor.jsonl": "33a69e95c9f103acc79ecd6fc13b9cf4c794c3f476b772561397e1b79a77a353",
+          "training/overlay_gen/out/overlay_full.jsonl": "483ae6456d509613485a7566d5868307b40c45ba0859f1416766bb25a454f9be"
+        },
+        "git_head": "f1a02465b5e2970ed5de8b6d04484faeae7681ed",
+        "code_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mutant_examples_sha256": "c9db3926e16366e8110da559396749d22bb12597bc890e361889156eba0d1a0a",
+        "pylabrobot_head": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
+        "chatterbox_runner_sha256": "2d59d1dc8a48af346747fb64a71c626f6179b75b3c78075f28267352a7a78bfb",
+        "limit": null
+      },
+      "output_sha256": "af2f9e037d8876395dee93d01e9db38395973988e93d2af5d6aef3e1d62c226c",
+      "elapsed_s": 180.3850865609711
+    },
+    "m2": {
+      "status": "computed",
+      "source": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/outputs/plr-sema/plr10_tip_effects_260929/units/m2.json",
+      "inputs": {
+        "derived_contracts_json": "bc3c94f41cc5feac3f7486bbdaa89730a16f88fbfae254409dbc0cba7999a408",
+        "corpus": {
+          "training/assemble/out/corpus_p25.jsonl": "9803b5b8d5220040e5f1d67380d1f67a301b6efc01482b746c1351b6f17c8f83"
+        },
+        "sidecar": {
+          "training/assemble/out/corpus_p25_sidecar.jsonl": "134ecb8e555a251043ece667df66bdf6145537b4b558ced3a23525e1c29ef94b"
+        },
+        "crosscheck": {
+          "training/out/corpus_p23_floor.jsonl": "33a69e95c9f103acc79ecd6fc13b9cf4c794c3f476b772561397e1b79a77a353",
+          "training/overlay_gen/out/overlay_full.jsonl": "483ae6456d509613485a7566d5868307b40c45ba0859f1416766bb25a454f9be"
+        },
+        "git_head": "f1a02465b5e2970ed5de8b6d04484faeae7681ed",
+        "code_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mutant_examples_sha256": "c9db3926e16366e8110da559396749d22bb12597bc890e361889156eba0d1a0a",
+        "pylabrobot_head": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
+        "chatterbox_runner_sha256": "2d59d1dc8a48af346747fb64a71c626f6179b75b3c78075f28267352a7a78bfb",
+        "limit": null
+      },
+      "output_sha256": "f6623338cdd2ca3ac3dbb7124b6a15d5bcd63be5b0f8231efa00c1c5103349e3",
+      "elapsed_s": 60.011587133049034
+    },
+    "p3a": {
+      "status": "computed",
+      "source": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/outputs/plr-sema/plr10_tip_effects_260929/units/p3a.json",
+      "inputs": {
+        "derived_contracts_json": "bc3c94f41cc5feac3f7486bbdaa89730a16f88fbfae254409dbc0cba7999a408",
+        "corpus": {
+          "training/assemble/out/corpus_p25.jsonl": "9803b5b8d5220040e5f1d67380d1f67a301b6efc01482b746c1351b6f17c8f83"
+        },
+        "sidecar": {
+          "training/assemble/out/corpus_p25_sidecar.jsonl": "134ecb8e555a251043ece667df66bdf6145537b4b558ced3a23525e1c29ef94b"
+        },
+        "crosscheck": {
+          "training/out/corpus_p23_floor.jsonl": "33a69e95c9f103acc79ecd6fc13b9cf4c794c3f476b772561397e1b79a77a353",
+          "training/overlay_gen/out/overlay_full.jsonl": "483ae6456d509613485a7566d5868307b40c45ba0859f1416766bb25a454f9be"
+        },
+        "git_head": "f1a02465b5e2970ed5de8b6d04484faeae7681ed",
+        "code_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mutant_examples_sha256": "c9db3926e16366e8110da559396749d22bb12597bc890e361889156eba0d1a0a",
+        "pylabrobot_head": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
+        "chatterbox_runner_sha256": "2d59d1dc8a48af346747fb64a71c626f6179b75b3c78075f28267352a7a78bfb",
+        "limit": null
+      },
+      "output_sha256": "a27a12080587879a25ab311057d1393edfc3da12142a577445a8e26e3cf4481d",
+      "elapsed_s": 36.45629283005837
+    },
+    "m3": {
+      "status": "computed",
+      "source": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/outputs/plr-sema/plr10_tip_effects_260929/units/m3.json",
+      "inputs": {
+        "derived_contracts_json": "bc3c94f41cc5feac3f7486bbdaa89730a16f88fbfae254409dbc0cba7999a408",
+        "corpus": {
+          "training/assemble/out/corpus_p25.jsonl": "9803b5b8d5220040e5f1d67380d1f67a301b6efc01482b746c1351b6f17c8f83"
+        },
+        "sidecar": {
+          "training/assemble/out/corpus_p25_sidecar.jsonl": "134ecb8e555a251043ece667df66bdf6145537b4b558ced3a23525e1c29ef94b"
+        },
+        "crosscheck": {
+          "training/out/corpus_p23_floor.jsonl": "33a69e95c9f103acc79ecd6fc13b9cf4c794c3f476b772561397e1b79a77a353",
+          "training/overlay_gen/out/overlay_full.jsonl": "483ae6456d509613485a7566d5868307b40c45ba0859f1416766bb25a454f9be"
+        },
+        "git_head": "f1a02465b5e2970ed5de8b6d04484faeae7681ed",
+        "code_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mutant_examples_sha256": "c9db3926e16366e8110da559396749d22bb12597bc890e361889156eba0d1a0a",
+        "pylabrobot_head": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
+        "chatterbox_runner_sha256": "2d59d1dc8a48af346747fb64a71c626f6179b75b3c78075f28267352a7a78bfb",
+        "limit": null
+      },
+      "output_sha256": "1a11e945db8d356f0ee13f7fca7ab8eda74b0dc09e9df85131f63baf512f615e",
+      "elapsed_s": 54.70252932293806
+    },
+    "v1": {
+      "status": "computed",
+      "source": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/outputs/plr-sema/plr10_tip_effects_260929/units/v1.json",
+      "inputs": {
+        "derived_contracts_json": "bc3c94f41cc5feac3f7486bbdaa89730a16f88fbfae254409dbc0cba7999a408",
+        "corpus": {
+          "training/assemble/out/corpus_p25.jsonl": "9803b5b8d5220040e5f1d67380d1f67a301b6efc01482b746c1351b6f17c8f83"
+        },
+        "sidecar": {
+          "training/assemble/out/corpus_p25_sidecar.jsonl": "134ecb8e555a251043ece667df66bdf6145537b4b558ced3a23525e1c29ef94b"
+        },
+        "crosscheck": {
+          "training/out/corpus_p23_floor.jsonl": "33a69e95c9f103acc79ecd6fc13b9cf4c794c3f476b772561397e1b79a77a353",
+          "training/overlay_gen/out/overlay_full.jsonl": "483ae6456d509613485a7566d5868307b40c45ba0859f1416766bb25a454f9be"
+        },
+        "git_head": "f1a02465b5e2970ed5de8b6d04484faeae7681ed",
+        "code_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mutant_examples_sha256": "c9db3926e16366e8110da559396749d22bb12597bc890e361889156eba0d1a0a",
+        "pylabrobot_head": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
+        "chatterbox_runner_sha256": "2d59d1dc8a48af346747fb64a71c626f6179b75b3c78075f28267352a7a78bfb",
+        "limit": null
+      },
+      "output_sha256": "e9ff10305c5fda6636af51b40df995421d4e23f8d2bc51faf425cfe7a147bc94",
+      "elapsed_s": 13.197964653023519
+    }
+  },
+  "assembly_inputs": {
+    "contracts": {
+      "path": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/plr-sema/data/derived_contracts.json",
+      "sha256": "bc3c94f41cc5feac3f7486bbdaa89730a16f88fbfae254409dbc0cba7999a408"
+    },
+    "baseline": {
+      "path": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/plr-sema/tests/fixtures/channel_effect_baseline.json",
+      "sha256": "3a94831694b2b764c1f5b3f2e9cb91aa6b700f4f96d3cb18c9b695204f73cd43"
+    }
+  }
+}

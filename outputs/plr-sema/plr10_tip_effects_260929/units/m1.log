@@ -1,0 +1,5 @@
+2026-09-29 23:01:17,218 INFO base examples: 285 from corpus (clean, has pick_up_tips), 4 from --examples-dir/--extra-examples-dir
+2026-09-29 23:03:52,966 INFO report written to outputs/plr-sema/plr10_tip_effects_260929/units/m1.mutants_report.json
+2026-09-29 23:03:52,966 INFO m1_remove_pickup: n=289 raised_as_expected=199 static_at_index={'will_fail': 199, 'unknown': 0, 'safe': 0, 'none': 0}
+2026-09-29 23:03:52,966 INFO GATE PASSED for ['m1_remove_pickup']: criteria (i)/(ii)/(iii) hold for m1/m2, the floor holds for p3a, and m3's :338 hard terms hold.
+2026-09-29 23:03:52,966 INFO tip_mutants --classes m1 returned rc=0 (informational; the report is what is read)

@@ -1,0 +1,6 @@
+2026-09-29 23:05:09,299 INFO p3a base examples: 177 from corpus (clean, has a move-family call), 1 from --examples-dir/--extra-examples-dir
+2026-09-29 23:05:38,352 INFO report written to outputs/plr-sema/plr10_tip_effects_260929/units/p3a.mutants_report.json
+2026-09-29 23:05:38,353 INFO p3a_pickup_already_held: n=178 raised_as_expected=164 static_at_index={'will_fail': 0, 'unknown': 164, 'safe': 0, 'none': 0}
+2026-09-29 23:05:38,353 ERROR GATE FAILED:
+p3a_pickup_already_held: floor FAILED -- achieved=0 != attempted=178 (static verdicts at raising index: {'will_fail': 0, 'unknown': 164, 'safe': 0, 'none': 0})
+2026-09-29 23:05:38,353 INFO tip_mutants --classes p3a returned rc=1 (informational; the report is what is read)

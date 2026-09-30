@@ -1,0 +1,33 @@
+{
+ "report_artifact": {
+  "path": "outputs/plr-sema/plr10_tip_effects_260929/units/all_safe.oracle_replay.json",
+  "sha256": "7122b3e2f96e57a9d50bc1f3b7b4b339da7569c7fd9e475d6b831150bd34d1a5"
+ },
+ "runtime_raised_ops": 7,
+ "summary_flat": {
+  "check_graph_exceptions": 0,
+  "check_only_elapsed_s": 102.25689781270921,
+  "crosscheck_agreement": 1.0,
+  "crosscheck_joined": 191,
+  "crosscheck_joined_content_fallback": 0,
+  "crosscheck_joined_exact": 191,
+  "gate_go": false,
+  "n_findings_decided": 3906,
+  "n_operations_scope_verdict_safe": 216,
+  "operations_executed": 548,
+  "rows_excused_by_frame": 0,
+  "rows_excused_by_scope": 7,
+  "rows_executed": 343,
+  "rows_no_call": 394,
+  "rows_normalised": 1,
+  "rows_parse_error": 0,
+  "rows_setup_error": 0,
+  "rows_skipped": 786,
+  "rows_total": 1523,
+  "totality_violations": 0,
+  "unknown_rate": 0.0,
+  "unsound": 7,
+  "unsound_scoped": 0
+ },
+ "unit": "all_safe"
+}
