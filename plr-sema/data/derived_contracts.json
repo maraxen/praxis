@@ -24278,7 +24278,16 @@
       ]
     },
     "Centrifuge.__init__": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -167565,7 +167574,16 @@
       ]
     },
     "Incubator.__init__": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -168489,7 +168507,16 @@
       ]
     },
     "IncubatorShakerStack.setup": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -188372,7 +188399,16 @@
       ]
     },
     "ItemizedResource.__init__": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -189843,7 +189879,12 @@
       ]
     },
     "ItemizedResource.summary": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_occupied_func"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -191374,7 +191415,16 @@
       ]
     },
     "Liddable.lid@pylabrobot.resources.lid:77": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -191722,7 +191772,16 @@
       ]
     },
     "Liddable.lid@pylabrobot.resources.lid:82": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -203261,7 +203320,12 @@
       "anchor_net_effects": {
         "_resource_pickup": "EMPTY"
       },
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": "_resource_pickup",
@@ -207486,7 +207550,12 @@
           }
         }
       },
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -209151,7 +209220,12 @@
           }
         }
       },
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -210766,7 +210840,12 @@
           }
         }
       },
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -214358,7 +214437,12 @@
           }
         }
       },
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -217462,7 +217546,12 @@
       ]
     },
     "LiquidHandler.probe_tip_inventory": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "probe_tip_presence_via_pickup"
+        ]
+      ],
       "guards": [],
       "param_defaults": {
         "probing_fn": null,
@@ -231064,7 +231153,16 @@
       ]
     },
     "MechanicalGripper.__init__": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -363361,7 +363459,16 @@
       ]
     },
     "PrepDeck.__init__": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -363484,7 +363591,16 @@
       ]
     },
     "PrepDeck._build_waste_block": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -363615,7 +363731,16 @@
       ]
     },
     "PrepDeck.get_or_create_x_arm": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -366775,7 +366900,12 @@
       ]
     },
     "Resource._call_did_assign_resource_callbacks": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self",
@@ -366783,7 +366913,12 @@
       ]
     },
     "Resource._call_did_unassign_resource_callbacks": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self",
@@ -366791,7 +366926,12 @@
       ]
     },
     "Resource._call_will_assign_resource_callbacks": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self",
@@ -366799,7 +366939,12 @@
       ]
     },
     "Resource._call_will_unassign_resource_callbacks": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self",
@@ -367081,14 +367226,28 @@
       ]
     },
     "Resource._state_updated": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self"
       ]
     },
     "Resource.assign_child_by_anchor": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -367265,7 +367424,16 @@
       ]
     },
     "Resource.assign_child_resource": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -368795,14 +368963,24 @@
       ]
     },
     "Resource.location@pylabrobot.resources.resource:889": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self"
       ]
     },
     "Resource.location@pylabrobot.resources.resource:894": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self",
@@ -368929,7 +369107,12 @@
       ]
     },
     "Resource.rotate": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -368995,7 +369178,12 @@
       ]
     },
     "Resource.rotate_to": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -369130,7 +369318,16 @@
       ]
     },
     "Resource.unassign_child_resource": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -369610,7 +369807,16 @@
       ]
     },
     "ResourceHolder.resource@pylabrobot.resources.resource_holder:79": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -369892,7 +370098,16 @@
       ]
     },
     "ResourceHolder.resource@pylabrobot.resources.resource_holder:85": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -491484,7 +491699,16 @@
       ]
     },
     "STARDevice.__init__": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -519110,7 +519334,16 @@
       ]
     },
     "TipMountingShaft.mount_tip": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -519228,7 +519461,16 @@
       ]
     },
     "TipMountingShaft.release_tip": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -520970,7 +521212,16 @@
       ]
     },
     "TipSpot.unassign_tip": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -603072,7 +603323,12 @@
       ]
     },
     "VolumeTracker.add_liquid": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -603122,7 +603378,12 @@
       ]
     },
     "VolumeTracker.commit": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -603252,7 +603513,12 @@
       ]
     },
     "VolumeTracker.remove_liquid": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -603302,7 +603568,12 @@
       ]
     },
     "VolumeTracker.rollback": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -603348,7 +603619,12 @@
       ]
     },
     "VolumeTracker.set_liquids": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self",
@@ -603356,7 +603632,12 @@
       ]
     },
     "VolumeTracker.set_volume": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_callbacks"
+        ]
+      ],
       "guards": [],
       "is_volume_setter": true,
       "params": [
@@ -634973,19 +635254,19 @@
       "dirty_content_id": null,
       "hash": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
       "provenance_source": "git",
-      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/external/pylabrobot"
+      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/outputs/green/external/pylabrobot"
     },
     "praxis": {
-      "branch": "plr-sema-5622-t57",
+      "branch": "plr-sema-green-5668",
       "dirty": true,
-      "dirty_content_id": "9d19e2d21816aabf7196a48c4122d6cf2b9f595ccf093442defa51b6d6663c24",
-      "hash": "4101274ddefffc82bd12e887835322606eb9c596",
+      "dirty_content_id": "100aab719814453702c8cf512e46e128bc38b45f",
+      "hash": "c4a42f64a5e404d65284e66533f79f79add0c787",
       "provenance_source": "git",
-      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10"
+      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/outputs/green"
     },
     "pylabrobot_version": "1.0.0b1",
     "schema_version": 1,
-    "stamped_at": "2026-09-30T01:54:30.159520+00:00",
+    "stamped_at": "2026-09-30T14:21:14.252620+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   }

@@ -219,6 +219,15 @@ class SurveyRecord:
     #: whole-surface report sees no Half-1-sourced pairs for this
     #: record", never a crash.
     inherited_delegates: tuple[str, ...] = ()
+    #: (260930, backlog #5668) Calls through a stored instance callable
+    #: (`for cb in self._callbacks: cb()`), named by the attribute
+    #: (`scripts/survey_plr_preconditions.py`'s
+    #: `FunctionPreconditions.callback_calls`) -- a fourth bucket, disjoint
+    #: from `delegates_to`/`unresolved_calls`/`dropped_calls`. Each becomes
+    #: an `unresolved_delegate` gap, but NOT one of M3's fail-closed
+    #: conditions (S17.5.1), under assumption A-CALLBACK-NO-DELEGATE (spec
+    #: 260902 §10.6.3). `()` for a pre-#5668 artifact via `.get()` below.
+    callback_calls: tuple[str, ...] = ()
 
 
 def _finding_from_dict(d: dict[str, Any]) -> SurveyFinding:
@@ -259,6 +268,7 @@ def _record_from_dict(d: dict[str, Any]) -> SurveyRecord:
         unresolved_calls=tuple(d.get("unresolved_calls", ())),
         dropped_calls=tuple(_dropped_call_from_any(x) for x in d.get("dropped_calls", ())),
         inherited_delegates=tuple(d.get("inherited_delegates", ())),
+        callback_calls=tuple(d.get("callback_calls", ())),
     )
 
 
@@ -1310,6 +1320,12 @@ def derive_contract(
             closure_has_unresolved_calls = True  # M3's first fail-closed condition (S17.5.1).
         for unresolved_name in rec.unresolved_calls:
             gaps.append(("unresolved_delegate", unresolved_name))
+        # (260930, #5668) A stored-callback call is a recorded gap, never a
+        # hidden one -- but deliberately NOT an M3 fail-closed condition:
+        # under A-CALLBACK-NO-DELEGATE (spec 260902 §10.6.3) a state
+        # callback does not call the delegate whose site set M3 folds.
+        for callback_attr in rec.callback_calls:
+            gaps.append(("unresolved_delegate", callback_attr))
 
     # M3's two fail-closed conditions (S17.5.1): an unresolved self-call
     # ANYWHERE in the closure, or a visited record with no `K` (function
