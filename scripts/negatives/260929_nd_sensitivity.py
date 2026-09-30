@@ -53,6 +53,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
 from pathlib import Path
@@ -90,10 +91,23 @@ class Negative:
     delete: str | None  # path relative to the dist root removed from the copy (None: no mutation)
     mutation: str
     harness_neg: tuple[str, ...] = ()  # harness-only --neg flags (AC-39(e): drop-query)
+    #: ``harness`` runs one harness unit on a mutated dist copy; ``grep`` (AC-39(c)) is a static scan of the SOURCE tree
+    #: with no browser and no harness unit: it passes iff the scan finds nothing.
+    kind: str = "harness"
+    #: d (AC-39(d)): the unit may record ``skipped``, which passes ONLY where the recorded D6 sizing case says the >= 1600
+    #: width key is recorded-only (``repl_smoke.ac39d_status``).
+    skippable: bool = False
+    #: ``(harness result key, rule)`` pairs that must hold in the harness result for the measurement to be VALID: a
+    #: mutation that never fired, or a predicate that cannot pass, would otherwise let a negative "detect" nothing.
+    #: Rules: ``ge1`` (a number >= 1) and ``true`` (exactly ``True``).
+    result_checks: tuple[tuple[str, str], ...] = ()
+    #: A harness result key recorded in the artifact as ``count_flat`` and in the flat fields as ``<id>_<count_flat>``.
+    count_key: str | None = None
+    count_flat: str | None = None
 
 
-#: The negatives this checkout can run. Sprint A: (a). B10 reuses (a); C7 adds b, d, e (and c as
-#: a grep, which has no harness unit). Their harness units do not exist before C7.
+#: The negatives this checkout can run. Sprint A: (a). B10 reuses (a); C7 adds b, c, d, e (AC-39(b)-(e)): c is a
+#: grep and has no harness unit.
 NEGATIVES: dict[str, Negative] = {
     "a": Negative(
         id="a",
@@ -105,6 +119,57 @@ NEGATIVES: dict[str, Negative] = {
             "remove shell/display/index.js from the dist copy: the display modules never mount, "
             "so no cell carries data-praxis-cell-state and the rail cannot reach `ran`"
         ),
+    ),
+    "b": Negative(
+        id="b",
+        harness_flag="--dock-check",
+        harness_unit="K1a",
+        expected_key="viewer_resources",
+        delete="assets/visualizer3d-augmentations/socket.js",
+        mutation=(
+            "remove assets/visualizer3d-augmentations/socket.js from the dist copy: the vendored viewer page keeps its "
+            "real WebSocket, which nothing serves, so it never receives a scene and plrViewer.resources() stays empty"
+        ),
+    ),
+    "c": Negative(
+        id="c",
+        harness_flag="",
+        harness_unit="",
+        expected_key="",
+        delete=None,
+        mutation=(
+            "none: a static scan of web-repl/shell/display and web-repl/overlay/assets/visualizer3d-augmentations "
+            "(*.js, excluding __tests__) for __praxis_test|data-praxis-test; it passes iff it finds nothing"
+        ),
+        kind="grep",
+    ),
+    "d": Negative(
+        id="d",
+        harness_flag="--dock-check",
+        harness_unit="N-d",
+        expected_key="panel_width_wide_1600",
+        delete=None,
+        mutation=(
+            "none to the dist copy: at 1600x900 the harness adds the viewer page in a STOCK split-right widget of its own "
+            "(no dock.js sizing) and applies the AC-36 >= 1600 width predicate to it, which must report failure"
+        ),
+        skippable=True,
+        result_checks=(("control_formula_passes", "true"),),
+    ),
+    "e": Negative(
+        id="e",
+        harness_flag="--dock-check",
+        harness_unit="K1b",
+        expected_key="late_iframe",
+        delete=None,
+        harness_neg=("drop-query",),
+        mutation=(
+            "none to the dist copy: a harness context init script drops every `query` message the parent page posts "
+            "on any BroadcastChannel (--neg drop-query), so a reopened panel gets no announce and no iframe"
+        ),
+        result_checks=(("neg_dropped_queries", "ge1"),),
+        count_key="neg_dropped_queries",
+        count_flat="dropped_queries",
     ),
 }
 
@@ -261,8 +326,26 @@ def build_env(args: argparse.Namespace) -> InputEnv:
     )
 
 
-def compute_inputs(negative: Negative, env: InputEnv, dist_mutated: str, neg_root: Path) -> dict[str, str]:
-    return {
+def sources_hash(source_root: Path | None = None) -> str:
+    """The sha256 of the files AC-39(c)'s scan reads (path and content, sorted): a changed source recomputes (c)."""
+    rs = repl_smoke()
+    root = Path(source_root) if source_root is not None else REPO_ROOT
+    files = sorted({h[0] for h in rs.grep_tree(root, rs.AC39C_PATHS, "", include=("*.js",), exclude_dirs=("__tests__",))})
+    return hash_lines([(rel, sha256_file(root / rel)) for rel in files])
+
+
+def compute_inputs(
+    negative: Negative, env: InputEnv, dist_mutated: str, neg_root: Path, *, source_root: Path | None = None
+) -> dict[str, str]:
+    args_blob: dict[str, Any] = {
+        "negative": negative.id, "harness_unit": negative.harness_unit,
+        "harness_flag": negative.harness_flag, "harness_neg": list(negative.harness_neg),
+        "delete": negative.delete, "base_path": env.base_path,
+        "neg_root": str(neg_root),
+    }
+    if negative.kind != "harness":  # added only where it differs, so the earlier sprints' hashes do not move
+        args_blob["kind"] = negative.kind
+    inputs = {
         "script": env.script,
         "entry": env.entry,
         "runner": env.runner,
@@ -271,22 +354,31 @@ def compute_inputs(negative: Negative, env: InputEnv, dist_mutated: str, neg_roo
         "dist_mutated": dist_mutated,
         "chrome": env.chrome,
         "driver": env.driver,
-        "args": sha256_bytes(
-            json.dumps(
-                {
-                    "negative": negative.id, "harness_unit": negative.harness_unit,
-                    "harness_flag": negative.harness_flag, "harness_neg": list(negative.harness_neg),
-                    "delete": negative.delete, "base_path": env.base_path,
-                    "neg_root": str(neg_root),
-                },
-                sort_keys=True,
-            ).encode()
-        ),
+        "args": sha256_bytes(json.dumps(args_blob, sort_keys=True).encode()),
     }
+    if negative.kind == "grep":
+        inputs["sources"] = sources_hash(source_root)
+    return inputs
 
 
 def harness_budget_s(negative: Negative) -> float:
+    if negative.kind == "grep":
+        return 0.0  # a static scan: no harness unit, no browser
     return float(repl_smoke().UNIT_BY_ID[negative.harness_unit].budget_s)
+
+
+def result_check_holds(check: tuple[str, str], result: Any) -> bool:
+    """One ``Negative.result_checks`` rule over a harness result. An absent key, a wrong type (a bool is not a count) or
+    a wrong value never holds."""
+    key, rule = check
+    if not isinstance(result, dict) or key not in result:
+        return False
+    value = result[key]
+    if rule == "ge1":
+        return isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 1
+    if rule == "true":
+        return value is True
+    raise ValueError(f"unknown result-check rule {rule!r}")
 
 
 def unit_budget_s(negative: Negative) -> float:
@@ -329,12 +421,30 @@ def negative_outcome(
     harness_exit: int | None,
     failing_keys: list[str],
     harness_error: Any,
+    skipped: bool = False,
+    skip_allowed: bool = False,
 ) -> tuple[bool, list[str]]:
     """Did the harness FAIL as required? Nonzero exit AND the expected key among the failing
-    keys, from a valid stamp whose result carries no error finding. Returns ``(passed, reasons)``."""
+    keys, from a valid stamp whose result carries no error finding. Returns ``(passed, reasons)``.
+
+    ``skipped`` (AC-39(d)): the harness recorded `skipped`. That passes only for a ``skippable`` negative, only where the
+    recorded D6 sizing case allows it (``skip_allowed``), and from a valid stamp, exit 0, with no error finding."""
     reasons: list[str] = []
     if not stamp_valid:
         reasons.append("no valid harness stamp (a timeout or a crash names no key)")
+    if skipped:
+        if not negative.skippable:
+            reasons.append(f"negative {negative.id} cannot be skipped")
+        elif not skip_allowed:
+            reasons.append(
+                "the harness recorded `skipped`, but the recorded D6 sizing case asserts the >= 1600 width key: "
+                "a skip there is a gate bug, not a pass"
+            )
+        if harness_exit != 0:
+            reasons.append(f"a skipped unit exits 0, not {harness_exit!r}")
+        if harness_error is not None:
+            reasons.append("the harness result carries an error finding: the instrument failed, not the gate")
+        return not reasons, reasons
     if harness_exit in (None, 0):
         reasons.append(f"harness exit is {harness_exit!r}: it did not fail")
     if negative.expected_key not in failing_keys:
@@ -422,6 +532,21 @@ def derive_outcome_fields(arts: dict[str, dict[str, Any]], negatives: dict[str, 
     n_error = 0
     for nid, negative in negatives.items():
         art = arts[nid]
+        if negative.kind == "grep":
+            checks = {
+                "no_error_finding": art.get("error") is None,
+                "scan_covers_required_files": art.get("scan_covers_required_files") is True,
+                "scan_control_finds_planted_token": art.get("scan_control_finds_planted_token") is True,
+            }
+            details[nid] = {"validity_checks": checks}
+            valid_all = valid_all and all(checks.values())
+            n_error += 0 if checks["no_error_finding"] else 1
+            exit_code = art.get("harness_exit") if isinstance(art.get("harness_exit"), int) else -1
+            flat[f"{nid}_harness_exit"] = exit_code
+            flat[f"{nid}_negative_passed"] = art.get("outcome") is True
+            flat[f"{nid}_match_count"] = art["match_count"] if isinstance(art.get("match_count"), int) else -1
+            flat[f"{nid}_files_scanned"] = art["files_scanned"] if isinstance(art.get("files_scanned"), int) else -1
+            continue
         checks = {
             "no_error_finding": art.get("error") is None,
             "harness_stamp_valid": art.get("harness_stamp_valid") is True,
@@ -430,6 +555,9 @@ def derive_outcome_fields(arts: dict[str, dict[str, Any]], negatives: dict[str, 
             "mutated_lacks_target": art.get("mutated_lacks_target") is True,
             "harness_not_timed_out": art.get("harness_exit") != 124,
         }
+        if negative.result_checks and art.get("skipped") is not True:
+            wanted = art.get("result_checks") or {}
+            checks["result_checks_hold"] = all(wanted.get(k) is True for k, _ in negative.result_checks)
         details[nid] = {"validity_checks": checks}
         valid_all = valid_all and all(checks.values())
         n_error += 0 if checks["no_error_finding"] else 1
@@ -441,6 +569,11 @@ def derive_outcome_fields(arts: dict[str, dict[str, Any]], negatives: dict[str, 
         flat[f"{nid}_detected"] = exit_code not in (0, -1) and negative.expected_key in failing
         flat[f"{nid}_failing_keys"] = ",".join(failing)
         flat[f"{nid}_negative_passed"] = art.get("outcome") is True
+        if negative.skippable:
+            flat[f"{nid}_skipped"] = art.get("skipped") is True
+        if negative.count_flat:
+            count = art.get(negative.count_flat)
+            flat[f"{nid}_{negative.count_flat}"] = count if isinstance(count, int) and not isinstance(count, bool) else -1
     flat.update({"all_units_complete": True, "n_negatives": len(negatives), "n_error_units": n_error,
                  "measurement_valid": valid_all})
     return {"flat": flat, "details": details}
@@ -456,6 +589,8 @@ def probe_negative(
     harness_timeout_s: float | None = None,
 ) -> dict[str, Any]:
     """Copy + mutate the dist, run ONLY the negative's harness unit, read its stamp and result."""
+    if negative.kind == "grep":
+        return probe_grep(args, negative)
     runner = runner or unit_runner
     rs = repl_smoke()
     neg_root = Path(args.neg_root)
@@ -498,11 +633,20 @@ def probe_negative(
     result = state["result"] if valid else None
     failing = list(state["failing_keys"]) if valid else []
     harness_error = (result or {}).get("error") if valid else None
+    skipped = bool(valid and (result or {}).get("skipped") is True)
+    skip_allowed = bool(negative.skippable and rs.ac39d_status(rs.SIZING_STATUS) == "skipped")
+    checks = {} if skipped else {k: result_check_holds((k, rule), result) for k, rule in negative.result_checks}
     passed, reasons = negative_outcome(
         negative, stamp_valid=valid, harness_exit=harness_exit, failing_keys=failing,
-        harness_error=harness_error,
+        harness_error=harness_error, skipped=skipped, skip_allowed=skip_allowed,
     )
+    counted: dict[str, Any] = {}
+    if negative.count_key and negative.count_flat:
+        value = (result or {}).get(negative.count_key)
+        counted[negative.count_flat] = value if isinstance(value, int) and not isinstance(value, bool) else -1
     return {
+        **counted,
+        "kind": negative.kind, "skipped": skipped, "skip_allowed": skip_allowed, "result_checks": checks,
         "negative": negative.id, "mutation": negative.mutation, "harness_flag": negative.harness_flag,
         "harness_unit": unit.id, "expected_key": negative.expected_key,
         "delete": negative.delete, "harness_neg": list(negative.harness_neg),
@@ -515,6 +659,43 @@ def probe_negative(
         "missing_keys": list(state["missing_keys"]) if valid else [],
         "harness_error": harness_error, "harness_reasons": state["reasons"],
         "outcome": passed, "outcome_reasons": reasons,
+    }
+
+
+#: Files the AC-39(c) scan must have READ for a clean result to mean anything: the deck panel, the shell entry, the
+#: socket shim and embed mode. A scan over a tree that holds none of them found nothing vacuously.
+GREP_REQUIRED_FILES = (
+    "web-repl/shell/display/dock.js",
+    "web-repl/shell/display/index.js",
+    "web-repl/overlay/assets/visualizer3d-augmentations/socket.js",
+    "web-repl/overlay/assets/visualizer3d-augmentations/embed.js",
+)
+
+
+def probe_grep(args: argparse.Namespace, negative: Negative) -> dict[str, Any]:
+    """AC-39(c): run the static scan (``repl_smoke.ac39c_hits``) over the source tree ``args.source_root``.
+
+    The outcome passes iff it finds NOTHING. Validity: the scan read every file of ``GREP_REQUIRED_FILES``, and the same
+    scan, run over a temporary tree with a planted test hook, FINDS it (a blind scan would pass for any tree). A missing
+    tree raises ``FileNotFoundError`` (the unit records an error finding). ``harness_exit`` is grep's own exit status: 1
+    when nothing is found."""
+    rs = repl_smoke()
+    root = Path(args.source_root)
+    hits = rs.ac39c_hits(root)
+    scanned = sorted({h[0] for h in rs.grep_tree(root, rs.AC39C_PATHS, "", include=("*.js",), exclude_dirs=("__tests__",))})
+    with tempfile.TemporaryDirectory(prefix="nd-grep-control-") as tmp:
+        planted = Path(tmp) / "web-repl" / "shell" / "display"
+        planted.mkdir(parents=True)
+        (Path(tmp) / "web-repl" / "overlay" / "assets" / "visualizer3d-augmentations").mkdir(parents=True)
+        (planted / "planted.js").write_text("window.__praxis" + "_test = 1;\n")
+        control_found = len(rs.ac39c_hits(Path(tmp))) == 1
+    return {
+        "negative": negative.id, "mutation": negative.mutation, "kind": "grep", "harness_flag": None, "harness_unit": None,
+        "expected_key": None, "source_root": str(root), "harness_exit": 0 if hits else 1,
+        "failing_keys": [f"{path}:{line}" for path, line, _ in hits[:50]], "match_count": len(hits),
+        "matches": [{"path": path, "line": line, "text": text[:200]} for path, line, text in hits[:50]],
+        "files_scanned": len(scanned), "scan_covers_required_files": all(f in scanned for f in GREP_REQUIRED_FILES),
+        "scan_control_finds_planted_token": control_found, "outcome": not hits,
     }
 
 
@@ -604,7 +785,7 @@ def run_unit_mode(
     exit_code = 0 if (error is None and not missing) else 1
     stamp = {
         "unit": negative.id,
-        "inputs": compute_inputs(negative, env, dist_mutated, Path(args.neg_root)),
+        "inputs": compute_inputs(negative, env, dist_mutated, Path(args.neg_root), source_root=Path(args.source_root)),
         "artifact_sha256": sha256_bytes(data), "started": started, "finished": time.time(),
         "exit": exit_code, "timeout_s": budget,
     }
@@ -631,10 +812,11 @@ def _dry_run(args: argparse.Namespace, negatives: dict[str, Negative]) -> int:
         "neg_root": str(args.neg_root), "out_dir": str(args.out_dir), "budgets": budgets,
         "budget_error": rs_error,
         "negatives": [
-            {"id": n.id, "harness_flag": n.harness_flag, "harness_unit": n.harness_unit,
+            {"id": n.id, "kind": n.kind, "harness_flag": n.harness_flag, "harness_unit": n.harness_unit,
              "expected_key": n.expected_key, "delete": n.delete, "mutation": n.mutation,
-             "serve_dir": str(neg_paths(args.neg_root, n.id).dist),
-             "harness_out_dir": str(neg_paths(args.neg_root, n.id).out)}
+             "harness_neg": list(n.harness_neg), "skippable": n.skippable,
+             "serve_dir": None if n.kind == "grep" else str(neg_paths(args.neg_root, n.id).dist),
+             "harness_out_dir": None if n.kind == "grep" else str(neg_paths(args.neg_root, n.id).out)}
             for n in negatives.values()
         ],
     }
@@ -672,7 +854,7 @@ def run_driver(
     for negative in negatives.values():
         budget = unit_budget_s(negative) if unit_timeout_s is None else unit_timeout_s
         dist_mutated = virtual_mutated_hash(Path(args.dist), negative.delete)
-        inputs = compute_inputs(negative, env, dist_mutated, Path(args.neg_root))
+        inputs = compute_inputs(negative, env, dist_mutated, Path(args.neg_root), source_root=Path(args.source_root))
         current = inspect_unit(out_dir, negative, inputs)
         if args.resume and current["reusable"]:
             LOG.info("negative %s reused (valid stamp, exit 0, no error, fields present, outcome passed)", negative.id)
@@ -691,6 +873,7 @@ def run_driver(
         argv = prefix + [
             "--unit", negative.id, "--out-dir", str(out_dir), "--dist", str(args.dist),
             "--neg-root", str(args.neg_root), "--base-path", args.base_path,
+            "--source-root", str(args.source_root),
         ]
         if env.chrome_path:
             argv += ["--chrome-path", env.chrome_path]
@@ -753,6 +936,8 @@ def parse_args(argv: list[str] | None, *, sprint: str, negatives: dict[str, Nega
     p.add_argument("--unit", choices=sorted(negatives), default=None, help="Unit mode: run exactly one negative.")
     p.add_argument("--dist", default=str(DEFAULT_DIST), help="The PRISTINE built dist (never modified).")
     p.add_argument("--neg-root", default=str(DEFAULT_NEG_ROOT), help="Parent of <negative>/{dist,out}/.")
+    p.add_argument("--source-root", default=str(REPO_ROOT),
+                   help="The SOURCE tree AC-39(c)'s static scan reads (default: this checkout). Tests point it at a synthetic tree.")
     p.add_argument("--chrome-path", default=None)
     p.add_argument("--base-path", default="/praxis/", help="URL prefix the dist copy is served under (CI: /praxis/).")
     p.add_argument("--dry-run", action="store_true", help="Print the plan; launch and hash nothing.")
