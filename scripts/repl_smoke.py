@@ -7108,6 +7108,146 @@ def derive_k1a_keys(raw: Any) -> dict[str, Any]:
     return keys
 
 
+# -- K1b: pure key derivation (AC-38) --------------------------------------------------------------------------
+
+#: AC-38's exact phrases: the no-viewer text CONTAINS the first; neither placeholder may contain the second.
+NO_VIEWER_PHRASE = "No deck viewer is running."
+LOST_PHRASE = "lost its connection"
+#: ``many_reloads``: six sequential reloads (the cap of four clients fails this unless dead clients leave).
+MANY_RELOADS = 6
+
+
+def _sorted_events(events: Any) -> list[dict[str, Any]]:
+    """The monitor's events ordered by ``seq`` (the ONE sequence every ordering claim is read from)."""
+    if not isinstance(events, list):
+        return []
+    return sorted((e for e in events if isinstance(e, dict) and _num(e.get("seq"))), key=lambda e: e["seq"])
+
+
+def _first(events: list[dict[str, Any]], **want: Any) -> dict[str, Any] | None:
+    for e in events:
+        if all(e.get(k) == v for k, v in want.items()):
+            return e
+    return None
+
+
+def _one_iframe_at(src_viewer: Any, frames: Any) -> bool:
+    return isinstance(frames, list) and len(frames) == 1 and _is_str(src_viewer) and _dict(frames[0]).get("src_viewer") == src_viewer
+
+
+def redock_live_ok(evidence: Any) -> bool:
+    """AC-38 ``redock_live`` (T12 -> T6): read off the ordered event log, a ``close`` for v1 before the ``announce`` for
+    the new id v2; v1's iframe removed between them; EXACTLY one iframe inserted after that announce, its ``src``
+    carrying v2 at insertion; exactly one iframe left in the panel, for v2; and ``resources()`` repopulated."""
+    r = _dict(evidence)
+    v1, v2 = r.get("v1"), r.get("v2")
+    if not (_is_str(v1) and _is_str(v2) and v1 != v2):
+        return False
+    events = _sorted_events(r.get("events"))
+    close = _first(events, type="bc", kind="close", viewer=v1)
+    if close is None:
+        return False
+    announce = next(
+        (e for e in events if e.get("type") == "bc" and e.get("kind") == "announce" and e.get("viewer") == v2 and e["seq"] > close["seq"]),
+        None,
+    )
+    if announce is None:
+        return False
+    removed = any(
+        e.get("type") == "iframe_removed" and e.get("src_viewer") == v1 and close["seq"] < e["seq"] < announce["seq"] for e in events
+    )
+    inserted = [e for e in events if e.get("type") == "iframe_inserted" and e["seq"] > announce["seq"]]
+    return bool(
+        removed and len(inserted) == 1 and inserted[0].get("src_viewer") == v2
+        and _one_iframe_at(v2, r.get("iframes_final")) and r.get("resources_ok") is True
+    )
+
+
+def late_iframe_ok(evidence: Any) -> bool:
+    """AC-38 ``late_iframe`` (T17, T3, T4, T6): the tab was closed (no iframe); ``dock()`` re-run while it was closed
+    left it closed with no iframe; then, read off the ordered log after the ``reopen`` mark, a ``query`` was posted, an
+    ``announce`` answered it, no iframe was inserted before that announce, and the first one inserted after it already
+    carried the announced viewer in its ``src``; one iframe for that viewer stays and ``resources()`` populated."""
+    r = _dict(evidence)
+    for name in ("after_tab_close", "after_dock_closed"):
+        step = _dict(r.get(name))
+        if not (step.get("state") == "closed" and step.get("iframes") == 0 and type(step.get("iframes")) is int):
+            return False
+    events = _sorted_events(r.get("events"))
+    mark = _first(events, type="mark")
+    if mark is None:
+        return False
+    after = [e for e in events if e["seq"] > mark["seq"]]
+    query = _first(after, type="bc", kind="query")
+    if query is None:
+        return False
+    announce = next(
+        (e for e in after if e.get("type") == "bc" and e.get("kind") == "announce" and e["seq"] > query["seq"] and _is_str(e.get("viewer"))),
+        None,
+    )
+    if announce is None:
+        return False
+    first_insert = _first(after, type="iframe_inserted")
+    final = _dict(r.get("final"))
+    return bool(
+        first_insert is not None and first_insert["seq"] > announce["seq"]
+        and first_insert.get("src_viewer") == announce["viewer"]
+        and final.get("state") == "open-connected" and _one_iframe_at(announce["viewer"], final.get("iframes"))
+        and r.get("resources_ok") is True
+    )
+
+
+def _reload_round_ok(step: Any, *, iframes: int = 1) -> bool:
+    s = _dict(step)
+    return bool(
+        s.get("resources_ok") is True and s.get("iframes") == iframes and type(s.get("iframes")) is int
+        and _num(s.get("load_delta")) and s["load_delta"] >= 1
+    )
+
+
+def _placeholder_ok(step: dict[str, Any]) -> bool:
+    text = step.get("text")
+    return bool(
+        isinstance(text, str) and NO_VIEWER_PHRASE in text and LOST_PHRASE not in text
+        and step.get("iframes") == 0 and type(step.get("iframes")) is int
+    )
+
+
+def derive_k1b_keys(raw: Any) -> dict[str, Any]:
+    """K1b's nine listed keys, in AC-38's execution order, from the raw evidence (pure; tested with a positive control
+    and a negative control per key). Every iframe count in ``raw`` was read from the panel DOM at the moment of the
+    read, never through a held element."""
+    r = _dict(raw)
+    reconnect, preset, drawer = _dict(r.get("reconnect")), _dict(r.get("preset")), _dict(r.get("drawer_reconnect"))
+    stop, redock, restart = _dict(r.get("stop")), _dict(r.get("redock_reloads")), _dict(r.get("restart"))
+    rounds = _dict(r.get("many_reloads")).get("rounds")
+    kernel_viewer = redock.get("kernel_viewer")
+    closes = restart.get("closes_posted")
+
+    keys: dict[str, Any] = {}
+    keys["reconnect_after_reload"] = bool(
+        reconnect.get("iframes_before") == 1 and _reload_round_ok({**reconnect, "iframes": reconnect.get("iframes_after")})
+    )
+    keys["preset_survives_reload"] = bool(
+        preset.get("pressed") == "front" and preset_ok(preset.get("camera"), "front") and _reload_round_ok(preset)
+        and preset.get("iframes") == 1
+    )
+    keys["drawer_reconnect"] = bool(
+        _dict(drawer.get("drawer")).get("home") == "drawer" and _reload_round_ok(drawer.get("drawer"))
+        and _dict(drawer.get("split")).get("home") == "split" and _reload_round_ok(drawer.get("split"))
+    )
+    keys["redock_live"] = redock_live_ok(r.get("redock_live"))
+    keys["stop_placeholder"] = bool(_placeholder_ok(stop) and stop.get("state") == "open-waiting")
+    keys["redock_reloads"] = bool(
+        _one_iframe_at(kernel_viewer, redock.get("iframes")) and redock.get("resources_ok") is True
+        and redock.get("state") == "open-connected"
+    )
+    keys["late_iframe"] = late_iframe_ok(r.get("late_iframe"))
+    keys["many_reloads"] = bool(isinstance(rounds, list) and len(rounds) == MANY_RELOADS and all(_reload_round_ok(x) for x in rounds))
+    keys["restart_placeholder"] = bool(_placeholder_ok(restart) and _num(closes) and closes == 0 and restart.get("state") == "open-waiting")
+    return keys
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
