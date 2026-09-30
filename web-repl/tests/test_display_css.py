@@ -899,7 +899,10 @@ def test_rendered_coverage_fails_against_a_stylesheet_without_the_bar_rules() ->
   for html in _render_real_outputs().values():
     emitted |= _classes_in_html(html)
   stripped = [r for r in _rules() if not any("praxis-ledger__bar" in s for s in r.selectors)]
-  assert _uncovered(emitted, stripped) == ["praxis-ledger__bar"]
+  uncovered = _uncovered(emitted, stripped)
+  # The bar rules are also the only ones that name `--ok`, so it drops out with them.
+  assert "praxis-ledger__bar" in uncovered and set(uncovered) <= {"praxis-ledger__bar", "praxis-ledger__row--ok"}, uncovered
+  assert _uncovered(emitted, _rules()) == [], "control: the unmutated stylesheet covers every rendered class"
 
 
 # --- the emitted vocabulary, property by property ---------------------------------------------

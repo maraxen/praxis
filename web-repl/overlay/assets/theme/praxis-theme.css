@@ -799,3 +799,352 @@ body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab 
 .praxis-deck-panel__motion:empty {
   display: none;
 }
+
+/* ==========================================================================
+ * NOTEBOOK DISPLAY: the class vocabulary the B2-B4 reprs emit (task B-css)
+ * --------------------------------------------------------------------------
+ * praxis/display/{labware,deck,ledger,svg}.py emit the classes below (the
+ * glossary emits none). Nothing here names a theme: every colour is a
+ * --jp-* token or a brand constant, so outputs follow Dark, Light and High
+ * Contrast (D3). HTML text is keyed on class alone, because an untrusted
+ * reopen keeps only `class` (S2). SVG colours are already mapped by attribute
+ * value above; the sv-* rules restate them by class where the class survives.
+ * Stroke widths, dashes and font sizes are NOT set here: the emitter writes
+ * them in the drawing's own user units (mm) at the figure's scale, and a px
+ * value in this file would be wrong by that scale.
+ *
+ * Blue is volume: moonstone appears below only on the ledger bar and the
+ * drawn liquid. Rose marks attention (the op still running, a focused deck
+ * item, changed wells), brick marks an error and always has words beside it.
+ *
+ * NOTE (width axis): the resource-name rules ask for `font-stretch`, but the
+ * vendored Roboto Flex carries only opsz and wght (VENDOR_MANIFEST.json), so
+ * names render at normal width until the font is re-vendored with wdth.
+ * ========================================================================== */
+
+/* --- output roots: one modifier class per kind, beside .praxis-out ------------------ */
+.praxis-plate,
+.praxis-tiprack,
+.praxis-container,
+.praxis-deck,
+.praxis-ledger {
+  max-width: 880px;
+}
+
+/* --- name line: name (condensed), then type and model in ink soft --------------------- */
+.praxis-name {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 8px;
+}
+
+.praxis-name__title {
+  font-size: 18px;
+  font-weight: 600;
+  font-stretch: 25%;
+  letter-spacing: 0.01em;
+}
+
+.praxis-name__type,
+.praxis-name__model {
+  color: var(--jp-content-font-color2);
+  font-size: 14px;
+}
+
+.praxis-name__model {
+  font-stretch: 80%;
+}
+
+/* --- summary sentence and the omission notice ----------------------------------------- */
+.praxis-summary {
+  margin: 8px 0 0;
+  max-width: 72ch;
+  color: var(--jp-content-font-color0);
+  font-size: 14px;
+}
+
+.praxis-omitted {
+  margin: 4px 0 0;
+  color: var(--jp-content-font-color2);
+  font-size: 12.5px;
+}
+
+/* --- figure wrapper: below s_min the drawing scrolls, it never shrinks (D5) ------------ */
+.praxis-fig {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.praxis-fig svg {
+  display: block;
+}
+
+/* --- resource groups: click focuses the resource in the deck panel (3.4) ----------------- */
+.praxis-out .praxis-res,
+.praxis-out .praxis-item {
+  cursor: pointer;
+}
+
+/* On the deck plan, hovering an item outlines it in rose ink and focus (the
+   shell adds is-focus) in rose. Colour only. A labware figure is the resource
+   itself, so it does not repeat the focus outline the output already has. */
+.praxis-deck .praxis-item:hover > .sv-plate,
+.praxis-deck .praxis-item:hover > .sv-block,
+.praxis-deck .praxis-item:hover > .sv-carrier {
+  stroke: var(--praxis-rose-ink);
+}
+
+.praxis-deck .is-focus > .sv-plate,
+.praxis-deck .is-focus > .sv-block,
+.praxis-deck .is-focus > .sv-carrier {
+  stroke: var(--praxis-rose);
+}
+
+/* --- SVG vocabulary (specificity beats the attribute rules above; same tokens) ------------ */
+.praxis-out .sv-grid {
+  fill: var(--jp-content-font-color2);
+  font-family: var(--jp-ui-font-family);
+  font-weight: 500;
+  font-stretch: 80%;
+}
+
+.praxis-out .sv-label {
+  fill: var(--jp-content-font-color0);
+  font-family: var(--jp-ui-font-family);
+  font-weight: 600;
+  font-stretch: 25%;
+}
+
+.praxis-out .sv-label--soft {
+  fill: var(--jp-content-font-color2);
+}
+
+.praxis-out .sv-plate {
+  fill: var(--jp-layout-color0);
+  stroke: var(--jp-content-font-color0);
+}
+
+.praxis-out .sv-block {
+  fill: var(--jp-border-color1);
+  stroke: var(--jp-content-font-color0);
+}
+
+.praxis-out .sv-well {
+  fill: var(--jp-layout-color0);
+  stroke: var(--jp-border-color1);
+}
+
+.praxis-out .sv-liquid {
+  fill: var(--praxis-moonstone);
+}
+
+.praxis-out .sv-tip {
+  fill: none;
+  stroke: var(--jp-content-font-color0);
+}
+
+.praxis-out .sv-tip-ring {
+  fill: var(--jp-layout-color0);
+  stroke: var(--jp-content-font-color0);
+}
+
+.praxis-out .sv-tip-gone {
+  fill: none;
+  stroke: var(--jp-border-color1);
+}
+
+.praxis-out .sv-carrier {
+  fill: var(--jp-layout-color0);
+  stroke: var(--jp-border-color1);
+}
+
+.praxis-out .sv-fixture {
+  fill: none;
+  stroke: var(--jp-border-color1);
+}
+
+.praxis-out .sv-rail {
+  stroke: var(--jp-border-color1);
+}
+
+.praxis-out .sv-rail--major {
+  stroke: var(--jp-content-font-color2);
+}
+
+.praxis-out .sv-ruler {
+  fill: none;
+  stroke: var(--jp-content-font-color2);
+}
+
+.praxis-out .sv-changed {
+  fill: none;
+  stroke: var(--praxis-rose);
+}
+
+.praxis-out .sv-fault,
+.praxis-out .sv-fault-x {
+  fill: none;
+  stroke: var(--praxis-brick);
+}
+
+/* --- run ledger (3.3) ----------------------------------------------------------------------- */
+.praxis-ledger__table {
+  width: 100%;
+  max-width: 720px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.praxis-ledger__head {
+  text-align: left;
+}
+
+.praxis-ledger__th {
+  padding: 0 12px 6px 0;
+  border-bottom: 1px solid var(--jp-border-color1);
+  color: var(--jp-content-font-color2);
+  font-weight: 500;
+  text-align: left;
+}
+
+.praxis-ledger__th:last-child {
+  text-align: right;
+}
+
+.praxis-ledger__row {
+  color: var(--jp-content-font-color0);
+}
+
+.praxis-ledger__step,
+.praxis-ledger__act,
+.praxis-ledger__where,
+.praxis-ledger__vol,
+.praxis-ledger__ch {
+  padding: 5px 12px 5px 0;
+  vertical-align: middle;
+}
+
+.praxis-ledger__step {
+  width: 3ch;
+  padding-right: 16px;
+  color: var(--jp-content-font-color2);
+  text-align: right;
+}
+
+.praxis-ledger__act {
+  width: 13ch;
+}
+
+.praxis-ledger__where {
+  font-stretch: 80%;
+}
+
+.praxis-ledger__vol {
+  width: 20ch;
+  white-space: nowrap;
+}
+
+.praxis-ledger__ch {
+  width: 6ch;
+  color: var(--jp-content-font-color2);
+  text-align: right;
+}
+
+/* A new tip cycle starts at each pick-up: one hairline above it (not above the first row). */
+.praxis-ledger__row--cycle > td {
+  border-top: 1px solid var(--jp-border-color1);
+}
+
+.praxis-ledger__row--cycle:first-child > td {
+  border-top: 0;
+}
+
+/* A child row (an op called inside another) is indented by its cell. The literal arrow
+   B4 emits stays, so the text reads the same with no CSS; it goes quiet here. */
+.praxis-ledger__row--child > .praxis-ledger__act {
+  padding-left: 20px;
+}
+
+.praxis-ledger__nest {
+  color: var(--jp-content-font-color2);
+}
+
+/* The volume bar: moonstone (volume) once the op is done; rose while it is still running
+   (look here); brick if it failed. The failing row also says "error: ..." in words. */
+.praxis-ledger__bar {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.praxis-ledger__bar rect {
+  fill: var(--praxis-moonstone);
+}
+
+.praxis-ledger__row--ok .praxis-ledger__bar rect {
+  fill: var(--praxis-moonstone);
+}
+
+.praxis-ledger__row--in-flight .praxis-ledger__bar rect {
+  fill: var(--praxis-rose);
+}
+
+.praxis-ledger__row--error .praxis-ledger__bar rect {
+  fill: var(--praxis-brick);
+}
+
+.praxis-ledger__row--in-flight > td:first-child {
+  box-shadow: inset 3px 0 0 var(--praxis-rose);
+}
+
+.praxis-ledger__row--error > td:first-child {
+  box-shadow: inset 3px 0 0 var(--praxis-brick);
+}
+
+.praxis-ledger__status {
+  color: var(--jp-content-font-color2);
+}
+
+.praxis-ledger__err {
+  color: var(--jp-error-color1);
+}
+
+.praxis-ledger__more {
+  margin: 8px 0 0;
+  color: var(--jp-content-font-color2);
+  font-size: 12.5px;
+}
+
+.praxis-ledger__after {
+  margin-top: 18px;
+}
+
+.praxis-ledger__after-label {
+  margin: 0 0 6px;
+  color: var(--jp-content-font-color2);
+  font-size: 14px;
+}
+
+/* --- svg.details_html defaults: a folded block, class-only (S2) --------------------------------- */
+.praxis-details {
+  margin-top: 10px;
+}
+
+.praxis-details-summary {
+  cursor: pointer;
+  color: var(--jp-content-link-color);
+  font-size: 14px;
+}
+
+.praxis-details-body {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--jp-layout-color2);
+  font-family: var(--praxis-code-font);
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow-x: auto;
+}
