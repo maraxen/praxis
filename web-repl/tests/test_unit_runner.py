@@ -756,6 +756,45 @@ put(os.path.join(sys.argv[1], "out.json"), json.dumps({
 """
 
 
+def test_kill_tree_grace_wait_ends_early_once_every_member_has_exited(ur, procs):
+    """Revision 11 (C11-9): the grace wait (``_wait``) returns as soon as every collected
+    member is gone, not after the full ``grace_s``. Paired control: a SIGTERM-ignorer holds
+    the wait for the whole grace (then SIGKILL), so the timing can tell the two apart."""
+    grace = 4.0
+    token = uuid.uuid4().hex
+    quick = procs.sleeper(token=token)  # default SIGTERM disposition: exits on the SIGTERM
+    t0 = time.monotonic()
+    ur.kill_tree(quick.pid, token, grace)
+    quick_s = time.monotonic() - t0
+    assert wait_gone(quick.pid, 3)
+
+    token2 = uuid.uuid4().hex
+    stubborn = procs.sleeper(token=token2, ignore_sigterm=True)
+    # the interpreter must have installed SIG_IGN (SigIgn bit 14 = SIGTERM) before the sweep
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        try:
+            sig_ign = next(
+                int(line.split()[1], 16)
+                for line in Path(f"/proc/{stubborn.pid}/status").read_text().splitlines()
+                if line.startswith("SigIgn:")
+            )
+        except (OSError, StopIteration):
+            sig_ign = 0
+        if sig_ign & (1 << (signal.SIGTERM - 1)):
+            break
+        time.sleep(0.02)
+    else:
+        raise AssertionError("the SIGTERM-ignorer never installed SIG_IGN")
+    t0 = time.monotonic()
+    ur.kill_tree(stubborn.pid, token2, grace)
+    stubborn_s = time.monotonic() - t0
+    assert wait_gone(stubborn.pid, 3), "SIGKILL after the grace"
+
+    assert stubborn_s >= grace - 0.5, f"control: an ignorer should hold the wait ({stubborn_s:.2f}s)"
+    assert quick_s < grace / 2, f"the grace wait did not end early ({quick_s:.2f}s of {grace}s)"
+
+
 def test_ensure_token_reexecs_so_the_token_is_in_proc_self_environ(ur, procs, tmp_path):
     """C9-4 and C10-4: re-exec (a token assigned to os.environ after exec is invisible in
     /proc/self/environ), from sys.orig_argv so interpreter flags survive.
@@ -1029,6 +1068,56 @@ def test_watchdog_requires_the_token_to_be_in_the_environment(ur, monkeypatch):
         wd.disarm()
 
 
+def test_watchdog_token_grace_exit_and_kill_seams_are_keyword_only(ur):
+    """Revision 11 (C11-9): ``Watchdog(budget_s, on_expire=None, *, token=None, grace_s=5,
+    exit_fn=None, kill_fn=None)``. A positional token is a call-shape bug (a unit that passed
+    the grace as the token would arm a watchdog killing the wrong sweep)."""
+    import inspect
+
+    params = inspect.signature(ur.Watchdog.__init__).parameters
+    for name in ("token", "grace_s", "exit_fn", "kill_fn"):
+        assert params[name].kind is inspect.Parameter.KEYWORD_ONLY, name
+    for name in ("budget_s", "on_expire"):
+        assert params[name].kind is inspect.Parameter.POSITIONAL_OR_KEYWORD, name
+    assert params["on_expire"].default is None
+    rec = _Recorder()
+    with pytest.raises(TypeError):
+        ur.Watchdog(30, None, "tok", exit_fn=rec.exit_fn, kill_fn=rec.kill_fn)
+
+
+def test_watchdog_a_second_commit_raises_and_write_result_is_refused_after_a_commit(ur, tmp_path):
+    """Revision 10 (a second ``commit`` raises) and Revision 11 (``write_result`` after a
+    commit returns ``False`` without calling its writer)."""
+    rec = _Recorder()
+    wd = _watchdog(ur, 30, rec)
+    try:
+        assert wd.commit(lambda: None) is True
+        wrote = []
+        assert wd.write_result(lambda: wrote.append("result")) is False
+        assert wrote == [], "a refused write_result must not run its writer"
+        with pytest.raises(RuntimeError, match="twice"):
+            wd.commit(lambda: wrote.append("stamp2"))
+        assert wrote == []
+    finally:
+        wd.disarm()
+    assert rec.calls == []
+
+
+def test_watchdog_disarm_prevents_the_expiry(ur):
+    """Revision 10: ``disarm()`` stops the timer. Positive control: an armed twin with the
+    same budget DOES fire, so the silence below is not a slow timer."""
+    rec_armed, rec_disarmed = _Recorder(), _Recorder()
+    armed = _watchdog(ur, 0.2, rec_armed)
+    disarmed = _watchdog(ur, 0.2, rec_disarmed, on_expire=lambda: rec_disarmed.calls.append(("expired",)))
+    disarmed.disarm()
+    try:
+        assert rec_armed.exited.wait(3), "control: the armed watchdog never fired"
+        time.sleep(0.4)
+    finally:
+        armed.disarm()
+    assert rec_disarmed.calls == [], "a disarmed watchdog acted"
+
+
 def test_emit_line_never_blocks_on_a_full_pipe_and_restores_blocking_mode(ur):
     r, w = os.pipe()
     try:
@@ -1184,6 +1273,46 @@ def test_dist_hash_is_the_sha256_of_sorted_path_tab_sha256_lines(ur, tmp_path):
 def test_dist_hash_of_an_empty_directory_is_the_hash_of_nothing(ur, tmp_path):
     (tmp_path / "empty").mkdir()
     assert ur.dist_hash(tmp_path / "empty") == hashlib.sha256(b"").hexdigest()
+
+
+def test_dist_hash_of_a_missing_directory_raises(ur, tmp_path):
+    """Revision 10: a missing dist raises rather than hashing to 'nothing', which would make
+    every unit silently reusable against a dist that was never built."""
+    with pytest.raises(FileNotFoundError):
+        ur.dist_hash(tmp_path / "no-such-dist")
+    (tmp_path / "a-file").write_text("x")
+    with pytest.raises(FileNotFoundError):
+        ur.dist_hash(tmp_path / "a-file")
+
+
+def test_driver_input_without_a_uv_lock_raises(ur, tmp_path):
+    """Revision 10: a missing ``uv.lock`` raises rather than hashing nothing (which would
+    never invalidate). ``uv.lock`` is gitignored, so the real repo cannot be the fixture:
+    load a COPY of the module from a tree that has none, and control with one that has."""
+    import shutil
+
+    def load(root: Path, name: str):
+        (root / "scripts").mkdir(parents=True)
+        shutil.copy(RUNNER_PATH, root / "scripts" / "unit_runner.py")
+        spec = importlib.util.spec_from_file_location(name, root / "scripts" / "unit_runner.py")
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.modules.pop(name, None)
+        return module
+
+    bare = load(tmp_path / "bare", f"ur_bare_{uuid.uuid4().hex}")
+    with pytest.raises(FileNotFoundError):
+        bare.driver_input(playwright_version="1.60.0")
+    locked_root = tmp_path / "locked"
+    locked = load(locked_root, f"ur_locked_{uuid.uuid4().hex}")
+    (locked_root / "uv.lock").write_bytes(b"lock-v1")
+    assert locked.driver_input(playwright_version="1.60.0") == locked.driver_input(
+        playwright_version="1.60.0", uv_lock_bytes=b"lock-v1"
+    )
 
 
 def test_driver_input_changes_with_the_playwright_version_and_with_uv_lock(ur):
