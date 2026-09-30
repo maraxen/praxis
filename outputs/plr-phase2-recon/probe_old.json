@@ -1,0 +1,144 @@
+{
+ "fqn_summary": {
+  "legacy_fallback_only|resolver_ok=True": 62,
+  "unresolvable|resolver_ok=False": 8,
+  "warns|resolver_ok=True": 4,
+  "clean|resolver_ok=True": 99,
+  "deprecated_alias|resolver_ok=True": 50
+ },
+ "fallback_needed": [
+  "pylabrobot.arms.precise_flex.pf_3400.PreciseFlex3400Backend",
+  "pylabrobot.arms.precise_flex.pf_400.PreciseFlex400Backend",
+  "pylabrobot.arms.scara.ExperimentalSCARA",
+  "pylabrobot.centrifuge.centrifuge.Centrifuge",
+  "pylabrobot.centrifuge.centrifuge.Loader",
+  "pylabrobot.centrifuge.chatterbox.CentrifugeChatterboxBackend",
+  "pylabrobot.centrifuge.chatterbox.LoaderChatterboxBackend",
+  "pylabrobot.centrifuge.vspin_backend.Access2Backend",
+  "pylabrobot.centrifuge.vspin_backend.VSpinBackend",
+  "pylabrobot.heating_shaking.backend.HeaterShakerBackend",
+  "pylabrobot.heating_shaking.bioshake_backend.BioShake",
+  "pylabrobot.heating_shaking.chatterbox.HeaterShakerChatterboxBackend",
+  "pylabrobot.heating_shaking.hamilton_backend.HamiltonHeaterShakerBackend",
+  "pylabrobot.heating_shaking.heater_shaker.HeaterShaker",
+  "pylabrobot.heating_shaking.inheco.thermoshake_backend.InhecoThermoshakeBackend",
+  "pylabrobot.liquid_handling.backends.hamilton.vantage_backend.Vantage",
+  "pylabrobot.liquid_handling.backends.hamilton.vantage_backend.VantageBackend",
+  "pylabrobot.liquid_handling.liquid_handler.LiquidHandler",
+  "pylabrobot.only_fans.chatterbox.FanChatterboxBackend",
+  "pylabrobot.only_fans.fan.Fan",
+  "pylabrobot.only_fans.hamilton_hepa_fan_backend.HamiltonHepaFanBackend",
+  "pylabrobot.peeling.peeler.Peeler",
+  "pylabrobot.peeling.xpeel_backend.XPeelBackend",
+  "pylabrobot.plate_reading.agilent.biotek_backend.BioTekPlateReaderBackend",
+  "pylabrobot.plate_reading.agilent.biotek_cytation_backend.CytationBackend",
+  "pylabrobot.plate_reading.backend.ImageReaderBackend",
+  "pylabrobot.plate_reading.bmg_labtech.clario_star_backend.CLARIOstarBackend",
+  "pylabrobot.plate_reading.chatterbox.PlateReaderChatterboxBackend",
+  "pylabrobot.plate_reading.imager.Imager",
+  "pylabrobot.plate_reading.molecular_devices.backend.MolecularDevicesBackend",
+  "pylabrobot.plate_reading.plate_reader.PlateReader",
+  "pylabrobot.powder_dispensing.chatterbox.PowderDispenserChatterboxBackend",
+  "pylabrobot.powder_dispensing.chemspeed.crystal_powderdose.CrystalPowderdose",
+  "pylabrobot.powder_dispensing.powder_dispenser.PowderDispenser",
+  "pylabrobot.pumps.agrowpumps.agrowdosepump_backend.AgrowPumpArrayBackend",
+  "pylabrobot.pumps.backend.PumpBackend",
+  "pylabrobot.pumps.chatterbox.PumpArrayChatterboxBackend",
+  "pylabrobot.pumps.chatterbox.PumpChatterboxBackend",
+  "pylabrobot.pumps.cole_parmer.masterflex_backend.MasterflexBackend",
+  "pylabrobot.pumps.pump.Pump",
+  "pylabrobot.pumps.pumparray.PumpArray",
+  "pylabrobot.sealing.a4s_backend.A4SBackend",
+  "pylabrobot.sealing.sealer.Sealer",
+  "pylabrobot.shaking.chatterbox.ShakerChatterboxBackend",
+  "pylabrobot.shaking.shaker.Shaker",
+  "pylabrobot.storage.chatterbox.IncubatorChatterboxBackend",
+  "pylabrobot.storage.cytomat.cytomat.CytomatBackend",
+  "pylabrobot.storage.cytomat.heraeus_cytomat_backend.HeraeusCytomatBackend",
+  "pylabrobot.storage.incubator.Incubator",
+  "pylabrobot.storage.inheco.incubator_shaker.IncubatorShakerStack",
+  "pylabrobot.storage.inheco.incubator_shaker_backend.InhecoIncubatorShakerStackBackend",
+  "pylabrobot.temperature_controlling.chatterbox.TemperatureControllerChatterboxBackend",
+  "pylabrobot.temperature_controlling.inheco.temperature_controller.InhecoTemperatureControllerBackend",
+  "pylabrobot.temperature_controlling.opentrons_backend.OpentronsTemperatureModuleBackend",
+  "pylabrobot.temperature_controlling.opentrons_backend_usb.OpentronsTemperatureModuleUSBBackend",
+  "pylabrobot.temperature_controlling.temperature_controller.TemperatureController",
+  "pylabrobot.thermocycling.chatterbox.ThermocyclerChatterboxBackend",
+  "pylabrobot.thermocycling.opentrons_backend.OpentronsThermocyclerBackend",
+  "pylabrobot.thermocycling.opentrons_backend_usb.OpentronsThermocyclerUSBBackend",
+  "pylabrobot.thermocycling.thermo_fisher.proflex.ProflexBackend",
+  "pylabrobot.thermocycling.thermo_fisher.thermo_fisher_thermocycler.ThermoFisherThermocyclerBackend",
+  "pylabrobot.thermocycling.thermocycler.Thermocycler"
+ ],
+ "broken_even_with_fallback": [
+  "pylabrobot.backends.simulated.ArmBackend",
+  "pylabrobot.backends.simulated.ImagerBackend",
+  "pylabrobot.backends.simulated.PeelerBackend",
+  "pylabrobot.backends.simulated.SealerBackend",
+  "pylabrobot.liquid_handling.backends.saver_backend.SaverBackend",
+  "pylabrobot.resources.thermo_fisher.plates.thermo_nunc_1_wellplate_90000uL_Fb_omnitray",
+  "pylabrobot.scara.SCARA",
+  "pylabrobot.storage.inheco.scila.scila.SCILA"
+ ],
+ "per_column": {
+  "machine_backend_definitions.fqn": {
+   "legacy_fallback_only|resolver_ok=True": 44,
+   "unresolvable|resolver_ok=False": 5,
+   "warns|resolver_ok=True": 4,
+   "clean|resolver_ok=True": 1
+  },
+  "machine_frontend_definitions.fqn": {
+   "legacy_fallback_only|resolver_ok=True": 16,
+   "unresolvable|resolver_ok=False": 1
+  },
+  "machine_frontend_definitions.description": {},
+  "resource_definitions.fqn": {
+   "legacy_fallback_only|resolver_ok=True": 2,
+   "deprecated_alias|resolver_ok=True": 50,
+   "clean|resolver_ok=True": 94,
+   "unresolvable|resolver_ok=False": 2
+  },
+  "deck_definition_catalog.fqn": {
+   "clean|resolver_ok=True": 6
+  },
+  "machine_definitions.fqn": {
+   "legacy_fallback_only|resolver_ok=True": 16
+  },
+  "machine_definitions.description": {},
+  "machine_definitions.compatible_backends": {
+   "warns|resolver_ok=True": 4,
+   "unresolvable|resolver_ok=False": 1,
+   "legacy_fallback_only|resolver_ok=True": 44,
+   "clean|resolver_ok=True": 1
+  }
+ },
+ "deser_summary": "{('olddb:resource_definitions', False): 1, ('olddb:resource_definitions', True): 133, ('old_viz_fixture', True): 1}",
+ "deser_errors": [
+  [
+   "ValueError: Cannot assign 'trash_container' directly to the deck. Use assign_child_at_slot to place l",
+   1
+  ]
+ ],
+ "deser_fail_rows": [
+  {
+   "src": "olddb:resource_definitions.plr_definition_details_json",
+   "type": "OTDeck",
+   "name": "deck",
+   "ok": false,
+   "err": "ValueError: Cannot assign 'trash_container' directly to the deck. Use assign_child_at_slot to place labware into a slot. A deck serialized before slots became resource holders stores labware as direct children and will n",
+   "warns": []
+  }
+ ],
+ "deser_n": 135,
+ "deser_ok": 134,
+ "deser_warn_kinds": [
+  [
+   "`with_teaching_rack` is deprecated, use `with_teaching_needle_rack`: what stands in the rack is a teaching nee",
+   1
+  ],
+  [
+   "`num_rails` is deprecated, use `num_tracks`: a track is the part of the deck, and a rail is part of a carrier.",
+   1
+  ]
+ ]
+}

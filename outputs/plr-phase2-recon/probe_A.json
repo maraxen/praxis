@@ -1,0 +1,134 @@
+[
+ {
+  "old": "pylabrobot.resources.corning.plates.Cor_96_wellplate_360ul_Fb",
+  "new": "pylabrobot.resources.corning.plates.cor_96_wellplate_360uL_Fb",
+  "old_warns": [
+   "Cor_96_wellplate_360ul_Fb() is deprecated and will be removed in v1b1. Use cor_96_wellplate_360uL_Fb() instead."
+  ],
+  "new_warns": [],
+  "old_err": null,
+  "new_err": null,
+  "serialize_equal": true,
+  "diff": [],
+  "n_diff": 0,
+  "old_model": "cor_96_wellplate_360uL_Fb",
+  "new_model": "cor_96_wellplate_360uL_Fb",
+  "old_type": "Plate",
+  "new_type": "Plate"
+ },
+ {
+  "old": "pylabrobot.resources.corning.plates.Cor_96_wellplate_2mL_Vb",
+  "new": "pylabrobot.resources.corning.plates.cor_96_wellplate_2mL_Vb",
+  "old_warns": [
+   "Cor_96_wellplate_2mL_Vb() is deprecated and will be removed in v1b1. Use cor_96_wellplate_2mL_Vb() instead."
+  ],
+  "new_warns": [],
+  "old_err": null,
+  "new_err": null,
+  "serialize_equal": true,
+  "diff": [],
+  "n_diff": 0,
+  "old_model": "cor_96_wellplate_2mL_Vb",
+  "new_model": "cor_96_wellplate_2mL_Vb",
+  "old_type": "Plate",
+  "new_type": "Plate"
+ },
+ {
+  "old": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480_A00",
+  "new": "pylabrobot.resources.hamilton.tip_carriers.hamilton_tip_carrier_L5",
+  "old_warns": [
+   "TIP_CAR_480_A00 is deprecated. Use 'hamilton_tip_carrier_L5' instead."
+  ],
+  "new_warns": [],
+  "old_err": null,
+  "new_err": null,
+  "serialize_equal": true,
+  "diff": [],
+  "n_diff": 0,
+  "old_model": "hamilton_tip_carrier_L5",
+  "new_model": "hamilton_tip_carrier_L5",
+  "old_type": "TipCarrier",
+  "new_type": "TipCarrier"
+ },
+ {
+  "old": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480BC_A00",
+  "new": "pylabrobot.resources.hamilton.tip_carriers.hamilton_tip_carrier_L5",
+  "old_warns": [
+   "TIP_CAR_480BC_A00 is deprecated. Use 'hamilton_tip_carrier_L5' instead."
+  ],
+  "new_warns": [],
+  "old_err": null,
+  "new_err": null,
+  "serialize_equal": true,
+  "diff": [],
+  "n_diff": 0,
+  "old_model": "hamilton_tip_carrier_L5",
+  "new_model": "hamilton_tip_carrier_L5",
+  "old_type": "TipCarrier",
+  "new_type": "TipCarrier"
+ },
+ {
+  "old": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC_A00",
+  "new": "pylabrobot.resources.hamilton.plate_carriers.hamilton_plate_carrier_L5_ac",
+  "old_warns": [
+   "PLT_CAR_L5AC_A00 is deprecated. Use 'hamilton_plate_carrier_L5_ac' instead."
+  ],
+  "new_warns": [],
+  "old_err": null,
+  "new_err": null,
+  "serialize_equal": true,
+  "diff": [],
+  "n_diff": 0,
+  "old_model": "hamilton_plate_carrier_L5_ac",
+  "new_model": "hamilton_plate_carrier_L5_ac",
+  "old_type": "PlateCarrier",
+  "new_type": "PlateCarrier"
+ },
+ {
+  "old": "pylabrobot.resources.hamilton.troughs.hamilton_1_trough_200ml_Vb",
+  "new": "pylabrobot.resources.hamilton.troughs.hamilton_1_trough_200mL_Vb",
+  "old_warns": [
+   "hamilton_1_trough_200ml_Vb() is deprecated and will be removed after 2026-07. Use hamilton_1_trough_200mL_Vb() instead."
+  ],
+  "new_warns": [],
+  "old_err": null,
+  "new_err": null,
+  "serialize_equal": true,
+  "diff": [],
+  "n_diff": 0,
+  "old_model": "hamilton_1_trough_200mL_Vb",
+  "new_model": "hamilton_1_trough_200mL_Vb",
+  "old_type": "Trough",
+  "new_type": "Trough"
+ },
+ {
+  "old": "pylabrobot.resources.hamilton.mfx_carriers.MFX_CAR_L5_base",
+  "new": "pylabrobot.resources.hamilton.mfx_carriers.hamilton_mfx_carrier_L5_base",
+  "old_warns": [
+   "MFX_CAR_L5_base is deprecated. Use 'hamilton_mfx_carrier_L5_base' instead."
+  ],
+  "new_warns": [],
+  "old_err": null,
+  "new_err": null,
+  "serialize_equal": true,
+  "diff": [],
+  "n_diff": 0,
+  "old_model": "MFX_CAR_L5_base",
+  "new_model": "MFX_CAR_L5_base",
+  "old_type": "MFXCarrier",
+  "new_type": "MFXCarrier"
+ },
+ {
+  "toplevel_reexports": {
+   "Cor_96_wellplate_360ul_Fb": true,
+   "cor_96_wellplate_360uL_Fb": true,
+   "TIP_CAR_480_A00": true,
+   "hamilton_tip_carrier_L5": true,
+   "PLT_CAR_L5AC_A00": true,
+   "hamilton_plate_carrier_L5_ac": true,
+   "NestedTipRack": true,
+   "StandingTipRack": true,
+   "hamilton_1_trough_200mL_Vb": true
+  }
+ }
+]
