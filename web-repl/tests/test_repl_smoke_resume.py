@@ -5563,3 +5563,139 @@ def test_every_dock_unit_arms_its_watchdog_once_with_its_d16_budget_before_any_d
         ) == 0
         assert armed == [(minutes * 60.0, False)], (uid, armed)
         assert files["stamp"].exists()
+
+
+# -- the in-page helpers against a minimal fake DOM (bun; the real DOM is only in a browser run) -----------------------
+
+
+def _run_dock_js(rs, tmp_path, body: str) -> Any:
+    """Load DOCK_CHECK_JS into bun with a tiny fake `document`/`window`, run ``body`` (async JS that returns a value) and
+    return the JSON it printed."""
+    js = f"""
+const nodes = {{}};
+globalThis.window = globalThis;
+window.innerWidth = 1440;
+window.__praxisDisplay = {{ controllers: {{ dock: {{ snapshot: () => ({{ state: "closed", home: null }}) }} }} }};
+window.jupyterapp = {{ shell: {{ leftCollapsed: false, collapseLeft() {{ this.leftCollapsed = true; }}, currentWidget: null }} }};
+globalThis.location = {{ href: "http://x/lab/index.html" }};
+globalThis.getComputedStyle = (el) => el.__style || {{ position: "static", display: "block", paddingLeft: "0px", paddingRight: "0px" }};
+globalThis.document = {{
+  querySelector: (sel) => nodes[sel] || null,
+  querySelectorAll: (sel) => nodes[sel + "*"] || [],
+  getElementById: (id) => nodes["#" + id] || null,
+  contains: (n) => !!n && n.__attached !== false,
+}};
+const box = (w, h = 10, left = 0) => ({{ left, right: left + w, top: 0, bottom: h, width: w, height: h }});
+{rs.DOCK_CHECK_JS}
+const D = window.__praxisDockCheck;
+const out = await (async () => {{ {body} }})();
+process.stdout.write(JSON.stringify(out) + "\\n");
+"""
+    script = tmp_path / "dock_js.mjs"
+    script.write_text(js)
+    done = subprocess.run([_BUN, str(script)], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr
+    return json.loads(done.stdout.strip().splitlines()[-1])
+
+
+@needs_bun
+def test_facts_of_a_closed_panel_reads_closed_from_the_controller_because_the_node_is_not_in_the_document(rs, tmp_path):
+    """When the panel is closed its node is detached, so a DOM-only read would give state null and every
+    `state == 'closed'` key would fail for the wrong reason."""
+    got = _run_dock_js(rs, tmp_path, "return D.facts();")
+    assert got["present"] is False and got["state"] == "closed" and got["frames"] == [] and got["text"] == ""
+    assert got["left_collapsed"] is False and got["inner_width"] == 1440
+
+
+@needs_bun
+def test_facts_of_an_open_panel_reads_the_dom_the_iframes_and_the_pressed_preset(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, """
+const frame = { getAttribute: (k) => "http://x/assets/visualizer3d/index.html?embed=1&view=top&viewer=v-7",
+                getBoundingClientRect: () => box(400, 420) };
+const follow = { getAttribute: () => "true" };
+const pressed = [{ getAttribute: (k) => "false", textContent: "Iso" }, { getAttribute: (k) => "true", textContent: " Front " }];
+const panel = {
+  getAttribute: (k) => "open-connected",
+  querySelector: (sel) => ({
+    ".praxis-deck-panel__body": { textContent: "body text" },
+    ".praxis-deck-panel__footer [data-praxis-deck-focus]": { textContent: "source" },
+    ".praxis-deck-panel__follow": follow,
+    ".praxis-deck-panel__motion": { getBoundingClientRect: () => box(400, 24) },
+  }[sel] || null),
+  querySelectorAll: (sel) => (sel === "iframe" ? [frame] : sel === ".praxis-deck-panel__views button" ? pressed : []),
+  getBoundingClientRect: () => box(450, 600, 990),
+  __style: { position: "fixed" },
+};
+nodes[".praxis-deck-panel"] = panel;
+nodes[".jp-NotebookPanel"] = { getBoundingClientRect: () => box(990, 700) };
+nodes[".jp-NotebookPanel .jp-Notebook"] = { getBoundingClientRect: () => box(960, 700), __style: { paddingLeft: "4px", paddingRight: "6px" } };
+nodes["#jp-main-dock-panel"] = { getBoundingClientRect: () => box(1440, 700) };
+return D.facts();
+""")
+    assert got["state"] == "open-connected" and got["position"] == "fixed" and got["text"] == "body text"
+    assert got["frames"] == [{"src": "http://x/assets/visualizer3d/index.html?embed=1&view=top&viewer=v-7",
+                              "src_viewer": "v-7", "height": 420}]
+    assert got["footer"] == "source" and got["follow_checked"] is True and got["pressed"] == ["front"]
+    assert got["panel_rect"]["width"] == 450 and got["notebook_panel_rect"]["right"] == 990
+    assert got["nb_content_width"] == 960 and got["nb_h_padding"] == 10 and got["main_width"] == 1440
+    assert got["motion_height"] == 24
+
+
+@needs_bun
+def test_the_viewer_reads_go_through_the_iframe_in_the_panel_and_fail_soft_without_one(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, """
+const none = [await D.resources(), await D.camera(), await D.stateOf({ name: "x" })];
+const viewer = { resources: () => ["deck", "source"], camera: () => ({ from: [1, 2, 3], at: [0, 0, 0], distance: 3, zoom: 1 }),
+                 stateOf: (n) => (n === "source" ? { volume: 190 } : undefined) };
+const frame = { getAttribute: () => "x", getBoundingClientRect: () => box(1), contentWindow: { plrViewer: viewer } };
+nodes[".praxis-deck-panel"] = { getAttribute: () => "open-connected", querySelector: () => null,
+  querySelectorAll: (sel) => (sel === "iframe" ? [frame] : []), getBoundingClientRect: () => box(1) };
+return { none, resources: D.resources(), camera: D.camera(), source: D.stateOf({ name: "source" }), nothing: D.stateOf({ name: "nope" }) };
+""")
+    assert got["none"] == [None, None, None]
+    assert got["resources"] == ["deck", "source"] and got["camera"] == {"from": [1, 2, 3], "at": [0, 0, 0]}
+    assert got["source"] == '{"volume":190}' and got["nothing"] is None
+
+
+@needs_bun
+def test_canvas_controls_read_a_blank_image_as_zero_and_a_five_percent_marked_one_as_five_percent(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, "return D.canvasControls({ ground: [238, 241, 244], tol: 6 });")
+    assert got["blank"] == {"diff": 0, "total": 10000}
+    assert got["marked"]["total"] == 10000 and got["marked"]["diff"] == 500
+
+
+@needs_bun
+def test_cell_helpers_read_the_output_model_text_and_the_stamp_resources(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, """
+const out = (o) => ({ toJSON: () => o });
+const cells = [
+  { model: { outputs: { length: 2, get: (j) => out([{ output_type: "stream", text: ["hi ", "there"] },
+        { output_type: "execute_result", data: { "text/plain": "'v-abc'" } }][j]) } } },
+  { model: { outputs: { length: 2, get: (j) => out([
+        { output_type: "display_data", data: {}, metadata: { praxis: { resource: null, kind: "ledger" } } },
+        { output_type: "display_data", data: {}, metadata: { "text/html": { praxis: { resource: "assay" } } } }][j]) } } },
+  { model: { outputs: { length: 1, get: (j) => out({ output_type: "stream", text: "only a stream" }) } } },
+];
+window.jupyterapp.shell.currentWidget = { content: { widgets: cells } };
+return { plain: D.cellText({ i: 0 }), stream: D.cellText({ i: 2 }), stamps: D.stampResources({ i: 1 }), missing: D.cellText({ i: 9 }) };
+""")
+    assert got == {"plain": "'v-abc'", "stream": "only a stream", "stamps": [None, "assay"], "missing": None}
+
+
+@needs_bun
+def test_marks_and_events_share_one_sequence_and_collapse_left_reports_the_shell_state(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, """
+const log = { seq: 0, events: [], loads: 4, push(e) { this.seq += 1; e.seq = this.seq; this.events.push(e); return e.seq; } };
+window.__praxisDockLog = log;
+log.push({ type: "bc", kind: "query" });
+const seq = D.mark({ name: "m" });
+log.push({ type: "iframe_inserted", src_viewer: "v" });
+return { seq, since: D.eventsSince({ seq }).map((e) => e.type), loads: D.loads(), collapsed: D.collapseLeft(), again: D.collapseLeft() };
+""")
+    assert got == {"seq": 2, "since": ["mark", "iframe_inserted"], "loads": 4, "collapsed": True, "again": True}
+
+
+@needs_bun
+def test_the_helpers_that_need_the_monitor_say_so_when_it_is_absent(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, "return { mark: D.mark({ name: 'x' }), since: D.eventsSince({ seq: 0 }), loads: D.loads(), neg: D.neg() };")
+    assert got == {"mark": None, "since": [], "loads": None, "neg": {"dropped": 0}}
