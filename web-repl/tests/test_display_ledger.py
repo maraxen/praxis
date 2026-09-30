@@ -239,7 +239,7 @@ class FakeLH:
         return await self._op("pick_up_tips96", tip_rack=tip_rack, offset=offset)
 
     async def drop_tips96(self, resource, offset=None, allow_nonzero_volume=False, **backend_kwargs):
-        return await self._op("drop_tips96", resource=resource, offset=offset)
+        return await self._op("drop_tips96", resource=resource, offset=offset, allow_nonzero_volume=allow_nonzero_volume)
 
     async def return_tips96(self, allow_nonzero_volume=False, offset=None, **backend_kwargs):
         await self._op("return_tips96")
@@ -1920,6 +1920,25 @@ def test_after_state_only_for_plates_that_received_liquid(led, fx):
     assert _changed_ids(root) == {"A1", "B1", "C3"}
 
 
+def test_the_after_state_compares_with_the_volume_before_the_first_touch(led, fx):
+    """A well that already held liquid is changed only by what the run actually added to it."""
+    plate = fx.cor_96_wellplate_360uL_Fb(name="dst")
+    plate.get_item("A1").tracker.set_volume(30.0)
+    plate.get_item("B1").tracker.set_volume(30.0)
+
+    async def go():
+        fake = FakeLH()
+        with led.RunLedger(fake, show=False) as run:
+            await fake.dispense(plate.get_item("A1"), vols=[0.0])  # nothing added: not changed
+            await fake.dispense(plate.get_item("B1"), vols=[10.0])  # 30 -> 40: changed
+        return run
+
+    root = _parse(_run(go()).render_html())
+    assert _changed_ids(root) == {"B1"}
+    grid = json.loads(next(n.attrs["data-praxis-grid"] for n in root.walk() if "data-praxis-grid" in n.attrs))
+    assert dict(zip(grid["ids"].split(" "), grid["vals"], strict=True))["B1"] == 40  # drawn as it ended
+
+
 def test_no_after_state_block_when_nothing_was_dispensed(led):
     async def go():
         fake = FakeLH()
@@ -2106,7 +2125,8 @@ def test_the_ladder_drops_the_drawing_first_then_text_never_before(led, budget, 
     assert budget.OMISSION_SENTENCE in omitted
     assert "<svg" not in omitted and "sv-" not in omitted and "data-praxis-grid" not in omitted  # bars go too
     for doc in (full, blocks, omitted):
-        assert "run  2 steps" in doc and "Aspirate" in doc and "Dispense" in doc  # the text stays
+        text = _parse(doc).text()
+        assert "run  2 steps" in text and "Aspirate" in text and "Dispense" in text  # the text stays
 
     sizes = [budget.html_bytes(d) for d in (full, blocks, omitted)]
     assert sizes[0] > sizes[1] > sizes[2]
@@ -2123,9 +2143,9 @@ def test_a_run_of_thousands_of_rows_stays_under_the_cap_and_says_what_it_left_ou
     doc = data["text/html"]
     assert budget.html_bytes(doc) <= CAP
     svg.check_bundle(data, meta)
-    assert "run  3,000 steps" in doc  # the header stays true whatever is shown
-    assert data["text/plain"].startswith("run  3,000 steps, 0 tip cycles, 0 µL moved")
     text = _parse(doc).text()
+    assert "run  3,000 steps, 0 tip cycles, 0 µL moved" in text  # the header stays true whatever is shown
+    assert data["text/plain"].startswith("run  3,000 steps, 0 tip cycles, 0 µL moved")
     m = re.search(r"… ([\d,]+) more rows? not shown", text)
     assert m, "the table does not say it was cut"
     shown = len(_body_rows(_parse(doc)))
