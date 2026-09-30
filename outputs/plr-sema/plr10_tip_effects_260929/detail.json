@@ -1,0 +1,210 @@
+{
+ "assembly_inputs": {
+  "baseline": {
+   "path": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/plr-sema/tests/fixtures/channel_effect_baseline.json",
+   "sha256": "3a94831694b2b764c1f5b3f2e9cb91aa6b700f4f96d3cb18c9b695204f73cd43"
+  },
+  "contracts": {
+   "path": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/plr-sema/data/derived_contracts.json",
+   "sha256": "bc3c94f41cc5feac3f7486bbdaa89730a16f88fbfae254409dbc0cba7999a408"
+  }
+ },
+ "baseline": {
+  "divergent_keys": [
+   "LiquidHandler.load_state"
+  ],
+  "source_rev": "66fae143fad29e030f83d0afab148ed5fe98ef0c"
+ },
+ "declined_examples": {},
+ "mutant_row_counts": {
+  "m1": {
+   "n_construction_skipped": 0,
+   "n_error": 0,
+   "n_ran": 289,
+   "n_runtime_harness_error": 0,
+   "n_static_error": 0,
+   "n_total": 289
+  },
+  "m2": {
+   "n_construction_skipped": 0,
+   "n_error": 0,
+   "n_ran": 289,
+   "n_runtime_harness_error": 0,
+   "n_static_error": 0,
+   "n_total": 289
+  },
+  "m3": {
+   "n_construction_skipped": 0,
+   "n_error": 0,
+   "n_ran": 289,
+   "n_runtime_harness_error": 0,
+   "n_static_error": 0,
+   "n_total": 289
+  },
+  "p3a": {
+   "n_construction_skipped": 0,
+   "n_error": 0,
+   "n_ran": 178,
+   "n_runtime_harness_error": 0,
+   "n_static_error": 0,
+   "n_total": 178
+  },
+  "v1": {
+   "n_construction_skipped": 0,
+   "n_error": 0,
+   "n_ran": 67,
+   "n_runtime_harness_error": null,
+   "n_static_error": null,
+   "n_total": 67
+  }
+ },
+ "mutants": {
+  "hard_violations": [
+   "p3a_pickup_already_held: floor FAILED -- achieved=0 != attempted=178 (static verdicts at raising index: {'will_fail': 0, 'unknown': 164, 'safe': 0, 'none': 0})"
+  ],
+  "m3_by_class": {
+   "n_construction_skipped": 0,
+   "n_error": 0,
+   "n_raised_as_expected": 289,
+   "n_ran": 289,
+   "n_runtime_harness_error": 0,
+   "n_runtime_raised_at_338": 289,
+   "n_static_338_safe": 0,
+   "n_static_error": 0,
+   "n_total": 289,
+   "static_verdict_at_raising_index": {
+    "none": 0,
+    "safe": 0,
+    "unknown": 289,
+    "will_fail": 0
+   },
+   "unsound_safe_where_simulator_raised": [],
+   "unsound_will_fail_where_simulator_ran_clean": []
+  },
+  "p3a_by_class": {
+   "floor_denominator_population": 93,
+   "floor_met": false,
+   "n_achieved_will_fail_at_raised_index": 0,
+   "n_attempted": 178,
+   "n_construction_skipped": 0,
+   "n_error": 0,
+   "n_raised_as_expected": 164,
+   "n_ran": 178,
+   "n_runtime_harness_error": 0,
+   "n_static_error": 0,
+   "n_total": 178,
+   "static_verdict_at_raising_index": {
+    "none": 0,
+    "safe": 0,
+    "unknown": 164,
+    "will_fail": 0
+   },
+   "unsound_safe_where_simulator_raised": [],
+   "unsound_will_fail_where_simulator_ran_clean": []
+  },
+  "p3a_floor_violations": [
+   "p3a_pickup_already_held: floor FAILED -- achieved=0 != attempted=178 (static verdicts at raising index: {'will_fail': 0, 'unknown': 164, 'safe': 0, 'none': 0})"
+  ]
+ },
+ "n_findings_by_reason": {
+  "guard_env_dependent": 2083,
+  "guard_operand_unknown": 144,
+  "guard_predicate_unparsed": 495,
+  "volume_state_unknown": 194
+ },
+ "n_ops_by_method": {
+  "aspirate": 77,
+  "discard_tips": 34,
+  "dispense": 40,
+  "drop_tips": 35,
+  "move_lid": 31,
+  "move_plate": 31,
+  "move_resource": 31,
+  "pick_up_tips": 223,
+  "stamp": 27,
+  "transfer": 19
+ },
+ "per_method_scope_verdict": {
+  "aspirate": {
+   "n_ops": 77,
+   "n_scope_verdict_safe": 0,
+   "residual_site_sets": {
+    "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1100:LiquidHandler._check_containers+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1216:LiquidHandler.aspirate+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:325:_check_no_lid+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:326:_check_no_lid+external/pylabrobot/pylabrobot/resources/volume_tracker.py:102:VolumeTracker.validate_remove_liquid+external/pylabrobot/pylabrobot/resources/volume_tracker.py:117:VolumeTracker.validate_add_liquid": 77
+   }
+  },
+  "discard_tips": {
+   "n_ops": 34,
+   "n_scope_verdict_safe": 0,
+   "residual_site_sets": {
+    "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1047:LiquidHandler.discard_tips+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:542:LiquidHandler._assert_resources_exist+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:630:LiquidHandler._make_sure_channels_exist+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:871:LiquidHandler.drop_tips+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:876:LiquidHandler.drop_tips+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:882:LiquidHandler.drop_tips+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:891:LiquidHandler.drop_tips": 34
+   }
+  },
+  "dispense": {
+   "n_ops": 40,
+   "n_scope_verdict_safe": 0,
+   "residual_site_sets": {
+    "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1100:LiquidHandler._check_containers+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1411:LiquidHandler.dispense+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1414:LiquidHandler.dispense+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1428:LiquidHandler.dispense+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:325:_check_no_lid+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:326:_check_no_lid+external/pylabrobot/pylabrobot/resources/volume_tracker.py:117:VolumeTracker.validate_add_liquid": 40
+   }
+  },
+  "drop_tips": {
+   "n_ops": 31,
+   "n_scope_verdict_safe": 0,
+   "residual_site_sets": {
+    "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:882:LiquidHandler.drop_tips+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:891:LiquidHandler.drop_tips": 31
+   }
+  },
+  "move_lid": {
+   "n_ops": 31,
+   "n_scope_verdict_safe": 0,
+   "residual_site_sets": {
+    "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2301:LiquidHandler.pick_up_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2437:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2444:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2459:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2466:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2517:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2523:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:604:LiquidHandler._check_args": 31
+   }
+  },
+  "move_plate": {
+   "n_ops": 31,
+   "n_scope_verdict_safe": 0,
+   "residual_site_sets": {
+    "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2301:LiquidHandler.pick_up_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2437:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2444:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2459:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2466:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2517:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2523:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:604:LiquidHandler._check_args": 31
+   }
+  },
+  "move_resource": {
+   "n_ops": 31,
+   "n_scope_verdict_safe": 0,
+   "residual_site_sets": {
+    "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2301:LiquidHandler.pick_up_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2437:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2444:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2459:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2466:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2517:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2523:LiquidHandler.drop_resource+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:604:LiquidHandler._check_args": 31
+   }
+  },
+  "pick_up_tips": {
+   "n_ops": 223,
+   "n_scope_verdict_safe": 216,
+   "residual_site_sets": {
+    "<none>": 216,
+    "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:720:LiquidHandler.pick_up_tips": 7
+   }
+  },
+  "stamp": {
+   "n_ops": 27,
+   "n_scope_verdict_safe": 0,
+   "residual_site_sets": {
+    "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1973:LiquidHandler.aspirate96+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2000:LiquidHandler.aspirate96+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2008:LiquidHandler.aspirate96+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2034:LiquidHandler.aspirate96+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2037:LiquidHandler.aspirate96+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2123:LiquidHandler.dispense96+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2150:LiquidHandler.dispense96+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2170:LiquidHandler.dispense96+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2190:LiquidHandler.dispense96+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2193:LiquidHandler.dispense96+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2260:LiquidHandler.stamp+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:325:_check_no_lid+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:326:_check_no_lid+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:604:LiquidHandler._check_args": 27
+   }
+  },
+  "transfer": {
+   "n_ops": 19,
+   "n_scope_verdict_safe": 0,
+   "residual_site_sets": {
+    "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1100:LiquidHandler._check_containers+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1185:LiquidHandler.aspirate+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1216:LiquidHandler.aspirate+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1379:LiquidHandler.dispense+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1411:LiquidHandler.dispense+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1414:LiquidHandler.dispense+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1428:LiquidHandler.dispense+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:1565:LiquidHandler.transfer+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:325:_check_no_lid+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:326:_check_no_lid+external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:630:LiquidHandler._make_sure_channels_exist": 19
+   }
+  }
+ },
+ "site_338": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:338:_check_tip_racks_available",
+ "topology_prefix_agreement": {
+  "analyzer_side": 0,
+  "independent": 0,
+  "independent_scanned": 223,
+  "symmetric_difference": []
+ },
+ "wall_elapsed_s": {
+  "real": 188.5114155630581
+ }
+}

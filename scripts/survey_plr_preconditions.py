@@ -168,6 +168,20 @@ class FunctionPreconditions:
     #: yields two distinct records here (spec §14.0.2's normative schema-
     #: change box, AC-14.3(iii)).
     dropped_calls: list[DroppedCall] = field(default_factory=list)
+    #: (260930, backlog #5668) Calls through a stored instance callable --
+    #: a bare `NAME()` where `NAME` was bound by `for NAME in self.X` or
+    #: `NAME = self.X` -- named by the attribute `X` (e.g. `_callbacks`).
+    #: Previously dropped with no trace (the bare-Name branch only records
+    #: module functions and validation-looking names). Kept SEPARATE from
+    #: `unresolved_calls` on purpose: `plr_sema.derive` records each one as
+    #: an `unresolved_delegate` gap, but it does not make M3's closure
+    #: incomplete (spec 260909 §17.5.1), under assumption
+    #: A-CALLBACK-NO-DELEGATE (spec 260902 §10.6.3). A local bound from a
+    #: METHOD is not a callback: it is recorded in `delegates_to` as the
+    #: self-call it is -- the one non-additive change of #5668 (at the pin,
+    #: two records' `delegates_to` gain the aliased method). A validation-
+    #: looking bound name also keeps its `unresolved_calls` entry.
+    callback_calls: list[str] = field(default_factory=list)
 
 
 def _is_validation_looking(name: str) -> bool:
@@ -216,6 +230,31 @@ class _BodyScanner(ast.NodeVisitor):
         #: own `lineno`/`scope_trail`, which distinguishes two otherwise-
         #: identical `expr`s recorded at two different call sites.
         self.dropped: list[DroppedCall] = []
+        #: (260930, backlog #5668) Local names bound DIRECTLY from an
+        #: instance attribute -- `for NAME in self.X` or `NAME = self.X` --
+        #: mapped NAME -> X. A bare `NAME()` call on one of these is a call
+        #: through instance state (a stored callback), which the old pin
+        #: wrote as `self._callback()` and so recorded as unresolved; PLR 1.0
+        #: moved it into a loop (`for callback in self._callbacks:
+        #: callback()`), which the bare-Name branch below silently dropped.
+        #: `visit_Call` records such a call in `callback_calls` under the
+        #: attribute's name `X` (see `FunctionPreconditions.callback_calls`).
+        self._self_attr_bound: dict[str, str] = {}
+        self.callback_calls: set[str] = set()
+
+    def _bind_from_self_attr(self, target: ast.expr, value: ast.expr) -> None:
+        if (
+            isinstance(target, ast.Name)
+            and isinstance(value, ast.Attribute)
+            and isinstance(value.value, ast.Name)
+            and value.value.id == "self"
+        ):
+            self._self_attr_bound[target.id] = value.attr
+
+    def visit_Assign(self, node: ast.Assign) -> None:
+        for target in node.targets:
+            self._bind_from_self_attr(target, node.value)
+        self.generic_visit(node)
 
     def _mentions(self, node: ast.expr) -> list[str]:
         names = {n.id for n in ast.walk(node) if isinstance(n, ast.Name)}
@@ -260,6 +299,7 @@ class _BodyScanner(ast.NodeVisitor):
             trail_entry = f"for {ast.unparse(node.target)} in {ast.unparse(node.iter)}"
         except Exception:
             trail_entry = "for <unparseable>"
+        self._bind_from_self_attr(node.target, node.iter)
         self._scope_trail.insert(0, trail_entry)
         self.generic_visit(node)
         self._scope_trail.pop(0)
@@ -310,6 +350,26 @@ class _BodyScanner(ast.NodeVisitor):
         if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == "self":
             name = target.attr
             is_self_call = True
+        elif isinstance(target, ast.Name) and target.id in self._self_attr_bound and target.id not in self.module_func_names:
+            # (260930, #5668) A call through a local bound from `self.X`.
+            attr = self._self_attr_bound[target.id]
+            if attr in self.class_method_names or attr in self.inherited_method_names:
+                # An alias to a METHOD (`fn = self.probe_tip_presence_via_pickup;
+                # fn(...)`) is an ordinary self-call: fall through to the
+                # recording block below as `self.<attr>()`, so it becomes a
+                # delegate the closure follows -- never a callback, which M3
+                # exempts under A-CALLBACK-NO-DELEGATE.
+                name = attr
+                is_self_call = True
+            else:
+                # A stored callable (an attribute that is not a method):
+                # record it under `X`, never drop it.
+                self.callback_calls.add(attr)
+                # Strictly additive: a validation-looking bare name was
+                # recorded in `unresolved` before #5668 and still is, so this
+                # branch never removes an M3 fail-closed trigger.
+                if _is_validation_looking(target.id):
+                    self.unresolved.add(target.id)
         elif isinstance(target, ast.Name):
             name = target.id
         elif isinstance(target, ast.Attribute):
@@ -420,6 +480,7 @@ def survey(plr_root: Path) -> list[FunctionPreconditions]:
                 lineno=node.lineno, params=params, findings=scanner.findings,
                 delegates_to=sorted(scanner.delegates), unresolved_calls=sorted(scanner.unresolved),
                 inherited_delegates=sorted(scanner.inherited_delegates),
+                callback_calls=sorted(scanner.callback_calls),
                 # (260903, T25) NOT sorted -- `scanner.dropped` is already a
                 # deterministic list in AST-visitation order, and multiplicity
                 # (two records sharing an `expr` from two different scopes)

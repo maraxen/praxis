@@ -10,7 +10,7 @@
   "by_category_status": "not_applicable_v1",
   "by_reason": {
     "no_contract_derived": 708,
-    "unresolved_delegate": 49
+    "unresolved_delegate": 53
   },
   "contract_table": {
     "disambiguated_keys": 55,
@@ -110,19 +110,19 @@
       "dirty_content_id": null,
       "hash": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
       "provenance_source": "git",
-      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/external/pylabrobot"
+      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/outputs/green/external/pylabrobot"
     },
     "praxis": {
-      "branch": "plr-1.0-bump",
+      "branch": "plr-sema-green-5668",
       "dirty": true,
-      "dirty_content_id": "e9fd53b20011068e787b6652ba37340f183c17ca",
-      "hash": "4772f26405a4116f83e19d92e588216ac9f801b5",
+      "dirty_content_id": "d91d38163ecca2f608ea5f1666b0798e4bd17482ed175ea8fb68cf351497f519",
+      "hash": "b2e53e3b5e22bb3e65f506fc9d675ff1cdaadbce",
       "provenance_source": "git",
-      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10"
+      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/outputs/green"
     },
     "pylabrobot_version": "1.0.0b1",
     "schema_version": 1,
-    "stamped_at": "2026-09-29T19:30:26.525370+00:00",
+    "stamped_at": "2026-09-30T14:47:27.788815+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   },
@@ -156,13 +156,19 @@
         },
         "LiquidHandler.use_tips": "absent"
       },
-      "entry_reset": "absent",
-      "tip_dropping": [],
+      "entry_reset": {
+        "method": "setup",
+        "post": "no_tip"
+      },
+      "tip_dropping": [
+        "drop_tips"
+      ],
       "tip_loading": [
         "clear_head_state",
         "consolidate_tip_inventory",
         "move_tips",
         "pick_up_tips",
+        "probe_tip_inventory",
         "probe_tip_presence_via_pickup",
         "update_head_state",
         "use_tips"
@@ -175,6 +181,7 @@
         "dispense",
         "drop_tips",
         "move_tips",
+        "probe_tip_inventory",
         "probe_tip_presence_via_pickup",
         "return_tips",
         "transfer",
@@ -190,19 +197,6 @@
       "tip_loading": [],
       "tip_requiring": [],
       "tipstate_anchor": "_pending_tip"
-    },
-    "TipTracker": {
-      "bound_channels": {},
-      "entry_reset": "absent",
-      "tip_dropping": [],
-      "tip_loading": [
-        "add_tip"
-      ],
-      "tip_requiring": [
-        "get_tip",
-        "remove_tip"
-      ],
-      "tipstate_anchor": "_collar_height"
     }
   },
   "top_unresolved": {
@@ -8793,8 +8787,8 @@
   "totals": {
     "methods_attempted": 1598,
     "methods_with_dropped_receiver_call": 872,
-    "methods_with_gaps": 335,
-    "methods_with_no_recorded_gap": 1263
+    "methods_with_gaps": 338,
+    "methods_with_no_recorded_gap": 1260
   },
   "validation_looking_dropped_receiver_calls_by_method": {
     "aspirate": 0,

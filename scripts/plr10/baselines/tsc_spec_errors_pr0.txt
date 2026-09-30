@@ -1,0 +1,37 @@
+src/app/core/services/session-recovery.service.spec.ts(108,33): error TS2304: Cannot find name 'jasmine'.
+src/app/core/services/session-recovery.service.spec.ts(118,33): error TS2304: Cannot find name 'jasmine'.
+src/app/core/services/session-recovery.service.spec.ts(12,5): error TS2741: Property 'previous_accession_id' is missing in type '{ accession_id: string; name: string; properties_json: { lastHeartbeat: number; }; status: "RUNNING"; created_at: string; updated_at: string; start_time: string; end_time: string; data_directory_path: string; ... 8 more ...; protocol_definition_accession_id: string; }' but required in type 'ProtocolRun'.
+src/app/core/services/session-recovery.service.spec.ts(3,31): error TS2307: Cannot find module './sqlite.service' or its corresponding type declarations.
+src/app/core/services/session-recovery.service.spec.ts(32,5): error TS2741: Property 'previous_accession_id' is missing in type '{ accession_id: string; name: string; properties_json: { lastHeartbeat: number; }; status: "RUNNING"; created_at: string; updated_at: string; start_time: string; end_time: string; data_directory_path: string; ... 8 more ...; protocol_definition_accession_id: string; }' but required in type 'ProtocolRun'.
+src/app/core/services/session-recovery.service.spec.ts(52,5): error TS2741: Property 'previous_accession_id' is missing in type '{ accession_id: string; name: string; properties_json: { lastHeartbeat: number; }; status: "PAUSING"; created_at: string; updated_at: string; start_time: string; end_time: string; data_directory_path: string; ... 8 more ...; protocol_definition_accession_id: string; }' but required in type 'ProtocolRun'.
+src/app/core/services/session-recovery.service.spec.ts(75,30): error TS2304: Cannot find name 'jasmine'.
+src/app/core/services/session-recovery.service.spec.ts(83,54): error TS2503: Cannot find namespace 'jasmine'.
+src/app/core/services/session-recovery.service.spec.ts(9,22): error TS2503: Cannot find namespace 'jasmine'.
+src/app/core/services/session-recovery.service.spec.ts(91,33): error TS2304: Cannot find name 'jasmine'.
+src/app/core/services/sqlite/sqlite-opfs.service.spec.ts(48,45): error TS2345: Argument of type '(url: any) => Promise<Response> | Promise<{ ok: true; status: number; arrayBuffer: () => Promise<ArrayBuffer>; }>' is not assignable to parameter of type '(input: URL | RequestInfo, init?: RequestInit | undefined) => Promise<Response>'.
+src/app/core/utils/fetch-retry.spec.ts(15,35): error TS2304: Cannot find name 'global'.
+src/app/core/utils/fetch-retry.spec.ts(28,35): error TS2304: Cannot find name 'global'.
+src/app/core/utils/fetch-retry.spec.ts(53,35): error TS2304: Cannot find name 'global'.
+src/app/core/utils/fetch-retry.spec.ts(65,35): error TS2304: Cannot find name 'global'.
+src/app/experimental/services/web-bridge.spec.ts(65,13): error TS2304: Cannot find name 'global'.
+src/app/experimental/services/web-bridge.spec.ts(66,35): error TS2304: Cannot find name 'global'.
+src/app/experimental/services/web-bridge.spec.ts(72,35): error TS2304: Cannot find name 'global'.
+src/app/features/assets/components/machine-definition-accordion/machine-definition-accordion.component.ts(339,49): error TS1272: A type referenced in a decorated signature must be imported with 'import type' or a namespace import when 'isolatedModules' and 'emitDecoratorMetadata' are enabled.
+src/app/features/assets/components/resource-chips/resource-chips.component.ts(117,27): error TS1272: A type referenced in a decorated signature must be imported with 'import type' or a namespace import when 'isolatedModules' and 'emitDecoratorMetadata' are enabled.
+src/app/features/assets/services/asset.service.resolve.spec.ts(158,12): error TS18048: 'result.properties_json' is possibly 'undefined'.
+src/app/features/assets/services/asset.service.resolve.spec.ts(158,35): error TS4111: Property 'auto_instantiated' comes from an index signature, so it must be accessed with ['auto_instantiated'].
+src/app/features/assets/services/asset.service.resolve.spec.ts(159,12): error TS18048: 'result.properties_json' is possibly 'undefined'.
+src/app/features/assets/services/asset.service.resolve.spec.ts(159,35): error TS4111: Property 'source' comes from an index signature, so it must be accessed with ['source'].
+src/app/features/assets/services/asset.service.resolve.spec.ts(220,12): error TS18048: 'result.properties_json' is possibly 'undefined'.
+src/app/features/assets/services/asset.service.resolve.spec.ts(220,35): error TS4111: Property 'auto_instantiated' comes from an index signature, so it must be accessed with ['auto_instantiated'].
+src/app/features/execution-monitor/components/state-resolution-dialog/state-resolution-dialog.component.ts(82,47): error TS1272: A type referenced in a decorated signature must be imported with 'import type' or a namespace import when 'isolatedModules' and 'emitDecoratorMetadata' are enabled.
+src/app/features/run-protocol/components/protocol-card/protocol-card.component.ts(71,41): error TS1272: A type referenced in a decorated signature must be imported with 'import type' or a namespace import when 'isolatedModules' and 'emitDecoratorMetadata' are enabled.
+src/app/features/run-protocol/services/deck-generator.service.spec.ts(30,25): error TS2554: Expected 3 arguments, but got 2.
+src/app/features/run-protocol/services/wizard-state.service.spec.ts(473,25): error TS2739: Type '{ name: string; type_hint: string; default_value_repr: string; fqn: string; }' is missing the following properties from type 'ParameterMetadata': is_deck_param, optional, constraints
+src/app/features/workcell/machine-focus-view/machine-focus-view.component.ts(155,40): error TS1272: A type referenced in a decorated signature must be imported with 'import type' or a namespace import when 'isolatedModules' and 'emitDecoratorMetadata' are enabled.
+src/app/shared/components/filter-chip-bar/filter-chip-bar.component.spec.ts(10,35): error TS2314: Generic type 'FilterChipBarComponent<T>' requires 1 type argument(s).
+src/app/shared/components/filter-chip-bar/filter-chip-bar.component.spec.ts(9,20): error TS2314: Generic type 'FilterChipBarComponent<T>' requires 1 type argument(s).
+src/app/shared/components/view-controls/view-controls.component.ts(394,30): error TS1272: A type referenced in a decorated signature must be imported with 'import type' or a namespace import when 'isolatedModules' and 'emitDecoratorMetadata' are enabled.
+src/app/shared/components/view-controls/view-controls.component.ts(401,29): error TS1272: A type referenced in a decorated signature must be imported with 'import type' or a namespace import when 'isolatedModules' and 'emitDecoratorMetadata' are enabled.
+src/app/shared/components/view-controls/view-type-toggle.component.ts(60,24): error TS1272: A type referenced in a decorated signature must be imported with 'import type' or a namespace import when 'isolatedModules' and 'emitDecoratorMetadata' are enabled.
+src/app/shared/components/workcell/machine-card/machine-card-mini.component.ts(227,40): error TS1272: A type referenced in a decorated signature must be imported with 'import type' or a namespace import when 'isolatedModules' and 'emitDecoratorMetadata' are enabled.

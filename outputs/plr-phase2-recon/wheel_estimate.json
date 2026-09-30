@@ -1,0 +1,89 @@
+{
+ "total_deflated_mb": 9.96,
+ "rows": [
+  {
+   "bucket": "pdf",
+   "files": 14,
+   "raw_mb": 4.03,
+   "deflated_mb": 3.87
+  },
+  {
+   "bucket": "glb",
+   "files": 63,
+   "raw_mb": 3.87,
+   "deflated_mb": 2.11
+  },
+  {
+   "bucket": "py",
+   "files": 751,
+   "raw_mb": 9.27,
+   "deflated_mb": 2.06
+  },
+  {
+   "bucket": "visualizer3D/static",
+   "files": 43,
+   "raw_mb": 2.07,
+   "deflated_mb": 0.75
+  },
+  {
+   "bucket": "test_data/*",
+   "files": 32,
+   "raw_mb": 0.75,
+   "deflated_mb": 0.59
+  },
+  {
+   "bucket": "png",
+   "files": 4,
+   "raw_mb": 0.24,
+   "deflated_mb": 0.23
+  },
+  {
+   "bucket": "driver recordings (json)",
+   "files": 13,
+   "raw_mb": 1.99,
+   "deflated_mb": 0.17
+  },
+  {
+   "bucket": "stl",
+   "files": 2,
+   "raw_mb": 0.44,
+   "deflated_mb": 0.09
+  },
+  {
+   "bucket": "js",
+   "files": 4,
+   "raw_mb": 0.25,
+   "deflated_mb": 0.06
+  },
+  {
+   "bucket": "md",
+   "files": 7,
+   "raw_mb": 0.08,
+   "deflated_mb": 0.03
+  },
+  {
+   "bucket": "txt",
+   "files": 1,
+   "raw_mb": 0.0,
+   "deflated_mb": 0.0
+  },
+  {
+   "bucket": "html",
+   "files": 1,
+   "raw_mb": 0.02,
+   "deflated_mb": 0.0
+  },
+  {
+   "bucket": "css",
+   "files": 1,
+   "raw_mb": 0.02,
+   "deflated_mb": 0.0
+  },
+  {
+   "bucket": "json",
+   "files": 2,
+   "raw_mb": 0.01,
+   "deflated_mb": 0.0
+  }
+ ]
+}

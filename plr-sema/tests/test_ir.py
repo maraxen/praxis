@@ -503,9 +503,22 @@ def test_check_graph_report_unchanged_for_shipped_fixture(contracts_json: str) -
     # shipped `derived_contracts.json`, not asserted from a prediction. The
     # one-Finding-per-guard invariant (AC-15.5(iv)) still holds: 38 guard
     # findings + 4 volume findings.
+    #
+    # Re-taken ONCE more 260929 (plr-1.0 migration, T62, spec
+    # 260929_plr-sema-plr1-tip-effect-increment §18.13), after T57/T58/T61
+    # landed: 42 -> 44. MEASURED against the shipped derived_contracts.json,
+    # not predicted (the spec predicts 44 and the measurement agrees). The two
+    # additions are the module-level `_check_tip_racks_available`
+    # (liquid_handler.py:338, `not rack._available_for_tip_handling`) guard,
+    # which PLR 1.0 runs inside `pick_up_tips` (op_1) and `drop_tips` (op_4).
+    # Its condition reads a private property the analyzer cannot resolve, so
+    # each is one `guard_predicate_unparsed` finding with no observation:
+    # `guard_predicate_unparsed` 4 -> 6, every other reason unchanged. The
+    # one-Finding-per-guard invariant still holds: 40 guard findings + 4
+    # volume findings.
     assert report.verdict.value == "unknown"
     assert report.scope_verdict is not None and report.scope_verdict.value == "unknown"
-    assert len(report.findings) == 42
+    assert len(report.findings) == 44
     assert {t[0] for t in triples} == {"op_1", "op_2", "op_3", "op_4"}
     from collections import Counter
 
@@ -513,9 +526,17 @@ def test_check_graph_report_unchanged_for_shipped_fixture(contracts_json: str) -
     assert by_reason == {
         "guard_env_dependent": 20,
         "guard_operand_unknown": 14,
-        "guard_predicate_unparsed": 4,
+        "guard_predicate_unparsed": 6,
         "volume_state_unknown": 4,
     }, by_reason
+    # The two additions are exactly the `:338` `_check_tip_racks_available`
+    # findings, one on the pick-up op and one on the drop op.
+    tip_rack_ops = sorted(
+        f.operation_id
+        for f in report.findings
+        if f.plr_site is not None and f.plr_site.qualname == "_check_tip_racks_available"
+    )
+    assert tip_rack_ops == ["op_1", "op_4"], tip_rack_ops
     assert all(t[2] is not None for t in triples)
 
 

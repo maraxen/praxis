@@ -1,0 +1,5 @@
+2026-09-29 23:05:54,283 INFO base examples: 285 from corpus (clean, has pick_up_tips), 4 from --examples-dir/--extra-examples-dir
+2026-09-29 23:06:36,811 INFO report written to outputs/plr-sema/plr10_tip_effects_260929/units/m3.mutants_report.json
+2026-09-29 23:06:36,811 INFO m3_lid_on_tip_rack: n=289 raised_as_expected=289 static_at_index={'will_fail': 0, 'unknown': 289, 'safe': 0, 'none': 0}
+2026-09-29 23:06:36,811 INFO GATE PASSED for ['m3_lid_on_tip_rack']: criteria (i)/(ii)/(iii) hold for m1/m2, the floor holds for p3a, and m3's :338 hard terms hold.
+2026-09-29 23:06:36,811 INFO tip_mutants --classes m3 returned rc=0 (informational; the report is what is read)

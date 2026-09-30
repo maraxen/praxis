@@ -1531,20 +1531,52 @@ def test_ac_16_13_a_deck_object_adversarial_duplicate_name_mismatched_geometry(c
     assert finding.verdict is Verdict.SAFE
 
 
-def test_ac_16_13_a_deck_object_assumption_table_has_five_rows() -> None:
-    """AC-16.13: A-DECK-OBJECT is added to increment 1's §10.6.3
-    named-assumption table with its own breakage column, taking the table
-    from FOUR rows to FIVE -- asserted directly against the spec file
-    rather than trusted from prose."""
+def _increment_1_assumption_rows() -> "list[str]":
     spec_path = REPO_ROOT / ".praxia" / "docs" / "specs" / "260902_plr-sema-tip-typestate-increment.md"
     text = spec_path.read_text(encoding="utf-8")
     start = text.index("### 10.6.3 The assumptions, named")
     header_idx = text.index("| id | assumption", start)
     end = text.index("\n\n", header_idx)
     table = text[start:end]
-    rows = [line for line in table.splitlines() if line.startswith("| **A-")]
-    assert len(rows) == 5, f"expected 5 named-assumption rows, found {len(rows)}: {rows}"
+    return [line for line in table.splitlines() if line.startswith("| **A-")]
+
+
+def test_ac_16_13_a_deck_object_assumption_table_has_eight_rows() -> None:
+    """AC-16.13 / AC-18.11(h): increment 1's §10.6.3 named-assumption table
+    took A-DECK-OBJECT from FOUR rows to FIVE (T48); #5622's T61 adds
+    A-RACK-STATIC and A-CALLBACK-INERT (copied VERBATIM from the #5622
+    spec's §18.5.5), taking it to SEVEN; backlog #5668 adds
+    A-CALLBACK-NO-DELEGATE, taking it to EIGHT -- asserted directly against
+    the spec file rather than trusted from prose. (Renamed from
+    `..._has_seven_rows`: the count is the assertion.)"""
+    rows = _increment_1_assumption_rows()
+    assert len(rows) == 8, f"expected 8 named-assumption rows, found {len(rows)}: {rows}"
+    ids = [row.split("**")[1] for row in rows]
+    assert ids[:2] == ["A-SINGLE", "A-COMPLETES"] and "A-DECK-OBJECT" in ids
     assert any(row.startswith("| **A-DECK-OBJECT**") for row in rows), rows
+    assert ids[-3:] == ["A-RACK-STATIC", "A-CALLBACK-INERT", "A-CALLBACK-NO-DELEGATE"], ids
+
+
+def test_ac_18_11_h_new_assumption_rows_are_verbatim_copies_of_section_18_5_5() -> None:
+    """AC-18.11(h): the two rows in increment 1's table are byte-for-byte the
+    rows of the #5622 spec's §18.5.5 -- a hand-retyped copy that drifted
+    would fail here."""
+    spec = (REPO_ROOT / ".praxia" / "docs" / "specs" / "260929_plr-sema-plr1-tip-effect-increment.md").read_text(
+        encoding="utf-8"
+    )
+    source_rows = {
+        key: [line for line in spec.splitlines() if line.startswith(key)]
+        for key in ("| **A-RACK-STATIC**", "| **A-CALLBACK-INERT**")
+    }
+    increment_1 = _increment_1_assumption_rows()
+    for key, hits in source_rows.items():
+        assert len(hits) == 1, (key, hits)
+        assert hits[0] in increment_1, f"{key} is not copied verbatim into increment 1's §10.6.3 table"
+    # the two rows sit contiguously in the table (a blank line between them would split the markdown table)
+    text =(REPO_ROOT / ".praxia" / "docs" / "specs" / "260902_plr-sema-tip-typestate-increment.md").read_text(
+        encoding="utf-8"
+    )
+    assert source_rows["| **A-RACK-STATIC**"][0] + "\n" + source_rows["| **A-CALLBACK-INERT**"][0] in text
 
 
 # ---------------------------------------------------------------------------
@@ -1568,11 +1600,15 @@ def test_d6_site_rule_keys_each_match_exactly_one_site() -> None:
     """HM-26 (260929 re-anchoring): every `D6_SITE_RULES` key is a symbol
     key `(qualname, raises, condition)` and matches EXACTLY ONE distinct
     guard site in the shipped contract table. A PLR change to one of the
-    three guards (or a re-derivation that drops it) turns this red -- the
-    old `(qualname, lineno)` key silently stopped dispatching instead."""
+    four guards (or a re-derivation that drops it) turns this red -- the
+    old `(qualname, lineno)` key silently stopped dispatching instead.
+
+    260929 (#5622, T61, AC-18.11(a)/AC-18.12): FOUR -- the `:338` rule
+    (`_check_tip_racks_available`) is the fourth key."""
     from plr_sema.check.predicate import D6_SITE_RULES
 
-    assert len(D6_SITE_RULES) == 3
+    assert len(D6_SITE_RULES) == 4
+    assert ("_check_tip_racks_available", "ValueError", "not rack._available_for_tip_handling") in D6_SITE_RULES
     for key in D6_SITE_RULES:
         site = _d6_site_by_symbol(*key)
         assert site.qualname == key[0]
@@ -2029,3 +2065,780 @@ def test_ac_17_3_finding_for_atom_reason_parametrised(contracts_json: str) -> No
     (f2070_op1,) = _site_findings(report, _PICK_UP_RESOURCE_2070_SITE, operation_id="op_1")
     assert f2070_op1.verdict is Verdict.UNKNOWN
     assert f2070_op1.reason == "guard_env_dependent"
+
+
+# ---------------------------------------------------------------------------
+# AC-18.11 / AC-18.12 (spec 260929_plr-sema-plr1-tip-effect-increment.md
+# §18.5.3-§18.5.6, #5622, T61): the `:338` site rule -- `_check_tip_racks_
+# available`'s guard, `not rack._available_for_tip_handling` -- and its
+# rack-topology (move-family) frame condition. FALSE-ONLY: every control below
+# that could only pass is paired with one that must fail.
+# ---------------------------------------------------------------------------
+
+_T61_SYMBOL = ("_check_tip_racks_available", "ValueError", "not rack._available_for_tip_handling")
+_T61_SITE = _d6_site_by_symbol(*_T61_SYMBOL)
+_T61_ENV = frozenset({"obs:tip_racks_available=true", "obs:deck_resources_verified=true"})
+_T61_MOVE_FAMILY = {"drop_resource", "move_lid", "move_plate", "move_resource", "pick_up_resource"}
+
+
+def _t61_op(op_id: str, method: str, receiver_type: "str | None" = "LiquidHandler", variable: str = "lh") -> dict:
+    return {
+        "id": op_id,
+        "line_number": 0,
+        "method_name": method,
+        "receiver_variable": variable,
+        "receiver_type": receiver_type,
+        "arguments": {"use_channels": "[0]"} if method == "pick_up_tips" else {},
+        "node_type": "static",
+        "preconditions": [],
+        "creates_state": [],
+        "depends_on_params": [],
+        "foreach_source": None,
+        "foreach_body": [],
+        "trip": None,
+        "condition_expr": None,
+        "true_branch": [],
+        "false_branch": [],
+    }
+
+
+def _t61_graph(ops: "list[tuple]", *, loop: "tuple[int, int | None, int] | None" = None) -> str:
+    """`ops` = [(method[, receiver_type[, receiver_variable]]), ...] in pc order. `loop` = (first, trip, last):
+    ops[first..last] (inclusive, 0-based into `ops`) are wrapped in one real REGION op."""
+    operations = [_t61_op(f"op_{i + 1}", *spec) for i, spec in enumerate(ops)]
+    if loop is not None:
+        first, trip, last = loop
+        body = [operations[i]["id"] for i in range(first, last + 1)]
+        region = _t61_op("region_1", "", None, "")
+        region.update({"node_type": "region", "foreach_source": "[r0, r1]", "foreach_body": body, "trip": trip})
+        operations.insert(first, region)
+    return json.dumps({"protocol_fqn": "test.t61_338", "operations": operations, "resources": {}})
+
+
+def _t61_findings(report: AnalysisReport, op_id: str) -> "list[Finding]":
+    found = _site_findings(report, _T61_SITE, operation_id=op_id)
+    assert found, f"{op_id} carries no `:338` finding at all -- the fixture is not exercising the site"
+    return found
+
+
+def _t61_all(report: AnalysisReport, op_id: str, verdict: Verdict) -> bool:
+    return all(f.verdict is verdict for f in _t61_findings(report, op_id))
+
+
+def _t61_declined(report: AnalysisReport, op_id: str) -> bool:
+    return all(
+        f.verdict is Verdict.UNKNOWN and f.reason == "guard_predicate_unparsed" for f in _t61_findings(report, op_id)
+    )
+
+
+def _t61_ctx(*, env, kind="raise_guard", prefix=None, loop=None) -> "Any":
+    from plr_sema.check.predicate import _Ctx
+
+    return _Ctx(
+        call=ir.Call(receiver=0, receiver_type="LiquidHandler", method="pick_up_tips", kwargs={}),
+        resources_by_slot={},
+        param_defaults={},
+        bindings_by_name={},
+        depth=1,
+        channel_kwarg=None,
+        channels=None,
+        env=env,
+        class_hierarchy=None,
+        guard_kind=kind,
+        rack_topology_prefix_ok=prefix,
+        rack_topology_loop_ok=loop,
+    )
+
+
+def _t61_obs_env(tip_racks, deck) -> "frozenset[str]":
+    """`tip_racks`/`deck` in {True, False, None}; None = the member is ABSENT from `env`."""
+    members = set()
+    if tip_racks is not None:
+        members.add(f"obs:tip_racks_available={'true' if tip_racks else 'false'}")
+    if deck is not None:
+        members.add(f"obs:deck_resources_verified={'true' if deck else 'false'}")
+    return frozenset(members)
+
+
+# --- (a) --------------------------------------------------------------------------------------------------------
+
+
+def test_ac_18_11_a_338_key_is_registered_and_matches_exactly_one_site() -> None:
+    from plr_sema.check.predicate import D6_SITE_RULES
+
+    assert _T61_SYMBOL in D6_SITE_RULES
+    assert _T61_SITE.qualname == "_check_tip_racks_available"
+    assert len(D6_SITE_RULES) == 4  # test_d6_site_rule_keys_each_match_exactly_one_site pins each key's one site
+
+
+# --- (b) never True; the decline reason and its attribution order -------------------------------------------------
+
+_TRI = (True, False, None)
+
+
+def test_ac_18_11_b_site_rule_is_never_true_over_the_3x3x3x3_product() -> None:
+    """Exhaustive over {tip_racks_available, deck_resources_verified} x {true, false, absent} x
+    {rack_topology_prefix_ok, rack_topology_loop_ok} x {True, False, None}: 81 cases. The rule returns `False`
+    (decided SAFE) in EXACTLY one of them and `None` in the other 80; never `True`."""
+    from plr_sema.check.predicate import _eval_tip_racks_available_site_rule
+
+    outcomes = {}
+    for tip_racks in _TRI:
+        for deck in _TRI:
+            for prefix in _TRI:
+                for loop in _TRI:
+                    ctx = _t61_ctx(env=_t61_obs_env(tip_racks, deck), prefix=prefix, loop=loop)
+                    outcomes[(tip_racks, deck, prefix, loop)] = _eval_tip_racks_available_site_rule(ctx)
+    assert len(outcomes) == 81
+    assert all(v is not True for v in outcomes.values()), "the :338 rule must NEVER return True"
+    assert {k for k, v in outcomes.items() if v is False} == {(True, True, True, True)}
+    assert all(v is None for k, v in outcomes.items() if k != (True, True, True, True))
+
+
+@pytest.mark.parametrize("kind", ["assert", "raise_guard_typo", "", None])
+def test_ac_18_11_b_site_rule_declines_for_any_guard_kind_but_raise_guard(kind) -> None:
+    """r1, m5: with every other conjunct satisfied, a non-`raise_guard` kind still declines -- because
+    `evaluate_guard` NEGATES the value for those kinds, which would turn a `False` into a firing `True`."""
+    from plr_sema.check.predicate import _eval_tip_racks_available_site_rule
+
+    env = _t61_obs_env(True, True)
+    assert _eval_tip_racks_available_site_rule(_t61_ctx(env=env, kind="raise_guard", prefix=True, loop=True)) is False
+    assert _eval_tip_racks_available_site_rule(_t61_ctx(env=env, kind=kind, prefix=True, loop=True)) is None
+
+
+def test_ac_18_11_b_a_ctx_that_never_set_guard_kind_or_the_topology_clauses_declines() -> None:
+    """The defaults are fail-closed: `guard_kind` defaults to `None` (NOT "raise_guard") and both topology
+    clauses default to `None` (failing clause (i))."""
+    from plr_sema.check.predicate import _Ctx, tip_racks_decline_reason
+
+    bare = _Ctx(
+        call=ir.Call(receiver=0, receiver_type="LiquidHandler", method="pick_up_tips", kwargs={}),
+        resources_by_slot={},
+        param_defaults={},
+        bindings_by_name={},
+        depth=1,
+        channel_kwarg=None,
+        channels=None,
+        env=_t61_obs_env(True, True),
+        class_hierarchy=None,
+    )
+    assert bare.guard_kind is None and bare.rack_topology_prefix_ok is None and bare.rack_topology_loop_ok is None
+    assert tip_racks_decline_reason(bare) == "kind"
+    assert tip_racks_decline_reason(_t61_ctx(env=_t61_obs_env(True, True))) == "topology_prefix"
+
+
+def test_ac_18_11_b_decline_reason_is_the_first_failing_conjunct_in_the_fixed_order() -> None:
+    """(r2, C4) `kind -> observation -> deck -> topology_prefix -> topology_loop`, over the whole product plus
+    `kind`. The expected value is an INDEPENDENT chain of ifs written here, in that order."""
+    from plr_sema.check.predicate import tip_racks_decline_reason
+
+    def expected(kind, tip_racks, deck, prefix, loop):
+        if kind != "raise_guard":
+            return "kind"
+        if tip_racks is not True:
+            return "observation"
+        if deck is not True:
+            return "deck"
+        if prefix is not True:
+            return "topology_prefix"
+        if loop is not True:
+            return "topology_loop"
+        return None
+
+    seen = set()
+    for kind in ("raise_guard", "assert", None):
+        for tip_racks in _TRI:
+            for deck in _TRI:
+                for prefix in _TRI:
+                    for loop in _TRI:
+                        ctx = _t61_ctx(env=_t61_obs_env(tip_racks, deck), kind=kind, prefix=prefix, loop=loop)
+                        got = tip_racks_decline_reason(ctx)
+                        assert got == expected(kind, tip_racks, deck, prefix, loop), (kind, tip_racks, deck, prefix, loop)
+                        seen.add(got)
+    assert seen == {"kind", "observation", "deck", "topology_prefix", "topology_loop", None}
+
+
+def test_ac_18_11_b_decline_reason_attribution_is_not_swappable() -> None:
+    """Pairs of simultaneously-failing conjuncts must report the EARLIER one (an order swap would flip these)."""
+    from plr_sema.check.predicate import tip_racks_decline_reason
+
+    assert tip_racks_decline_reason(_t61_ctx(env=_t61_obs_env(False, False), kind="assert", prefix=False, loop=False)) == "kind"
+    assert tip_racks_decline_reason(_t61_ctx(env=_t61_obs_env(False, False), prefix=False, loop=False)) == "observation"
+    assert tip_racks_decline_reason(_t61_ctx(env=_t61_obs_env(True, False), prefix=False, loop=False)) == "deck"
+    assert tip_racks_decline_reason(_t61_ctx(env=_t61_obs_env(True, True), prefix=False, loop=False)) == "topology_prefix"
+    assert tip_racks_decline_reason(_t61_ctx(env=_t61_obs_env(True, True), prefix=True, loop=False)) == "topology_loop"
+    assert tip_racks_decline_reason(_t61_ctx(env=_t61_obs_env(True, True), prefix=True, loop=True)) is None
+    # `None` counts as failing: clause (i) unset reports topology_prefix, not topology_loop
+    assert tip_racks_decline_reason(_t61_ctx(env=_t61_obs_env(True, True), prefix=None, loop=True)) == "topology_prefix"
+    assert tip_racks_decline_reason(_t61_ctx(env=_t61_obs_env(True, True), prefix=True, loop=None)) == "topology_loop"
+
+
+@pytest.mark.parametrize(
+    "member",
+    [
+        "obs:tip_racks_available=1",
+        'obs:tip_racks_available="true"',
+        "obs:tip_racks_available=null",
+        "obs:tip_racks_available=[true]",
+        "obs:tip_racks_available=tru",  # unparseable JSON
+        "obs:tip_racks_available=",
+    ],
+)
+def test_ac_18_11_b_only_the_json_true_counts_as_an_observation(member: str) -> None:
+    """Identity against `True`, not truthiness: a truthy non-bool (`1`, `"true"`, `[true]`) or garbage must
+    decline. Negative control that can fail: a truthiness test (`if obs.get(...)`) passes `1`/`"true"`."""
+    from plr_sema.check.predicate import tip_racks_decline_reason
+
+    env = frozenset({member, "obs:deck_resources_verified=true"})
+    assert tip_racks_decline_reason(_t61_ctx(env=env, prefix=True, loop=True)) == "observation"
+
+
+def test_ac_18_11_b_an_unreadable_env_declines_as_observation_instead_of_raising() -> None:
+    from plr_sema.check.predicate import tip_racks_decline_reason
+
+    assert tip_racks_decline_reason(_t61_ctx(env=None, prefix=True, loop=True)) == "observation"
+    # ...but the kind conjunct is still checked first, so an unreadable env cannot mask a kind decline.
+    assert tip_racks_decline_reason(_t61_ctx(env=None, kind="assert", prefix=True, loop=True)) == "kind"
+
+
+def _t61_shipped_guard_and_contract() -> "tuple[dict, dict]":
+    contract = json.loads(CONTRACTS_JSON.read_text(encoding="utf-8"))["contracts"]["LiquidHandler.pick_up_tips"]
+    (guard,) = [g for g in contract["guards"] if g["site"]["qualname"] == "_check_tip_racks_available"]
+    return dict(guard), contract
+
+
+def test_ac_18_11_b_evaluate_guard_never_returns_will_fail_and_decides_safe_in_exactly_one_case() -> None:
+    """End to end through the SHIPPED guard record and `evaluate_guard`: over the product the verdict is only
+    ever `safe` or `unknown`, and `safe` only when every conjunct holds."""
+    from plr_sema.check.predicate import evaluate_guard
+
+    guard, contract = _t61_shipped_guard_and_contract()
+    assert guard["kind"] == "raise_guard"
+    call = ir.Call(receiver=0, receiver_type="LiquidHandler", method="pick_up_tips", kwargs={})
+    safe_cases = set()
+    for tip_racks in _TRI:
+        for deck in _TRI:
+            for prefix in _TRI:
+                for loop in _TRI:
+                    result = evaluate_guard(
+                        guard, call, contract, {}, env=_t61_obs_env(tip_racks, deck),
+                        rack_topology_prefix_ok=prefix, rack_topology_loop_ok=loop,
+                    )
+                    assert result.verdict in ("safe", "unknown"), (tip_racks, deck, prefix, loop, result)
+                    if result.verdict == "safe":
+                        safe_cases.add((tip_racks, deck, prefix, loop))
+                    else:
+                        assert result.reason == "guard_predicate_unparsed"
+    assert safe_cases == {(True, True, True, True)}
+
+
+def test_ac_18_11_b_a_non_raise_guard_kind_can_never_be_will_fail_through_evaluate_guard() -> None:
+    """The reason the kind check exists, shown end to end: the same shipped guard re-labelled `kind="assert"`
+    (`evaluate_guard` negates for it) must NOT come out `will_fail` -- with the kind conjunct removed, a
+    decided-`False` value would negate to a firing `True`."""
+    from plr_sema.check.predicate import evaluate_guard
+
+    guard, contract = _t61_shipped_guard_and_contract()
+    call = ir.Call(receiver=0, receiver_type="LiquidHandler", method="pick_up_tips", kwargs={})
+    relabelled = dict(guard, kind="assert")
+    result = evaluate_guard(
+        relabelled, call, contract, {}, env=_t61_obs_env(True, True),
+        rack_topology_prefix_ok=True, rack_topology_loop_ok=True,
+    )
+    assert result.verdict == "unknown" and result.reason == "guard_predicate_unparsed"
+    # positive control: the unrelabelled guard, same inputs, decides SAFE
+    ok = evaluate_guard(
+        guard, call, contract, {}, env=_t61_obs_env(True, True),
+        rack_topology_prefix_ok=True, rack_topology_loop_ok=True,
+    )
+    assert ok.verdict == "safe"
+
+
+# --- the pre-scan and the two clauses ------------------------------------------------------------------------------
+
+
+def _t61_shipped_tables() -> "tuple[dict, dict]":
+    payload = json.loads(CONTRACTS_JSON.read_text(encoding="utf-8"))
+    return payload["contracts"], payload["receiver_state"]
+
+
+def _t61_call(method: str, receiver_type: "str | None" = "LiquidHandler") -> "ir.Call":
+    return ir.Call(receiver=0, receiver_type=receiver_type, method=method, kwargs={})
+
+
+def test_ac_18_11_i_the_derived_move_family_on_the_shipped_table_is_exactly_the_five_methods() -> None:
+    """The family pin (r1, M5): computed by `rack_topology_disturbers` from the SHIPPED contracts (one CALL per
+    `LiquidHandler` contract key) -- it must equal exactly the five, so a P6 regression that decays a member
+    to `"TOP"` turns this red instead of silently making `:338` unsound. NO method name is typed in the code
+    under test; the literal set below is the assertion."""
+    from plr_sema.check.predicate import rack_topology_disturbers
+
+    contracts, receiver_states = _t61_shipped_tables()
+    methods = sorted(k.split(".", 1)[1] for k in contracts if k.startswith("LiquidHandler."))
+    assert len(methods) > 50, "the whole LiquidHandler surface must be in the table for the pin to mean anything"
+    scan = rack_topology_disturbers([_t61_call(m) for m in methods], contracts, receiver_states)
+    family = {methods[pc] for pc, (_rt, classes) in scan.items() if "move_family" in classes}
+    assert family == _T61_MOVE_FAMILY
+    # nothing else on the shipped LiquidHandler surface carries the `move_family` class -- and the ONLY other class
+    # any shipped method carries is `anchor_touched_unmodelled`, on exactly `move_picked_up_resource` (its guards read
+    # `_resource_pickup` but P6 derived no net effect for it): a resource mover the family pin does not list, now a
+    # disturber instead of an invisible one.
+    other = {methods[pc] for pc, (_rt, classes) in scan.items() if classes - {"move_family"}}
+    assert other == {"move_picked_up_resource"}
+    assert scan[methods.index("move_picked_up_resource")][1] == frozenset({"anchor_touched_unmodelled"})
+    # and the ones that anchor to "TOP" (P6 declined) are precisely NOT in the family -- the named fail-open edge
+    tops = {
+        k.split(".", 1)[1]
+        for k, v in contracts.items()
+        if k.startswith("LiquidHandler.") and v.get("anchor_net_effects")
+        and all(x == "TOP" for x in v["anchor_net_effects"].values())
+    }
+    assert {"aspirate", "dispense", "pick_up_tips", "drop_tips", "transfer"} <= tops
+    assert not (tops & family)
+
+
+def test_ac_18_11_i_a_decayed_member_would_leave_the_family() -> None:
+    """The pin's negative control: rewrite `move_lid`'s net effects to `"TOP"` in a COPY of the shipped table and
+    the scan drops it from the family -- exactly the silent decay AC-18.11(i) exists to turn into a red test."""
+    import copy
+
+    from plr_sema.check.predicate import rack_topology_disturbers
+
+    contracts, receiver_states = _t61_shipped_tables()
+    decayed = copy.deepcopy(contracts)
+    decayed["LiquidHandler.move_lid"]["anchor_net_effects"] = {
+        k: "TOP" for k in decayed["LiquidHandler.move_lid"]["anchor_net_effects"]
+    }
+    scan = rack_topology_disturbers([_t61_call("move_lid")], decayed, receiver_states)
+    assert scan[0] == ("LiquidHandler", frozenset()), "a decayed member is invisible to the scan (the fail-open edge)"
+    intact = rack_topology_disturbers([_t61_call("move_lid")], contracts, receiver_states)
+    assert intact[0][1] == frozenset({"move_family"})
+
+
+def test_ac_18_11_prescan_shape_and_classes_over_hand_built_calls() -> None:
+    from plr_sema.check.predicate import rack_topology_disturbers
+
+    contracts, receiver_states = _t61_shipped_tables()
+    instrs = [
+        ir.Widen(reason="has_loops"),
+        _t61_call("setup"),
+        _t61_call("move_lid"),
+        _t61_call("frobnicate"),
+        _t61_call("anything", None),
+        _t61_call("get_status", "A4SBackend"),
+    ]
+    scan = rack_topology_disturbers(instrs, contracts, receiver_states)
+    pcs = {i: instr for i, instr in enumerate(instrs) if isinstance(instr, ir.Call)}
+    by_method = {pcs[pc].method: entry for pc, entry in scan.items()}
+    assert set(scan) == set(pcs), "one entry per CALL pc, none for a non-CALL instruction"
+    assert by_method["setup"] == ("LiquidHandler", frozenset())
+    assert by_method["move_lid"] == ("LiquidHandler", frozenset({"move_family"}))
+    assert by_method["frobnicate"] == ("LiquidHandler", frozenset({"no_contract"}))
+    assert by_method["anything"] == (None, frozenset({"receiver_type_none"}))
+    # a contract exists but the type has no receiver_state (so no family can be derived for it): absolute class
+    assert by_method["get_status"] == ("A4SBackend", frozenset({"no_receiver_state"}))
+    # FAIL-CLOSED on a degraded table (review fix): with NO receiver_state block at all, every call with a
+    # contract -- setup included -- is a disturber, move_lid no longer silently drops out of the family.
+    degraded = rack_topology_disturbers(instrs, contracts, None)
+    assert degraded[1][1] == frozenset({"no_receiver_state"})  # setup
+    assert degraded[2][1] == frozenset({"no_receiver_state"})  # move_lid
+    assert degraded[3][1] == frozenset({"no_contract"})
+    assert degraded[4][1] == frozenset({"receiver_type_none"})
+    # ...and the same when the LiquidHandler block exists but carries no anchor_fields
+    empty_anchor = {**receiver_states, "LiquidHandler": {k: v for k, v in receiver_states["LiquidHandler"].items() if k != "anchor_fields"}}
+    assert rack_topology_disturbers(instrs, contracts, empty_anchor)[2][1] == frozenset({"no_receiver_state"})
+
+
+def test_ac_18_11_clauses_prefix_and_loop_semantics() -> None:
+    """§18.5.4: clause (i) looks only at EARLIER pcs; clause (ii) applies only inside a loop and looks at EVERY
+    pc; clause (d) makes a different receiver type disturbing relative to the checked call."""
+    from plr_sema.check.predicate import rack_topology_clauses
+
+    lh = "LiquidHandler"
+    none = frozenset()
+    move = frozenset({"move_family"})
+    calm = {0: (lh, none), 1: (lh, none), 2: (lh, none)}
+    assert rack_topology_clauses(calm, 1, lh, False) == (True, True)
+    assert rack_topology_clauses(calm, 1, lh, True) == (True, True)
+    # a disturber AFTER pc 1, outside a loop: fine; inside a loop: clause (ii) fails, clause (i) still holds
+    later = {0: (lh, none), 1: (lh, none), 2: (lh, move)}
+    assert rack_topology_clauses(later, 1, lh, False) == (True, True)
+    assert rack_topology_clauses(later, 1, lh, True) == (True, False)
+    # a disturber BEFORE pc 1 fails clause (i) with or without a loop
+    earlier = {0: (lh, move), 1: (lh, none), 2: (lh, none)}
+    assert rack_topology_clauses(earlier, 1, lh, False) == (False, True)
+    assert rack_topology_clauses(earlier, 1, lh, True) == (False, False)
+    # the checked call itself is not "earlier than itself" for (i), but counts under (ii)
+    itself = {0: (lh, none), 1: (lh, move)}
+    assert rack_topology_clauses(itself, 1, lh, False) == (True, True)
+    assert rack_topology_clauses(itself, 1, lh, True) == (True, False)
+    # clause (d): a different receiver type, no classes at all, still disturbs
+    other = {0: ("A4SBackend", none), 1: (lh, none)}
+    assert rack_topology_clauses(other, 1, lh, False) == (False, True)
+    assert rack_topology_clauses(other, 1, "A4SBackend", False)[0] is True
+    for classes in (frozenset({"no_contract"}), frozenset({"receiver_type_none"})):
+        assert rack_topology_clauses({0: (lh, classes), 1: (lh, none)}, 1, lh, False) == (False, True)
+
+
+# --- (c) SAFE, and (d)/(e) declines and the pc test, all through check_graph on the SHIPPED contracts -------------
+
+
+def test_ac_18_11_c_338_decides_safe_on_setup_then_pick_up_tips(contracts_json: str) -> None:
+    report = check_graph(_t61_graph([("setup",), ("pick_up_tips",)]), contracts_json, env=_T61_ENV)
+    assert _t61_all(report, "op_2", Verdict.SAFE)
+    # `setup` carries no `:338` finding at all (it is not a pick-up)
+    assert not _site_findings(report, _T61_SITE, operation_id="op_1")
+
+
+def test_ac_18_11_c_338_without_any_observation_stays_guard_predicate_unparsed(contracts_json: str) -> None:
+    """The negative control for (c): the SAME graph with no `env` declines with the shipped reason."""
+    report = check_graph(_t61_graph([("setup",), ("pick_up_tips",)]), contracts_json)
+    assert _t61_declined(report, "op_2")
+
+
+_T61_DECLINES = [
+    pytest.param(_t61_obs_env(False, True), [("setup",), ("pick_up_tips",)], None, id="tip_racks_available_false"),
+    pytest.param(_t61_obs_env(None, True), [("setup",), ("pick_up_tips",)], None, id="tip_racks_available_absent"),
+    pytest.param(_t61_obs_env(True, False), [("setup",), ("pick_up_tips",)], None, id="deck_resources_verified_false"),
+    pytest.param(_t61_obs_env(True, None), [("setup",), ("pick_up_tips",)], None, id="deck_resources_verified_absent"),
+    pytest.param(_T61_ENV, [("setup",), ("move_lid",), ("pick_up_tips",)], None, id="preceding_move_lid"),
+    pytest.param(
+        _T61_ENV, [("setup",), ("pick_up_resource",), ("pick_up_tips",)], None, id="preceding_pick_up_resource"
+    ),
+    pytest.param(_T61_ENV, [("setup",), ("move_resource",), ("pick_up_tips",)], None, id="preceding_move_resource"),
+    pytest.param(_T61_ENV, [("setup",), ("move_plate",), ("pick_up_tips",)], None, id="preceding_move_plate"),
+    pytest.param(_T61_ENV, [("setup",), ("drop_resource",), ("pick_up_tips",)], None, id="preceding_drop_resource"),
+    pytest.param(
+        _T61_ENV,
+        [("setup",), ("pick_up_tips",), ("move_plate",)],
+        (1, 2, 2),
+        id="move_plate_at_a_later_pc_inside_a_shared_loop_trip_2",
+    ),
+    pytest.param(
+        _T61_ENV,
+        [("setup",), ("pick_up_tips",), ("move_plate",)],
+        (1, None, 2),
+        id="move_plate_at_a_later_pc_inside_a_shared_loop_unproven_trip",
+    ),
+    pytest.param(
+        _T61_ENV,
+        [("setup",), ("get_status", "A4SBackend", "dev"), ("pick_up_tips",)],
+        None,
+        id="preceding_call_on_a_different_receiver_type",
+    ),
+    pytest.param(
+        _T61_ENV,
+        [("setup",), ("no_such_method",), ("pick_up_tips",)],
+        None,
+        id="preceding_call_with_no_contract",
+    ),
+    pytest.param(
+        _T61_ENV,
+        [("setup",), ("mystery", None, "thing"), ("pick_up_tips",)],
+        None,
+        id="preceding_call_with_receiver_type_none",
+    ),
+]
+
+
+@pytest.mark.parametrize(("env", "ops", "loop"), _T61_DECLINES)
+def test_ac_18_11_d_each_decline_path_stays_guard_predicate_unparsed_on_the_shipped_contracts(
+    contracts_json: str, env, ops, loop
+) -> None:
+    """AC-18.11(d): one fixture per decline path, each RUN AGAINST THE SHIPPED `derived_contracts.json`
+    (r1, M5), each `UNKNOWN`/`guard_predicate_unparsed` at the `:338` site of the `pick_up_tips` op -- the
+    reason the guard has today, so the rule adds and moves no reason when it declines."""
+    report = check_graph(_t61_graph(ops, loop=loop), contracts_json, env=env)
+    pick_index = next(i for i, spec in enumerate(ops) if spec[0] == "pick_up_tips")
+    assert _t61_declined(report, f"op_{pick_index + 1}")
+
+
+def test_ac_18_11_d_every_decline_fixture_has_a_matching_decided_control(contracts_json: str) -> None:
+    """The instrument check for (d): the decline fixtures above are not declining because of some unrelated
+    reason (a broken graph, a missing op) -- each shape becomes `SAFE` when the ONE thing it changes is put back."""
+    controls = {
+        "clean": (_T61_ENV, [("setup",), ("pick_up_tips",)], None),
+        "loop_without_any_disturber": (_T61_ENV, [("setup",), ("pick_up_tips",)], (1, 2, 1)),
+        "other_receiver_after_the_pickup": (
+            _T61_ENV,
+            [("setup",), ("pick_up_tips",), ("get_status", "A4SBackend", "dev")],
+            None,
+        ),
+        "no_contract_call_after_the_pickup": (_T61_ENV, [("setup",), ("pick_up_tips",), ("no_such_method",)], None),
+        "move_family_call_after_the_pickup": (_T61_ENV, [("setup",), ("pick_up_tips",), ("move_plate",)], None),
+    }
+    for name, (env, ops, loop) in controls.items():
+        report = check_graph(_t61_graph(ops, loop=loop), contracts_json, env=env)
+        pick_index = next(i for i, spec in enumerate(ops) if spec[0] == "pick_up_tips")
+        assert _t61_all(report, f"op_{pick_index + 1}", Verdict.SAFE), name
+
+
+def test_ac_18_11_e_a_move_lid_at_a_later_pc_outside_any_loop_still_decides_safe(contracts_json: str) -> None:
+    """The pc test is real, not a blanket "any move anywhere": `move_lid` AFTER the pickup, outside a loop,
+    leaves the pickup's `:338` `SAFE` -- and the very same two ops in the other order decline."""
+    after = check_graph(_t61_graph([("setup",), ("pick_up_tips",), ("move_lid",)]), contracts_json, env=_T61_ENV)
+    assert _t61_all(after, "op_2", Verdict.SAFE)
+    before = check_graph(_t61_graph([("setup",), ("move_lid",), ("pick_up_tips",)]), contracts_json, env=_T61_ENV)
+    assert _t61_declined(before, "op_3")
+
+
+def test_ac_18_11_a_pickup_after_the_loop_that_held_a_disturber_still_declines(contracts_json: str) -> None:
+    """A disturber inside an EARLIER loop has a lower pc than a later straight-line pickup: clause (i)."""
+    ops = [("setup",), ("move_plate",), ("pick_up_tips",)]
+    report = check_graph(_t61_graph(ops, loop=(1, 2, 1)), contracts_json, env=_T61_ENV)
+    assert _t61_declined(report, "op_3")
+
+
+def test_ac_18_11_a_disturber_in_the_sibling_branch_arm_after_the_pickup_does_not_block(contracts_json: str) -> None:
+    """§18.5.4 branch note: the sibling arm has a HIGHER pc and the two arms cannot both run in one pass, so
+    it does not force a decline -- while a disturber in an EARLIER arm does (lower pc)."""
+
+    def branch_graph(true_ops: "list[str]", false_ops: "list[str]") -> str:
+        ops = [_t61_op("op_1", "setup")]
+        ids_true, ids_false = [], []
+        for i, m in enumerate(true_ops):
+            ops.append(_t61_op(f"t{i}", m))
+            ids_true.append(f"t{i}")
+        for i, m in enumerate(false_ops):
+            ops.append(_t61_op(f"f{i}", m))
+            ids_false.append(f"f{i}")
+        region = _t61_op("br", "", None, "")
+        region.update({"node_type": "region", "condition_expr": "flag", "true_branch": ids_true, "false_branch": ids_false})
+        ops.insert(1, region)
+        return json.dumps({"protocol_fqn": "test.t61_branch", "operations": ops, "resources": {}})
+
+    later_arm = check_graph(branch_graph(["pick_up_tips"], ["move_lid"]), contracts_json, env=_T61_ENV)
+    assert _t61_all(later_arm, "t0", Verdict.SAFE)
+    earlier_arm = check_graph(branch_graph(["move_lid"], ["pick_up_tips"]), contracts_json, env=_T61_ENV)
+    assert _t61_declined(earlier_arm, "f0")
+
+
+def test_ac_18_11_a_graph_with_no_338_guard_carries_no_338_finding(contracts_json: str) -> None:
+    """The new keywords are read by no other guard: a graph whose ops carry no `:338` guard (`aspirate` and the
+    move family do not) reports no finding at that site at all, with or without the observation."""
+    ops = [("setup",), ("move_lid",), ("aspirate",)]
+    for env in (_T61_ENV, frozenset()):
+        assert not _site_findings(check_graph(_t61_graph(ops), contracts_json, env=env), _T61_SITE)
+
+
+# --- AC-18.12: HM-26 ---------------------------------------------------------------------------------------------
+
+
+def test_ac_18_12_hm26_measure_is_four_and_the_registry_cap_is_unchanged() -> None:
+    from plr_sema._hand_maintained import BUDGET_CAP, REGISTRY, live_rows, resolve_measure
+
+    (hm26,) = (row for row in REGISTRY if row.id == "HM-26")
+    assert hm26.declared == 4 and resolve_measure(hm26.measure) == 4
+    assert len(live_rows()) == 25 and BUDGET_CAP == 25
+
+
+# ---------------------------------------------------------------------------
+# Review fixes (#5622 T61): the `:338` rule is FAIL-CLOSED on degraded inputs.
+#   (a) missing / anchor-less `receiver_state`  (b) a stripped `anchor_net_effects`
+#   (c) an untrusted `execution_order`          (d) conflicting duplicate `obs:` members
+# Each case is paired with a control showing the well-formed input still decides SAFE.
+# ---------------------------------------------------------------------------
+
+
+def _t61_degraded(contracts_json: str, *, drop_receiver_state: bool = False, strip_net: "str | None" = None,
+                  strip_anchor_fields: bool = False) -> str:
+    payload = json.loads(contracts_json)
+    if drop_receiver_state:
+        payload.pop("receiver_state", None)
+    if strip_anchor_fields:
+        payload["receiver_state"]["LiquidHandler"].pop("anchor_fields", None)
+    if strip_net is not None:
+        payload["contracts"][f"LiquidHandler.{strip_net}"].pop("anchor_net_effects")
+    return json.dumps(payload)
+
+
+_T61_MOVE_THEN_PICK = [("setup",), ("move_lid",), ("pick_up_tips",)]
+_T61_CLEAN = [("setup",), ("pick_up_tips",)]
+
+
+@pytest.mark.parametrize(
+    "degrade",
+    [
+        pytest.param({"drop_receiver_state": True}, id="1a_receiver_state_block_missing"),
+        pytest.param({"strip_anchor_fields": True}, id="1a_LiquidHandler_block_without_anchor_fields"),
+    ],
+)
+def test_review_fix_1a_a_missing_receiver_state_declines_instead_of_emptying_the_family(contracts_json, degrade) -> None:
+    """With `receiver_state` missing the move family cannot be derived, so `move_lid` used to stop being a
+    disturber and `setup, move_lid, pick_up_tips` decided SAFE where PLR raises. Now every call declines."""
+    bad = _t61_degraded(contracts_json, **degrade)
+    for ops in (_T61_MOVE_THEN_PICK, _T61_CLEAN):
+        report = check_graph(_t61_graph(ops), bad, env=_T61_ENV)
+        pick = next(i for i, s in enumerate(ops) if s[0] == "pick_up_tips") + 1
+        assert _t61_declined(report, f"op_{pick}"), ops
+    # control: the well-formed table decides the clean graph SAFE and still declines the move graph
+    assert _t61_all(check_graph(_t61_graph(_T61_CLEAN), contracts_json, env=_T61_ENV), "op_2", Verdict.SAFE)
+    assert _t61_declined(check_graph(_t61_graph(_T61_MOVE_THEN_PICK), contracts_json, env=_T61_ENV), "op_3")
+
+
+def test_review_fix_1a_check_ir_with_receiver_states_none_declines(contracts_json: str) -> None:
+    """The same, through `check_ir` directly (`receiver_states=None`), where the finding was reproducible."""
+    from plr_sema.check import check_ir
+
+    contracts = json.loads(contracts_json)["contracts"]
+    receiver_states = json.loads(contracts_json)["receiver_state"]
+    resources = {"lh": {"type": "LiquidHandler", "is_container": False, "is_parameter": True, "parents": ()}}
+
+    def run(methods, states):
+        calls = [{"method": m, "kwargs": {}, "receiver": "lh", "receiver_type": "LiquidHandler"} for m in methods]
+        bc = ir.lower_calls(calls, resources=resources)
+        pick_pc = max(i for i, x in enumerate(bc.instructions) if isinstance(x, ir.Call) and x.method == "pick_up_tips")
+        findings = check_ir(bc, contracts, states, env=_T61_ENV)
+        return [f for f in findings if f.operation_id == str(pick_pc) and f.plr_site == _T61_SITE]
+
+    for methods in (["setup", "move_lid", "pick_up_tips"], ["setup", "pick_up_tips"]):
+        f338 = run(methods, None)
+        assert f338 and all(f.verdict is Verdict.UNKNOWN for f in f338), methods
+    # controls: the intact receiver_state decides the clean stream SAFE and declines the move stream
+    assert all(f.verdict is Verdict.SAFE for f in run(["setup", "pick_up_tips"], receiver_states))
+    assert all(f.verdict is Verdict.UNKNOWN for f in run(["setup", "move_lid", "pick_up_tips"], receiver_states))
+
+
+def test_review_fix_1b_a_stripped_anchor_net_effects_declines(contracts_json: str) -> None:
+    """`move_lid`'s contract keeps its anchor-field guards but loses `anchor_net_effects`: nothing says what it
+    leaves behind, so it is a disturber (`anchor_touched_unmodelled`). Controls: the SAME stripped table still
+    decides SAFE when `move_lid` is absent or comes AFTER the pickup."""
+    bad = _t61_degraded(contracts_json, strip_net="move_lid")
+    assert _t61_declined(check_graph(_t61_graph(_T61_MOVE_THEN_PICK), bad, env=_T61_ENV), "op_3")
+    assert _t61_all(check_graph(_t61_graph(_T61_CLEAN), bad, env=_T61_ENV), "op_2", Verdict.SAFE)
+    after = [("setup",), ("pick_up_tips",), ("move_lid",)]
+    assert _t61_all(check_graph(_t61_graph(after), bad, env=_T61_ENV), "op_2", Verdict.SAFE)
+
+    from plr_sema.check.predicate import rack_topology_disturbers
+
+    payload = json.loads(bad)
+    scan = rack_topology_disturbers([_t61_call("move_lid")], payload["contracts"], payload["receiver_state"])
+    assert scan[0] == ("LiquidHandler", frozenset({"anchor_touched_unmodelled"}))
+    # `"TOP"` is an ENTRY (P6 looked and declined -- the named fail-open edge), absence is not:
+    payload["contracts"]["LiquidHandler.move_lid"]["anchor_net_effects"] = {"_resource_pickup": "TOP"}
+    assert rack_topology_disturbers([_t61_call("move_lid")], payload["contracts"], payload["receiver_state"])[0][1] == frozenset()
+
+
+def test_review_fix_1b_move_picked_up_resource_on_the_shipped_table_is_a_disturber(contracts_json: str) -> None:
+    """A resource mover the five-method family pin does not list: its guards read `_resource_pickup` and it has no
+    derived net effect. On the shipped table it now declines a later pickup (it used to be invisible)."""
+    ops = [("setup",), ("move_picked_up_resource",), ("pick_up_tips",)]
+    assert _t61_declined(check_graph(_t61_graph(ops), contracts_json, env=_T61_ENV), "op_3")
+
+
+def _t61_with_execution_order(ops, order) -> str:
+    payload = json.loads(_t61_graph(ops))
+    payload["execution_order"] = order
+    return json.dumps(payload)
+
+
+def test_review_fix_1c_an_untrusted_execution_order_declines(contracts_json: str) -> None:
+    """`lower_graph` falls back to payload order on an invalid `execution_order` and records
+    `Widen(execution_order)`; pc order is then not execution order. The probe: ops [setup, pick_up_tips,
+    move_lid] with order [op_1, op_3, op_2, "ghost"] (the move REALLY runs first) used to decide SAFE."""
+    ops = [("setup",), ("pick_up_tips",), ("move_lid",)]
+    bad = _t61_with_execution_order(ops, ["op_1", "op_3", "op_2", "ghost"])
+    assert _t61_declined(check_graph(bad, contracts_json, env=_T61_ENV), "op_2")
+    # a duplicate id is invalid too
+    assert _t61_declined(check_graph(_t61_with_execution_order(ops, ["op_1", "op_1", "op_2", "op_3"]), contracts_json, env=_T61_ENV), "op_2")
+    # ...and an untrusted order declines even a stream with no disturber at all (no pc claim survives)
+    clean = _t61_with_execution_order(_T61_CLEAN, ["op_1", "op_2", "ghost"])
+    assert _t61_declined(check_graph(clean, contracts_json, env=_T61_ENV), "op_2")
+    # controls: a VALID order is honoured -- the pickup first stays SAFE, the move first declines
+    valid_safe = _t61_with_execution_order(ops, ["op_1", "op_2", "op_3"])
+    assert _t61_all(check_graph(valid_safe, contracts_json, env=_T61_ENV), "op_2", Verdict.SAFE)
+    valid_move_first = _t61_with_execution_order(ops, ["op_1", "op_3", "op_2"])
+    assert _t61_declined(check_graph(valid_move_first, contracts_json, env=_T61_ENV), "op_2")
+    # and the widen really is what carries it: the bad order lowers with the marker, the valid one without
+    def widens(text):
+        bc = ir.lower_graph(json.loads(text))
+        return [i.reason for i in bc.instructions if isinstance(i, ir.Widen)]
+
+    assert "execution_order" in widens(bad) and "execution_order" not in widens(valid_safe)
+
+
+# --- 2: conflicting duplicate obs members ------------------------------------------------------------------------
+
+
+def test_review_fix_2_conflicting_duplicate_observation_members_decline() -> None:
+    from plr_sema.check.predicate import _observation, tip_racks_decline_reason
+
+    both = frozenset({
+        "obs:tip_racks_available=true", "obs:tip_racks_available=false", "obs:deck_resources_verified=true",
+    })
+    assert "tip_racks_available" not in _observation(both)
+    assert _observation(both)["deck_resources_verified"] is True  # only the ambiguous key is dropped
+    assert tip_racks_decline_reason(_t61_ctx(env=both, prefix=True, loop=True)) == "observation"
+    deck_both = frozenset({
+        "obs:tip_racks_available=true", "obs:deck_resources_verified=true", "obs:deck_resources_verified=false",
+    })
+    assert tip_racks_decline_reason(_t61_ctx(env=deck_both, prefix=True, loop=True)) == "deck"
+    # two `true` spellings are two members too: still ambiguous, still a decline
+    twice = frozenset({"obs:tip_racks_available=true", "obs:tip_racks_available= true", "obs:deck_resources_verified=true"})
+    assert tip_racks_decline_reason(_t61_ctx(env=twice, prefix=True, loop=True)) == "observation"
+    # control: exactly one of each decides
+    assert tip_racks_decline_reason(_t61_ctx(env=_T61_ENV, prefix=True, loop=True)) is None
+
+
+def test_review_fix_2_the_decline_does_not_depend_on_hash_seed_or_iteration_order(contracts_json: str) -> None:
+    """The bug was frozenset iteration order (PYTHONHASHSEED-dependent). Run the same duplicate env in fresh
+    interpreters under several seeds: every one must decline. (In-process, both construction orders too.)"""
+    import subprocess
+    import sys as _sys
+
+    code = (
+        "from plr_sema.check.predicate import _Ctx, tip_racks_decline_reason\n"
+        "from plr_sema.check import ir\n"
+        "env = frozenset({'obs:tip_racks_available=true','obs:tip_racks_available=false','obs:deck_resources_verified=true'})\n"
+        "ctx = _Ctx(call=ir.Call(receiver=0, receiver_type='LiquidHandler', method='pick_up_tips', kwargs={}),"
+        " resources_by_slot={}, param_defaults={}, bindings_by_name={}, depth=1, channel_kwarg=None, channels=None,"
+        " env=env, class_hierarchy=None, guard_kind='raise_guard', rack_topology_prefix_ok=True, rack_topology_loop_ok=True)\n"
+        "print(tip_racks_decline_reason(ctx))\n"
+    )
+    outs = set()
+    for seed in ("0", "1", "2", "3", "12345"):
+        proc = subprocess.run(
+            [_sys.executable, "-c", code], capture_output=True, text=True,
+            env={**__import__("os").environ, "PYTHONHASHSEED": seed},
+        )
+        assert proc.returncode == 0, proc.stderr
+        outs.add(proc.stdout.strip())
+    assert outs == {"observation"}, outs
+    # and through check_graph, whichever member a set happens to yield first
+    m_true, m_false = "obs:tip_racks_available=true", "obs:tip_racks_available=false"
+    for members in ((m_true, m_false), (m_false, m_true)):
+        env = frozenset(members) | {"obs:deck_resources_verified=true"}
+        report = check_graph(_t61_graph(_T61_CLEAN), contracts_json, env=env)
+        assert _t61_declined(report, "op_2")
+
+
+# --- 3: clause (ii) for a BRANCH nested inside a LOOP ------------------------------------------------------------
+
+
+def _t61_loop_with_branch(true_ops: "list[str]", false_ops: "list[str]", *, trip: "int | None" = 2) -> str:
+    ops = [_t61_op("op_1", "setup")]
+    loop = _t61_op("loop", "", None, "")
+    branch = _t61_op("br", "", None, "")
+    loop.update({"node_type": "region", "foreach_source": "[r0, r1]", "foreach_body": ["br"], "trip": trip})
+    ids_true = [f"t{i}" for i in range(len(true_ops))]
+    ids_false = [f"f{i}" for i in range(len(false_ops))]
+    branch.update({"node_type": "region", "condition_expr": "flag", "true_branch": ids_true, "false_branch": ids_false})
+    ops += [loop, branch]
+    ops += [_t61_op(i, m) for i, m in zip(ids_true, true_ops)]
+    ops += [_t61_op(i, m) for i, m in zip(ids_false, false_ops)]
+    return json.dumps({"protocol_fqn": "test.t61_loop_branch", "operations": ops, "resources": {}})
+
+
+@pytest.mark.parametrize("trip", [2, None], ids=["trip_2", "unproven_trip"])
+def test_review_fix_3_clause_ii_sees_a_disturber_in_the_sibling_arm_of_a_branch_inside_a_loop(contracts_json, trip) -> None:
+    """Outside a loop the sibling arm (higher pc) is harmless (test above). Inside a loop a later pc runs before
+    this one on the next iteration, so clause (ii) must decline -- even through a nested BRANCH."""
+    bad = check_graph(_t61_loop_with_branch(["pick_up_tips"], ["move_lid"], trip=trip), contracts_json, env=_T61_ENV)
+    assert _t61_declined(bad, "t0")
+    # control: same nesting, harmless sibling arm -> the pickup still decides SAFE
+    ok = check_graph(_t61_loop_with_branch(["pick_up_tips"], ["aspirate"], trip=trip), contracts_json, env=_T61_ENV)
+    assert _t61_all(ok, "t0", Verdict.SAFE)
+    # and a disturber in the EARLIER arm declines by clause (i) inside the loop as well
+    assert _t61_declined(
+        check_graph(_t61_loop_with_branch(["move_lid"], ["pick_up_tips"], trip=trip), contracts_json, env=_T61_ENV), "f0"
+    )

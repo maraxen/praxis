@@ -1,0 +1,32 @@
+{
+  "channel_effects": {
+    "LiquidHandler.clear_head_state": "widen",
+    "LiquidHandler.consolidate_tip_inventory": "widen",
+    "LiquidHandler.discard_tips": "widen",
+    "LiquidHandler.drop_tips": "NO_TIP",
+    "LiquidHandler.load_state": "HAS_TIP",
+    "LiquidHandler.move_tips": "widen",
+    "LiquidHandler.pick_up_tips": "HAS_TIP",
+    "LiquidHandler.probe_tip_presence_via_pickup": "widen",
+    "LiquidHandler.return_tips": "widen",
+    "LiquidHandler.update_head_state": "widen",
+    "LiquidHandler.use_tips": "widen"
+  },
+  "intended_divergences": {
+    "LiquidHandler.load_state": {
+      "new": "widen",
+      "old": "HAS_TIP",
+      "reason": "L1 (§18.4.4)"
+    },
+    "LiquidHandler.probe_tip_inventory": {
+      "new": "widen",
+      "old": "absent",
+      "reason": "#5668: its `probing_fn = self.probe_tip_presence_via_pickup` alias was dropped by the survey at both pins; now followed as a delegate (owner ruling 260930)"
+    }
+  },
+  "plr_pin": {
+    "hash": "dd79c4c89bc008629a1c598ea614be5e6067d1f9",
+    "pylabrobot_version": "0.2.2"
+  },
+  "source_rev": "66fae143fad29e030f83d0afab148ed5fe98ef0c"
+}

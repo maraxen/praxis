@@ -37,6 +37,46 @@ from pylabrobot.visualizer.visualizer import Visualizer
 
 from .transport import VIZ_CHANNEL, BroadcastChannelTransport, VizTransport
 
+# Serialized ``type`` -> how many more rails than tracks the deck counted under PLR 0.2.2's
+# ``num_rails``. Mirrors PLR 1.0's own deprecated ``HamiltonDeck.num_rails`` property, which
+# returns ``num_tracks + _rails_beyond_tracks`` (``hamilton_decks.py:231-242``); the class
+# attribute is 0 on ``HamiltonDeck`` and 2 on ``HamiltonSTARDeck`` (``star_decks.py:26``).
+# Cross-checked against the old pin: STARLet was ``STARLET_NUM_RAILS = 32`` and STAR
+# ``STAR_NUM_RAILS = 56`` at ``dd79c4c89`` (``hamilton_decks.py:21,26``); at 1.0 they are
+# ``num_tracks`` 30 and 54 (``hamilton_decks.py:20-21``).
+_RAILS_BEYOND_TRACKS: Dict[str, int] = {"HamiltonSTARDeck": 2}
+
+# Events whose ``data["resource"]`` is a serialized resource tree headed for ``lib.js``.
+_RESOURCE_TREE_EVENTS = frozenset({"set_root_resource", "resource_assigned"})
+
+
+def add_legacy_num_rails(node: Any) -> Any:
+    """Return a copy of a serialized resource tree with ``num_rails`` derived from ``num_tracks``.
+
+    The vendored renderer (``overlay/assets/visualizer/lib.js``) reads ``num_rails`` to draw the
+    deck's rail grid (``lib.js:928, 1362-1363, 1417, 1453``). PLR 1.0 serializes ``num_tracks``
+    instead (``HamiltonDeck.serialize``, ``hamilton_decks.py:464``), so at 1.0 the grid silently
+    vanishes (``HamiltonSTARDeck.num_rails`` is undefined and the draw loop runs zero times).
+    ``lib.js`` must stay byte-identical to upstream (R2: the renderer is never forked), so the
+    data is fixed on the way to it instead.
+
+    A node gains ``num_rails = num_tracks + offset`` only when it carries ``num_tracks`` and has
+    no ``num_rails``; an existing value is never overwritten. ``offset`` is 2 for
+    ``HamiltonSTARDeck`` and 0 for any other type (see ``_RAILS_BEYOND_TRACKS``). Nodes without
+    ``num_tracks`` (OT-2, Tecan, carriers, wells) pass through unchanged. The input is never
+    mutated.
+    """
+    if not isinstance(node, dict):
+        return node
+    out = dict(node)
+    tracks = out.get("num_tracks")
+    if "num_rails" not in out and isinstance(tracks, int) and not isinstance(tracks, bool):
+        out["num_rails"] = tracks + _RAILS_BEYOND_TRACKS.get(out.get("type"), 0)
+    children = out.get("children")
+    if isinstance(children, list):
+        out["children"] = [add_legacy_num_rails(child) for child in children]
+    return out
+
 
 class _PyodideLoopShim:
     """Supplies the event loop ``Visualizer.loop`` requires.
@@ -160,6 +200,11 @@ class BrowserVisualizer(Visualizer):
             raise RuntimeError(
                 "BrowserVisualizer has no transport connection; call setup() first."
             )
+
+        if event in _RESOURCE_TREE_EVENTS and isinstance(data.get("resource"), dict):
+            # PLR 1.0 decks serialize ``num_tracks``; the vendored lib.js draws the rail
+            # grid from ``num_rails``. Adapt the data, never the renderer (R2).
+            data = {**data, "resource": add_legacy_num_rails(data["resource"])}
 
         serialized, _id = self._assemble_command(event=event, data=data)
         self._transport.send(serialized)

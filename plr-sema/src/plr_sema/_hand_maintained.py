@@ -393,6 +393,25 @@ def _measure_hm25() -> int:
     the clause-3 exception, present; a three-definition qualname -> clause
     3 itself, absent), proving the shape is live and the exception does not
     swallow clause 3 outright.
+
+    260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md §18.7/AC-18.17,
+    T57, backlog #5622, owner ruling on OI-4, 260929): PLUS a THIRTEENTH unit
+    -- ONE collective unit for the derived tip-effect patterns over how PLR
+    writes its tracker: R-A (a getter shape, `return self.X`, recursing
+    through properties, that yields the backing-field alias), R-B (the
+    binding and argument-classification table that follows a helper chain to
+    a `W` write) and R-C(2) (a signature shape: a reset constructor that
+    binds no `None`-default `__init__` parameter). All three are patterns
+    over how PLR is written and R-A/R-B are one mechanism (either alone
+    recovers nothing), so they are booked as one unit, not three. `declared`
+    moves 12 -> 13, exactly ONE further unit of headroom. The probe imports
+    `analyze_tip_effects` and `reset_constructions_bind_no_optional_
+    collaborator` and exercises them against a synthetic three-hop chain
+    (`add -> _a -> _b -> self._carried = t`), asserting the derived
+    `HAS_TIP`, the alias, the published depth, and that a reset binding a
+    `None`-default parameter is refused. Fails loudly (ImportError/
+    AttributeError/AssertionError) if any is deleted, renamed or stops
+    matching.
     """
     import ast
 
@@ -406,8 +425,10 @@ def _measure_hm25() -> int:
         _singleton_anchor_absent,
         _typestate_anchor,
         _volume_anchor,
+        analyze_tip_effects,
         compute_delegate_channel_bindings,
         operand_pairing_idiom,
+        reset_constructions_bind_no_optional_collaborator,
     )
 
     def _predicate_amendment_group_probe() -> bool:
@@ -526,6 +547,52 @@ def _measure_hm25() -> int:
 
         return True
 
+    def _tip_effect_derivation_probe() -> bool:
+        """The THIRTEENTH unit's own probe (§18.7/AC-18.17, T57): imports and
+        exercises R-A/R-B (`analyze_tip_effects`) and R-C(2)
+        (`reset_constructions_bind_no_optional_collaborator`) against a
+        synthetic three-hop chain and a synthetic reset. The polarity comes
+        from the entry annotation `Slot` (derived, never typed), and the
+        field names here are deliberately not PLR's."""
+        assert analyze_tip_effects is not None
+        assert reset_constructions_bind_no_optional_collaborator is not None
+        tree = ast.parse(
+            "class C:\n"
+            "    def __init__(self, thing: str, holder: 'Owner' = None):\n"
+            "        self._carried: 'Slot' = None\n"
+            "    @property\n"
+            "    def _view(self):\n"
+            "        return self._carried\n"
+            "    def add(self, item: Slot):\n"
+            "        self._a(item)\n"
+            "    def _a(self, t):\n"
+            "        self._b(t)\n"
+            "    def _b(self, t):\n"
+            "        self._carried = t\n"
+            "    def wipe(self):\n"
+            "        self._b(None)\n"
+            "    def load(self, blob):\n"
+            "        self._b(blob.get('x'))\n"
+        )
+        cls = tree.body[0]
+        result = analyze_tip_effects(cls, ("_view",))
+        assert result.backing_fields == ("_carried",), result
+        assert result.effects == {"add": "HAS_TIP", "wipe": "NO_TIP"}, result
+        assert result.effects_unresolved == ("load",), result
+        assert result.effects_max_depth == 2, result
+        assert result.constructor_state == "NO_TIP", result
+
+        recv_ok = ast.parse(
+            "class R:\n    def reset(self):\n        self.slots = {i: C(thing=str(i)) for i in range(3)}\n"
+        ).body[0]
+        recv_bad = ast.parse(
+            "class R:\n    def reset(self):\n        self.slots = {i: C(thing=str(i), holder=i) for i in range(3)}\n"
+        ).body[0]
+        index = {"C": cls}
+        assert reset_constructions_bind_no_optional_collaborator(recv_ok, "reset", "slots", cls, "C", index)
+        assert not reset_constructions_bind_no_optional_collaborator(recv_bad, "reset", "slots", cls, "C", index)
+        return True
+
     shape_matchers = (
         _typestate_anchor,  # P2
         _channel_default_idiom,  # P3a
@@ -536,6 +603,7 @@ def _measure_hm25() -> int:
         _path_shape_table_probe,  # R-HEAD + R-ATTR + R-CONST (D4)
         _r_arm_truthiness_clause_probe,  # the amended predicate-position clause (D7 unit 11)
         _singleton_anchor_absence_probe,  # P5's absence rule (D7 unit 12)
+        _tip_effect_derivation_probe,  # R-A + R-B + R-C(2) (§18.7, unit 13)
     )
     # atom_truth's three productions: BoolView, NullCheck(is_none=True),
     # NullCheck(is_none=False) -- proven live by actually exercising all
@@ -550,6 +618,7 @@ def _measure_hm25() -> int:
     assert _path_shape_table_probe()
     assert _r_arm_truthiness_clause_probe()
     assert _singleton_anchor_absence_probe()
+    assert _tip_effect_derivation_probe()
     return len(shape_matchers) + len(productions)
 
 
@@ -566,7 +635,11 @@ def _measure_hm26() -> int:
     `plr_sema.check.predicate.D6_SITE_RULES` is the live registry
     `len()`s -- T49's `:375`/`:383` pair lands in the SAME dict, so this
     row's measured count moves 1 -> 3 without a second row or a further
-    ceiling bump.
+    ceiling bump. 260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md
+    §18.5.6, #5622, T61): the FOURTH entry (`:338`,
+    `_check_tip_racks_available`) moves it 3 -> 4 -- a ceiling change on this
+    same row (`declared` 3 -> 4, `live_rows()`/`BUDGET_CAP` unchanged at 25),
+    with no headroom.
     """
     from plr_sema.check.predicate import D6_SITE_RULES
 
@@ -1176,10 +1249,21 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "`_resolve_env_ref`, and the amended clause lands in "
             "`evaluate_predicate`, a different symbol) -- booked as its OWN "
             "eleventh unit, with its own probe importing and exercising "
-            "`evaluate_predicate` directly."
+            "`evaluate_predicate` directly. 260929 (spec "
+            "260929_plr-sema-plr1-tip-effect-increment.md §18.7/AC-18.17, "
+            "T57, owner ruling on OI-4): PLUS a THIRTEENTH unit -- the "
+            "derived tip-effect patterns over how PLR writes its tracker, "
+            "ONE collective unit: R-A (a `return self.X` getter shape, "
+            "recursing through properties, aliasing the backing field), "
+            "R-B (the binding and argument-classification table that "
+            "follows a self-call chain to a write of the state or backing "
+            "field) and R-C(2) (a reset constructor that binds no "
+            "`None`-default `__init__` parameter). Probe: "
+            "`analyze_tip_effects` on a synthetic three-hop chain plus "
+            "`reset_constructions_bind_no_optional_collaborator`."
         ),
         metric="patterns",
-        declared=12,
+        declared=13,
         status="CAPPED",
         why_not_derived=(
             "Syntactic patterns over how PLR/its own analyzer is written "
@@ -1231,7 +1315,15 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "(ImportError/AttributeError, or an assertion on one of the "
             "three fixtures); a real anchor candidate this rule wrongly "
             "calls absent simply disables the mechanism for that field "
-            "(fail-closed, never wrong)."
+            "(fail-closed, never wrong). 260929 (T57, unit 13): PLR "
+            "changes how the tracker's state is written (the backing "
+            "getter stops being a bare `return self.X`, a helper chain "
+            "passes something the classifier cannot resolve, or the head "
+            "trackers are built with a `None`-default collaborator bound) "
+            "-- `effects` empties or widens and `entry_reset` disappears; "
+            "the unit-13 probe, AC-18.1/AC-18.2's pin values, AC-18.4(c) "
+            "and the cross-pin fixture (AC-18.7) go red, and every verdict "
+            "falls back to UNKNOWN (fail-closed, never wrong)."
         ),
         measure="plr_sema._hand_maintained:_measure_hm25",
     ),
@@ -1252,10 +1344,28 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "ships, moving the measured count to three -- this row and T49 "
             "SHARE it, per D6's own box: whichever task lands first adds "
             "the row, the second asserts it already exists rather than "
-            "adding a second."
+            "adding a second. 260929 (spec "
+            "260929_plr-sema-plr1-tip-effect-increment.md §18.5.3/§18.5.6, "
+            "#5622, T61): PLUS a FOURTH rule, keyed on "
+            "`(_check_tip_racks_available, ValueError, not "
+            "rack._available_for_tip_handling)` -- exactly this row's kind "
+            "(it hand-models what that ONE PLR function body's guard "
+            "checks: a lid, or a non-top position in a z-stack, on a tip "
+            "rack). It decides `False` (SAFE, never `True`) iff FOUR "
+            "conjuncts hold: the guard's kind is `raise_guard`; the "
+            "harness's own sixth observation field "
+            "`obs:tip_racks_available` (§18.5.2) is `true`; the existing "
+            "`obs:deck_resources_verified` aggregate is `true`; and "
+            "§18.5.4's `rack_topology_stable` -- computed by `check_ir` "
+            "over the program (no topology-disturbing CALL before this "
+            "one, and none anywhere when inside a loop) -- holds. The "
+            "decision is the pure `tip_racks_decline_reason(ctx)`. The "
+            "fourth rule is a CEILING change 3 -> 4 with no headroom "
+            "(`declared == live`, following T48/T49's own precedent), not "
+            "a new row: `live_rows()` and `BUDGET_CAP` stay 25."
         ),
         metric="site rules",
-        declared=3,
+        declared=4,
         status="CAPPED",
         why_not_derived=(
             "Each rule is a claim about what ONE specific PLR function's "
@@ -1283,7 +1393,21 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "to catch the silent reversion rather than trusting this box's "
             "word for the reach; each rule is ALSO one-directional by "
             "construction (D-G6: never returns `T`), so a broken match "
-            "cannot manufacture a false `SAFE` either."
+            "cannot manufacture a false `SAFE` either. 260929 (#5622, "
+            "T61): the FOURTH rule also stops dispatching if PLR changes "
+            "`_check_tip_racks_available`'s guard text, its raising class "
+            "or its qualname -- `test_d6_site_rule_keys_each_match_exactly_"
+            "one_site` turns red on a stale key rather than the rule "
+            "silently reverting to `guard_predicate_unparsed`, and "
+            "`n_tip_racks_decided` (the oracle replay report, §18.5.6) is "
+            "the published count a reader inspects. It is unsound if "
+            "A-RACK-STATIC fails (a NON-move-family same-receiver method "
+            "that lids or stacks a rack -- increment 1 §10.6.3), or if a "
+            "member of the derived move family decays to `\"TOP\"` "
+            "(AC-18.11(i) pins the family on the shipped table), or if the "
+            "harness's `tip_racks_available` stops reading PLR's own "
+            "`_available_for_tip_handling` -- each has its own test and "
+            "the tier-1 fence."
         ),
         measure="plr_sema._hand_maintained:_measure_hm26",
     ),

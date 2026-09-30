@@ -91,11 +91,12 @@ def test_global_flags_restored_after_run():
 # ---------------------------------------------------------------------------
 
 #: §16.2.1's CLOSED field list, extended by §17.3 (move-family increment,
-#: T51) with `arm_slots` -- a field absent from this table is not observed.
-#: Mirrors `plr-sema/eval/oracle_common.OBSERVATION_KEYS`.
+#: T51) with `arm_slots` and by §18.5.2 (PLR 1.0 tip-effect increment, T60,
+#: #5622) with `tip_racks_available` -- a field absent from this table is
+#: not observed. Mirrors `plr-sema/eval/oracle_common.OBSERVATION_KEYS`.
 _OBSERVATION_KEYS = {
     "backend_class", "num_channels", "head_channels", "deck_resource_names",
-    "arm_slots",
+    "arm_slots", "tip_racks_available",
 }
 
 
@@ -105,9 +106,12 @@ def test_plr_observation_present_on_success():
     assert r["passed"], [(c["name"], c["detail"]) for c in r["checks"] if not c["passed"]]
     obs = r["plr_observation"]
     assert obs is not None
-    # §16.2.1's CLOSED record: exactly these five keys, no others -- fails
-    # if `plr_observation` ever grows a sixth key.
+    # §16.2.1's CLOSED record: exactly these six keys, no others -- fails
+    # if `plr_observation` ever grows a seventh key.
     assert set(obs) == _OBSERVATION_KEYS
+    # §18.5.2 (#5622, T60): the benchmark's clean layout has no lidded or
+    # stacked rack, so the aggregate is True -- and a real bool.
+    assert obs["tip_racks_available"] is True
     assert obs["backend_class"] == "LiquidHandlerChatterboxBackend"
     assert obs["num_channels"] == 8
     assert obs["head_channels"] == sorted(obs["head_channels"])
@@ -209,6 +213,39 @@ def test_plr_observation_none_on_raising_capture(monkeypatch):
     seq, intent, layout = _load("clean_transfer.json")
     r = _run(seq, intent, layout)
     assert r["passed"], [(c["name"], c["detail"]) for c in r["checks"] if not c["passed"]]
+    assert r["plr_observation"] is None
+
+
+def test_plr_observation_tip_racks_available_false_for_a_lidded_rack_end_to_end():
+    """AC-18.10 (#5622, T60), through the real `verify()` capture point: a
+    layout naming `lidded_tip_racks` (the dict form `verify` accepts) yields
+    `tip_racks_available is False` -- the positive control to the clean
+    layout's True above -- and the run itself is unaffected (the pickup
+    happens off the lidded rack's own spots, which PLR's `:338` guard would
+    reject, so only the observation is asserted here, not `passed`)."""
+    seq, intent, layout = _load("clean_transfer.json")
+    lidded = dict(layout or {})
+    lidded["lidded_tip_racks"] = ["tip_rack"]
+    r = _run(seq, intent, lidded)
+    obs = r["plr_observation"]
+    assert obs is not None, r["error"]
+    assert obs["tip_racks_available"] is False
+    assert set(obs) == _OBSERVATION_KEYS
+
+
+def test_plr_observation_none_as_a_whole_on_a_raising_tip_rack_read(monkeypatch):
+    """AC-18.10 (#5622, T60), §18.5.2's accepted cost: `_available_for_tip_
+    handling` is a PRIVATE PLR property; if reading it raises, the ONE
+    capture guard nulls the ENTIRE record -- never a partial one carrying
+    the other five fields."""
+    from pylabrobot.resources import TipRack
+
+    def _boom(self):
+        raise RuntimeError("synthetic private-property failure")
+
+    monkeypatch.setattr(TipRack, "_available_for_tip_handling", property(_boom))
+    seq, intent, layout = _load("clean_transfer.json")
+    r = _run(seq, intent, layout)
     assert r["plr_observation"] is None
 
 

@@ -1,0 +1,1626 @@
+{
+ "n": 180,
+ "n_ok": 178,
+ "rows": [
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "ByonoyAbsorbanceBaseUnit",
+   "name": "_enrich_ByonoyAbsorbanceBaseUnit",
+   "ok": false,
+   "err": "ValueError: ByonoyBase can only have one plate holder assigned.",
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "OTDeck",
+   "name": "_enrich_OTDeck",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "FlexDeck",
+   "name": "_enrich_FlexDeck",
+   "ok": false,
+   "err": "TypeError: FlexDeck.__init__() got an unexpected keyword argument 'size_x'",
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PrepDeck",
+   "name": "_enrich_PrepDeck",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_celltreat_6_wellplate_16300uL_Fb_lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_celltreat_6_wellplate_16300uL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_celltreat_12_troughplate_15mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_celltreat_24_wellplate_3300uL_Fb_lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_celltreat_24_wellplate_3300uL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_celltreat_96_wellplate_350uL_Ub",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_celltreat_96_wellplate_350uL_Ub_lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_celltreat_96_wellplate_350uL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_CellTreat_12_troughplate_15000ul_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_CellTreat_24_wellplate_3300ul_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_CellTreat_6_wellplate_16300ul_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_CellTreat_96_wellplate_350ul_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_CellTreat_96_wellplate_350ul_Ub",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_CellTreat_6_wellplate_16300ul_Fb_Lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_CellTreat_24_wellplate_3300ul_Fb_Lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_CellTreat_96_wellplate_350ul_Ub_Lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Tube",
+   "name": "_enrich_celltreat_tube_15mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Tube",
+   "name": "_enrich_celltreat_15000ul_centrifuge_tube_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_cellvis_24_wellplate_3600uL_Fb_lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_cellvis_24_wellplate_3600uL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_cellvis_96_wellplate_350uL_Fb_lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_cellvis_96_wellplate_350uL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_CellVis_24_wellplate_3600uL_Fb_Lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_CellVis_24_wellplate_3600uL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_CellVis_96_wellplate_350uL_Fb_Lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_CellVis_96_wellplate_350uL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipRack",
+   "name": "_enrich_imcs_96_tiprack_1000uL_filter",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipRack",
+   "name": "_enrich_imcs_96_tiprack_300uL_filter",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_azenta_96_wellplate_200uL_Vb_4titudeframestar",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Azenta4titudeFrameStar_96_wellplate_200ul_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Porvair_6_reservoir_47ml_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Porvair_24_wellplate_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L4_HHS_ALT_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L5_ALT_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L4HD",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L5AC",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_hamilton_plate_carrier_L5_ac",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L5FLEX_AC",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L5FLEX_AC_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L5FLEX_MD_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L5MD",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L5MD_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L5PCR",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L5PCR_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L5PCR_A01",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_P3AC_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_P3AC_A01",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_P3HD",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_P3MD",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_P3MD_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_P3MD_A01",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L5AC_P_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_P3LI_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L4ST_B00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L4ST_B00_4x5_Nunc96",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L4ST_C00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L4ST_HIGH_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L4ST_HIGH_A00_4x5_Nunc96",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L4ST_LOW_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L4ST_LOW_A00_4x9_Nunc96",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L5_DWP",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "PlateCarrier",
+   "name": "_enrich_PLT_CAR_L5AC_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_120BC_4mlTF_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_120BC_5mlT_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_288_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_288_B00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_288_C00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_384BC_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_384_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_72_4mlTF_C00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_72_5mlT_C00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_96BC_4mlTF_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_96BC_5mlT_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_hamilton_tip_carrier_L5",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_hamilton_tip_carrier_L5_ntr_a00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_NTR_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_480",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_480BC_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TipCarrier",
+   "name": "_enrich_TIP_CAR_480_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "HamiltonSTARDeck",
+   "name": "_enrich_STARLetDeck",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "HamiltonSTARDeck",
+   "name": "_enrich_STARDeck",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "HamiltonSTARDeck",
+   "name": "_enrich_STARPlusDeck",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Trough",
+   "name": "_enrich_hamilton_1_trough_60mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Trough",
+   "name": "_enrich_hamilton_1_trough_120mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Trough",
+   "name": "_enrich_hamilton_1_trough_200mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Trough",
+   "name": "_enrich_Hamilton_1_trough_200ml_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Trough",
+   "name": "_enrich_hamilton_1_trough_200ml_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Trough",
+   "name": "_enrich_hamilton_1_trough_60ml_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TroughCarrier",
+   "name": "_enrich_Trough_CAR_4R200_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "TroughCarrier",
+   "name": "_enrich_Trough_CAR_5R60_A00",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_btx_96_wellplate_125uL_Fb_2mm",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_BTX_96_wellplate_125ul_Fb_2mm",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_cor_96_wellplate_360uL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_cor_96_wellplate_360uL_Fb_lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_cor_96_wellplate_2mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Cor_96_wellplate_2mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Cor_96_wellplate_360ul_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_Cor_96_wellplate_360ul_Fb_Lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_agilent_96_wellplate_150uL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_agilent_96_wellplate_150uL_Ub",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_agilent_2_reservoir_144mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Agilent_2_reservoir_144mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Container",
+   "name": "_enrich_StanleyCup_QUENCHER_FLOWSTATE_TUMBLER",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_PerkinElmer_96_wellplate_400ul_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Greiner_384_wellplate_28ul_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_greiner_96_wellplate_200uL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Thermo_TS_96_wellplate_1200ul_Rb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Thermo_AB_96_wellplate_300ul_Vb_EnduraPlate",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Thermo_Nunc_96_well_plate_1300uL_Rb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_thermo_AB_96_wellplate_300ul_Vb_MicroAmp",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_thermo_AB_384_wellplate_40uL_Vb_MicroAmp",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_thermo_nunc_1_troughplate_90000uL_Fb_omnitray",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Thermo_TS_Nunc_96_wellplate_300uL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_Thermo_TS_Nunc_96_wellplate_300uL_Fb_Lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_thermo_TS_nalgene_1_troughplate_300mL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Trough",
+   "name": "_enrich_ThermoFisherMatrixTrough8094",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Eppendorf_96_wellplate_250ul_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_eppendorf_96_wellplate_500ul_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_eppendorf_96_wellplate_1000ul_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Tube",
+   "name": "_enrich_Eppendorf_DNA_LoBind_1_5ml_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Tube",
+   "name": "_enrich_Eppendorf_Protein_LoBind_1_5ml_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Tube",
+   "name": "_enrich_eppendorf_tube_1500uL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Tube",
+   "name": "_enrich_Eppendorf_DNA_LoBind_2ml_Ub",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Tube",
+   "name": "_enrich_eppendorf_tube_5mL_Vb_snapcap",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_VWR_1_troughplate_195000uL_Ub",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_VWR_96_wellplate_2mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Trough",
+   "name": "_enrich_VWRReagentReservoirs25mL",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_bioer_96_wellplate_2200uL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_BioER_96_wellplate_Vb_2200uL",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_nest_1_troughplate_195000uL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_nest_1_troughplate_185000uL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_nest_8_troughplate_22000uL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_nest_12_troughplate_15000uL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_NEST_96_wellplate_2200uL_Ub",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Revvity_384_wellplate_28ul_Ub",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_agenbio_96_wellplate_Ub_2200uL",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_agenbio_4_troughplate_75mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_AGenBio_4_troughplate_75000_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_AGenBio_1_wellplate_Fl",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_agenbio_1_troughplate_190mL_Fl",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_agenbio_1_troughplate_100mL_Fl",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_AGenBio_1_troughplate_100000uL_Fl",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_AGenBio_1_troughplate_190000uL_Fl",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_AGenBio_4_troughplate_75000uL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_AGenBio_96_wellplate_Ub_2200ul",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_biorad_384_wellplate_50uL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_biorad_96_wellplate_200uL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_BioRad_384_wellplate_50uL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_cor_falcon_96_wellplate_275uL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_cor_falcon_96_wellplate_250uL_Rb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_cor_falcon_96_wellplate_340uL_Fb_black",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Cor_Falcon_96_wellplate_250ul_Rb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Cor_Falcon_96_wellplate_275ul_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Cor_Falcon_96_wellplate_340ul_Fb_Black",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Tube",
+   "name": "_enrich_cor_falcon_tube_14mL_Rb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Tube",
+   "name": "_enrich_cor_falcon_tube_15mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Tube",
+   "name": "_enrich_cor_falcon_tube_50mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Tube",
+   "name": "_enrich_Cor_Falcon_tube_14mL_Rb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Tube",
+   "name": "_enrich_Cor_Falcon_tube_15mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Tube",
+   "name": "_enrich_Cor_Falcon_tube_50mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_cor_axy_24_wellplate_10mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_cor_axy_96_wellplate_500uL_Ub",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_cor_axy_1_troughplate_rowVb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Cor_Axy_24_wellplate_10mL_Vb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Cor_Axy_96_wellplate_500uL_Ub",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_cor_cos_6_wellplate_16800uL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_cor_cos_6_wellplate_16800uL_Fb_lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_cor_cos_12_wellplate_6900uL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_cor_cos_24_wellplate_3470uL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_cor_cos_48_wellplate_1620uL_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Cor_Cos_12_wellplate_6900ul_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Cor_Cos_24_wellplate_3470ul_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Cor_Cos_48_wellplate_1620ul_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Plate",
+   "name": "_enrich_Cor_Cos_6_wellplate_16800ul_Fb",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "db:resource_definitions.plr_definition_details_json",
+   "path": "",
+   "type": "Lid",
+   "name": "_enrich_Cor_Cos_6_wellplate_16800ul_Fb_Lid",
+   "ok": true,
+   "err": null,
+   "warns": []
+  },
+  {
+   "src": "web-repl/tests/fixtures/visualizer/set_root_resource.json",
+   "path": "/resource",
+   "type": "HamiltonSTARDeck",
+   "name": "deck",
+   "ok": true,
+   "err": null,
+   "warns": []
+  }
+ ]
+}

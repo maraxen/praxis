@@ -1,0 +1,67 @@
+{
+ "machine_backend_definitions.fqn": {
+  "distinct": 60,
+  "rows_by_status": {
+   "unresolvable": 4,
+   "clean": 56
+  }
+ },
+ "machine_frontend_definitions.fqn": {
+  "distinct": 19,
+  "rows_by_status": {
+   "clean": 17,
+   "warns": 1,
+   "unresolvable": 1
+  }
+ },
+ "machine_frontend_definitions.description": {
+  "distinct": 1,
+  "rows_by_status": {
+   "not_a_class_fqn": 1
+  }
+ },
+ "resource_definitions.fqn": {
+  "distinct": 201,
+  "rows_by_status": {
+   "clean": 150,
+   "deprecated_alias": 51
+  }
+ },
+ "resource_definitions.description": {
+  "distinct": 4,
+  "rows_by_status": {
+   "clean": 4
+  }
+ },
+ "deck_definition_catalog.fqn": {
+  "distinct": 12,
+  "rows_by_status": {
+   "clean": 12
+  }
+ },
+ "deck_definition_catalog.description": {
+  "distinct": 1,
+  "rows_by_status": {
+   "clean": 1
+  }
+ },
+ "machine_definitions.fqn": {
+  "distinct": 18,
+  "rows_by_status": {
+   "clean": 17,
+   "warns": 1
+  }
+ },
+ "machine_definitions.description": {
+  "distinct": 1,
+  "rows_by_status": {
+   "not_a_class_fqn": 1
+  }
+ },
+ "machine_definitions.compatible_backends": {
+  "distinct": 55,
+  "rows_by_status": {
+   "clean": 75
+  }
+ }
+}

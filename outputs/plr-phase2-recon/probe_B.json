@@ -1,0 +1,236 @@
+[
+ {
+  "deck": "STARLetDeck",
+  "n": 1,
+  "rails": "Coordinate(100.000, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(100.000, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARLetDeck",
+  "n": 3,
+  "rails": "Coordinate(145.000, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(145.000, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARLetDeck",
+  "n": 8,
+  "rails": "Coordinate(257.500, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(257.500, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARLetDeck",
+  "n": 9,
+  "rails": "Coordinate(280.000, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(280.000, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARLetDeck",
+  "n": 15,
+  "rails": "Coordinate(415.000, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(415.000, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARLetDeck",
+  "n": 21,
+  "rails": "Coordinate(550.000, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(550.000, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARLetDeck",
+  "n": 25,
+  "rails": "Coordinate(640.000, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(640.000, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARLetDeck",
+  "n": 30,
+  "rails": "Coordinate(752.500, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(752.500, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARLetDeck",
+  "n": 31,
+  "rails": "Coordinate(775.000, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": null,
+  "track_err": "ValueError: Track must be between -4 and 30.",
+  "track_warned": false,
+  "same_location": false
+ },
+ {
+  "deck": "STARLetDeck",
+  "n": 32,
+  "rails": "Coordinate(797.500, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": null,
+  "track_err": "ValueError: Track must be between -4 and 30.",
+  "track_warned": false,
+  "same_location": false
+ },
+ {
+  "deck": "STARLetDeck",
+  "num_tracks": 30,
+  "serialize_keys": [
+   "num_tracks"
+  ]
+ },
+ {
+  "deck": "STARDeck",
+  "n": 1,
+  "rails": "Coordinate(100.000, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(100.000, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARDeck",
+  "n": 3,
+  "rails": "Coordinate(145.000, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(145.000, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARDeck",
+  "n": 8,
+  "rails": "Coordinate(257.500, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(257.500, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARDeck",
+  "n": 9,
+  "rails": "Coordinate(280.000, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(280.000, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARDeck",
+  "n": 15,
+  "rails": "Coordinate(415.000, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(415.000, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARDeck",
+  "n": 21,
+  "rails": "Coordinate(550.000, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(550.000, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARDeck",
+  "n": 25,
+  "rails": "Coordinate(640.000, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(640.000, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARDeck",
+  "n": 30,
+  "rails": "Coordinate(752.500, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(752.500, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARDeck",
+  "n": 31,
+  "rails": "Coordinate(775.000, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(775.000, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARDeck",
+  "n": 32,
+  "rails": "Coordinate(797.500, 063.000, 100.000)",
+  "rails_err": null,
+  "rails_warned": true,
+  "track": "Coordinate(797.500, 063.000, 100.000)",
+  "track_err": null,
+  "track_warned": false,
+  "same_location": true
+ },
+ {
+  "deck": "STARDeck",
+  "num_tracks": 54,
+  "serialize_keys": [
+   "num_tracks"
+  ]
+ }
+]

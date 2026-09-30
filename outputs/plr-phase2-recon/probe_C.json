@@ -1,0 +1,5229 @@
+{
+ "n": 474,
+ "by_status": {
+  "clean": 314,
+  "deprecated_alias": 55,
+  "legacy_fallback_only": 3,
+  "toplevel_name_fallback_only": 9,
+  "unresolvable": 91,
+  "warns": 2
+ },
+ "rows": {
+  "pylabrobot.backends.simulated.ArmBackend": {
+   "fqn": "pylabrobot.backends.simulated.ArmBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.backends'",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.backends.simulated.ImagerBackend": {
+   "fqn": "pylabrobot.backends.simulated.ImagerBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.backends'",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.backends.simulated.PeelerBackend": {
+   "fqn": "pylabrobot.backends.simulated.PeelerBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.backends'",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.backends.simulated.SealerBackend": {
+   "fqn": "pylabrobot.backends.simulated.SealerBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.backends'",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.centrifuging.Centrifuge": {
+   "fqn": "pylabrobot.centrifuging.Centrifuge",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.centrifuging'",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.centrifuging.backends.ChatterboxBackend": {
+   "fqn": "pylabrobot.centrifuging.backends.ChatterboxBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.centrifuging'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.decks.Deck": {
+   "fqn": "pylabrobot.decks.Deck",
+   "status": "toplevel_name_fallback_only",
+   "files": [
+    "tests/services/test_deck_service.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.fans.Fan": {
+   "fqn": "pylabrobot.fans.Fan",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.fans'",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/app/shared/components/quick-add-autocomplete/quick-add-autocomplete.component.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 4,
+   "db_cols": []
+  },
+  "pylabrobot.fans.backends.ChatterboxBackend": {
+   "fqn": "pylabrobot.fans.backends.ChatterboxBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.fans'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.hamilton.STAR": {
+   "fqn": "pylabrobot.hamilton.STAR",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/e2e/specs/workcell-dashboard.spec.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.hamilton.prep.driver.features.pipettes.Pipettes": {
+   "fqn": "pylabrobot.hamilton.prep.driver.features.pipettes.Pipettes",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "deck_definition_catalog.description",
+    "resource_definitions.description"
+   ]
+  },
+  "pylabrobot.heating_shaking.heater_shaker.HeaterShaker": {
+   "fqn": "pylabrobot.heating_shaking.heater_shaker.HeaterShaker",
+   "status": "legacy_fallback_only",
+   "legacy_fqn": "pylabrobot.legacy.heating_shaking.heater_shaker.HeaterShaker",
+   "files": [
+    "tests/core/test_workcell_runtime.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.incubating.Incubator": {
+   "fqn": "pylabrobot.incubating.Incubator",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.incubating'",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.incubating.backends.ChatterboxBackend": {
+   "fqn": "pylabrobot.incubating.backends.ChatterboxBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.incubating'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.io.Serial": {
+   "fqn": "pylabrobot.io.Serial",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.io' has no attribute 'Serial'",
+   "files": [
+    "web-repl/overlay/assets/shims/web_serial_shim.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.io.USB": {
+   "fqn": "pylabrobot.io.USB",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.io' has no attribute 'USB'",
+   "files": [
+    "web-repl/overlay/assets/shims/web_usb_shim.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.io.ftdi.FTDI": {
+   "fqn": "pylabrobot.io.ftdi.FTDI",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/app/experimental/direct-control/direct-control-kernel.service.ts",
+    "praxis/web-client/src/app/experimental/workers/python.worker.ts",
+    "web-repl/overlay/assets/shims/web_ftdi_shim.py"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.io.hid.HID": {
+   "fqn": "pylabrobot.io.hid.HID",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/app/experimental/workers/python.worker.ts",
+    "web-repl/overlay/assets/shims/web_hid_shim.py"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.io.serial.Serial": {
+   "fqn": "pylabrobot.io.serial.Serial",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "web-repl/overlay/assets/python/web_bridge.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.io.usb.USB": {
+   "fqn": "pylabrobot.io.usb.USB",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/app/experimental/direct-control/direct-control-kernel.service.ts",
+    "web-repl/overlay/assets/python/web_bridge.py"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.X": {
+   "fqn": "pylabrobot.legacy.X",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.legacy' has no attribute 'X'",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/parser.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.arms.precise_flex.pf_3400.PreciseFlex3400Backend": {
+   "fqn": "pylabrobot.legacy.arms.precise_flex.pf_3400.PreciseFlex3400Backend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.arms.precise_flex.pf_400.PreciseFlex400Backend": {
+   "fqn": "pylabrobot.legacy.arms.precise_flex.pf_400.PreciseFlex400Backend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.arms.scara.ExperimentalSCARA": {
+   "fqn": "pylabrobot.legacy.arms.scara.ExperimentalSCARA",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.centrifuge.centrifuge.Centrifuge": {
+   "fqn": "pylabrobot.legacy.centrifuge.centrifuge.Centrifuge",
+   "status": "warns",
+   "warning": "Due to '_pack_', the '_StatusPositionTachometer' Structure will use memory layout compatible with MSVC (Windows). If this is intended, set _layout_ to 'ms'. The implicit default is deprecated and slat",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.centrifuge.centrifuge.Loader": {
+   "fqn": "pylabrobot.legacy.centrifuge.centrifuge.Loader",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.centrifuge.chatterbox.CentrifugeChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.centrifuge.chatterbox.CentrifugeChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.centrifuge.chatterbox.LoaderChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.centrifuge.chatterbox.LoaderChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.centrifuge.highres.microspin_backend.MicroSpinBackend": {
+   "fqn": "pylabrobot.legacy.centrifuge.highres.microspin_backend.MicroSpinBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.centrifuge.vspin_backend.Access2Backend": {
+   "fqn": "pylabrobot.legacy.centrifuge.vspin_backend.Access2Backend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.centrifuge.vspin_backend.VSpinBackend": {
+   "fqn": "pylabrobot.legacy.centrifuge.vspin_backend.VSpinBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.heating_shaking.HeaterShaker": {
+   "fqn": "pylabrobot.legacy.heating_shaking.HeaterShaker",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 4,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.heating_shaking.backend.HeaterShakerBackend": {
+   "fqn": "pylabrobot.legacy.heating_shaking.backend.HeaterShakerBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.heating_shaking.backends.ChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.heating_shaking.backends.ChatterboxBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.heating_shaking.backends'",
+   "files": [
+    "praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.heating_shaking.backends.hamilton.HamiltonHeaterShaker": {
+   "fqn": "pylabrobot.legacy.heating_shaking.backends.hamilton.HamiltonHeaterShaker",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.heating_shaking.backends'",
+   "files": [
+    "praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.heating_shaking.backends.inheco.InhecoTEC": {
+   "fqn": "pylabrobot.legacy.heating_shaking.backends.inheco.InhecoTEC",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.heating_shaking.backends'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.heating_shaking.backends.simulation.SimulatedHeaterShaker": {
+   "fqn": "pylabrobot.legacy.heating_shaking.backends.simulation.SimulatedHeaterShaker",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.heating_shaking.backends'",
+   "files": [
+    "praxis/backend/services/hardware_discovery.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.heating_shaking.bioshake_backend.BioShake": {
+   "fqn": "pylabrobot.legacy.heating_shaking.bioshake_backend.BioShake",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.heating_shaking.chatterbox.HeaterShakerChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.heating_shaking.chatterbox.HeaterShakerChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.heating_shaking.hamilton_backend.HamiltonHeaterShakerBackend": {
+   "fqn": "pylabrobot.legacy.heating_shaking.hamilton_backend.HamiltonHeaterShakerBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.heating_shaking.heater_shaker.HeaterShaker": {
+   "fqn": "pylabrobot.legacy.heating_shaking.heater_shaker.HeaterShaker",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.heating_shaking.inheco.thermoshake_backend.InhecoThermoshakeBackend": {
+   "fqn": "pylabrobot.legacy.heating_shaking.inheco.thermoshake_backend.InhecoThermoshakeBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.liquid_handling.LiquidHandler": {
+   "fqn": "pylabrobot.legacy.liquid_handling.LiquidHandler",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/app/features/run-protocol/components/parameter-config/parameter-config.component.spec.ts",
+    "praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py",
+    "tests/backend/core/workcell_runtime/test_machine_manager.py",
+    "tests/backend/services/test_introspection.py",
+    "tests/services/test_machine_type_definition_service.py",
+    "tests/utils/test_plr_inspection.py",
+    "web-repl/overlay/assets/python/web_bridge.py"
+   ],
+   "n_files": 10,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.ChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.ChatterboxBackend",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.legacy.liquid_handling.backends' has no attribute 'ChatterboxBackend'",
+   "files": [
+    "praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.LiquidHandlerBackend": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.LiquidHandlerBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "web-repl/overlay/assets/python/web_bridge.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.LiquidHandlerChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.LiquidHandlerChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.beckman.Biomek": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.beckman.Biomek",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.liquid_handling.backends.beckman'",
+   "files": [
+    "praxis/backend/services/hardware_discovery.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.chatterbox.LiquidHandlerChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.chatterbox.LiquidHandlerChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/execution.service.ts"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.INVALID_BACKEND": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.INVALID_BACKEND",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.legacy.liquid_handling.backends.hamilton' has no attribute 'INVALID_BACKEND'",
+   "files": [
+    "praxis/web-client/e2e/specs/experimental/playground-direct-control.spec.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/services/hardware_discovery.py",
+    "praxis/backend/utils/plr_static_analysis/manufacturer_inference.py",
+    "praxis/web-client/e2e/fixtures/seed-data.ts",
+    "praxis/web-client/src/app/core/interceptors/browser-mock-router.ts",
+    "praxis/web-client/src/app/core/interceptors/browser-mode.interceptor.ts",
+    "praxis/web-client/src/app/core/services/hardware-discovery.service.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.spec.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts",
+    "praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "tests/models/test_domain/test_asset_requirement.py",
+    "tests/models/test_domain/test_machine_definition.py"
+   ],
+   "n_files": 13,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR.STAR": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR.STAR",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.liquid_handling.backends.hamilton.STAR'",
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.spec.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.STARDeck": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.STARDeck",
+   "status": "toplevel_name_fallback_only",
+   "files": [
+    "tests/models/test_domain/test_deck.py",
+    "tests/services/test_deck_type_definition_service.py"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_backend": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_backend",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/parser.py",
+    "scripts/extract_capabilities.py"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_backend.STAR": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_backend.STAR",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_backend.STARBackend": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_backend.STARBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_chatterbox": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_chatterbox",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.legacy.liquid_handling.backends.hamilton' has no attribute 'STAR_chatterbox'",
+   "files": [
+    "praxis/backend/core/simulation/chatterbox_runner.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_chatterbox.STARChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_chatterbox.STARChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.Starlet": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.Starlet",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.legacy.liquid_handling.backends.hamilton' has no attribute 'Starlet'",
+   "files": [
+    "praxis/backend/services/hardware_discovery.py",
+    "praxis/web-client/src/app/core/services/hardware-discovery.service.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.Vantage": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.Vantage",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.pump.Pump": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.pump.Pump",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.tcp_backend.HamiltonTCPBackend": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.tcp_backend.HamiltonTCPBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.vantage_backend.Vantage": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.vantage_backend.Vantage",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.liquid_handling.backends.hamilton.vantage_backend.VantageBackend": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.hamilton.vantage_backend.VantageBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.liquid_handling.backends.opentrons.Flex": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.opentrons.Flex",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.liquid_handling.backends.opentrons'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.opentrons.OT2": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.opentrons.OT2",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.liquid_handling.backends.opentrons'",
+   "files": [
+    "praxis/backend/services/hardware_discovery.py",
+    "praxis/web-client/src/app/core/interceptors/browser-mock-router.ts",
+    "praxis/web-client/src/app/core/interceptors/browser-mode.interceptor.ts",
+    "praxis/web-client/src/app/core/services/hardware-discovery.service.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 5,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.opentrons_backend.OpentronsBackend": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.opentrons_backend.OpentronsBackend",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.legacy.liquid_handling.backends.opentrons_backend' has no attribute 'OpentronsBackend'",
+   "files": [
+    "praxis/backend/services/hardware_discovery.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.opentrons_backend.OpentronsOT2Backend": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.opentrons_backend.OpentronsOT2Backend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.liquid_handling.backends.simulation.Simulator": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.simulation.Simulator",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.liquid_handling.backends.simulation'",
+   "files": [
+    "praxis/web-client/e2e/fixtures/seed-data.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.simulation.SimulatorBackend": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.simulation.SimulatorBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.liquid_handling.backends.simulation'",
+   "files": [
+    "praxis/backend/services/hardware_discovery.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.tecan.EVO": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.tecan.EVO",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.legacy.liquid_handling.backends.tecan' has no attribute 'EVO'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.tecan.EVO_backend": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.tecan.EVO_backend",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "tests/utils/test_plr_static_analysis.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.tecan.Fluent": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.tecan.Fluent",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.legacy.liquid_handling.backends.tecan' has no attribute 'Fluent'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.backends.tecan.Tecan": {
+   "fqn": "pylabrobot.legacy.liquid_handling.backends.tecan.Tecan",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.legacy.liquid_handling.backends.tecan' has no attribute 'Tecan'",
+   "files": [
+    "praxis/backend/services/hardware_discovery.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.liquid_handling.liquid_handler.LiquidHandler": {
+   "fqn": "pylabrobot.legacy.liquid_handling.liquid_handler.LiquidHandler",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "tests/core/test_workcell_runtime.py"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.machines.LiquidHandler": {
+   "fqn": "pylabrobot.legacy.machines.LiquidHandler",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.legacy.machines' has no attribute 'LiquidHandler'",
+   "files": [
+    "tests/backend/core/test_consumable_assignment.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.machines.machine.Machine": {
+   "fqn": "pylabrobot.legacy.machines.machine.Machine",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-machine-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.only_fans.chatterbox.FanChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.only_fans.chatterbox.FanChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.only_fans.fan.Fan": {
+   "fqn": "pylabrobot.legacy.only_fans.fan.Fan",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.only_fans.hamilton_hepa_fan_backend.HamiltonHepaFanBackend": {
+   "fqn": "pylabrobot.legacy.only_fans.hamilton_hepa_fan_backend.HamiltonHepaFanBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.peeling.peeler.Peeler": {
+   "fqn": "pylabrobot.legacy.peeling.peeler.Peeler",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.peeling.xpeel_backend.XPeelBackend": {
+   "fqn": "pylabrobot.legacy.peeling.xpeel_backend.XPeelBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.Imager": {
+   "fqn": "pylabrobot.legacy.plate_reading.Imager",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 4,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.plate_reading.PlateReader": {
+   "fqn": "pylabrobot.legacy.plate_reading.PlateReader",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 4,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.plate_reading.agilent.biotek_backend.BioTekPlateReaderBackend": {
+   "fqn": "pylabrobot.legacy.plate_reading.agilent.biotek_backend.BioTekPlateReaderBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.agilent.biotek_cytation_backend.CytationBackend": {
+   "fqn": "pylabrobot.legacy.plate_reading.agilent.biotek_cytation_backend.CytationBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.backend.ImageReaderBackend": {
+   "fqn": "pylabrobot.legacy.plate_reading.backend.ImageReaderBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.backend.bmg.CLARIOstar": {
+   "fqn": "pylabrobot.legacy.plate_reading.backend.bmg.CLARIOstar",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.plate_reading.backend.bmg'; 'pylabrobot.legacy.plate_reading.backend' is not a package",
+   "files": [
+    "praxis/web-client/e2e/fixtures/seed-data.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.plate_reading.backends.ChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.plate_reading.backends.ChatterboxBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.plate_reading.backends'",
+   "files": [
+    "praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.plate_reading.backends.bmg.SPECTROstar": {
+   "fqn": "pylabrobot.legacy.plate_reading.backends.bmg.SPECTROstar",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.plate_reading.backends'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.plate_reading.backends.simulation.SimulatedPlateReader": {
+   "fqn": "pylabrobot.legacy.plate_reading.backends.simulation.SimulatedPlateReader",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.plate_reading.backends'",
+   "files": [
+    "praxis/backend/services/hardware_discovery.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.plate_reading.bmg_labtech.clario_star_backend.CLARIOstarBackend": {
+   "fqn": "pylabrobot.legacy.plate_reading.bmg_labtech.clario_star_backend.CLARIOstarBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.byonoy.byonoy_a96a.ByonoyAbsorbance96Automate": {
+   "fqn": "pylabrobot.legacy.plate_reading.byonoy.byonoy_a96a.ByonoyAbsorbance96Automate",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.byonoy.byonoy_a96a.ByonoyAbsorbanceBaseUnit": {
+   "fqn": "pylabrobot.legacy.plate_reading.byonoy.byonoy_a96a.ByonoyAbsorbanceBaseUnit",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.byonoy.byonoy_backend._ByonoyBase": {
+   "fqn": "pylabrobot.legacy.plate_reading.byonoy.byonoy_backend._ByonoyBase",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.byonoy.byonoy_l96.ByonoyLuminescence96Automate": {
+   "fqn": "pylabrobot.legacy.plate_reading.byonoy.byonoy_l96.ByonoyLuminescence96Automate",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.byonoy.byonoy_l96.ByonoyLuminescenceBaseUnit": {
+   "fqn": "pylabrobot.legacy.plate_reading.byonoy.byonoy_l96.ByonoyLuminescenceBaseUnit",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.chatterbox.PlateReaderChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.plate_reading.chatterbox.PlateReaderChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.clario_star_backend.CLARIOstarBackend": {
+   "fqn": "pylabrobot.legacy.plate_reading.clario_star_backend.CLARIOstarBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/app/core/services/hardware-discovery.service.ts",
+    "praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.plate_reading.imager.Imager": {
+   "fqn": "pylabrobot.legacy.plate_reading.imager.Imager",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.molecular_devices.backend.MolecularDevicesBackend": {
+   "fqn": "pylabrobot.legacy.plate_reading.molecular_devices.backend.MolecularDevicesBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.plate_reader.PlateReader": {
+   "fqn": "pylabrobot.legacy.plate_reading.plate_reader.PlateReader",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.tecan.infinite_backend.ExperimentalTecanInfinite200ProBackend": {
+   "fqn": "pylabrobot.legacy.plate_reading.tecan.infinite_backend.ExperimentalTecanInfinite200ProBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.plate_reading.tecan.spark20m.spark_backend.ExperimentalSparkBackend": {
+   "fqn": "pylabrobot.legacy.plate_reading.tecan.spark20m.spark_backend.ExperimentalSparkBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.powder_dispensing.PowderDispenser": {
+   "fqn": "pylabrobot.legacy.powder_dispensing.PowderDispenser",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.powder_dispensing.backends.ChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.powder_dispensing.backends.ChatterboxBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.powder_dispensing.backends'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.powder_dispensing.chatterbox.PowderDispenserChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.powder_dispensing.chatterbox.PowderDispenserChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.powder_dispensing.chemspeed.crystal_powderdose.CrystalPowderdose": {
+   "fqn": "pylabrobot.legacy.powder_dispensing.chemspeed.crystal_powderdose.CrystalPowderdose",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.powder_dispensing.powder_dispenser.PowderDispenser": {
+   "fqn": "pylabrobot.legacy.powder_dispensing.powder_dispenser.PowderDispenser",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.pumps.agrowpumps.agrowdosepump_backend.AgrowPumpArrayBackend": {
+   "fqn": "pylabrobot.legacy.pumps.agrowpumps.agrowdosepump_backend.AgrowPumpArrayBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.pumps.backend.PumpBackend": {
+   "fqn": "pylabrobot.legacy.pumps.backend.PumpBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.pumps.chatterbox.PumpArrayChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.pumps.chatterbox.PumpArrayChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.pumps.chatterbox.PumpChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.pumps.chatterbox.PumpChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.pumps.cole_parmer.masterflex_backend.MasterflexBackend": {
+   "fqn": "pylabrobot.legacy.pumps.cole_parmer.masterflex_backend.MasterflexBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.pumps.pump.Pump": {
+   "fqn": "pylabrobot.legacy.pumps.pump.Pump",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.pumps.pumparray.PumpArray": {
+   "fqn": "pylabrobot.legacy.pumps.pumparray.PumpArray",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.sealing.a4s_backend.A4SBackend": {
+   "fqn": "pylabrobot.legacy.sealing.a4s_backend.A4SBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.sealing.sealer.Sealer": {
+   "fqn": "pylabrobot.legacy.sealing.sealer.Sealer",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.shaking.Shaker": {
+   "fqn": "pylabrobot.legacy.shaking.Shaker",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.shaking.backends.ChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.shaking.backends.ChatterboxBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.shaking.backends'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.shaking.chatterbox.ShakerChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.shaking.chatterbox.ShakerChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.shaking.shaker.Shaker": {
+   "fqn": "pylabrobot.legacy.shaking.shaker.Shaker",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.storage.chatterbox.IncubatorChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.storage.chatterbox.IncubatorChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.storage.cytomat.cytomat.CytomatBackend": {
+   "fqn": "pylabrobot.legacy.storage.cytomat.cytomat.CytomatBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.storage.cytomat.heraeus_cytomat_backend.HeraeusCytomatBackend": {
+   "fqn": "pylabrobot.legacy.storage.cytomat.heraeus_cytomat_backend.HeraeusCytomatBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.storage.incubator.Incubator": {
+   "fqn": "pylabrobot.legacy.storage.incubator.Incubator",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.storage.inheco.incubator_shaker.IncubatorShakerStack": {
+   "fqn": "pylabrobot.legacy.storage.inheco.incubator_shaker.IncubatorShakerStack",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.storage.inheco.incubator_shaker_backend.InhecoIncubatorShakerStackBackend": {
+   "fqn": "pylabrobot.legacy.storage.inheco.incubator_shaker_backend.InhecoIncubatorShakerStackBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.storage.liconic.liconic_backend.ExperimentalLiconicBackend": {
+   "fqn": "pylabrobot.legacy.storage.liconic.liconic_backend.ExperimentalLiconicBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.temperature_controlling.TemperatureController": {
+   "fqn": "pylabrobot.legacy.temperature_controlling.TemperatureController",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.temperature_controlling.backends.ChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.temperature_controlling.backends.ChatterboxBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.temperature_controlling.backends'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.temperature_controlling.chatterbox.TemperatureControllerChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.temperature_controlling.chatterbox.TemperatureControllerChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.temperature_controlling.inheco.temperature_controller.InhecoTemperatureControllerBackend": {
+   "fqn": "pylabrobot.legacy.temperature_controlling.inheco.temperature_controller.InhecoTemperatureControllerBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.temperature_controlling.opentrons_backend.OpentronsTemperatureModuleBackend": {
+   "fqn": "pylabrobot.legacy.temperature_controlling.opentrons_backend.OpentronsTemperatureModuleBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.temperature_controlling.opentrons_backend_usb.OpentronsTemperatureModuleUSBBackend": {
+   "fqn": "pylabrobot.legacy.temperature_controlling.opentrons_backend_usb.OpentronsTemperatureModuleUSBBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.temperature_controlling.temperature_controller.TemperatureController": {
+   "fqn": "pylabrobot.legacy.temperature_controlling.temperature_controller.TemperatureController",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.thermocycling.Thermocycler": {
+   "fqn": "pylabrobot.legacy.thermocycling.Thermocycler",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.thermocycling.backends.ChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.thermocycling.backends.ChatterboxBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.legacy.thermocycling.backends'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.legacy.thermocycling.chatterbox.ThermocyclerChatterboxBackend": {
+   "fqn": "pylabrobot.legacy.thermocycling.chatterbox.ThermocyclerChatterboxBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.thermocycling.inheco.odtc_backend.ExperimentalODTCBackend": {
+   "fqn": "pylabrobot.legacy.thermocycling.inheco.odtc_backend.ExperimentalODTCBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.legacy.thermocycling.opentrons_backend.OpentronsThermocyclerBackend": {
+   "fqn": "pylabrobot.legacy.thermocycling.opentrons_backend.OpentronsThermocyclerBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.thermocycling.opentrons_backend_usb.OpentronsThermocyclerUSBBackend": {
+   "fqn": "pylabrobot.legacy.thermocycling.opentrons_backend_usb.OpentronsThermocyclerUSBBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.thermocycling.thermo_fisher.proflex.ProflexBackend": {
+   "fqn": "pylabrobot.legacy.thermocycling.thermo_fisher.proflex.ProflexBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.thermocycling.thermo_fisher.thermo_fisher_thermocycler.ThermoFisherThermocyclerBackend": {
+   "fqn": "pylabrobot.legacy.thermocycling.thermo_fisher.thermo_fisher_thermocycler.ThermoFisherThermocyclerBackend",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_backend_definitions.fqn",
+    "machine_definitions.compatible_backends"
+   ]
+  },
+  "pylabrobot.legacy.thermocycling.thermocycler.Thermocycler": {
+   "fqn": "pylabrobot.legacy.thermocycling.thermocycler.Thermocycler",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "machine_definitions.fqn",
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.liquid_handling.LiquidHandler": {
+   "fqn": "pylabrobot.liquid_handling.LiquidHandler",
+   "status": "warns",
+   "warning": "Importing from pylabrobot.liquid_handling is deprecated. Use pylabrobot.legacy.liquid_handling instead.",
+   "files": [
+    "tests/core/test_workcell_runtime.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.liquid_handling.NoSuchClassAnywhere": {
+   "fqn": "pylabrobot.liquid_handling.NoSuchClassAnywhere",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.liquid_handling' has no attribute 'NoSuchClassAnywhere'",
+   "files": [
+    "tests/core/test_workcell_runtime.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.liquid_handling.backends.simulation.SimulatorBackend": {
+   "fqn": "pylabrobot.liquid_handling.backends.simulation.SimulatorBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.liquid_handling.backends.simulation'",
+   "files": [
+    "praxis/web-client/src/app/experimental/direct-control/direct-control-kernel.service.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.liquid_handling.liquid_handler.LiquidHandler": {
+   "fqn": "pylabrobot.liquid_handling.liquid_handler.LiquidHandler",
+   "status": "legacy_fallback_only",
+   "legacy_fqn": "pylabrobot.legacy.liquid_handling.liquid_handler.LiquidHandler",
+   "files": [
+    "tests/core/test_workcell_runtime.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.non_existent.Class": {
+   "fqn": "pylabrobot.non_existent.Class",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.non_existent'",
+   "files": [
+    "tests/backend/services/test_introspection.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.plate_peeling.Peeler": {
+   "fqn": "pylabrobot.plate_peeling.Peeler",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.plate_peeling'",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.plate_peeling.backends.ChatterboxBackend": {
+   "fqn": "pylabrobot.plate_peeling.backends.ChatterboxBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.plate_peeling'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.plate_reading.chatterbox.PlateReaderChatterboxBackend": {
+   "fqn": "pylabrobot.plate_reading.chatterbox.PlateReaderChatterboxBackend",
+   "status": "legacy_fallback_only",
+   "legacy_fqn": "pylabrobot.legacy.plate_reading.chatterbox.PlateReaderChatterboxBackend",
+   "files": [
+    "tests/core/test_workcell_runtime.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.plate_sealing.Sealer": {
+   "fqn": "pylabrobot.plate_sealing.Sealer",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.plate_sealing'",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.plate_sealing.backends.ChatterboxBackend": {
+   "fqn": "pylabrobot.plate_sealing.backends.ChatterboxBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.plate_sealing'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.pumping.Pump": {
+   "fqn": "pylabrobot.pumping.Pump",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.pumping'",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.pumping.PumpArray": {
+   "fqn": "pylabrobot.pumping.PumpArray",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.pumping'",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.pumping.backends.ChatterboxBackend": {
+   "fqn": "pylabrobot.pumping.backends.ChatterboxBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.pumping'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.Container": {
+   "fqn": "pylabrobot.resources.Container",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "web-repl/overlay/assets/python/web_bridge.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.Deck": {
+   "fqn": "pylabrobot.resources.Deck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/core/precondition_resolver.py",
+    "praxis/backend/core/scheduler_core.py",
+    "praxis/backend/utils/plr_inspection/validation.py",
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts",
+    "tests/backend/core/test_consumable_assignment.py",
+    "tests/backend/core/workcell_runtime/test_machine_manager.py",
+    "tests/core/test_asset_manager.py",
+    "tests/core/test_scheduler.py",
+    "web-repl/overlay/assets/python/web_bridge.py"
+   ],
+   "n_files": 9,
+   "db_cols": []
+  },
+  "pylabrobot.resources.HamiltonSTARDeck": {
+   "fqn": "pylabrobot.resources.HamiltonSTARDeck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "tests/core/test_precondition_resolver.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.Plate": {
+   "fqn": "pylabrobot.resources.Plate",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/core/deck_config.py",
+    "praxis/backend/models/domain/asset.py",
+    "praxis/backend/models/domain/protocol.py",
+    "praxis/backend/tests/api/test_resource_filtering.py",
+    "praxis/web-client/src/app/core/api-generated/models/MachineCreate.ts",
+    "praxis/web-client/src/app/features/run-protocol/components/parameter-config/parameter-config.component.spec.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/carrier-inference.service.spec.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/deck-generator.service.spec.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.spec.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts",
+    "praxis/web-client/src/assets/api/openapi.json",
+    "praxis/web-client/src/assets/browser-data/plr-resource-definitions.json"
+   ],
+   "n_files": 17,
+   "db_cols": []
+  },
+  "pylabrobot.resources.Reservoir": {
+   "fqn": "pylabrobot.resources.Reservoir",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources' has no attribute 'Reservoir'",
+   "files": [
+    "tests/backend/core/test_consumable_assignment.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.Resource": {
+   "fqn": "pylabrobot.resources.Resource",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/utils/plr_inspection/validation.py",
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts",
+    "web-repl/overlay/assets/python/web_bridge.py"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.resources.ResourceStack": {
+   "fqn": "pylabrobot.resources.ResourceStack",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.description"
+   ]
+  },
+  "pylabrobot.resources.TipRack": {
+   "fqn": "pylabrobot.resources.TipRack",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/tests/api/test_resource_filtering.py",
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts",
+    "praxis/web-client/src/assets/browser-data/plr-resource-definitions.json",
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json",
+    "tests/backend/core/test_consumable_assignment.py",
+    "tests/core/test_precondition_resolver.py",
+    "tests/models/test_domain/test_asset_requirement.py",
+    "web-repl/overlay/assets/python/web_bridge.py"
+   ],
+   "n_files": 8,
+   "db_cols": []
+  },
+  "pylabrobot.resources.Trough": {
+   "fqn": "pylabrobot.resources.Trough",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts",
+    "tests/backend/core/test_consumable_assignment.py",
+    "web-repl/overlay/assets/python/web_bridge.py"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.resources.Tube": {
+   "fqn": "pylabrobot.resources.Tube",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "tests/backend/core/test_consumable_assignment.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.TubeRack": {
+   "fqn": "pylabrobot.resources.TubeRack",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts",
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json",
+    "web-repl/overlay/assets/python/web_bridge.py"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.resources.Well": {
+   "fqn": "pylabrobot.resources.Well",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/type_annotation_analyzer.py",
+    "tests/backend/core/test_consumable_assignment.py"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.resources.agenbio.plates.AGenBio_1_troughplate_100000uL_Fl": {
+   "fqn": "pylabrobot.resources.agenbio.plates.AGenBio_1_troughplate_100000uL_Fl",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.agenbio.plates.AGenBio_1_troughplate_190000uL_Fl": {
+   "fqn": "pylabrobot.resources.agenbio.plates.AGenBio_1_troughplate_190000uL_Fl",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.agenbio.plates.AGenBio_1_wellplate_Fl": {
+   "fqn": "pylabrobot.resources.agenbio.plates.AGenBio_1_wellplate_Fl",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.agenbio.plates.AGenBio_4_troughplate_75000_Vb": {
+   "fqn": "pylabrobot.resources.agenbio.plates.AGenBio_4_troughplate_75000_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.agenbio.plates.AGenBio_4_troughplate_75000uL_Vb": {
+   "fqn": "pylabrobot.resources.agenbio.plates.AGenBio_4_troughplate_75000uL_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.agenbio.plates.AGenBio_96_wellplate_Ub_2200ul": {
+   "fqn": "pylabrobot.resources.agenbio.plates.AGenBio_96_wellplate_Ub_2200ul",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.agenbio.plates.agenbio_1_troughplate_100mL_Fl": {
+   "fqn": "pylabrobot.resources.agenbio.plates.agenbio_1_troughplate_100mL_Fl",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.agenbio.plates.agenbio_1_troughplate_190mL_Fl": {
+   "fqn": "pylabrobot.resources.agenbio.plates.agenbio_1_troughplate_190mL_Fl",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.agenbio.plates.agenbio_4_troughplate_75mL_Vb": {
+   "fqn": "pylabrobot.resources.agenbio.plates.agenbio_4_troughplate_75mL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.agenbio.plates.agenbio_96_wellplate_Ub_2200uL": {
+   "fqn": "pylabrobot.resources.agenbio.plates.agenbio_96_wellplate_Ub_2200uL",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.agilent.Agilent_1_reservoir_290ml": {
+   "fqn": "pylabrobot.resources.agilent.Agilent_1_reservoir_290ml",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.agilent' has no attribute 'Agilent_1_reservoir_290ml'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/resources.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.agilent.plates.Agilent_2_reservoir_144mL_Vb": {
+   "fqn": "pylabrobot.resources.agilent.plates.Agilent_2_reservoir_144mL_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.agilent.plates.agilent_2_reservoir_144mL_Vb": {
+   "fqn": "pylabrobot.resources.agilent.plates.agilent_2_reservoir_144mL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.agilent.plates.agilent_96_wellplate_150uL_Ub": {
+   "fqn": "pylabrobot.resources.agilent.plates.agilent_96_wellplate_150uL_Ub",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.agilent.plates.agilent_96_wellplate_150uL_Vb": {
+   "fqn": "pylabrobot.resources.agilent.plates.agilent_96_wellplate_150uL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.agilent.troughs.Agilent_1_reservoir_290ml": {
+   "fqn": "pylabrobot.resources.agilent.troughs.Agilent_1_reservoir_290ml",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.agilent.troughs'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.alpaqua.tube_racks.alpaqua_12_tuberack_5mL_eppis": {
+   "fqn": "pylabrobot.resources.alpaqua.tube_racks.alpaqua_12_tuberack_5mL_eppis",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.azenta.plates.Azenta4titudeFrameStar_96_wellplate_200ul_Vb": {
+   "fqn": "pylabrobot.resources.azenta.plates.Azenta4titudeFrameStar_96_wellplate_200ul_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.azenta.plates.azenta_96_wellplate_200uL_Vb_4titudeframestar": {
+   "fqn": "pylabrobot.resources.azenta.plates.azenta_96_wellplate_200uL_Vb_4titudeframestar",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.bioer.plates.BioER_96_wellplate_Vb_2200uL": {
+   "fqn": "pylabrobot.resources.bioer.plates.BioER_96_wellplate_Vb_2200uL",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.bioer.plates.bioer_96_wellplate_2200uL_Vb": {
+   "fqn": "pylabrobot.resources.bioer.plates.bioer_96_wellplate_2200uL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.biorad.plates.BioRad_384_wellplate_50uL_Vb": {
+   "fqn": "pylabrobot.resources.biorad.plates.BioRad_384_wellplate_50uL_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.biorad.plates.BioRad_96_PCR": {
+   "fqn": "pylabrobot.resources.biorad.plates.BioRad_96_PCR",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.biorad.plates' has no attribute 'BioRad_96_PCR'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.biorad.plates.biorad_384_wellplate_50uL_Vb": {
+   "fqn": "pylabrobot.resources.biorad.plates.biorad_384_wellplate_50uL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.biorad.plates.biorad_96_wellplate_200uL_Vb": {
+   "fqn": "pylabrobot.resources.biorad.plates.biorad_96_wellplate_200uL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.btx.plates.BTX_96_wellplate_125ul_Fb_2mm": {
+   "fqn": "pylabrobot.resources.btx.plates.BTX_96_wellplate_125ul_Fb_2mm",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.btx.plates.btx_96_wellplate_125uL_Fb_2mm": {
+   "fqn": "pylabrobot.resources.btx.plates.btx_96_wellplate_125uL_Fb_2mm",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.carrier.Carrier": {
+   "fqn": "pylabrobot.resources.carrier.Carrier",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-resource-definitions.json",
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.resources.carrier.MFXCarrier": {
+   "fqn": "pylabrobot.resources.carrier.MFXCarrier",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.carrier.PlateCarrier": {
+   "fqn": "pylabrobot.resources.carrier.PlateCarrier",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.carrier.PlateHolder": {
+   "fqn": "pylabrobot.resources.carrier.PlateHolder",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.carrier.TipCarrier": {
+   "fqn": "pylabrobot.resources.carrier.TipCarrier",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.carrier.TroughCarrier": {
+   "fqn": "pylabrobot.resources.carrier.TroughCarrier",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.carrier.TubeCarrier": {
+   "fqn": "pylabrobot.resources.carrier.TubeCarrier",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.celltreat.plates.CellTreat_12_troughplate_15000ul_Vb": {
+   "fqn": "pylabrobot.resources.celltreat.plates.CellTreat_12_troughplate_15000ul_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.CellTreat_24_wellplate_3300ul_Fb": {
+   "fqn": "pylabrobot.resources.celltreat.plates.CellTreat_24_wellplate_3300ul_Fb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.CellTreat_24_wellplate_3300ul_Fb_Lid": {
+   "fqn": "pylabrobot.resources.celltreat.plates.CellTreat_24_wellplate_3300ul_Fb_Lid",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.CellTreat_6_wellplate_16300ul_Fb": {
+   "fqn": "pylabrobot.resources.celltreat.plates.CellTreat_6_wellplate_16300ul_Fb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.CellTreat_6_wellplate_16300ul_Fb_Lid": {
+   "fqn": "pylabrobot.resources.celltreat.plates.CellTreat_6_wellplate_16300ul_Fb_Lid",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.CellTreat_96_wellplate_350ul_Fb": {
+   "fqn": "pylabrobot.resources.celltreat.plates.CellTreat_96_wellplate_350ul_Fb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.CellTreat_96_wellplate_350ul_Ub": {
+   "fqn": "pylabrobot.resources.celltreat.plates.CellTreat_96_wellplate_350ul_Ub",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.CellTreat_96_wellplate_350ul_Ub_Lid": {
+   "fqn": "pylabrobot.resources.celltreat.plates.CellTreat_96_wellplate_350ul_Ub_Lid",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.celltreat_12_troughplate_15mL_Vb": {
+   "fqn": "pylabrobot.resources.celltreat.plates.celltreat_12_troughplate_15mL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.celltreat_24_wellplate_3300uL_Fb": {
+   "fqn": "pylabrobot.resources.celltreat.plates.celltreat_24_wellplate_3300uL_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.celltreat_24_wellplate_3300uL_Fb_lid": {
+   "fqn": "pylabrobot.resources.celltreat.plates.celltreat_24_wellplate_3300uL_Fb_lid",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.celltreat_6_wellplate_16300uL_Fb": {
+   "fqn": "pylabrobot.resources.celltreat.plates.celltreat_6_wellplate_16300uL_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.celltreat_6_wellplate_16300uL_Fb_lid": {
+   "fqn": "pylabrobot.resources.celltreat.plates.celltreat_6_wellplate_16300uL_Fb_lid",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.celltreat_96_wellplate_350uL_Fb": {
+   "fqn": "pylabrobot.resources.celltreat.plates.celltreat_96_wellplate_350uL_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.celltreat_96_wellplate_350uL_Ub": {
+   "fqn": "pylabrobot.resources.celltreat.plates.celltreat_96_wellplate_350uL_Ub",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.plates.celltreat_96_wellplate_350uL_Ub_lid": {
+   "fqn": "pylabrobot.resources.celltreat.plates.celltreat_96_wellplate_350uL_Ub_lid",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.tubes.celltreat_15000ul_centrifuge_tube_Vb": {
+   "fqn": "pylabrobot.resources.celltreat.tubes.celltreat_15000ul_centrifuge_tube_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.celltreat.tubes.celltreat_tube_15mL_Vb": {
+   "fqn": "pylabrobot.resources.celltreat.tubes.celltreat_tube_15mL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.cellvis.plates.CellVis_24_wellplate_3600uL_Fb": {
+   "fqn": "pylabrobot.resources.cellvis.plates.CellVis_24_wellplate_3600uL_Fb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.cellvis.plates.CellVis_24_wellplate_3600uL_Fb_Lid": {
+   "fqn": "pylabrobot.resources.cellvis.plates.CellVis_24_wellplate_3600uL_Fb_Lid",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.cellvis.plates.CellVis_96_wellplate_350uL_Fb": {
+   "fqn": "pylabrobot.resources.cellvis.plates.CellVis_96_wellplate_350uL_Fb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.cellvis.plates.CellVis_96_wellplate_350uL_Fb_Lid": {
+   "fqn": "pylabrobot.resources.cellvis.plates.CellVis_96_wellplate_350uL_Fb_Lid",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.cellvis.plates.cellvis_24_wellplate_3600uL_Fb": {
+   "fqn": "pylabrobot.resources.cellvis.plates.cellvis_24_wellplate_3600uL_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.cellvis.plates.cellvis_24_wellplate_3600uL_Fb_lid": {
+   "fqn": "pylabrobot.resources.cellvis.plates.cellvis_24_wellplate_3600uL_Fb_lid",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.cellvis.plates.cellvis_96_wellplate_350uL_Fb": {
+   "fqn": "pylabrobot.resources.cellvis.plates.cellvis_96_wellplate_350uL_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.cellvis.plates.cellvis_96_wellplate_350uL_Fb_lid": {
+   "fqn": "pylabrobot.resources.cellvis.plates.cellvis_96_wellplate_350uL_Fb_lid",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.container.Container": {
+   "fqn": "pylabrobot.resources.container.Container",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-resource-definitions.json",
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 2,
+   "db_cols": [
+    "resource_definitions.description"
+   ]
+  },
+  "pylabrobot.resources.container_rack.ContainerRack": {
+   "fqn": "pylabrobot.resources.container_rack.ContainerRack",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.corning.Cor_96_wellplate": {
+   "fqn": "pylabrobot.resources.corning.Cor_96_wellplate",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.corning' has no attribute 'Cor_96_wellplate'",
+   "files": [
+    "tests/backend/core/test_consumable_assignment.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.corning.Cor_96_wellplate_360ul_Fb": {
+   "fqn": "pylabrobot.resources.corning.Cor_96_wellplate_360ul_Fb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "tests/backend/core/test_consumable_assignment.py",
+    "tests/backend/core/test_deck_config.py"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.resources.corning.Corning_96_DWP": {
+   "fqn": "pylabrobot.resources.corning.Corning_96_DWP",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.corning' has no attribute 'Corning_96_DWP'",
+   "files": [
+    "praxis/web-client/src/app/features/assets/services/asset.service.resolve.spec.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.corning.axygen.plates.Cor_Axy_24_wellplate_10mL_Vb": {
+   "fqn": "pylabrobot.resources.corning.axygen.plates.Cor_Axy_24_wellplate_10mL_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.axygen.plates.Cor_Axy_96_wellplate_500uL_Ub": {
+   "fqn": "pylabrobot.resources.corning.axygen.plates.Cor_Axy_96_wellplate_500uL_Ub",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.axygen.plates.cor_axy_1_troughplate_rowVb": {
+   "fqn": "pylabrobot.resources.corning.axygen.plates.cor_axy_1_troughplate_rowVb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.axygen.plates.cor_axy_24_wellplate_10mL_Vb": {
+   "fqn": "pylabrobot.resources.corning.axygen.plates.cor_axy_24_wellplate_10mL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.axygen.plates.cor_axy_96_wellplate_500uL_Ub": {
+   "fqn": "pylabrobot.resources.corning.axygen.plates.cor_axy_96_wellplate_500uL_Ub",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.costar.plates.Cor_Cos_12_wellplate_6900ul_Fb": {
+   "fqn": "pylabrobot.resources.corning.costar.plates.Cor_Cos_12_wellplate_6900ul_Fb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.costar.plates.Cor_Cos_24_wellplate_3470ul_Fb": {
+   "fqn": "pylabrobot.resources.corning.costar.plates.Cor_Cos_24_wellplate_3470ul_Fb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.costar.plates.Cor_Cos_48_wellplate_1620ul_Fb": {
+   "fqn": "pylabrobot.resources.corning.costar.plates.Cor_Cos_48_wellplate_1620ul_Fb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.costar.plates.Cor_Cos_6_wellplate_16800ul_Fb": {
+   "fqn": "pylabrobot.resources.corning.costar.plates.Cor_Cos_6_wellplate_16800ul_Fb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.costar.plates.Cor_Cos_6_wellplate_16800ul_Fb_Lid": {
+   "fqn": "pylabrobot.resources.corning.costar.plates.Cor_Cos_6_wellplate_16800ul_Fb_Lid",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.costar.plates.cor_cos_12_wellplate_6900uL_Fb": {
+   "fqn": "pylabrobot.resources.corning.costar.plates.cor_cos_12_wellplate_6900uL_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.costar.plates.cor_cos_24_wellplate_3470uL_Fb": {
+   "fqn": "pylabrobot.resources.corning.costar.plates.cor_cos_24_wellplate_3470uL_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.costar.plates.cor_cos_48_wellplate_1620uL_Fb": {
+   "fqn": "pylabrobot.resources.corning.costar.plates.cor_cos_48_wellplate_1620uL_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.costar.plates.cor_cos_6_wellplate_16800uL_Fb": {
+   "fqn": "pylabrobot.resources.corning.costar.plates.cor_cos_6_wellplate_16800uL_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.costar.plates.cor_cos_6_wellplate_16800uL_Fb_lid": {
+   "fqn": "pylabrobot.resources.corning.costar.plates.cor_cos_6_wellplate_16800uL_Fb_lid",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.falcon.plates.Cor_Falcon_96_wellplate_250ul_Rb": {
+   "fqn": "pylabrobot.resources.corning.falcon.plates.Cor_Falcon_96_wellplate_250ul_Rb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.falcon.plates.Cor_Falcon_96_wellplate_275ul_Fb": {
+   "fqn": "pylabrobot.resources.corning.falcon.plates.Cor_Falcon_96_wellplate_275ul_Fb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.falcon.plates.Cor_Falcon_96_wellplate_340ul_Fb_Black": {
+   "fqn": "pylabrobot.resources.corning.falcon.plates.Cor_Falcon_96_wellplate_340ul_Fb_Black",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.falcon.plates.cor_falcon_96_wellplate_250uL_Rb": {
+   "fqn": "pylabrobot.resources.corning.falcon.plates.cor_falcon_96_wellplate_250uL_Rb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.falcon.plates.cor_falcon_96_wellplate_275uL_Fb": {
+   "fqn": "pylabrobot.resources.corning.falcon.plates.cor_falcon_96_wellplate_275uL_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.falcon.plates.cor_falcon_96_wellplate_340uL_Fb_black": {
+   "fqn": "pylabrobot.resources.corning.falcon.plates.cor_falcon_96_wellplate_340uL_Fb_black",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.falcon.tubes.Cor_Falcon_tube_14mL_Rb": {
+   "fqn": "pylabrobot.resources.corning.falcon.tubes.Cor_Falcon_tube_14mL_Rb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.falcon.tubes.Cor_Falcon_tube_15mL_Vb": {
+   "fqn": "pylabrobot.resources.corning.falcon.tubes.Cor_Falcon_tube_15mL_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.falcon.tubes.Cor_Falcon_tube_50mL_Vb": {
+   "fqn": "pylabrobot.resources.corning.falcon.tubes.Cor_Falcon_tube_50mL_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.falcon.tubes.Falcon_15mL": {
+   "fqn": "pylabrobot.resources.corning.falcon.tubes.Falcon_15mL",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.corning.falcon.tubes' has no attribute 'Falcon_15mL'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.corning.falcon.tubes.Falcon_50mL": {
+   "fqn": "pylabrobot.resources.corning.falcon.tubes.Falcon_50mL",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.corning.falcon.tubes' has no attribute 'Falcon_50mL'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.corning.falcon.tubes.cor_falcon_tube_14mL_Rb": {
+   "fqn": "pylabrobot.resources.corning.falcon.tubes.cor_falcon_tube_14mL_Rb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.falcon.tubes.cor_falcon_tube_15mL_Vb": {
+   "fqn": "pylabrobot.resources.corning.falcon.tubes.cor_falcon_tube_15mL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.falcon.tubes.cor_falcon_tube_50mL_Vb": {
+   "fqn": "pylabrobot.resources.corning.falcon.tubes.cor_falcon_tube_50mL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.plates.Cor_96": {
+   "fqn": "pylabrobot.resources.corning.plates.Cor_96",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.corning.plates' has no attribute 'Cor_96'",
+   "files": [
+    "praxis/backend/services/resource_type_validation.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.corning.plates.Cor_96_wellplate_2mL_Vb": {
+   "fqn": "pylabrobot.resources.corning.plates.Cor_96_wellplate_2mL_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.plates.Cor_96_wellplate_360ul_Fb": {
+   "fqn": "pylabrobot.resources.corning.plates.Cor_96_wellplate_360ul_Fb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/backend/core/deck_config.py"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.plates.Cor_96_wellplate_360ul_Fb_Lid": {
+   "fqn": "pylabrobot.resources.corning.plates.Cor_96_wellplate_360ul_Fb_Lid",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.plates.cor_96_wellplate_2mL_Vb": {
+   "fqn": "pylabrobot.resources.corning.plates.cor_96_wellplate_2mL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.plates.cor_96_wellplate_360uL_Fb": {
+   "fqn": "pylabrobot.resources.corning.plates.cor_96_wellplate_360uL_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning.plates.cor_96_wellplate_360uL_Fb_lid": {
+   "fqn": "pylabrobot.resources.corning.plates.cor_96_wellplate_360uL_Fb_lid",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.corning_costar.Corning_96_CorningWellPlate": {
+   "fqn": "pylabrobot.resources.corning_costar.Corning_96_CorningWellPlate",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.corning_costar'",
+   "files": [
+    "tests/models/test_domain/test_asset_requirement.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.corning_costar.Corning_96_Wellplate_360ul_Flat": {
+   "fqn": "pylabrobot.resources.corning_costar.Corning_96_Wellplate_360ul_Flat",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.corning_costar'",
+   "files": [
+    "praxis/web-client/e2e/fixtures/seed-data.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.corning_costar.Corning_96_wellplate_360ul_Flat": {
+   "fqn": "pylabrobot.resources.corning_costar.Corning_96_wellplate_360ul_Flat",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.corning_costar'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/resources.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.corning_costar.Costar_96_CorningWellPlate_360uL_Vb": {
+   "fqn": "pylabrobot.resources.corning_costar.Costar_96_CorningWellPlate_360uL_Vb",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.corning_costar'",
+   "files": [
+    "tests/models/test_domain/test_resource_definition.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.corning_costar.plates.Cor_384_wellplate_112ul_Fb": {
+   "fqn": "pylabrobot.resources.corning_costar.plates.Cor_384_wellplate_112ul_Fb",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.corning_costar'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.corning_costar.plates.Cor_96_wellplate_360ul_Fb": {
+   "fqn": "pylabrobot.resources.corning_costar.plates.Cor_96_wellplate_360ul_Fb",
+   "status": "toplevel_name_fallback_only",
+   "files": [
+    "praxis/web-client/src/app/core/utils/plr-validator.spec.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.resources.corning_costar.plates.Cor_96_wellplate_Vb": {
+   "fqn": "pylabrobot.resources.corning_costar.plates.Cor_96_wellplate_Vb",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.corning_costar'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.deck.Deck": {
+   "fqn": "pylabrobot.resources.deck.Deck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-resource-definitions.json",
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.resources.end_effector.MechanicalGripper": {
+   "fqn": "pylabrobot.resources.end_effector.MechanicalGripper",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.eppendorf.plates.Epp_96_DWP_1mL": {
+   "fqn": "pylabrobot.resources.eppendorf.plates.Epp_96_DWP_1mL",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.eppendorf.plates' has no attribute 'Epp_96_DWP_1mL'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.eppendorf.plates.Eppendorf_96_wellplate_250ul_Vb": {
+   "fqn": "pylabrobot.resources.eppendorf.plates.Eppendorf_96_wellplate_250ul_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.eppendorf.plates.eppendorf_96_wellplate_1000ul_Vb": {
+   "fqn": "pylabrobot.resources.eppendorf.plates.eppendorf_96_wellplate_1000ul_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.eppendorf.plates.eppendorf_96_wellplate_500ul_Vb": {
+   "fqn": "pylabrobot.resources.eppendorf.plates.eppendorf_96_wellplate_500ul_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.eppendorf.tubes.Eppendorf_1_5mL": {
+   "fqn": "pylabrobot.resources.eppendorf.tubes.Eppendorf_1_5mL",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.eppendorf.tubes' has no attribute 'Eppendorf_1_5mL'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.eppendorf.tubes.Eppendorf_2mL": {
+   "fqn": "pylabrobot.resources.eppendorf.tubes.Eppendorf_2mL",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.eppendorf.tubes' has no attribute 'Eppendorf_2mL'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.eppendorf.tubes.Eppendorf_DNA_LoBind_1_5ml_Vb": {
+   "fqn": "pylabrobot.resources.eppendorf.tubes.Eppendorf_DNA_LoBind_1_5ml_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.eppendorf.tubes.Eppendorf_DNA_LoBind_2ml_Ub": {
+   "fqn": "pylabrobot.resources.eppendorf.tubes.Eppendorf_DNA_LoBind_2ml_Ub",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.eppendorf.tubes.Eppendorf_Protein_LoBind_1_5ml_Vb": {
+   "fqn": "pylabrobot.resources.eppendorf.tubes.Eppendorf_Protein_LoBind_1_5ml_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.eppendorf.tubes.eppendorf_tube_1500uL_Vb": {
+   "fqn": "pylabrobot.resources.eppendorf.tubes.eppendorf_tube_1500uL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.eppendorf.tubes.eppendorf_tube_5mL_Vb_snapcap": {
+   "fqn": "pylabrobot.resources.eppendorf.tubes.eppendorf_tube_5mL_Vb_snapcap",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.generic.troughs.Generic_1_trough_100ml": {
+   "fqn": "pylabrobot.resources.generic.troughs.Generic_1_trough_100ml",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.generic'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.greiner.Greiner_96_wellplate_U_bottom": {
+   "fqn": "pylabrobot.resources.greiner.Greiner_96_wellplate_U_bottom",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.greiner' has no attribute 'Greiner_96_wellplate_U_bottom'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/resources.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.greiner.plates.Gre_384_Sq_Fb": {
+   "fqn": "pylabrobot.resources.greiner.plates.Gre_384_Sq_Fb",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.greiner.plates' has no attribute 'Gre_384_Sq_Fb'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.greiner.plates.Gre_96_DWP_2mL_Rb": {
+   "fqn": "pylabrobot.resources.greiner.plates.Gre_96_DWP_2mL_Rb",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.greiner.plates' has no attribute 'Gre_96_DWP_2mL_Rb'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.greiner.plates.Gre_96_Fl_Fb": {
+   "fqn": "pylabrobot.resources.greiner.plates.Gre_96_Fl_Fb",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.greiner.plates' has no attribute 'Gre_96_Fl_Fb'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.greiner.plates.Greiner_384": {
+   "fqn": "pylabrobot.resources.greiner.plates.Greiner_384",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.greiner.plates' has no attribute 'Greiner_384'",
+   "files": [
+    "praxis/web-client/src/app/features/playground/playground.component.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.greiner.plates.Greiner_384_wellplate_28ul_Fb": {
+   "fqn": "pylabrobot.resources.greiner.plates.Greiner_384_wellplate_28ul_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.greiner.plates.greiner_96_wellplate_200uL_Vb": {
+   "fqn": "pylabrobot.resources.greiner.plates.greiner_96_wellplate_200uL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.HamiltonSTARDeck": {
+   "fqn": "pylabrobot.resources.hamilton.HamiltonSTARDeck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.spec.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/deck-generator.service.spec.ts",
+    "praxis/web-client/src/environments/environment.browser.ts",
+    "praxis/web-client/src/environments/environment.gh-pages.ts",
+    "praxis/web-client/src/environments/environment.prod.ts",
+    "praxis/web-client/src/environments/environment.ts",
+    "scripts/generate_browser_db.py",
+    "tests/backend/core/test_deck_config.py"
+   ],
+   "n_files": 9,
+   "db_cols": [
+    "deck_definition_catalog.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.Hamilton_8ch_trough_100ml": {
+   "fqn": "pylabrobot.resources.hamilton.Hamilton_8ch_trough_100ml",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.hamilton' has no attribute 'Hamilton_8ch_trough_100ml'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/resources.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.PLT_CAR_L5AC_A00": {
+   "fqn": "pylabrobot.resources.hamilton.PLT_CAR_L5AC_A00",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/assets/browser-data/resources.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.STARDeck": {
+   "fqn": "pylabrobot.resources.hamilton.STARDeck",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.spec.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.STARLetDeck": {
+   "fqn": "pylabrobot.resources.hamilton.STARLetDeck",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 3,
+   "db_cols": [
+    "deck_definition_catalog.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.STARlet.STARLetDeck": {
+   "fqn": "pylabrobot.resources.hamilton.STARlet.STARLetDeck",
+   "status": "toplevel_name_fallback_only",
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.TIP_CAR_480BC_A00": {
+   "fqn": "pylabrobot.resources.hamilton.TIP_CAR_480BC_A00",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/assets/browser-data/resources.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.TIP_CAR_480BC_HT_A00": {
+   "fqn": "pylabrobot.resources.hamilton.TIP_CAR_480BC_HT_A00",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.hamilton' has no attribute 'TIP_CAR_480BC_HT_A00'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/resources.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.TipRack_96_1000ul": {
+   "fqn": "pylabrobot.resources.hamilton.TipRack_96_1000ul",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.hamilton' has no attribute 'TipRack_96_1000ul'",
+   "files": [
+    "praxis/web-client/e2e/fixtures/seed-data.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.VantageDeck": {
+   "fqn": "pylabrobot.resources.hamilton.VantageDeck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "deck_definition_catalog.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.carriers.PLT_CAR_L5AC_A00": {
+   "fqn": "pylabrobot.resources.hamilton.carriers.PLT_CAR_L5AC_A00",
+   "status": "toplevel_name_fallback_only",
+   "files": [
+    "praxis/web-client/src/app/core/utils/plr-validator.spec.ts",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.carriers.TIP_CAR_288_A00": {
+   "fqn": "pylabrobot.resources.hamilton.carriers.TIP_CAR_288_A00",
+   "status": "toplevel_name_fallback_only",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.carriers.TIP_CAR_480_A00": {
+   "fqn": "pylabrobot.resources.hamilton.carriers.TIP_CAR_480_A00",
+   "status": "toplevel_name_fallback_only",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.core_gripper_tools.HamiltonCoreGripperTool": {
+   "fqn": "pylabrobot.resources.hamilton.core_gripper_tools.HamiltonCoreGripperTool",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.core_grippers.HamiltonCoreGrippers": {
+   "fqn": "pylabrobot.resources.hamilton.core_grippers.HamiltonCoreGrippers",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.hamilton_decks.HamiltonDeck": {
+   "fqn": "pylabrobot.resources.hamilton.hamilton_decks.HamiltonDeck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "deck_definition_catalog.fqn",
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.hamilton_decks.HamiltonSTARDeck": {
+   "fqn": "pylabrobot.resources.hamilton.hamilton_decks.HamiltonSTARDeck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/backend/core/deck_config.py",
+    "praxis/web-client/src/assets/browser-data/plr-resource-definitions.json"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.hamilton_decks.STARDeck": {
+   "fqn": "pylabrobot.resources.hamilton.hamilton_decks.STARDeck",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.hamilton_decks.STARLetDeck": {
+   "fqn": "pylabrobot.resources.hamilton.hamilton_decks.STARLetDeck",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.hamilton_tool.HamiltonTool": {
+   "fqn": "pylabrobot.resources.hamilton.hamilton_tool.HamiltonTool",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.mfx_carriers.MFX_CAR_L5_base": {
+   "fqn": "pylabrobot.resources.hamilton.mfx_carriers.MFX_CAR_L5_base",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.nimbus_decks.NimbusDeck": {
+   "fqn": "pylabrobot.resources.hamilton.nimbus_decks.NimbusDeck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4HD": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4HD",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_B00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_B00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_B00_4x5_Nunc96": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_B00_4x5_Nunc96",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_C00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_C00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_HIGH_A00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_HIGH_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_HIGH_A00_4x5_Nunc96": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_HIGH_A00_4x5_Nunc96",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_LOW_A00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_LOW_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_LOW_A00_4x9_Nunc96": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_LOW_A00_4x9_Nunc96",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4_HHS_ALT_A00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4_HHS_ALT_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC_A00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC_A00",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/models/deck-layout.models.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.spec.ts"
+   ],
+   "n_files": 3,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC_P_A00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC_P_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5FLEX_AC": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5FLEX_AC",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5FLEX_AC_A00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5FLEX_AC_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5FLEX_MD_A00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5FLEX_MD_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5MD": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5MD",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5MD_A00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5MD_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5PCR": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5PCR",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5PCR_A00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5PCR_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5PCR_A01": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5PCR_A01",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5_ALT_A00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5_ALT_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5_DWP": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5_DWP",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3AC_A00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3AC_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3AC_A01": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3AC_A01",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3HD": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3HD",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3LI_A00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3LI_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3MD": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3MD",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3MD_A00": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3MD_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3MD_A01": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3MD_A01",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.plate_carriers.hamilton_plate_carrier_L5_ac": {
+   "fqn": "pylabrobot.resources.hamilton.plate_carriers.hamilton_plate_carrier_L5_ac",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.prep_decks.PrepDeck": {
+   "fqn": "pylabrobot.resources.hamilton.prep_decks.PrepDeck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "deck_definition_catalog.fqn",
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.star_decks.HamiltonSTARDeck": {
+   "fqn": "pylabrobot.resources.hamilton.star_decks.HamiltonSTARDeck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.star_decks.STARDeck": {
+   "fqn": "pylabrobot.resources.hamilton.star_decks.STARDeck",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "deck_definition_catalog.fqn",
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.star_decks.STARLetDeck": {
+   "fqn": "pylabrobot.resources.hamilton.star_decks.STARLetDeck",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "deck_definition_catalog.fqn",
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.star_decks.STARPlusDeck": {
+   "fqn": "pylabrobot.resources.hamilton.star_decks.STARPlusDeck",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "deck_definition_catalog.fqn",
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_120BC_4mlTF_A00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_120BC_4mlTF_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_120BC_5mlT_A00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_120BC_5mlT_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_288_A00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_288_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_288_B00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_288_B00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_288_C00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_288_C00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_384BC_A00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_384BC_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_384_A00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_384_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480BC_A00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480BC_A00",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480_A00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480_A00",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_72_4mlTF_C00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_72_4mlTF_C00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_72_5mlT_C00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_72_5mlT_C00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_96BC_4mlTF_A00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_96BC_4mlTF_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_96BC_5mlT_A00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_96BC_5mlT_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_NTR_A00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_NTR_A00",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.hamilton_tip_carrier_L5": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.hamilton_tip_carrier_L5",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_carriers.hamilton_tip_carrier_L5_ntr_a00": {
+   "fqn": "pylabrobot.resources.hamilton.tip_carriers.hamilton_tip_carrier_L5_ntr_a00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_creators.HamiltonTip": {
+   "fqn": "pylabrobot.resources.hamilton.tip_creators.HamiltonTip",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.tip_racks.hamilton_24_tiprack_4000uL_filter": {
+   "fqn": "pylabrobot.resources.hamilton.tip_racks.hamilton_24_tiprack_4000uL_filter",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tip_racks.hamilton_24_tiprack_5000uL": {
+   "fqn": "pylabrobot.resources.hamilton.tip_racks.hamilton_24_tiprack_5000uL",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.tips.HT_P_1000uL_NTR_96": {
+   "fqn": "pylabrobot.resources.hamilton.tips.HT_P_1000uL_NTR_96",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.hamilton.tips'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.tips.HT_P_300uL_NTR_96": {
+   "fqn": "pylabrobot.resources.hamilton.tips.HT_P_300uL_NTR_96",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.hamilton.tips'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.tips.HT_P_50uL_F_96": {
+   "fqn": "pylabrobot.resources.hamilton.tips.HT_P_50uL_F_96",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.hamilton.tips'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.hamilton.trough_carriers.Trough_CAR_4R200_A00": {
+   "fqn": "pylabrobot.resources.hamilton.trough_carriers.Trough_CAR_4R200_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.trough_carriers.Trough_CAR_5R60_A00": {
+   "fqn": "pylabrobot.resources.hamilton.trough_carriers.Trough_CAR_5R60_A00",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.troughs.Hamilton_1_trough_200ml_Vb": {
+   "fqn": "pylabrobot.resources.hamilton.troughs.Hamilton_1_trough_200ml_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.troughs.hamilton_1_trough_120mL_Vb": {
+   "fqn": "pylabrobot.resources.hamilton.troughs.hamilton_1_trough_120mL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.troughs.hamilton_1_trough_200mL_Vb": {
+   "fqn": "pylabrobot.resources.hamilton.troughs.hamilton_1_trough_200mL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.troughs.hamilton_1_trough_200ml_Vb": {
+   "fqn": "pylabrobot.resources.hamilton.troughs.hamilton_1_trough_200ml_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.troughs.hamilton_1_trough_60mL_Vb": {
+   "fqn": "pylabrobot.resources.hamilton.troughs.hamilton_1_trough_60mL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.troughs.hamilton_1_trough_60ml_Vb": {
+   "fqn": "pylabrobot.resources.hamilton.troughs.hamilton_1_trough_60ml_Vb",
+   "status": "deprecated_alias",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.hamilton.vantage_decks.VantageDeck": {
+   "fqn": "pylabrobot.resources.hamilton.vantage_decks.VantageDeck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts",
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 3,
+   "db_cols": []
+  },
+  "pylabrobot.resources.head_tool.HeadTool": {
+   "fqn": "pylabrobot.resources.head_tool.HeadTool",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.imcs.tip_racks.imcs_96_tiprack_1000uL_filter": {
+   "fqn": "pylabrobot.resources.imcs.tip_racks.imcs_96_tiprack_1000uL_filter",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.imcs.tip_racks.imcs_96_tiprack_300uL_filter": {
+   "fqn": "pylabrobot.resources.imcs.tip_racks.imcs_96_tiprack_300uL_filter",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.itemized_resource.ItemizedResource": {
+   "fqn": "pylabrobot.resources.itemized_resource.ItemizedResource",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-resource-definitions.json",
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.resources.lid.Lid": {
+   "fqn": "pylabrobot.resources.lid.Lid",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.lid.Liddable": {
+   "fqn": "pylabrobot.resources.lid.Liddable",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.manipulator.LinkBody": {
+   "fqn": "pylabrobot.resources.manipulator.LinkBody",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.n_channel_pipettes.NChannelPipette": {
+   "fqn": "pylabrobot.resources.n_channel_pipettes.NChannelPipette",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.n_channel_pipettes.TipMountingShaft": {
+   "fqn": "pylabrobot.resources.n_channel_pipettes.TipMountingShaft",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.nest.plates.NEST_96_wellplate_2200uL_Ub": {
+   "fqn": "pylabrobot.resources.nest.plates.NEST_96_wellplate_2200uL_Ub",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.nest.plates.nest_12_troughplate_15000uL_Vb": {
+   "fqn": "pylabrobot.resources.nest.plates.nest_12_troughplate_15000uL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.nest.plates.nest_1_troughplate_185000uL_Vb": {
+   "fqn": "pylabrobot.resources.nest.plates.nest_1_troughplate_185000uL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.nest.plates.nest_1_troughplate_195000uL_Vb": {
+   "fqn": "pylabrobot.resources.nest.plates.nest_1_troughplate_195000uL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.nest.plates.nest_8_troughplate_22000uL_Vb": {
+   "fqn": "pylabrobot.resources.nest.plates.nest_8_troughplate_22000uL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.nest.troughs.Nest_12_reservoir_15ml": {
+   "fqn": "pylabrobot.resources.nest.troughs.Nest_12_reservoir_15ml",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.nest.troughs'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.non_existent.Carrier": {
+   "fqn": "pylabrobot.resources.non_existent.Carrier",
+   "status": "toplevel_name_fallback_only",
+   "files": [
+    "praxis/web-client/src/app/core/utils/plr-validator.spec.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.opentrons.OTDeck": {
+   "fqn": "pylabrobot.resources.opentrons.OTDeck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 2,
+   "db_cols": [
+    "deck_definition_catalog.fqn"
+   ]
+  },
+  "pylabrobot.resources.opentrons.deck.OTDeck": {
+   "fqn": "pylabrobot.resources.opentrons.deck.OTDeck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.spec.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/deck-generator.service.spec.ts",
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 4,
+   "db_cols": [
+    "deck_definition_catalog.fqn",
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.opentrons.flex_deck.FlexDeck": {
+   "fqn": "pylabrobot.resources.opentrons.flex_deck.FlexDeck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "deck_definition_catalog.fqn",
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.opentrons.opentrons_96_tiprack_20ul": {
+   "fqn": "pylabrobot.resources.opentrons.opentrons_96_tiprack_20ul",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/assets/browser-data/resources.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.opentrons.opentrons_96_tiprack_300ul": {
+   "fqn": "pylabrobot.resources.opentrons.opentrons_96_tiprack_300ul",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/assets/browser-data/resources.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.opentrons.tip_racks.opentrons_96_tiprack_1000ul": {
+   "fqn": "pylabrobot.resources.opentrons.tip_racks.opentrons_96_tiprack_1000ul",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.opentrons.tip_racks.opentrons_96_tiprack_20ul": {
+   "fqn": "pylabrobot.resources.opentrons.tip_racks.opentrons_96_tiprack_20ul",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.opentrons.tip_racks.opentrons_96_tiprack_300ul": {
+   "fqn": "pylabrobot.resources.opentrons.tip_racks.opentrons_96_tiprack_300ul",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.perkin_elmer.plates.PerkinElmer_96_wellplate_400ul_Fb": {
+   "fqn": "pylabrobot.resources.perkin_elmer.plates.PerkinElmer_96_wellplate_400ul_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.petri_dish.PetriDish": {
+   "fqn": "pylabrobot.resources.petri_dish.PetriDish",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.petri_dish.PetriDishHolder": {
+   "fqn": "pylabrobot.resources.petri_dish.PetriDishHolder",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.plate.Plate": {
+   "fqn": "pylabrobot.resources.plate.Plate",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-resource-definitions.json",
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json",
+    "tests/core/test_workcell_runtime.py"
+   ],
+   "n_files": 3,
+   "db_cols": [
+    "resource_definitions.description"
+   ]
+  },
+  "pylabrobot.resources.plate_adapter.PlateAdapter": {
+   "fqn": "pylabrobot.resources.plate_adapter.PlateAdapter",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.plates.Cos_96_Well": {
+   "fqn": "pylabrobot.resources.plates.Cos_96_Well",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.plates'",
+   "files": [
+    "praxis/web-client/src/app/features/assets/services/asset.service.spec.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.porvair.plates.Porvair_24_wellplate_Vb": {
+   "fqn": "pylabrobot.resources.porvair.plates.Porvair_24_wellplate_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.porvair.plates.Porvair_6_reservoir_47ml_Vb": {
+   "fqn": "pylabrobot.resources.porvair.plates.Porvair_6_reservoir_47ml_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.resource.Resource": {
+   "fqn": "pylabrobot.resources.resource.Resource",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.resource_holder.ResourceHolder": {
+   "fqn": "pylabrobot.resources.resource_holder.ResourceHolder",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.resource_stack.ResourceStack": {
+   "fqn": "pylabrobot.resources.resource_stack.ResourceStack",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.revvity.plates.Revvity_384_wellplate_28ul_Ub": {
+   "fqn": "pylabrobot.resources.revvity.plates.Revvity_384_wellplate_28ul_Ub",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.stanley.cups.StanleyCup_QUENCHER_FLOWSTATE_TUMBLER": {
+   "fqn": "pylabrobot.resources.stanley.cups.StanleyCup_QUENCHER_FLOWSTATE_TUMBLER",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.tecan.carriers.DiTi_4Pos": {
+   "fqn": "pylabrobot.resources.tecan.carriers.DiTi_4Pos",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.tecan.carriers'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tecan.carriers.MP_3Pos_Fixed": {
+   "fqn": "pylabrobot.resources.tecan.carriers.MP_3Pos_Fixed",
+   "status": "toplevel_name_fallback_only",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tecan.plate_carriers.MP_3Pos": {
+   "fqn": "pylabrobot.resources.tecan.plate_carriers.MP_3Pos",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tecan.plate_carriers.MP_4Pos": {
+   "fqn": "pylabrobot.resources.tecan.plate_carriers.MP_4Pos",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tecan.plate_carriers.TecanPlateCarrier": {
+   "fqn": "pylabrobot.resources.tecan.plate_carriers.TecanPlateCarrier",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.tecan.plates.TecanPlate": {
+   "fqn": "pylabrobot.resources.tecan.plates.TecanPlate",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.tecan.tecan_decks.EVO100Deck": {
+   "fqn": "pylabrobot.resources.tecan.tecan_decks.EVO100Deck",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tecan.tecan_decks.EVO150Deck": {
+   "fqn": "pylabrobot.resources.tecan.tecan_decks.EVO150Deck",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tecan.tecan_decks.EVO200Deck": {
+   "fqn": "pylabrobot.resources.tecan.tecan_decks.EVO200Deck",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts",
+    "praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tecan.tecan_decks.TecanDeck": {
+   "fqn": "pylabrobot.resources.tecan.tecan_decks.TecanDeck",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "deck_definition_catalog.fqn",
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.tecan.tecan_resource.TecanResource": {
+   "fqn": "pylabrobot.resources.tecan.tecan_resource.TecanResource",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.tecan.tip_carriers.DiTi_3Pos": {
+   "fqn": "pylabrobot.resources.tecan.tip_carriers.DiTi_3Pos",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [
+    "praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tecan.tip_carriers.TecanTipCarrier": {
+   "fqn": "pylabrobot.resources.tecan.tip_carriers.TecanTipCarrier",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.tecan.tip_creators.TecanTip": {
+   "fqn": "pylabrobot.resources.tecan.tip_creators.TecanTip",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tecan.tip_racks.TecanTipRack": {
+   "fqn": "pylabrobot.resources.tecan.tip_racks.TecanTipRack",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.tecan.tips.Tecan_DiTi_1000ul": {
+   "fqn": "pylabrobot.resources.tecan.tips.Tecan_DiTi_1000ul",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.tecan.tips'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tecan.tips.Tecan_DiTi_200ul": {
+   "fqn": "pylabrobot.resources.tecan.tips.Tecan_DiTi_200ul",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.tecan.tips'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tecan.trash.TecanTrash": {
+   "fqn": "pylabrobot.resources.tecan.trash.TecanTrash",
+   "status": "clean",
+   "warning": "",
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.tecan.wash.TecanWashStation": {
+   "fqn": "pylabrobot.resources.tecan.wash.TecanWashStation",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.thermo_fisher.plates.Thermo_384_Nunc_Fb": {
+   "fqn": "pylabrobot.resources.thermo_fisher.plates.Thermo_384_Nunc_Fb",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.thermo_fisher.plates' has no attribute 'Thermo_384_Nunc_Fb'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.thermo_fisher.plates.Thermo_96_Nunc_Fb": {
+   "fqn": "pylabrobot.resources.thermo_fisher.plates.Thermo_96_Nunc_Fb",
+   "status": "unresolvable",
+   "error": "AttributeError: module 'pylabrobot.resources.thermo_fisher.plates' has no attribute 'Thermo_96_Nunc_Fb'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.thermo_fisher.plates.Thermo_AB_96_wellplate_300ul_Vb_EnduraPlate": {
+   "fqn": "pylabrobot.resources.thermo_fisher.plates.Thermo_AB_96_wellplate_300ul_Vb_EnduraPlate",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.thermo_fisher.plates.Thermo_Nunc_96_well_plate_1300uL_Rb": {
+   "fqn": "pylabrobot.resources.thermo_fisher.plates.Thermo_Nunc_96_well_plate_1300uL_Rb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.thermo_fisher.plates.Thermo_TS_96_wellplate_1200ul_Rb": {
+   "fqn": "pylabrobot.resources.thermo_fisher.plates.Thermo_TS_96_wellplate_1200ul_Rb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.thermo_fisher.plates.Thermo_TS_Nunc_96_wellplate_300uL_Fb": {
+   "fqn": "pylabrobot.resources.thermo_fisher.plates.Thermo_TS_Nunc_96_wellplate_300uL_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.thermo_fisher.plates.Thermo_TS_Nunc_96_wellplate_300uL_Fb_Lid": {
+   "fqn": "pylabrobot.resources.thermo_fisher.plates.Thermo_TS_Nunc_96_wellplate_300uL_Fb_Lid",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.thermo_fisher.plates.thermo_AB_384_wellplate_40uL_Vb_MicroAmp": {
+   "fqn": "pylabrobot.resources.thermo_fisher.plates.thermo_AB_384_wellplate_40uL_Vb_MicroAmp",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.thermo_fisher.plates.thermo_AB_96_wellplate_300ul_Vb_MicroAmp": {
+   "fqn": "pylabrobot.resources.thermo_fisher.plates.thermo_AB_96_wellplate_300ul_Vb_MicroAmp",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.thermo_fisher.plates.thermo_TS_nalgene_1_troughplate_300mL_Fb": {
+   "fqn": "pylabrobot.resources.thermo_fisher.plates.thermo_TS_nalgene_1_troughplate_300mL_Fb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.thermo_fisher.plates.thermo_nunc_1_troughplate_90000uL_Fb_omnitray": {
+   "fqn": "pylabrobot.resources.thermo_fisher.plates.thermo_nunc_1_troughplate_90000uL_Fb_omnitray",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.thermo_fisher.troughs.ThermoFisherMatrixTrough8094": {
+   "fqn": "pylabrobot.resources.thermo_fisher.troughs.ThermoFisherMatrixTrough8094",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.tip.Tip": {
+   "fqn": "pylabrobot.resources.tip.Tip",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tip_rack.EmbeddedTipRack": {
+   "fqn": "pylabrobot.resources.tip_rack.EmbeddedTipRack",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.tip_rack.NestedTipRack": {
+   "fqn": "pylabrobot.resources.tip_rack.NestedTipRack",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tip_rack.StandingTipRack": {
+   "fqn": "pylabrobot.resources.tip_rack.StandingTipRack",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.tip_rack.TipRack": {
+   "fqn": "pylabrobot.resources.tip_rack.TipRack",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tip_rack.TipSpot": {
+   "fqn": "pylabrobot.resources.tip_rack.TipSpot",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tip_rack_holder.EmbeddedTipRackHolder": {
+   "fqn": "pylabrobot.resources.tip_rack_holder.EmbeddedTipRackHolder",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.trash.Trash": {
+   "fqn": "pylabrobot.resources.trash.Trash",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.trough.Trough": {
+   "fqn": "pylabrobot.resources.trough.Trough",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tube.Tube": {
+   "fqn": "pylabrobot.resources.tube.Tube",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.tube_rack.TubeRack": {
+   "fqn": "pylabrobot.resources.tube_rack.TubeRack",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.usascientific.troughs.USA_Scientific_12_reservoir_22ml": {
+   "fqn": "pylabrobot.resources.usascientific.troughs.USA_Scientific_12_reservoir_22ml",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.usascientific'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.ver.Ver_96_wellplate_360ul_Fb": {
+   "fqn": "pylabrobot.resources.ver.Ver_96_wellplate_360ul_Fb",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.resources.ver'",
+   "files": [
+    "tests/backend/core/test_deck_config.py"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  },
+  "pylabrobot.resources.vwr.plates.VWR_1_troughplate_195000uL_Ub": {
+   "fqn": "pylabrobot.resources.vwr.plates.VWR_1_troughplate_195000uL_Ub",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.vwr.plates.VWR_96_wellplate_2mL_Vb": {
+   "fqn": "pylabrobot.resources.vwr.plates.VWR_96_wellplate_2mL_Vb",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.vwr.troughs.VWRReagentReservoirs25mL": {
+   "fqn": "pylabrobot.resources.vwr.troughs.VWRReagentReservoirs25mL",
+   "status": "clean",
+   "warning": "",
+   "src_checked": true,
+   "files": [],
+   "n_files": 0,
+   "db_cols": [
+    "resource_definitions.fqn"
+   ]
+  },
+  "pylabrobot.resources.well.Well": {
+   "fqn": "pylabrobot.resources.well.Well",
+   "status": "clean",
+   "warning": "",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-resource-definitions.json",
+    "praxis/web-client/src/assets/demo-data/plr-resource-definitions.json"
+   ],
+   "n_files": 2,
+   "db_cols": []
+  },
+  "pylabrobot.scara.SCARA": {
+   "fqn": "pylabrobot.scara.SCARA",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.scara'",
+   "files": [
+    "praxis/backend/utils/plr_static_analysis/models.py",
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts",
+    "scripts/generate_browser_db.py"
+   ],
+   "n_files": 3,
+   "db_cols": [
+    "machine_frontend_definitions.fqn"
+   ]
+  },
+  "pylabrobot.scara.backends.ChatterboxBackend": {
+   "fqn": "pylabrobot.scara.backends.ChatterboxBackend",
+   "status": "unresolvable",
+   "error": "ModuleNotFoundError: No module named 'pylabrobot.scara'",
+   "files": [
+    "praxis/web-client/src/assets/browser-data/plr-definitions.ts"
+   ],
+   "n_files": 1,
+   "db_cols": []
+  }
+ }
+}

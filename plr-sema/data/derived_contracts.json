@@ -1,6 +1,6 @@
 {
   "backend_surface": {
-    "n_entries_with_backend_surface": 22,
+    "n_entries_with_backend_surface": 23,
     "n_surface_absent_by_c15": 98,
     "n_surface_candidates": 218,
     "n_surface_rows": 120,
@@ -24278,7 +24278,16 @@
       ]
     },
     "Centrifuge.__init__": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -167565,7 +167574,16 @@
       ]
     },
     "Incubator.__init__": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -168489,7 +168507,16 @@
       ]
     },
     "IncubatorShakerStack.setup": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -188372,7 +188399,16 @@
       ]
     },
     "ItemizedResource.__init__": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -191374,7 +191410,16 @@
       ]
     },
     "Liddable.lid@pylabrobot.resources.lid:77": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -191722,7 +191767,16 @@
       ]
     },
     "Liddable.lid@pylabrobot.resources.lid:82": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -195501,6 +195555,7 @@
       ]
     },
     "LiquidHandler.clear_head_state": {
+      "channel_effect": "widen",
       "channel_guards": [
         {
           "condition": "self.is_disabled",
@@ -196495,6 +196550,7 @@
           }
         }
       },
+      "channel_effect": "widen",
       "channel_guards": [
         {
           "condition": "self.is_disabled",
@@ -198494,6 +198550,7 @@
           }
         }
       },
+      "channel_effect": "widen",
       "channel_guards": [
         {
           "condition": "self._tip is None",
@@ -203258,7 +203315,12 @@
       "anchor_net_effects": {
         "_resource_pickup": "EMPTY"
       },
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": "_resource_pickup",
@@ -204447,6 +204509,7 @@
           }
         }
       },
+      "channel_effect": "NO_TIP",
       "channel_guards": [
         {
           "condition": "self._tip is None",
@@ -206388,6 +206451,7 @@
       ]
     },
     "LiquidHandler.load_state": {
+      "channel_effect": "widen",
       "gaps": [],
       "guards": [],
       "params": [
@@ -207481,7 +207545,12 @@
           }
         }
       },
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -209146,7 +209215,12 @@
           }
         }
       },
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -210761,7 +210835,12 @@
           }
         }
       },
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -212380,6 +212459,7 @@
           }
         }
       },
+      "channel_effect": "widen",
       "channel_guards": [
         {
           "condition": "self.is_disabled",
@@ -214352,7 +214432,12 @@
           }
         }
       },
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -215524,6 +215609,7 @@
           }
         }
       },
+      "channel_effect": "HAS_TIP",
       "channel_guards": [
         {
           "condition": "self.is_disabled",
@@ -217455,8 +217541,1977 @@
       ]
     },
     "LiquidHandler.probe_tip_inventory": {
+      "backend_surface": {
+        "rows": {
+          "CoreGrippers.drop_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "to"
+            ]
+          },
+          "CoreGrippers.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "Deck.get_all_resources": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "EVOBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "EVOBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "EVOBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "EVOBackend.drop_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "EVOBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "EVOBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "EVOBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "EVOBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "ExperimentalSCARA.drop_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "position"
+            ]
+          },
+          "ExperimentalSCARA.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "FTDI.write": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "data"
+            ]
+          },
+          "FTDIValidator.write": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "data"
+            ]
+          },
+          "FileWriter.write": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "w",
+              "cfg"
+            ]
+          },
+          "HID.write": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "data"
+            ]
+          },
+          "HIDValidator.write": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "data"
+            ]
+          },
+          "HamiltonLiquidHandler._get_hamilton_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "tip_spots"
+            ]
+          },
+          "HamiltonTCPBackend.write": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "data"
+            ]
+          },
+          "Head96.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "Head96.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "Head96.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "resource"
+            ]
+          },
+          "Head96.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "tip_rack"
+            ]
+          },
+          "ItemizedResource.column": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "column"
+            ]
+          },
+          "ItemizedResource.get_all_items": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ItemizedResource.row": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "row"
+            ]
+          },
+          "LiquidHandler.aspirate96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandler.dispense96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "resource",
+              "volume"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.drop_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "LiquidHandlerChatterboxBackend.pick_up_tips96": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "NimbusBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "NimbusBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "NimbusBackend.drop_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "NimbusBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "NimbusBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "NimbusBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "NimbusBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "OpentronsOT2Backend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "OpentronsOT2Backend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "OpentronsOT2Backend.drop_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Backend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "OpentronsOT2Simulator.aspirate": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.drop_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "OpentronsOT2Simulator.pick_up_tips": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "Pipettes.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "containers"
+            ]
+          },
+          "Pipettes.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "containers"
+            ]
+          },
+          "Pipettes.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "destinations"
+            ]
+          },
+          "Pipettes.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "tip_spots"
+            ]
+          },
+          "PowderDispenserChatterboxBackend.dispense": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "dispense_parameters"
+            ]
+          },
+          "PreciseFlexBackend.drop_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "position"
+            ]
+          },
+          "PreciseFlexBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "position",
+              "plate_width"
+            ]
+          },
+          "Resource.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "Resource.has_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "name"
+            ]
+          },
+          "ResourceStack.get_size_x": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_y": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "ResourceStack.get_size_z": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": []
+          },
+          "STARBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "STARBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.drop_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "STARBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "STARBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "STARBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "Serial.write": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "data"
+            ]
+          },
+          "SerialValidator.write": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "data"
+            ]
+          },
+          "SerializingBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "SerializingBackend.can_pick_up_tip": {
+            "constant_return": true,
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "SerializingBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "SerializingBackend.drop_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "SerializingBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "SerializingBackend.pick_up_resource": {
+            "has_var_keyword": true,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "SerializingBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "SerializingBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "Socket.write": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "data"
+            ]
+          },
+          "SocketValidator.write": {
+            "has_var_keyword": true,
+            "has_var_positional": true,
+            "params": [
+              "data"
+            ]
+          },
+          "USB._serialize_ctrl_transfer_request": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "bmRequestType",
+              "bRequest",
+              "wValue",
+              "wIndex",
+              "data_or_wLength"
+            ]
+          },
+          "USB.write": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "data"
+            ]
+          },
+          "USBValidator.write": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "data"
+            ]
+          },
+          "VantageBackend.aspirate": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.aspirate96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "aspiration"
+            ]
+          },
+          "VantageBackend.can_pick_up_tip": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "channel_idx",
+              "tip"
+            ]
+          },
+          "VantageBackend.dispense": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.dispense96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "dispense"
+            ]
+          },
+          "VantageBackend.drop_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "VantageBackend.drop_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.drop_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "drop"
+            ]
+          },
+          "VantageBackend.pick_up_resource": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "VantageBackend.pick_up_tips": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "ops",
+              "use_channels"
+            ]
+          },
+          "VantageBackend.pick_up_tips96": {
+            "has_var_keyword": false,
+            "has_var_positional": false,
+            "params": [
+              "pickup"
+            ]
+          },
+          "_UnusedTransport.write": {
+            "has_var_keyword": true,
+            "has_var_positional": true,
+            "params": [
+              "data"
+            ]
+          }
+        }
+      },
+      "channel_effect": "widen",
+      "channel_guards": [
+        {
+          "condition": "self.is_disabled",
+          "depth": 2,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/tip_tracker.py",
+            "lineno": 151,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self._pending_tip is not None",
+          "depth": 2,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "HasTipError",
+          "scope_trail": [
+            "if self._pending_tip is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/tip_tracker.py",
+            "lineno": 153,
+            "qualname": "TipTracker.add_tip"
+          },
+          "via": "self.head[channel].add_tip"
+        },
+        {
+          "condition": "self._tip is None",
+          "depth": 2,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/tip_tracker.py",
+            "lineno": 118,
+            "qualname": "TipTracker.get_tip"
+          },
+          "via": "self.head[channel].get_tip"
+        },
+        {
+          "condition": "self.is_disabled",
+          "depth": 2,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "raises": "RuntimeError",
+          "scope_trail": [
+            "if self.is_disabled"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/tip_tracker.py",
+            "lineno": 164,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        },
+        {
+          "condition": "self._pending_tip is None",
+          "depth": 2,
+          "free_vars": [
+            "self"
+          ],
+          "kind": "raise_guard",
+          "raises": "NoTipError",
+          "scope_trail": [
+            "if self._pending_tip is None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/tip_tracker.py",
+            "lineno": 166,
+            "qualname": "TipTracker.remove_tip"
+          },
+          "via": "self.head[channel].remove_tip"
+        }
+      ],
       "gaps": [],
-      "guards": [],
+      "guards": [
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "len(use_channels) > self.backend.num_channels",
+          "depth": 1,
+          "free_vars": [
+            "self",
+            "use_channels"
+          ],
+          "kind": "raise_guard",
+          "predicate": {
+            "left": {
+              "node": "Len",
+              "term": {
+                "name": "use_channels",
+                "node": "Var"
+              }
+            },
+            "node": "Cmp",
+            "op": ">",
+            "right": {
+              "args": null,
+              "node": "EnvRef",
+              "path": [
+                "self",
+                "backend",
+                "num_channels"
+              ]
+            }
+          },
+          "raises": "ValueError",
+          "reachability_clear": true,
+          "scope_trail": [
+            "if len(use_channels) > self.backend.num_channels"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 2844,
+            "qualname": "LiquidHandler.probe_tip_presence_via_pickup"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "len(use_channels) != len(tip_spots)",
+          "depth": 1,
+          "free_vars": [
+            "tip_spots",
+            "use_channels"
+          ],
+          "kind": "raise_guard",
+          "predicate": {
+            "left": {
+              "node": "Len",
+              "term": {
+                "name": "use_channels",
+                "node": "Var"
+              }
+            },
+            "node": "Cmp",
+            "op": "!=",
+            "right": {
+              "node": "Len",
+              "term": {
+                "name": "tip_spots",
+                "node": "Var"
+              }
+            }
+          },
+          "raises": "ValueError",
+          "reachability_clear": true,
+          "scope_trail": [
+            "if len(use_channels) != len(tip_spots)"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 2851,
+            "qualname": "LiquidHandler.probe_tip_presence_via_pickup"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "spots[0].location is not None",
+          "depth": 1,
+          "free_vars": [],
+          "kind": "assert",
+          "predicate": {
+            "node": "Opaque",
+            "text": "spots[0].location is not None"
+          },
+          "raises": null,
+          "reachability_clear": false,
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 2872,
+            "qualname": "LiquidHandler.probe_tip_presence_via_pickup"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [
+            {
+              "idiom": "alpha",
+              "iter": "tip_spots",
+              "pred": {
+                "node": "Not",
+                "predicate": {
+                  "node": "IsInstance",
+                  "term": {
+                    "name": "ts",
+                    "node": "Var"
+                  },
+                  "types": [
+                    "TipSpot"
+                  ]
+                }
+              },
+              "x": "not_tip_spots"
+            }
+          ],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "len(not_tip_spots) > 0",
+          "depth": 2,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "predicate": {
+            "left": {
+              "node": "Len",
+              "term": {
+                "name": "not_tip_spots",
+                "node": "Var"
+              }
+            },
+            "node": "Cmp",
+            "op": ">",
+            "right": {
+              "node": "Lit",
+              "value": 0
+            }
+          },
+          "raises": "TypeError",
+          "reachability_clear": true,
+          "scope_trail": [
+            "if len(not_tip_spots) > 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 720,
+            "qualname": "LiquidHandler.pick_up_tips"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "len(set(use_channels)) == len(use_channels)",
+          "depth": 2,
+          "free_vars": [
+            "use_channels"
+          ],
+          "kind": "assert",
+          "predicate": {
+            "left": {
+              "node": "Len",
+              "term": {
+                "node": "SetOf",
+                "term": {
+                  "name": "use_channels",
+                  "node": "Var"
+                }
+              }
+            },
+            "node": "Cmp",
+            "op": "==",
+            "right": {
+              "node": "Len",
+              "term": {
+                "name": "use_channels",
+                "node": "Var"
+              }
+            }
+          },
+          "raises": null,
+          "reachability_clear": true,
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 725,
+            "qualname": "LiquidHandler.pick_up_tips"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "not all((self.backend.can_pick_up_tip(channel, tip) for channel, tip in zip(use_channels, tips)))",
+          "depth": 2,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "predicate": {
+            "node": "Not",
+            "predicate": {
+              "node": "AllOf",
+              "predicate": {
+                "args": [
+                  {
+                    "name": "channel",
+                    "node": "Var"
+                  },
+                  {
+                    "name": "tip",
+                    "node": "Var"
+                  }
+                ],
+                "node": "EnvRef",
+                "path": [
+                  "self",
+                  "backend",
+                  "can_pick_up_tip"
+                ]
+              },
+              "seq": {
+                "items": [
+                  {
+                    "name": "use_channels",
+                    "node": "Var"
+                  },
+                  {
+                    "name": "tips",
+                    "node": "Var"
+                  }
+                ],
+                "node": "Zip"
+              }
+            }
+          },
+          "raises": "RuntimeError",
+          "reachability_clear": true,
+          "scope_trail": [
+            "if not all((self.backend.can_pick_up_tip(channel, tip) for channel, tip in zip(use_channels, tips)))"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 737,
+            "qualname": "LiquidHandler.pick_up_tips"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [
+            {
+              "default_shape": "repeat",
+              "idiom": "beta",
+              "param": "tip_spots",
+              "x": "offsets"
+            }
+          ],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "len(tip_spots) == len(offsets) == len(use_channels)",
+          "depth": 2,
+          "free_vars": [
+            "offsets",
+            "tip_spots",
+            "use_channels"
+          ],
+          "kind": "assert",
+          "predicate": {
+            "node": "And",
+            "predicates": [
+              {
+                "left": {
+                  "node": "Len",
+                  "term": {
+                    "name": "tip_spots",
+                    "node": "Var"
+                  }
+                },
+                "node": "Cmp",
+                "op": "==",
+                "right": {
+                  "node": "Len",
+                  "term": {
+                    "name": "offsets",
+                    "node": "Var"
+                  }
+                }
+              },
+              {
+                "left": {
+                  "node": "Len",
+                  "term": {
+                    "name": "offsets",
+                    "node": "Var"
+                  }
+                },
+                "node": "Cmp",
+                "op": "==",
+                "right": {
+                  "node": "Len",
+                  "term": {
+                    "name": "use_channels",
+                    "node": "Var"
+                  }
+                }
+              }
+            ]
+          },
+          "raises": null,
+          "reachability_clear": true,
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 745,
+            "qualname": "LiquidHandler.pick_up_tips"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "self.head[channel].has_tip",
+          "depth": 2,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "predicate": {
+            "node": "Opaque",
+            "text": "self.head[channel].has_tip"
+          },
+          "raises": "HasTipError",
+          "reachability_clear": true,
+          "scope_trail": [
+            "if self.head[channel].has_tip",
+            "for (channel, op) in zip(use_channels, pickups)"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 758,
+            "qualname": "LiquidHandler.pick_up_tips"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "error is not None",
+          "depth": 2,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "predicate": {
+            "negated": true,
+            "node": "Is",
+            "term": {
+              "name": "error",
+              "node": "Var"
+            }
+          },
+          "raises": "<dynamic:error>",
+          "reachability_clear": true,
+          "scope_trail": [
+            "if error is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 799,
+            "qualname": "LiquidHandler.pick_up_tips"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [
+            {
+              "idiom": "alpha",
+              "iter": "channels",
+              "pred": {
+                "left": {
+                  "name": "c",
+                  "node": "Var"
+                },
+                "node": "Cmp",
+                "op": "not in",
+                "right": {
+                  "args": null,
+                  "node": "EnvRef",
+                  "path": [
+                    "self",
+                    "head"
+                  ]
+                }
+              },
+              "x": "invalid_channels"
+            }
+          ],
+          "caller_args": null,
+          "caller_args_sites": [
+            {
+              "args": {},
+              "caller_qualname": "LiquidHandler.pick_up_tips",
+              "lineno": 744
+            },
+            {
+              "args": {},
+              "caller_qualname": "LiquidHandler.drop_tips",
+              "lineno": 890
+            }
+          ],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "not len(invalid_channels) == 0",
+          "depth": 3,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "predicate": {
+            "node": "Not",
+            "predicate": {
+              "left": {
+                "node": "Len",
+                "term": {
+                  "name": "invalid_channels",
+                  "node": "Var"
+                }
+              },
+              "node": "Cmp",
+              "op": "==",
+              "right": {
+                "node": "Lit",
+                "value": 0
+              }
+            }
+          },
+          "raises": "ValueError",
+          "reachability_clear": true,
+          "scope_trail": [
+            "if not len(invalid_channels) == 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 630,
+            "qualname": "LiquidHandler._make_sure_channels_exist"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "not rack._available_for_tip_handling",
+          "depth": 3,
+          "free_vars": [
+            "action"
+          ],
+          "kind": "raise_guard",
+          "predicate": {
+            "node": "Not",
+            "predicate": {
+              "node": "Opaque",
+              "text": "rack._available_for_tip_handling"
+            }
+          },
+          "raises": "ValueError",
+          "reachability_clear": true,
+          "scope_trail": [
+            "if not rack._available_for_tip_handling",
+            "for rack in racks.values()"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 338,
+            "qualname": "_check_tip_racks_available"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [],
+          "caller_args": null,
+          "caller_args_sites": [
+            {
+              "args": {
+                "default": {
+                  "node": "SetLit",
+                  "values": [
+                    "ops",
+                    "use_channels"
+                  ]
+                },
+                "method": {
+                  "args": null,
+                  "node": "EnvRef",
+                  "path": [
+                    "self",
+                    "backend",
+                    "pick_up_tips"
+                  ]
+                }
+              },
+              "caller_qualname": "LiquidHandler.pick_up_tips",
+              "lineno": 764
+            },
+            {
+              "args": {
+                "default": {
+                  "node": "SetLit",
+                  "values": [
+                    "ops",
+                    "use_channels"
+                  ]
+                },
+                "method": {
+                  "args": null,
+                  "node": "EnvRef",
+                  "path": [
+                    "self",
+                    "backend",
+                    "drop_tips"
+                  ]
+                }
+              },
+              "caller_qualname": "LiquidHandler.drop_tips",
+              "lineno": 912
+            }
+          ],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "len(missing) > 0",
+          "depth": 3,
+          "free_vars": [
+            "method"
+          ],
+          "kind": "raise_guard",
+          "predicate": {
+            "left": {
+              "node": "Len",
+              "term": {
+                "name": "missing",
+                "node": "Var"
+              }
+            },
+            "node": "Cmp",
+            "op": ">",
+            "right": {
+              "node": "Lit",
+              "value": 0
+            }
+          },
+          "raises": "TypeError",
+          "reachability_clear": false,
+          "scope_trail": [
+            "if len(missing) > 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 596,
+            "qualname": "LiquidHandler._check_args"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [],
+          "caller_args": null,
+          "caller_args_sites": [
+            {
+              "args": {
+                "default": {
+                  "node": "SetLit",
+                  "values": [
+                    "ops",
+                    "use_channels"
+                  ]
+                },
+                "method": {
+                  "args": null,
+                  "node": "EnvRef",
+                  "path": [
+                    "self",
+                    "backend",
+                    "pick_up_tips"
+                  ]
+                }
+              },
+              "caller_qualname": "LiquidHandler.pick_up_tips",
+              "lineno": 764
+            },
+            {
+              "args": {
+                "default": {
+                  "node": "SetLit",
+                  "values": [
+                    "ops",
+                    "use_channels"
+                  ]
+                },
+                "method": {
+                  "args": null,
+                  "node": "EnvRef",
+                  "path": [
+                    "self",
+                    "backend",
+                    "drop_tips"
+                  ]
+                }
+              },
+              "caller_qualname": "LiquidHandler.drop_tips",
+              "lineno": 912
+            }
+          ],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "strictness == Strictness.STRICT",
+          "depth": 3,
+          "free_vars": [
+            "method"
+          ],
+          "kind": "raise_guard",
+          "predicate": {
+            "left": {
+              "name": "strictness",
+              "node": "Var"
+            },
+            "node": "Cmp",
+            "op": "==",
+            "right": {
+              "name": "STRICT",
+              "node": "Attr",
+              "term": {
+                "name": "Strictness",
+                "node": "Var"
+              }
+            }
+          },
+          "raises": "TypeError",
+          "reachability_clear": false,
+          "scope_trail": [
+            "if strictness == Strictness.STRICT",
+            "if len(extra) > 0 and len(vars_keyword) == 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 604,
+            "qualname": "LiquidHandler._check_args"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [],
+          "caller_args": null,
+          "caller_args_sites": [
+            {
+              "args": {},
+              "caller_qualname": "LiquidHandler.pick_up_tips",
+              "lineno": 743
+            },
+            {
+              "args": {},
+              "caller_qualname": "LiquidHandler.drop_tips",
+              "lineno": 889
+            }
+          ],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "not resource_from_deck == resource",
+          "depth": 3,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "predicate": {
+            "node": "Not",
+            "predicate": {
+              "left": {
+                "name": "resource_from_deck",
+                "node": "Var"
+              },
+              "node": "Cmp",
+              "op": "==",
+              "right": {
+                "name": "resource",
+                "node": "Var"
+              }
+            }
+          },
+          "raises": "ValueError",
+          "reachability_clear": true,
+          "scope_trail": [
+            "if not resource_from_deck == resource",
+            "for resource in resources"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 542,
+            "qualname": "LiquidHandler._assert_resources_exist"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [
+            {
+              "idiom": "alpha",
+              "iter": "tip_spots",
+              "pred": {
+                "node": "Not",
+                "predicate": {
+                  "node": "IsInstance",
+                  "term": {
+                    "name": "ts",
+                    "node": "Var"
+                  },
+                  "types": [
+                    "TipSpot",
+                    "Trash"
+                  ]
+                }
+              },
+              "x": "not_tip_spots"
+            }
+          ],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "len(not_tip_spots) > 0",
+          "depth": 2,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "predicate": {
+            "left": {
+              "node": "Len",
+              "term": {
+                "name": "not_tip_spots",
+                "node": "Var"
+              }
+            },
+            "node": "Cmp",
+            "op": ">",
+            "right": {
+              "node": "Lit",
+              "value": 0
+            }
+          },
+          "raises": "TypeError",
+          "reachability_clear": true,
+          "scope_trail": [
+            "if len(not_tip_spots) > 0"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 871,
+            "qualname": "LiquidHandler.drop_tips"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "len(set(use_channels)) == len(use_channels)",
+          "depth": 2,
+          "free_vars": [
+            "use_channels"
+          ],
+          "kind": "assert",
+          "predicate": {
+            "left": {
+              "node": "Len",
+              "term": {
+                "node": "SetOf",
+                "term": {
+                  "name": "use_channels",
+                  "node": "Var"
+                }
+              }
+            },
+            "node": "Cmp",
+            "op": "==",
+            "right": {
+              "node": "Len",
+              "term": {
+                "name": "use_channels",
+                "node": "Var"
+              }
+            }
+          },
+          "raises": null,
+          "reachability_clear": true,
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 876,
+            "qualname": "LiquidHandler.drop_tips"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "tip.tracker.get_used_volume() > 0 and (not allow_nonzero_volume)",
+          "depth": 2,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "predicate": {
+            "node": "And",
+            "predicates": [
+              {
+                "node": "Opaque",
+                "text": "tip.tracker.get_used_volume() > 0"
+              },
+              {
+                "node": "Not",
+                "predicate": {
+                  "node": "Opaque",
+                  "text": "allow_nonzero_volume"
+                }
+              }
+            ]
+          },
+          "raises": "RuntimeError",
+          "reachability_clear": true,
+          "scope_trail": [
+            "if tip.tracker.get_used_volume() > 0 and (not allow_nonzero_volume)",
+            "for channel in use_channels"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 882,
+            "qualname": "LiquidHandler.drop_tips"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [
+            {
+              "default_shape": "repeat",
+              "idiom": "beta",
+              "param": "tip_spots",
+              "x": "offsets"
+            }
+          ],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "len(tip_spots) == len(offsets) == len(use_channels) == len(tips)",
+          "depth": 2,
+          "free_vars": [
+            "offsets",
+            "tip_spots",
+            "use_channels"
+          ],
+          "kind": "assert",
+          "predicate": {
+            "node": "And",
+            "predicates": [
+              {
+                "left": {
+                  "node": "Len",
+                  "term": {
+                    "name": "tip_spots",
+                    "node": "Var"
+                  }
+                },
+                "node": "Cmp",
+                "op": "==",
+                "right": {
+                  "node": "Len",
+                  "term": {
+                    "name": "offsets",
+                    "node": "Var"
+                  }
+                }
+              },
+              {
+                "left": {
+                  "node": "Len",
+                  "term": {
+                    "name": "offsets",
+                    "node": "Var"
+                  }
+                },
+                "node": "Cmp",
+                "op": "==",
+                "right": {
+                  "node": "Len",
+                  "term": {
+                    "name": "use_channels",
+                    "node": "Var"
+                  }
+                }
+              },
+              {
+                "left": {
+                  "node": "Len",
+                  "term": {
+                    "name": "use_channels",
+                    "node": "Var"
+                  }
+                },
+                "node": "Cmp",
+                "op": "==",
+                "right": {
+                  "node": "Len",
+                  "term": {
+                    "name": "tips",
+                    "node": "Var"
+                  }
+                }
+              }
+            ]
+          },
+          "raises": null,
+          "reachability_clear": true,
+          "scope_trail": [],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 891,
+            "qualname": "LiquidHandler.drop_tips"
+          }
+        },
+        {
+          "anchor_field": null,
+          "anchor_state": null,
+          "bindings": [],
+          "caller_args": null,
+          "caller_args_sites": [],
+          "caller_reachability_clear": null,
+          "caller_scope_trail": null,
+          "condition": "error is not None",
+          "depth": 2,
+          "free_vars": [],
+          "kind": "raise_guard",
+          "predicate": {
+            "negated": true,
+            "node": "Is",
+            "term": {
+              "name": "error",
+              "node": "Var"
+            }
+          },
+          "raises": "<dynamic:error>",
+          "reachability_clear": true,
+          "scope_trail": [
+            "if error is not None"
+          ],
+          "site": {
+            "file": "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py",
+            "lineno": 951,
+            "qualname": "LiquidHandler.drop_tips"
+          }
+        }
+      ],
       "param_defaults": {
         "probing_fn": null,
         "use_channels": null
@@ -218347,6 +220402,7 @@
           }
         }
       },
+      "channel_effect": "widen",
       "channel_guards": [
         {
           "condition": "self.is_disabled",
@@ -220327,6 +222383,7 @@
           }
         }
       },
+      "channel_effect": "widen",
       "channel_guards": [
         {
           "condition": "self._tip is None",
@@ -225921,6 +227978,7 @@
       ]
     },
     "LiquidHandler.update_head_state": {
+      "channel_effect": "widen",
       "channel_guards": [
         {
           "condition": "self.is_disabled",
@@ -226918,6 +228976,7 @@
           }
         }
       },
+      "channel_effect": "widen",
       "channel_guards": [
         {
           "condition": "self._tip is None",
@@ -231053,7 +233112,16 @@
       ]
     },
     "MechanicalGripper.__init__": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -363350,7 +365418,16 @@
       ]
     },
     "PrepDeck.__init__": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -363473,7 +365550,16 @@
       ]
     },
     "PrepDeck._build_waste_block": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -363604,7 +365690,16 @@
       ]
     },
     "PrepDeck.get_or_create_x_arm": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -366764,7 +368859,12 @@
       ]
     },
     "Resource._call_did_assign_resource_callbacks": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self",
@@ -366772,7 +368872,12 @@
       ]
     },
     "Resource._call_did_unassign_resource_callbacks": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self",
@@ -366780,7 +368885,12 @@
       ]
     },
     "Resource._call_will_assign_resource_callbacks": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self",
@@ -366788,7 +368898,12 @@
       ]
     },
     "Resource._call_will_unassign_resource_callbacks": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self",
@@ -367070,14 +369185,28 @@
       ]
     },
     "Resource._state_updated": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self"
       ]
     },
     "Resource.assign_child_by_anchor": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -367254,7 +369383,16 @@
       ]
     },
     "Resource.assign_child_resource": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -368784,14 +370922,24 @@
       ]
     },
     "Resource.location@pylabrobot.resources.resource:889": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self"
       ]
     },
     "Resource.location@pylabrobot.resources.resource:894": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self",
@@ -368918,7 +371066,12 @@
       ]
     },
     "Resource.rotate": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -368984,7 +371137,12 @@
       ]
     },
     "Resource.rotate_to": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_resource_state_updated_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -369119,7 +371277,16 @@
       ]
     },
     "Resource.unassign_child_resource": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -369599,7 +371766,16 @@
       ]
     },
     "ResourceHolder.resource@pylabrobot.resources.resource_holder:79": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -369881,7 +372057,16 @@
       ]
     },
     "ResourceHolder.resource@pylabrobot.resources.resource_holder:85": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -491473,7 +493658,16 @@
       ]
     },
     "STARDevice.__init__": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -519099,7 +521293,16 @@
       ]
     },
     "TipMountingShaft.mount_tip": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_assign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_assign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -519217,7 +521420,16 @@
       ]
     },
     "TipMountingShaft.release_tip": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -520959,7 +523171,16 @@
       ]
     },
     "TipSpot.unassign_tip": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_did_unassign_resource_callbacks"
+        ],
+        [
+          "unresolved_delegate",
+          "_will_unassign_resource_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -603061,7 +605282,12 @@
       ]
     },
     "VolumeTracker.add_liquid": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -603111,7 +605337,12 @@
       ]
     },
     "VolumeTracker.commit": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -603241,7 +605472,12 @@
       ]
     },
     "VolumeTracker.remove_liquid": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -603291,7 +605527,12 @@
       ]
     },
     "VolumeTracker.rollback": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_callbacks"
+        ]
+      ],
       "guards": [
         {
           "anchor_field": null,
@@ -603337,7 +605578,12 @@
       ]
     },
     "VolumeTracker.set_liquids": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_callbacks"
+        ]
+      ],
       "guards": [],
       "params": [
         "self",
@@ -603345,7 +605591,12 @@
       ]
     },
     "VolumeTracker.set_volume": {
-      "gaps": [],
+      "gaps": [
+        [
+          "unresolved_delegate",
+          "_callbacks"
+        ]
+      ],
       "guards": [],
       "is_volume_setter": true,
       "params": [
@@ -634892,7 +637143,22 @@
           }
         }
       },
-      "effects": {},
+      "effect_backing_fields": [
+        "_carried"
+      ],
+      "effects": {
+        "add_tip": "HAS_TIP",
+        "clear": "NO_TIP",
+        "remove_tip": "NO_TIP"
+      },
+      "effects_max_depth": 2,
+      "effects_unresolved": [
+        "load_state"
+      ],
+      "entry_reset": {
+        "method": "setup",
+        "post": "no_tip"
+      },
       "state_fields": [
         "_pending_tip",
         "_tip"
@@ -634912,7 +637178,18 @@
       "channel_attr": "_head",
       "channel_default_disablers": [],
       "channel_default_param": {},
-      "effects": {},
+      "effect_backing_fields": [
+        "_carried"
+      ],
+      "effects": {
+        "add_tip": "HAS_TIP",
+        "clear": "NO_TIP",
+        "remove_tip": "NO_TIP"
+      },
+      "effects_max_depth": 2,
+      "effects_unresolved": [
+        "load_state"
+      ],
       "state_fields": [
         "_pending_tip",
         "_tip"
@@ -634922,28 +637199,10 @@
         "NoTipError"
       ],
       "tracker_class": "TipTracker"
-    },
-    "TipTracker": {
-      "bool_view": {
-        "attr": "has_collar_height",
-        "field": "_collar_height",
-        "true_when": "not_none"
-      },
-      "channel_attr": "_carried",
-      "channel_default_disablers": [],
-      "channel_default_param": {},
-      "effects": {
-        "__init__": "HAS_TIP"
-      },
-      "state_fields": [
-        "_collar_height"
-      ],
-      "tip_state_exceptions": [
-        "HasTipError",
-        "NoTipError"
-      ],
-      "tracker_class": "Tip"
     }
+  },
+  "receiver_state_diagnostics": {
+    "n_contracts_depth0_and_deep_coexist": 0
   },
   "schema_version": 1,
   "stamp": {
@@ -634954,19 +637213,19 @@
       "dirty_content_id": null,
       "hash": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
       "provenance_source": "git",
-      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/external/pylabrobot"
+      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/outputs/green/external/pylabrobot"
     },
     "praxis": {
-      "branch": "plr-1.0-bump",
+      "branch": "plr-sema-green-5668",
       "dirty": true,
-      "dirty_content_id": "e9fd53b20011068e787b6652ba37340f183c17ca",
-      "hash": "4772f26405a4116f83e19d92e588216ac9f801b5",
+      "dirty_content_id": "d91d38163ecca2f608ea5f1666b0798e4bd17482ed175ea8fb68cf351497f519",
+      "hash": "b2e53e3b5e22bb3e65f506fc9d675ff1cdaadbce",
       "provenance_source": "git",
-      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10"
+      "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/outputs/green"
     },
     "pylabrobot_version": "1.0.0b1",
     "schema_version": 1,
-    "stamped_at": "2026-09-29T19:30:26.525370+00:00",
+    "stamped_at": "2026-09-30T14:47:27.788815+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   }

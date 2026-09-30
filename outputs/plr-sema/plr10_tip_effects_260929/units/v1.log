@@ -1,0 +1,5 @@
+2026-09-29 23:06:43,357 INFO base examples: 66 from corpus (clean, has dispense), 1 from --examples-dir
+2026-09-29 23:06:52,970 INFO report written to outputs/plr-sema/plr10_tip_effects_260929/units/v1.mutants_report.json
+2026-09-29 23:06:52,970 INFO v1_overdraw_dispense: n=67 raised_as_expected=67 static_at_index={'will_fail': 67, 'unknown': 0, 'safe': 0, 'none': 0}
+2026-09-29 23:06:52,970 INFO GATE PASSED: criteria (i), (ii), (iii) hold for v1_overdraw_dispense.
+2026-09-29 23:06:52,970 INFO volume_mutants returned rc=0 (informational; the report is what is read)
