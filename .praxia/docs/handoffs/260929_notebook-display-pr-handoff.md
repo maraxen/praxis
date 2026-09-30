@@ -20,7 +20,7 @@ rounds and Revisions 1-11). **Nothing is pushed.** Merge is yours.
 | A: spikes S1-S3, chrome, staging, harness | `feat/notebook-display-sprint-a` | `95be08a8` | 25 | `origin/main` a176bac7 |
 | B: `praxis.display` (reprs, ledger, errors, staleness, install), shell stale/interact, theme rules | `feat/notebook-display-sprint-b` | `7fec6b08` | +30 | A |
 | C: vendored Visualizer3D `static/`, socket shim, S4 probe (deck panel to follow) | `feat/notebook-display-sprint-c-stacked` | `85f28f58` | +7 | B |
-| (superseded) | `feat/notebook-display-sprint-c` | `adb934bc`-era | | A |
+| (superseded) | `feat/notebook-display-sprint-c` | `47ff92f6` | 7 | A |
 
 Merge order A, B, C. C is stacked on B because C5 needs B9's `stale.js`. `origin/main` is now f78c4bf2, two
 documentation commits past the a176bac7 base (a plr-sema spec and the PLR phase 2 plan), so each branch needs a

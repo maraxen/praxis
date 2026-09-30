@@ -5,6 +5,7 @@
 - [260825_p22_verify_harness_landed](daily/260825_p22_verify_harness_landed.md)
 
 ## Handoffs
+- [260929_notebook-display-pr-handoff](handoffs/260929_notebook-display-pr-handoff.md) — State of epic #5648 after the first execution pass: three stacked local branches (A, B, C), the test evidence per layer, what only CI or a browser can settle, the decisions waiting on the user, and how to open the PRs. Nothing is pushed.
 - [260131_e2e-autonomous-handoff](handoffs/260131_e2e-autonomous-handoff.md)
 - [260131_ship-coordination-handoff](handoffs/260131_ship-coordination-handoff.md)
 - [260129_praxis-handoff](handoffs/260129_praxis-handoff.md)
@@ -137,6 +138,9 @@
 
 ## Research
 - [260929_notebook-display-plr10-premises](research/260929_notebook-display-plr10-premises.md) — Exploratory recon, not pre-registered: which 260929 spec claims survive main's PLR 0.2.2 to 1.0.0b1 pin bump. Two AC cases (E13, E15) no longer raise; pending-residue premise false for aspirate/dispense; C2 vendoring redundant. Orchestrator re-ran the E13/E15 probe independently.
+- [260929_notebook-display-s1-lumino-widget](research/260929_notebook-display-s1-lumino-widget.md) — Result of pre-registered spike S1, bathos run 1e0cab6d, outcome s1_a: real Lumino widget constructible by prototype-chain walk, split-right works, CSS size limits honoured (D6 case honoured_reachable, all width keys asserted), restoreLayout keeps the iframe. Run against the local 260828 dist.
+- [260929_notebook-display-s2-sanitizer](research/260929_notebook-display-s2-sanitizer.md) — Result of pre-registered spike S2, bathos run bf83a4e6, outcome s2_b_exec_t: a crafted (untrusted) notebook reopens as text/html with the SVG stripped (S2-B); a notebook executed, saved and reopened in the same browser reopens trusted with the full SVG intact (S2-T). Run against the local 260828 dist.
+- [260929_notebook-display-s3-ipython-hooks](research/260929_notebook-display-s3-ipython-hooks.md) — Result of pre-registered spike S3, bathos run a3458bf2, outcome s3_combined (S3-A carrier holds; S3-C set_custom_exc yields no error output so the showtraceback wrapper is needed; S3-D post_run_cell does not fire for top-level-await cells). Run against the local 260828 dist.
 - [260903_p2-6-eval-revision-jury-brief-unknown-verb-abstention-vague-span-policy-golden-id-grammar](research/260903_p2-6-eval-revision-jury-brief-unknown-verb-abstention-vague-span-policy-golden-id-grammar.md) — Quantifies three candidate eval-revision policies (J1 unknown-verb-as-abstention, J2 ambiguous-referent vague-span comparison, J3 golden id grammar transform) against checkpoints A/A2/A3 on the frozen 228-row eval split; scorer untouched, revisions not applied.
 - [260901_nonlegacy-gap-ledger-reading](research/260901_nonlegacy-gap-ledger-reading.md) — Gap-ledger reading for the upstream_nonlegacy PLR surface (driver layer, no orchestration): guard-dense families, closure termination, unresolved frontier, dropped-receiver worklist, and the self-containment hypothesis measured directly.
 - [260901_plr-sema-research-a-d](research/260901_plr-sema-research-a-d.md) — Research subagent output (260901) adjudicating deferred semantic questions (a) and (d) against the abstract-interpretation/typestate corpus; R3 (join grouped by operation_id) was later found to be wrong and is recorded as must-not-implement in the spec.
