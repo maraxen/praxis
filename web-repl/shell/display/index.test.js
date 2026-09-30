@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { mount } from "./index.js";
+import { mount, mountDisplayErrorBanner } from "./index.js";
 import { EXEC_ATTR, STATE_ATTR } from "./chrome.js";
 import {
   announcement,
@@ -369,5 +369,164 @@ describe("praxis-shell.js loader IIFE", () => {
     const { threw, errors } = await runLoader({ currentScript: null });
     expect(threw).toBeNull();
     expect(errors.length).toBe(1);
+  });
+});
+
+
+// -- D13 / B8: the shell side of praxis:display-error ---------------------------------------
+//
+// The kernel's bootstrap stage (praxis_bootstrap.py, step 13) catches a failure to install the
+// display and posts {type: "praxis:display-error", reason} on praxis_repl before praxis:ready. D13:
+// "the shell shows [it] as a one-line banner. It is never silent." index.js owns that banner. It
+// listens from the start of mount(), before jupyterapp exists, so an early message is not lost.
+
+describe("the praxis:display-error banner (D13, B8)", () => {
+  function setup({ app = createFakeApp(), withDocument = true, withBroadcast = true } = {}) {
+    const document = withDocument ? createFakeDocument() : null;
+    const hub = withBroadcast ? createFakeBroadcastHub() : null;
+    const win = createFakeWindow({ app, document, broadcast: hub });
+    return { win, document, hub };
+  }
+  const banners = (document) => document.body.children.filter((c) => c.hasAttribute("data-praxis-display-error"));
+
+  test("a display-error message shows one banner with the reason, as plain text", async () => {
+    const { win, document, hub } = setup();
+    await mount(win, { modules: {}, logger: recordingLogger() });
+    expect(banners(document)).toEqual([]); // nothing until the kernel says so
+    hub.post("praxis_repl", { type: "praxis:display-error", reason: "boom: cannot draw" });
+    const [banner] = banners(document);
+    expect(banner).toBeDefined();
+    expect(banner.getAttribute("role")).toBe("alert");
+    expect(banner.textContent).toContain("boom: cannot draw");
+    expect(banner.textContent).toContain("display");
+    expect(banner.textContent).not.toContain("\n");
+  });
+
+  test("the reason is text, never markup", async () => {
+    const { win, document, hub } = setup();
+    await mount(win, { modules: {}, logger: recordingLogger() });
+    hub.post("praxis_repl", { type: "praxis:display-error", reason: "<img src=x onerror=alert(1)>&amp;" });
+    const [banner] = banners(document);
+    expect(banner.textContent).toContain("<img src=x onerror=alert(1)>&amp;");
+    // built with createElement + textContent only: no element other than the message and the dismiss button
+    const tags = [];
+    const walk = (el) => el.children.forEach((c) => (tags.push(c.localName), walk(c)));
+    walk(banner);
+    expect(tags.every((t) => t === "span" || t === "button")).toBe(true);
+  });
+
+  test("it listens from the start of mount, so a message before jupyterapp exists is not lost", async () => {
+    const { win, document, hub } = setup({ app: null });
+    const done = mount(win, { modules: {}, logger: recordingLogger() });
+    await flush();
+    hub.post("praxis_repl", { type: "praxis:display-error", reason: "early" });
+    expect(banners(document).length).toBe(1);
+    win.jupyterapp = createFakeApp();
+    win.tick();
+    await done;
+    expect(banners(document).length).toBe(1);
+  });
+
+  test("other messages on the channel do nothing", async () => {
+    const { win, document, hub } = setup();
+    await mount(win, { modules: {}, logger: recordingLogger() });
+    for (const data of [
+      { type: "praxis:ready" },
+      { type: "praxis:error", reason: "fail-closed is the shell's other message" },
+      { type: "praxis:resource-changed", json: "{}" },
+      { type: "praxis:shell-ping" },
+      { reason: "no type" },
+      null,
+      "praxis:display-error",
+      42,
+    ]) {
+      hub.post("praxis_repl", data);
+    }
+    expect(banners(document)).toEqual([]);
+  });
+
+  test("a message on another channel does nothing", async () => {
+    const { win, document, hub } = setup();
+    await mount(win, { modules: {}, logger: recordingLogger() });
+    hub.post("praxis_viz3d", { type: "praxis:display-error", reason: "wrong channel" });
+    expect(banners(document)).toEqual([]);
+  });
+
+  test("a second message updates the one banner instead of stacking", async () => {
+    const { win, document, hub } = setup();
+    await mount(win, { modules: {}, logger: recordingLogger() });
+    hub.post("praxis_repl", { type: "praxis:display-error", reason: "first" });
+    hub.post("praxis_repl", { type: "praxis:display-error", reason: "second" });
+    const found = banners(document);
+    expect(found.length).toBe(1);
+    expect(found[0].textContent).toContain("second");
+    expect(found[0].textContent).not.toContain("first");
+  });
+
+  test("the dismiss button removes the banner, and a later message shows it again", async () => {
+    const { win, document, hub } = setup();
+    await mount(win, { modules: {}, logger: recordingLogger() });
+    hub.post("praxis_repl", { type: "praxis:display-error", reason: "x" });
+    const [banner] = banners(document);
+    const button = banner.children.find((c) => c.localName === "button");
+    expect(button.getAttribute("aria-label")).toBeTruthy();
+    button.dispatch("click");
+    expect(banners(document)).toEqual([]);
+    hub.post("praxis_repl", { type: "praxis:display-error", reason: "again" });
+    expect(banners(document).length).toBe(1);
+  });
+
+  test("a missing or non-string reason still gives a banner, and a huge one is capped to one line", async () => {
+    const { win, document, hub } = setup();
+    await mount(win, { modules: {}, logger: recordingLogger() });
+    hub.post("praxis_repl", { type: "praxis:display-error" });
+    expect(banners(document)[0].textContent).toContain("unknown");
+    hub.post("praxis_repl", { type: "praxis:display-error", reason: "a".repeat(5000) + "\nsecond line" });
+    const text = banners(document)[0].textContent;
+    expect(text.length).toBeLessThan(500);
+    expect(text).not.toContain("\n");
+  });
+
+  test("with no BroadcastChannel or no document, mount still works and says nothing", async () => {
+    for (const opts of [{ withBroadcast: false }, { withDocument: false }, { withBroadcast: false, withDocument: false }]) {
+      const { win } = setup(opts);
+      const logger = recordingLogger();
+      const result = await mount(win, { modules: {}, logger });
+      expect(result.errors).toEqual([]);
+      expect(logger.errors).toEqual([]);
+    }
+  });
+
+  test("mountDisplayErrorBanner is contained when the document throws, and reports it loudly", () => {
+    const { hub } = setup();
+    const document = createFakeDocument();
+    document.createElement = () => {
+      throw new Error("dom is broken");
+    };
+    const win = createFakeWindow({ app: createFakeApp(), document, broadcast: hub });
+    const logger = recordingLogger();
+    const controller = mountDisplayErrorBanner({ win, logger });
+    expect(() => hub.post("praxis_repl", { type: "praxis:display-error", reason: "r" })).not.toThrow();
+    expect(logger.errors.length).toBe(1);
+    expect(typeof controller.dispose).toBe("function");
+  });
+
+  test("dispose closes the channel and takes the banner away", async () => {
+    const { win, document, hub } = setup();
+    const controller = mountDisplayErrorBanner({ win, logger: recordingLogger() });
+    hub.post("praxis_repl", { type: "praxis:display-error", reason: "x" });
+    expect(banners(document).length).toBe(1);
+    controller.dispose();
+    expect(banners(document)).toEqual([]);
+    hub.post("praxis_repl", { type: "praxis:display-error", reason: "y" });
+    expect(banners(document)).toEqual([]);
+  });
+
+  test("the banner uses no storage and no selector built from the message", async () => {
+    const { win, document, hub } = setup();
+    await mount(win, { modules: {}, logger: recordingLogger() });
+    hub.post("praxis_repl", { type: "praxis:display-error", reason: "a\"]'b" });
+    expect(document.body.selectorCalls).toEqual([]);
+    expect(document.selectorCalls).toEqual([]);
   });
 });
