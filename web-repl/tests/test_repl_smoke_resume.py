@@ -608,6 +608,138 @@ def test_display_session_records_pageerrors_through_format_pageerror(rs):
     assert "format_pageerror" in listener[0] and "str(exc)" not in listener[0], listener[0]
 
 
+# --- the theme-change readiness gate (D1 ran apputils:change-theme before it was registered) ---
+
+_THEME_CONDITIONS = {
+    "command registered": r"hasCommand\(\s*['\"]apputils:change-theme['\"]\s*\)",
+    "app restored": r"__praxisRestored\s*===\s*true",
+    "splash gone": r"!\s*document\.getElementById\(\s*['\"]jupyterlab-splash['\"]\s*\)",
+}
+
+
+def _missing_theme_conditions(js: str) -> list[str]:
+    """Which of the three readiness conditions the JS does not contain (the checker under test)."""
+    import re
+
+    return [name for name, pattern in _THEME_CONDITIONS.items() if not re.search(pattern, js)]
+
+
+def _without(js: str, condition: str) -> str:
+    """A copy of ``js`` that lacks exactly one condition (its pattern's match is blanked out)."""
+    import re
+
+    pattern = _THEME_CONDITIONS[condition]
+    assert re.search(pattern, js), f"cannot build a negative control: {condition!r} not in the JS"
+    return re.sub(pattern, "true", js)
+
+
+def _unguarded_theme_calls(source: str) -> list[int]:
+    """Line numbers of calls taking ``_DC_THEME_JS`` with no earlier ``wait_for_theme_ready(...)``
+    call in the same function."""
+    tree = ast.parse(source)
+    bad = []
+    for fn in ast.walk(tree):
+        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        calls = [n for n in ast.walk(fn) if isinstance(n, ast.Call)]
+        gates = [
+            c.lineno for c in calls
+            if (isinstance(c.func, ast.Name) and c.func.id == "wait_for_theme_ready")
+            or (isinstance(c.func, ast.Attribute) and c.func.attr == "wait_for_theme_ready")
+        ]
+        for c in calls:
+            if any(isinstance(a, ast.Name) and a.id == "_DC_THEME_JS" for a in c.args):
+                if not any(g < c.lineno for g in gates):
+                    bad.append(c.lineno)
+    return bad
+
+
+def test_theme_ready_js_names_all_three_conditions_and_the_checker_catches_each_omission(rs):
+    assert _missing_theme_conditions(rs.THEME_READY_JS) == []
+    assert "restored.then(" in rs.THEME_READY_JS, "the restored flag must be armed from jupyterapp.restored"
+    for condition in _THEME_CONDITIONS:
+        assert _missing_theme_conditions(_without(rs.THEME_READY_JS, condition)) == [condition], condition
+
+
+def test_theme_ready_js_behaves_in_a_stub_page(rs):
+    """Runs the predicate under bun against a fake ``window``/``document``. The three conditions
+    come true one at a time, in every order; the JS must be not ready until the third. A copy
+    missing one condition is ready too early in the order where that condition comes last
+    (negative control per condition)."""
+    bun = shutil.which("bun")
+    if not bun:
+        pytest.skip("bun not installed")
+    driver = textwrap.dedent(
+        """
+        const pred = (0, eval)('(' + JS + ')');
+        let resolveRestored; const restored = new Promise(r => { resolveRestored = r; });
+        const cmds = new Set(); let splash = true;
+        globalThis.window = {jupyterapp: {commands: {hasCommand: n => cmds.has(n)}, restored}};
+        globalThis.document = {getElementById: id => (id === 'jupyterlab-splash' && splash ? {} : null)};
+        pred();  // the page polls; the first call arms the restored flag
+        const out = [];
+        for (const ev of ORDER) {
+          if (ev === 'command') cmds.add('apputils:change-theme');
+          if (ev === 'restored') { resolveRestored(); await restored; await new Promise(r => setTimeout(r, 0)); }
+          if (ev === 'splash') splash = false;
+          out.push(!!pred());
+        }
+        console.log(JSON.stringify(out));
+        """
+    )
+
+    def steps(js: str, order: list[str]) -> list[bool]:
+        script = driver.replace("JS", json.dumps(js), 1).replace("ORDER", json.dumps(order))
+        done = subprocess.run([bun, "--eval", script], capture_output=True, text=True, timeout=60)
+        assert done.returncode == 0, done.stderr
+        return json.loads(done.stdout.strip().splitlines()[-1])
+
+    import itertools
+
+    orders = [list(o) for o in itertools.permutations(["command", "restored", "splash"])]
+    for order in orders:
+        assert steps(rs.THEME_READY_JS, order) == [False, False, True], order
+    for condition, last in (("command registered", "command"), ("app restored", "restored"), ("splash gone", "splash")):
+        broken = _without(rs.THEME_READY_JS, condition)
+        order = [e for e in ("command", "restored", "splash") if e != last] + [last]
+        assert steps(broken, order) != [False, False, True], f"negative control passed: {condition}"
+
+
+def test_wait_for_theme_ready_waits_on_the_js_with_the_navigation_timeout(rs):
+    class StubPage:
+        def __init__(self) -> None:
+            self.calls: list[tuple[tuple, dict]] = []
+
+        def wait_for_function(self, *args: Any, **kwargs: Any) -> None:
+            self.calls.append((args, kwargs))
+
+    page = StubPage()
+    rs.wait_for_theme_ready(page)
+    assert len(page.calls) == 1
+    args, kwargs = page.calls[0]
+    assert args == (rs.THEME_READY_JS,)
+    assert kwargs == {"timeout": rs.DISPLAY_NAV_TIMEOUT_MS}
+    rs.wait_for_theme_ready(page, timeout_ms=1234)
+    assert page.calls[1][1] == {"timeout": 1234}
+
+
+def test_every_theme_change_call_is_preceded_by_the_readiness_gate(rs):
+    assert _unguarded_theme_calls(REPL_SMOKE.read_text(encoding="utf-8")) == []
+    # the real file has at least one call site, or the check above proves nothing
+    assert "_DC_THEME_JS" in REPL_SMOKE.read_text(encoding="utf-8").split("def run_display_scenario")[1]
+
+
+def test_the_call_site_checker_fires_on_a_synthetic_unguarded_call():
+    guarded = "def f(page):\n    wait_for_theme_ready(page)\n    page.evaluate(_DC_THEME_JS, 'x')\n"
+    late = "def f(page):\n    page.evaluate(_DC_THEME_JS, 'x')\n    wait_for_theme_ready(page)\n"
+    other_fn = "def g(page):\n    wait_for_theme_ready(page)\ndef f(page):\n    page.evaluate(_DC_THEME_JS, 'x')\n"
+    missing = "def f(page):\n    page.evaluate(_DC_THEME_JS, 'x')\n"
+    assert _unguarded_theme_calls(guarded) == []
+    assert _unguarded_theme_calls(late) == [2]
+    assert _unguarded_theme_calls(other_fn) == [4]
+    assert _unguarded_theme_calls(missing) == [2]
+
+
 def test_inputs_that_cannot_be_built_exit_2_with_no_stamp(rs, ur, wds, tmp_path):
     log: list[Any] = []
 
