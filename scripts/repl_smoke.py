@@ -5989,6 +5989,7 @@ class DisplayDriver:
     def set_theme(self, name: str) -> None:
         from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
+        wait_for_theme_ready(self.page)
         changed = self.page.evaluate(_DC_THEME_JS, name)
         if not changed.get("ok"):
             raise DisplayCheckError(f"apputils:change-theme {name!r} failed: {changed.get('error')!r}")

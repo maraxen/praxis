@@ -731,9 +731,11 @@ def test_wait_for_theme_ready_waits_on_the_js_with_the_navigation_timeout(rs):
 
 
 def test_every_theme_change_call_is_preceded_by_the_readiness_gate(rs):
-    assert _unguarded_theme_calls(REPL_SMOKE.read_text(encoding="utf-8")) == []
-    # the real file has at least one call site, or the check above proves nothing
-    assert "_DC_THEME_JS" in REPL_SMOKE.read_text(encoding="utf-8").split("def run_display_scenario")[1]
+    source = REPL_SMOKE.read_text(encoding="utf-8")
+    assert _unguarded_theme_calls(source) == []
+    # the real file has at least one call site, or the check above proves nothing (anywhere in the
+    # file: the sites are the D1 scenario and, from sprint B, the dock-check session's set_theme)
+    assert source.count("evaluate(_DC_THEME_JS") >= 1
 
 
 def test_the_call_site_checker_fires_on_a_synthetic_unguarded_call():
