@@ -1,0 +1,475 @@
+fqn	status_at_1_0	resolved_at_0_2_2	legacy_fqn	warning_or_error	db_cols	n_files	files
+pylabrobot.backends.simulated.ArmBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.backends'	machine_backend_definitions.fqn	0	
+pylabrobot.backends.simulated.ImagerBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.backends'	machine_backend_definitions.fqn	0	
+pylabrobot.backends.simulated.PeelerBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.backends'	machine_backend_definitions.fqn	0	
+pylabrobot.backends.simulated.SealerBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.backends'	machine_backend_definitions.fqn	0	
+pylabrobot.centrifuging.Centrifuge	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.centrifuging'		3	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.centrifuging.backends.ChatterboxBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.centrifuging'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.decks.Deck	toplevel_name_fallback_only	no				1	tests/services/test_deck_service.py
+pylabrobot.fans.Fan	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.fans'		4	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/app/shared/components/quick-add-autocomplete/quick-add-autocomplete.component.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.fans.backends.ChatterboxBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.fans'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.hamilton.STAR	clean					1	praxis/web-client/e2e/specs/workcell-dashboard.spec.ts
+pylabrobot.hamilton.prep.driver.features.pipettes.Pipettes	clean				deck_definition_catalog.description,resource_definitions.description	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.heating_shaking.heater_shaker.HeaterShaker	legacy_fallback_only	yes	pylabrobot.legacy.heating_shaking.heater_shaker.HeaterShaker			1	tests/core/test_workcell_runtime.py
+pylabrobot.incubating.Incubator	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.incubating'		3	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.incubating.backends.ChatterboxBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.incubating'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.io.Serial	unresolvable	no		AttributeError: module 'pylabrobot.io' has no attribute 'Serial'		1	web-repl/overlay/assets/shims/web_serial_shim.py
+pylabrobot.io.USB	unresolvable	no		AttributeError: module 'pylabrobot.io' has no attribute 'USB'		1	web-repl/overlay/assets/shims/web_usb_shim.py
+pylabrobot.io.ftdi.FTDI	clean					3	praxis/web-client/src/app/experimental/direct-control/direct-control-kernel.service.ts,praxis/web-client/src/app/experimental/workers/python.worker.ts,web-repl/overlay/assets/shims/web_ftdi_shim.py
+pylabrobot.io.hid.HID	clean					2	praxis/web-client/src/app/experimental/workers/python.worker.ts,web-repl/overlay/assets/shims/web_hid_shim.py
+pylabrobot.io.serial.Serial	clean					1	web-repl/overlay/assets/python/web_bridge.py
+pylabrobot.io.usb.USB	clean					2	praxis/web-client/src/app/experimental/direct-control/direct-control-kernel.service.ts,web-repl/overlay/assets/python/web_bridge.py
+pylabrobot.legacy.X	unresolvable	no		AttributeError: module 'pylabrobot.legacy' has no attribute 'X'		1	praxis/backend/utils/plr_static_analysis/parser.py
+pylabrobot.legacy.arms.precise_flex.pf_3400.PreciseFlex3400Backend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.arms.precise_flex.pf_400.PreciseFlex400Backend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.arms.scara.ExperimentalSCARA	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.centrifuge.centrifuge.Centrifuge	warns	no		Due to '_pack_', the '_StatusPositionTachometer' Structure will use memory layout compatible with MSVC (Windows). If this is intended, set _layout_ to 'ms'. The	machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.centrifuge.centrifuge.Loader	clean				resource_definitions.fqn	0	
+pylabrobot.legacy.centrifuge.chatterbox.CentrifugeChatterboxBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.centrifuge.chatterbox.LoaderChatterboxBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.centrifuge.highres.microspin_backend.MicroSpinBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.centrifuge.vspin_backend.Access2Backend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.centrifuge.vspin_backend.VSpinBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.heating_shaking.HeaterShaker	clean					4	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.legacy.heating_shaking.backend.HeaterShakerBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.heating_shaking.backends.ChatterboxBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.heating_shaking.backends'		2	praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.heating_shaking.backends.hamilton.HamiltonHeaterShaker	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.heating_shaking.backends'		2	praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.heating_shaking.backends.inheco.InhecoTEC	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.heating_shaking.backends'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.heating_shaking.backends.simulation.SimulatedHeaterShaker	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.heating_shaking.backends'		1	praxis/backend/services/hardware_discovery.py
+pylabrobot.legacy.heating_shaking.bioshake_backend.BioShake	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.heating_shaking.chatterbox.HeaterShakerChatterboxBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.heating_shaking.hamilton_backend.HamiltonHeaterShakerBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.heating_shaking.heater_shaker.HeaterShaker	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.heating_shaking.inheco.thermoshake_backend.InhecoThermoshakeBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.liquid_handling.LiquidHandler	clean					10	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/app/features/run-protocol/components/parameter-config/parameter-config.component.spec.ts,praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py,tests/backend/core/workcell_runtime/test_machine_manager.py,tests/backend/services/test_introspection.py,tests/services/test_machine_type_definition_service.py,tests/utils/test_plr_inspection.py,web-repl/overlay/assets/python/web_bridge.py
+pylabrobot.legacy.liquid_handling.backends.ChatterboxBackend	unresolvable	no		AttributeError: module 'pylabrobot.legacy.liquid_handling.backends' has no attribute 'ChatterboxBackend'		2	praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.liquid_handling.backends.LiquidHandlerBackend	clean					1	web-repl/overlay/assets/python/web_bridge.py
+pylabrobot.legacy.liquid_handling.backends.LiquidHandlerChatterboxBackend	clean					1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.liquid_handling.backends.beckman.Biomek	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.liquid_handling.backends.beckman'		1	praxis/backend/services/hardware_discovery.py
+pylabrobot.legacy.liquid_handling.backends.chatterbox.LiquidHandlerChatterboxBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	1	praxis/web-client/src/app/features/run-protocol/services/execution.service.ts
+pylabrobot.legacy.liquid_handling.backends.hamilton.INVALID_BACKEND	unresolvable	no		AttributeError: module 'pylabrobot.legacy.liquid_handling.backends.hamilton' has no attribute 'INVALID_BACKEND'		1	praxis/web-client/e2e/specs/experimental/playground-direct-control.spec.ts
+pylabrobot.legacy.liquid_handling.backends.hamilton.STAR	clean					13	praxis/backend/services/hardware_discovery.py,praxis/backend/utils/plr_static_analysis/manufacturer_inference.py,praxis/web-client/e2e/fixtures/seed-data.ts,praxis/web-client/src/app/core/interceptors/browser-mock-router.ts,praxis/web-client/src/app/core/interceptors/browser-mode.interceptor.ts,praxis/web-client/src/app/core/services/hardware-discovery.service.ts,praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.spec.ts,praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts,praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts,tests/models/test_domain/test_asset_requirement.py,tests/models/test_domain/test_machine_definition.py
+pylabrobot.legacy.liquid_handling.backends.hamilton.STAR.STAR	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.liquid_handling.backends.hamilton.STAR'		1	praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.spec.ts
+pylabrobot.legacy.liquid_handling.backends.hamilton.STARDeck	toplevel_name_fallback_only	no				2	tests/models/test_domain/test_deck.py,tests/services/test_deck_type_definition_service.py
+pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_backend	clean					2	praxis/backend/utils/plr_static_analysis/parser.py,scripts/extract_capabilities.py
+pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_backend.STAR	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_backend.STARBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_chatterbox	unresolvable	no		AttributeError: module 'pylabrobot.legacy.liquid_handling.backends.hamilton' has no attribute 'STAR_chatterbox'		1	praxis/backend/core/simulation/chatterbox_runner.py
+pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_chatterbox.STARChatterboxBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.liquid_handling.backends.hamilton.Starlet	unresolvable	no		AttributeError: module 'pylabrobot.legacy.liquid_handling.backends.hamilton' has no attribute 'Starlet'		3	praxis/backend/services/hardware_discovery.py,praxis/web-client/src/app/core/services/hardware-discovery.service.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.liquid_handling.backends.hamilton.Vantage	clean					1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.liquid_handling.backends.hamilton.pump.Pump	clean					1	scripts/generate_browser_db.py
+pylabrobot.legacy.liquid_handling.backends.hamilton.tcp_backend.HamiltonTCPBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.liquid_handling.backends.hamilton.vantage_backend.Vantage	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.liquid_handling.backends.hamilton.vantage_backend.VantageBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.liquid_handling.backends.opentrons.Flex	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.liquid_handling.backends.opentrons'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.liquid_handling.backends.opentrons.OT2	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.liquid_handling.backends.opentrons'		5	praxis/backend/services/hardware_discovery.py,praxis/web-client/src/app/core/interceptors/browser-mock-router.ts,praxis/web-client/src/app/core/interceptors/browser-mode.interceptor.ts,praxis/web-client/src/app/core/services/hardware-discovery.service.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.liquid_handling.backends.opentrons_backend.OpentronsBackend	unresolvable	no		AttributeError: module 'pylabrobot.legacy.liquid_handling.backends.opentrons_backend' has no attribute 'OpentronsBackend'		1	praxis/backend/services/hardware_discovery.py
+pylabrobot.legacy.liquid_handling.backends.opentrons_backend.OpentronsOT2Backend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.liquid_handling.backends.simulation.Simulator	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.liquid_handling.backends.simulation'		1	praxis/web-client/e2e/fixtures/seed-data.ts
+pylabrobot.legacy.liquid_handling.backends.simulation.SimulatorBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.liquid_handling.backends.simulation'		1	praxis/backend/services/hardware_discovery.py
+pylabrobot.legacy.liquid_handling.backends.tecan.EVO	unresolvable	no		AttributeError: module 'pylabrobot.legacy.liquid_handling.backends.tecan' has no attribute 'EVO'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.liquid_handling.backends.tecan.EVO_backend	clean					1	tests/utils/test_plr_static_analysis.py
+pylabrobot.legacy.liquid_handling.backends.tecan.Fluent	unresolvable	no		AttributeError: module 'pylabrobot.legacy.liquid_handling.backends.tecan' has no attribute 'Fluent'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.liquid_handling.backends.tecan.Tecan	unresolvable	no		AttributeError: module 'pylabrobot.legacy.liquid_handling.backends.tecan' has no attribute 'Tecan'		1	praxis/backend/services/hardware_discovery.py
+pylabrobot.legacy.liquid_handling.liquid_handler.LiquidHandler	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	1	tests/core/test_workcell_runtime.py
+pylabrobot.legacy.machines.LiquidHandler	unresolvable	no		AttributeError: module 'pylabrobot.legacy.machines' has no attribute 'LiquidHandler'		1	tests/backend/core/test_consumable_assignment.py
+pylabrobot.legacy.machines.machine.Machine	clean					1	praxis/web-client/src/assets/demo-data/plr-machine-definitions.json
+pylabrobot.legacy.only_fans.chatterbox.FanChatterboxBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.only_fans.fan.Fan	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.only_fans.hamilton_hepa_fan_backend.HamiltonHepaFanBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.peeling.peeler.Peeler	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.peeling.xpeel_backend.XPeelBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.plate_reading.Imager	clean					4	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.legacy.plate_reading.PlateReader	clean					4	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.legacy.plate_reading.agilent.biotek_backend.BioTekPlateReaderBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.plate_reading.agilent.biotek_cytation_backend.CytationBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.plate_reading.backend.ImageReaderBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.plate_reading.backend.bmg.CLARIOstar	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.plate_reading.backend.bmg'; 'pylabrobot.legacy.plate_reading.backend' is not a package		1	praxis/web-client/e2e/fixtures/seed-data.ts
+pylabrobot.legacy.plate_reading.backends.ChatterboxBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.plate_reading.backends'		2	praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.plate_reading.backends.bmg.SPECTROstar	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.plate_reading.backends'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.plate_reading.backends.simulation.SimulatedPlateReader	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.plate_reading.backends'		1	praxis/backend/services/hardware_discovery.py
+pylabrobot.legacy.plate_reading.bmg_labtech.clario_star_backend.CLARIOstarBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.plate_reading.byonoy.byonoy_a96a.ByonoyAbsorbance96Automate	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.plate_reading.byonoy.byonoy_a96a.ByonoyAbsorbanceBaseUnit	clean				resource_definitions.fqn	0	
+pylabrobot.legacy.plate_reading.byonoy.byonoy_backend._ByonoyBase	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.plate_reading.byonoy.byonoy_l96.ByonoyLuminescence96Automate	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.plate_reading.byonoy.byonoy_l96.ByonoyLuminescenceBaseUnit	clean				resource_definitions.fqn	0	
+pylabrobot.legacy.plate_reading.chatterbox.PlateReaderChatterboxBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.plate_reading.clario_star_backend.CLARIOstarBackend	clean					3	praxis/web-client/src/app/core/services/hardware-discovery.service.ts,praxis/web-client/src/app/shared/components/asset-wizard/asset-wizard.spec.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.plate_reading.imager.Imager	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.plate_reading.molecular_devices.backend.MolecularDevicesBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.plate_reading.plate_reader.PlateReader	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.plate_reading.tecan.infinite_backend.ExperimentalTecanInfinite200ProBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.plate_reading.tecan.spark20m.spark_backend.ExperimentalSparkBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.powder_dispensing.PowderDispenser	clean					3	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.legacy.powder_dispensing.backends.ChatterboxBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.powder_dispensing.backends'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.powder_dispensing.chatterbox.PowderDispenserChatterboxBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.powder_dispensing.chemspeed.crystal_powderdose.CrystalPowderdose	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.powder_dispensing.powder_dispenser.PowderDispenser	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.pumps.agrowpumps.agrowdosepump_backend.AgrowPumpArrayBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.pumps.backend.PumpBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.pumps.chatterbox.PumpArrayChatterboxBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.pumps.chatterbox.PumpChatterboxBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.pumps.cole_parmer.masterflex_backend.MasterflexBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.pumps.pump.Pump	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.pumps.pumparray.PumpArray	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.sealing.a4s_backend.A4SBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.sealing.sealer.Sealer	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.shaking.Shaker	clean					3	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.legacy.shaking.backends.ChatterboxBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.shaking.backends'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.shaking.chatterbox.ShakerChatterboxBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.shaking.shaker.Shaker	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.storage.chatterbox.IncubatorChatterboxBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.storage.cytomat.cytomat.CytomatBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.storage.cytomat.heraeus_cytomat_backend.HeraeusCytomatBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.storage.incubator.Incubator	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.storage.inheco.incubator_shaker.IncubatorShakerStack	clean				resource_definitions.fqn	0	
+pylabrobot.legacy.storage.inheco.incubator_shaker_backend.InhecoIncubatorShakerStackBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.storage.liconic.liconic_backend.ExperimentalLiconicBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.temperature_controlling.TemperatureController	clean					3	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.legacy.temperature_controlling.backends.ChatterboxBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.temperature_controlling.backends'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.temperature_controlling.chatterbox.TemperatureControllerChatterboxBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.temperature_controlling.inheco.temperature_controller.InhecoTemperatureControllerBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.temperature_controlling.opentrons_backend.OpentronsTemperatureModuleBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.temperature_controlling.opentrons_backend_usb.OpentronsTemperatureModuleUSBBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.temperature_controlling.temperature_controller.TemperatureController	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.legacy.thermocycling.Thermocycler	clean					3	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.legacy.thermocycling.backends.ChatterboxBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.legacy.thermocycling.backends'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.legacy.thermocycling.chatterbox.ThermocyclerChatterboxBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.thermocycling.inheco.odtc_backend.ExperimentalODTCBackend	clean				machine_backend_definitions.fqn	0	
+pylabrobot.legacy.thermocycling.opentrons_backend.OpentronsThermocyclerBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.thermocycling.opentrons_backend_usb.OpentronsThermocyclerUSBBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.thermocycling.thermo_fisher.proflex.ProflexBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.thermocycling.thermo_fisher.thermo_fisher_thermocycler.ThermoFisherThermocyclerBackend	clean				machine_backend_definitions.fqn,machine_definitions.compatible_backends	0	
+pylabrobot.legacy.thermocycling.thermocycler.Thermocycler	clean				machine_definitions.fqn,machine_frontend_definitions.fqn	0	
+pylabrobot.liquid_handling.LiquidHandler	warns	yes		Importing from pylabrobot.liquid_handling is deprecated. Use pylabrobot.legacy.liquid_handling instead.		1	tests/core/test_workcell_runtime.py
+pylabrobot.liquid_handling.NoSuchClassAnywhere	unresolvable	no		AttributeError: module 'pylabrobot.liquid_handling' has no attribute 'NoSuchClassAnywhere'		1	tests/core/test_workcell_runtime.py
+pylabrobot.liquid_handling.backends.simulation.SimulatorBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.liquid_handling.backends.simulation'		1	praxis/web-client/src/app/experimental/direct-control/direct-control-kernel.service.ts
+pylabrobot.liquid_handling.liquid_handler.LiquidHandler	legacy_fallback_only	yes	pylabrobot.legacy.liquid_handling.liquid_handler.LiquidHandler			1	tests/core/test_workcell_runtime.py
+pylabrobot.non_existent.Class	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.non_existent'		1	tests/backend/services/test_introspection.py
+pylabrobot.plate_peeling.Peeler	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.plate_peeling'		3	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.plate_peeling.backends.ChatterboxBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.plate_peeling'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.plate_reading.chatterbox.PlateReaderChatterboxBackend	legacy_fallback_only	yes	pylabrobot.legacy.plate_reading.chatterbox.PlateReaderChatterboxBackend			1	tests/core/test_workcell_runtime.py
+pylabrobot.plate_sealing.Sealer	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.plate_sealing'		3	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.plate_sealing.backends.ChatterboxBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.plate_sealing'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.pumping.Pump	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.pumping'		3	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.pumping.PumpArray	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.pumping'		3	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.pumping.backends.ChatterboxBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.pumping'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.Container	clean					1	web-repl/overlay/assets/python/web_bridge.py
+pylabrobot.resources.Deck	clean					9	praxis/backend/core/precondition_resolver.py,praxis/backend/core/scheduler_core.py,praxis/backend/utils/plr_inspection/validation.py,praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts,tests/backend/core/test_consumable_assignment.py,tests/backend/core/workcell_runtime/test_machine_manager.py,tests/core/test_asset_manager.py,tests/core/test_scheduler.py,web-repl/overlay/assets/python/web_bridge.py
+pylabrobot.resources.HamiltonSTARDeck	clean					1	tests/core/test_precondition_resolver.py
+pylabrobot.resources.Plate	clean					17	praxis/backend/core/deck_config.py,praxis/backend/models/domain/asset.py,praxis/backend/models/domain/protocol.py,praxis/backend/tests/api/test_resource_filtering.py,praxis/web-client/src/app/core/api-generated/models/MachineCreate.ts,praxis/web-client/src/app/features/run-protocol/components/parameter-config/parameter-config.component.spec.ts,praxis/web-client/src/app/features/run-protocol/services/carrier-inference.service.spec.ts,praxis/web-client/src/app/features/run-protocol/services/deck-generator.service.spec.ts,praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.spec.ts,praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts,praxis/web-client/src/assets/api/openapi.json,praxis/web-client/src/assets/browser-data/plr-resource-definitions.json
+pylabrobot.resources.Reservoir	unresolvable	no		AttributeError: module 'pylabrobot.resources' has no attribute 'Reservoir'		1	tests/backend/core/test_consumable_assignment.py
+pylabrobot.resources.Resource	clean					3	praxis/backend/utils/plr_inspection/validation.py,praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts,web-repl/overlay/assets/python/web_bridge.py
+pylabrobot.resources.ResourceStack	clean				resource_definitions.description	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.TipRack	clean					8	praxis/backend/tests/api/test_resource_filtering.py,praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts,praxis/web-client/src/assets/browser-data/plr-resource-definitions.json,praxis/web-client/src/assets/demo-data/plr-resource-definitions.json,tests/backend/core/test_consumable_assignment.py,tests/core/test_precondition_resolver.py,tests/models/test_domain/test_asset_requirement.py,web-repl/overlay/assets/python/web_bridge.py
+pylabrobot.resources.Trough	clean					3	praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts,tests/backend/core/test_consumable_assignment.py,web-repl/overlay/assets/python/web_bridge.py
+pylabrobot.resources.Tube	clean					1	tests/backend/core/test_consumable_assignment.py
+pylabrobot.resources.TubeRack	clean					3	praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts,praxis/web-client/src/assets/demo-data/plr-resource-definitions.json,web-repl/overlay/assets/python/web_bridge.py
+pylabrobot.resources.Well	clean					2	praxis/backend/utils/plr_static_analysis/type_annotation_analyzer.py,tests/backend/core/test_consumable_assignment.py
+pylabrobot.resources.agenbio.plates.AGenBio_1_troughplate_100000uL_Fl	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.agenbio.plates.AGenBio_1_troughplate_190000uL_Fl	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.agenbio.plates.AGenBio_1_wellplate_Fl	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.agenbio.plates.AGenBio_4_troughplate_75000_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.agenbio.plates.AGenBio_4_troughplate_75000uL_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.agenbio.plates.AGenBio_96_wellplate_Ub_2200ul	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.agenbio.plates.agenbio_1_troughplate_100mL_Fl	clean				resource_definitions.fqn	0	
+pylabrobot.resources.agenbio.plates.agenbio_1_troughplate_190mL_Fl	clean				resource_definitions.fqn	0	
+pylabrobot.resources.agenbio.plates.agenbio_4_troughplate_75mL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.agenbio.plates.agenbio_96_wellplate_Ub_2200uL	clean				resource_definitions.fqn	0	
+pylabrobot.resources.agilent.Agilent_1_reservoir_290ml	unresolvable	no		AttributeError: module 'pylabrobot.resources.agilent' has no attribute 'Agilent_1_reservoir_290ml'		1	praxis/web-client/src/assets/browser-data/resources.ts
+pylabrobot.resources.agilent.plates.Agilent_2_reservoir_144mL_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.agilent.plates.agilent_2_reservoir_144mL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.agilent.plates.agilent_96_wellplate_150uL_Ub	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.agilent.plates.agilent_96_wellplate_150uL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.agilent.troughs.Agilent_1_reservoir_290ml	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.agilent.troughs'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.alpaqua.tube_racks.alpaqua_12_tuberack_5mL_eppis	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.azenta.plates.Azenta4titudeFrameStar_96_wellplate_200ul_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.azenta.plates.azenta_96_wellplate_200uL_Vb_4titudeframestar	clean				resource_definitions.fqn	0	
+pylabrobot.resources.bioer.plates.BioER_96_wellplate_Vb_2200uL	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.bioer.plates.bioer_96_wellplate_2200uL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.biorad.plates.BioRad_384_wellplate_50uL_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.biorad.plates.BioRad_96_PCR	unresolvable	no		AttributeError: module 'pylabrobot.resources.biorad.plates' has no attribute 'BioRad_96_PCR'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.biorad.plates.biorad_384_wellplate_50uL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.biorad.plates.biorad_96_wellplate_200uL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.btx.plates.BTX_96_wellplate_125ul_Fb_2mm	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.btx.plates.btx_96_wellplate_125uL_Fb_2mm	clean				resource_definitions.fqn	0	
+pylabrobot.resources.carrier.Carrier	clean					2	praxis/web-client/src/assets/browser-data/plr-resource-definitions.json,praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.carrier.MFXCarrier	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.carrier.PlateCarrier	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.carrier.PlateHolder	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.carrier.TipCarrier	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.carrier.TroughCarrier	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.carrier.TubeCarrier	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.celltreat.plates.CellTreat_12_troughplate_15000ul_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.CellTreat_24_wellplate_3300ul_Fb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.CellTreat_24_wellplate_3300ul_Fb_Lid	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.CellTreat_6_wellplate_16300ul_Fb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.CellTreat_6_wellplate_16300ul_Fb_Lid	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.CellTreat_96_wellplate_350ul_Fb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.CellTreat_96_wellplate_350ul_Ub	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.CellTreat_96_wellplate_350ul_Ub_Lid	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.celltreat_12_troughplate_15mL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.celltreat_24_wellplate_3300uL_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.celltreat_24_wellplate_3300uL_Fb_lid	clean				resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.celltreat_6_wellplate_16300uL_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.celltreat_6_wellplate_16300uL_Fb_lid	clean				resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.celltreat_96_wellplate_350uL_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.celltreat_96_wellplate_350uL_Ub	clean				resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.plates.celltreat_96_wellplate_350uL_Ub_lid	clean				resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.tubes.celltreat_15000ul_centrifuge_tube_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.celltreat.tubes.celltreat_tube_15mL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.cellvis.plates.CellVis_24_wellplate_3600uL_Fb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.cellvis.plates.CellVis_24_wellplate_3600uL_Fb_Lid	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.cellvis.plates.CellVis_96_wellplate_350uL_Fb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.cellvis.plates.CellVis_96_wellplate_350uL_Fb_Lid	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.cellvis.plates.cellvis_24_wellplate_3600uL_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.cellvis.plates.cellvis_24_wellplate_3600uL_Fb_lid	clean				resource_definitions.fqn	0	
+pylabrobot.resources.cellvis.plates.cellvis_96_wellplate_350uL_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.cellvis.plates.cellvis_96_wellplate_350uL_Fb_lid	clean				resource_definitions.fqn	0	
+pylabrobot.resources.container.Container	clean				resource_definitions.description	2	praxis/web-client/src/assets/browser-data/plr-resource-definitions.json,praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.container_rack.ContainerRack	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.corning.Cor_96_wellplate	unresolvable	no		AttributeError: module 'pylabrobot.resources.corning' has no attribute 'Cor_96_wellplate'		1	tests/backend/core/test_consumable_assignment.py
+pylabrobot.resources.corning.Cor_96_wellplate_360ul_Fb	deprecated_alias	yes				2	tests/backend/core/test_consumable_assignment.py,tests/backend/core/test_deck_config.py
+pylabrobot.resources.corning.Corning_96_DWP	unresolvable	no		AttributeError: module 'pylabrobot.resources.corning' has no attribute 'Corning_96_DWP'		1	praxis/web-client/src/app/features/assets/services/asset.service.resolve.spec.ts
+pylabrobot.resources.corning.axygen.plates.Cor_Axy_24_wellplate_10mL_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.axygen.plates.Cor_Axy_96_wellplate_500uL_Ub	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.axygen.plates.cor_axy_1_troughplate_rowVb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.axygen.plates.cor_axy_24_wellplate_10mL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.axygen.plates.cor_axy_96_wellplate_500uL_Ub	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.costar.plates.Cor_Cos_12_wellplate_6900ul_Fb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.costar.plates.Cor_Cos_24_wellplate_3470ul_Fb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.costar.plates.Cor_Cos_48_wellplate_1620ul_Fb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.costar.plates.Cor_Cos_6_wellplate_16800ul_Fb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.costar.plates.Cor_Cos_6_wellplate_16800ul_Fb_Lid	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.costar.plates.cor_cos_12_wellplate_6900uL_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.costar.plates.cor_cos_24_wellplate_3470uL_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.costar.plates.cor_cos_48_wellplate_1620uL_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.costar.plates.cor_cos_6_wellplate_16800uL_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.costar.plates.cor_cos_6_wellplate_16800uL_Fb_lid	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.falcon.plates.Cor_Falcon_96_wellplate_250ul_Rb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.falcon.plates.Cor_Falcon_96_wellplate_275ul_Fb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.falcon.plates.Cor_Falcon_96_wellplate_340ul_Fb_Black	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.falcon.plates.cor_falcon_96_wellplate_250uL_Rb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.falcon.plates.cor_falcon_96_wellplate_275uL_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.falcon.plates.cor_falcon_96_wellplate_340uL_Fb_black	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.falcon.tubes.Cor_Falcon_tube_14mL_Rb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.falcon.tubes.Cor_Falcon_tube_15mL_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.falcon.tubes.Cor_Falcon_tube_50mL_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.falcon.tubes.Falcon_15mL	unresolvable	no		AttributeError: module 'pylabrobot.resources.corning.falcon.tubes' has no attribute 'Falcon_15mL'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.corning.falcon.tubes.Falcon_50mL	unresolvable	no		AttributeError: module 'pylabrobot.resources.corning.falcon.tubes' has no attribute 'Falcon_50mL'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.corning.falcon.tubes.cor_falcon_tube_14mL_Rb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.falcon.tubes.cor_falcon_tube_15mL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.falcon.tubes.cor_falcon_tube_50mL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.plates.Cor_96	unresolvable	no		AttributeError: module 'pylabrobot.resources.corning.plates' has no attribute 'Cor_96'		1	praxis/backend/services/resource_type_validation.py
+pylabrobot.resources.corning.plates.Cor_96_wellplate_2mL_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.plates.Cor_96_wellplate_360ul_Fb	deprecated_alias	yes			resource_definitions.fqn	1	praxis/backend/core/deck_config.py
+pylabrobot.resources.corning.plates.Cor_96_wellplate_360ul_Fb_Lid	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.corning.plates.cor_96_wellplate_2mL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.plates.cor_96_wellplate_360uL_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning.plates.cor_96_wellplate_360uL_Fb_lid	clean				resource_definitions.fqn	0	
+pylabrobot.resources.corning_costar.Corning_96_CorningWellPlate	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.corning_costar'		1	tests/models/test_domain/test_asset_requirement.py
+pylabrobot.resources.corning_costar.Corning_96_Wellplate_360ul_Flat	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.corning_costar'		1	praxis/web-client/e2e/fixtures/seed-data.ts
+pylabrobot.resources.corning_costar.Corning_96_wellplate_360ul_Flat	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.corning_costar'		1	praxis/web-client/src/assets/browser-data/resources.ts
+pylabrobot.resources.corning_costar.Costar_96_CorningWellPlate_360uL_Vb	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.corning_costar'		1	tests/models/test_domain/test_resource_definition.py
+pylabrobot.resources.corning_costar.plates.Cor_384_wellplate_112ul_Fb	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.corning_costar'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.corning_costar.plates.Cor_96_wellplate_360ul_Fb	toplevel_name_fallback_only	no				2	praxis/web-client/src/app/core/utils/plr-validator.spec.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.corning_costar.plates.Cor_96_wellplate_Vb	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.corning_costar'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.deck.Deck	clean					2	praxis/web-client/src/assets/browser-data/plr-resource-definitions.json,praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.end_effector.MechanicalGripper	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.eppendorf.plates.Epp_96_DWP_1mL	unresolvable	no		AttributeError: module 'pylabrobot.resources.eppendorf.plates' has no attribute 'Epp_96_DWP_1mL'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.eppendorf.plates.Eppendorf_96_wellplate_250ul_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.eppendorf.plates.eppendorf_96_wellplate_1000ul_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.eppendorf.plates.eppendorf_96_wellplate_500ul_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.eppendorf.tubes.Eppendorf_1_5mL	unresolvable	no		AttributeError: module 'pylabrobot.resources.eppendorf.tubes' has no attribute 'Eppendorf_1_5mL'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.eppendorf.tubes.Eppendorf_2mL	unresolvable	no		AttributeError: module 'pylabrobot.resources.eppendorf.tubes' has no attribute 'Eppendorf_2mL'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.eppendorf.tubes.Eppendorf_DNA_LoBind_1_5ml_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.eppendorf.tubes.Eppendorf_DNA_LoBind_2ml_Ub	clean				resource_definitions.fqn	0	
+pylabrobot.resources.eppendorf.tubes.Eppendorf_Protein_LoBind_1_5ml_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.eppendorf.tubes.eppendorf_tube_1500uL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.eppendorf.tubes.eppendorf_tube_5mL_Vb_snapcap	clean				resource_definitions.fqn	0	
+pylabrobot.resources.generic.troughs.Generic_1_trough_100ml	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.generic'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.greiner.Greiner_96_wellplate_U_bottom	unresolvable	no		AttributeError: module 'pylabrobot.resources.greiner' has no attribute 'Greiner_96_wellplate_U_bottom'		1	praxis/web-client/src/assets/browser-data/resources.ts
+pylabrobot.resources.greiner.plates.Gre_384_Sq_Fb	unresolvable	no		AttributeError: module 'pylabrobot.resources.greiner.plates' has no attribute 'Gre_384_Sq_Fb'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.greiner.plates.Gre_96_DWP_2mL_Rb	unresolvable	no		AttributeError: module 'pylabrobot.resources.greiner.plates' has no attribute 'Gre_96_DWP_2mL_Rb'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.greiner.plates.Gre_96_Fl_Fb	unresolvable	no		AttributeError: module 'pylabrobot.resources.greiner.plates' has no attribute 'Gre_96_Fl_Fb'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.greiner.plates.Greiner_384	unresolvable	no		AttributeError: module 'pylabrobot.resources.greiner.plates' has no attribute 'Greiner_384'		1	praxis/web-client/src/app/features/playground/playground.component.ts
+pylabrobot.resources.greiner.plates.Greiner_384_wellplate_28ul_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.greiner.plates.greiner_96_wellplate_200uL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.HamiltonSTARDeck	clean				deck_definition_catalog.fqn	9	praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.spec.ts,praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts,praxis/web-client/src/app/features/run-protocol/services/deck-generator.service.spec.ts,praxis/web-client/src/environments/environment.browser.ts,praxis/web-client/src/environments/environment.gh-pages.ts,praxis/web-client/src/environments/environment.prod.ts,praxis/web-client/src/environments/environment.ts,scripts/generate_browser_db.py,tests/backend/core/test_deck_config.py
+pylabrobot.resources.hamilton.Hamilton_8ch_trough_100ml	unresolvable	no		AttributeError: module 'pylabrobot.resources.hamilton' has no attribute 'Hamilton_8ch_trough_100ml'		1	praxis/web-client/src/assets/browser-data/resources.ts
+pylabrobot.resources.hamilton.PLT_CAR_L5AC_A00	deprecated_alias	yes				1	praxis/web-client/src/assets/browser-data/resources.ts
+pylabrobot.resources.hamilton.STARDeck	clean					2	praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.spec.ts,praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts
+pylabrobot.resources.hamilton.STARLetDeck	clean				deck_definition_catalog.fqn	3	praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts,praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts,scripts/generate_browser_db.py
+pylabrobot.resources.hamilton.STARlet.STARLetDeck	toplevel_name_fallback_only	no				1	praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts
+pylabrobot.resources.hamilton.TIP_CAR_480BC_A00	deprecated_alias	yes				1	praxis/web-client/src/assets/browser-data/resources.ts
+pylabrobot.resources.hamilton.TIP_CAR_480BC_HT_A00	unresolvable	no		AttributeError: module 'pylabrobot.resources.hamilton' has no attribute 'TIP_CAR_480BC_HT_A00'		1	praxis/web-client/src/assets/browser-data/resources.ts
+pylabrobot.resources.hamilton.TipRack_96_1000ul	unresolvable	no		AttributeError: module 'pylabrobot.resources.hamilton' has no attribute 'TipRack_96_1000ul'		1	praxis/web-client/e2e/fixtures/seed-data.ts
+pylabrobot.resources.hamilton.VantageDeck	clean				deck_definition_catalog.fqn	1	scripts/generate_browser_db.py
+pylabrobot.resources.hamilton.carriers.PLT_CAR_L5AC_A00	toplevel_name_fallback_only	no				2	praxis/web-client/src/app/core/utils/plr-validator.spec.ts,praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.hamilton.carriers.TIP_CAR_288_A00	toplevel_name_fallback_only	no				1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.hamilton.carriers.TIP_CAR_480_A00	toplevel_name_fallback_only	no				1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.hamilton.core_gripper_tools.HamiltonCoreGripperTool	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.hamilton.core_grippers.HamiltonCoreGrippers	clean				resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.hamilton.hamilton_decks.HamiltonDeck	clean				deck_definition_catalog.fqn,resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.hamilton.hamilton_decks.HamiltonSTARDeck	clean					2	praxis/backend/core/deck_config.py,praxis/web-client/src/assets/browser-data/plr-resource-definitions.json
+pylabrobot.resources.hamilton.hamilton_decks.STARDeck	clean					1	scripts/generate_browser_db.py
+pylabrobot.resources.hamilton.hamilton_decks.STARLetDeck	clean					2	praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts,scripts/generate_browser_db.py
+pylabrobot.resources.hamilton.hamilton_tool.HamiltonTool	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.hamilton.mfx_carriers.MFX_CAR_L5_base	deprecated_alias	yes				1	praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts
+pylabrobot.resources.hamilton.nimbus_decks.NimbusDeck	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4HD	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_B00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_B00_4x5_Nunc96	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_C00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_HIGH_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_HIGH_A00_4x5_Nunc96	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_LOW_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4ST_LOW_A00_4x9_Nunc96	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L4_HHS_ALT_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC_A00	deprecated_alias	yes			resource_definitions.fqn	3	praxis/web-client/src/app/features/run-protocol/models/deck-layout.models.ts,praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts,praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.spec.ts
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5AC_P_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5FLEX_AC	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5FLEX_AC_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5FLEX_MD_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5MD	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5MD_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5PCR	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5PCR_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5PCR_A01	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5_ALT_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_L5_DWP	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3AC_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3AC_A01	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3HD	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3LI_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3MD	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3MD_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.PLT_CAR_P3MD_A01	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.plate_carriers.hamilton_plate_carrier_L5_ac	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.prep_decks.PrepDeck	clean				deck_definition_catalog.fqn,resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.hamilton.star_decks.HamiltonSTARDeck	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.hamilton.star_decks.STARDeck	clean				deck_definition_catalog.fqn,resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.star_decks.STARLetDeck	clean				deck_definition_catalog.fqn,resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.star_decks.STARPlusDeck	clean				deck_definition_catalog.fqn,resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_120BC_4mlTF_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_120BC_5mlT_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_288_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_288_B00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_288_C00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_384BC_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_384_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480BC_A00	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_480_A00	deprecated_alias	yes			resource_definitions.fqn	1	praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_72_4mlTF_C00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_72_5mlT_C00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_96BC_4mlTF_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_96BC_5mlT_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.TIP_CAR_NTR_A00	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.hamilton_tip_carrier_L5	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_carriers.hamilton_tip_carrier_L5_ntr_a00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_creators.HamiltonTip	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.hamilton.tip_racks.hamilton_24_tiprack_4000uL_filter	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tip_racks.hamilton_24_tiprack_5000uL	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.tips.HT_P_1000uL_NTR_96	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.hamilton.tips'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.hamilton.tips.HT_P_300uL_NTR_96	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.hamilton.tips'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.hamilton.tips.HT_P_50uL_F_96	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.hamilton.tips'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.hamilton.trough_carriers.Trough_CAR_4R200_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.trough_carriers.Trough_CAR_5R60_A00	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.troughs.Hamilton_1_trough_200ml_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.troughs.hamilton_1_trough_120mL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.troughs.hamilton_1_trough_200mL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.troughs.hamilton_1_trough_200ml_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.troughs.hamilton_1_trough_60mL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.troughs.hamilton_1_trough_60ml_Vb	deprecated_alias	yes			resource_definitions.fqn	0	
+pylabrobot.resources.hamilton.vantage_decks.VantageDeck	clean					3	praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts,praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts,praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.head_tool.HeadTool	clean				resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.imcs.tip_racks.imcs_96_tiprack_1000uL_filter	clean				resource_definitions.fqn	0	
+pylabrobot.resources.imcs.tip_racks.imcs_96_tiprack_300uL_filter	clean				resource_definitions.fqn	0	
+pylabrobot.resources.itemized_resource.ItemizedResource	clean					2	praxis/web-client/src/assets/browser-data/plr-resource-definitions.json,praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.lid.Lid	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.lid.Liddable	clean				resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.manipulator.LinkBody	clean				resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.n_channel_pipettes.NChannelPipette	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.n_channel_pipettes.TipMountingShaft	clean				resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.nest.plates.NEST_96_wellplate_2200uL_Ub	clean				resource_definitions.fqn	0	
+pylabrobot.resources.nest.plates.nest_12_troughplate_15000uL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.nest.plates.nest_1_troughplate_185000uL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.nest.plates.nest_1_troughplate_195000uL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.nest.plates.nest_8_troughplate_22000uL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.nest.troughs.Nest_12_reservoir_15ml	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.nest.troughs'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.non_existent.Carrier	toplevel_name_fallback_only	no				1	praxis/web-client/src/app/core/utils/plr-validator.spec.ts
+pylabrobot.resources.opentrons.OTDeck	clean				deck_definition_catalog.fqn	2	praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts,scripts/generate_browser_db.py
+pylabrobot.resources.opentrons.deck.OTDeck	clean				deck_definition_catalog.fqn,resource_definitions.fqn	4	praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.spec.ts,praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts,praxis/web-client/src/app/features/run-protocol/services/deck-generator.service.spec.ts,praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.opentrons.flex_deck.FlexDeck	clean				deck_definition_catalog.fqn,resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.opentrons.opentrons_96_tiprack_20ul	clean					1	praxis/web-client/src/assets/browser-data/resources.ts
+pylabrobot.resources.opentrons.opentrons_96_tiprack_300ul	clean					1	praxis/web-client/src/assets/browser-data/resources.ts
+pylabrobot.resources.opentrons.tip_racks.opentrons_96_tiprack_1000ul	clean					1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.opentrons.tip_racks.opentrons_96_tiprack_20ul	clean					1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.opentrons.tip_racks.opentrons_96_tiprack_300ul	clean					1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.perkin_elmer.plates.PerkinElmer_96_wellplate_400ul_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.petri_dish.PetriDish	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.petri_dish.PetriDishHolder	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.plate.Plate	clean				resource_definitions.description	3	praxis/web-client/src/assets/browser-data/plr-resource-definitions.json,praxis/web-client/src/assets/demo-data/plr-resource-definitions.json,tests/core/test_workcell_runtime.py
+pylabrobot.resources.plate_adapter.PlateAdapter	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.plates.Cos_96_Well	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.plates'		1	praxis/web-client/src/app/features/assets/services/asset.service.spec.ts
+pylabrobot.resources.porvair.plates.Porvair_24_wellplate_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.porvair.plates.Porvair_6_reservoir_47ml_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.resource.Resource	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.resource_holder.ResourceHolder	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.resource_stack.ResourceStack	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.revvity.plates.Revvity_384_wellplate_28ul_Ub	clean				resource_definitions.fqn	0	
+pylabrobot.resources.stanley.cups.StanleyCup_QUENCHER_FLOWSTATE_TUMBLER	clean				resource_definitions.fqn	0	
+pylabrobot.resources.tecan.carriers.DiTi_4Pos	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.tecan.carriers'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.tecan.carriers.MP_3Pos_Fixed	toplevel_name_fallback_only	no				1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.tecan.plate_carriers.MP_3Pos	clean					1	praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts
+pylabrobot.resources.tecan.plate_carriers.MP_4Pos	clean					1	praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts
+pylabrobot.resources.tecan.plate_carriers.TecanPlateCarrier	clean				resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tecan.plates.TecanPlate	clean				resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tecan.tecan_decks.EVO100Deck	clean					2	praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts,praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts
+pylabrobot.resources.tecan.tecan_decks.EVO150Deck	clean					2	praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts,praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts
+pylabrobot.resources.tecan.tecan_decks.EVO200Deck	clean					2	praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts,praxis/web-client/src/app/features/run-protocol/services/wizard-state.service.ts
+pylabrobot.resources.tecan.tecan_decks.TecanDeck	clean				deck_definition_catalog.fqn,resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tecan.tecan_resource.TecanResource	clean				resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tecan.tip_carriers.DiTi_3Pos	clean					1	praxis/web-client/src/app/features/run-protocol/services/deck-catalog.service.ts
+pylabrobot.resources.tecan.tip_carriers.TecanTipCarrier	clean				resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tecan.tip_creators.TecanTip	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tecan.tip_racks.TecanTipRack	clean				resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tecan.tips.Tecan_DiTi_1000ul	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.tecan.tips'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.tecan.tips.Tecan_DiTi_200ul	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.tecan.tips'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.tecan.trash.TecanTrash	clean				resource_definitions.fqn	0	
+pylabrobot.resources.tecan.wash.TecanWashStation	clean				resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.thermo_fisher.plates.Thermo_384_Nunc_Fb	unresolvable	no		AttributeError: module 'pylabrobot.resources.thermo_fisher.plates' has no attribute 'Thermo_384_Nunc_Fb'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.thermo_fisher.plates.Thermo_96_Nunc_Fb	unresolvable	no		AttributeError: module 'pylabrobot.resources.thermo_fisher.plates' has no attribute 'Thermo_96_Nunc_Fb'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.thermo_fisher.plates.Thermo_AB_96_wellplate_300ul_Vb_EnduraPlate	clean				resource_definitions.fqn	0	
+pylabrobot.resources.thermo_fisher.plates.Thermo_Nunc_96_well_plate_1300uL_Rb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.thermo_fisher.plates.Thermo_TS_96_wellplate_1200ul_Rb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.thermo_fisher.plates.Thermo_TS_Nunc_96_wellplate_300uL_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.thermo_fisher.plates.Thermo_TS_Nunc_96_wellplate_300uL_Fb_Lid	clean				resource_definitions.fqn	0	
+pylabrobot.resources.thermo_fisher.plates.thermo_AB_384_wellplate_40uL_Vb_MicroAmp	clean				resource_definitions.fqn	0	
+pylabrobot.resources.thermo_fisher.plates.thermo_AB_96_wellplate_300ul_Vb_MicroAmp	clean				resource_definitions.fqn	0	
+pylabrobot.resources.thermo_fisher.plates.thermo_TS_nalgene_1_troughplate_300mL_Fb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.thermo_fisher.plates.thermo_nunc_1_troughplate_90000uL_Fb_omnitray	clean				resource_definitions.fqn	0	
+pylabrobot.resources.thermo_fisher.troughs.ThermoFisherMatrixTrough8094	clean				resource_definitions.fqn	0	
+pylabrobot.resources.tip.Tip	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tip_rack.EmbeddedTipRack	clean				resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tip_rack.NestedTipRack	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tip_rack.StandingTipRack	clean				resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tip_rack.TipRack	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tip_rack.TipSpot	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tip_rack_holder.EmbeddedTipRackHolder	clean				resource_definitions.fqn	1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.trash.Trash	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.trough.Trough	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tube.Tube	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.tube_rack.TubeRack	clean					1	praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.resources.usascientific.troughs.USA_Scientific_12_reservoir_22ml	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.usascientific'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
+pylabrobot.resources.ver.Ver_96_wellplate_360ul_Fb	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.resources.ver'		1	tests/backend/core/test_deck_config.py
+pylabrobot.resources.vwr.plates.VWR_1_troughplate_195000uL_Ub	clean				resource_definitions.fqn	0	
+pylabrobot.resources.vwr.plates.VWR_96_wellplate_2mL_Vb	clean				resource_definitions.fqn	0	
+pylabrobot.resources.vwr.troughs.VWRReagentReservoirs25mL	clean				resource_definitions.fqn	0	
+pylabrobot.resources.well.Well	clean					2	praxis/web-client/src/assets/browser-data/plr-resource-definitions.json,praxis/web-client/src/assets/demo-data/plr-resource-definitions.json
+pylabrobot.scara.SCARA	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.scara'	machine_frontend_definitions.fqn	3	praxis/backend/utils/plr_static_analysis/models.py,praxis/web-client/src/assets/browser-data/plr-definitions.ts,scripts/generate_browser_db.py
+pylabrobot.scara.backends.ChatterboxBackend	unresolvable	no		ModuleNotFoundError: No module named 'pylabrobot.scara'		1	praxis/web-client/src/assets/browser-data/plr-definitions.ts
