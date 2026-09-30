@@ -20,7 +20,8 @@ adversarial_review: ''
 > `REASON_VOCABULARY` gets no new member, and no new registry row is added (L0).
 >
 > **Status: revision r3 — adversarial review converged** (rounds 1–3 REVISE, round 4 ACCEPT: ready
-> for implementation; the revision log is §18.17). Owner ruling still pending on OI-21 (A-CALLBACK-INERT). Where this document asserts a number it names the file it
+> for implementation; the revision log is §18.17). Final: the owner ruled on OI-21 and OI-4 on 260929
+> (§18.17, "Final (owner rulings)"). Where this document asserts a number it names the file it
 > was read from. Where a claim is reasoned from reading source rather than measured, it says
 > *(reasoned)*. The recon's *(exploratory)* numbers are **not** evidence here and are quoted only as
 > labelled expectations. The owner's locked decisions L0–L7 (§18.2) are inputs, not open questions.
@@ -397,8 +398,8 @@ candidate is resolved as follows:
 >   field.
 > - **(b) Assumed.** The **downstream** state-update callbacks registered on the liquid handler by user
 >   code do not write a head tracker's state. This is not checkable from PLR source. It is recorded as
->   **A-CALLBACK-INERT** in OI-21. It is not added to §10.6.3's table in r2, because the owner has not
->   ruled on it.
+>   **A-CALLBACK-INERT**. The owner accepted it on 260929 (OI-21). Its row text is fixed in §18.5.5,
+>   and T61 adds it to increment 1's §10.6.3 assumption table together with A-RACK-STATIC.
 
 > **Why direct methods only is sound for the channel trackers, and where it stops being.** The head
 > trackers are constructed by **name** as exactly `C`. R-C requires this through increment 3's
@@ -1001,7 +1002,7 @@ inlined `:338` record in the shipped 1.0 table carries `caller_args: null` and `
 (read this session in `plr-sema/data/derived_contracts.json`). A hand-typed name is forbidden by L0 and
 would be a second HM-26 unit. The residual case is a program that constructs its own off-deck
 `TipRack` and reaches this rule. It moves to OI-3, where a derived argument binding for module-level
-delegates is recorded as the follow-up that would close it.
+delegates is recorded as the follow-up that would close it (backlog #5663).
 
 ### 18.5.4 Rack-topology stability — the move-family conjunct
 
@@ -1083,9 +1084,14 @@ explicitly.
 |---|---|---|---|
 | **A-RACK-STATIC** (added 260929, §18.5.5; r1) | between the observation capture point and an operation, a `TipRack`'s lid and stack position change only through a topology-disturbing call (§18.5.4) | the `:338` site rule reads a pre-execution observation (§18.5.2) | a non-move-family `LiquidHandler` method that places a lid on, or stacks onto, a tip rack before a pickup gives `SAFE` at `:338` where PLR raises `ValueError`, which is unsound. **Known fail-open edge (r1, M5):** a method whose P6 net effect is `"TOP"` (P6 declined) is treated as non-disturbing. The shipped-table family pin (AC-18.11(i)) catches a known member decaying to `"TOP"`, but not an unknown method that moves resources while being `"TOP"`. **Checked on the corpus** by the unmodified tier-1 fence, and given one **hand-built** adversarial witness per disturber class in AC-18.11(d)(e)(f). The in-run m3 mutant (§18.9) exercises only the **observation** conjunct, not this frame condition (r2, C16) |
 
-This row is added to increment 1's §10.6.3 table, taking it from five rows to **six**.
+| **A-CALLBACK-INERT** (added 260929, PLR 1.0 tip-effect increment §18.4.3, owner ruling on OI-21) | a state-update callback reached from a head tracker's `commit` does not write any head tracker's tip state | the §18 effect derivation does not follow `commit`'s `self._callback()`, because `_callback` is an instance attribute, not a method, so any tracker write made through a callback would be invisible to it | **checked at the pin** (AC-18.2(q)): every `register_callback` argument in `LiquidHandler` is `self._state_updated`, which resolves to `Resource._state_updated`, a notifier that only passes `serialize_state()` to its registered callbacks. **Assumed, not checkable from PLR source:** the user-registered downstream state-update callbacks do not write a head tracker. If one does, a method judged `UNTOUCHED` or `HAS_TIP`/`NO_TIP` could leave a different tip state than the walk records, and both a false `SAFE` and a false `WILL_FAIL` become possible. Follow-up, backlog #5661 (outside #5622): any analysed protocol that registers its own state-update callback makes tip state `UNKNOWN`, which turns this assumption into a check |
+
+**Both rows are added to increment 1's §10.6.3 table by T61, copied verbatim from this table**, so that
+table goes from five rows to **seven**. The same task moves
 `test_ac_16_13_a_deck_object_assumption_table_has_five_rows`
-(`plr-sema/tests/test_check_graph.py:1534-1547`) moves to six in the same commit (T61).
+(`plr-sema/tests/test_check_graph.py:1534-1547`) to seven. The rows are deliberately **not** added to
+increment 1 by the spec finalization itself: doing so before T61 would leave that test red on `main`
+from the moment the spec merged.
 
 ### 18.5.6 HM-26 bookkeeping — a ceiling change, not a row
 
@@ -1159,10 +1165,11 @@ and T62's gate runs both files (r1, M9).
     implementing symbols and exercises them against a synthetic three-hop chain, asserting the derived
     `HAS_TIP`. **If the measured count is not exactly 13, T57 STOPS and asks, per the row's standing
     contingency.**
-  - **The zero-cost alternative is recorded and not taken:** argue that R-A/R-B extend P4, which has
-    never been on a registry row. That argument is available, and OI-4 asks the owner to choose between
-    the two. Neither option adds a row or changes `BUDGET_CAP`. **T57's default is the booking option
-    (HM-25 12 → 13) unless the owner says otherwise** (r1).
+  - **Owner ruling 260929 (OI-4): book HM-25 12 → 13.** A zero-cost alternative was considered and
+    declined: it argued that R-A/R-B extend P4, which has never been on a registry row. It was declined
+    because R-A and R-C(2) are patterns over how PLR is written, which is exactly the class of fact
+    whose silent breakage caused this regression. The booking adds no row and does not change
+    `BUDGET_CAP`.
 - **R-E: zero cost.** It is a set difference over P1a/P2 outputs, with no pattern, no literal and no
   table.
 - **The move-family predicate of §18.5.4: zero cost.** It reads P6's already-published
@@ -1371,6 +1378,53 @@ It uses **`bth`, not `uv run bth`**, and the wrapped form, so the project venv i
 verified **by its record**: `bth compact` first, then `bth sql` on `status, outcome, exit_code`. It is
 never verified by exit code or console text.
 
+**Preemption-safe and resumable by design (owner rule, finalization 260929).** This governs how the
+run is **scheduled**. It **never** changes the `[outcomes]` criteria.
+
+- **Units of work.** There are seven, each a separate unit: the two arms (`real`, `all_safe`) and the
+  five mutant classes (`m1`, `m2`, `p3a`, `m3`, `v1`).
+  - To run the `tip_mutants` classes one at a time, T63 adds a `--classes` filter to
+    `tip_mutants.py`; the default (all classes) keeps its current behaviour. `v1` is
+    `volume_mutants.py`'s only class.
+  - The `real` unit's output also persists its three sink captures (findings, lowered `bc`, and the
+    wrapped `observation_env_members` list). The `:338` attribution and the independent scan can then
+    be recomputed from disk without re-running the arm.
+- **Persist on completion.** Each unit writes its own output file under the run's `--out-dir`
+  (`units/<unit>.json`) as soon as it finishes, followed by a completion stamp
+  (`units/<unit>.stamp.json`). The stamp records:
+  - the unit name;
+  - the input hashes: sha256 of `plr-sema/data/derived_contracts.json`, of each corpus file, of the
+    sidecar input and of each crosscheck file, plus the git `HEAD` sha;
+  - the sha256 of the unit's output file.
+
+  The stamp is written only after the output file is fully written and flushed.
+- **Resume.** On re-invocation with the same `--out-dir`, a unit is **reused** only when both hold:
+  its stamp's input hashes equal the current run's, and its output file's sha256 equals the stamp's.
+  Otherwise the unit is **recomputed**. `result.json` carries a `units` block recording, for each
+  unit:
+  - `reused` or `computed`;
+  - the source path;
+  - the input hashes and the output sha256.
+
+  This block is a provenance record, outside `[result_schema]`, so the outcome conditions are
+  untouched.
+- **Bounded blast radius.**
+  - Each unit runs in **its own subprocess with its own timeout**, and there is **no whole-run
+    timeout**.
+  - A unit that times out or crashes leaves every completed unit's files intact, and the run reports
+    that unit as `incomplete`.
+  - All seven units are required. If any is incomplete, **no `result.json` is written**, which is
+    FAIL by construction, the same way as the length-invariant mismatch in item 7.
+  - A re-invocation then recomputes only the incomplete unit or units.
+- **Per-unit timeouts** are a judgement, not derived. They are set at roughly 10× the characterisation
+  run's wall-clock: `fd63e9cd` took about 148 s for its `real` arm (`wall_elapsed_s` in
+  `outputs/plr-sema/plr10_char_260929/real.oracle_replay.json`).
+  - `real` and `all_safe`: **30 min** each.
+  - Each `tip_mutants` class (`m1`, `m2`, `p3a`, `m3`) and `v1`: **30 min** each. They have not been
+    timed at 1.0.
+  - A timeout is recorded with the unit name and elapsed time. It is never retried inside the same
+    invocation.
+
 **The sidecar, as it must be committed** (`plr-sema/eval/plr10_tip_effects_measure.bth.toml`):
 
 ```toml
@@ -1379,6 +1433,17 @@ never verified by exit code or console text.
 # PRE-REGISTERED before any run. Baseline: run fd63e9cd (1.0 floor, 0 scope-SAFE),
 # dd79c4c89 ledger unknown_ledger_260911_volwire (216 scope-SAFE, all pick_up_tips).
 # No number from the #5622 recon's exploratory scripts is evidence for or against this hypothesis.
+#
+# SCHEDULING (owner rule 260929: preemption-safe and resumable; scheduling only, never [outcomes]):
+#   Seven units, each in its own subprocess with its own timeout and no whole-run timeout:
+#   real, all_safe (30 min each) and m1, m2, p3a, m3, v1 (30 min each). The timeouts are a judgement,
+#   about 10x fd63e9cd's ~148 s real-arm wall-clock.
+#   Each unit persists units/<unit>.json as it completes, then units/<unit>.stamp.json holding
+#   {unit, input sha256s (derived_contracts.json, corpus files, sidecar input, crosschecks, git HEAD),
+#   output sha256}.
+#   Re-invocation reuses a unit only if its input hashes AND its output sha256 match; otherwise it
+#   recomputes. result.json records per unit: reused|computed, source path, hashes.
+#   Any required unit incomplete (timeout or crash) => no result.json => FAIL by construction.
 
 [experiment]
 hypothesis = "With spec §18's derived rules (R-A..R-E, L1's effects_unresolved->widen) and the fourth D6 site rule at :338, the analyzer at PLR 1.0.0b1 (a) stays sound and total on the frozen 343-row tier-1 benchmark with a live negative control; (b) fires tip-state WILL_FAIL at the raising index in m1/m2 on every row that raised as expected, above pre-registered floors, never emits a WILL_FAIL where the simulator ran clean in any class (p3a included), keeps the v1 volume direction control, and never calls :338 SAFE on an m3 lidded-rack mutant that raised at :338; (c) recovers pick_up_tips scope-SAFE from 0 to at least 205 of the 216 it had at dd79c4c89, and no other method reaches scope-SAFE; (d) publishes LiquidHandler.load_state channel_effect = 'widen' with exactly one baseline divergence, which is the only intended one; (e) changes no benchmark counter through load_state, which the tier-1 vocabulary never calls; and (f) every :338 decline on a planned pick_up_tips is attributed to exactly one conjunct, and the topology-prefix declines agree with an independent IR scan. p3a's floor is reported, not predicted."
@@ -1838,7 +1903,8 @@ Each criterion names its fixture or artifact field and states what a stub would 
     - The tier-1 fence counts 0 unsound.
     - This is the topology conjunct's runtime witness, since the run's m3 does not exercise it (C16).
   - (g) `n_tip_racks_decided` is published, with `attempted` and `predicted_target`.
-  - (h) A-RACK-STATIC is in increment 1's §10.6.3 table, and the table test asserts **six** rows.
+  - (h) A-RACK-STATIC and A-CALLBACK-INERT are both in increment 1's §10.6.3 table, and the table
+    test asserts **seven** rows.
   - (i) **(r1, M5) The family pin.** The move family computed from the **shipped**
     `plr-sema/data/derived_contracts.json` equals exactly
     `{drop_resource, move_lid, move_plate, move_resource, pick_up_resource}`.
@@ -1868,6 +1934,17 @@ Each criterion names its fixture or artifact field and states what a stub would 
     timestamp.
   - `plr-sema/eval/plr10_tip_effects_measure.py` implements its `[result_schema]` exactly, checked by a
     unit test against the TOML, as `test_plr10_characterize.py` does.
+  - **Resumability (owner rule, finalization 260929).** Three unit tests in
+    `plr-sema/tests/test_plr10_tip_effects_measure.py`, each using stub unit runners so they are cheap:
+    - (a) a unit whose stamp input hashes and output sha256 both match is **reused, not recomputed**.
+      The stub runner asserts it was not called, and `result.json`'s `units` block records `reused`;
+    - (b) a **corrupted output file** (sha256 mismatch) forces recomputation, and so, separately, does
+      a **changed input** (a different `derived_contracts.json` hash);
+    - (c) **killing the run after one unit completes** leaves that unit's output and stamp intact and
+      reusable. The next invocation reuses it and computes only the rest. While any required unit is
+      incomplete, no `result.json` exists.
+    - **Negative control:** a stamp whose input hash differs from the current run's, even with a
+      matching output sha256, **must NOT be reused**. The test fails if the stub runner is not called.
   - The run's bathos record, retrieved by `bth sql` after `bth compact`, has an evaluated `outcome`.
   - The outcome and the full `result.json` are recorded in this document's implementation record,
     whichever branch fired.
@@ -1913,9 +1990,8 @@ Each criterion names its fixture or artifact field and states what a stub would 
 - **AC-18.17 (r2, C12: the HM-25 unit; T57).**
   - HM-25 has `declared == 13` and live 13, and its thirteenth probe exercises a synthetic three-hop
     chain.
-  - **This is conditional on the owner taking OI-4's booking option, which is T57's default.** If the
-    owner takes the zero-cost option, the criterion becomes "HM-25 stays 12/12, asserted", and the probe
-    is withdrawn.
+  - This is unconditional: the owner ruled on OI-4 on 260929 to book the unit. The zero-cost
+    alternative was declined (§18.7).
 
 ---
 
@@ -1940,19 +2016,20 @@ Each criterion names its fixture or artifact field and states what a stub would 
 
 | task | scope | files | gate | ~LOC | depends on |
 |---|---|---|---|---|---|
-| **T57** | **Derivation, atomic (L7).** In `derive/receiver_state.py`: R-A (§18.4.2), R-A's no-method restriction and M3's property-assignment rule plus its two tripwires (§18.4.2); R-B's classifier with the binding and argument table as revised in r1 (B1: non-`None` expressions → `UNRESOLVED`; B2: rebound parameters join; m6 catch-alls), entry context, fold, cycle guard and the structural `effects_max_depth` of M4 (§18.4.3); L1's `effects_unresolved` plus `compute_channel_bridge`'s rules 0–3 placed **before** the index skip and M2's coexistence widen (§18.4.4); R-C(1)/(2) (§18.4.5); R-D (§18.4.6); the four new `receiver_state` keys (§18.4.8); `test_derive.py` is run in full because it also rebuilds the non-legacy gap ledger (OI-12); `_classify_write`'s `"ambiguous"` renamed to `COPY` with identical semantics. **r2 additions:** C2's node-shape allowlist, with `T` derived over `W`; C3's tip-write catch-alls and D-3's bare-`self` rule; C10's local fixpoint; C11's class-level-binding rule; C8/C9's dependency sets and writer snapshots; C14's `receiver_state_diagnostics.n_contracts_depth0_and_deep_coexist`; C15's callback AST check. One regeneration of `plr-sema/data/derived_contracts.json` and the gap ledger. HM-25 thirteenth probe and `declared` 12 → 13 (**T57's default**, OI-4); STOP if the measure ≠ 13 | modify `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/src/plr_sema/derive/__main__.py` (if serialization needs it), `plr-sema/src/plr_sema/_hand_maintained.py`, `plr-sema/data/derived_contracts.json`, `plr-sema/data/gap_ledger.json` (regenerated); create `plr-sema/tests/test_tip_effects_plr1.py`; modify `plr-sema/tests/test_derive.py`, `plr-sema/tests/test_hand_maintained_ratchet.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_tip_effects_plr1.py -q`; `uv run pytest plr-sema/tests/test_derive.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q` — satisfying **AC-18.1**, **AC-18.2**, **AC-18.3**, **AC-18.4**, **AC-18.17** | ~330 | — |
+| **T57** | **Derivation, atomic (L7).** In `derive/receiver_state.py`: R-A (§18.4.2), R-A's no-method restriction and M3's property-assignment rule plus its two tripwires (§18.4.2); R-B's classifier with the binding and argument table as revised in r1 (B1: non-`None` expressions → `UNRESOLVED`; B2: rebound parameters join; m6 catch-alls), entry context, fold, cycle guard and the structural `effects_max_depth` of M4 (§18.4.3); L1's `effects_unresolved` plus `compute_channel_bridge`'s rules 0–3 placed **before** the index skip and M2's coexistence widen (§18.4.4); R-C(1)/(2) (§18.4.5); R-D (§18.4.6); the four new `receiver_state` keys (§18.4.8); `test_derive.py` is run in full because it also rebuilds the non-legacy gap ledger (OI-12); `_classify_write`'s `"ambiguous"` renamed to `COPY` with identical semantics. **r2 additions:** C2's node-shape allowlist, with `T` derived over `W`; C3's tip-write catch-alls and D-3's bare-`self` rule; C10's local fixpoint; C11's class-level-binding rule; C8/C9's dependency sets and writer snapshots; C14's `receiver_state_diagnostics.n_contracts_depth0_and_deep_coexist`; C15's callback AST check. **Owner ruling 260929 (OI-21), an implementation-time check alongside C15:** grep praxis's own state-update callback registrations (`web-repl/`, visualizer and REPL state-sync code) and confirm they only serialize; **if any one writes a tracker, STOP and ask**. One regeneration of `plr-sema/data/derived_contracts.json` and the gap ledger. HM-25 thirteenth probe and `declared` 12 → 13 (owner ruling on OI-4, 260929); STOP if the measure ≠ 13 | modify `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/src/plr_sema/derive/__main__.py` (if serialization needs it), `plr-sema/src/plr_sema/_hand_maintained.py`, `plr-sema/data/derived_contracts.json`, `plr-sema/data/gap_ledger.json` (regenerated); create `plr-sema/tests/test_tip_effects_plr1.py`; modify `plr-sema/tests/test_derive.py`, `plr-sema/tests/test_hand_maintained_ratchet.py` | `uv sync --all-packages`; `uv run pytest plr-sema/tests/test_tip_effects_plr1.py -q`; `uv run pytest plr-sema/tests/test_derive.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q` — satisfying **AC-18.1**, **AC-18.2**, **AC-18.3**, **AC-18.4**, **AC-18.17** | ~330 | — |
 | **T58** | **R-E receiver roots (§18.4.7).** Two-pass candidate/tracker set difference in `derive_receiver_states`; regenerate | modify `plr-sema/src/plr_sema/derive/receiver_state.py`, `plr-sema/data/derived_contracts.json` (regenerated); modify `plr-sema/tests/test_tip_effects_plr1.py` | `uv run pytest plr-sema/tests/test_tip_effects_plr1.py -q`; `uv run pytest plr-sema/tests/test_derive.py -q` — satisfying **AC-18.6** | ~40 | — |
 | **T59** | **Drift tests (§18.8).** Baseline generator with `--from`/`--from-git-rev`/`--rebase`/`--intended-divergences`; the generated fixture from the old-pin table; the cross-pin test; structural invariants with counter-tables; the behavioural oracle against real PLR | create `plr-sema/scripts/gen_channel_effect_baseline.py`, `plr-sema/tests/fixtures/channel_effect_baseline.json`, `plr-sema/tests/test_tip_effect_drift.py` | `uv run python plr-sema/scripts/gen_channel_effect_baseline.py --from-git-rev <old-pin rev> --out plr-sema/tests/fixtures/channel_effect_baseline.json --intended-divergences LiquidHandler.load_state=widen`; `uv run pytest plr-sema/tests/test_tip_effect_drift.py -q` — satisfying **AC-18.7**, **AC-18.8**, **AC-18.9** | ~220 | T57, T58 |
 | **T60** | **The sixth observation field (§18.5.2).** `capture_observation` computes `tip_racks_available`; `OBSERVATION_KEYS` gets six members; `observation_env_members` adds the `obs:` member; closed-list tests move to six; lidded/no-rack/raising fixtures; the §16.2.1 text amendment **and the §16.2.2 frame-condition clause (r1, M10)**. **r2 (C5/D-4): `DeckLayout.lidded_tip_racks: list[str] = []` with `merged()` updated; `build_setup` assigns a real `Lid` sized to each named rack after rack placement; a default-layout-unchanged unit test.** AC-18.10's own lidded fixture and T63's m3 both depend on this field | modify `training/verify/deck.py` (`DeckLayout`, `build_setup`, `capture_observation`), `training/verify/verifier.py` (comment only), `plr-sema/eval/oracle_common.py`, `plr-sema/tests/test_cache.py`, `training/tests/test_verify_postconditions.py`, `.praxia/docs/specs/260909_plr-sema-observation-increment.md`; create `training/tests/test_deck_lidded_tip_racks.py` | `uv sync --all-packages`; `uv run pytest training/tests/test_verify_postconditions.py -q`; `uv run pytest training/tests/test_deck_lidded_tip_racks.py -q`; `uv run pytest plr-sema/tests/test_cache.py -q` — satisfying **AC-18.10** | ~140 | — |
-| **T61** | **The `:338` site rule (§18.5.3–§18.5.6).** `_eval_tip_racks_available_site_rule` plus the fourth key, returning `False` iff the exported pure `tip_racks_decline_reason(ctx)` returns `None` (r2, C4), and declining unless `kind == "raise_guard"` (via `_Ctx.guard_kind`); the pre-scan (`rack_topology_disturbers`, returning pc → `(receiver_type, classes)`), giving `rack_topology_prefix_ok` / `rack_topology_loop_ok` and their threading through `process_call` → `_findings_for_call` → `_findings_for_guards` → `evaluate_guard` → `_Ctx`; `n_tip_racks_decided` in the replay report; HM-26 `declared` 3 → 4 with the rewritten `what`/`breaks_when`; A-RACK-STATIC added to increment 1's §10.6.3 table, with the table test at six; the hand-built `move_lid`-onto-rack runtime fixture | modify `plr-sema/src/plr_sema/check/predicate.py`, `plr-sema/src/plr_sema/check/__init__.py`, `plr-sema/src/plr_sema/_hand_maintained.py`, `plr-sema/eval/oracle_replay.py`, `plr-sema/tests/test_check_graph.py`, `plr-sema/tests/test_hand_maintained_ratchet.py`, `plr-sema/tests/test_oracle_replay.py`, `.praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md` | `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q`; `uv run pytest plr-sema/tests/test_oracle_replay.py -q` — satisfying **AC-18.11**, **AC-18.12** | ~210 | T57, T60 |
+| **T61** | **The `:338` site rule (§18.5.3–§18.5.6).** `_eval_tip_racks_available_site_rule` plus the fourth key, returning `False` iff the exported pure `tip_racks_decline_reason(ctx)` returns `None` (r2, C4), and declining unless `kind == "raise_guard"` (via `_Ctx.guard_kind`); the pre-scan (`rack_topology_disturbers`, returning pc → `(receiver_type, classes)`), giving `rack_topology_prefix_ok` / `rack_topology_loop_ok` and their threading through `process_call` → `_findings_for_call` → `_findings_for_guards` → `evaluate_guard` → `_Ctx`; `n_tip_racks_decided` in the replay report; HM-26 `declared` 3 → 4 with the rewritten `what`/`breaks_when`; A-RACK-STATIC and A-CALLBACK-INERT (owner ruling on OI-21) added to increment 1's §10.6.3 table, copied verbatim from §18.5.5, with the table test at seven; the hand-built `move_lid`-onto-rack runtime fixture | modify `plr-sema/src/plr_sema/check/predicate.py`, `plr-sema/src/plr_sema/check/__init__.py`, `plr-sema/src/plr_sema/_hand_maintained.py`, `plr-sema/eval/oracle_replay.py`, `plr-sema/tests/test_check_graph.py`, `plr-sema/tests/test_hand_maintained_ratchet.py`, `plr-sema/tests/test_oracle_replay.py`, `.praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md` | `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_hand_maintained_ratchet.py -q`; `uv run pytest plr-sema/tests/test_oracle_replay.py -q` — satisfying **AC-18.11**, **AC-18.12** | ~210 | T57, T60 |
 | **T62** | **Goldens re-taken ONCE, plus non-regression.** Re-take the `test_ir.py` shipped-fixture golden (44, `by_reason` measured) and the AC-10.4 comparison (excluding `:338`-sited findings); the V5 modelled-path fixture; confirm every gate-1 RC-1/RC-2 test green with no marker | modify `plr-sema/tests/test_ir.py`, `plr-sema/tests/test_tip_typestate.py`, `plr-sema/tests/test_volumestate_v5.py` | `uv run pytest plr-sema/tests/test_ir.py -q`; `uv run pytest plr-sema/tests/test_tip_typestate.py -q`; `uv run pytest plr-sema/tests/test_volumestate_v5.py -q`; `uv run pytest plr-sema/tests/test_tips_dirty_cost.py -q`; `uv run pytest plr-sema/tests/test_check_graph.py -q`; `uv run pytest plr-sema/tests/test_oracle_replay.py -q`; `uv run pytest plr-sema/tests/test_tier2.py -q` — satisfying **AC-18.5**, **AC-18.13** | ~80 | T57, T58, T61 |
-| **T63** | **The measurement (§18.9).** Step 1: commit the sidecar exactly as §18.9. Step 2a (r1, M7; r2, C6/C7 and D-4): in `tip_mutants.py`, the m3 mutator `make_m3_lid_on_tip_rack`, which uses T60's `lidded_tip_racks` and has no m3b; m3 in `_MUTATORS`/`_EXPECTED_EXC`/`by_class`; `site_verdicts_at_index` captured via a chain-composed `FINDINGS_SINK` in `run_one_mutant`, held in a new defaulted trailing `MutantResult` field; and an m3 branch before the criterion-(iii) `elif`. Plus its unit test. Step 2b: implement the script: two arms reused from `plr10_characterize.py`; per-method read; `tip_mutants` m1/m2/p3a/m3 and `volume_mutants` v1, **read from their report JSON, never their exit code**, with r2's `n_raised_as_expected` denominators; contract reads; parity and `baseline_intended_divergences` from T59's fixture; the analyzer-side `:338` attribution via `FINDINGS_SINK` + `LOWERED_SINK` + `rack_topology_disturbers` + `tip_racks_decline_reason` (D-2 (B)); and **an independent disturber scan that imports neither of those two functions** (M8). A schema-vs-TOML unit test covers it. Step 3: `bth run` in wrapped form, `bth compact`, verify by record | create `plr-sema/eval/plr10_tip_effects_measure.bth.toml`, `plr-sema/eval/plr10_tip_effects_measure.py`, `plr-sema/tests/test_plr10_tip_effects_measure.py`, `plr-sema/tests/test_tip_mutants_m3.py`; modify `plr-sema/eval/tip_mutants.py`; outputs under `outputs/plr-sema/plr10_tip_effects_<date>/` | `uv run pytest plr-sema/tests/test_tip_mutants_m3.py -q`; `uv run pytest plr-sema/tests/test_plr10_tip_effects_measure.py -q`; `bth run --project-slug <fd63e9cd's slug> -- uv run --no-sync python plr-sema/eval/plr10_tip_effects_measure.py <fd63e9cd's inputs> --out-dir …`; `bth compact`; `bth sql "SELECT id, status, outcome, exit_code FROM runs WHERE id LIKE '<prefix>%'"` — satisfying **AC-18.14**, **AC-18.16** | ~330 | T59, T60, T62 |
+| **T63** | **The measurement (§18.9).** Step 1: commit the sidecar exactly as §18.9. Step 2a (r1, M7; r2, C6/C7 and D-4): in `tip_mutants.py`, the m3 mutator `make_m3_lid_on_tip_rack`, which uses T60's `lidded_tip_racks` and has no m3b; m3 in `_MUTATORS`/`_EXPECTED_EXC`/`by_class`; `site_verdicts_at_index` captured via a chain-composed `FINDINGS_SINK` in `run_one_mutant`, held in a new defaulted trailing `MutantResult` field; and an m3 branch before the criterion-(iii) `elif`. Plus its unit test. Step 2b: implement the script: two arms reused from `plr10_characterize.py`; per-method read; `tip_mutants` m1/m2/p3a/m3 and `volume_mutants` v1, **read from their report JSON, never their exit code**, with r2's `n_raised_as_expected` denominators; contract reads; parity and `baseline_intended_divergences` from T59's fixture; the analyzer-side `:338` attribution via `FINDINGS_SINK` + `LOWERED_SINK` + `rack_topology_disturbers` + `tip_racks_decline_reason` (D-2 (B)); and **an independent disturber scan that imports neither of those two functions** (M8). A schema-vs-TOML unit test covers it. **Step 2c (owner rule, finalization): preemption-safe and resumable scheduling per §18.9.** Seven units (`real`, `all_safe`, `m1`, `m2`, `p3a`, `m3`, `v1`), each in its own subprocess with a 30-minute timeout and no whole-run timeout; `units/<unit>.json` plus a sha256 completion stamp; reuse only on matching input and output hashes; a `units` provenance block in `result.json`; no `result.json` while any unit is incomplete; a `--classes` filter on `tip_mutants.py`; the resumability tests (a)(b)(c) and the negative control. Step 3: `bth run` in wrapped form, `bth compact`, verify by record; a re-invocation after a unit timeout reuses completed units | create `plr-sema/eval/plr10_tip_effects_measure.bth.toml`, `plr-sema/eval/plr10_tip_effects_measure.py`, `plr-sema/tests/test_plr10_tip_effects_measure.py`, `plr-sema/tests/test_tip_mutants_m3.py`; modify `plr-sema/eval/tip_mutants.py`; outputs under `outputs/plr-sema/plr10_tip_effects_<date>/` | `uv run pytest plr-sema/tests/test_tip_mutants_m3.py -q`; `uv run pytest plr-sema/tests/test_plr10_tip_effects_measure.py -q`; `bth run --project-slug <fd63e9cd's slug> -- uv run --no-sync python plr-sema/eval/plr10_tip_effects_measure.py <fd63e9cd's inputs> --out-dir …`; `bth compact`; `bth sql "SELECT id, status, outcome, exit_code FROM runs WHERE id LIKE '<prefix>%'"` — satisfying **AC-18.14**, **AC-18.16** | ~420 | T59, T60, T62 |
 | **T64** | **Lint, amendments and index.** Register this file in `test_spec_lint.py` (both live-spec tests); increment 1's §10.2.4 amendment note and §10.4 E2 amendment note (r1, M2); regenerate `.praxia/docs/INDEX.md`; fill this document's implementation record with T57–T63's measured values and every divergence | modify `plr-sema/tests/test_spec_lint.py`, `.praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md`, this file; regenerate `.praxia/docs/INDEX.md` | `uv run pytest plr-sema/tests/test_spec_lint.py -q` — satisfying **AC-18.15** | ~20 | T63 |
 
-**Sizing note.** The total is about 1,350 LOC across eight rows after r2. T57 grew to ~330 and T60 to
-~140 (the `lidded_tip_racks` field). T63 grew to ~330 with the m3 mutator, the site-keyed capture, the
-v1 run, the sink-based attribution and the independent scan. If T63 runs long, split it at step 2a/2b: the
-mutator and its test land and are gated first, and the sidecar commit still precedes the run. T57 at
+**Sizing note.** The total is about 1,440 LOC across eight rows after finalization. T57 grew to ~330
+and T60 to ~140 (the `lidded_tip_racks` field). T63 grew to ~420: the m3 mutator, the site-keyed
+capture, the v1 run, the sink-based attribution and the independent scan, plus ~90 for the unit
+scheduler, stamps and resume tests. If T63 runs long, split it at step 2a / 2b+2c: the mutator and its
+test land and are gated first, and the sidecar commit still precedes the run. T57 at
 ~330 is the only row that must not be split, because of L7. If a session boundary falls inside it, the safe cut is
 before the regeneration: rules and synthetic tests landed, table not regenerated, every existing test
 unchanged. It is never between effects and `entry_reset`.
@@ -2013,7 +2090,7 @@ Each item is something this document could not verify or had to decide by judgem
   raises `NotImplementedError`
   (`external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py:2813-2822`), so it cannot
   place a lid. The challenger found that it has a contract key, so disturber condition (c) does not
-  apply to it, and that is harmless. **Deferred as a follow-up (orchestrator ruling):** a whole-surface
+  apply to it, and that is harmless. **Deferred as a follow-up (orchestrator ruling; backlog #5662):** a whole-surface
   check that no non-family `LiquidHandler` method's closure reaches `assign_child_resource` /
   `unassign_child_resource` on a non-tip resource. The survey does not carry the receiver-type
   resolution that check needs. The `"TOP"` fail-open edge is named in A-RACK-STATIC's row.
@@ -2024,9 +2101,10 @@ Each item is something this document could not verify or had to decide by judgem
   that the guard's own spots are declared deck `Ref`s. Every inlined `:338` record today has
   `caller_args: null` and `caller_args_sites: []`, so no existing table supplies this, and a
   hand-typed parameter name is forbidden (L0/HM-26).
-- **OI-4 — HM-25 12 → 13 or 0.** The spec books R-A/R-B/R-C(2) as one HM-25 unit. The zero-cost
-  argument (P4 was never booked) is available. **T57's default is the booking option (12 → 13) unless
-  the owner says otherwise** (r1). AC-18.12 carries both branches.
+- **OI-4 — RESOLVED (owner ruling 260929): book HM-25 12 → 13.** R-A/R-B/R-C(2) form one HM-25 unit
+  (AC-18.17, T57). The zero-cost alternative ("P4 was never booked") was considered and declined.
+  R-A and R-C(2) are patterns over how PLR is written, the class of fact whose silent breakage caused
+  this regression.
 - **OI-5 — flow-insensitivity and the holder-less path (updated r1).**
   - **The polarity half is confirmed.** The holder path unassigns the spot's current child and assigns
     the new tip (`external/pylabrobot/pylabrobot/legacy/tip_tracker.py:88-96`), which is the same
@@ -2095,15 +2173,19 @@ Each item is something this document could not verify or had to decide by judgem
 - **OI-20 — CLOSED in r2 (C2).** The entry context is now an allowlist on the annotation's node shape,
   `Name(T)` / `Attribute(attr=T)` / `Constant(T)`, with `T` derived over `W`. Unannotated parameters,
   and anything else, are `UNRESOLVED`. It costs zero at both pins.
-- **OI-21 — NEW in r2: A-CALLBACK-INERT.**
+- **OI-21 — RESOLVED (owner ruling 260929): A-CALLBACK-INERT is ACCEPTED as a named assumption.**
   - **Checked at the pin (AC-18.2(q)).** The head trackers' callback is `LiquidHandler._state_updated`,
     which is `Resource._state_updated`, a notifier.
   - **Assumed.** The user-registered state-update callbacks it forwards to do not write a head
     tracker. That is not checkable from PLR source.
-  - It is not added to §10.6.3's table without the owner's ruling (D2 precedent).
-  - **Round-3 classification: non-blocker.** The owner must rule on A-CALLBACK-INERT **before any
-    soundness claim is made outside the harness**. Inside the harness, the only callbacks are PLR's own
-    notifiers.
+  - **It is added to increment 1's §10.6.3 assumption table**, taking the table to seven rows together
+    with A-RACK-STATIC. T61 lands the row and the table test at seven.
+  - **Implementation-time check (T57).** Before regenerating, grep praxis's own state-update callback
+    registrations, in `web-repl/` and in visualizer or REPL state-sync code, and confirm they only
+    serialize. **If any one writes a tracker, STOP and ask.**
+  - **FOLLOW-UP, not in #5622's scope; filed as backlog #5661.** A fail-closed guard: any analysed
+    protocol that registers its own state-update callback makes tip state `UNKNOWN`. That turns this
+    assumption into a check.
 - **OI-22 — NEW in r2: the `_before` writer snapshot will churn with PLR.** **Round-3 classification:
   non-blocker. The churn is the intended loud-over-silent trade.**
   - C9 pins seven writers of `_before`. Any PLR refactor of the transaction bookkeeping breaks the
@@ -2271,6 +2353,16 @@ L0–L7 are unchanged.
 | minor 5 | FAIL tests `n_338_declined_unattributed != 0` (a signed difference), keeping the outcomes exhaustive; status line updated to r3; T57 sizing made consistent (~330) | sidecar, header, §18.11 |
 | OI-21/22 | Classified non-blocker; OI-21 needs the owner's ruling before any soundness claim outside the harness | §18.14 |
 | OI-23/24 | Closed (not issues); OI-24 records PLR's `lid.py` placement rule (lines 104-122) and T60's `Lid` parameters | §18.14, §18.9 |
+
+**Final (owner rulings), 260929.** Round 4 returned ACCEPT, and the status was marked converged. The
+owner then ruled, and these are applied here. L0–L7 are unchanged, and PASS/MARGINAL/FAIL are
+unchanged: `pass = H∧X`, `marginal = H∧¬X`, `fail = ¬H`, exhaustive.
+
+| id | ruling / change | where |
+|---|---|---|
+| OI-21 | ACCEPTED A-CALLBACK-INERT as a named assumption. Its row text is fixed in §18.5.5, and T61 adds it with A-RACK-STATIC to increment 1's §10.6.3 table (five rows to seven), moving the table test to seven in the same task. It is not added at finalization, so `main` stays green when the spec merges. Also added: T57's implementation-time grep of praxis's own callback registrations (STOP if one writes a tracker), and a FOLLOW-UP for backlog, outside #5622: a fail-closed guard that makes tip state `UNKNOWN` for any protocol registering its own state-update callback | §18.4.3 C15 box, §18.5.5, AC-18.11(h), T57, T61, OI-21, increment 1 §10.6.3 |
+| OI-4 | Book HM-25 12 → 13. The conditional wording is removed; the zero-cost alternative is recorded as declined, because R-A/R-C(2) are patterns over how PLR is written, the class of fact whose silent breakage caused this regression | §18.7, AC-18.17, T57, OI-4 |
+| scheduling | Preemption-safe, resumable measurement: seven units (two arms, five mutant classes), each persisted with a sha256 stamp, reused only on matching hashes, in its own subprocess with a 30-minute timeout and no whole-run timeout; an incomplete unit means no `result.json`, which is FAIL by construction. Specified in §18.9's prose **and** the sidecar comment block, so the committed sidecar still matches §18.9. Resumability tests (a)(b)(c) and a negative control are added to AC-18.14 | §18.9, sidecar, AC-18.14, T63 |
 
 ---
 
