@@ -4390,3 +4390,44 @@ report and the S1/S2/S3 research notes in `.praxia/docs/research/`.
     offset or compare against `#E8ECEF`, unless C5 decides to change the canvas colour (no setter exists
     without a vendored edit).
   - `embed.css` adds `.content{height:100%}` (not in D12) so the hidden navbar leaves no 60 px gap.
+
+### Sprint B notes recorded during execution (260929, orchestrator)
+
+Interpretation calls and open live-browser checks from B2, B3, B4, B7 and B9. None reopens a ruling.
+
+- **For B8 (`install()`).** Wire: `session.render_kwargs(obj)` before every render (B7: settling is
+  automatic), `events.register('post_run_cell', session.post_run_cell)` only as an optimisation because
+  the debounced timer is the real path (S3-D), `exec_count = lambda: get_ipython().execution_count`, and
+  `ledger.configure(session=..., exec_count=...)` (B4: a bare `RunLedger(lh)` has session `"unset"` and
+  exec `None` until configured). A second `RunLedger` on the same handler instance raises
+  `RuntimeError` by design. `praxis/display/` has no `__init__.py` until B8. `check_bundle` requires both
+  `text/html` and `text/plain`.
+- **For B6 (error panel).** `labware.render(..., volume_of=lambda c: c.tracker.volume)` draws committed
+  volume (B2 pins this on an H12 well at committed 100 / pending 60); `ledger.step_for(exc)` returns the
+  step once and then `None`.
+- **For B10 (browser scenarios; the live checks no unit test can settle).**
+  - B2: tip cores are drawn as zero-length subpaths `M x y h0` with `stroke-linecap="round"` and stroke
+    width equal to the core diameter (9,796 bytes vs 13,051 with circle cores; D4's target is 12,288).
+    Verified only by `rsvg-convert`: confirm in Chromium that the cores render as dots.
+  - B3: the deck figure's outer group carries `role="img"`, `aria-label`, `tabindex`; inner carrier,
+    labware and fixture groups carry `data-praxis-res`, and full-detail labware `data-praxis-grid`
+    (figure user units); blocked labware carries no grid. `interact.js` therefore offers no per-labware
+    keyboard focus in a deck and no readout on carriers, blocked labware or fixtures.
+  - B9: marks are written into `.jp-OutputArea-output` by index (`cell.outputArea.widgets[i].node` to
+    `outputs.get(i)`); a later async re-render could wipe a mark and extra widget entries (stdin) could
+    drift the index: AC-23 `mark_survives_scroll` must cover both. Arrow keys are `preventDefault`ed in the
+    capture phase; Lumino's own document capture listener may run first: check live. Kernel-restart
+    resets use `statusChanged` in {starting, restarting, autorestarting} or a `kernelChanged`; confirm the
+    vocabulary live.
+  - B9 `all: true` announcements mark stamped non-null-rev outputs of that session drawn BEFORE the
+    announcing cell (`stamp.exec < ann.exec`); the announcing cell's own output is never marked.
+- **Deviations to know.** B1 `svg.py` rounds to 0.01 but AC-9 wants liquid radii within 1e-3 mm, so
+  `labware.py` uses a local 3-decimal helper for liquid subpaths. `deck.py` imports underscore-prefixed
+  helpers from `labware.py` (changing them means touching both). B3 measured the fixture deck at 36,142
+  bytes at level 0 (target 49,152), 6,403 at level 1, 413 at level 2; 400 plates fall to level 2. B4's
+  ledger adds a last-resort row cut past the cap ("... N more rows not shown.") because thousands of rows
+  cannot fit under 64 KiB at the spec's level 2. B4 counts "moved" as top-level ok dispense/transfer rows
+  only (aspirate-only runs read 0). D5's `min-width` re-apply for S2-A' is not built: S2 recorded
+  `s2_b_exec_t`, where an untrusted reopen strips `style` and `data-*` together.
+- **CSS gap, tracked as #5669.** B2/B3/B4 emit class names A4's theme has no rules for; B10 depends on
+  #5669 so the D2/D3 computed-style checks read styled output.
