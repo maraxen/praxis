@@ -3258,3 +3258,21 @@ def test_run_display_scenario_refuses_a_unit_it_has_no_body_for(rs):
     unit = rs.HarnessUnit("K9", rs.DISPLAY_CHECK, 1.0, ())
     with pytest.raises(rs.DisplayCheckError):
         rs.run_display_scenario(FakeSession(), unit, make_env(rs))
+
+
+def test_d2_evidence_keeps_the_raw_reports_behind_the_error_keys(rs):
+    """A failing `other_errors_plain` (or `error_panels`, `runall_stops`) has to be diagnosable from the result
+    file alone: D2's evidence carries the raw plain-error, PLR-error and Run All reports."""
+    import inspect
+
+    def missing(source: str) -> list[str]:
+        call = source.split("evidence.update(", 1)[1].split('keys["evidence"]', 1)[0]
+        return [n for n in ("error_reports", "value_error", "runall") if f"{n}={n}" not in call]
+
+    assert missing(inspect.getsource(rs.run_d2)) == []
+    # negative controls: a source without one of them, or without any, is rejected by the same checker
+    stripped = inspect.getsource(rs.run_d2).replace("value_error=value_error", "")
+    assert missing(stripped) == ["value_error"]
+    assert missing('evidence.update(restart=restart)\n keys["evidence"] = evidence') == [
+        "error_reports", "value_error", "runall",
+    ]

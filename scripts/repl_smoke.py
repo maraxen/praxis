@@ -6338,6 +6338,9 @@ def run_d2(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
     evidence.update(
         restart=restart, gate_reads=gate_reads, persisted=persisted, windowing_mode=driver.windowing(),
         live_arrow_expected=ARROW_RIGHT_LIVE_TEXT,
+        # the raw reports behind `error_panels` / `error_status` / `other_errors_plain` / `runall_stops`, so a
+        # failing key can be read off the result file instead of needing a re-run with extra logging
+        error_reports=error_reports, value_error=value_error, runall=runall,
     )
     keys["evidence"] = evidence
     return keys
