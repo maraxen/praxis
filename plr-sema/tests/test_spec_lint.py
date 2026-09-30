@@ -209,6 +209,158 @@ def test_crossref_lint_reports_registry_row_missing_from_inventory(tmp_path: Pat
 
 
 # --------------------------------------------------------------------------
+# version pins (260930): a citation resolves against the commit it was written at
+# --------------------------------------------------------------------------
+
+
+def _git(root: Path, *args: str) -> str:
+    import subprocess
+
+    return subprocess.run(
+        ["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *args],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+@pytest.fixture
+def pinned_repo(tmp_path: Path) -> tuple[Path, str, str]:
+    """A git repo whose `pkg/mod.py` defines `foo` at line 2 in commit `v1` and,
+    after two lines are inserted above it, at line 4 in commit `v2`."""
+    _git(tmp_path, "init", "-q")
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='x'\n")
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "mod.py").write_text("# header\ndef foo():\n    return 1\n")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-q", "-m", "v1")
+    v1 = _git(tmp_path, "rev-parse", "HEAD")
+    (tmp_path / "pkg" / "mod.py").write_text("# header\n# new 1\n# new 2\ndef foo():\n    return 1\n")
+    _git(tmp_path, "commit", "-q", "-am", "v2")
+    v2 = _git(tmp_path, "rev-parse", "HEAD")
+    return tmp_path, v1, v2
+
+
+def _failing(root: Path, text: str) -> list:
+    spec = root / "spec.md"
+    spec.write_text(textwrap.dedent(text))
+    return [v for v in citations.check(spec, root) if not v.informational]
+
+
+def test_pin_frontmatter_resolves_at_the_pinned_commit(pinned_repo) -> None:
+    root, v1, _v2 = pinned_repo
+    line = "The helper `foo` (`pkg/mod.py:2-3`) returns one.\n"
+    assert _failing(root, line), "control: unpinned, the drifted citation must fail against today's tree"
+    assert _failing(root, f"---\ncitations_at: {v1}\n---\n{line}") == []
+
+
+def test_pin_marker_repins_following_lines_only(pinned_repo) -> None:
+    root, v1, v2 = pinned_repo
+    doc = (
+        f"---\ncitations_at: {v1}\n---\n"
+        "Old text: `foo` (`pkg/mod.py:2-3`).\n"
+        f"<!-- citations-at: {v2} -->\n"
+        "Amendment: `foo` (`pkg/mod.py:4-5`).\n"
+    )
+    assert _failing(root, doc) == []
+    # the old citation placed AFTER the marker is resolved at v2 and must fail there
+    wrong = doc + "Misplaced old text: `foo` (`pkg/mod.py:2-3`).\n"
+    failing = _failing(root, wrong)
+    assert [(v.kind, v.rev) for v in failing] == [("symbol_not_in_range", v2)], failing
+
+
+def test_pin_live_marker_returns_to_todays_tree(pinned_repo) -> None:
+    root, v1, _v2 = pinned_repo
+    doc = f"---\ncitations_at: {v1}\n---\n<!-- citations-at: live -->\nNow: `foo` (`pkg/mod.py:4-5`).\n"
+    assert _failing(root, doc) == []
+
+
+def test_pin_list_resolves_each_file_at_the_first_rev_that_has_it(pinned_repo) -> None:
+    """An ordered pin `<v1> <v2>`: `pkg/mod.py` exists at both, so it is checked
+    at v1 (the old citation passes, the new one fails); `report.json`, added only
+    in a later commit, resolves at that commit."""
+    root, v1, _v2 = pinned_repo
+    (root / "out").mkdir()
+    (root / "out" / "report.json").write_text('{\n  "n_ops": 548\n}\n')
+    _git(root, "add", "out/report.json")
+    _git(root, "commit", "-q", "-m", "artifact")
+    v3 = _git(root, "rev-parse", "HEAD")
+    (root / "out" / "report.json").unlink()  # gone from the working tree, like an untracked report
+    ok = f"---\ncitations_at: {v1} {v3}\n---\n`foo` (`pkg/mod.py:2-3`) and `n_ops` (`out/report.json:2`).\n"
+    assert _failing(root, ok) == []
+    order = f"---\ncitations_at: {v1} {v3}\n---\n`foo` (`pkg/mod.py:4-5`).\n"
+    assert [v.rev for v in _failing(root, order)] == [v1], "a file at both revs is checked at the FIRST"
+
+
+def test_pin_to_an_unknown_rev_is_an_error_not_a_pass(pinned_repo) -> None:
+    import subprocess
+
+    root, _v1, _v2 = pinned_repo
+    with pytest.raises(subprocess.CalledProcessError):
+        _failing(root, "---\ncitations_at: 0123456789abcdef0123456789abcdef01234567\n---\n`foo` (`pkg/mod.py:2`)\n")
+
+
+def test_line_pins_default_live_and_marker_order() -> None:
+    doc = "---\ntitle: x\n---\na\n<!-- citations-at: abc123 -->\nb\n<!-- citations-at: live -->\nc\n"
+    pins = citations.line_pins(doc)
+    lines = doc.splitlines()
+    assert pins[lines.index("a")] == "live"
+    assert pins[lines.index("b")] == "abc123"
+    assert pins[lines.index("c")] == "live"
+
+
+#: A commit on main whose recorded `external/pylabrobot` gitlink is the OLD pin
+#: (dd79c4c89, PyLabRobot 0.2.2): the parent of the 1.0.0b1 bump.
+PRE_BUMP_REV = "6b1e5121^"
+
+
+def test_pinned_tree_reads_the_submodule_at_the_recorded_gitlink() -> None:
+    """At a pre-bump commit, `liquid_handling/liquid_handler.py` exists (PLR 0.2.2
+    layout) and `legacy/liquid_handling/liquid_handler.py` does not; today it is
+    the other way round. This is what makes one sha pin both trees."""
+    import subprocess
+
+    try:
+        tree = citations.GitTree(REPO_ROOT, PRE_BUMP_REV)
+    except subprocess.CalledProcessError as e:  # shallow clone / uninitialised submodule
+        pytest.skip(f"history not available here: {e.stderr}")
+    old = "external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py"
+    new = "external/pylabrobot/pylabrobot/legacy/liquid_handling/liquid_handler.py"
+    paths = set(tree.paths())
+    assert old in paths and new not in paths
+    assert "def pick_up_tips" in tree.read(old)
+    live = set(citations.LiveTree(REPO_ROOT).paths())
+    assert new in live and old not in live
+
+
+#: Specs whose citations are pinned: everything written against an older tree.
+#: A spec still being written may stay `live` (increment 9, today).
+PINNED_SPECS = [
+    SPEC, SPEC_INCREMENT_1, SPEC_INCREMENT_2, SPEC_INCREMENT_3, SPEC_INCREMENT_4,
+    SPEC_INCREMENT_5, SPEC_INCREMENT_6, SPEC_INCREMENT_7, SPEC_INCREMENT_8,
+]
+
+
+@pytest.mark.parametrize("spec_path", [pytest.param(p, id=p.stem) for p in PINNED_SPECS])
+def test_historical_specs_declare_valid_pins(spec_path: Path) -> None:
+    """Version pinning is TRACKED, not optional: every historical spec declares a
+    frontmatter pin, and every pin it uses is a real commit that is an ancestor
+    of HEAD (a pin to a commit that never landed would check nothing real)."""
+    import subprocess
+
+    if not spec_path.is_file():
+        pytest.skip(f"spec not present: {spec_path}")
+    pins = citations.declared_pins(spec_path)
+    assert pins and pins[0] != citations.LIVE, f"{spec_path.name}: no frontmatter `citations_at`"
+    for rev in citations.declared_revs(spec_path):
+        if rev == citations.LIVE:
+            continue
+        sha = _git(REPO_ROOT, "rev-parse", "--verify", f"{rev}^{{commit}}")
+        ancestor = subprocess.run(["git", "-C", str(REPO_ROOT), "merge-base", "--is-ancestor", sha, "HEAD"])
+        assert ancestor.returncode == 0, f"{spec_path.name}: pin {rev} is not an ancestor of HEAD"
+
+
+# --------------------------------------------------------------------------
 # the live spec must pass both
 # --------------------------------------------------------------------------
 
