@@ -4200,6 +4200,9 @@ class HarnessUnit:
     #: The viewport list, hashed into the ``args`` input. The spec states none for the chrome
     #: units; 1440x900 is the baseline the spike and dock units use.
     viewports: tuple[tuple[int, int], ...] = ((1440, 900),)
+    #: False for a negative-only unit (``N-d``, AC-39(d)): it runs as a ``--scenario`` (the sensitivity driver starts
+    #: it) but is never part of the aggregate, which only a check's real units can gate (D16).
+    in_aggregate: bool = True
 
     @property
     def keys(self) -> tuple[str, ...]:
@@ -4230,6 +4233,42 @@ class AtMost:
 
     def __repr__(self) -> str:
         return f"AtMost({self.limit})"
+
+
+@dataclasses.dataclass(frozen=True)
+class AtLeast:
+    """A listed key that holds when its value is a number not below ``limit`` (AC-36 ``viewer_height`` >= 300).
+    Booleans and ``NaN`` never hold."""
+
+    limit: float
+
+    def holds(self, actual: Any) -> bool:
+        return (
+            isinstance(actual, (int, float)) and not isinstance(actual, bool) and actual == actual and actual >= self.limit
+        )
+
+    def example(self) -> float:
+        return self.limit
+
+    def __repr__(self) -> str:
+        return f"AtLeast({self.limit})"
+
+
+@dataclasses.dataclass(frozen=True)
+class OneOf:
+    """A listed key that holds when its value is one of ``values``, strictly by type (AC-34 ``hello_backend`` is
+    ``WebGL2`` or ``WebGPU``: the page's backend, read from the kernel, not a boolean derived from it)."""
+
+    values: tuple[Any, ...]
+
+    def holds(self, actual: Any) -> bool:
+        return any(type(actual) is type(v) and actual == v for v in self.values)
+
+    def example(self) -> Any:
+        return self.values[0]
+
+    def __repr__(self) -> str:
+        return f"OneOf{self.values!r}"
 
 
 _RAIL_STATE_KEYS = (
@@ -4324,7 +4363,7 @@ UNIT_BY_ID: dict[str, HarnessUnit] = {u.id: u for u in UNIT_TABLE}
 def _holds(actual: Any, expected: Any) -> bool:
     """Strict: a boolean key holds only as that boolean (1 is not True), others by type and value. A bound
     (``AtMost``) holds by its own rule."""
-    if isinstance(expected, AtMost):
+    if isinstance(expected, (AtMost, AtLeast, OneOf)):
         return expected.holds(actual)
     if isinstance(expected, bool):
         return actual is expected
@@ -6783,6 +6822,131 @@ def clamp_low_ok(width: Any) -> bool:
 def clamp_high_ok(width: Any) -> bool:
     """A real splitter drag to 700 px is clamped to 480."""
     return _num(width) and abs(width - PANEL_MAX_PX) <= CLAMP_TOL_PX
+
+
+# -- the dock units (D16 table) ---------------------------------------------------------------------------------
+
+#: AC-36's nine ordered steps on ONE page, ONE kernel and ONE ``dock()`` (Revision 7, C7-5): every viewport change
+#: is a ``page.setViewportSize`` on that page. Each entry is ``(step, the viewport it runs at)``; the viewport list
+#: is hashed into K2's ``args`` input. ``fit`` runs 1440 -> 1600 -> 1440 and ends at 1440x900 again, and
+#: ``resize_within_wide`` runs 1600 -> 1920 wide at the same height (no tier crossing). AC-36 gives no height for
+#: that step: the height of the next one (1080) is applied only at ``wide_1920``.
+K2_STEPS: tuple[tuple[str, tuple[int, int]], ...] = (
+    ("drawer", (1152, 800)),
+    ("dismiss_reopen", (1152, 800)),
+    ("tier_up", (1440, 900)),
+    ("medium_1440", (1440, 900)),
+    ("fit", (1600, 900)),
+    ("medium_1280", (1280, 800)),
+    ("wide_1600", (1600, 900)),
+    ("resize_within_wide", (1920, 900)),
+    ("wide_1920", (1920, 1080)),
+)
+#: K2's width keys in step order, each with the D6 family that decides asserted vs recorded-only.
+K2_WIDTH_KEYS: tuple[tuple[str, str], ...] = (
+    ("open_width_1440", "open_width_1280_1599"),
+    ("drag_clamp_low_1440", "drag_clamp_1280_1599"),
+    ("drag_clamp_high_1440", "drag_clamp_1280_1599"),
+    ("fit_after_tier_change_wide", "fit_after_tier_change_ge_1600"),
+    ("fit_after_tier_change_medium", "fit_after_tier_change_1280_1599"),
+    ("open_width_1280", "open_width_1280_1599"),
+    ("drag_clamp_low_1280", "drag_clamp_1280_1599"),
+    ("drag_clamp_high_1280", "drag_clamp_1280_1599"),
+    ("panel_width_wide_1600", "open_width_ge_1600"),
+    ("resize_within_wide", "resize_within_wide"),
+    ("panel_width_wide_1920", "open_width_ge_1600"),
+)
+_K2_WIDTH_FAMILY = dict(K2_WIDTH_KEYS)
+#: K2's listed keys in step order: a width key is listed only when its family is asserted; the rest are always listed.
+_K2_ORDER: tuple[tuple[str, Any], ...] = (
+    ("drawer_overlays", True),
+    ("drawer_no_reflow", True),
+    ("drawer_dismiss_reopen", True),
+    ("tier_up_rehomes", True),
+    ("open_width_1440", True),
+    ("drag_clamp_low_1440", True),
+    ("drag_clamp_high_1440", True),
+    ("fit_after_tier_change_wide", True),
+    ("fit_after_tier_change_medium", True),
+    ("open_width_1280", True),
+    ("drag_clamp_low_1280", True),
+    ("drag_clamp_high_1280", True),
+    ("viewer_height", AtLeast(VIEWER_MIN_HEIGHT_PX)),
+    ("motion_slot_height", AtMost(MOTION_MAX_HEIGHT_PX)),
+    ("nb_content_width_1600", AtMost(NOTEBOOK_CAP_PX)),
+    ("panel_width_wide_1600", True),
+    ("resize_within_wide", True),
+    ("iframe_reloads_during_resize", 0),
+    ("nb_content_width_1920", AtMost(NOTEBOOK_CAP_PX)),
+    ("panel_width_wide_1920", True),
+)
+
+
+def k2_expected(status: dict[str, str]) -> tuple[tuple[str, Any], ...]:
+    """K2's listed keys under a D6 sizing ``status`` (``width_key_status``): the drawer keys, the height keys,
+    ``nb_content_width_*`` and ``iframe_reloads_during_resize`` in every case; a width key only where its family is
+    ``asserted``. A recorded-only key is still measured and written to the result, but no listed key gates on it."""
+    return tuple(
+        (key, want) for key, want in _K2_ORDER if _K2_WIDTH_FAMILY.get(key) is None or status.get(_K2_WIDTH_FAMILY[key]) == ASSERTED
+    )
+
+
+#: AC-39(d)'s unit: it lists the >= 1600 width key, which the stock-split control must FAIL (the sensitivity run
+#: passes iff it does), or, where that key is recorded-only (D6), ``skipped`` and says so.
+ND_KEY = "panel_width_wide_1600"
+
+
+def nd_expected(status: dict[str, str]) -> tuple[tuple[str, Any], ...]:
+    return ((ND_KEY, True),) if ac39d_status(status) == "run" else (("skipped", True),)
+
+
+_K1A_EXPECTED: tuple[tuple[str, Any], ...] = (
+    # AC-34
+    ("panel_is_split_right", True),
+    ("viewer_resources", True),
+    ("hello_backend", OneOf(("WebGL2", "WebGPU"))),
+    ("canvas_nonblank", True),
+    ("embed_hidden", True),
+    ("pageerrors", []),
+    # AC-35
+    ("click_focuses", True),
+    ("follow_focuses", True),
+    ("follow_off_holds", True),
+    ("follow_skips_null", True),
+    ("preset_directions", True),
+    ("follow_keeps_preset", True),
+    # AC-37
+    ("state_updates", True),
+    ("stale_and_panel", True),
+)
+#: AC-38, in its fixed execution order (Revision 6, C6-2; Revision 7): this IS the order the keys run in.
+K1B_ORDER = (
+    "reconnect_after_reload",
+    "preset_survives_reload",
+    "drawer_reconnect",
+    "redock_live",
+    "stop_placeholder",
+    "redock_reloads",
+    "late_iframe",
+    "many_reloads",
+    "restart_placeholder",
+)
+
+DOCK_UNITS: tuple[HarnessUnit, ...] = (
+    HarnessUnit("K1a", DOCK_CHECK, 10 * 60.0, _K1A_EXPECTED, acs=("AC-34", "AC-35", "AC-37"), viewports=((1440, 900),)),
+    HarnessUnit("K1b", DOCK_CHECK, 14 * 60.0, tuple((k, True) for k in K1B_ORDER), acs=("AC-38",), viewports=((1440, 900),)),
+    HarnessUnit(
+        "K2", DOCK_CHECK, 15 * 60.0, k2_expected(SIZING_STATUS), acs=("AC-36",), viewports=tuple(v for _, v in K2_STEPS)
+    ),
+    HarnessUnit(
+        "N-d", DOCK_CHECK, 6 * 60.0, nd_expected(SIZING_STATUS), acs=("AC-39",), viewports=((1600, 900),), in_aggregate=False
+    ),
+)
+#: The dock units join the one D16 table (ids, check, budget, listed keys); ``run_dock_check`` judges the
+#: aggregate over the ones that count.
+UNIT_TABLE = (*UNIT_TABLE, *DOCK_UNITS)
+UNIT_BY_ID = {u.id: u for u in UNIT_TABLE}
+DOCK_AGGREGATE_UNITS: tuple[HarnessUnit, ...] = tuple(u for u in DOCK_UNITS if u.in_aggregate)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
