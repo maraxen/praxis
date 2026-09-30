@@ -91,8 +91,13 @@ HARNESS_STUB = textwrap.dedent(
             time.sleep(600)
         if PLAN.get("raise"):
             raise RuntimeError("stub instrument failure")
-        fields = dict(unit.expected)
-        for key in PLAN.get("fail", []):
+        fields = {k: (v.example() if hasattr(v, "example") else v) for k, v in unit.expected}
+        extra = PLAN.get("extra") or {}
+        fields.update(extra.get(unit.id, {}))
+        fail = PLAN.get("fail", [])
+        if isinstance(fail, dict):  # sprint C: what each harness unit does
+            fail = fail.get(unit.id, [])
+        for key in fail:
             fields[key] = "WRONG"
         return fields
 
@@ -104,6 +109,7 @@ HARNESS_STUB = textwrap.dedent(
     sys.exit(rs.run_scenario(
         args.scenario, out_dir=Path(args.out_dir), env_fn=lambda: env,
         session_factory=lambda u, e: Session(), scenario_fn=scenario, budget_s=PLAN.get("budget"),
+        neg=tuple(args.neg),
     ))
     '''
 )
@@ -973,3 +979,234 @@ def test_the_dry_run_plan_lists_the_kind_of_every_negative(nd):
     plan = json.loads(buf.getvalue())
     assert {n["id"]: n["kind"] for n in plan["negatives"]} == {"b": "harness", "c": "grep", "d": "harness", "e": "harness"}
     assert [n["harness_neg"] for n in plan["negatives"] if n["id"] == "e"] == [["drop-query"]]
+
+
+# --------------------------------------------------------------------------- #
+# Sprint C (C7): the entry script and the sidecar of the AC-39(b)-(e) run
+# --------------------------------------------------------------------------- #
+
+ENTRY_C_PATH = REPO_ROOT / "scripts" / "spikes" / "260929_nd_sensitivity_sprint_c.py"
+SIDECAR_C_PATH = ENTRY_C_PATH.with_suffix(".bth.toml")
+C_FAIL = {"K1a": ["viewer_resources"], "N-d": ["panel_width_wide_1600"], "K1b": ["late_iframe"]}
+C_EXTRA = {"K1b": {"neg_dropped_queries": 3}, "N-d": {"control_formula_passes": True}}
+
+
+def _bed_c(bed: Any, nd: Any, tmp_path: Path) -> tuple[Any, Path]:
+    """The Bed re-aimed at the sprint C entry, the stub harness told what each dock unit does, and a clean source tree."""
+    (bed.pristine / SOCKET).parent.mkdir(parents=True, exist_ok=True)
+    (bed.pristine / SOCKET).write_text("// socket")
+    bed.refresh_fake()
+    bed.plan["fail"], bed.plan["extra"] = dict(C_FAIL), dict(C_EXTRA)
+    base_env = bed.env
+
+    def env_c() -> dict[str, str]:
+        e = base_env()
+        e["ND_ENTRY"] = str(ENTRY_C_PATH)
+        e["ND_PLAN"] = json.dumps(bed.plan)
+        e["ND_FAKE"] = json.dumps(bed.fake)
+        return e
+
+    bed.env = env_c  # type: ignore[method-assign]
+    return bed, _src_tree(tmp_path / "src")
+
+
+def _run_c(bed: Any, src: Path, *extra: str) -> tuple[int, dict[str, Any]]:
+    return bed.driver("--source-root", str(src), *extra)
+
+
+def test_sprint_c_entry_fixes_b_c_d_e_for_sprint_c_and_loads_the_same_shared_driver():
+    assert ENTRY_C_PATH.is_file(), "the sprint C entry script exists (D17: one entry script and sidecar per sprint)"
+    entry = _load(ENTRY_C_PATH, "nd_entry_c_under_test")
+    assert entry.NEGATIVES == ("b", "c", "d", "e") and entry.SPRINT == "c"
+    assert entry.SHARED_PATH == SHARED_PATH and entry._load_shared() is entry._load_shared()
+    assert "sys.path" not in ENTRY_C_PATH.read_text().replace("nothing edits sys.path", "")
+
+
+def test_sprint_c_dry_run_defaults_to_its_own_out_dir_and_each_negatives_own_dirs():
+    proc = subprocess.run([sys.executable, str(ENTRY_C_PATH), "--dry-run"], capture_output=True, text=True, timeout=60)
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    plan = json.loads(proc.stdout)
+    assert plan["sprint"] == "c" and [n["id"] for n in plan["negatives"]] == ["b", "c", "d", "e"]
+    assert plan["out_dir"] == str(REPO_ROOT / "outputs" / "nd_sensitivity" / "sprint_c")
+    by = {n["id"]: n for n in plan["negatives"]}
+    for nid in ("b", "d", "e"):
+        assert by[nid]["serve_dir"] == f"/tmp/claude-1000/nd-neg/{nid}/dist"
+        assert by[nid]["harness_out_dir"] == f"/tmp/claude-1000/nd-neg/{nid}/out", "C8-5: each negative has its OWN out dir"
+    assert by["c"]["kind"] == "grep" and by["c"]["serve_dir"] is None
+    assert [by[n]["harness_unit"] for n in ("b", "d", "e")] == ["K1a", "N-d", "K1b"]
+    assert plan["budgets"]["e"]["harness_budget_s"] == 840.0 and plan["budgets"]["c"]["harness_budget_s"] == 0.0
+
+
+def test_sprint_c_end_to_end_positive_control_all_four_negatives_pass_each_on_its_own_unit(bed, nd, tmp_path):
+    bed, src = _bed_c(bed, nd, tmp_path)
+    code, agg = _run_c(bed, src)
+    assert code == 0 and agg["sprint"] == "c" and agg["all_units_complete"] and agg["outcome_evaluated"]
+    assert agg["recomputed"] == ["b", "c", "d", "e"] and agg["reused"] == []
+    flat = json.loads(bed.results.read_text())
+    assert flat["measurement_valid"] is True and flat["n_negatives"] == 4 and flat["n_error_units"] == 0
+    assert all(flat[f"{n}_negative_passed"] is True for n in "bcde"), flat
+    # the harness ran THREE times (c is a grep), each alone, on its own copy and its own out dir
+    runs = bed.harness_runs()
+    assert [(r[0], r[r.index("--scenario") + 1]) for r in runs] == [("--dock-check", "K1a"), ("--dock-check", "N-d"), ("--dock-check", "K1b")]
+    for argv, nid in zip(runs, "bde"):
+        assert argv[argv.index("--serve-dir") + 1] == str(bed.neg_root / nid / "dist")
+        assert argv[argv.index("--out-dir") + 1] == str(bed.neg_root / nid / "out")
+    assert [r[r.index("--neg") + 1] if "--neg" in r else None for r in runs] == [None, None, "drop-query"]
+    # b's copy lost socket.js; d's and e's are whole copies (nothing removed); c made no copy at all
+    assert not (bed.neg_root / "b" / "dist" / SOCKET).exists() and (bed.pristine / SOCKET).exists()
+    assert (bed.neg_root / "d" / "dist" / SOCKET).exists() and (bed.neg_root / "e" / "dist" / SOCKET).exists()
+    assert not (bed.neg_root / "c" / "dist").exists()
+    assert bed.artifact("c")["kind"] == "grep" and bed.artifact("c")["match_count"] == 0
+    assert bed.artifact("e")["dropped_queries"] == 3 and bed.artifact("d")["skipped"] is False
+    assert bed.stamp("c")["inputs"]["sources"] and "sources" not in bed.stamp("b")["inputs"]
+
+
+def test_sprint_c_a_drop_query_that_never_fired_is_an_invalid_measurement_not_a_detection(bed, nd, tmp_path):
+    bed, src = _bed_c(bed, nd, tmp_path)
+    bed.plan["extra"] = {**C_EXTRA, "K1b": {"neg_dropped_queries": 0}}
+    code, agg = _run_c(bed, src)
+    flat = json.loads(bed.results.read_text())
+    assert code == 0 and flat["measurement_valid"] is False, "the mutation did not fire: the run says nothing"
+    assert flat["e_dropped_queries"] == 0 and flat["e_detected"] is True, "late_iframe failed, but for an unproven reason"
+
+
+def test_sprint_c_a_test_hook_in_the_source_fails_negative_c_alone_and_names_the_line(bed, nd, tmp_path):
+    bed, src = _bed_c(bed, nd, tmp_path)
+    (src / "web-repl/shell/display/dock.js").write_text("const hook = window.__praxis" + "_test;\n")
+    code, agg = _run_c(bed, src)
+    flat = json.loads(bed.results.read_text())
+    assert code == 0 and flat["measurement_valid"] is True
+    assert flat["c_negative_passed"] is False and flat["c_match_count"] == 1 and flat["c_harness_exit"] == 0
+    assert [flat[f"{n}_negative_passed"] for n in "bde"] == [True, True, True]
+    assert bed.artifact("c")["failing_keys"] == ["web-repl/shell/display/dock.js:1"]
+
+
+def test_sprint_c_a_harness_that_passes_k1b_under_drop_query_is_a_missed_negative(bed, nd, tmp_path):
+    bed, src = _bed_c(bed, nd, tmp_path)
+    bed.plan["fail"] = {**C_FAIL, "K1b": []}
+    code, agg = _run_c(bed, src)
+    flat = json.loads(bed.results.read_text())
+    assert flat["measurement_valid"] is True and flat["e_negative_passed"] is False and flat["e_detected"] is False
+    assert [flat[f"{n}_negative_passed"] for n in "bcd"] == [True, True, True]
+
+
+def test_sprint_c_resume_reuses_only_the_passed_negatives(bed, nd, tmp_path):
+    bed, src = _bed_c(bed, nd, tmp_path)
+    bed.plan["fail"] = {**C_FAIL, "K1b": []}  # e is missed
+    _run_c(bed, src)
+    n_runs = len(bed.harness_runs())
+    bed.plan["fail"] = dict(C_FAIL)
+    code, agg = _run_c(bed, src, "--resume")
+    assert code == 0 and agg["reused"] and {r["negative"] for r in agg["reused"]} == {"b", "c", "d"}
+    assert agg["recomputed"] == ["e"], "a missed negative is always rerun"
+    assert len(bed.harness_runs()) == n_runs + 1
+    assert json.loads(bed.results.read_text())["e_negative_passed"] is True
+
+
+@pytest.fixture(scope="module")
+def sidecar_c() -> dict[str, Any]:
+    assert SIDECAR_C_PATH.is_file(), "the sprint C sidecar is committed BEFORE the run"
+    return tomllib.loads(SIDECAR_C_PATH.read_text())
+
+
+def _c_flat(nd: Any) -> dict[str, Any]:
+    return nd.derive_outcome_fields(_arts_bcde(), {k: nd.NEGATIVES[k] for k in "bcde"})["flat"]
+
+
+def test_sprint_c_sidecar_pre_registers_a_criterion_for_each_of_b_c_d_e_and_an_invalid_residual(sidecar_c):
+    outcomes = sidecar_c["outcomes"]
+    assert list(outcomes)[0] == "invalid" or "invalid" in outcomes
+    assert outcomes["invalid"]["is_residual"] is True and "measurement_valid = false" in outcomes["invalid"]["condition"]
+    assert {"all_sensitive", "b_insensitive", "c_hook_found", "d_insensitive", "e_insensitive"} <= set(outcomes)
+    assert set(outcomes) == {"invalid", "all_sensitive", "b_insensitive", "c_hook_found", "d_insensitive", "e_insensitive"}
+    for name, o in outcomes.items():
+        assert "all_units_complete = true" in o["condition"], name
+        assert o["is_residual"] is (name == "invalid")
+    for nid in "bcde":
+        assert f"{nid}_negative_passed = true" in outcomes["all_sensitive"]["condition"]
+    assert "measurement_valid = true" in outcomes["all_sensitive"]["condition"]
+    for name, nid in (("b_insensitive", "b"), ("c_hook_found", "c"), ("d_insensitive", "d"), ("e_insensitive", "e")):
+        assert f"{nid}_negative_passed = false" in outcomes[name]["condition"], name
+
+
+def test_sprint_c_sidecar_outcomes_are_a_first_match_partition_of_the_flat_fields(sidecar_c, nd):
+    """bathos picks the FIRST outcome whose SQL holds. Evaluate the real conditions (DuckDB) over flat fields for every
+    combination of the four negatives passing or failing, valid or not: exactly the pre-registered label comes out."""
+    duckdb = pytest.importorskip("duckdb")
+    base = _c_flat(nd)
+
+    def label(flat: dict[str, Any]) -> str:
+        cols = ", ".join(f"{json.dumps(v) if isinstance(v, str) else str(v).lower() if isinstance(v, bool) else v} AS {k}" for k, v in flat.items())
+        for name, spec in sidecar_c["outcomes"].items():
+            if duckdb.execute(f"SELECT ({spec['condition']}) FROM (SELECT {cols})").fetchall()[0][0]:
+                return name
+        return "unknown"
+
+    assert label(base) == "all_sensitive"
+    assert label({**base, "measurement_valid": False}) == "invalid"
+    assert label({**base, "b_negative_passed": False}) == "b_insensitive"
+    assert label({**base, "c_negative_passed": False}) == "c_hook_found"
+    assert label({**base, "d_negative_passed": False}) == "d_insensitive"
+    assert label({**base, "e_negative_passed": False}) == "e_insensitive"
+    # several missed at once: the first in b, c, d, e order is named, and every verdict stays in the flat fields
+    assert label({**base, "c_negative_passed": False, "e_negative_passed": False}) == "c_hook_found"
+    assert label({**base, "b_negative_passed": False, "e_negative_passed": False, "measurement_valid": False}) == "invalid"
+    for nid in "bcde":
+        for verdict in (True, False):
+            for valid in (True, False):
+                got = label({**base, f"{nid}_negative_passed": verdict, "measurement_valid": valid})
+                assert got != "unknown", (nid, verdict, valid)
+
+
+def test_sprint_c_sidecar_result_schema_matches_the_flat_fields_the_driver_writes(sidecar_c, nd):
+    flat = _c_flat(nd)
+    schema = sidecar_c["result_schema"]
+    assert set(schema) == set(flat), set(schema) ^ set(flat)
+    kinds = {"bool": bool, "int": int, "str": str}
+    for key, value in flat.items():
+        assert isinstance(value, kinds[schema[key]]), key
+
+
+def test_sprint_c_sidecar_hypothesis_names_each_negatives_mutation_key_and_unit(sidecar_c):
+    hyp = sidecar_c["experiment"]["hypothesis"]
+    for needle in ("viewer_resources", "socket.js", "K1a", "__praxis_test", "data-praxis-test", "panel_width_wide_1600", "N-d",
+                   "late_iframe", "K1b", "drop-query", "skipped"):
+        assert needle in hyp, needle
+    assert sidecar_c["experiment"]["stage_name"]
+
+
+def test_sprint_c_sidecar_design_names_its_entry_units_timeouts_out_dir_and_validity_checks(sidecar_c, nd):
+    d = sidecar_c["design"]
+    text = json.dumps(d)
+    assert d["unit_list"] == ["b", "c", "d", "e"] and "260929_nd_sensitivity_sprint_c.py" in text
+    assert "outputs/nd_sensitivity/sprint_c" in text and d["timeouts"]["whole_run_timeout"] == "none"
+    assert d["timeouts"]["harness_unit_s"] == {"b": 600, "c": 0, "d": 360, "e": 840}
+    assert d["timeouts"]["negative_unit_s"] == {"b": 840, "c": 240, "d": 600, "e": 1080}
+    assert d["timeouts"]["driver_kill_s"] == {"b": 900, "c": 300, "d": 660, "e": 1140}
+    for nid in "bcde":
+        unit = d["units"][nid]
+        assert unit["required_fields"] == list(nd.REQUIRED_FIELDS), nid
+        assert unit["timeout_s"] == d["timeouts"]["negative_unit_s"][nid]
+    assert d["units"]["b"]["expected_key"] == "viewer_resources" and d["units"]["b"]["harness_unit"] == "K1a"
+    assert d["units"]["b"]["mutation"].startswith("remove assets/visualizer3d-augmentations/socket.js")
+    assert d["units"]["d"]["expected_key"] == "panel_width_wide_1600" and d["units"]["d"]["harness_unit"] == "N-d"
+    assert d["units"]["e"]["expected_key"] == "late_iframe" and d["units"]["e"]["harness_unit"] == "K1b"
+    assert d["units"]["e"]["harness_neg"] == ["drop-query"] and d["units"]["c"]["kind"] == "grep"
+    assert "skipped" in d["units"]["d"]["description"] and "ac39d_status" in json.dumps(d["units"]["d"])
+    for needle in ("unit_runner.driver_input", "dist_pristine", "dist_mutated", "sources", "exit == 0", "error finding",
+                   "never reused", "full unit set", "Watchdog", "os._exit", "bth run", "C7", "--source-root"):
+        assert needle in text or needle in json.dumps(sidecar_c["experiment"]), needle
+    validity = json.dumps(d["validity"])
+    for needle in ("neg_dropped_queries", "control_formula_passes", "planted", "pristine_has_target", "mutated_lacks_target",
+                   "scan_covers_required_files"):
+        assert needle in validity, needle
+    controls = json.dumps(d["controls"])
+    assert ("must FAIL" in controls or "must fail" in controls) and "positive" in d["controls"] and "negative" in d["controls"]
+    assert "test_nd_sensitivity_driver.py" in text and "test_repl_smoke_resume.py" in json.dumps(d["controls"])
+
+
+def test_sprint_c_sidecar_is_a_pre_registration_not_a_receipt():
+    text = SIDECAR_C_PATH.read_text()
+    assert "COMMITTED BEFORE ANY RUN" in text and "No browser has been" in text
+    assert "bth run --project-slug praxis" in text and "uv run bth" in text, "names the right invocation and the wrong one"
+    assert "no run yet" in text.lower()
