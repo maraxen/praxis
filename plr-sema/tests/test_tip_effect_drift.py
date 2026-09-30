@@ -174,17 +174,23 @@ def test_ac_18_7_files_exist_and_the_baseline_is_the_old_pin(baseline: dict, tab
         "baseline and table are the same pin: the cross-pin test would be a tautology"
     )
     assert baseline["channel_effects"], "an empty baseline passes everything"
-    assert set(baseline["intended_divergences"]) == {"LiquidHandler.load_state"}
-    (spec,) = baseline["intended_divergences"].values()
-    assert (spec["old"], spec["new"]) == ("HAS_TIP", "widen")
-    assert spec["reason"] and spec["reason"] != "unreviewed", "a divergence needs a written reason"
+    # Two declared divergences: L1's `load_state` (#5622) and `probe_tip_inventory`, whose
+    # `probing_fn = self.probe_tip_presence_via_pickup` alias the survey dropped at BOTH pins until
+    # #5668 made it a followed delegate (owner ruling 260930).
+    specs = baseline["intended_divergences"]
+    assert set(specs) == {"LiquidHandler.load_state", "LiquidHandler.probe_tip_inventory"}
+    assert (specs["LiquidHandler.load_state"]["old"], specs["LiquidHandler.load_state"]["new"]) == ("HAS_TIP", "widen")
+    probe = specs["LiquidHandler.probe_tip_inventory"]
+    assert (probe["old"], probe["new"]) == (ABSENT, "widen")
+    for spec in specs.values():
+        assert spec["reason"] and spec["reason"] != "unreviewed", "a divergence needs a written reason"
 
 
 def test_ac_18_7_current_table_matches_the_baseline_except_the_intended_divergence(baseline: dict, table: dict) -> None:
     problems, n_div, n_union = drift_problems(baseline, table)
     print(f"parity = {n_union - n_div}/{n_union}  (baseline_divergences = {n_div}, intended = {len(baseline['intended_divergences'])})")
     assert problems == []
-    assert n_div == len(baseline["intended_divergences"]) == 1
+    assert n_div == len(baseline["intended_divergences"]) == 2
 
 
 def test_ac_18_7_the_two_definitions_of_carrying_a_channel_effect_agree(gen, table: dict) -> None:
@@ -224,7 +230,7 @@ def test_ac_18_7_negative_a_new_key_fails_unless_declared_absent(baseline: dict,
     grown["contracts"][key] = {"channel_effect": "NO_TIP"}
     problems, n_div, _ = drift_problems(baseline, grown)
     assert any(p.startswith(f"new key {key}") for p in problems), problems
-    assert n_div == 2, "the counter must count the new key as a divergence (absence is a value)"
+    assert n_div == 3, "the counter must count the new key as a divergence (absence is a value)"
 
     declared = copy.deepcopy(baseline)
     declared["intended_divergences"][key] = {"old": ABSENT, "new": "NO_TIP", "reason": "synthetic"}
@@ -245,8 +251,8 @@ def test_ac_18_7_negative_the_counter_catches_a_listed_non_divergence(baseline: 
     padded = copy.deepcopy(baseline)
     padded["intended_divergences"]["LiquidHandler.drop_tips"] = {"old": "NO_TIP", "new": "NO_TIP", "reason": "synthetic"}
     problems, n_div, _ = drift_problems(padded, table)
-    assert n_div == 1 and len(padded["intended_divergences"]) == 2
-    assert problems == ["baseline_divergences = 1, but len(intended_divergences) = 2"], problems
+    assert n_div == 2 and len(padded["intended_divergences"]) == 3
+    assert problems == ["baseline_divergences = 2, but len(intended_divergences) = 3"], problems
 
 
 def _write(path: Path, contracts: dict[str, str | None], *, pin: str = "p") -> Path:

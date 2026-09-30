@@ -1541,19 +1541,20 @@ def _increment_1_assumption_rows() -> "list[str]":
     return [line for line in table.splitlines() if line.startswith("| **A-")]
 
 
-def test_ac_16_13_a_deck_object_assumption_table_has_seven_rows() -> None:
+def test_ac_16_13_a_deck_object_assumption_table_has_eight_rows() -> None:
     """AC-16.13 / AC-18.11(h): increment 1's §10.6.3 named-assumption table
     took A-DECK-OBJECT from FOUR rows to FIVE (T48); #5622's T61 adds
     A-RACK-STATIC and A-CALLBACK-INERT (copied VERBATIM from the #5622
-    spec's §18.5.5), taking it to SEVEN -- asserted directly against the
-    spec file rather than trusted from prose. (Renamed from
-    `..._has_five_rows`: the count is the assertion.)"""
+    spec's §18.5.5), taking it to SEVEN; backlog #5668 adds
+    A-CALLBACK-NO-DELEGATE, taking it to EIGHT -- asserted directly against
+    the spec file rather than trusted from prose. (Renamed from
+    `..._has_seven_rows`: the count is the assertion.)"""
     rows = _increment_1_assumption_rows()
-    assert len(rows) == 7, f"expected 7 named-assumption rows, found {len(rows)}: {rows}"
+    assert len(rows) == 8, f"expected 8 named-assumption rows, found {len(rows)}: {rows}"
     ids = [row.split("**")[1] for row in rows]
     assert ids[:2] == ["A-SINGLE", "A-COMPLETES"] and "A-DECK-OBJECT" in ids
     assert any(row.startswith("| **A-DECK-OBJECT**") for row in rows), rows
-    assert ids[-2:] == ["A-RACK-STATIC", "A-CALLBACK-INERT"], ids
+    assert ids[-3:] == ["A-RACK-STATIC", "A-CALLBACK-INERT", "A-CALLBACK-NO-DELEGATE"], ids
 
 
 def test_ac_18_11_h_new_assumption_rows_are_verbatim_copies_of_section_18_5_5() -> None:

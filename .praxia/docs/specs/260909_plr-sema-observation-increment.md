@@ -740,7 +740,7 @@ T41 publishes the whole-surface counts and this paragraph is a prediction for it
 
 > **Normative (registry: ZERO).** §16.3 adds no registry row, no per-row ceiling, and no vocabulary
 > member. Its derivation is an AST shape test over PLR's own recorded surface, in the same class as
-> `is_dynamic_raise` (`plr-sema/src/plr_sema/derive/__init__.py:1095-1099`) and `reachability_clear`
+> `is_dynamic_raise` (`plr-sema/src/plr_sema/derive/__init__.py:1105-1109`) and `reachability_clear`
 > (`plr-sema/src/plr_sema/derive/bindings.py:778-815`), both of which increment 6 established cost
 > nothing. **This is recorded as a NON-decision (`D3`) precisely so the round can attack it**: if a
 > reviewer can name one literal PLR fact this section hand-types, the claim is false and the section

@@ -248,11 +248,11 @@ exactly the multiplicity the ledger records, 186 findings over 93 operations
 
 1. **The survey side.** `visit_Call` sets `is_self_call` for a bare `self.<name>(...)` and then admits
    it as a delegate only when `name in self.class_method_names`; every other self-call falls to the
-   `unresolved` branch (`scripts/survey_plr_preconditions.py:344-358`). The `class_method_names` set is
+   `unresolved` branch (`scripts/survey_plr_preconditions.py:404-418`). The `class_method_names` set is
    built per `ClassDef` from `ast.iter_child_nodes` over **that class's own body**
    (`scripts/survey_plr_preconditions.py:347-357`), so an inherited method is structurally invisible.
    `_state_updated` is not validation-looking either — `_is_validation_looking` matches only the
-   `_check`/`_assert`/`_validate` prefixes (`scripts/survey_plr_preconditions.py:173-175`) — so the
+   `_check`/`_assert`/`_validate` prefixes (`scripts/survey_plr_preconditions.py:187-189`) — so the
    `is_self_call` clause is the only reason it is recorded at all rather than silently dropped, which
    is the survey behaving correctly.
 2. **The derive side.** Even with the survey fixed, `resolve` tries exactly two keys, both in the
@@ -799,7 +799,7 @@ and `grid` — and no exactness among them (`plr-sema/src/plr_sema/check/ir.py:1
 > decided findings and, in principle, increment 7's 216.
 >
 > **The second channel is subtler and is not about guards at all.** `_walk_closure` pushes
-> `rec.delegates_to`, which the survey emits `sorted` (`scripts/survey_plr_preconditions.py:421`), so
+> `rec.delegates_to`, which the survey emits `sorted` (`scripts/survey_plr_preconditions.py:481`), so
 > adding `_state_updated` to `pick_up_resource`'s and `drop_resource`'s lists changes push order, hence
 > pop order, hence the **depth** at which unrelated delegates are inlined
 > (`plr-sema/src/plr_sema/derive/__init__.py:445-459`). Depth gates `caller_args`,
@@ -1252,6 +1252,35 @@ and a `None` payload is always legal.
 > (`scripts/survey_plr_preconditions.py:268-288`) — is invisible to the site set, exactly as it is
 > invisible to the shipped single-site rule and to the entire `delegates_to` closure the contract table
 > already rests on. **M3 inherits that gap unchanged; it does not widen it.**
+>
+> > **Amendment (260930, backlog #5668, owner ruling 260930): stored-callback calls are gaps, not
+> > fail-closed condition 1.** PLR 1.0 calls stored callbacks through a loop variable
+> > (`for callback in self._callbacks: callback()`, e.g. `VolumeTracker.set_volume`,
+> > `Resource._call_did_assign_resource_callbacks`), a bare-name call the survey used to drop without
+> > trace. The survey now records it in a separate `callback_calls` field, named by the attribute, and
+> > derive records each as an `unresolved_delegate` gap, so it is visible on every contract that
+> > reaches it. It is deliberately **not** an entry in `unresolved_calls`,
+> > so it does not trigger condition 1: every move-family closure reaches `Resource`'s assign/unassign
+> > callback loops, and counting them would decline every `_check_args` fold. This rests on a named
+> > assumption, **A-CALLBACK-NO-DELEGATE** (spec 260902 §10.6.3): a stored callback does not call
+> > `_check_args`. Part of its PLR-internal half is checked by
+> > `plr-sema/tests/test_callback_no_delegate.py`; the rest, and the user-registered half, are assumed
+> > (the §10.6.3 row lists what the check does not cover). A local bound from a **method**
+> > (`fn = self.probe_tip_presence_via_pickup`) is an ordinary delegate, not a callback, and is not
+> > exempt. The survey regeneration is additive except for exactly that: two records'
+> > `delegates_to` gain the aliased method (`LiquidHandler.probe_tip_inventory`,
+> > `ItemizedResource.summary`). **Contract delta at the pin, against a regeneration of main:** 39
+> > contracts' gaps change; `LiquidHandler.probe_tip_inventory` now follows its alias into
+> > `pick_up_tips`/`drop_tips` (0 inlined guards before, 19 now, channel effect `widen`, backend
+> > surface attached, 22 → 23 entries); every other guard, `caller_args_sites` entry, backend-surface
+> > row and the whole `receiver_state` are byte-identical.
+> > **Consequence for this increment's gate, stated rather than left to be found:** the move-family
+> > contracts (`move_resource`, `move_plate`, `move_lid`, `pick_up_resource`, `drop_resource`) now
+> > carry `unresolved_delegate` gaps, so their operations carry UNKNOWN `unresolved_delegate`
+> > findings. The gate clause "`unresolved_delegate` is 0 benchmark-wide" was true of this increment's
+> > registered run at the old pin, where the same calls were silently dropped; it is not re-asserted
+> > under PLR 1.0. The operation-level delta on the benchmark has **not** been measured; it needs a
+> > pre-registered run before anyone cites a number.
 >
 > **(b) The `depth == 1` restriction is lifted for CALL-SITE-CONSTANT arguments only.** A `(K_i, D)`
 > pair at any depth `d ≥ 1` binds a parameter iff the argument at that call site parses as a `Term`
@@ -2504,7 +2533,7 @@ none**: inside `LiquidHandler.serialize_state`
 `self.<n>()` call at all, so it contributes no delegate and no unresolved call;
 `callback(self.serialize_state())` in `Resource._state_updated`
 (`external/pylabrobot/pylabrobot/resources/resource.py:932-934`) is an `ast.Name` call recorded
-nowhere by `visit_Call` (`scripts/survey_plr_preconditions.py:306-320`), while the inner
+nowhere by `visit_Call` (`scripts/survey_plr_preconditions.py:346-360`), while the inner
 `self.serialize_state()` is a resolvable self-call and becomes a delegate. **And the other input to
 §17.5.1's first condition is 0 benchmark-wide**: `no_contract_derived` is a `REASON_VOCABULARY` member
 (`plr-sema/src/plr_sema/verdict.py:147-199`) and it does **not** appear in the ledger's

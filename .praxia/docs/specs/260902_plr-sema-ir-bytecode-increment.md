@@ -655,7 +655,7 @@ and this increment does not need one. Every fact it relies on is derived:
 | what could have been typed | what it is instead |
 |---|---|
 | a tool→PLR parameter name map | `PlanResult.kwargs` at runtime — written by `plan_call`'s `bind` from `spec.plr_arg` (`dispatcher.py:117-135`). `PARAM_NAMESPACE` is hand-maintained, but it is **coxswain's** table, consumed across the boundary and never copied into `plr_sema` — the same relationship HM-9 records for `SUPPORTED_TOOLS`. A copy would need a row; there is no copy |
-| a per-method PLR parameter list | `SurveyRecord.params` (`derive/__init__.py:182-191`), already surveyed by `_function_params` (`survey_plr_preconditions.py:362-373`), shipped as an additive `params` key (§11.2.4) |
+| a per-method PLR parameter list | `SurveyRecord.params` (`derive/__init__.py:182-191`), already surveyed by `_function_params` (`survey_plr_preconditions.py:422-433`), shipped as an additive `params` key (§11.2.4) |
 | a `WIDEN` reason vocabulary | upstream field names, checked by set-inclusion against `model_fields` (§11.1.5, AC-11.8) |
 | an opcode↔field mapping table | it *is* the disposition table, and the disposition table is checked exhaustive against `model_fields` (AC-11.1) rather than maintained against a memory of what upstream looks like |
 
