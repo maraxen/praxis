@@ -446,3 +446,9 @@ jobs:
 
       - name: Display JS harness
         run: bun test web-repl/shell/display
+
+      # C4 (AC-32): the Visualizer3D socket shim + embed-mode tests live under
+      # shell/display/__tests__, so the step above already runs them; this named step
+      # keeps the gate visible on its own and fails loudly if the file is moved.
+      - name: Visualizer3D socket shim JS harness
+        run: bun test web-repl/shell/display/__tests__/viz3d_socket.test.js
