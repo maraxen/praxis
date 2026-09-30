@@ -4844,6 +4844,20 @@ class FakeDock:
 
     last_drag: dict[str, Any] | None = None
 
+    def drag_splitter_by(self, dx: float) -> float | None:
+        self._log("drag_splitter_by", dx)
+        self.last_drag = None
+        if "no_handle" in self.broken or self.state == "closed" or self.home != "split":
+            return None
+        cur = self._panel_width() or 0.0
+        width = cur - dx  # the handle moves right by dx: the panel (to its right) narrows by dx
+        if self.tier == "medium" and "lost_clamp" not in self.broken:
+            width = min(480.0, max(420.0, width))
+        self.drag_w = width
+        self.last_drag = {"x0": 766.0, "y": 300.0, "x1": 766.0 + dx, "dx": dx, "target_width": None, "handle": {"left": 763.0, "width": 6.0},
+                          "widget": {"right": 1200.0}, "n_handles": 1, "steps": 15, "sent": [["move", 766.0, 300.0], ["down"], ["up"]], "trace": []}
+        return width
+
     def layout(self) -> dict[str, Any]:
         """The annotated layout snapshot of the world (the real driver's ``layout()`` returns the same shape)."""
         self._log("layout")
@@ -5108,7 +5122,7 @@ def test_k2_reopens_are_through_the_toggle_command_never_a_second_dock(rs, nb, d
 def test_k2_splitter_drags_go_to_300_and_700_at_1440_and_1280_only(rs, nb, dnbf):
     d = FakeDock(rs, dnbf, start=(1152, 800))
     rs.run_k2(d, nb)
-    assert [c[1] for c in _calls(d, "drag_splitter_to")] == [300, 700, 300, 700]
+    assert [c[1] for c in _calls(d, "drag_splitter_to")] == [300, 700, 300, 700, 300], "the last is the evidence-only retry at 1280"
 
 
 def test_k2_counts_iframe_loads_over_the_drags_and_the_wide_resize_only(rs, nb, dnbf):
@@ -5970,26 +5984,6 @@ def test_layout_reader_on_an_empty_page_is_well_formed_with_none_rects_and_never
     assert all(got["rects"][k] is None for k in LAYOUT_RECTS) and got["handles"] == [] and got["split_sizes"] is None
 
 
-@needs_bun
-def test_mouse_trace_records_what_the_page_actually_received_and_stops(rs, tmp_path):
-    body = r"""
-const listeners = {};
-window.addEventListener = (t, f, c) => { (listeners[t] = listeners[t] || []).push(f); };
-window.removeEventListener = (t, f) => { listeners[t] = (listeners[t] || []).filter((x) => x !== f); };
-const fire = (t, x, y, buttons) => (listeners[t] || []).forEach((f) => f({ type: t, clientX: x, clientY: y, buttons }));
-D.mouseTrace({ op: "start" });
-fire("mousedown", 703, 300, 1); fire("mousemove", 600, 300, 1); fire("mousemove", 500, 300, 1); fire("mouseup", 500, 300, 0);
-const got = D.mouseTrace({ op: "stop" });
-fire("mousemove", 1, 1, 0);
-return { got, after: D.mouseTrace({ op: "read" }), listeners: Object.values(listeners).flat().length };
-"""
-    got = _run_dock_js(rs, tmp_path, body)
-    assert [(e["type"], e["x"], e["y"], e["buttons"]) for e in got["got"]] == [
-        ("mousedown", 703, 300, 1), ("mousemove", 600, 300, 1), ("mousemove", 500, 300, 1), ("mouseup", 500, 300, 0)]
-    assert got["after"] == got["got"], "nothing after stop is recorded"
-    assert got["listeners"] == 0, "the listeners are removed on stop"
-
-
 # -- the scenario records the layout around every drag and at the wide steps; the old keys are untouched ------------------
 
 
@@ -6019,7 +6013,7 @@ def test_the_layout_is_read_before_the_first_drag_and_after_each_drag_in_that_or
     rs.run_k2(d, nb)
     names = [c[0] for c in d.calls]
     drags = [i for i, c in enumerate(d.calls) if c[0] == "drag_splitter_to"]
-    assert len(drags) == 4
+    assert len(drags) == 5, "1440: low, high; 1280: low, high, and the evidence-only retry"
     for first in (drags[0], drags[2]):  # 1440's pair, then 1280's pair
         second = first + 2  # layout, drag, layout, drag, layout
         assert names[first - 1] == "layout" and names[first + 1] == "layout" and names[second] == "drag_splitter_to"
@@ -6082,8 +6076,10 @@ def test_an_old_driver_without_the_new_methods_still_runs_k2(rs, nb, dnbf):
 def test_the_real_driver_builds_its_drag_from_drag_plan_and_records_last_drag_and_the_page_trace(rs):
     import inspect
     src = inspect.getsource(rs.DockDriver.drag_splitter_to)
-    assert "drag_plan(" in src and "self.last_drag" in src and "mouseTrace" in src
-    assert "self.page.mouse.move(" in src and "self.page.mouse.down()" in src and "self.page.mouse.up()" in src
+    assert "drag_plan(" in src and "_perform_drag(" in src
+    perform = inspect.getsource(rs.DockDriver._perform_drag)
+    assert "self.last_drag" in perform and "mouseTrace" in perform
+    assert "self.page.mouse.move(" in perform and "self.page.mouse.down()" in perform and "self.page.mouse.up()" in perform
     layout_src = inspect.getsource(rs.DockDriver.layout)
     assert "annotate_layout(" in layout_src and 'self._dk("layout()")' in layout_src
     assert rs.DockDriver.drag_splitter_to.__annotations__["return"] == "float | None", "the return shape is unchanged"
@@ -6585,3 +6581,326 @@ def test_a_click_that_found_no_target_in_click_focuses_also_fails_its_key(rs, nb
     keys = rs.run_k1a(d, nb)
     assert _evaluate(rs, "K1a", keys)[1] == ["click_focuses"]
     assert "step_errors" in keys["evidence"] and "click_focuses" in keys["evidence"]["step_errors"]
+
+
+# =========================================================================== #
+# C7a follow-up 2, request 2: a TRUSTWORTHY drag trace, what sat under the pointer, Lumino's own state, and two evidence-only
+# repeats at 1280 (no pass/fail change)
+# =========================================================================== #
+#
+# Why the old trace lied: Lumino (and JupyterLab's dock subclass) drive a handle drag with POINTER events and call
+# preventDefault on `pointerdown`; Chromium then suppresses the compatibility MOUSE events (mousedown/mousemove/mouseup) for the
+# rest of the press. The old trace listened to mouse events only, so a drag Lumino DID handle showed one stray mousemove (1440),
+# while a press Lumino did not take still produced every mouse event (1280 drag_high, 18). The new trace listens to both
+# families, on window capture, document capture and window bubble, and records each target and `defaultPrevented`.
+
+
+def _good_element(tag="DIV", **over):
+    base = {"tag": tag, "id": None, "classes": ["lm-DockPanel-handle"], "inside_iframe": False, "inside_deck": False,
+            "inside_handle": True, "is_handle": True}
+    base.update(over)
+    return base
+
+
+def _good_probe_points(n=5):
+    return {"points": [{"x": 700.0 + i * 40, "y": 300.0, "element": _good_element()} for i in range(n)],
+            "active_element": _good_element("BODY", classes=[], inside_handle=False, is_handle=False)}
+
+
+def _good_dock_probe(**over):
+    base = {"sizes": [{"orientation": "horizontal", "sizes": [0.5, 0.5]}],
+            "sizers": [{"orientation": "horizontal", "sizers": [{"size": 480.0, "size_hint": 0, "min_size": 2, "max_size": 1e9, "stretch": 1},
+                                                               {"size": 473.5, "size_hint": 0, "min_size": 420, "max_size": 480, "stretch": 1}],
+                        "handles_hidden": [False]}],
+            "optimize_resize": True, "resize_drag_active": False, "frozen_groups": 0,
+            "inline": {"notebook_panel": {"width": "", "max_width": "", "min_width": "", "height": "", "max_height": ""},
+                       "deck_panel": {"width": "", "max_width": "480px", "min_width": "420px", "height": "", "max_height": ""},
+                       "notebook": None, "notebook_children": []}}
+    base.update(over)
+    return base
+
+
+GEO = {"handle": _rect(763.0, 6.0, top=100.0, height=400.0), "widget": _rect(769.0, 473.5, top=50.0), "n_handles": 1}
+
+
+def test_drag_plan_by_is_a_short_drag_from_the_handle_centre(rs):
+    plan = rs.drag_plan_by(GEO, 30, inner_width=1280)
+    assert (plan["x0"], plan["y"], plan["x1"]) == (766.0, 300.0, 796.0)
+    assert plan["dx"] == 30 and plan["target_width"] is None and plan["steps"] == 15 and plan["x1_in_window"] is True
+    assert rs.drag_plan_by(GEO, -5000, inner_width=1280)["x1_in_window"] is False
+    assert rs.drag_plan_by(GEO, 30)["x1_in_window"] is None
+    for bad in (None, {}, {"handle": None}, {"handle": _rect(0, 1), "widget": {"right": "x"}}):
+        assert rs.drag_plan_by(bad, 30) is None, bad
+    assert rs.drag_plan_by(GEO, 30)["handle"] == GEO["handle"], "the same geometry fields as drag_plan"
+
+
+def test_path_points_are_the_press_point_and_four_points_along_the_path(rs):
+    plan = rs.drag_plan(GEO, 300, inner_width=1280)
+    pts = rs.path_points(plan)
+    assert len(pts) == 5 and pts[0] == [plan["x0"], plan["y"]]
+    xs = [p[0] for p in pts]
+    step = (plan["x1"] - plan["x0"]) / 5
+    assert xs == pytest.approx([plan["x0"] + k * step for k in range(5)]) and {p[1] for p in pts} == {plan["y"]}
+    assert rs.path_points(None) == [] and rs.path_points({}) == []
+
+
+def _ev2(type_, phase, **kw):
+    return {"type": type_, "phase": phase, "x": 1.0, "y": 2.0, "buttons": 1, "target": None, "prevented": False, **kw}
+
+
+def test_summarize_trace_counts_each_type_at_each_phase_and_keeps_the_ends_of_the_move_runs(rs):
+    events = [_ev2("pointerdown", "window:capture"), _ev2("pointerdown", "window:bubble")]
+    events += [_ev2("pointermove", "window:capture", x=float(i)) for i in range(10)]
+    events += [_ev2("pointerup", "window:capture")]
+    out = rs.summarize_trace(events, keep=3)
+    assert out["n"] == 13
+    assert out["counts"] == {"pointerdown@window:capture": 1, "pointerdown@window:bubble": 1, "pointermove@window:capture": 10,
+                             "pointerup@window:capture": 1}
+    kept = [e for e in out["events"] if e["type"] == "pointermove"]
+    assert [e["x"] for e in kept] == [0.0, 1.0, 2.0, 7.0, 8.0, 9.0], "first three and last three"
+    assert [e["type"] for e in out["events"] if e["type"] != "pointermove"] == ["pointerdown", "pointerdown", "pointerup"]
+    assert out["events"].index(kept[0]) > 1, "original order is preserved"
+    short = rs.summarize_trace(events[:4], keep=3)
+    assert len(short["events"]) == 4, "a short run is kept whole"
+
+
+def test_summarize_trace_negative_controls(rs):
+    empty = {"n": 0, "counts": {}, "events": []}
+    assert rs.summarize_trace(None) == empty and rs.summarize_trace("x") == empty and rs.summarize_trace([]) == empty
+    assert rs.summarize_trace([1, None, {"type": "mousemove"}])["n"] == 1, "junk entries are not events"
+
+
+def test_element_probe_positive_control_and_negative_controls(rs):
+    assert rs.element_probe_problems(_good_probe_points(), 5) == []
+    none_elem = _good_probe_points()
+    none_elem["points"][2]["element"] = None  # nothing at that point (outside the window): recorded, not malformed
+    none_elem["active_element"] = None
+    assert rs.element_probe_problems(none_elem, 5) == []
+    for mutate, fragment in (
+        (lambda p: p["points"].pop(), "points"), (lambda p: p.update(points="x"), "points"),
+        (lambda p: p["points"][0]["element"].pop("tag"), "tag"), (lambda p: p["points"][1]["element"].update(classes="a b"), "classes"),
+        (lambda p: p["points"][3].pop("x"), "x"), (lambda p: p.pop("active_element"), "active_element"),
+        (lambda p: p["points"][0]["element"].update(inside_iframe="no"), "inside_iframe"),
+    ):
+        probe = _good_probe_points()
+        mutate(probe)
+        problems = rs.element_probe_problems(probe, 5)
+        assert problems and any(fragment in p for p in problems), (fragment, problems)
+    assert rs.element_probe_problems(None, 5)
+
+
+def test_dock_probe_positive_control_and_negative_controls(rs):
+    assert rs.dock_probe_problems(_good_dock_probe()) == []
+    assert rs.dock_probe_problems(_good_dock_probe(sizes=None, sizers=None, optimize_resize=None, resize_drag_active=None,
+                                                   frozen_groups=None)) == [], "unreadable private state is None, not a problem"
+    for over, fragment in (({"sizes": "x"}, "sizes"), ({"sizers": [1]}, "sizers"), ({"frozen_groups": "0"}, "frozen_groups"),
+                           ({"optimize_resize": 1}, "optimize_resize"), ({"inline": None}, "inline"), ({"resize_drag_active": "no"}, "resize_drag_active")):
+        problems = rs.dock_probe_problems(_good_dock_probe(**over))
+        assert problems and any(fragment in p for p in problems), (over, problems)
+    assert rs.dock_probe_problems(None)
+
+
+def test_assemble_drag_evidence_keeps_the_plan_and_adds_what_was_sent_seen_and_read(rs):
+    plan = rs.drag_plan(GEO, 300, inner_width=1280)
+    sent = [["move", plan["x0"], plan["y"]], ["down"], ["move", plan["x1"], plan["y"], 15], ["up"]]
+    trace = [_ev2("pointerdown", "window:capture", probe=_good_dock_probe(), probe_after=_good_dock_probe()),
+             _ev2("pointermove", "window:capture")]
+    out = rs.assemble_drag_evidence(plan, sent, trace, _good_probe_points(), _good_dock_probe(), _good_dock_probe())
+    assert {k: out[k] for k in plan} == plan and out["sent"] == sent
+    assert out["trace_n"] == 2 and out["trace_counts"] == {"pointerdown@window:capture": 1, "pointermove@window:capture": 1}
+    assert out["elements"] == _good_probe_points() and out["dock_probe_before"] == _good_dock_probe()
+    assert out["dock_probe_after_up"] == _good_dock_probe() and out["problems"] == []
+    assert out["trace"][0]["probe"]["sizes"] == [{"orientation": "horizontal", "sizes": [0.5, 0.5]}], "sizes at mousedown"
+
+
+def test_assemble_drag_evidence_reports_malformed_parts_without_raising(rs):
+    plan = rs.drag_plan(GEO, 300)
+    out = rs.assemble_drag_evidence(plan, [], None, {"points": []}, "x", None)
+    assert out["trace"] == [] and out["trace_n"] == 0
+    assert any(p.startswith("elements:") for p in out["problems"])
+    assert any(p.startswith("dock_probe_before:") for p in out["problems"])
+    assert any(p.startswith("dock_probe_after_up:") for p in out["problems"])
+
+
+# -- the in-page readers (bun, fake DOM) ---------------------------------------------------------------------------------------
+
+_EL = r"""
+const cls = (list) => ({ contains: (c) => list.includes(c), [Symbol.iterator]: function* () { yield* list; } });
+const mkEl = (tag, id, classes, extra = {}) => ({ tagName: tag, id, classList: cls(classes),
+  closest: (sel) => (extra.closest && extra.closest[sel]) || null, ...extra });
+"""
+
+
+@needs_bun
+def test_points_at_describes_the_element_under_each_point_and_the_active_element(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + r"""
+const handle = mkEl("DIV", "", ["lm-DockPanel-handle", "lm-mod-horizontal"], { closest: { ".lm-DockPanel-handle": true } });
+const iframe = mkEl("IFRAME", "", ["praxis-deck-panel__frame"], { closest: { ".praxis-deck-panel": true } });
+document.elementFromPoint = (x, y) => (x < 100 ? handle : x < 200 ? iframe : null);
+document.activeElement = mkEl("BUTTON", "follow", ["praxis-deck-panel__follow"], { closest: { ".praxis-deck-panel": true } });
+return D.pointsAt({ points: [[50, 10], [150, 10], [900, 10]] });
+""")
+    assert rs.element_probe_problems(got, 3) == []
+    p = got["points"]
+    assert p[0]["element"] == {"tag": "DIV", "id": None, "classes": ["lm-DockPanel-handle", "lm-mod-horizontal"], "inside_iframe": False,
+                               "inside_deck": False, "inside_handle": True, "is_handle": True}
+    assert p[1]["element"]["tag"] == "IFRAME" and p[1]["element"]["inside_iframe"] is True and p[1]["element"]["inside_deck"] is True
+    assert p[2]["element"] is None, "nothing there (outside the window)"
+    assert (p[0]["x"], p[0]["y"]) == (50, 10)
+    assert got["active_element"]["tag"] == "BUTTON" and got["active_element"]["id"] == "follow" and got["active_element"]["inside_deck"] is True
+
+
+_DOCK_FAKE = r"""
+const sizer = (size, min, max) => ({ size, sizeHint: 0, minSize: min, maxSize: max, stretch: 1 });
+const root = { type: "split-area", orientation: "horizontal", sizers: [sizer(480, 2, 1e9), sizer(473.5, 420, 480)],
+               handles: [{ classList: cls(["lm-DockPanel-handle"]) }],
+               children: [{ type: "tab-area" }, { type: "tab-area" }] };
+window.jupyterapp = { shell: { _dockPanel: { optimizeResize: true, _isResizeDragActive: true, _frozenGroups: [[{}, {}], [{}]],
+  saveLayout: () => ({ main: { type: "split-area", orientation: "horizontal", sizes: [0.5, 0.5], children: [] } }), layout: { _root: root } } } };
+const style = (o) => ({ width: "", maxWidth: "", minWidth: "", height: "", maxHeight: "", ...o });
+nodes[".jp-NotebookPanel"] = { style: style({ width: "473px", maxWidth: "473px" }),
+  children: [{ tagName: "DIV", className: "jp-Toolbar", style: style({ width: "473px", maxWidth: "473px" }) }] };
+nodes[".praxis-deck-panel"] = { style: style({ minWidth: "420px", maxWidth: "480px" }) };
+"""
+
+
+@needs_bun
+def test_dock_probe_reads_sizes_sizers_the_freeze_state_and_the_inline_styles_lumino_and_jupyterlab_write(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + _DOCK_FAKE + "return D.dockProbe();")
+    assert rs.dock_probe_problems(got) == []
+    assert got["sizes"] == [{"orientation": "horizontal", "sizes": [0.5, 0.5]}]
+    assert got["sizers"] == [{"orientation": "horizontal", "handles_hidden": [False], "sizers": [
+        {"size": 480, "size_hint": 0, "min_size": 2, "max_size": 1e9, "stretch": 1},
+        {"size": 473.5, "size_hint": 0, "min_size": 420, "max_size": 480, "stretch": 1}]}]
+    assert got["optimize_resize"] is True and got["resize_drag_active"] is True and got["frozen_groups"] == 2
+    assert got["inline"]["notebook_panel"] == {"width": "473px", "max_width": "473px", "min_width": "", "height": "", "max_height": ""}
+    assert got["inline"]["deck_panel"]["max_width"] == "480px" and got["inline"]["notebook"] is None
+    assert got["inline"]["notebook_children"] == [{"tag": "DIV", "classes": "jp-Toolbar", "width": "473px", "max_width": "473px", "max_height": ""}]
+
+
+@needs_bun
+def test_dock_probe_with_no_readable_dock_is_all_none_and_never_throws(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, "window.jupyterapp = { shell: {} }; return D.dockProbe();")
+    assert rs.dock_probe_problems(got) == []
+    assert got["sizes"] is None and got["sizers"] is None and got["optimize_resize"] is None and got["frozen_groups"] is None
+    assert got["inline"]["notebook_panel"] is None and got["inline"]["notebook_children"] == []
+
+
+_TRACE_FAKE = r"""
+const cls2 = (list) => ({ contains: (c) => list.includes(c), [Symbol.iterator]: function* () { yield* list; } });
+const listeners = [];   // {target, type, fn, capture}
+const reg = (name) => ({
+  addEventListener: (type, fn, capture) => listeners.push({ name, type, fn, capture: !!capture }),
+  removeEventListener: (type, fn, capture) => { const i = listeners.findIndex((l) => l.name === name && l.type === type && l.fn === fn && l.capture === !!capture); if (i >= 0) listeners.splice(i, 1); },
+});
+Object.assign(window, reg("window")); Object.assign(document, reg("document"));
+const handleEl = { tagName: "DIV", id: "", classList: cls2(["lm-DockPanel-handle"]), closest: (s) => (s === ".lm-DockPanel-handle" ? true : null) };
+// phases in the order a real dispatch visits them: window capture, document capture, [target], window bubble
+const fire = (type, x, y, opts = {}) => {
+  const e = { type, clientX: x, clientY: y, buttons: opts.buttons ?? 1, target: opts.target ?? handleEl, pointerId: 1, isTrusted: true, defaultPrevented: false };
+  const run = (name, capture) => listeners.filter((l) => l.name === name && l.type === type && l.capture === capture).forEach((l) => l.fn(e));
+  run("window", true); run("document", true);
+  if (opts.prevent) e.defaultPrevented = true;   // Lumino's handler, on the target, calls preventDefault
+  if (!opts.stop) run("window", false);          // stopPropagation: the bubble listener on window never hears it
+};
+window.jupyterapp = { shell: { _dockPanel: { optimizeResize: true, _isResizeDragActive: false, _frozenGroups: [], saveLayout: () => ({ main: { type: "split-area", orientation: "horizontal", sizes: [0.5, 0.5] } }) } } };
+"""
+
+
+@needs_bun
+def test_the_mouse_trace_listens_to_pointer_and_mouse_events_at_three_phases_and_records_targets_and_defaultprevented(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + _TRACE_FAKE + r"""
+D.mouseTrace({ op: "start" });
+fire("pointerdown", 766, 300, { prevent: true, stop: true });      // Lumino takes the press: prevented, propagation stopped
+fire("pointermove", 700, 300);
+fire("pointermove", 600, 300);
+fire("mouseup", 600, 300, { buttons: 0 });
+fire("pointerup", 600, 300, { buttons: 0 });
+const stopped = D.mouseTrace({ op: "stop" });
+const left = listeners.length;
+fire("pointermove", 1, 1);
+await new Promise((r) => setTimeout(r, 30));
+return { stopped: stopped.map((e) => [e.type, e.phase, e.x, e.prevented]), after_stop: D.mouseTrace({ op: "read" }).length, left,
+         down: D.mouseTrace({ op: "read" }).find((e) => e.type === "pointerdown" && e.phase === "window:capture") };
+""")
+    assert got["left"] == 0, "every listener (window capture, document capture, window bubble) is removed on stop"
+    seen = {(t, ph) for t, ph, _, _ in got["stopped"]}
+    assert ("pointerdown", "window:capture") in seen and ("pointerdown", "document:capture") in seen
+    assert ("pointerdown", "window:bubble") not in seen, "propagation was stopped: only the capture phases heard it"
+    assert ("pointermove", "window:bubble") in seen and ("mouseup", "window:capture") in seen and ("pointerup", "window:capture") in seen
+    assert got["after_stop"] == len(got["stopped"]), "nothing after stop is recorded"
+    down = got["down"]
+    assert down["target"]["tag"] == "DIV" and down["target"]["is_handle"] is True and down["target"]["inside_handle"] is True
+    assert down["pointer_id"] == 1 and down["trusted"] is True and down["prevented"] is False, "at window capture nothing has prevented it yet"
+    assert down["probe"]["sizes"] == [{"orientation": "horizontal", "sizes": [0.5, 0.5]}], "split sizes at pointerdown (before Lumino acts)"
+    assert down["probe_after"]["optimize_resize"] is True, "and again once the handlers have run"
+    assert rs.dock_probe_problems(down["probe"]) == [] and rs.dock_probe_problems(down["probe_after"]) == []
+
+
+@needs_bun
+def test_the_mouse_trace_bubble_phase_shows_a_prevented_default_so_suppressed_mouse_events_are_explained(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + _TRACE_FAKE + r"""
+D.mouseTrace({ op: "start" });
+fire("pointerdown", 766, 300, { prevent: true });
+const ev = D.mouseTrace({ op: "stop" });
+return ev.filter((e) => e.type === "pointerdown").map((e) => [e.phase, e.prevented]);
+""")
+    assert got == [["window:capture", False], ["document:capture", False], ["window:bubble", True]]
+
+
+def test_the_old_window_capture_only_trace_is_gone(rs):
+    assert rs.DOCK_CHECK_JS.count('addEventListener(ty, handler, capture)') >= 1 or "target.addEventListener" in rs.DOCK_CHECK_JS
+    for ty in ("pointerdown", "pointermove", "pointerup", "pointercancel", "mousedown", "mousemove", "mouseup"):
+        assert f'"{ty}"' in rs.DOCK_CHECK_JS, ty
+    for phase in ("window:capture", "document:capture", "window:bubble"):
+        assert phase in rs.DOCK_CHECK_JS, phase
+
+
+# -- the scenario: new keys under evidence.medium['1280'] only; the drag drivers ----------------------------------------------
+
+
+def test_the_1280_step_adds_a_short_right_drag_and_a_retry_after_drag_high_and_the_keys_do_not_move(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+    keys = rs.run_k2(d, nb)
+    m = keys["evidence"]["medium"]
+    new = {"drag_small_right", "drag_small_right_xy", "geo_after_small_right", "drag_low_retry", "drag_low_retry_xy", "geo_after_low_retry"}
+    assert new <= set(m["1280"]) and not (new & set(m["1440"])), "only the 1280 step carries them"
+    assert {"open", "drag_low", "drag_high", "geo_before", "geo_after_low", "geo_after_high"} <= set(m["1280"])
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], []), "no rule changed"
+    assert m["1280"]["drag_small_right_xy"]["dx"] == 30 and m["1280"]["drag_low_retry_xy"]["target_width"] == 300
+    # order at 1280: low, high, THEN the short right drag, THEN the retry (all after the existing pair)
+    drags = [c for c in d.calls if c[0] in ("drag_splitter_to", "drag_splitter_by")]
+    assert [(c[0], c[1]) for c in drags] == [("drag_splitter_to", 300), ("drag_splitter_to", 700), ("drag_splitter_to", 300),
+                                             ("drag_splitter_to", 700), ("drag_splitter_by", 30), ("drag_splitter_to", 300)]
+    assert keys["evidence"]["reloads"]["drag_1280"] == 0, "loads are counted over the original two drags only"
+
+
+def test_the_extra_1280_drags_are_evidence_only_even_when_they_fail_or_the_driver_lacks_them(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+
+    def boom(dx):
+        raise rs.DockCheckError("mouse lost")
+
+    d.drag_splitter_by = boom
+    keys = rs.run_k2(d, nb)
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], [])
+    assert "drag_small_right_1280" in keys["evidence"]["step_errors"]
+    class Old(FakeDock):
+        drag_splitter_by = property(lambda self: (_ for _ in ()).throw(AttributeError("drag_splitter_by")))
+    keys = rs.run_k2(Old(rs, dnbf, start=(1152, 800)), nb)
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], [])
+    assert keys["evidence"]["medium"]["1280"]["drag_small_right"] is None
+
+
+def test_the_real_driver_probes_before_the_press_and_after_the_release_and_shares_one_drag_routine(rs):
+    import inspect
+    perform = inspect.getsource(rs.DockDriver._perform_drag)
+    for needle in ('self._dk("pointsAt(a)"', 'self._dk("dockProbe()")', 'self._dk("mouseTrace(a)", {"op": "start"})', "path_points(plan)",
+                   "self.page.mouse.move(", "self.page.mouse.down()", "self.page.mouse.up()", "assemble_drag_evidence(", "self.last_drag"):
+        assert needle in perform, needle
+    assert perform.index('"op": "start"') < perform.index("self.page.mouse.move("), "the trace is armed BEFORE the move to x0"
+    assert perform.index('self._dk("pointsAt(a)"') < perform.index("self.page.mouse.down()"), "elements are read before the press"
+    assert perform.index("self.page.mouse.up()") < perform.index('self._dk("dockProbe()")', perform.index("self.page.mouse.up()")), "and Lumino's state right after the release"
+    assert "_perform_drag(" in inspect.getsource(rs.DockDriver.drag_splitter_to)
+    assert "_perform_drag(" in inspect.getsource(rs.DockDriver.drag_splitter_by) and "drag_plan_by(" in inspect.getsource(rs.DockDriver.drag_splitter_by)
+    assert rs.DockDriver.drag_splitter_to.__annotations__["return"] == "float | None"
