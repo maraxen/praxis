@@ -100741,7 +100741,9 @@
         "use_channels"
       ],
       "findings": [],
-      "delegates_to": [],
+      "delegates_to": [
+        "probe_tip_presence_via_pickup"
+      ],
       "unresolved_calls": [],
       "inherited_delegates": [],
       "dropped_calls": [
@@ -100753,9 +100755,7 @@
           ]
         }
       ],
-      "callback_calls": [
-        "probe_tip_presence_via_pickup"
-      ]
+      "callback_calls": []
     },
     {
       "qualname": "LiquidHandler.consolidate_tip_inventory",
@@ -178703,6 +178703,7 @@
       ],
       "findings": [],
       "delegates_to": [
+        "_occupied_func",
         "get_item"
       ],
       "unresolved_calls": [],
@@ -178724,9 +178725,7 @@
           "scope_trail": []
         }
       ],
-      "callback_calls": [
-        "_occupied_func"
-      ]
+      "callback_calls": []
     },
     {
       "qualname": "ItemizedResource.serialize",

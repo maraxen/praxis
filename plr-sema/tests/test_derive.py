@@ -201,6 +201,7 @@ def _synthetic_record(
     unresolved_calls: tuple[str, ...] = (),
     findings: tuple[SurveyFinding, ...] = (),
     inherited_delegates: tuple[str, ...] = (),
+    callback_calls: tuple[str, ...] = (),
 ) -> SurveyRecord:
     return SurveyRecord(
         qualname=qualname,
@@ -213,6 +214,7 @@ def _synthetic_record(
         delegates_to=delegates_to,
         unresolved_calls=unresolved_calls,
         inherited_delegates=inherited_delegates,
+        callback_calls=callback_calls,
     )
 
 
@@ -4547,6 +4549,52 @@ def test_derive_contract_caller_args_sites_declines_on_closure_unresolved_call()
     (guard_decides,) = [g for g in contract_decides.guards if g.depth >= 1]
     assert guard_decides.caller_args_sites is not None
     assert [s["lineno"] for s in guard_decides.caller_args_sites] == [2]
+
+
+def test_derive_contract_callback_call_is_a_gap_but_not_an_m3_decline() -> None:
+    """Backlog #5668, owner ruling 260930 (A-CALLBACK-NO-DELEGATE, spec
+    260909 S17.5.1's 260930 amendment): a closure record carrying a
+    `callback_calls` entry yields an `unresolved_delegate` gap named by the
+    attribute, AND the M3 fold still decides -- the callback call is
+    deliberately NOT fail-closed condition 1. The same closure with an
+    `unresolved_calls` entry added as well declines, so the exemption is
+    exactly the callback bucket and nothing wider. Folding `callback_calls`
+    into `unresolved_calls` would fail the first half; dropping it from
+    `gaps` would fail the gap assertion."""
+    a_node = _func_node("def A(self, x):\n    self.B(x)\n")
+    b_node = _func_node("def B(self, p):\n    self.D(p)\n")
+    d_node = _func_node(
+        "def D(self, y):\n"
+        "    if y:\n"
+        "        raise ValueError('y')\n"
+    )
+    function_index = {
+        ("synthetic.module", "Foo.A", 1): a_node,
+        ("synthetic.module", "Foo.B", 1): b_node,
+        ("synthetic.module", "Foo.D", 1): d_node,
+    }
+    rec_a = _synthetic_record("Foo.A", class_name="Foo", delegates_to=("B",))
+    rec_d = _synthetic_record("Foo.D", class_name="Foo", findings=(_synthetic_finding(3),))
+
+    rec_b_callback = _synthetic_record(
+        "Foo.B", class_name="Foo", delegates_to=("D",), callback_calls=("_callbacks",)
+    )
+    contract = derive_contract(
+        "synthetic.module", "Foo.A", build_index([rec_a, rec_b_callback, rec_d]), function_index=function_index
+    )
+    assert ("unresolved_delegate", "_callbacks") in contract.gaps
+    (guard,) = [g for g in contract.guards if g.depth >= 1]
+    assert guard.caller_args_sites is not None
+    assert [s["lineno"] for s in guard.caller_args_sites] == [2]
+
+    rec_b_both = _synthetic_record(
+        "Foo.B", class_name="Foo", delegates_to=("D",), callback_calls=("_callbacks",), unresolved_calls=("ghost",)
+    )
+    contract_both = derive_contract(
+        "synthetic.module", "Foo.A", build_index([rec_a, rec_b_both, rec_d]), function_index=function_index
+    )
+    (guard_both,) = [g for g in contract_both.guards if g.depth >= 1]
+    assert guard_both.caller_args_sites is None
 
 
 def test_derive_contract_caller_args_sites_declines_on_closure_record_missing_k() -> None:

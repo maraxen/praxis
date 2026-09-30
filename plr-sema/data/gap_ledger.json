@@ -115,14 +115,14 @@
     "praxis": {
       "branch": "plr-sema-green-5668",
       "dirty": true,
-      "dirty_content_id": "100aab719814453702c8cf512e46e128bc38b45f",
-      "hash": "c4a42f64a5e404d65284e66533f79f79add0c787",
+      "dirty_content_id": "d91d38163ecca2f608ea5f1666b0798e4bd17482ed175ea8fb68cf351497f519",
+      "hash": "b2e53e3b5e22bb3e65f506fc9d675ff1cdaadbce",
       "provenance_source": "git",
       "toplevel": "/home/marielle/projects/praxis/.claude/worktrees/wt-20260909-172820/outputs/plr10/outputs/green"
     },
     "pylabrobot_version": "1.0.0b1",
     "schema_version": 1,
-    "stamped_at": "2026-09-30T14:21:14.252620+00:00",
+    "stamped_at": "2026-09-30T14:47:27.788815+00:00",
     "surface": "legacy_pinned",
     "surface_pin": null
   },
@@ -168,6 +168,7 @@
         "consolidate_tip_inventory",
         "move_tips",
         "pick_up_tips",
+        "probe_tip_inventory",
         "probe_tip_presence_via_pickup",
         "update_head_state",
         "use_tips"
@@ -180,6 +181,7 @@
         "dispense",
         "drop_tips",
         "move_tips",
+        "probe_tip_inventory",
         "probe_tip_presence_via_pickup",
         "return_tips",
         "transfer",

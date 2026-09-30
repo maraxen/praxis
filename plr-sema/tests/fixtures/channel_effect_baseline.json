@@ -17,6 +17,11 @@
       "new": "widen",
       "old": "HAS_TIP",
       "reason": "L1 (§18.4.4)"
+    },
+    "LiquidHandler.probe_tip_inventory": {
+      "new": "widen",
+      "old": "absent",
+      "reason": "#5668: its `probing_fn = self.probe_tip_presence_via_pickup` alias was dropped by the survey at both pins; now followed as a delegate (owner ruling 260930)"
     }
   },
   "plr_pin": {

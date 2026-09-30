@@ -2457,6 +2457,23 @@ Ordered as they arose. Every one is fail-closed or test-side unless stated.
   against the registry (it reported `hm_ceiling_mismatch` on exactly those two rows before).
 - **Lint.** The citation checker reports 0 failing violations on this document.
 
+### 18.16.4 After merge: backlog #5668 (260930)
+
+The #5668 fix (survey `callback_calls`, owner rulings 260930) makes the survey follow a local bound
+from a method as the self-call it is. `LiquidHandler.probe_tip_inventory` binds
+`probing_fn = self.probe_tip_presence_via_pickup` and calls it; the survey dropped that call at both
+pins, so its contract had no guards and no `channel_effect`. It now inlines `pick_up_tips`/`drop_tips`
+and carries `channel_effect = widen`, a **second** divergence from the old-pin baseline:
+`probe_tip_inventory: absent → widen`, declared in `plr-sema/tests/fixtures/channel_effect_baseline.json`
+through the generator (owner ruling 260930: record it, do not defer it).
+
+**What this means for §18.16.1.** Run `b02d40ee`'s `outcome = pass` stands: it is the record of the
+analyzer at `c4a42f64`, which is what it measured. A re-run of the §18.9 sidecar on the post-#5668
+analyzer would take the sidecar's own pre-registered "second intended baseline divergence" branch
+(`baseline_intended_divergences != 1`), not PASS. That is the outcome the pre-registration assigned
+to this case, and the sidecar is not edited to avoid it. No number here is re-measured; the `receiver_state`
+table and every `pick_up_tips` contract are byte-identical to a regeneration of `c4a42f64`.
+
 ---
 
 ## 18.17 Revision log

@@ -176,7 +176,11 @@ class FunctionPreconditions:
     #: `unresolved_calls` on purpose: `plr_sema.derive` records each one as
     #: an `unresolved_delegate` gap, but it does not make M3's closure
     #: incomplete (spec 260909 §17.5.1), under assumption
-    #: A-CALLBACK-NO-DELEGATE (spec 260902 §10.6.3). Strictly additive.
+    #: A-CALLBACK-NO-DELEGATE (spec 260902 §10.6.3). A local bound from a
+    #: METHOD is not a callback: it is recorded in `delegates_to` as the
+    #: self-call it is -- the one non-additive change of #5668 (at the pin,
+    #: two records' `delegates_to` gain the aliased method). A validation-
+    #: looking bound name also keeps its `unresolved_calls` entry.
     callback_calls: list[str] = field(default_factory=list)
 
 
@@ -347,9 +351,25 @@ class _BodyScanner(ast.NodeVisitor):
             name = target.attr
             is_self_call = True
         elif isinstance(target, ast.Name) and target.id in self._self_attr_bound and target.id not in self.module_func_names:
-            # (260930, #5668) A call through a local bound from `self.X`:
-            # a stored callable. Record it under `X`, never drop it.
-            self.callback_calls.add(self._self_attr_bound[target.id])
+            # (260930, #5668) A call through a local bound from `self.X`.
+            attr = self._self_attr_bound[target.id]
+            if attr in self.class_method_names or attr in self.inherited_method_names:
+                # An alias to a METHOD (`fn = self.probe_tip_presence_via_pickup;
+                # fn(...)`) is an ordinary self-call: fall through to the
+                # recording block below as `self.<attr>()`, so it becomes a
+                # delegate the closure follows -- never a callback, which M3
+                # exempts under A-CALLBACK-NO-DELEGATE.
+                name = attr
+                is_self_call = True
+            else:
+                # A stored callable (an attribute that is not a method):
+                # record it under `X`, never drop it.
+                self.callback_calls.add(attr)
+                # Strictly additive: a validation-looking bare name was
+                # recorded in `unresolved` before #5668 and still is, so this
+                # branch never removes an M3 fail-closed trigger.
+                if _is_validation_looking(target.id):
+                    self.unresolved.add(target.id)
         elif isinstance(target, ast.Name):
             name = target.id
         elif isinstance(target, ast.Attribute):

@@ -53,9 +53,11 @@ def _registrations() -> list[tuple[Path, ast.ClassDef | None, ast.AST, ast.expr]
                     and isinstance(child.func, ast.Attribute)
                     and child.func.attr.startswith("register_")
                     and "callback" in child.func.attr
-                    and child.args
                 ):
-                    found.append((path, cls, fn, child.args[0]))
+                    # Positional or keyword: every argument is a candidate
+                    # callable, so none escapes the inventory.
+                    for arg in (*child.args, *(kw.value for kw in child.keywords)):
+                        found.append((path, cls, fn, arg))
                 visit(child, cls, fn)
 
         visit(tree, None, None)
@@ -152,10 +154,103 @@ def _reaches_folded_delegate(start: ast.AST, cls: ast.ClassDef | None, index=Non
     return False
 
 
+#: The exact inventory at the pin, as sorted `(file, registered argument)`
+#: pairs -- pinned as a LIST, not a count, so an added registration offset by
+#: a removed one still fails.
+EXPECTED_INVENTORY = [
+    ("legacy/liquid_handling/liquid_handler.py", "self._state_updated"),
+    ("legacy/liquid_handling/liquid_handler.py", "self._state_updated"),
+    ("legacy/plate_reading/imager.py", "self._will_assign_resource"),
+    ("legacy/tip_tracker.py", "self._callback"),
+    ("legacy/tip_tracker.py", "state_updated"),
+    ("resources/carrier.py", "self._deregister_resource_stack_callback"),
+    ("resources/carrier.py", "self._update_resource_stack_location"),
+    ("resources/container.py", "self._state_updated"),
+    ("resources/hamilton/hamilton_decks.py", "self._check_safe_z_height"),
+    ("resources/hamilton/prep_decks.py", "self._check_safe_deck_height"),
+    ("resources/resource.py", "self._call_did_assign_resource_callbacks"),
+    ("resources/resource.py", "self._call_did_unassign_resource_callbacks"),
+    ("resources/resource.py", "self._call_will_assign_resource_callbacks"),
+    ("resources/resource.py", "self._call_will_unassign_resource_callbacks"),
+    ("resources/tip.py", "self._state_updated"),
+    ("visualizer/visualizer.py", "lambda _: self._handle_state_update_callback(resource)"),
+    ("visualizer/visualizer.py", "lambda _: self._handle_state_update_callback(resource)"),
+    ("visualizer/visualizer.py", "self._handle_resource_assigned_callback"),
+    ("visualizer/visualizer.py", "self._handle_resource_unassigned_callback"),
+    ("visualizer3D/server.py", "on_update"),
+    ("visualizer3D/server.py", "self._on_assign"),
+    ("visualizer3D/server.py", "self._on_unassign"),
+]
+
+
 def test_inventory_of_plr_internal_registrations_is_pinned() -> None:
-    regs = _registrations()
-    listing = [f"{p.relative_to(PLR_PKG)}:{a.lineno} {ast.unparse(a)}" for p, _c, _f, a in regs]
-    assert len(regs) == EXPECTED_REGISTRATIONS, "\n".join(listing)
+    inventory = sorted((str(p.relative_to(PLR_PKG)), ast.unparse(a)) for p, _c, _f, a in _registrations())
+    assert len(inventory) == EXPECTED_REGISTRATIONS
+    assert inventory == EXPECTED_INVENTORY, inventory
+
+
+def _scan(source: str, *, class_methods: set[str] = frozenset(), inherited: frozenset[str] = frozenset(),
+          module_funcs: set[str] = frozenset()):
+    """Run the survey's OWN `_BodyScanner` over one synthetic method body --
+    the same entry `scripts/survey_plr_preconditions.py`'s `_survey_function`
+    uses, not a reimplementation."""
+    import sys as _sys
+
+    scripts_dir = str(REPO_ROOT / "scripts")
+    if scripts_dir not in _sys.path:
+        _sys.path.insert(0, scripts_dir)
+    from survey_plr_preconditions import _BodyScanner  # noqa: PLC0415
+
+    (func,) = [n for n in ast.walk(ast.parse(source)) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    scanner = _BodyScanner({a.arg for a in func.args.args}, set(class_methods), set(module_funcs), inherited)
+    for stmt in func.body:
+        scanner.visit(stmt)
+    return scanner
+
+
+def test_scanner_records_for_loop_callback() -> None:
+    s = _scan("def set_volume(self, v):\n  for callback in self._callbacks:\n    callback()\n")
+    assert s.callback_calls == {"_callbacks"} and not s.unresolved and not s.delegates
+
+
+def test_scanner_records_async_for_and_assign_callbacks() -> None:
+    s = _scan(
+        "async def f(self):\n"
+        "  async for cb in self._stream:\n"
+        "    cb()\n"
+        "  fn = self._occupied_func\n"
+        "  fn(1)\n"
+    )
+    assert s.callback_calls == {"_stream", "_occupied_func"}
+
+
+def test_scanner_method_alias_is_a_delegate_not_a_callback() -> None:
+    """Review finding 1: `fn = self.<method>; fn()` is an ordinary self-call
+    (PLR's own `probing_fn = self.probe_tip_presence_via_pickup`), never a
+    callback -- A-CALLBACK-NO-DELEGATE's exemption must not cover it."""
+    own = _scan("def f(self):\n  fn = self.probe\n  fn()\n", class_methods={"probe"})
+    assert own.delegates == {"probe"} and not own.callback_calls
+    inherited = _scan("def f(self):\n  fn = self.base_m\n  fn()\n", inherited=frozenset({"base_m"}))
+    assert inherited.delegates == {"base_m"} and inherited.inherited_delegates == {"base_m"}
+    assert not inherited.callback_calls
+
+
+def test_scanner_validation_looking_bound_name_keeps_its_unresolved_entry() -> None:
+    """Review finding 2: before #5668 a validation-looking bare name was an
+    `unresolved` entry (an M3 fail-closed trigger); it still is, so the
+    callback bucket never removes one."""
+    s = _scan("def f(self):\n  check_fn = self._checker\n  check_fn()\n")
+    assert s.unresolved == {"check_fn"} and s.callback_calls == {"_checker"}
+
+
+def test_scanner_module_function_shadowing_a_bound_name_stays_a_delegate() -> None:
+    s = _scan("def f(self):\n  helper = self._h\n  helper()\n", module_funcs={"helper"})
+    assert s.delegates == {"helper"} and not s.callback_calls
+
+
+def test_scanner_unbound_bare_call_is_not_a_callback() -> None:
+    s = _scan("def f(self, cb):\n  cb()\n  other = compute()\n  other()\n")
+    assert not s.callback_calls
 
 
 def test_no_plr_internal_callback_reaches_the_folded_delegate() -> None:
