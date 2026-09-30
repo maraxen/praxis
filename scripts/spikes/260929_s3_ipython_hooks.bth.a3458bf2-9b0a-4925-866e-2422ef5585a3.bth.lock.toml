@@ -1,0 +1,9 @@
+# 260929_s3_ipython_hooks.bth.a3458bf2-9b0a-4925-866e-2422ef5585a3.bth.lock.toml — written at run time, never modified
+[manifest]
+written_at = "2026-09-30T01:19:52.321212+00:00"
+sidecar_sha256 = "5eb9f731a94224f246eb292b8b0e10ca953144dd56622696c5fac76752329b23"
+sidecar_path = "/tmp/praxis-nd-a/scripts/spikes/260929_s3_ipython_hooks.bth.toml"
+git_sha = "d8923c736238f14969935da9600e3b980b15037b"
+script_sha256 = "548ac2bcf8aa4748872e83e855755f774377a7c21ecc5234910d1f3c1188a1b7"
+run_id = "a3458bf2-9b0a-4925-866e-2422ef5585a3"
+agent_id = null
