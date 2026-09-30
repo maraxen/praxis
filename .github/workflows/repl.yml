@@ -375,6 +375,7 @@ jobs:
           uv run python -m pytest web-repl/tests/test_unit_runner.py -q
           uv run python -m pytest web-repl/tests/test_vendor_staging.py -q
           uv run python -m pytest web-repl/tests/test_vendor_visualizer3d.py -q
+          uv run python -m pytest web-repl/tests/test_viewer3d_docked.py -q
           uv run python -m pytest web-repl/tests/test_viz_highlight_staging.py -q
           uv run python -m pytest web-repl/tests/test_web_bridge_fqn_fallback.py -q
 
