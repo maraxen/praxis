@@ -1610,12 +1610,12 @@ def test_repr_negative_control_no_display_installed_means_no_stamp_no_bundle_no_
     [
         lambda r: r["draw_deck"]["outputs"][0].update(mimes=["text/html"]),  # no text/plain
         lambda r: r["draw_assay"]["outputs"][0].update(mimes=["text/plain"]),  # no text/html
-        lambda r: r["draw_tips"]["outputs"][0].update(st=None),  # no stamp
-        lambda r: r["draw_tips"]["outputs"][0].update(st=stamp("plate", "tips_300")),  # wrong kind
-        lambda r: r["draw_assay"]["outputs"][0].update(st=stamp("plate", "source")),  # wrong resource
-        lambda r: r["draw_source"]["outputs"][0].update(st=stamp("plate", "source", rev=None)),  # a plate has a rev
-        lambda r: r["draw_source"]["outputs"][0].update(st=stamp("plate", "source", session="")),
-        lambda r: r["draw_deck"]["outputs"][0].update(st={"kind": "deck"}),  # not the D2 stamp
+        lambda r: r["draw_tips"]["outputs"][0].update(stamp=None),  # no stamp
+        lambda r: r["draw_tips"]["outputs"][0].update(stamp=stamp("plate", "tips_300")),  # wrong kind
+        lambda r: r["draw_assay"]["outputs"][0].update(stamp=stamp("plate", "source")),  # wrong resource
+        lambda r: r["draw_source"]["outputs"][0].update(stamp=stamp("plate", "source", rev=None)),  # a plate has a rev
+        lambda r: r["draw_source"]["outputs"][0].update(stamp=stamp("plate", "source", session="")),
+        lambda r: r["draw_deck"]["outputs"][0].update(stamp={"kind": "deck"}),  # not the D2 stamp
         lambda r: r["draw_deck"].update(outputs=[]),
     ],
 )
@@ -1856,7 +1856,7 @@ def keyboard_raw() -> dict[str, Any]:
     return {
         "figure": {"found": True, "role": "img", "in_svg": True, "aria_label": ASSAY_PLAIN, "tabindex": "0"},
         "plain": ASSAY_PLAIN,
-        "focus_before": {"ok": True},
+        "focus_probe": {"ok": True, "next_is_figure": True},
         "tab": {"is_figure": True},
         "live_tab": "assay A1: 50 µL",
         "live_arrow": "assay A2: 100 µL",
@@ -1887,7 +1887,7 @@ def test_the_arrow_expectation_is_read_from_the_fixture_not_from_the_specs_50(rs
     ("figure", {"found": True, "role": "img", "in_svg": True, "aria_label": ""}, "aria_label_equals_summary"),
     ("figure", {"found": True, "role": "img", "in_svg": True, "aria_label": "24 of 96 wells"}, "aria_label_equals_summary"),
     ("plain", "", "aria_label_equals_summary"),
-    ("focus_before", {"ok": False}, "tab_focuses_figure"),
+    ("focus_probe", {"ok": False}, "tab_focuses_figure"),
     ("tab", {"is_figure": False}, "tab_focuses_figure"),
     ("live_arrow", "assay A1: 50 µL", "arrow_moves"),
     ("live_arrow", None, "arrow_moves"),
@@ -1969,7 +1969,7 @@ def test_d3_keys_positive_control_hold_for_the_recorded_branch(rs):
     assert rs.evaluate_unit_result(unit, keys) == ([], [])
 
 
-def test_d3_negative_controls(rs):
+def test_d3_key_negative_controls(rs):
     raw = d3_raw()
     raw["saved"]["script_count"] = 1
     assert rs.derive_d3_keys(raw)["no_script_in_bundles"] is False
@@ -2005,7 +2005,7 @@ def test_count_scripts_in_outputs_reads_every_mime_of_every_output_case_insensit
 
     assert rs.count_scripts_in_outputs(notebook({"text/html": "<p>x</p>", "text/plain": "x"})) == 0
     assert rs.count_scripts_in_outputs(notebook({"text/html": ["<p>", "<script>alert(1)</script>"]})) == 1
-    assert rs.count_scripts_in_outputs(notebook({"text/html": "<SCRIPT src=x></SCRIPT>"}, {"text/plain": "<script"})) == 3
+    assert rs.count_scripts_in_outputs(notebook({"text/html": "<SCRIPT src=x></SCRIPT>"}, {"text/plain": "<script"})) == 2
     assert rs.count_scripts_in_outputs({"cells": [{"cell_type": "code", "source": "<script", "outputs": []}]}) == 0, (
         "a script in SOURCE is not in a bundle"
     )
@@ -2193,6 +2193,13 @@ FAKE_DOM_JS = textwrap.dedent(
         for (const k of kids) this.append(k);
       }
       append(k) { k.parentNode = this; this.children.push(k); return k; }
+      appendChild(k) { return this.append(k); }
+      insertBefore(k, ref) {
+        const at = this.children.indexOf(ref);
+        k.parentNode = this;
+        this.children.splice(at < 0 ? this.children.length : at, 0, k);
+        return k;
+      }
       getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
       hasAttribute(k) { return k in this.attrs; }
       setAttribute(k, v) { this.attrs[k] = String(v); }
@@ -2216,7 +2223,7 @@ FAKE_DOM_JS = textwrap.dedent(
       querySelector(sel) { return this.querySelectorAll(sel)[0] ?? null; }
       closest(sel) { let e = this; while (e) { if (e.matches(sel)) return e; e = e.parentNode; } return null; }
       contains(other) { let e = other; while (e) { if (e === this) return true; e = e.parentNode; } return false; }
-      focus() { if (this.focusable) globalThis.document.activeElement = this; }
+      focus() { if (this.focusable && !globalThis.__refuseFocus) globalThis.document.activeElement = this; }
       getClientRects() { return this.visible ? [{}] : []; }
       scrollIntoView(o) { this.scrolled.push(o); }
       remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter((c) => c !== this); }
@@ -2240,6 +2247,8 @@ FAKE_DOM_JS = textwrap.dedent(
       return out;
     };
     const ex = (tag, attrs, kids, text) => new El(tag, attrs, kids, text);
+    // an indirect eval keeps its const/class declarations local: publish what the driver uses
+    Object.assign(globalThis, { ex, El, body, root, TOKENS });
     """
 )
 
@@ -2260,8 +2269,8 @@ OUTPUT_JS_DRIVER = textwrap.dedent(
       set: (j, v) => { sets.push([j, v]); },
     });
     const sets = [];
-    const svgFor = (name, extra = []) => ex("svg", { viewBox: "0 0 1 1", style: "min-width:400px" }, [
-      ex("g", { "data-praxis-res": name, role: "img", tabindex: "0", "aria-label": "SENTENCE" }, [
+    const svgFor = (name, extra = [], tab = "0") => ex("svg", { viewBox: "0 0 1 1", style: "min-width:400px" }, [
+      ex("g", { "data-praxis-res": name, role: "img", tabindex: tab, "aria-label": "SENTENCE" }, [
         ex("rect", { class: "sv-plate", fill: "#FFFFFF" }),
         ex("path", { class: "sv-liquid", fill: "#73A9C2" }),
         ...extra,
@@ -2311,6 +2320,7 @@ OUTPUT_JS_DRIVER = textwrap.dedent(
         kids: [outputNode([ex("p", { class: "praxis-summary" }, [], "SENTENCE")])] }),
     ];
     cells[5].model.trusted = false;
+    cells.push(mkCell({ count: 1, state: "ran", outputs: [], kids: [outputNode([svgFor("notab", [], "-1")])] }));
     const listeners = [];
     const panel = {
       content: { widgets: cells, model: { cells: { length: cells.length, get: (i) => cells[i].model }, trusted: true }, node: ex("div") },
@@ -2351,35 +2361,34 @@ OUTPUT_JS_DRIVER = textwrap.dedent(
     out.css_before = dc.praxisCss();
     root._vars["--praxis-moonstone"] = " #73A9C2 ";
     out.css_after = dc.praxisCss();
-    // the keyboard helpers
-    const before = ex("button", {}, [], "before");
-    const hiddenInput = ex("input", {}); hiddenInput.visible = false;
-    const skipped = ex("div", { tabindex: "-1" });
+    // the keyboard helpers: a throwaway probe is inserted right before the figure's svg and focused
     const figG = assayFig.children[0];
-    body.children.splice(0, 0, before);  // the button is first in document order
-    before.parentNode = body;
-    cells[0].node.children[0].children[0].children[0].children.unshift(hiddenInput, skipped);
-    out.focus = dc.focusBefore({ i: 0, res: "assay" });
-    out.active_after_focus = document.activeElement === before;
-    out.is_before_tab = dc.activeIs({ i: 0, res: "assay" });
+    out.probe = dc.focusProbe({ i: 0, res: "assay" });
+    const probeEl = document.activeElement;
+    out.active_is_probe = probeEl && probeEl.hasAttribute("data-dcheck-probe");
+    out.probe_precedes_svg = probeEl.parentNode.children.indexOf(probeEl) + 1 === probeEl.parentNode.children.indexOf(assayFig);
+    out.is_on_probe = dc.activeIs({ i: 0, res: "assay" });
     figG.focus();
     out.is_after_tab = dc.activeIs({ i: 0, res: "assay" });
+    out.removed = dc.removeProbe();
+    out.removed_again = dc.removeProbe();
+    out.probe_gone = document.querySelectorAll("[data-dcheck-probe]").length;
+    out.probe_miss = dc.focusProbe({ i: 0, res: "nope" });
+    out.probe_miss_left_nothing = document.querySelectorAll("[data-dcheck-probe]").length;
+    // a figure whose own tabindex is -1 is not what Tab reaches next
+    out.probe_notab = dc.focusProbe({ i: 6, res: "notab" });
+    dc.removeProbe();
+    // an element that refuses focus: ok is false, whatever else is true
+    globalThis.__refuseFocus = true;
+    out.probe_stuck = dc.focusProbe({ i: 0, res: "assay" });
+    globalThis.__refuseFocus = false;
+    dc.removeProbe();
     out.live_none = dc.liveText();
-    const live = ex("div", { "aria-live": "polite", "data-praxis-live": "" }, [], "assay A1: 50 µL");
+    const live = ex("div", { "aria-live": "polite", "data-praxis-live": "" }, [], "assay A1: 50 \u00b5L");
     body.append(live);
     out.live = dc.liveText();
     figG.append(ex("rect", { class: "praxis-focus-ring" }));
     out.rings = dc.ringCount({ i: 0, res: "assay" });
-    // no predecessor: a fake cell whose figure is the very first focusable in the document
-    cells.push(mkCell({ count: 1, state: "ran", outputs: [], kids: [outputNode([svgFor("solo")])] }));
-    panel.content.model.cells.length = cells.length;
-    body.children.splice(0, body.children.length, cells[6].node);
-    cells[6].node.parentNode = body;
-    out.focus_none = dc.focusBefore({ i: 6, res: "solo" });
-    // an unfocusable predecessor: focus() does nothing, so ok is false
-    const pre = ex("button", {}); pre.focusable = false;
-    body.children.splice(0, 0, pre); pre.parentNode = body;
-    out.focus_stuck = dc.focusBefore({ i: 6, res: "solo" });
     // scroll, rerender
     out.scroll = dc.scrollTo({ i: 0, block: "center" });
     out.scrolled = cells[0].node.scrolled;
@@ -2502,17 +2511,24 @@ def test_praxis_css_is_read_from_the_root_custom_property(js_out):
     assert js_out["css_before"] == "" and js_out["css_after"] == "#73A9C2"
 
 
-def test_focus_before_focuses_the_visible_focusable_just_ahead_of_the_figure(js_out):
-    f = js_out["focus"]
-    assert f["ok"] is True and js_out["active_after_focus"] is True
-    assert f["focusable_count"] >= 2 and f["figure_index"] >= 1 and f["pred_tag"] == "button"
-    assert js_out["is_before_tab"]["is_figure"] is False
+def test_focus_probe_puts_a_throwaway_focusable_right_before_the_figure_and_predicts_tabs_next_stop(js_out):
+    p = js_out["probe"]
+    assert p["ok"] is True and p["next_is_figure"] is True and p["next_tag"] == "g"
+    assert js_out["active_is_probe"] is True and js_out["probe_precedes_svg"] is True
+    assert js_out["is_on_probe"]["is_figure"] is False and js_out["is_on_probe"]["active_res"] is None
     assert js_out["is_after_tab"]["is_figure"] is True and js_out["is_after_tab"]["active_res"] == "assay"
 
 
-def test_focus_before_reports_failure_rather_than_pretending(js_out):
-    assert js_out["focus_none"]["ok"] is False, "no focusable ahead of the figure"
-    assert js_out["focus_stuck"]["ok"] is False, "an element that refuses focus leaves the focus elsewhere"
+def test_the_probe_is_removed_and_leaves_nothing_behind(js_out):
+    assert js_out["removed"] == 1 and js_out["removed_again"] == 0 and js_out["probe_gone"] == 0
+    assert js_out["probe_miss"]["ok"] is False and js_out["probe_miss_left_nothing"] == 0, "no figure: no probe inserted"
+
+
+def test_focus_probe_reports_a_figure_tab_would_not_reach_and_a_probe_that_refuses_focus(js_out):
+    assert js_out["probe_notab"]["ok"] is True and js_out["probe_notab"]["next_is_figure"] is False, (
+        "a figure with tabindex -1 is not the next tab stop: the prediction says so"
+    )
+    assert js_out["probe_stuck"]["ok"] is False, "an element that refuses focus leaves the focus elsewhere"
 
 
 def test_live_text_and_ring_count(js_out):
@@ -2729,9 +2745,17 @@ class FakeWorld:
     def figure(self, index: int, res_name: str) -> dict[str, Any]:
         return {"found": True, "role": "img", "in_svg": True, "aria_label": ASSAY_PLAIN, "tabindex": "0"}
 
-    def focus_before(self, index: int, res_name: str) -> dict[str, Any]:
-        self.log.append("focus_before")
-        return {"ok": not self.faults.get("no_predecessor")}
+    def focus_probe(self, index: int, res_name: str) -> dict[str, Any]:
+        self.log.append("focus_probe")
+        ok = not self.faults.get("no_predecessor")
+        return {"ok": ok, "next_is_figure": ok, "next_tag": "g" if ok else None}
+
+    def remove_probe(self) -> int:
+        self.log.append("remove_probe")
+        return 1
+
+    def windowing(self) -> Any:
+        return "contentVisibility"
 
     def press(self, key: str) -> None:
         self.log.append(("press", key))
@@ -2871,7 +2895,8 @@ def test_d2_runs_setup_then_draws_then_the_keyboard_then_the_aspirate_then_the_e
     aspirate = _first(w.log, lambda e: e == ("run", "aspirate"))
     assert tab < aspirate, "the keyboard reads use the drawn assay before anything changes"
     assert _pos(w.log, ("press", "Tab")) < _pos(w.log, ("press", "ArrowRight")) < _pos(w.log, ("press", "Escape"))
-    assert _pos(w.log, "focus_before") < _pos(w.log, ("press", "Tab"))
+    assert _pos(w.log, "focus_probe") < _pos(w.log, ("press", "Tab")) < _pos(w.log, "remove_probe")
+    assert _pos(w.log, ("press", "Escape")) < _pos(w.log, "remove_probe"), "the probe stays until the keys are read"
 
 
 def test_d2_never_runs_run_all_on_the_main_notebook_and_does_it_last_in_its_own_notebook(rs, nb):
@@ -2903,12 +2928,11 @@ def test_d2_saves_first_then_scrolls_away_and_back_and_forces_a_rerender(rs, nb)
     """The persisted-mark check runs while the mark is known to be in the DOM, before any disturbance,
     so a lost mark cannot also read as 'not persisted'."""
     _, w = _run_d2(rs, nb)
-    scrolls = [e for e in w.log if isinstance(e, tuple) and e[0] == "scroll"]
-    assert len(scrolls) >= 2 and scrolls[0][1] != "draw-source" and scrolls[-1][1] == "draw-source"
-    rerenders = [e for e in w.log if isinstance(e, tuple) and e[0] == "rerender" and e[1] == "draw-source"]
-    assert rerenders, "the async re-render case"
-    assert _pos(w.log, ("save", rs.DISPLAY_NOTEBOOK_NAME)) < min(_pos(w.log, s) for s in scrolls + rerenders)
-    assert _pos(w.log, "restart") > max(_pos(w.log, s) for s in scrolls + rerenders)
+    away = _first(w.log, lambda e: isinstance(e, tuple) and e[0] == "scroll" and e[1] == "marker")
+    back = max(i for i, e in enumerate(w.log) if isinstance(e, tuple) and e[0] == "scroll" and e[1] == "draw-source")
+    rerender = _first(w.log, lambda e: isinstance(e, tuple) and e[0] == "rerender" and e[1] == "draw-source")
+    save = _pos(w.log, ("save", rs.DISPLAY_NOTEBOOK_NAME))
+    assert _pos(w.log, ("run", "aspirate")) < save < away < back < rerender < _pos(w.log, "restart")
 
 
 def test_d2_a_failing_setup_cell_is_an_error_finding_not_a_misleading_key(rs, nb):
@@ -2976,7 +3000,7 @@ def test_d3_executes_its_own_drawing_cells_then_saves_closes_reloads_and_reopens
     )
 
 
-def test_d3_negative_controls(rs, nb):
+def test_d3_scenario_negative_controls(rs, nb):
     for fault, key in (
         ({"script_in_bundle": True}, "no_script_in_bundles"), ({"save_fails": True}, "no_script_in_bundles"),
         ({"sanitized": True}, "reopened_branch"), ({"sanitized": True}, "svg_in_dom"),

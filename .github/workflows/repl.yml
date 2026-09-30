@@ -47,11 +47,12 @@ jobs:
     name: Build + browser gates
     runs-on: ubuntu-latest
     # A BACKSTOP only (D16): 45 + the sum of this job's scenario step timeouts (8 + 7 after
-    # sprint A = 60; 92 after sprint B, 137 after sprint C). Every browser unit is bounded
-    # by its own watchdog at its budget, the driver's run_unit at budget + 60 s and its step
-    # timeout at budget + 2 min, so this is never the limit that ends a unit. The reap step's
-    # 1 minute sits inside the 45-minute allowance and is not added to the sum.
-    timeout-minutes: 60
+    # sprint A = 60; 8 + 7 + 14 + 10 + 8 = 47 after sprint B = 92; 137 after sprint C). Every
+    # browser unit is bounded by its own watchdog at its budget, the driver's run_unit at
+    # budget + 60 s and its step timeout at budget + 2 min, so this is never the limit that
+    # ends a unit. The reap step's 1 minute sits inside the 45-minute allowance and is not
+    # added to the sum.
+    timeout-minutes: 92
     env:
       PYTHONDONTWRITEBYTECODE: 1
 
@@ -166,10 +167,11 @@ jobs:
       # Notebook display gates (epic 260929_notebook-display-design, D16 "Preemption-safe
       # harness design"). ONE STEP PER UNIT: each scenario runs in its own process with its
       # own browser, watchdog, result and stamp, and its step-level timeout is the unit's
-      # budget + 2 min (D1 6 min -> 8, D1-dark 5 min -> 7). `if: ${{ !cancelled() }}` so one
-      # failing unit does not hide the others. CI never reuses across workflow runs: every
-      # unit recomputes on this run's head; the only reuse is the aggregate step below, which
-      # reads the stamps the two steps above it just wrote in THIS job.
+      # budget + 2 min (D1 6 min -> 8, D1-dark 5 min -> 7, D2 12 -> 14, D3 8 -> 10, D4 6 -> 8).
+      # `if: ${{ !cancelled() }}` so one failing unit does not hide the others. CI never
+      # reuses across workflow runs: every unit recomputes on this run's head; the only reuse
+      # is the aggregate step below, which reads the stamps the five steps above it just wrote
+      # in THIS job.
       - name: Display check D1 (chrome, Light)
         if: ${{ !cancelled() }}
         timeout-minutes: 8
@@ -183,6 +185,31 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --display-check --scenario D1-dark --base-path /praxis/
+
+      # Sprint B (B10): AC-21..AC-25 in one kernel (reprs, error panels, staleness with one kernel
+      # restart, keyboard; Run All only in its own notebook, last), AC-24 (execute, save, reload,
+      # reopen) and AC-26 (High Contrast, two contexts). Each unit is self-bounded by its own
+      # watchdog at its budget (12, 8, 6 min).
+      - name: Display check D2 (reprs, errors, staleness, keyboard)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 14
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --display-check --scenario D2 --base-path /praxis/
+
+      - name: Display check D3 (trust loss - save, reload, reopen)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 10
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --display-check --scenario D3 --base-path /praxis/
+
+      - name: Display check D4 (High Contrast)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 8
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --display-check --scenario D4 --base-path /praxis/
 
       # The step whose exit gates the PR. --aggregate-only recomputes nothing and never
       # deletes. Its hashed arguments MUST equal the scenario steps' (without --base-path
@@ -307,6 +334,7 @@ jobs:
           uv run python -m pytest web-repl/tests/test_contract_covers_imports.py -q
           uv run python -m pytest web-repl/tests/test_d1_praxis_git_sha.py -q
           uv run python -m pytest web-repl/tests/test_display_budget.py -q
+          uv run python -m pytest web-repl/tests/test_display_check_fixture.py -q
           uv run python -m pytest web-repl/tests/test_display_colorblind.py -q
           uv run python -m pytest web-repl/tests/test_display_context.py -q
           uv run python -m pytest web-repl/tests/test_display_css.py -q

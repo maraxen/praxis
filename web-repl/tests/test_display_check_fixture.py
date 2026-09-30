@@ -199,6 +199,14 @@ async def _main(display: types.ModuleType, cells: dict[str, str]) -> dict[str, A
     for cid in ("boot", "assemble", "transfers", "pickup"):
         await w.run(cid)
     out["boot_calls"] = (w.boot.setups, w.boot.installs)
+    ns = w.ns
+    vol = lambda plate, well: plate.get_item(well).tracker.volume  # noqa: E731
+    out["after_pickup"] = {
+        "assay": {k: vol(ns["assay"], k) for k in ("A1", "A2", "A3", "A4")},
+        "source": {k: vol(ns["source"], k) for k in ("A1", "A2", "A3", "A4", "A12")},
+        "head_has_tip": [ns["lh"].head[c].has_tip for c in range(8)],
+        "tip_spots": {k: ns["tips"].get_item(k).tip is not None for k in ("A1", "A3", "A4", "A5")},
+    }
     drawn: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {}
     for cid in ("draw-source", "draw-assay", "draw-tips", "draw-deck"):
         await w.run(cid)
@@ -220,6 +228,8 @@ async def _main(display: types.ModuleType, cells: dict[str, str]) -> dict[str, A
     await w.run("value-error", expect_error=True)
     out["value_error_handled"] = errors_mod._is_handled(w.raised["value-error"])
     # the restart: a fresh kernel, the boot cell again, then the self-contained drawing cell
+    set_tip_tracking(False)
+    set_volume_tracking(False)  # a fresh kernel's defaults: the redraw cell must not depend on tracking
     w2 = World(display, cells)
     await w2.run("boot")
     await w2.run("redraw")
@@ -259,15 +269,11 @@ def test_the_boot_cell_awaits_the_bootstrap_and_installs_the_display_once(replay
 
 
 def test_the_setup_cells_leave_the_world_the_error_cells_and_ac9_assume(replay):
-    ns = replay["world"].ns
-    assay, source, tips = ns["assay"], ns["source"], ns["tips"]
-    assert assay.get_item("A1").tracker.volume == 50.0 and assay.get_item("A2").tracker.volume == 100.0
-    assert assay.get_item("A3").tracker.volume == 150.0 and assay.get_item("A4").tracker.volume == 0
-    assert source.get_item("A1").tracker.volume == 150.0 and source.get_item("A12").tracker.volume == 200.0
-    lh = ns["lh"]
-    assert [lh.head[c].has_tip for c in range(8)] == [True] * 8, "pickup mounted a tip on every channel"
-    assert tips.get_item("A4").tip is None and tips.get_item("A5").tip is not None
-    assert tips.get_item("A1").tip is None and tips.get_item("A3").tip is None, "columns 1-3 were used by the transfers"
+    got = replay["after_pickup"]
+    assert got["assay"] == {"A1": 50.0, "A2": 100.0, "A3": 150.0, "A4": 0}, "three column transfers: AC-9's 24 wells"
+    assert got["source"] == {"A1": 150.0, "A2": 100.0, "A3": 50.0, "A4": 200.0, "A12": 200.0}
+    assert got["head_has_tip"] == [True] * 8, "the pickup cell mounted a tip on every channel (E1, E2 and E4 need them)"
+    assert got["tip_spots"] == {"A1": False, "A3": False, "A4": False, "A5": True}, "columns 1-4 are gone"
 
 
 # --------------------------------------------------------------------------- #
