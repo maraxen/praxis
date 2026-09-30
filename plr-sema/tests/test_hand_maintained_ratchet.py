@@ -343,31 +343,36 @@ def test_hand_written_contracts_content_is_pinned() -> None:
 
 def test_hm25_d7_unit12_spend_is_one_unit_not_an_overrun() -> None:
     """260909 (spec 260909_plr-sema-move-family-increment.md §17.4.0
-    decision 6/§17.7, T52, D7 unit 12): the approved spend is `declared`
+    decision 6/§17.7, T52, D7 unit 12): the approved spend was `declared`
     11 -> 12, exactly ONE further unit for the singleton typestate
     anchor's own absence-rule shape (`_singleton_anchor_absent`, §17.4.2)
     -- a NEW symbol distinct from `_typestate_anchor` (P2), so none of the
     prior eleven units' own probes exercise it. `atom_truth`/
     `_finding_for_atom` are DELIBERATELY generalised (§17.4.0 decision 6)
-    rather than duplicated, so `productions` stays at 3 and this spend is
-    exactly one unit, not two or three (which would trip T52's own STOP
-    contingency at 14-15). The measured count must land exactly there, not
-    merely under the ceiling (a `live <= declared` pass alone would not
-    distinguish "the twelfth unit is wired" from "it was silently
-    dropped"). This supersedes the prior D7-unit-11-only assertion
-    (`declared`/live pinned at 11 in isolation) -- HM-25 accumulates
-    spends across separately-approved decisions on the SAME row, unlike
-    HM-26's own per-decision new-row split (`test_hm26_d6_spend_is_one_new_
-    row_not_an_overrun` below)."""
+    rather than duplicated, so `productions` stays at 3.
+
+    260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md §18.7/AC-18.17,
+    T57, owner ruling on OI-4): the spend moves 12 -> 13, exactly ONE
+    further collective unit for the derived tip-effect patterns (R-A's
+    getter shape, R-B's binding/argument table, R-C(2)'s signature shape).
+    The measured count must land exactly there, not merely under the
+    ceiling (a `live <= declared` pass alone would not distinguish "the
+    thirteenth unit is wired" from "it was silently dropped"), and a
+    measure that is not exactly 13 is the row's standing STOP-and-ask
+    contingency. HM-25 accumulates spends across separately-approved
+    decisions on the SAME row, unlike HM-26's own per-decision new-row
+    split (`test_hm26_d6_spend_is_one_new_row_not_an_overrun` below)."""
     (hm25,) = (row for row in REGISTRY if row.id == "HM-25")
-    assert hm25.declared == 12, f"HM-25: declared is {hm25.declared}, expected 12 (D7's eleventh unit + D7's twelfth unit)"
+    assert hm25.declared == 13, f"HM-25: declared is {hm25.declared}, expected 13 (D7's twelfth unit + #5622's thirteenth)"
     live = resolve_measure(hm25.measure)
-    assert live == 12, (
-        f"HM-25: live count {live} != declared 12 -- the D7 unit-12 spend "
+    assert live == 13, (
+        f"HM-25: live count {live} != declared 13 -- the #5622 unit-13 spend "
         f"must land exactly on the approved unit, neither short (unwired) "
         f"nor over (an unapproved overrun this row's own STOP-and-ask "
         f"contingency forbids)."
     )
+    assert len(live_rows()) == 25, "AC-18.17 books a unit, not a row: live_rows() stays 25"
+    assert BUDGET_CAP == 25, "AC-18.17 books a unit, not a row: BUDGET_CAP stays 25"
 
 
 def test_hm26_d6_spend_is_one_new_row_not_an_overrun() -> None:

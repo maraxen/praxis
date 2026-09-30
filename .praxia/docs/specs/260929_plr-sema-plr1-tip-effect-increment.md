@@ -171,10 +171,11 @@ All of the following was read at the 1.0 pin (`786ac2c4e`) this session.
   (`external/pylabrobot/pylabrobot/legacy/tip_tracker.py:39-49`).
 - No 1.0 method assigns `_pending_tip` or `_tip`, and no method's own body writes a state field.
 
-**So P4 measures `{}` at 1.0.** `_effects` (`plr-sema/src/plr_sema/derive/receiver_state.py:903-925`)
-scans only `ast.Assign` to `self.<F>` for `F` in `state_fields = ["_pending_tip", "_tip"]`, and only in the
-method's own body. `_constructor_state` (`plr-sema/src/plr_sema/derive/receiver_state.py:1015-1055`)
-therefore finds no state-field write in `__init__` and returns `None`. `_entry_reset`
+**So P4 measures `{}` at 1.0.** Before T57 (at `4101274d`), `_effects` in
+`plr-sema/src/plr_sema/derive/receiver_state.py` scanned only `ast.Assign` to `self.<F>` for `F` in
+`state_fields = ["_pending_tip", "_tip"]`, and only in the method's own body. `_constructor_state`
+therefore found no state-field write in `__init__` and returned `None`. T57 replaced both; they no
+longer exist. `_entry_reset`
 (`plr-sema/src/plr_sema/derive/receiver_state.py:1058-1081`) then emits nothing, with ledger
 `"absent"`. With `effects == {}`, the `effects.get(method)` lookup in `compute_channel_bridge`
 (`plr-sema/src/plr_sema/derive/receiver_state.py:1483-1582`) never fires, so every `channel_effect` is `None`.
@@ -349,7 +350,31 @@ when `m` is called. No 1.0 `TipTracker` method contains one *(verified by readin
 | **(r2, C3)** a call to `setattr`, `delattr`, `object.__setattr__` or `object.__delattr__` whose first argument is `Name("self")`, **whatever the attribute-name argument is** (a literal or not) | `UNRESOLVED` |
 | **(r2, C3)** any Load of `self.__dict__`, or any call `vars(self)`, anywhere in the body (store into it or not) | `UNRESOLVED` |
 | **(r3, X1; generalises r2's D-3)** **any Load of `Name("self")` that is not the `value` of an `ast.Attribute` node**, anywhere in the body. That covers a bare argument to any call, followed or not (`self._h(self)` binds `self` to a callee parameter `p`, which can then write `p._carried = x`); a local alias (`me = self; me._carried = tip`, `t = self; t._put(None)`); a return, a container element and a comparison operand. Every such escape of the receiver is `UNRESOLVED` for the **whole method**, and the rule does not try to track the alias | `UNRESOLVED` |
+| **(T57 review, F1)** any Load of `Attribute(value=<receiver>, attr=h)`, where `h` names a direct **non-property** method of `C` and the node is **not** the `func` of an `ast.Call`. That covers an escaping bound method: `f = self._put; f(None)`, `map(self._put, …)`, `functools.partial(self._put, …)`. A property load (`self.has_tip`) does not trigger it | `UNRESOLVED` (whole method) |
+| **(T57 review, F2)** a nested `def`, `lambda` or `class` whose body names the receiver. Its code can run after `m` returns, for example `return lambda: self._put(None)` | `UNRESOLVED` (whole method) |
+| **(T57 review, F6)** a call to `super().__setattr__` or `super().__delattr__` | `UNRESOLVED` |
 | any assignment to `self.y`, `y ∉ W` (e.g. `_before`, `_tip_origin`) | nothing |
+
+> **T57 review amendments (260929), all fail-closed and zero-cost at both pins.** The analysis record
+> of both trackers is identical before and after them. That was checked against 1.0
+> `legacy/tip_tracker.py` and the old pin's `resources/tip_tracker.py`, with the rows above plus:
+> - **F4:** `T` must name a class. Typing and builtin names (`Any`, `object`, `None`, `Optional`,
+>   `Union`, `str`, …) never qualify. When the derive supplies its PLR class index, `T` must also be
+>   a key of that index. Otherwise nothing gets `HAS_TIP`.
+> - **F5:** after the local fixpoint, every name still at ⊥ is `UNRESOLVED` **before** any
+>   expression is classified, so ⊥ never acts as a join identity inside an `IfExp`.
+> - **F6:** "the receiver" is the method's **first parameter**, not the literal name `self`. Every
+>   `Name("self")` in this table means that parameter.
+>   - **N1:** a method with no positional parameter has no receiver and is `UNRESOLVED`.
+>   - **N2:** a `@staticmethod` or `@classmethod` method takes no receiver and is `UNRESOLVED` as an
+>     entry.
+> - **F7:** bridge rule 0 requires `ReceiverState.tracker_methods`, and it raises if the value is
+>   absent rather than skipping the direct-method half.
+> - **F8:** a non-property name with more than one definition in `C` is `UNRESOLVED` as an entry,
+>   matching the followed-call rule. Getter/setter pairs are unaffected.
+> - **Also, declared by the implementer:** `self.__setattr__` / `self.__delattr__` calls count
+>   with the setattr family, and the R-A getter-return walk descends into every compound statement,
+>   a superset of If/Try/With.
 
 > **Cost of C3 + D-3: zero recovered effects at both pins** *(read this revision)*.
 >
@@ -725,7 +750,7 @@ classification can never silently drive a verdict.
 
 ### 18.4.7 R-E — receiver roots (L2)
 
-`derive_receiver_states` (`plr-sema/src/plr_sema/derive/receiver_state.py:1160-1289`) iterates **every**
+`derive_receiver_states` (`plr-sema/src/plr_sema/derive/receiver_state.py:2012-2182`, now with R-E's second pass) iterates **every**
 PLR class and admits any class with an annotated attribute that types to a P2-anchored class. At 1.0,
 `TipTracker.__init__`'s `self._carried: Optional["Tip"]` types to `Tip`, and `Tip` has a P2 anchor
 (`has_collar_height`), so `TipTracker` is admitted as a receiver of its own. The shipped artifact shows
@@ -2363,6 +2388,28 @@ unchanged: `pass = H∧X`, `marginal = H∧¬X`, `fail = ¬H`, exhaustive.
 | OI-21 | ACCEPTED A-CALLBACK-INERT as a named assumption. Its row text is fixed in §18.5.5, and T61 adds it with A-RACK-STATIC to increment 1's §10.6.3 table (five rows to seven), moving the table test to seven in the same task. It is not added at finalization, so `main` stays green when the spec merges. Also added: T57's implementation-time grep of praxis's own callback registrations (STOP if one writes a tracker), and a FOLLOW-UP for backlog, outside #5622: a fail-closed guard that makes tip state `UNKNOWN` for any protocol registering its own state-update callback | §18.4.3 C15 box, §18.5.5, AC-18.11(h), T57, T61, OI-21, increment 1 §10.6.3 |
 | OI-4 | Book HM-25 12 → 13. The conditional wording is removed; the zero-cost alternative is recorded as declined, because R-A/R-C(2) are patterns over how PLR is written, the class of fact whose silent breakage caused this regression | §18.7, AC-18.17, T57, OI-4 |
 | scheduling | Preemption-safe, resumable measurement: seven units (two arms, five mutant classes), each persisted with a sha256 stamp, reused only on matching hashes, in its own subprocess with a 30-minute timeout and no whole-run timeout; an incomplete unit means no `result.json`, which is FAIL by construction. Specified in §18.9's prose **and** the sidecar comment block, so the committed sidecar still matches §18.9. Resumability tests (a)(b)(c) and a negative control are added to AC-18.14 | §18.9, sidecar, AC-18.14, T63 |
+
+**T57 implementation review, 260929.** The code review of T57 found no deviation from §18.4's
+normative text. It did find fail-open gaps in the text itself, and the orchestrator folded them in,
+consistent with the owner's earlier soundness rulings (D-3, X1). Every item is fail-closed and zero
+cost at both pins. The §18.4.8 comparison stays at 36/36, old-pin parity at 10/11 with only
+`load_state` moved, and all 30 single-rule mutations turn a test red.
+
+| id | change | where |
+|---|---|---|
+| F1 | An escaping bound method (a non-call Load of a direct non-property method) is `UNRESOLVED` | §18.4.3 write table |
+| F2 | A nested def/lambda/class that names the receiver is `UNRESOLVED` | §18.4.3 write table |
+| F3 | The binding-rule controls are rewritten so they can fail, and binding-rule mutations are added (test quality, no rule change) | AC-18.2(i)(o) |
+| F4 | `T` must name a class, never a typing/builtin name, and must be in the class index when one is supplied | §18.4.3 amendments box |
+| F5 | ⊥ becomes `UNRESOLVED` per name before any classification | §18.4.3 amendments box |
+| F6 | The receiver is the first parameter; `super().__setattr__`/`__delattr__` count as setattr events | §18.4.3 write table and box |
+| F7 | Rule 0 requires `tracker_methods` (amends §18.4.4's rule 0; stated in the §18.4.3 box) | §18.4.3 box |
+| F8 | A duplicate non-property name is `UNRESOLVED` | §18.4.3 amendments box |
+| F9 | Positive control for `n_contracts_depth0_and_deep_coexist` (test quality) | AC-18.3 (C14) |
+| N1 | A method with no positional parameter has no receiver and is `UNRESOLVED` (re-review) | §18.4.3 amendments box |
+| N2 | A `@staticmethod`/`@classmethod` method takes no receiver and is `UNRESOLVED` as an entry, matching the followed-call rule (re-review) | §18.4.3 amendments box |
+| F10 | Dead wrappers removed (hygiene) | — |
+| scope | R-E (T58's receiver suppression, AC-18.6) landed with T57, because §18.4.8's expected receiver set depends on it. T58 keeps its remaining items | T57, T58 |
 
 ---
 
