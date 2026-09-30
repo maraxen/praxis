@@ -29,6 +29,7 @@ import importlib.util
 import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -908,10 +909,10 @@ def run_child(rs: Any, ur: Any, tmp_path: Path, **plan: Any) -> tuple[Any, float
     out = tmp_path / "out"
     out.mkdir(exist_ok=True)
     stdout_path = tmp_path / "child.stdout"
-    plan = dict(
-        unit="D1", out=str(out), env=dataclasses.asdict(make_env(rs)), budget=1.0,
-        stdout=str(stdout_path), **plan,
-    )
+    plan = {
+        "unit": "D1", "out": str(out), "env": dataclasses.asdict(make_env(rs)), "budget": 1.0,
+        "stdout": str(stdout_path), **plan,
+    }
     env = {k: v for k, v in os.environ.items() if k != "PRAXIS_UNIT_TOKEN"}
     env.update(RS_PATH=str(REPL_SMOKE), RS_PLAN=json.dumps(plan))
     t0 = time.monotonic()
@@ -1147,3 +1148,126 @@ def test_repl_smoke_loads_unit_runner_by_path_without_touching_sys_path():
     text = REPL_SMOKE.read_text()
     assert "sys.path.insert" not in text and "sys.path.append" not in text
     assert "unit_runner.py" in text
+
+
+# --------------------------------------------------------------------------- #
+# The harness-only in-page helpers (DISPLAY_CHECK_JS), under a JS engine with a fake DOM
+# --------------------------------------------------------------------------- #
+
+JS_ENGINE = shutil.which("node") or shutil.which("bun")
+
+JS_DRIVER = textwrap.dedent(
+    """
+    const fs = require("fs");
+    const src = fs.readFileSync(process.env.DC_JS, "utf8");
+    globalThis.window = globalThis;
+    const mkNode = (attrs, own, before, after, kids) => ({
+      _own: own, _before: before, _after: after,
+      getAttribute: (k) => (k in attrs ? attrs[k] : null),
+      setAttribute: (k, v) => { attrs[k] = String(v); },
+      getBoundingClientRect: () => ({ width: own.w ?? 0 }),
+      querySelector: (q) => kids[q] ?? null,
+      scrollIntoView: () => {},
+    });
+    const styleOf = (bg, image, content, w) => ({ backgroundColor: bg, backgroundImage: image, width: w, content });
+    const cellAttrs = [{ "data-praxis-cell-state": "ran", "data-praxis-exec": "3" }, {}];
+    const nodes = [
+      mkNode(cellAttrs[0], { backgroundColor: "rgb(255, 255, 255)", w: 900 },
+             styleOf("rgb(47, 104, 130)", "none", "none", "3px"), styleOf("rgba(0, 0, 0, 0)", "none", '"3"', "auto"),
+             { ".jp-InputPrompt": mkNode({}, { w: 0 }, {}, {}, {}), ".jp-OutputPrompt": mkNode({}, { w: 0.5 }, {}, {}, {}),
+               ".jp-InputArea-editor": mkNode({}, { w: 700 }, {}, {}, {}) }),
+      mkNode(cellAttrs[1], { backgroundColor: "rgb(255, 255, 255)", w: 900 },
+             styleOf("rgb(201, 210, 218)", "none", "none", "3px"), styleOf("rgba(0, 0, 0, 0)", "none", '""', "auto"), {}),
+    ];
+    globalThis.getComputedStyle = (node, pseudo) =>
+      pseudo === "::before" ? node._before : pseudo === "::after" ? node._after : node._own;
+    const models = [
+      { executionCount: 3, executionState: "idle", outputs: { length: 1, get: () => ({ toJSON: () => ({ output_type: "error" }) }) },
+        sharedModel: { getSource: () => "raise x" } },
+      { executionCount: null, executionState: "idle", outputs: { length: 0, get: () => null }, sharedModel: { getSource: () => "x = 1" } },
+    ];
+    let greyBg = "";
+    const bodyAttrs = { "data-jp-theme-name": "JupyterLab Light" };
+    globalThis.document = {
+      contains: () => true,
+      body: { getAttribute: (k) => bodyAttrs[k] ?? null, appendChild: () => {} },
+      createElement: () => ({
+        style: { set backgroundColor(v) { greyBg = v; } }, remove: () => {},
+        _own: { get backgroundColor() { return greyBg === "var(--jp-border-color1)" ? "rgb(201, 210, 218)" : ""; } },
+      }),
+      querySelector: () => null,
+    };
+    const runs = [];
+    window.jupyterapp = {
+      shell: { currentWidget: {
+        content: { widgets: nodes.map((n) => ({ node: n })), activeCellIndex: 0, node: { _own: { backgroundColor: "rgb(238, 241, 244)" } },
+                   model: { cells: { length: 2, get: (i) => models[i] } } },
+        sessionContext: { session: { kernel: { status: "idle" } } } } },
+      commands: { execute: (cmd) => { runs.push(cmd); return Promise.resolve(); } },
+    };
+    (0, eval)(src);
+    const dc = window.__praxisDisplayCheck;
+    (async () => {
+      const out = {};
+      out.snap0 = dc.snapshot(0);
+      out.snap1 = dc.snapshot(1);
+      out.theme = dc.themeName();
+      out.ready = [dc.cellsReady(2), dc.cellsReady(3)];
+      out.kernel = dc.kernelStatus();
+      out.marked = dc.markCells();
+      out.marks = [cellAttrs[0]["data-dcheck-index"], cellAttrs[1]["data-dcheck-index"]];
+      out.done = [dc.modelDone(0), dc.modelDone(1)];
+      out.prompts = dc.prompts(0);
+      out.ground = dc.ground();
+      out.run = dc.runCell(1);
+      out.runs = runs;
+      out.active = window.jupyterapp.shell.currentWidget.content.activeCellIndex;
+      out.hit = (await dc.pollState({ i: 0, want: "ran", ms: 200 })).state;
+      const t0 = Date.now();
+      out.miss = (await dc.pollState({ i: 1, want: "running", ms: 120 })).state;
+      out.miss_ms = Date.now() - t0;
+      out.grey = dc.greyToken();
+      out.grey_var = greyBg;
+      console.log(JSON.stringify(out));
+    })();
+    """
+)
+
+
+@pytest.mark.skipif(JS_ENGINE is None, reason="no node or bun on PATH")
+def test_page_helpers_read_the_attributes_pseudo_styles_and_model(rs, tmp_path):
+    js = tmp_path / "dc.js"
+    js.write_text(rs.DISPLAY_CHECK_JS)
+    driver = tmp_path / "driver.js"
+    driver.write_text(JS_DRIVER)
+    proc = subprocess.run(
+        [JS_ENGINE, str(driver)], env={**os.environ, "DC_JS": str(js)}, capture_output=True, text=True, timeout=60
+    )
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    out = json.loads(proc.stdout.strip().splitlines()[-1])
+    s0, s1 = out["snap0"], out["snap1"]
+    assert (s0["state"], s0["exec_attr"]) == ("ran", "3") and s1["state"] is None and s1["exec_attr"] is None
+    assert s0["before_bg"] == "rgb(47, 104, 130)" and s0["after_content"] == '"3"' and s0["before_width"] == "3px"
+    assert s0["model"]["execution_count"] == 3 and s0["model"]["output_types"] == ["error"]
+    assert s1["model"]["execution_count"] is None and s1["model"]["output_types"] == []
+    assert s0["sheet_bg"] == "rgb(255, 255, 255)" and s0["model"]["source"] == "raise x"
+    assert out["theme"] == "JupyterLab Light" and out["ready"] == [True, False] and out["kernel"] == "idle"
+    assert out["marked"] == 2 and out["marks"] == ["0", "1"]
+    assert out["done"] == [True, False], "modelDone needs a non-null count and a non-running state"
+    assert out["prompts"] == {"input_w": 0, "output_w": 0.5, "cell_w": 900, "editor_w": 700}
+    assert out["ground"] == "rgb(238, 241, 244)"
+    assert out["run"] == {"dispatched": True} and out["runs"] == ["notebook:run-cell"] and out["active"] == 1
+    assert out["hit"] == "ran", "pollState returns the first snapshot in the wanted state"
+    assert out["miss"] is None and out["miss_ms"] >= 100, "and the last snapshot once its deadline passes"
+    assert out["grey_var"] == "var(--jp-border-color1)" and out["grey"] == "rgb(201, 210, 218)"
+
+
+def test_display_check_js_is_read_only(rs):
+    """The helpers only READ: nothing assigns to the product's DOM state or fires product commands
+    except the one ``notebook:run-cell`` the scenario needs, and no product test hook is used."""
+    js = rs.DISPLAY_CHECK_JS
+    assert "commands.execute('notebook:run-cell')" in js
+    assert js.count("commands.execute") == 1
+    assert "data-praxis-test" not in js and "__praxis_test" not in js
+    for forbidden in ("setSource", "sharedModel.set", "innerHTML", "removeAttribute('data-praxis"):
+        assert forbidden not in js, forbidden
