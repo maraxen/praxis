@@ -8228,12 +8228,12 @@ def _center(rect: Any, *, x_max: float | None = None) -> tuple[float, float] | N
 
 
 class DockDriver(DisplayDriver):
-    #: The plan, what was sent and what the page received for the LAST ``drag_splitter_to`` (``None`` before one).
-    last_drag: dict[str, Any] | None = None
-
     """One Playwright page, seen as the calls the dock scenarios make. Every method is one bounded interaction or one
     page read; a click is a real Playwright mouse or keyboard event (AC-35 "a real click"). Exercised only by a real
     browser run; the scenarios are tested against a scripted fake of this surface."""
+
+    #: The plan, what was sent and what the page received for the LAST ``drag_splitter_to`` (``None`` before one).
+    last_drag: dict[str, Any] | None = None
 
     def _install(self) -> None:
         super()._install()
