@@ -245,7 +245,7 @@ describe("mount(window): the stale and interact rows (B9)", () => {
     const result = await mount(win, { logger });
     expect(result.errors).toEqual([]);
     expect(result.status).toBe("mounted");
-    expect(Object.keys(result.controllers)).toEqual(["chrome", "stale", "interact"]);
+    expect(Object.keys(result.controllers)).toEqual(["chrome", "stale", "interact", "dock"]); // C5: dock is the fourth row
 
     hub.post("praxis_repl", announcement({ session: "sA", exec: 3, revs: { assay: 2 } }));
     const marks = cell.host(0).children.filter((c) => c.classList.contains("praxis-stale"));

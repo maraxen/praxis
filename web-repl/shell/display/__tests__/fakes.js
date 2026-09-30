@@ -317,21 +317,67 @@ export function createFakeApp({ panels = [] } = {}) {
 }
 
 /** A minimal `window` for index.js: a jupyterapp that may appear later, and a
- * synchronous stand-in for setInterval/clearInterval. */
-export function createFakeWindow({ app = null, document = null, broadcast = null } = {}) {
+ * synchronous stand-in for setInterval/clearInterval.
+ *
+ * C5 additions (all additive): `innerWidth`, window events (`addEventListener` /
+ * `removeEventListener` / `dispatchEvent`), `getComputedStyle` (padding taken from an
+ * element's `_padding`, px per side), a `ResizeObserver` whose callbacks a test fires with
+ * `win.resizeObservers.trigger()`, and the delay each interval was created with. */
+export function createFakeWindow({ app = null, document = null, broadcast = null, innerWidth = 1440 } = {}) {
   const timers = new Map();
+  const delays = new Map();
+  const listeners = [];
+  const observers = [];
   let nextId = 1;
+  class FakeResizeObserver {
+    constructor(callback) {
+      this.callback = callback;
+      this.targets = new Set();
+      this.disconnected = false;
+      observers.push(this);
+    }
+
+    observe(el) {
+      this.targets.add(el);
+    }
+
+    unobserve(el) {
+      this.targets.delete(el);
+    }
+
+    disconnect() {
+      this.targets.clear();
+      this.disconnected = true;
+    }
+  }
   const win = {
     jupyterapp: app,
+    innerWidth,
+    innerHeight: 900,
     ...(document ? { document } : {}),
     ...(broadcast ? { BroadcastChannel: broadcast.BroadcastChannel } : {}),
-    setInterval(fn) {
+    ResizeObserver: FakeResizeObserver,
+    resizeObservers: {
+      all: observers,
+      /** Fire every live observer that watches something, as the browser does after a layout. */
+      trigger() {
+        for (const ro of observers.slice()) {
+          if (ro.targets.size > 0) ro.callback(Array.from(ro.targets, (target) => ({ target })), ro);
+        }
+      },
+      get liveCount() {
+        return observers.filter((ro) => ro.targets.size > 0).length;
+      },
+    },
+    setInterval(fn, delay) {
       const id = nextId++;
       timers.set(id, fn);
+      delays.set(id, delay);
       return id;
     },
     clearInterval(id) {
       timers.delete(id);
+      delays.delete(id);
     },
     /** Fire every pending interval callback once. */
     tick() {
@@ -339,6 +385,29 @@ export function createFakeWindow({ app = null, document = null, broadcast = null
     },
     get pendingTimers() {
       return timers.size;
+    },
+    /** The delays of the intervals still pending. */
+    get intervalDelays() {
+      return Array.from(delays.values());
+    },
+    addEventListener(type, fn) {
+      if (!listeners.some((l) => l.type === type && l.fn === fn)) listeners.push({ type, fn });
+    },
+    removeEventListener(type, fn) {
+      const index = listeners.findIndex((l) => l.type === type && l.fn === fn);
+      if (index >= 0) listeners.splice(index, 1);
+    },
+    /** Deliver `event` (`{type, ...}`) to the listeners of its type. */
+    dispatchEvent(event) {
+      for (const l of listeners.slice()) if (l.type === event.type) l.fn(event);
+      return true;
+    },
+    listenerCount(type) {
+      return listeners.filter((l) => l.type === type).length;
+    },
+    getComputedStyle(el) {
+      const px = `${(el && el._padding) || 0}px`;
+      return { paddingLeft: px, paddingRight: px };
     },
   };
   return win;
@@ -426,6 +495,10 @@ export class FakeElement {
 
   setAttribute(name, value) {
     this._attrs.set(name, String(value));
+    // C5: an opt-in log of every attribute write (`doc.attrLog = []`), so a test can count
+    // `src` writes without holding an element (D11 invariant I2).
+    const log = this.ownerDocument && this.ownerDocument.attrLog;
+    if (log) log.push({ el: this, tag: this.localName, name, value: String(value) });
   }
 
   getAttribute(name) {
@@ -445,6 +518,10 @@ export class FakeElement {
     this.children.push(child);
     child.parentNode = this;
     this.appendCalls += 1;
+    // C5: an opt-in log of insertions (`doc.appendLog = []`): what the child's `src` was at the
+    // moment it entered a parent (an iframe with its `src` already set loads the right page).
+    const log = this.ownerDocument && this.ownerDocument.appendLog;
+    if (log) log.push({ parent: this, child, srcAtInsert: child.getAttribute ? child.getAttribute("src") : null });
     return child;
   }
 
@@ -544,7 +621,10 @@ export class FakeDocument extends FakeElement {
   }
 
   createElement(tag) {
-    return new FakeElement(tag, this);
+    const el = new FakeElement(tag, this);
+    // C5: `doc.onCreate = (el) => ...` lets a test give an iframe its `contentWindow`.
+    if (typeof this.onCreate === "function") this.onCreate(el);
+    return el;
   }
 
   createElementNS(_ns, tag) {
@@ -603,10 +683,14 @@ export function createFakeBroadcastHub() {
   }
   return {
     BroadcastChannel: FakeBroadcastChannel,
-    post(name, data) {
+    /** `except` (C5): channels that must not hear this post, so a probe can record what only the
+     * shell under test posted. */
+    post(name, data, { except = [] } = {}) {
       const sender = new FakeBroadcastChannel(name);
-      sender.postMessage(data);
-      sender.close();
+      for (const c of channels.slice()) {
+        if (c !== sender && c.name === name && !c.closed && !except.includes(c)) c._deliver(data);
+      }
+      sender.closed = true;
     },
     openCount(name) {
       return channels.filter((c) => c.name === name && !c.closed).length;
@@ -635,4 +719,445 @@ export function announcement({ session = "sA", exec = 1, revs, all } = {}) {
   if (revs !== undefined) body.revs = revs;
   if (all !== undefined) body.all = all;
   return { type: "praxis:resource-changed", json: JSON.stringify(body) };
+}
+
+// -- C5: Lumino, the main DockPanel, the deck app, commands, plrViewer ---------------------------
+//
+// What dock.js reads, as S1 recorded it (.praxia/docs/research/260929_notebook-display-s1-
+// lumino-widget.md): a shell widget whose prototype chain ends, at index 3 here, in the
+// root Lumino `Widget` class (its prototype owns `processMessage` and `onAfterAttach`, and
+// its own prototype is `Object.prototype`); `new Ctor({node})`; `app.shell.add(widget,
+// "main", {mode: "split-right", ref})`, which needs `widget.id` like the real LabShell;
+// `widget.parent` is the main DockPanel, with `saveLayout()` / `restoreLayout()` (a tree of
+// tab-area and split-area configs, split areas carrying `sizes`) and `fit()`.
+//
+// The dock panel below is a small layout simulator, not a Lumino clone. It honours inline
+// px `min-width` / `max-width` on a widget node (S1: css_limits_honoured), but only the
+// values it read at the last `addWidget`, `fit()` or `restoreLayout()` (S1: css_limits_refit):
+// so a build that sets limits and never calls `parent.fit()` leaves the width where it was.
+// `restoreLayout()` never touches the widget's DOM (S1: restore_layout_keeps_iframe).
+
+export function createFakeLumino(doc, { decoy = false } = {}) {
+  const instances = [];
+  class Widget {
+    constructor(options = {}) {
+      this.node = options.node || doc.createElement("div");
+      this.parent = null;
+      this.isAttached = false;
+      this.isDisposed = false;
+      this.id = "";
+      this.title = { label: "", closable: false };
+      this.disposed = createFakeSignal();
+      this.closeRequests = 0;
+      this.fitCalls = 0;
+      this.activations = 0;
+      instances.push(this);
+    }
+
+    processMessage() {}
+
+    onAfterAttach() {}
+
+    addClass(name) {
+      this.node.classList.add(name);
+    }
+
+    activate() {
+      this.activations += 1;
+    }
+
+    fit() {
+      this.fitCalls += 1;
+    }
+
+    close() {
+      this.closeRequests += 1;
+      this.onCloseRequest({ type: "close-request" });
+    }
+
+    onCloseRequest() {
+      if (this.parent && typeof this.parent.removeWidget === "function") this.parent.removeWidget(this);
+      else {
+        this.isAttached = false;
+        this.node.remove();
+      }
+    }
+
+    dispose() {
+      if (this.isDisposed) return;
+      this.isDisposed = true;
+      this.close();
+      this.disposed.emit(this, undefined);
+    }
+  }
+  class Level1 extends Widget {}
+  if (decoy) {
+    // A class in the middle of the chain that also owns both methods but is NOT the root:
+    // only "its own prototype is Object.prototype" tells the root from it.
+    Level1.prototype.processMessage = function processMessage() {};
+    Level1.prototype.onAfterAttach = function onAfterAttach() {};
+  }
+  class Level2 extends Level1 {
+    onUpdateRequest() {}
+  }
+  class NotebookPanel extends Level2 {
+    onActivateRequest() {}
+  }
+  return { Widget, Level1, NotebookPanel, instances };
+}
+
+const pxValue = (text) => {
+  const m = /^(\d+(?:\.\d+)?)px$/.exec(text || "");
+  return m ? Number(m[1]) : null;
+};
+
+function cloneArea(area) {
+  if (!area) return null;
+  if (area.type === "tab-area") return { type: "tab-area", widgets: area.widgets.slice(), currentIndex: area.currentIndex };
+  return {
+    type: "split-area",
+    orientation: area.orientation,
+    children: area.children.map(cloneArea),
+    sizes: area.sizes.slice(),
+  };
+}
+
+function firstTabArea(area) {
+  if (area.type === "tab-area") return area;
+  for (const child of area.children) {
+    const found = firstTabArea(child);
+    if (found) return found;
+  }
+  return null;
+}
+
+function tabAreaOf(area, widget) {
+  if (!area) return null;
+  if (area.type === "tab-area") return area.widgets.includes(widget) ? area : null;
+  for (const child of area.children) {
+    const found = tabAreaOf(child, widget);
+    if (found) return found;
+  }
+  return null;
+}
+
+function replaceArea(area, target, replacement) {
+  if (area === target) return replacement;
+  if (area.type === "tab-area") return area;
+  return { ...area, children: area.children.map((child) => replaceArea(child, target, replacement)) };
+}
+
+function prune(area, widget) {
+  if (!area) return null;
+  if (area.type === "tab-area") {
+    const widgets = area.widgets.filter((w) => w !== widget);
+    return widgets.length ? { ...area, widgets, currentIndex: 0 } : null;
+  }
+  const kept = [];
+  const sizes = [];
+  area.children.forEach((child, index) => {
+    const next = prune(child, widget);
+    if (next) {
+      kept.push(next);
+      sizes.push(area.sizes[index]);
+    }
+  });
+  if (kept.length === 0) return null;
+  if (kept.length === 1) return kept[0];
+  const sum = sizes.reduce((a, b) => a + b, 0) || 1;
+  return { ...area, children: kept, sizes: sizes.map((s) => s / sum) };
+}
+
+export function createFakeDockPanel(lumino, doc, { width = 1440 } = {}) {
+  class FakeDockPanel extends lumino.Widget {
+    constructor() {
+      super({ node: doc.createElement("div") });
+      this.node.rect = { left: 0, top: 40, width, height: 800 };
+      this.layoutTree = null;
+      this.saveCalls = 0;
+      this.restoreCalls = [];
+      this._limits = new Map();
+      this._px = new Map();
+    }
+
+    get mainWidth() {
+      return this.node.rect.width;
+    }
+
+    /** Place a widget that is already "in the shell" (a notebook panel). */
+    seed(widget) {
+      widget.parent = this;
+      widget.isAttached = true;
+      this.node.appendChild(widget.node);
+      if (!this.layoutTree) this.layoutTree = { type: "tab-area", widgets: [widget], currentIndex: 0 };
+      else firstTabArea(this.layoutTree).widgets.push(widget);
+      this._reflow(true);
+    }
+
+    *allWidgets(area = this.layoutTree) {
+      if (!area) return;
+      if (area.type === "tab-area") yield* area.widgets;
+      else for (const child of area.children) yield* this.allWidgets(child);
+    }
+
+    addWidget(widget, options = {}) {
+      const ref = options.ref ? Array.from(this.allWidgets()).find((w) => w.id === options.ref) : null;
+      const target = (ref && tabAreaOf(this.layoutTree, ref)) || firstTabArea(this.layoutTree);
+      if (options.mode === "split-right") {
+        const added = { type: "tab-area", widgets: [widget], currentIndex: 0 };
+        this.layoutTree = replaceArea(this.layoutTree, target, {
+          type: "split-area",
+          orientation: "horizontal",
+          children: [target, added],
+          sizes: [0.5, 0.5],
+        });
+      } else {
+        target.widgets.push(widget);
+      }
+      widget.parent = this;
+      widget.isAttached = true;
+      this.node.appendChild(widget.node);
+      this._readLimits(widget);
+      this._reflow(false);
+    }
+
+    removeWidget(widget) {
+      this.layoutTree = prune(this.layoutTree, widget);
+      widget.parent = null;
+      widget.isAttached = false;
+      widget.node.remove();
+      this._px.delete(widget);
+      this._limits.delete(widget);
+      this._reflow(false);
+    }
+
+    saveLayout() {
+      this.saveCalls += 1;
+      return { main: cloneArea(this.layoutTree) };
+    }
+
+    restoreLayout(config) {
+      this.restoreCalls.push(config);
+      this.layoutTree = cloneArea(config.main);
+      for (const w of this.allWidgets()) this._readLimits(w);
+      this._reflow(false);
+    }
+
+    fit() {
+      this.fitCalls += 1;
+      for (const w of this.allWidgets()) this._readLimits(w);
+      this._reflow(false);
+    }
+
+    _readLimits(widget) {
+      const min = pxValue(widget.node.style.minWidth);
+      const max = pxValue(widget.node.style.maxWidth);
+      this._limits.set(widget, [min === null ? 0 : min, max === null ? Infinity : max]);
+    }
+
+    _areaLimits(area) {
+      if (area.type !== "tab-area") return [0, Infinity];
+      let lo = 0;
+      let hi = Infinity;
+      for (const w of area.widgets) {
+        const [a, b] = this._limits.get(w) || [0, Infinity];
+        lo = Math.max(lo, a);
+        hi = Math.min(hi, b);
+      }
+      return [lo, hi];
+    }
+
+    _assign(area, px) {
+      if (area.type === "tab-area") {
+        for (const w of area.widgets) this._px.set(w, px);
+        return;
+      }
+      if (area.orientation !== "horizontal") {
+        for (const child of area.children) this._assign(child, px);
+        return;
+      }
+      const sum = area.sizes.reduce((a, b) => a + b, 0) || 1;
+      const widths = area.sizes.map((s) => (s / sum) * px);
+      // Clamp each child to its limits, giving the difference to the unlimited siblings.
+      for (let pass = 0; pass < 2; pass += 1) {
+        area.children.forEach((child, i) => {
+          const [lo, hi] = this._areaLimits(child);
+          const clamped = Math.min(hi, Math.max(lo, widths[i]));
+          const delta = widths[i] - clamped;
+          if (delta === 0) return;
+          widths[i] = clamped;
+          const others = area.children.map((_c, j) => j).filter((j) => j !== i);
+          for (const j of others) widths[j] += delta / others.length;
+        });
+      }
+      area.children.forEach((child, i) => this._assign(child, widths[i]));
+    }
+
+    _reflow(readAll) {
+      if (readAll) for (const w of this.allWidgets()) this._readLimits(w);
+      this._px.clear();
+      if (this.layoutTree) this._assign(this.layoutTree, this.mainWidth);
+    }
+
+    /** The width, in px, Lumino gave the widget at the last layout. */
+    widthOf(widget) {
+      return this._px.get(widget);
+    }
+
+    /** The user drags the splitter so that `widget` is `px` wide (clamped to the cached limits). */
+    drag(widget, px) {
+      const area = tabAreaOf(this.layoutTree, widget);
+      const findSplit = (node) => {
+        if (node.type === "tab-area") return null;
+        const idx = node.children.findIndex((c) => c === area);
+        if (idx >= 0 && node.orientation === "horizontal") return { node, idx };
+        for (const c of node.children) {
+          const hit = findSplit(c);
+          if (hit) return hit;
+        }
+        return null;
+      };
+      const hit = findSplit(this.layoutTree);
+      if (!hit) return this.widthOf(widget);
+      const frac = Math.min(1, Math.max(0, px / this.mainWidth));
+      const others = hit.node.children.length - 1;
+      hit.node.sizes = hit.node.sizes.map((_s, i) => (i === hit.idx ? frac : (1 - frac) / others));
+      this._reflow(false);
+      return this.widthOf(widget);
+    }
+
+    /** The main area (not the window) changes width: a window resize or a sidebar toggle. */
+    setWidth(px) {
+      this.node.rect.width = px;
+      this._reflow(false);
+    }
+  }
+  return new FakeDockPanel();
+}
+
+/** A notebook panel that is a real (fake) Lumino widget: its prototype chain reaches the root. */
+export function createFakeLuminoNotebook(lumino, doc, { id = "nb1", cells = [], kernel = true } = {}) {
+  const panel = createFakeNotebookPanel({ cells });
+  Object.setPrototypeOf(panel, lumino.NotebookPanel.prototype);
+  panel.node = doc.createElement("div");
+  panel.node.classList.add("jp-NotebookPanel");
+  panel.content.node = doc.createElement("div");
+  panel.content.node.classList.add("jp-Notebook");
+  panel.node.appendChild(panel.content.node);
+  panel.content.activeCell = null;
+  Object.assign(panel, {
+    id,
+    parent: null,
+    isAttached: false,
+    isDisposed: false,
+    title: { label: id },
+    closeRequests: 0,
+    fitCalls: 0,
+    activations: 0,
+  });
+  panel.sessionContext.session = { kernel: kernel ? { id: `k-${id}` } : null };
+  /** The user activates `cell`: the active cell changes and the signal fires. */
+  panel.activate = (cell) => {
+    panel.content.activeCell = cell;
+    panel.content.activeCellChanged.emit(panel.content, cell);
+  };
+  /** The session context reports a kernel status. */
+  panel.kernelStatus = (status) => {
+    panel.sessionContext.statusChanged.emit(panel.sessionContext, status);
+  };
+  /** The panel loses its kernel (or gets a fresh one). */
+  panel.setKernel = (kernelObject) => {
+    const old = panel.sessionContext.session.kernel;
+    panel.sessionContext.session.kernel = kernelObject;
+    panel.sessionContext.kernelChanged.emit(panel.sessionContext, {
+      name: "kernel",
+      oldValue: old,
+      newValue: kernelObject,
+    });
+  };
+  return panel;
+}
+
+/** JupyterLab's command registry, reduced to what dock.js uses. */
+export function createFakeCommands() {
+  const registry = new Map();
+  return {
+    registry,
+    addCommand(id, options) {
+      if (registry.has(id)) throw new Error(`Command '${id}' already registered.`);
+      registry.set(id, options);
+      return {
+        dispose() {
+          registry.delete(id);
+        },
+      };
+    },
+    hasCommand: (id) => registry.has(id),
+    execute(id, args) {
+      const options = registry.get(id);
+      if (!options) return Promise.reject(new Error(`Command '${id}' not registered.`));
+      return Promise.resolve(options.execute(args));
+    },
+    label: (id) => (registry.has(id) ? registry.get(id).label : ""),
+  };
+}
+
+/**
+ * The app dock.js runs against: real-looking Lumino widgets (root class at chain index 3),
+ * a main DockPanel that lays out split-right, a shell whose `add` insists on a widget `id`
+ * like the LabShell, commands, and one notebook panel per requested notebook.
+ */
+export function createFakeDeckApp({ doc, notebooks = 1, width = 1440, lumino = createFakeLumino(doc) } = {}) {
+  const dock = createFakeDockPanel(lumino, doc, { width });
+  const panels = [];
+  for (let i = 0; i < notebooks; i += 1) {
+    const panel = createFakeLuminoNotebook(lumino, doc, { id: `nb${i + 1}` });
+    panels.push(panel);
+    dock.seed(panel);
+  }
+  const shell = {
+    currentChanged: createFakeSignal(),
+    layoutModified: createFakeSignal(),
+    currentWidget: panels[0] || null,
+    addCalls: [],
+    *widgets(area) {
+      if (area === "main") yield* dock.allWidgets();
+    },
+    add(widget, area, options) {
+      shell.addCalls.push({ widget, area, options });
+      if (!widget.id) throw new Error("Widgets added to the app shell must have unique id property.");
+      if (Array.from(dock.allWidgets()).some((w) => w.id === widget.id)) {
+        throw new Error(`Widget with id '${widget.id}' already added.`);
+      }
+      if (area !== "main") throw new Error(`fake shell: area ${area} is not modelled`);
+      dock.addWidget(widget, options || {});
+      shell.layoutModified.emit(shell, undefined);
+    },
+  };
+  const commands = createFakeCommands();
+  const app = { shell, commands, restored: Promise.resolve(), dock, panels, lumino };
+  return app;
+}
+
+/** The page's `window.plrViewer` (D12): records every call. `names` is what `resources()` returns. */
+export function createFakePlrViewer({ names = [] } = {}) {
+  const viewer = {
+    names,
+    calls: [],
+    resources() {
+      viewer.calls.push(["resources"]);
+      return viewer.names;
+    },
+    focus(name, view) {
+      viewer.calls.push(["focus", name, view]);
+    },
+    view(name) {
+      viewer.calls.push(["view", name]);
+    },
+    /** Every `focus`/`view` call, without the polling noise. */
+    get actions() {
+      return viewer.calls.filter((c) => c[0] !== "resources");
+    },
+  };
+  return viewer;
 }
