@@ -7137,7 +7137,7 @@ def test_the_added_worst_case_time_fits_the_k2_budget_with_room(rs):
     measured_k2_s = 167.1  # the first real K2 run (result.K2.json started -> finished)
     budget_s = rs.UNIT_BY_ID["K2"].budget_s
     assert budget_s == 900.0 and (measured_k2_s + k2_added_s) * 1.5 < budget_s, "D16: a budget stays at least 1.5x the measured time"
-    assert budget_s + 120 == 17 * 60 + 60, "the CI step timeout (17 min) is budget + 2 min"
+    assert budget_s + 120 == 17 * 60, "the CI step timeout (17 min) is budget + 2 min"
 
 
 @needs_bun

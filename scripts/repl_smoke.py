@@ -7448,6 +7448,18 @@ LAYOUT_NUMBER_FIELDS = ("inner_width", "inner_height", "scroll_width", "client_w
 #: Steps of the drag's ``mouse.move`` (spike S1's drag) and the most page-received mouse events kept per drag.
 DRAG_STEPS = 15
 TRACE_EVENTS_MAX = 80
+#: PACED drags. Playwright sends press, moves and release faster than a page renders a frame; the backdrop Lumino adds on press
+#: is then not yet hit-testable, so early moves (and the release) can go to the iframe under the pointer and the drag is left
+#: unfinished (hypothesis H, UNVERIFIED: the real K2 run showed exactly that at 1280, where the first ~37 px right of the handle
+#: is the iframe). A human mouse has a frame between events, so the harness waits for animation frames: 2 after the press, 1 after
+#: every move (so also between moves and before the release). A frame wait is a page ``requestAnimationFrame`` (it tracks rendering,
+#: which a fixed 16 ms does not under SwiftShader), capped per wait so a throttled page cannot hang it, and the whole drag has a
+#: wall-time cap after which the remaining waits are skipped (the moves and the release are still sent).
+DRAG_DOWN_SETTLE_FRAMES = 2
+DRAG_STEP_SETTLE_FRAMES = 1
+DRAG_UP_SETTLE_FRAMES = 1  # the wait after the LAST move, right before the release
+DRAG_FRAME_CAP_MS = 250
+DRAG_MAX_S = 8.0
 
 
 def _rect_ok(rect: Any) -> bool:
@@ -7561,6 +7573,15 @@ def drag_plan_by(geo: Any, dx: float, *, inner_width: Any = None) -> dict[str, A
     return plan
 
 
+def step_points(plan: Any) -> list[list[float]]:
+    """The ``steps`` points from just past ``x0`` to ``x1`` (``x0 + (x1 - x0) * k / steps``, k = 1..steps): the same path
+    ``mouse.move(x1, y, steps=...)`` interpolates, sent one event at a time so a frame can pass between them."""
+    if not isinstance(plan, dict) or not all(_num(plan.get(k)) for k in ("x0", "x1", "y", "steps")) or plan["steps"] < 1:
+        return []
+    n = int(plan["steps"])
+    return [[plan["x0"] + (plan["x1"] - plan["x0"]) * k / n, plan["y"]] for k in range(1, n + 1)]
+
+
 def path_points(plan: Any) -> list[list[float]]:
     """``[x, y]`` at the press point and at four points along the path to ``x1`` (k/5 of the way, k = 1..4): where the harness
     asks what element sits under the pointer before it presses."""
@@ -7664,7 +7685,9 @@ def dock_probe_problems(probe: Any) -> list[str]:
     return problems
 
 
-def assemble_drag_evidence(plan: dict[str, Any], sent: Any, trace: Any, elements: Any, dock_before: Any, dock_after_up: Any) -> dict[str, Any]:
+def assemble_drag_evidence(
+    plan: dict[str, Any], sent: Any, trace: Any, elements: Any, dock_before: Any, dock_after_up: Any, *, pacing: Any = None
+) -> dict[str, Any]:
     """One drag as evidence: the plan (``x0``, ``y``, ``x1``, handle, widget, ``n_handles``, ``x1_in_window``...), what the
     harness SENT, the page's trace (``trace``, ``trace_n``, ``trace_counts``), the elements under the pointer before the press,
     and the dock's own state before the press and right after the release. Never raises; ``problems`` lists what is malformed."""
@@ -7674,7 +7697,8 @@ def assemble_drag_evidence(plan: dict[str, Any], sent: Any, trace: Any, elements
     problems += [f"dock_probe_after_up: {p}" for p in dock_probe_problems(dock_after_up)]
     return {
         **plan, "sent": sent, "trace": summary["events"], "trace_n": summary["n"], "trace_counts": summary["counts"],
-        "elements": elements, "dock_probe_before": dock_before, "dock_probe_after_up": dock_after_up, "problems": problems,
+        "elements": elements, "dock_probe_before": dock_before, "dock_probe_after_up": dock_after_up, "pacing": pacing,
+        "problems": problems,
     }
 
 
@@ -8223,6 +8247,18 @@ __NOTEBOOK_HELPER__
   // stopped its propagation), each with its target, `defaultPrevented` (true only at bubble, after the handlers ran) and, on a
   // press or release, the dock probe at that instant and once more a tick later. `start`, then `stop` (removes every listener
   // and returns the events), or `read`.
+  // Wait for `n` animation frames, but never longer than `cap_ms` in total (a throttled page must not hang the harness).
+  D.paceFrames = (a) => new Promise((resolve) => {
+    const t0 = performance.now();
+    let done = 0;
+    const timer = setTimeout(() => resolve({ frames: done, capped: true, ms: Math.round(performance.now() - t0) }), a.cap_ms);
+    const tick = () => {
+      done += 1;
+      if (done >= a.n) { clearTimeout(timer); resolve({ frames: done, capped: false, ms: Math.round(performance.now() - t0) }); }
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
   D.mouseTrace = (a) => {
     const TYPES = ["pointerdown", "pointermove", "pointerup", "pointercancel", "mousedown", "mousemove", "mouseup"];
     const BASES = [["window:capture", window, true], ["document:capture", document, true], ["window:bubble", window, false]];
@@ -8461,6 +8497,8 @@ class DockDriver(DisplayDriver):
 
     #: The plan, what was sent and what the page received for the LAST ``drag_splitter_to`` (``None`` before one).
     last_drag: dict[str, Any] | None = None
+    #: The clock the per-drag wall-time cap reads (a test seam).
+    clock = staticmethod(time.monotonic)
 
     def _install(self) -> None:
         super()._install()
@@ -8606,16 +8644,36 @@ class DockDriver(DisplayDriver):
         dock_before = self._dk("dockProbe()")
         self._dk("mouseTrace(a)", {"op": "start"})
         dock_after_up = None
+        pace = {"frames_waited": 0, "cap_hit": False}
+        deadline = self.clock() + DRAG_MAX_S
         try:
             self.page.mouse.move(x0, y)
             self.page.mouse.down()
-            self.page.mouse.move(x1, y, steps=steps)
+
+            def settle(n: int) -> None:
+                """Wait ``n`` animation frames (bounded: per wait by DRAG_FRAME_CAP_MS, per drag by DRAG_MAX_S)."""
+                if self.clock() > deadline:
+                    pace["cap_hit"] = True
+                    return
+                got = self._dk("paceFrames(a)", {"n": n, "cap_ms": DRAG_FRAME_CAP_MS * n}) or {}
+                pace["frames_waited"] += int(got.get("frames") or 0)
+                pace["cap_hit"] = pace["cap_hit"] or bool(got.get("capped"))
+
+            settle(DRAG_DOWN_SETTLE_FRAMES)
+            for px, py in step_points(plan):
+                self.page.mouse.move(px, py)
+                settle(DRAG_STEP_SETTLE_FRAMES)  # between moves; after the last one it is the frame before the release
             self.page.mouse.up()
             dock_after_up = self._dk("dockProbe()")
             self.page.wait_for_timeout(500)
         finally:
             trace = self._dk("mouseTrace(a)", {"op": "stop"}) or []
-        self.last_drag = assemble_drag_evidence(plan, sent, trace, elements, dock_before, dock_after_up)
+        pacing = {
+            "down_settle_frames": DRAG_DOWN_SETTLE_FRAMES, "up_settle_frames": DRAG_UP_SETTLE_FRAMES,
+            "step_wait": f"{DRAG_STEP_SETTLE_FRAMES} animation frame (page requestAnimationFrame, capped) after every move",
+            "frame_cap_ms": DRAG_FRAME_CAP_MS, "drag_cap_s": DRAG_MAX_S, **pace,
+        }
+        self.last_drag = assemble_drag_evidence(plan, sent, trace, elements, dock_before, dock_after_up, pacing=pacing)
         rect = self.facts().get("panel_rect") or {}
         return rect.get("width")
 
