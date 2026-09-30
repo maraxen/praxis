@@ -73,8 +73,15 @@ Every blocker fix was traced by a reviewer to cost zero recovered effects at the
 - Bare `self` in either tracker occurs only as a method parameter.
 - `observation_env_members` is called as a module global inside `run_static_calls`.
 
-## Open for the owner
+## Owner rulings (260929, after convergence)
 
-- **OI-21, A-CALLBACK-INERT:** needs an owner ruling before any soundness claim outside the harness.
+- **OI-21:** A-CALLBACK-INERT is **accepted** as a named assumption. T61 adds its row to increment 1's
+  §10.6.3 table. The fail-closed callback guard that would turn it into a check is backlog #5661.
+- **OI-4:** HM-25 12 → 13 is **booked**. The zero-cost alternative was declined.
+- **New global rule applied:** the T63 measurement is preemption-safe and resumable. It has seven
+  units, each hash-stamped and reused only on a full match, with a timeout per unit. Outcome criteria
+  are unchanged.
 - **OI-22:** churn of the `_before` writer snapshot is accepted as a deliberately loud trade.
+- **Deferred follow-ups filed:** #5662 (rack-topology closure, OI-2) and #5663 (tip-spot argument
+  conjunct, OI-3).
 
