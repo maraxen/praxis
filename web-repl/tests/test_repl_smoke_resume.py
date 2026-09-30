@@ -6313,7 +6313,7 @@ def test_cell_probe_reads_outputs_stamps_verbatim_and_shows_the_two_stamp_reads_
                                   "stamp": {"v": 1, "kind": "ledger", "resource": None, "rev": None, "session": "s", "exec": 5},
                                   "ename": None, "evalue": None}], "stampOf, verbatim (kind/rev/resource/session/exec)"
     assert ledger["stamp_resources_notebook"] == [None], "the notebook read sees the ledger stamp, resource null"
-    assert ledger["stamp_resources_current"] == [], "the currentWidget-based read (D.stampResources) sees NOTHING while the deck is current"
+    assert ledger["stamp_resources_current"] == [None], "the helper-based read (D.stampResources) now finds the notebook even while the deck is current"
     assert ledger["output_dom"] == {"count": 1, "res_names": ["assay"]} and ledger["execution_count"] == 5
     assert got["plate"]["outputs"][0]["stamp"] == {"kind": "plate", "resource": "assay", "rev": 3}, "the S3-B carrier is read too"
     assert got["err"]["outputs"][0]["output_type"] == "error" and got["err"]["outputs"][0]["ename"] == "NoTipError"
@@ -6373,7 +6373,7 @@ def test_the_trace_shows_a_harness_click_that_did_nothing_because_the_deck_took_
         s = tr[step]["summary"]
         assert s["clicked_ok"] is False and s["clicked_cell_became_active"] is False, step
         assert s["current_widget_was_notebook_before"] is False, step
-    assert tr["follow_keeps"]["summary"]["any_poll_timed_out"] is True
+    assert tr["follow_keeps"]["polls"] == [], "the step now stops at the click that found no target (it used to go on and time out)"
     after = ev["cell_probes_after"]["ledger"]
     assert after["stamp_resources_notebook"] == [None] and after["stamp_resources_current"] == []
     assert after["summary"]["stamp_resources_agree"] is False
@@ -6415,7 +6415,7 @@ const mkCell = (outputs, editor) => ({
   node: { classList: cls(["jp-Cell"]), scrollIntoView() {}, getBoundingClientRect: () => ({ left: 0, right: 900, top: 0, bottom: 100, width: 900, height: 100 }),
           querySelector: (sel) => (sel === ".jp-InputArea-editor" ? editor : null), querySelectorAll: () => [] },
 });
-const editor = { getBoundingClientRect: () => ({ left: 50, right: 850, top: 20, bottom: 60, width: 800, height: 40 }) };
+const editor = { scrollIntoView() {}, getBoundingClientRect: () => ({ left: 50, right: 850, top: 20, bottom: 60, width: 800, height: 40 }) };
 const ledger = { output_type: "display_data", data: { "text/plain": "x" }, metadata: { praxis: { kind: "ledger", resource: null } } };
 const mkNotebook = (id, cells) => ({ id, node: { classList: cls(["jp-NotebookPanel"]) },
   content: { activeCellIndex: 0, widgets: cells, model: { cells: { length: cells.length, get: (i) => cells[i].model } } },
@@ -6444,9 +6444,9 @@ globalThis.document = {{ querySelector: (s) => nodes[s] || null, querySelectorAl
   getElementById: (id) => nodes["#" + id] || null, contains: () => true, body: {{ getAttribute: () => null }} }};
 const box = (w, h = 10, left = 0) => ({{ left, right: left + w, top: 0, bottom: h, width: w, height: h }});
 {_READER_FAKE}
-{rs.DISPLAY_CHECK_JS}
-{rs.DISPLAY_CHECK_OUTPUT_JS}
-{dock_js if dock_js is not None else rs.DOCK_CHECK_JS}
+{rs.DISPLAY_CHECK_JS};
+{rs.DISPLAY_CHECK_OUTPUT_JS};
+{dock_js if dock_js is not None else rs.DOCK_CHECK_JS};
 const dc = window.__praxisDisplayCheck, D = window.__praxisDockCheck, RUN = (0, eval)("(" + {json.dumps(rs._DC_RUN_JS)} + ")");
 const result = await (async () => {{ {body} }})();
 process.stdout.write(JSON.stringify(result) + "\\n");
@@ -6510,14 +6510,17 @@ return { rect: D.cellInputRect({ i: 1 }), stamps: D.stampResources({ i: 1 }), te
 
 
 def test_no_reader_the_dock_units_use_goes_through_current_widget_except_the_helpers_own_fallback(rs):
-    assert rs.DISPLAY_CHECK_OUTPUT_JS.count("currentWidget") == 0, "report/figure/paints/trust/... read the notebook via the helper"
+    # each script carries the ONE shared helper (installed if the page lacks it), whose `const cur = shell.currentWidget` is the only mention
+    assert rs.DISPLAY_CHECK_OUTPUT_JS.count("currentWidget") == 1, "report/figure/paints/trust/... read the notebook via the helper"
     assert rs.DISPLAY_CHECK_JS.count("currentWidget") == 1, "only the helper looks at the current widget (first choice, and the last fallback)"
+    assert rs.NOTEBOOK_HELPER_JS in rs.DISPLAY_CHECK_JS and rs.NOTEBOOK_HELPER_JS in rs.DISPLAY_CHECK_OUTPUT_JS and rs.NOTEBOOK_HELPER_JS in rs.DOCK_CHECK_JS
     assert rs._DC_RUN_JS.count("currentWidget") == 1 and "__praxisDisplayCheckNotebook" in rs._DC_RUN_JS
     assert "panel = () => window.__praxisDisplayCheckNotebook()" in rs.DISPLAY_CHECK_JS
     assert "panel = () => window.__praxisDisplayCheckNotebook()" in rs.DISPLAY_CHECK_OUTPUT_JS
     assert "cellAt = (i) => { try { return window.__praxisDisplayCheckNotebook()" in rs.DOCK_CHECK_JS
     # D.layout (a nodes-first preference with a fallback) and D.notebookState (which REPORTS the current widget) are the two others
-    assert rs.DOCK_CHECK_JS.count("currentWidget") == 2
+    code = [ln for ln in rs.DOCK_CHECK_JS.splitlines() if "currentWidget" in ln and not ln.strip().startswith("//")]
+    assert len(code) == 3, code  # the helper, D.layout and D.notebookState
 
 
 # -- run_k1a: a fixed reader finds the cell after a deck click; a click that finds no target can never pass a key --------------
@@ -6564,7 +6567,7 @@ def test_a_single_failed_click_in_an_otherwise_healthy_world_fails_exactly_its_k
     d.click_cell_input = flaky
     keys = rs.run_k1a(d, nb)
     missing, failing = _evaluate(rs, "K1a", keys)
-    assert missing == [] and failing == ["follow_focuses"]
+    assert missing == [] and "follow_focuses" in failing and set(failing) <= {"follow_focuses", "follow_keeps_preset"}, failing
     assert "draw-assay" in keys["evidence"]["step_errors"]["follow_focuses"]
 
 

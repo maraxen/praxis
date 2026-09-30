@@ -4989,12 +4989,28 @@ def derive_chrome_keys(raw: dict[str, Any], *, light: bool) -> dict[str, Any]:
     return keys
 
 
+#: The notebook the harness reads and drives, shared by DISPLAY_CHECK_JS, DISPLAY_CHECK_OUTPUT_JS and DOCK_CHECK_JS (each
+#: installs it if the page does not have it yet, so any one of them works alone). ``shell.currentWidget`` is the notebook
+#: only while nothing else has had focus: once something inside the deck panel is clicked, the deck widget is current and
+#: has no ``content``, which made every cell read and click (and the dock units' Follow keys) quietly come back empty. So: a
+#: current NOTEBOOK first (D2 opens a second notebook and it becomes current: it wins, as before), else the first notebook
+#: among the MAIN-AREA widgets, else whatever is current (a shell with no widget list, or no notebook at all: the old behaviour).
+NOTEBOOK_HELPER_JS = r"""  window.__praxisDisplayCheckNotebook = window.__praxisDisplayCheckNotebook || (() => {
+    const shell = window.jupyterapp.shell;
+    const isNb = (w) => !!(w && w.content && w.node && w.node.classList && w.node.classList.contains("jp-NotebookPanel"));
+    const cur = shell.currentWidget;
+    if (isNb(cur)) return cur;
+    try { const found = Array.from(shell.widgets("main")).find(isNb); if (found) return found; } catch (e) { /* no widget list */ }
+    return cur;
+  });"""
+
 #: Harness-only page helpers (installed with page.evaluate; nothing here ships in dist). They only
 #: read: computed styles, the notebook model, and the DOM attributes the product writes.
 DISPLAY_CHECK_JS = r"""
 (() => {
   const app = () => window.jupyterapp;
-  const panel = () => app().shell.currentWidget;
+__NOTEBOOK_HELPER__
+  const panel = () => window.__praxisDisplayCheckNotebook();
   const widgets = () => panel().content.widgets;
   const model = (i) => panel().content.model.cells.get(i);
   const outTypes = (m) => {
@@ -5073,7 +5089,7 @@ DISPLAY_CHECK_JS = r"""
     firstSaveDialogOpen: () => { const d = document.querySelector('dialog#praxis-persistence-first-save'); return !!(d && d.open); },
   };
 })()
-"""
+""".replace("__NOTEBOOK_HELPER__", NOTEBOOK_HELPER_JS)
 
 _DC_SAVE_JS = """async (a) => {
     try {
@@ -5782,7 +5798,8 @@ DISPLAY_CHECK_OUTPUT_JS = r"""
   const EARLIER = "Drawn in an earlier session.";
   const dc = (window.__praxisDisplayCheck = window.__praxisDisplayCheck || {});
   const app = () => window.jupyterapp;
-  const panel = () => app().shell.currentWidget;
+__NOTEBOOK_HELPER__
+  const panel = () => window.__praxisDisplayCheckNotebook();
   const cellAt = (i) => { try { return panel().content.widgets[i] || null; } catch (e) { return null; } };
   // The D2 stamp reader, verbatim: the shell's stampOf, the dock's and this harness's are one expression.
   const stampOf = (output) => output.metadata?.praxis ?? output.metadata?.["text/html"]?.praxis;
@@ -5968,13 +5985,13 @@ DISPLAY_CHECK_OUTPUT_JS = r"""
   dc.panelCount = () => document.querySelectorAll(".jp-NotebookPanel").length;
   dc.windowing = () => { try { const c = panel().content; return (c.notebookConfig && c.notebookConfig.windowingMode) ?? c.windowingMode ?? null; } catch (e) { return null; } };
 })()
-""".replace("__GATE_KEY__", PERSISTENCE_GATE_SEEN_KEY)
+""".replace("__GATE_KEY__", PERSISTENCE_GATE_SEEN_KEY).replace("__NOTEBOOK_HELPER__", NOTEBOOK_HELPER_JS)
 
 #: Run one cell and AWAIT its completion (a re-run after a kernel restart cannot be told apart from the earlier
 #: run by its execution count, which the restart resets). Bounded in-page as well as by the unit's watchdog.
 _DC_RUN_JS = """async (a) => {
     try {
-        const w = window.jupyterapp.shell.currentWidget;
+        const w = window.__praxisDisplayCheckNotebook ? window.__praxisDisplayCheckNotebook() : window.jupyterapp.shell.currentWidget;
         w.content.activeCellIndex = a.i;
         const p = window.jupyterapp.commands.execute('notebook:run-cell');
         const timer = new Promise((r) => setTimeout(() => r('timeout'), a.timeout_ms));
@@ -7823,7 +7840,8 @@ DOCK_CHECK_JS = r"""
     return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
   };
   const plr = () => { try { const f = frames()[0]; return f && f.contentWindow && f.contentWindow.plrViewer ? f.contentWindow.plrViewer : null; } catch (e) { return null; } };
-  const cellAt = (i) => { try { return app().shell.currentWidget.content.widgets[i] || null; } catch (e) { return null; } };
+__NOTEBOOK_HELPER__
+  const cellAt = (i) => { try { return window.__praxisDisplayCheckNotebook().content.widgets[i] || null; } catch (e) { return null; } };
   const notebookPanel = () => document.querySelector(".jp-NotebookPanel");
   const notebookNode = () => document.querySelector(".jp-NotebookPanel .jp-Notebook");
   const dockPanelNode = () => document.getElementById("jp-main-dock-panel");
@@ -8030,7 +8048,8 @@ DOCK_CHECK_JS = r"""
   };
   // -- diagnostic evidence (read-only): the notebook is found among the MAIN-AREA widgets, never through
   //    shell.currentWidget (which is the deck panel once something inside it has had focus). `cellAt` and `D.stampResources`
-  //    DO use currentWidget; `cellProbe` reports what both reads give, side by side.
+  //    used to use currentWidget; they read through `window.__praxisDisplayCheckNotebook` now, and `cellProbe` still reports both
+  //    (`stamp_resources_current` is the helper-based read, `stamp_resources_notebook` the main-area list alone).
   const notebookWidget = () => {
     try {
       return Array.from(app().shell.widgets("main")).find((w) => w && w.content && w.node && w.node.classList && w.node.classList.contains("jp-NotebookPanel")) || null;
@@ -8132,7 +8151,7 @@ DOCK_CHECK_JS = r"""
   //    prototype is Object.prototype.
   D.stockSplit = async (a) => {
     const shell = app().shell;
-    const ref = shell.currentWidget;
+    const ref = window.__praxisDisplayCheckNotebook();
     let Root = null;
     let proto = ref ? Object.getPrototypeOf(ref) : null;
     for (let depth = 0; proto && depth < 64; depth++, proto = Object.getPrototypeOf(proto)) {
@@ -8165,7 +8184,7 @@ DOCK_CHECK_JS = r"""
     };
   };
 })()
-"""
+""".replace("__NOTEBOOK_HELPER__", NOTEBOOK_HELPER_JS)
 
 
 # -- the browser: a FULL Chromium with SwiftShader ----------------------------------------------------------------
@@ -8562,6 +8581,18 @@ def run_k1a(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
     def did(t: dict[str, Any], name: str, returned: Any = None, cell: int | None = None) -> None:
         t["actions"].append({"name": name, **({} if cell is None else {"cell": cell_ids.get(cell)}), "returned": returned})
 
+    def click_cell(t: dict[str, Any] | None, i: int) -> None:
+        """A real click in a cell's editor. One that finds no target (``False``) is a STEP ERROR, never a silent no-op: the
+        step cannot have triggered Follow, so its key must fail (follow_off_holds once PASSED on a click that never
+        happened, vacuously). The action is recorded first, so the trace still says what happened."""
+        returned = driver.click_cell_input(i)
+        if t is not None:
+            did(t, "click_cell_input", returned, i)
+        if returned is not True:
+            raise DockCheckError(
+                f"click_cell_input({cell_ids.get(i)}) found no click target (returned {returned!r}): the step did not happen"
+            )
+
     def polled(t: dict[str, Any], name: str, ok: bool) -> None:
         t["polls"].append({"name": name, "timed_out": not ok})
 
@@ -8577,7 +8608,7 @@ def run_k1a(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
     ev["cell_probes_before"] = probes("before")
 
     def click_focus() -> dict[str, Any]:
-        driver.click_cell_input(deck_i)
+        click_cell(None, deck_i)
         before = _focus(driver)
         driver.click_resource(deck_i, "source")
         after, _ = driver.poll(lambda: _focus(driver), lambda s: s["footer"] == "source", 5.0)
@@ -8593,7 +8624,7 @@ def run_k1a(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
                 did(t, "click_follow")
             enabled = driver.facts().get("follow_checked")
             before = _focus(driver)
-            did(t, "click_cell_input", driver.click_cell_input(assay_i), assay_i)
+            click_cell(t, assay_i)
             after, ok = driver.poll(lambda: _focus(driver), lambda s: s["footer"] == "assay", 5.0)
             polled(t, "footer == assay", ok)
             return {"enabled": enabled, "focused": (driver.snap() or {}).get("focused"), "footer": after["footer"],
@@ -8611,7 +8642,7 @@ def run_k1a(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
             enabled = driver.facts().get("follow_checked")
             t["mid"] = _guard(ev, "trace_follow_off_mid", lambda: driver.observe())
             before = _focus(driver)
-            did(t, "click_cell_input", driver.click_cell_input(tips_i), tips_i)
+            click_cell(t, tips_i)
             driver.settle(1500)
             after = _focus(driver)
             return {"enabled": enabled, "footer_before": before["footer"], "footer_after": after["footer"],
@@ -8628,11 +8659,11 @@ def run_k1a(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
             did(t, "click_follow")
             enabled = driver.facts().get("follow_checked")
             t["mid"] = _guard(ev, "trace_follow_null_mid", lambda: driver.observe())
-            did(t, "click_cell_input", driver.click_cell_input(tips_i), tips_i)  # Follow on: the focus should move to tips_300
+            click_cell(t, tips_i)  # Follow on: the focus should move to tips_300
             _, tips_ok = driver.poll(lambda: _focus(driver), lambda s: s["footer"] == "tips_300", 5.0)
             polled(t, "footer == tips_300", tips_ok)
             before = _focus(driver)
-            did(t, "click_cell_input", driver.click_cell_input(ledger_i), ledger_i)  # the cell whose only Praxis output is the ledger
+            click_cell(t, ledger_i)  # the cell whose only Praxis output is the ledger
             driver.settle(1500)
             after = _focus(driver)
             return {"enabled": enabled, "ledger_resources": driver.stamp_resources(ledger_i), "footer_before": before["footer"],
@@ -8657,7 +8688,7 @@ def run_k1a(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
             pressed = (driver.facts().get("pressed") or [None])[0]
             t["mid"] = _guard(ev, "trace_follow_keeps_mid", lambda: driver.observe())
             before = _focus(driver)["footer"]
-            did(t, "click_cell_input", driver.click_cell_input(source_i), source_i)  # Follow is on: this should focus `source`
+            click_cell(t, source_i)  # Follow is on: this should focus `source`
             after, ok = driver.poll(lambda: _focus(driver), lambda s: s["footer"] == "source", 5.0)
             polled(t, "footer == source", ok)
             return {"pressed": pressed, "camera": after["camera"], "footer_before": before, "footer_after": after["footer"]}
