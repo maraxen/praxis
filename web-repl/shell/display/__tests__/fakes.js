@@ -1109,6 +1109,7 @@ export function createFakeCommands() {
  */
 export function createFakeDeckApp({ doc, notebooks = 1, width = 1440, lumino = createFakeLumino(doc) } = {}) {
   const dock = createFakeDockPanel(lumino, doc, { width });
+  doc.body.appendChild(dock.node); // the main area is part of the page
   const panels = [];
   for (let i = 0; i < notebooks; i += 1) {
     const panel = createFakeLuminoNotebook(lumino, doc, { id: `nb${i + 1}` });

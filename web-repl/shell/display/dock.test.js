@@ -331,6 +331,27 @@ describe("the widget (S1-A: the root Lumino Widget found by walking a shell widg
     assertInvariants(env, { state: "open-connected", current: "v1" });
   });
 
+  test("a chain whose base owns only processMessage (or sits under another base) is not the Widget root", () => {
+    const env = makeEnv();
+    class Base {
+      constructor(options = {}) {
+        this.node = options.node;
+        this.parent = null;
+        this.isAttached = false;
+      }
+
+      processMessage() {}
+    }
+    class Leaf extends Base {}
+    env.app.shell.currentWidget = null;
+    env.app.shell.widgets = function* widgets() {
+      yield new Leaf();
+    };
+    expect(() => env.announce("v1")).not.toThrow();
+    expect(env.ctl.state()).toBe("closed");
+    expect(env.logger.errors.length).toBeGreaterThan(0);
+  });
+
   test("it is constructed with {node}, given an id, a title, and added split-right of the current notebook", () => {
     const env = makeEnv({ notebooks: 2 });
     env.announce("v1");
@@ -1015,6 +1036,12 @@ describe("sequences the spec names", () => {
       env.announce("v1");
       env.panels[0].kernelStatus("idle");
       env.panels[0].kernelStatus("busy");
+      const kernel = env.panels[0].sessionContext.session.kernel;
+      env.panels[0].sessionContext.kernelChanged.emit(env.panels[0].sessionContext, {
+        name: "kernel",
+        oldValue: kernel,
+        newValue: kernel, // no change
+      });
       assertInvariants(env, { state: "open-connected", current: "v1" });
     });
 
@@ -1676,6 +1703,19 @@ describe("sizing, case honoured_reachable (D6; AC-36 unit half)", () => {
     expect(insertions(env)).toBe(1);
   });
 
+  test("a ResizeObserver callback that our own restoreLayout provokes does not recurse", () => {
+    const env = makeEnv({ width: 1920 });
+    env.announce("v1");
+    let calls = 0;
+    env.dock.restoreLayout = () => {
+      calls += 1;
+      env.win.resizeObservers.trigger(); // the layout change makes the observer fire again
+    };
+    env.setSidebar(300); // a real change: one restoreLayout
+    expect(calls).toBe(1);
+    expect(env.logger.errors).toEqual([]);
+  });
+
   test("an unchanged size does not re-issue restoreLayout", () => {
     const env = makeEnv({ width: 1600 });
     env.announce("v1");
@@ -1708,12 +1748,31 @@ describe("sizing, case honoured_reachable (D6; AC-36 unit half)", () => {
     assertInvariants(env, { state: "open-connected", current: "v1" });
   });
 
+  test("the tier boundaries in the split: 1599 is CSS-limited, 1600 is layout-sized, and back", () => {
+    const env = makeEnv({ width: 1599 });
+    env.announce("v1");
+    expect(env.node().style.maxWidth).toBe("480px");
+    expect(deckWidth(env)).toBeLessThanOrEqual(480);
+    env.resize(1600);
+    expect(env.node().style.maxWidth || "").toBe("");
+    expect(Math.abs(deckWidth(env) - 624)).toBeLessThan(1);
+    env.resize(1599);
+    expect(env.node().style.maxWidth).toBe("480px");
+    expect(deckWidth(env)).toBeLessThanOrEqual(480);
+    expect(deckWidth(env)).toBeGreaterThanOrEqual(420);
+    env.resize(1280); // still the split, still medium
+    assertHome(env, "split");
+    expect(deckWidth(env)).toBeLessThanOrEqual(480);
+  });
+
   test("a ResizeObserver callback in the 1280-1599 tier leaves layout alone (CSS limits do the clamping)", () => {
     const env = makeEnv({ width: 1440 });
     env.announce("v1");
+    const fits = env.dock.fitCalls;
     env.win.resizeObservers.trigger();
     env.resize(1500);
     expect(env.dock.restoreCalls.length).toBe(0);
+    expect(env.dock.fitCalls).toBe(fits); // within a tier nothing is re-fitted either
     expect(deckWidth(env)).toBeLessThanOrEqual(480);
   });
 

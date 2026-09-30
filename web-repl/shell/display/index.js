@@ -5,10 +5,11 @@
 //
 // `mount(window)` waits for `window.jupyterapp` (the app handle the shell
 // already uses) and for `app.restored`, then mounts each display module in
-// order: `chrome` (sprint A), then `stale` and `interact` (sprint B, B9), and
-// `dock` (sprint C) becomes a further row of MODULES. `stale` reads the chrome's
-// controller (observed executions) and `interact` reads a later `controllers.dock`
-// at click time, both through the `controllers` they are handed.
+// order: `chrome` (sprint A), then `stale` and `interact` (sprint B, B9), then
+// `dock` (sprint C, C5: the deck panel). `stale` reads the chrome's controller
+// (observed executions) and `interact` reads a later `controllers.dock` at click
+// time, both through the `controllers` they are handed; `dock` is mounted after
+// `interact` and is the object interact.js finds there (`controllers.dock.focus`).
 //
 // NON-FATAL BY CONTRACT (D13). A broken drawing layer must not take the REPL
 // away from the user, so `mount` never rejects and never throws: a module that
@@ -32,12 +33,14 @@ const MODULES = [
   { name: "chrome", mount: "mountChrome" },
   { name: "stale", mount: "mountStale" },
   { name: "interact", mount: "mountInteract" },
+  { name: "dock", mount: "mountDock" },
 ];
 
 const DEFAULT_LOADERS = {
   chrome: () => import("./chrome.js"),
   stale: () => import("./stale.js"),
   interact: () => import("./interact.js"),
+  dock: () => import("./dock.js"),
 };
 
 const CHANNEL = "praxis_repl";
