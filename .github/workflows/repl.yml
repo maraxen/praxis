@@ -337,3 +337,6 @@ jobs:
 
       - name: Persistence JS harness
         run: bun test web-repl/shell/persistence
+
+      - name: Display JS harness
+        run: bun test web-repl/shell/display
