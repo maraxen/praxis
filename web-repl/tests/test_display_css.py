@@ -30,11 +30,28 @@ and `property` (the ``lh.pick_up_tips`` of a method call), and `meta`.
 
 This test does not append ``web-repl/overlay/assets/python`` to ``sys.path``
 (ADR Sec 2.4).
+
+CLASS COVERAGE (task B-css, backlog #5669). The reprs of B2 (labware), B3 (deck) and B4 (ledger,
+glossary) emit a class vocabulary of their own (``praxis-name*``, ``praxis-summary``, ``praxis-fig``,
+``praxis-ledger__*``, ``sv-*``, ...). Two checks keep the stylesheet complete against it:
+
+* a STATIC one that scans the string literals of ``praxis/display/*.py`` (no PyLabRobot, always runs), and
+* a RENDERED one that draws real outputs from the design fixture under the PLR 1.0.0b1 pin and collects
+  every ``class`` value in the HTML. It skips, with an explicit reason, when the interpreter's PLR is not
+  the pin (run with ``PYTHONPATH=<PLR 1.0.0b1 source>`` prepended).
+
+Both assert that every emitted ``praxis-*`` / ``sv-*`` class appears in some selector of
+``praxis-theme.css``, and are themselves exercised on synthetic input: a class with no rule must FAIL.
 """
 
 from __future__ import annotations
 
+import asyncio
+import importlib
+import importlib.util
 import re
+import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -43,6 +60,10 @@ _WEB_REPL_ROOT = Path(__file__).resolve().parents[1]
 _THEME_DIR = _WEB_REPL_ROOT / "overlay" / "assets" / "theme"
 _CSS = _THEME_DIR / "praxis-theme.css"
 _DIST_THEMES = _WEB_REPL_ROOT / "dist" / "build" / "themes" / "@jupyterlab"
+
+_DISPLAY_DIR = _WEB_REPL_ROOT / "overlay" / "assets" / "python" / "praxis" / "display"
+_FIXTURE_PATH = _WEB_REPL_ROOT / "design" / "notebook-display" / "make_fixture.py"
+_PKG = "_praxis_display_css_under_test"
 
 _LIGHT = "body[data-jp-theme-name='JupyterLab Light']"
 
@@ -618,12 +639,560 @@ def test_praxis_var_references_resolve() -> None:
   assert used <= declared, sorted(used - declared)
 
 
-def test_blue_means_volume_only() -> None:
-  """No `.praxis-*` output/panel rule uses moonstone (liquid) or moonstone ink. The rail's
-  `ran` and `stale` marks (section 3.1) are the only chrome that does, and they are not `.praxis-*`."""
-  for rule in _rules():
-    if ".praxis-" not in rule.selector_text:
+# The only selectors that may carry moonstone (liquid): the ledger's volume bar and the drawn liquid.
+_VOLUME_SELECTOR_MARKS = ("praxis-ledger__bar", "sv-liquid")
+
+
+def _blue_violations(rules: list[_Rule]) -> list[str]:
+  """Moonstone in a `.praxis-*` / `.sv-*` rule whose selectors are not all volume marks; moonstone ink
+  (text/links/done state) is never allowed there."""
+  bad = []
+  for rule in rules:
+    if ".praxis-" not in rule.selector_text and ".sv-" not in rule.selector_text:
       continue
+    volume_only = all(any(mark in sel for mark in _VOLUME_SELECTOR_MARKS) for sel in rule.selectors)
     for prop, value in rule.decls.items():
-      assert "moonstone" not in value, f"{rule.selector_text}: {prop}: {value}"
-      assert _MOONSTONE.lower() not in value.lower() and _MOON_INK.lower() not in value.lower()
+      low = value.lower()
+      if "moonstone-ink" in low or _MOON_INK.lower() in low:
+        bad.append(f"{rule.selector_text}: {prop}: {value} (moonstone ink)")
+      elif ("moonstone" in low or _MOONSTONE.lower() in low) and not volume_only:
+        bad.append(f"{rule.selector_text}: {prop}: {value} (blue that is not volume)")
+  return bad
+
+
+def test_blue_means_volume_only() -> None:
+  """No `.praxis-*` / `.sv-*` rule uses moonstone (liquid) or moonstone ink, except the ledger's volume
+  bar and the drawn liquid (`.sv-liquid`). The rail's `ran` and `stale` marks (section 3.1) are the only
+  chrome that uses moonstone ink, and they are not `.praxis-*`."""
+  assert _blue_violations(_rules()) == []
+
+
+def test_blue_check_fires_on_synthetic_non_volume_blue() -> None:
+  """Negative control: blue on a summary, and moonstone ink on the bar, are both flagged; the bar
+  and the liquid in plain moonstone are not (positive control)."""
+  bad = _blue_violations(_parse(
+    ".praxis-summary { color: var(--praxis-moonstone) } "
+    ".praxis-ledger__bar rect { fill: var(--praxis-moonstone-ink) } "
+    ".praxis-out .sv-plate { stroke: #73A9C2 }"
+  ))
+  assert len(bad) == 3, bad
+  assert _blue_violations(_parse(
+    ".praxis-ledger__bar rect { fill: var(--praxis-moonstone) } "
+    ".praxis-out .sv-liquid { fill: var(--praxis-moonstone) }"
+  )) == []
+
+
+# --- class coverage: every class the display reprs emit has a rule (task B-css) -----------------
+
+_EMITTED_CLASS_RE = re.compile(r"(?:praxis|sv)-[A-Za-z0-9_-]+")
+# A class literal in Python source: a quoted string of one or more space-separated praxis-/sv- classes.
+# `data-praxis-res` does not match (the quote is followed by `data`), and an f-string class such as
+# `f"praxis-{kind}"` does not match either (the `{` breaks the literal); those are listed below.
+_LITERAL_CLASSES_RE = re.compile(r"""["']((?:(?:praxis|sv)-[A-Za-z0-9_-]+)(?: (?:praxis|sv)-[A-Za-z0-9_-]+)*)["']""")
+
+# Classes built by f-strings in the display modules: the output root per kind (labware.render_html,
+# deck.render_html, ledger.render_html) and the ledger row status (ledger._row_html). The rendered
+# check proves each is actually emitted; this list keeps the static check honest about them.
+_FAMILY_CLASSES = (
+  "praxis-plate", "praxis-tiprack", "praxis-container", "praxis-deck", "praxis-ledger",
+  "praxis-ledger__row--ok", "praxis-ledger__row--in-flight", "praxis-ledger__row--error",
+  "praxis-details-summary", "praxis-details-body",  # svg.details_html: f"{cls}-summary" / "-body"
+)  # fmt: skip
+
+# Classes the shell or a later task owns; they carry rules of their own already (A4) and are not
+# checked against the reprs. None of them starts with `praxis-`/`sv-` and is emitted by B2-B4, so the
+# set is empty today; it exists so an exception has to be written down here.
+_SHELL_OWNED: frozenset[str] = frozenset()
+
+
+def _selector_classes(rules: list[_Rule]) -> set[str]:
+  """Every `.praxis-*` / `.sv-*` class named by any selector (attribute values are stripped first,
+  so `[fill='#FFF']` cannot masquerade as a class)."""
+  found: set[str] = set()
+  for rule in rules:
+    for sel in rule.selectors:
+      bare = re.sub(r"\[[^\]]*\]", "", sel)
+      found.update(re.findall(r"\.((?:praxis|sv)-[A-Za-z0-9_-]+)", bare))
+  return found
+
+
+def _uncovered(emitted: set[str], rules: list[_Rule]) -> list[str]:
+  """Emitted `praxis-*` / `sv-*` classes with no selector in *rules* (shell-owned ones excluded)."""
+  have = _selector_classes(rules)
+  return sorted(c for c in emitted if _EMITTED_CLASS_RE.fullmatch(c) and c not in have and c not in _SHELL_OWNED)
+
+
+def _classes_in_html(html: str) -> set[str]:
+  found: set[str] = set()
+  for value in re.findall(r'\bclass="([^"]*)"', html):
+    found.update(value.split())
+  return found
+
+
+def _static_emitted_classes() -> set[str]:
+  """Class literals in `praxis/display/*.py`, plus the f-string families."""
+  found: set[str] = set(_FAMILY_CLASSES)
+  for path in sorted(_DISPLAY_DIR.glob("*.py")):
+    for group in _LITERAL_CLASSES_RE.findall(path.read_text(encoding="utf-8")):
+      found.update(group.split())
+  return found
+
+
+def test_coverage_check_fires_on_a_class_with_no_rule() -> None:
+  """Negative control: a class no selector names is reported; positive control: one that a rule
+  names (alone, in a list, after a descendant combinator, or with a state suffix) is not."""
+  rules = _parse(".praxis-a { color: red } .x .praxis-b, .praxis-c:hover > .sv-d { color: red }")
+  assert _uncovered({"praxis-a", "praxis-b", "praxis-c", "sv-d"}, rules) == []
+  assert _uncovered({"praxis-a", "praxis-missing", "sv-missing"}, rules) == ["praxis-missing", "sv-missing"]
+  # A class named only inside an attribute value is not a rule for that class.
+  attr_only = _parse(".praxis-out [data-x='praxis-ghost'] { color: red }")
+  assert _uncovered({"praxis-ghost"}, attr_only) == ["praxis-ghost"]
+  # A prefix is not the class: `.praxis-name__title` does not cover `praxis-name`.
+  assert _uncovered({"praxis-name"}, _parse(".praxis-name__title { color: red }")) == ["praxis-name"]
+
+
+def test_coverage_check_fails_when_a_real_rule_is_removed() -> None:
+  """Mutation control on the real file: dropping every rule that names one class uncovers exactly it."""
+  rules = _rules()
+  target = "praxis-ledger__bar"
+  assert target in _selector_classes(rules), "the bar has no rule at all"
+  mutated = [r for r in rules if not any(f".{target}" in s for s in r.selectors)]
+  assert _uncovered({target}, mutated) == [target]
+  assert _uncovered({target}, rules) == []
+
+
+def test_static_extractor_finds_the_classes_the_modules_emit() -> None:
+  """Positive control for the extractor: it sees known literals (a scan that finds nothing would pass
+  the coverage test vacuously), and does not mistake a data attribute for a class."""
+  found = _static_emitted_classes()
+  for known in ("praxis-name", "praxis-name__title", "praxis-summary", "praxis-omitted", "praxis-fig",
+                "praxis-res", "praxis-item", "praxis-ledger__bar", "praxis-ledger__row--child",
+                "praxis-ledger__nest", "sv-changed", "sv-fault", "sv-fault-x", "sv-liquid", "sv-label--soft"):
+    assert known in found, f"static scan missed {known}"
+  assert not any(c.startswith("data-") for c in found)
+  assert _LITERAL_CLASSES_RE.findall('a = "data-praxis-res"') == []
+  assert _LITERAL_CLASSES_RE.findall('cls="praxis-x praxis-y"') == ["praxis-x praxis-y"]
+  assert _LITERAL_CLASSES_RE.findall('cls=f"praxis-{kind}"') == []
+
+
+def test_every_class_named_in_the_display_modules_has_a_rule() -> None:
+  """STATIC (always runs, no PyLabRobot): each class literal in `praxis/display/*.py` is a selector."""
+  missing = _uncovered(_static_emitted_classes(), _rules())
+  assert not missing, f"emitted with no rule in praxis-theme.css: {missing}"
+
+
+def _plr_pin_problem() -> str | None:
+  try:
+    import pylabrobot  # noqa: PLC0415 -- optional; the static check above does not need it
+  except ImportError as exc:  # pragma: no cover - depends on the interpreter
+    return f"pylabrobot is not importable ({exc})"
+  version = str(getattr(pylabrobot, "__version__", ""))
+  if not version.startswith("1.0.0b1"):
+    return (
+      f"PyLabRobot {version!r} at {pylabrobot.__file__} is not the 1.0.0b1 pin; "
+      "run with PYTHONPATH=<PLR 1.0.0b1 source> prepended"
+    )
+  return None
+
+
+def _display_package() -> None:
+  """praxis/display loaded by path under a synthetic package (no `__init__`, `sys.path` untouched)."""
+  if _PKG not in sys.modules:
+    module = types.ModuleType(_PKG)
+    module.__path__ = [str(_DISPLAY_DIR)]
+    module.__package__ = _PKG
+    sys.modules[_PKG] = module
+
+
+def _render_real_outputs() -> dict[str, str]:
+  """Real outputs from the design fixture (PLR 1.0.0b1): a plate with changed and fault wells, a tip
+  rack, a bare well, the deck, a finished run ledger with an error row and children, a ledger caught
+  mid-op (an `in-flight` row), a row-capped ledger, and the details helper; each at every ladder level."""
+  _display_package()
+  spec = importlib.util.spec_from_file_location("_praxis_css_make_fixture", _FIXTURE_PATH)
+  fx = importlib.util.module_from_spec(spec)
+  sys.modules["_praxis_css_make_fixture"] = fx
+  spec.loader.exec_module(fx)
+  labware = importlib.import_module(f"{_PKG}.labware")
+  deck_mod = importlib.import_module(f"{_PKG}.deck")
+  ledger = importlib.import_module(f"{_PKG}.ledger")
+  budget = importlib.import_module(f"{_PKG}.budget")
+  svg = importlib.import_module(f"{_PKG}.svg")
+
+  async def build() -> dict[str, str]:
+    deck, lh = await fx.assemble()
+    source, assay, tips = deck.get_resource("source"), deck.get_resource("assay"), deck.get_resource("tips_300")
+    out: dict[str, str] = {}
+
+    # A run: the fixture's three column transfers, then an over-aspirate that raises (an error row).
+    run = ledger.RunLedger(lh, show=False)
+    with run:
+      await fx.run_transfers(lh, deck)
+      await lh.pick_up_tips(tips["A4:H4"])
+      try:
+        await lh.aspirate(assay["A1:H1"], vols=[80.0] * 8)
+      except Exception:  # noqa: BLE001 -- the failing row is the point
+        pass
+    for level in budget.LEVELS:
+      out[f"ledger@{level}"] = run.render_html(level)
+    out["ledger-capped"] = run.render_html(budget.LEVEL_OMITTED, max_rows=2)
+
+    # A ledger caught while an op is still running (an `in-flight` row).
+    live = ledger.RunLedger(lh, show=False)
+    original = lh.backend.aspirate
+
+    async def spy(*args, **kwargs):
+      out["ledger-in-flight"] = live.render_html()
+      return await original(*args, **kwargs)
+
+    lh.backend.aspirate = spy
+    with live:
+      await lh.aspirate(source["A1:H1"], vols=[10.0] * 8)
+    lh.backend.aspirate = original
+
+    for level in budget.LEVELS:
+      out[f"plate@{level}"] = labware.render_html(assay, level=level, changed=["A1"], fault=["B1"])
+      out[f"tiprack@{level}"] = labware.render_html(tips, level=level, changed=["A1"], fault=["B1"])
+      out[f"deck@{level}"] = deck_mod.render_html(deck, level=level)
+    out["well"] = labware.render_html(assay.get_item("A1"))
+    out["details"] = svg.details_html("Show traceback", "x")
+    return out
+
+  return asyncio.run(build())
+
+
+def test_every_class_the_real_outputs_emit_has_a_rule() -> None:
+  """RENDERED: draw real B2/B3/B4 outputs with the design fixture and check every `praxis-*` /
+  `sv-*` class in the HTML is a selector in the theme. Needs the PLR 1.0.0b1 pin."""
+  problem = _plr_pin_problem()
+  if problem:
+    pytest.skip(f"{problem}. The static coverage check still ran.")
+  rendered = _render_real_outputs()
+  emitted: set[str] = set()
+  for html in rendered.values():
+    emitted |= _classes_in_html(html)
+
+  # Positive control: the collector saw every family, so a broken render cannot pass by being empty.
+  for known in ("praxis-out", "praxis-plate", "praxis-tiprack", "praxis-container", "praxis-deck",
+                "praxis-ledger", "praxis-name__model", "praxis-omitted", "praxis-fig", "praxis-res",
+                "praxis-item", "praxis-ledger__bar", "praxis-ledger__nest", "praxis-ledger__err",
+                "praxis-ledger__status", "praxis-ledger__more", "praxis-ledger__after-label",
+                "praxis-ledger__row--in-flight", "praxis-ledger__row--error", "praxis-ledger__row--ok",
+                "praxis-ledger__row--child", "praxis-ledger__row--cycle", "sv-changed", "sv-fault",
+                "sv-fault-x", "sv-label--soft", "sv-rail--major", "praxis-details-body"):
+    assert known in emitted, f"the rendered collector never saw {known}; classes seen: {sorted(emitted)}"
+
+  missing = _uncovered(emitted, _rules())
+  assert not missing, f"rendered with no rule in praxis-theme.css: {missing}"
+  # Every class the static scan knows is also either rendered here or a documented f-string family.
+  # (The static set is what a later output may emit; the rendered set is what does today.)
+  assert _uncovered(emitted | _static_emitted_classes(), _rules()) == []
+
+
+def test_rendered_coverage_fails_against_a_stylesheet_without_the_bar_rules() -> None:
+  """Negative control at the level of the real render: the same rendered classes, checked against the
+  real rules minus the ledger bar's, are reported uncovered."""
+  problem = _plr_pin_problem()
+  if problem:
+    pytest.skip(problem)
+  emitted: set[str] = set()
+  for html in _render_real_outputs().values():
+    emitted |= _classes_in_html(html)
+  stripped = [r for r in _rules() if not any("praxis-ledger__bar" in s for s in r.selectors)]
+  assert _uncovered(emitted, stripped) == ["praxis-ledger__bar"]
+
+
+# --- the emitted vocabulary, property by property ---------------------------------------------
+
+_INK_VAR = "var(--jp-content-font-color0)"
+_SOFT_VAR = "var(--jp-content-font-color2)"
+_RAIL_VAR = "var(--jp-border-color1)"
+
+
+def test_name_line_is_a_baseline_row_that_wraps() -> None:
+  line = _has(".praxis-name")
+  assert line.decls.get("display") == "flex"
+  assert line.decls.get("align-items") == "baseline"
+  assert line.decls.get("flex-wrap") == "wrap"
+  assert line.decls.get("gap") == "12px"
+
+
+def test_resource_name_is_condensed_semibold_in_the_ui_face_not_the_code_face() -> None:
+  """DESIGN "Type": resource names are Roboto Flex on the width axis (`font-stretch`), weight 600,
+  18 px. JetBrains Mono is code only, so no name-line rule may set the code face."""
+  title = _has(".praxis-name__title")
+  assert title.decls.get("font-weight") == "600"
+  assert title.decls.get("font-size") == "18px"
+  stretch = title.decls.get("font-stretch", "")
+  assert stretch.endswith("%") and float(stretch[:-1]) <= 50, f"resource name is not condensed: {stretch!r}"
+  for sel in (".praxis-name", ".praxis-name__title", ".praxis-name__type", ".praxis-name__model", ".praxis-summary"):
+    assert "code" not in _has(sel).decls.get("font-family", ""), sel
+    assert "mono" not in _has(sel).decls.get("font-family", "").lower(), sel
+
+
+def test_type_and_model_are_ink_soft_and_the_model_is_condensed_but_less() -> None:
+  for sel in (".praxis-name__type", ".praxis-name__model"):
+    rule = _has(sel)
+    assert rule.decls.get("color") == _SOFT_VAR, sel
+    assert rule.decls.get("font-size") == "14px", sel
+  model = float(_has(".praxis-name__model").decls["font-stretch"].rstrip("%"))
+  title = float(_has(".praxis-name__title").decls["font-stretch"].rstrip("%"))
+  assert title < model < 100, (title, model)
+
+
+def test_summary_sentence_is_body_ink_at_prose_measure() -> None:
+  summary = _has(".praxis-summary")
+  assert summary.decls.get("max-width") == "72ch"
+  assert summary.decls.get("font-size") == "14px"
+  assert summary.decls.get("color") == _INK_VAR
+  assert summary.decls.get("margin", "").startswith("8px 0 0")
+
+
+def test_omitted_notice_is_quiet_ink_soft_never_rose_or_brick() -> None:
+  omitted = _has(".praxis-omitted")
+  assert omitted.decls.get("color") == _SOFT_VAR
+  assert "rose" not in str(omitted.decls) and "brick" not in str(omitted.decls)
+
+
+def test_figure_wrapper_scrolls_horizontally_instead_of_shrinking() -> None:
+  """D5: below `s_min` the figure scrolls; the wrapper also carries this inline, which an untrusted
+  reopen loses, so the class must say it too."""
+  fig = _has(".praxis-fig")
+  assert fig.decls.get("overflow-x") == "auto"
+  assert fig.decls.get("max-width") == "100%"
+  assert _has(".praxis-fig svg").decls.get("display") == "block"
+
+
+@pytest.mark.parametrize(
+  "selector", [".praxis-plate", ".praxis-tiprack", ".praxis-container", ".praxis-deck", ".praxis-ledger"]
+)
+def test_output_roots_are_capped_at_the_design_content_width(selector: str) -> None:
+  """DESIGN "Layout": content max 880 px (also D5's design width)."""
+  assert _effective(selector, "max-width") == "880px", selector
+
+
+def test_resource_groups_are_clickable() -> None:
+  for selector in (".praxis-out .praxis-res", ".praxis-out .praxis-item"):
+    assert _has(selector).decls.get("cursor") == "pointer", selector
+
+
+def test_deck_item_hover_and_focus_are_colour_only_and_rose() -> None:
+  """Hover outlines a deck item in rose ink, focus in rose (the prototype's `[data-res]:hover` and
+  `.is-focus`). Colour only: the drawing's stroke widths are in user units (mm) and set by the
+  emitter, so a px width here would be wrong by the drawing scale. A labware figure is the resource
+  itself, so focus is not repeated on it."""
+  hover = [r for r in _rules() if any(".praxis-item:hover" in s for s in r.selectors)]
+  focus = [r for r in _rules() if any(".praxis-item.is-focus" in s or ".is-focus > .sv-plate" in s for s in r.selectors)]
+  assert hover and focus
+  assert hover[-1].decls.get("stroke") == "var(--praxis-rose-ink)"
+  assert focus[-1].decls.get("stroke") == "var(--praxis-rose)"
+  for rule in hover + focus:
+    assert "stroke-width" not in rule.decls, rule
+    for sel in rule.selectors:
+      assert ".praxis-deck" in sel, f"deck items only: {sel}"
+
+
+# -- the ledger table ---------------------------------------------------------------------------
+
+
+def test_ledger_table_is_a_collapsed_full_width_grid() -> None:
+  table = _has(".praxis-ledger__table")
+  assert table.decls.get("border-collapse") == "collapse"
+  assert table.decls.get("width") == "100%"
+  assert table.decls.get("max-width") == "720px"
+  assert table.decls.get("font-size") == "14px"
+
+
+def test_ledger_header_is_ink_soft_over_a_hairline() -> None:
+  th = _has(".praxis-ledger__th")
+  assert th.decls.get("color") == _SOFT_VAR
+  assert th.decls.get("border-bottom") == f"1px solid {_RAIL_VAR}"
+  assert th.decls.get("font-weight") == "500"
+  assert _has(".praxis-ledger__th:last-child").decls.get("text-align") == "right"
+
+
+def test_a_new_tip_cycle_gets_a_hairline_above_it_except_the_first_row() -> None:
+  cycle = _has(".praxis-ledger__row--cycle > td")
+  assert cycle.decls.get("border-top") == f"1px solid {_RAIL_VAR}"
+  first = _has(".praxis-ledger__row--cycle:first-child > td")
+  assert first.decls.get("border-top") == "0"
+
+
+def test_child_rows_are_indented_by_the_cell_not_only_by_the_arrow_glyph() -> None:
+  """B4 emits a literal arrow (`praxis-ledger__nest`) so the text reads with no CSS. With CSS the
+  act cell of a child row also gets a real indent, and the glyph goes quiet (ink soft)."""
+  indent = _has(".praxis-ledger__row--child > .praxis-ledger__act").decls.get("padding-left", "")
+  assert indent.endswith("px") and float(indent[:-2]) >= 12, f"child rows have no indent: {indent!r}"
+  base = _has(".praxis-ledger__act").decls.get("padding-left", "0px")
+  assert float(indent[:-2]) > float(base.rstrip("px") or 0)
+  assert _has(".praxis-ledger__nest").decls.get("color") == _SOFT_VAR
+
+
+def test_ledger_columns_are_aligned_and_tabular() -> None:
+  assert _has(".praxis-ledger__step").decls.get("text-align") == "right"
+  assert _has(".praxis-ledger__step").decls.get("color") == _SOFT_VAR
+  assert _has(".praxis-ledger__ch").decls.get("text-align") == "right"
+  assert _has(".praxis-ledger__ch").decls.get("color") == _SOFT_VAR
+  assert _has(".praxis-ledger__vol").decls.get("white-space") == "nowrap"
+  assert _has(".praxis-ledger__where").decls.get("font-stretch") == "80%"
+
+
+def _bar_fill(row_class: str | None) -> str | None:
+  """The fill the bar's `rect` gets: bare, or inside a row of the given status."""
+  selector = ".praxis-ledger__bar rect" if row_class is None else f".praxis-ledger__row--{row_class} .praxis-ledger__bar rect"
+  return _effective(selector, "fill")
+
+
+def test_ledger_bar_is_blue_for_volume_rose_for_attention_brick_for_error() -> None:
+  """Blue means volume only: the bar (a volume) is moonstone when the op is done. The op that is
+  still running is rose (look here), and the op that failed is brick; brick also has the row's
+  `error: ...` text, so an error is never colour alone."""
+  assert _bar_fill(None) == "var(--praxis-moonstone)"
+  assert _bar_fill("ok") == "var(--praxis-moonstone)"
+  assert _bar_fill("in-flight") == "var(--praxis-rose)"
+  assert _bar_fill("error") == "var(--praxis-brick)"
+
+
+def test_ledger_bar_sits_inline_next_to_its_number() -> None:
+  bar = _has(".praxis-ledger__bar")
+  assert bar.decls.get("display") == "inline-block"
+  assert bar.decls.get("vertical-align") == "middle"
+  assert bar.decls.get("margin-right") == "8px"
+
+
+def test_ledger_status_marks_are_rose_and_brick_rules_on_the_first_cell() -> None:
+  assert "var(--praxis-rose)" in _has(".praxis-ledger__row--in-flight > td:first-child").decls.get("box-shadow", "")
+  assert "var(--praxis-brick)" in _has(".praxis-ledger__row--error > td:first-child").decls.get("box-shadow", "")
+  assert _has(".praxis-ledger__err").decls.get("color") == "var(--jp-error-color1)"
+  assert _has(".praxis-ledger__status").decls.get("color") == _SOFT_VAR
+
+
+def test_ledger_after_state_and_row_cap_notice_are_quiet_text() -> None:
+  assert _has(".praxis-ledger__after-label").decls.get("color") == _SOFT_VAR
+  assert _has(".praxis-ledger__more").decls.get("color") == _SOFT_VAR
+  assert _has(".praxis-ledger__after").decls.get("margin-top") == "18px"
+
+
+# -- the SVG vocabulary (keyed on class where it survives; colours already mapped by attribute) --
+
+
+@pytest.mark.parametrize(
+  ("selector", "prop", "token"),
+  [
+    (".praxis-out .sv-changed", "stroke", "var(--praxis-rose)"),
+    (".praxis-out .sv-fault", "stroke", "var(--praxis-brick)"),
+    (".praxis-out .sv-fault-x", "stroke", "var(--praxis-brick)"),
+    (".praxis-out .sv-liquid", "fill", "var(--praxis-moonstone)"),
+    (".praxis-out .sv-plate", "stroke", _INK_VAR),
+    (".praxis-out .sv-plate", "fill", "var(--jp-layout-color0)"),
+    (".praxis-out .sv-well", "stroke", _RAIL_VAR),
+    (".praxis-out .sv-tip", "stroke", _INK_VAR),
+    (".praxis-out .sv-tip-ring", "stroke", _INK_VAR),
+    (".praxis-out .sv-tip-gone", "stroke", _RAIL_VAR),
+    (".praxis-out .sv-carrier", "stroke", _RAIL_VAR),
+    (".praxis-out .sv-fixture", "stroke", _RAIL_VAR),
+    (".praxis-out .sv-block", "fill", _RAIL_VAR),
+    (".praxis-out .sv-rail", "stroke", _RAIL_VAR),
+    (".praxis-out .sv-rail--major", "stroke", _SOFT_VAR),
+    (".praxis-out .sv-ruler", "stroke", _SOFT_VAR),
+    (".praxis-out .sv-grid", "fill", _SOFT_VAR),
+    (".praxis-out .sv-label", "fill", _INK_VAR),
+    (".praxis-out .sv-label--soft", "fill", _SOFT_VAR),
+  ],
+)
+def test_sv_classes_map_to_tokens(selector: str, prop: str, token: str) -> None:
+  assert _effective(selector, prop) == token, f"`{selector}` should set {prop}: {token}"
+
+
+@pytest.mark.parametrize("selector", [".praxis-out .sv-changed", ".praxis-out .sv-fault", ".praxis-out .sv-fault-x"])
+def test_marks_are_outlines_not_fills(selector: str) -> None:
+  assert _effective(selector, "fill") == "none"
+
+
+def test_svg_text_faces_follow_the_design() -> None:
+  """Grid numbers 500 condensed 80%; carrier and labware names 600 at the name line's condensed width."""
+  grid = _has(".praxis-out .sv-grid")
+  assert grid.decls.get("font-weight") == "500" and grid.decls.get("font-stretch") == "80%"
+  label = _has(".praxis-out .sv-label")
+  assert label.decls.get("font-weight") == "600"
+  assert label.decls.get("font-stretch") == _has(".praxis-name__title").decls.get("font-stretch")
+  for sel in (".praxis-out .sv-grid", ".praxis-out .sv-label"):
+    assert _has(sel).decls.get("font-family") == "var(--jp-ui-font-family)", sel
+
+
+def test_svg_class_rules_set_no_stroke_width_or_dash() -> None:
+  """Stroke widths and dashes are emitted in user units (mm) at the figure's scale; a px value in
+  the stylesheet would be off by the drawing scale. Only colour, fill and face come from CSS."""
+  for rule in _rules():
+    if any(".sv-" in s for s in rule.selectors):
+      for prop in ("stroke-width", "stroke-dasharray", "vector-effect", "font-size"):
+        assert prop not in rule.decls, f"{rule.selector_text} sets {prop}"
+
+
+# -- the details helper's default classes ---------------------------------------------------------
+
+
+def test_details_helper_defaults_are_a_quiet_folded_block() -> None:
+  assert _has(".praxis-details-summary").decls.get("cursor") == "pointer"
+  assert _has(".praxis-details-summary").decls.get("color") == "var(--jp-content-link-color)"
+  body = _has(".praxis-details-body")
+  assert body.decls.get("font-family") == "var(--praxis-code-font)"
+  assert body.decls.get("overflow-x") == "auto"
+
+
+# -- discipline for every new rule ----------------------------------------------------------------
+
+
+def _emitted_vocabulary_rules() -> list[_Rule]:
+  return [r for r in _rules() if any(re.search(r"\.(?:praxis|sv)-", s) for s in r.selectors)]
+
+
+def test_new_rules_name_no_theme_and_are_keyed_on_a_class() -> None:
+  """D3: outputs follow every theme without the stylesheet naming one; S2: class-keyed."""
+  for rule in _emitted_vocabulary_rules():
+    for sel in rule.selectors:
+      assert "data-jp-theme" not in sel, sel
+      assert not sel.startswith("body"), sel
+
+
+def test_no_rule_for_the_vocabulary_removes_a_focus_outline() -> None:
+  """Visible focus rings are preserved: nothing on a `.praxis-*` / `.sv-*` rule turns an outline off."""
+  for rule in _emitted_vocabulary_rules():
+    assert rule.decls.get("outline") not in {"none", "0", "0px"}, rule
+    assert rule.decls.get("outline-style") != "none", rule
+    assert rule.decls.get("outline-width") not in {"0", "0px"}, rule
+  bad = _parse(".praxis-x:focus { outline: none }")
+  assert [r for r in bad if r.decls.get("outline") in {"none", "0", "0px"}], "control: the check can fire"
+
+
+def test_new_rules_do_not_touch_the_chrome_hooks_a7_measures() -> None:
+  """D1 / D1-dark read the notebook ground, the code-cell sheet, the rail `::before`, the count
+  `::after` and the prompt widths (A4's rules). No `.praxis-*` / `.sv-*` rule may select them."""
+  chrome = ("jp-Notebook", "jp-CodeCell", "jp-InputPrompt", "jp-OutputPrompt", "jp-OutputArea-prompt", "::before", "::after")
+  for rule in _emitted_vocabulary_rules():
+    for sel in rule.selectors:
+      if sel.startswith((".praxis-focus-ring", ".praxis-deck-panel", ".praxis-stale", ".praxis-error", ".praxis-readout")):
+        continue  # A4's own
+      for hook in chrome:
+        assert hook not in sel, f"`{sel}` touches {hook}"
+
+
+def test_vocabulary_declares_no_transition_or_animation() -> None:
+  """Restates NFR-6 against the vocabulary's own rules (the whole-file check is above)."""
+  css = "\n".join(f"{r.selector_text} {{ {'; '.join(f'{k}: {v}' for k, v in r.decls.items())} }}" for r in _emitted_vocabulary_rules())
+  assert _animation_violations(css) == []
+
+
+@pytest.mark.xfail(
+  strict=True,
+  reason=(
+    "The vendored Roboto Flex has no width axis: VENDOR_MANIFEST.json's source_css asks Google Fonts for "
+    "`opsz,wght` only (fvar axes measured: opsz 8-144, wght 100-1000), and the @font-face declares "
+    "`font-stretch: 100%`. `font-stretch: 25%` on resource names is therefore a no-op until the font is "
+    "re-vendored with `wdth` (scripts/vendor_fonts.py). Remove this marker when it is."
+  ),
+)
+def test_vendored_roboto_flex_has_the_width_axis_the_names_ask_for() -> None:
+  manifest = (_THEME_DIR / "fonts" / "VENDOR_MANIFEST.json").read_text(encoding="utf-8")
+  entry = next(e for e in __import__("json").loads(manifest)["entries"] if e["file"] == "RobotoFlex-Variable.woff2")
+  assert "wdth" in entry["source_css"], entry["source_css"]
