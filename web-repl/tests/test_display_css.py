@@ -335,7 +335,7 @@ def test_stale_also_uses_jupyterlabs_native_dirty_hook() -> None:
   native = _rules_where(lambda r: any("jp-mod-dirty" in s and s.endswith("::before") for s in r.selectors))
   assert native, "no rail rule on `.jp-mod-dirty` (S1's native stale hook)"
   for rule in native:
-    for sel in rule.selectors:
+    for sel in (s for s in rule.selectors if "jp-mod-dirty" in s):
       assert ":not([data-praxis-cell-state='running'])" in sel, sel
       assert ":not([data-praxis-cell-state='not-run'])" in sel, sel
   assert native[-1].decls.get("background", "").startswith("repeating-linear-gradient(")

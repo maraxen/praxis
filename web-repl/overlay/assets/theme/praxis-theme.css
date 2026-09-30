@@ -365,3 +365,437 @@ body[data-jp-theme-name='JupyterLab Dark'] :focus-visible,
 body[data-jp-theme-name='JupyterLab Light'] :focus-visible {
   outline-color: var(--praxis-rose);
 }
+
+/* ==========================================================================
+ * NOTEBOOK DISPLAY (epic 260929_notebook-display-design, task A4)
+ * --------------------------------------------------------------------------
+ * Tokens and rationale: web-repl/design/notebook-display/DESIGN.md. Visual
+ * ground truth: web-repl/design/notebook-display/display.css and shots/.
+ * The rules above are untouched; everything below is appended and obeys the
+ * header: every --jp-* override sits under body[data-jp-theme-name=...],
+ * High Contrast is never named, and nothing here animates.
+ *
+ * Two scoping tiers, on purpose:
+ *   - CHROME (rail, prompts, output inset, tracebacks) applies to Dark and Light
+ *     only. High Contrast keeps JupyterLab's own chrome.
+ *   - OUTPUTS (.praxis-out and the .praxis-* panels) name no theme. They read
+ *     --jp-* tokens, so they follow Dark, Light AND High Contrast for free (D3).
+ *
+ * Class vocabulary this file defines (the Python and shell code that emits
+ * the DOM must use these names): .praxis-out (root of every resource output),
+ * .praxis-error[__title|__plr], .praxis-stale, .praxis-readout,
+ * .praxis-focus-ring, .praxis-deck-panel[__header|__title|__sub|__follow|
+ * __views|__footer|__motion], and the is-focus class. Cell state arrives as
+ * data-praxis-cell-state (not-run | ran | running | error | stale) and the
+ * execution count as data-praxis-exec, both written by shell/display/chrome.js.
+ * ========================================================================== */
+
+/* --- display constants ----------------------------------------------------- */
+/* Only names nothing in JupyterLab defines, so :root is safe (no --jp-*). */
+:root {
+  --praxis-moonstone-ink: #2F6882;  /* DESIGN "moonstone ink": done state, links */
+  --praxis-rose-ink: #B8436A;       /* rose where it must be read as text */
+  --praxis-brick: #B3402A;          /* errors; far from rose so an error never reads as a selection */
+}
+
+/* --- light: steel ground, white sheet, ink, and the syntax palette (D10) ------ */
+/*
+ * Later than the cream block above at the same specificity, so these win. Cream
+ * layout colours give way to DESIGN's page ground (steel) and cell sheet
+ * (white): --jp-layout-color0 is the SHEET (D3 maps the sheet to it) and
+ * --jp-layout-color1 the GROUND, which .jp-Notebook takes below. Ink, ink soft
+ * and rail are set here because D3 maps outputs onto content-font-color0/2 and
+ * border-color1, and they must mean the design's values in Light.
+ *
+ * Syntax goes through --jp-mirror-editor-*; the names were confirmed against the
+ * bundled themes (list in tests/test_display_css.py). CodeMirror 6 has no
+ * "call" tag, so the call purple sits on def, builtin, property and meta.
+ * Operators and punctuation drop to ink soft so no stray blue survives.
+ */
+body[data-jp-theme-name='JupyterLab Light'] {
+  --jp-layout-color0: #FFFFFF;   /* sheet */
+  --jp-layout-color1: #EEF1F4;   /* page ground (deck steel) */
+  --jp-layout-color2: #E6EBF0;
+  --jp-layout-color3: #DCE3E9;
+  --jp-layout-color4: #C9D2DA;
+
+  --jp-content-font-color0: #1D2935;   /* ink */
+  --jp-content-font-color1: #1D2935;
+  --jp-content-font-color2: #56636F;   /* ink soft */
+  --jp-content-font-color3: #56636F;
+
+  --jp-border-color1: #C9D2DA;         /* rail */
+
+  --jp-scrollbar-thumb-color: 140, 150, 160;
+  --jp-scrollbar-background-color: #E6EBF0;
+
+  --jp-mirror-editor-keyword-color: #2F6882;
+  --jp-mirror-editor-atom-color: #2F6882;
+  --jp-mirror-editor-string-color: #A63D61;
+  --jp-mirror-editor-string-2-color: #A63D61;
+  --jp-mirror-editor-number-color: #8A5A00;
+  --jp-mirror-editor-def-color: #7B4FA0;
+  --jp-mirror-editor-builtin-color: #7B4FA0;
+  --jp-mirror-editor-property-color: #7B4FA0;
+  --jp-mirror-editor-meta-color: #7B4FA0;
+  --jp-mirror-editor-comment-color: #56636F;
+  --jp-mirror-editor-variable-color: #1D2935;
+  --jp-mirror-editor-variable-2-color: #1D2935;
+  --jp-mirror-editor-operator-color: #56636F;
+  --jp-mirror-editor-punctuation-color: #56636F;
+  --jp-mirror-editor-bracket-color: #56636F;
+}
+
+/* Ground and sheet. The second selector out-ranks JupyterLab's own transparent
+   background for the active, selected cell (specificity 0,4,0). */
+body[data-jp-theme-name='JupyterLab Light'] .jp-Notebook {
+  background: var(--jp-layout-color1);
+}
+
+body[data-jp-theme-name='JupyterLab Light'] .jp-Notebook .jp-CodeCell,
+body[data-jp-theme-name='JupyterLab Light'] .jp-Notebook .jp-CodeCell.jp-mod-active.jp-mod-selected {
+  background: var(--jp-layout-color0);
+  border-radius: var(--jp-border-radius);
+}
+
+/* --- chrome: the status rail (3.1) -------------------------------------------- */
+/*
+ * A 3 px bar on each code cell's left edge replaces `In [n]:`. The state is
+ * data-praxis-cell-state, set by chrome.js from the notebook model. S1 found
+ * native CSS hooks for only two states: `jp-mod-dirty` (stale), used below, and
+ * the stderr mime (error), deliberately NOT used: that mime is also every plain
+ * stderr stream, so a warning would paint an error rail. `error` is therefore
+ * keyed on the attribute only. running, not-run and ran are model-only.
+ *
+ * Precedence is running > stale > error > ran > not-run. chrome.js resolves it
+ * for the attribute; the native stale rule below must not undo it, so it
+ * yields to running (the attribute wins) and to not-run (an edited cell that
+ * never ran stays not-run), and out-ranks ran and error (stale > error > ran).
+ */
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-CodeCell,
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-MarkdownCell,
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-RawCell {
+  position: relative;
+  padding-left: 40px;   /* gutter for the count, then the rail, then the code */
+}
+
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-CodeCell::before {
+  content: '';
+  position: absolute;
+  left: 32px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--jp-border-color1);   /* not run: rail grey */
+  pointer-events: none;
+}
+
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-CodeCell[data-praxis-cell-state='not-run']::before {
+  background: var(--jp-border-color1);
+}
+
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-CodeCell[data-praxis-cell-state='ran']::before {
+  background: var(--praxis-moonstone-ink);
+}
+
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-CodeCell[data-praxis-cell-state='running']::before {
+  background: var(--praxis-rose);
+}
+
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-CodeCell[data-praxis-cell-state='error']::before {
+  background: var(--praxis-brick);
+}
+
+/* Stale: dashed, edited since it ran. Attribute first, then the native hook. */
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-CodeCell[data-praxis-cell-state='stale']::before,
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-CodeCell.jp-mod-dirty:not([data-praxis-cell-state='running']):not([data-praxis-cell-state='not-run'])::before {
+  background: repeating-linear-gradient(to bottom, var(--praxis-moonstone-ink) 0 5px, transparent 5px 9px);
+}
+
+/* The execution count sits at the rail's top, 12.5 px ink soft. */
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-CodeCell::after {
+  content: attr(data-praxis-exec);
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 26px;
+  text-align: right;
+  font-family: var(--jp-ui-font-family);
+  font-size: 12.5px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  color: var(--jp-content-font-color2);
+  pointer-events: none;
+}
+
+/* The active cell reads as a hairline, not a heavy editor box. Skipped while the
+   cell itself has keyboard focus so JupyterLab's own focus ring still shows. */
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-CodeCell.jp-mod-active:not(:focus-visible) {
+  box-shadow: inset 0 0 0 1px var(--jp-border-color1);
+  border-radius: var(--jp-border-radius);
+}
+
+/* --- chrome: prompts take no space, code sits on the sheet ------------------- */
+/* The prompt text stays in the DOM (assistive tech, chrome.js) at zero width. */
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-InputPrompt,
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-OutputPrompt,
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-OutputArea-prompt {
+  flex: 0 0 0px;
+  width: 0px;
+  min-width: 0px;
+  margin: 0px;
+  padding: 0px;
+  border: 0px;
+  overflow: hidden;
+}
+
+/* JupyterLab paints a bullet in the prompt of a dirty cell; the rail says it now. */
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-InputPrompt::before {
+  content: none;
+}
+
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-CodeCell .jp-InputArea-editor {
+  border-color: transparent;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* Outputs sit inset under their code on the same sheet, divided by one rail hairline. */
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-CodeCell:not(.jp-mod-noOutputs) .jp-Cell-outputWrapper {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--jp-border-color1);
+}
+
+/* Non-PLR tracebacks keep JupyterLab's error output, restyled: brick accent, code face. */
+body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab Light']) .jp-Notebook .jp-OutputArea-output[data-mime-type='application/vnd.jupyter.stderr'] {
+  border-left: 3px solid var(--praxis-brick);
+  font-family: var(--praxis-code-font);
+}
+
+/* --- outputs: .praxis-out token mapping (D3) ------------------------------------ */
+/*
+ * Every essential colour in an output is an inline SVG presentation attribute
+ * in the design's light palette, so an output is legible with no CSS at all.
+ * Presentation attributes have the lowest cascade priority, so the rules below
+ * win and map the STRUCTURAL colours (sheet, ink, ink soft, rail) onto
+ * JupyterLab tokens. Moonstone (liquid), rose (attention) and brick (error
+ * marks) are brand constants and are deliberately not remapped. No theme is
+ * named: outputs follow Dark, Light and High Contrast alike.
+ *
+ * Matched by attribute value (case-insensitive) because the class names of the
+ * SVG are not part of the contract and S2-A' may strip `class`.
+ */
+.praxis-out {
+  color: var(--jp-content-font-color0);
+  font-family: var(--jp-ui-font-family);
+  font-variant-numeric: tabular-nums;
+}
+
+.praxis-out [fill='#FFFFFF' i] { fill: var(--jp-layout-color0); }
+.praxis-out [fill='#1D2935' i] { fill: var(--jp-content-font-color0); }
+.praxis-out [fill='#56636F' i] { fill: var(--jp-content-font-color2); }
+.praxis-out [fill='#C9D2DA' i] { fill: var(--jp-border-color1); }
+.praxis-out [stroke='#FFFFFF' i] { stroke: var(--jp-layout-color0); }
+.praxis-out [stroke='#1D2935' i] { stroke: var(--jp-content-font-color0); }
+.praxis-out [stroke='#56636F' i] { stroke: var(--jp-content-font-color2); }
+.praxis-out [stroke='#C9D2DA' i] { stroke: var(--jp-border-color1); }
+
+.praxis-out :is(th, caption, figcaption) {
+  color: var(--jp-content-font-color2);
+}
+
+/* --- outputs: focus ring and focused resource ---------------------------------- */
+/* Rose is attention: the ring that moves across a grid, keyboard focus on a
+   figure, and the persistent outline on an output focused in the deck panel. */
+.praxis-focus-ring {
+  fill: none;
+  stroke: var(--praxis-rose);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.praxis-out :focus-visible {
+  outline: 2px solid var(--praxis-rose);
+  outline-offset: 2px;
+}
+
+.praxis-out.is-focus,
+.jp-OutputArea-output.is-focus {
+  outline: 2px solid var(--praxis-rose);
+  outline-offset: 2px;
+}
+
+/* --- outputs: hover readout ------------------------------------------------------- */
+/* Positioned by the shell (left/top set inline). Never takes the pointer, so it
+   cannot flicker the hover it describes. No shadow: depth is ground vs sheet. */
+.praxis-readout {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  padding: 2px 8px;
+  border: 1px solid var(--jp-border-color0);
+  border-radius: 6px;
+  background: var(--jp-layout-color0);
+  color: var(--jp-content-font-color0);
+  font: 500 12.5px/1.5 var(--jp-ui-font-family);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* --- outputs: stale notice -------------------------------------------------------- */
+/* "Changed since, see deck panel." A DOM mark only; it is never saved. */
+.praxis-stale {
+  margin-top: 6px;
+  padding-left: 8px;
+  border-left: 2px solid var(--praxis-rose);
+  color: var(--jp-content-font-color2);
+  font-size: 12.5px;
+}
+
+/* --- outputs: error panel (3.3) ----------------------------------------------------- */
+/* Brick rail, heading that states the fault, body, fix, the PLR line, a folded
+   traceback. Brick never appears as text on its own: the heading colour is the
+   theme's error token, and every mark also carries a glyph (D3). */
+.praxis-error {
+  padding-left: 12px;
+  border-left: 3px solid var(--praxis-brick);
+}
+
+.praxis-error__title {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.praxis-out .praxis-error__title {
+  color: var(--jp-error-color1);
+}
+
+.praxis-error__plr {
+  margin: 10px 0 0;
+  color: var(--jp-content-font-color2);
+  font-size: 14px;
+}
+
+.praxis-error__plr code,
+.praxis-error details pre {
+  font-family: var(--praxis-code-font);
+}
+
+.praxis-error summary {
+  cursor: pointer;
+  color: var(--jp-content-link-color);
+  font-size: 14px;
+}
+
+.praxis-error details pre {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--jp-layout-color2);
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow-x: auto;
+}
+
+/* --- deck panel: header and footer (3.6) ---------------------------------------------- */
+/* Header: deck name, Follow toggle, Iso / Top / Front. Footer: the focused
+   resource in words, then the one-row motion slot. The body (iframe or one of
+   two texts) is styled by dock.js's own markup and not here. */
+.praxis-deck-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--jp-layout-color0);
+  color: var(--jp-content-font-color0);
+  font-family: var(--jp-ui-font-family);
+  font-variant-numeric: tabular-nums;
+}
+
+.praxis-deck-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--jp-border-color1);
+}
+
+.praxis-deck-panel__title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.praxis-deck-panel__sub {
+  color: var(--jp-content-font-color2);
+  font-size: 14px;
+}
+
+.praxis-deck-panel__follow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.praxis-deck-panel__follow::before {
+  content: '';
+  width: 30px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--jp-border-color0);
+}
+
+.praxis-deck-panel__follow[aria-checked='true']::before {
+  background: var(--praxis-rose);
+}
+
+.praxis-deck-panel__views {
+  display: inline-flex;
+  border: 1px solid var(--jp-border-color1);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.praxis-deck-panel__views button {
+  padding: 3px 12px;
+  border: 0;
+  background: var(--jp-layout-color0);
+  color: var(--jp-content-font-color0);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.praxis-deck-panel__views button + button {
+  border-left: 1px solid var(--jp-border-color1);
+}
+
+.praxis-deck-panel__views button[aria-pressed='true'] {
+  background: var(--jp-content-font-color0);
+  color: var(--jp-layout-color0);
+}
+
+.praxis-deck-panel__footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--jp-border-color1);
+  font-size: 14px;
+}
+
+.praxis-deck-panel__motion {
+  min-height: 0;
+  margin-top: 8px;
+}
+
+.praxis-deck-panel__motion:empty {
+  display: none;
+}
