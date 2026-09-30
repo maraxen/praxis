@@ -7248,6 +7248,153 @@ def derive_k1b_keys(raw: Any) -> dict[str, Any]:
     return keys
 
 
+# -- K2 and N-d: pure key derivation (AC-36, AC-39(d)) ---------------------------------------------------------
+
+
+class DockCheckError(DisplayCheckError):
+    """A dock-check scenario could not reach, or could not validly measure, the state it needs."""
+
+
+#: AC-36: the drawer opens over the notebook, so the notebook content width changes by 0 px. Half a pixel absorbs
+#: the sub-pixel rounding of a layout read; a real reflow is tens of pixels.
+REFLOW_TOL_PX = 0.5
+
+
+def _state_is(step: Any, state: str, iframes: int | None = None, home: str | None = None) -> bool:
+    s = _dict(step)
+    if s.get("state") != state:
+        return False
+    if iframes is not None and not (s.get("iframes") == iframes and type(s.get("iframes")) is int):
+        return False
+    return home is None or s.get("home") == home
+
+
+def _wide_step_ok(step: Any) -> bool:
+    s = _dict(step)
+    return wide_width_ok(s.get("panel"), s.get("main"), s.get("padding"))
+
+
+def _number_or_none(value: Any) -> float | None:
+    return float(value) if _num(value) else None
+
+
+def derive_k2_keys(raw: Any, *, record: dict[str, bool] | None = None) -> dict[str, Any]:
+    """K2's keys from the raw page evidence of its nine ordered steps (pure; a control per key).
+
+    EVERY key is computed, asserted or not. ``sizing_case``, ``sizing_record`` and ``width_key_status`` (key ->
+    ``asserted`` | ``recorded-only``, per the D6 table and AC-1) are written beside them, so the result names the case
+    and says which width keys gated it (AC-36). ``ac39d`` says whether AC-39(d)'s unit runs or is skipped."""
+    rec = dict(SIZING_RECORD if record is None else record)
+    status = width_key_status(**rec)
+    r = _dict(raw)
+    drawer, dismiss, tier = _dict(r.get("drawer")), _dict(r.get("dismiss")), _dict(r.get("tier_up"))
+    medium, fit, wide = _dict(r.get("medium")), _dict(r.get("fit")), _dict(r.get("wide"))
+    reloads, heights = _dict(r.get("reloads")), _dict(r.get("heights"))
+    m1440, m1280 = _dict(medium.get("1440")), _dict(medium.get("1280"))
+    w1600, w1920 = _dict(wide.get("1600")), _dict(wide.get("1920"))
+    before, nb_open = drawer.get("nb_before"), drawer.get("nb_open")
+    counts = [reloads.get(n) for n in ("drag_1440", "drag_1280", "resize_within_wide")]
+
+    keys: dict[str, Any] = {}
+    keys["drawer_overlays"] = bool(
+        drawer.get("position") == "fixed" and drawer.get("home") == "drawer" and drawer.get("state") == "open-connected"
+    )
+    keys["drawer_no_reflow"] = bool(_num(before) and _num(nb_open) and abs(nb_open - before) <= REFLOW_TOL_PX)
+    keys["drawer_dismiss_reopen"] = bool(
+        _state_is(dismiss.get("first_open"), "open-connected", 1, "drawer")
+        and _state_is(dismiss.get("after_close_button"), "closed", 0)
+        and _state_is(dismiss.get("after_toggle"), "open-connected", 1)
+        and _state_is(dismiss.get("after_escape"), "closed", 0)
+        and _state_is(dismiss.get("after_reopen"), "open-connected", 1)
+    )
+    up = _dict(tier.get("after_up"))
+    src_before = _dict(tier.get("before")).get("src")
+    keys["tier_up_rehomes"] = bool(
+        _state_is(tier.get("before"), "open-connected", 1, "drawer") and _is_str(src_before)
+        and _state_is(up, "open-connected", 1, "split") and up.get("src") == src_before
+        and up.get("split_right") is True and up.get("resources_ok") is True
+        and _state_is(tier.get("back_down"), "open-connected", 1, "drawer")
+        and _state_is(tier.get("after_button_close"), "closed", 0)
+        and _state_is(tier.get("after_up_closed"), "closed", 0)  # T5: a closed drawer resized up stays closed
+        and _state_is(tier.get("reopen"), "open-connected", 1, "split")
+    )
+    keys["open_width_1440"] = open_width_ok(m1440.get("open"))
+    keys["drag_clamp_low_1440"] = clamp_low_ok(m1440.get("drag_low"))
+    keys["drag_clamp_high_1440"] = clamp_high_ok(m1440.get("drag_high"))
+    keys["fit_after_tier_change_wide"] = _wide_step_ok(fit.get("wide"))
+    keys["fit_after_tier_change_medium"] = open_width_ok(_dict(fit.get("medium")).get("panel"))
+    keys["open_width_1280"] = open_width_ok(m1280.get("open"))
+    keys["drag_clamp_low_1280"] = clamp_low_ok(m1280.get("drag_low"))
+    keys["drag_clamp_high_1280"] = clamp_high_ok(m1280.get("drag_high"))
+    keys["viewer_height"] = _number_or_none(heights.get("viewer"))
+    keys["motion_slot_height"] = _number_or_none(heights.get("motion"))
+    keys["nb_content_width_1600"] = _number_or_none(w1600.get("nb"))
+    keys["panel_width_wide_1600"] = _wide_step_ok(w1600)
+    keys["resize_within_wide"] = _wide_step_ok(r.get("resize"))
+    keys["iframe_reloads_during_resize"] = (
+        sum(counts) if all(isinstance(c, int) and not isinstance(c, bool) for c in counts) else None
+    )
+    keys["nb_content_width_1920"] = _number_or_none(w1920.get("nb"))
+    keys["panel_width_wide_1920"] = _wide_step_ok(w1920)
+    keys["sizing_case"] = sizing_case(rec["css_limits_honoured"], rec["layout_sizing_reachable"])
+    keys["sizing_record"] = rec
+    keys["width_key_status"] = {k: status[fam] for k, fam in K2_WIDTH_KEYS}
+    keys["ac39d"] = ac39d_status(status)
+    return keys
+
+
+#: N-d: the stock split-right widget is an even split; a control that is not one measured something else.
+ND_EVEN_TOL = 0.1
+
+
+def nd_measurement_problem(raw: Any) -> str | None:
+    """Why an N-d measurement cannot be trusted, or ``None``. The predicate FAILS on a missing or absurd number too,
+    so an unvalidated measurement would let the sensitivity run pass for the wrong reason."""
+    r = _dict(raw)
+    panel, notebook, main, padding = (r.get(k) for k in ("panel", "notebook", "main", "padding"))
+    if not all(_num(v) for v in (panel, notebook, main, padding)):
+        return f"a measurement is missing or not a number: {dict(panel=panel, notebook=notebook, main=main, padding=padding)}"
+    if not (panel > 0 and notebook > 0 and main > 0) or panel >= main:
+        return f"the widths are not plausible: panel {panel}, notebook {notebook}, main {main}"
+    if abs(panel - notebook) > ND_EVEN_TOL * (panel + notebook):
+        return f"the stock split is not even: panel {panel}, notebook {notebook}"
+    return None
+
+
+def derive_nd_keys(raw: Any, *, record: dict[str, bool] | None = None) -> dict[str, Any]:
+    """N-d (AC-39(d)): the AC-36 >= 1600 predicate applied to a STOCK split-right widget (harness code, no dock.js
+    sizing), where it must report failure. Skipped, and recorded as skipped, where the key is recorded-only (D6).
+
+    A measurement that cannot be trusted raises ``DockCheckError`` (an ``error`` finding: never a detected negative).
+    ``control_formula_passes`` records that the same predicate passes on the width the formula gives (it can pass)."""
+    rec = dict(SIZING_RECORD if record is None else record)
+    status = width_key_status(**rec)
+    if ac39d_status(status) == "skipped":
+        return {
+            "skipped": True,
+            "skipped_reason": (
+                "the >= 1600 width key is recorded-only in the recorded D6 sizing case "
+                f"({sizing_case(rec['css_limits_honoured'], rec['layout_sizing_reachable'])}, "
+                f"css_limits_refit={rec['css_limits_refit']}): AC-39(d) is skipped"
+            ),
+            "sizing_record": rec,
+        }
+    problem = nd_measurement_problem(raw)
+    if problem is not None:
+        raise DockCheckError(f"N-d measurement invalid: {problem}")
+    r = _dict(raw)
+    expected = wide_panel_width_expected(r["main"], r["padding"])
+    return {
+        ND_KEY: wide_width_ok(r["panel"], r["main"], r["padding"]),
+        "skipped": False,
+        "control_formula_passes": wide_width_ok(expected, r["main"], r["padding"]),
+        "expected_panel_width": expected,
+        "stock_panel_width": r["panel"],
+        "stock_notebook_width": r["notebook"],
+        "sizing_record": rec,
+    }
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
