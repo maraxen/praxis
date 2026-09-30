@@ -2294,8 +2294,13 @@ describe("mounted from index.js (D13: non-fatal, failure-isolated)", () => {
   test("the real dock.js does not name the channels it must not use, nor carry test switches", () => {
     const source = readFileSync(join(HERE, "dock.js"), "utf8");
     expect(source.includes("praxis_repl")).toBe(false); // R21 (extended from sprint C)
-    expect(/__praxis_test|data-praxis-test/.test(source)).toBe(false); // AC-39(c)
-    expect(/requestDevice|requestPort/.test(source)).toBe(false); // R19
+    // The two expressions below are built from pieces ON PURPOSE. AC-39(c) and AC-41's R19 are greps over this
+    // very directory (not excluding *.test.js, only __tests__), so a test that spelled the tokens in one piece
+    // would make the grep the gate is defined by find this file.
+    const testHook = new RegExp(["__praxis", "_test|data-praxis", "-test"].join(""));
+    const serialPrompt = new RegExp(["request", "Device|request", "Port"].join(""));
+    expect(testHook.test(source)).toBe(false); // AC-39(c)
+    expect(serialPrompt.test(source)).toBe(false); // R19
     expect(/\beval\s*\(|new Function|cdn\.|https?:\/\//.test(source)).toBe(false); // no eval, no CDN, no network
     expect(source.includes("praxis_viz3d")).toBe(true);
   });

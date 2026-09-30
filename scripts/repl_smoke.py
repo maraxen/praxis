@@ -6528,6 +6528,145 @@ def run_display_check(
     return code
 
 
+# ---------------------------------------------------------------------------
+# --dock-check (epic 260929_notebook-display-design, task C7; spec D16, D6, D11, D12, AC-30..AC-42).
+#
+# The Visualizer3D deck panel gate: units K1a (AC-34, AC-35, AC-37), K1b (AC-38) and K2 (AC-36) and the
+# negative-only unit N-d (AC-39(d)), on the SAME preemption-safe machinery as --display-check (the unit
+# table, input hashing, stamps, resume, the aggregate, `--aggregate-only`, `run_scenario`); a dock unit
+# differs only in its browser (a FULL Chromium with SwiftShader WebGL, never headless_shell) and in its
+# scenario body. Everything pure in this section (the D6 sizing table, the key derivations, the static
+# greps) is tested without a browser by web-repl/tests/test_repl_smoke_resume.py; the scenario bodies take
+# a `driver` so their ORDER and key plumbing are tested against a scripted fake, and only a real run
+# exercises `DockSession` / `DockDriver` and the in-page helpers.
+# ---------------------------------------------------------------------------
+
+DOCK_CHECK = "dock-check"
+
+# -- static greps the dock gate closes (AC-39(c), AC-41 R19, AC-31 extended R21) -------------------------------
+
+
+def _glob_match(name: str, patterns: Any) -> bool:
+    import fnmatch
+
+    return any(fnmatch.fnmatchcase(name, p) for p in patterns)
+
+
+def grep_tree(
+    root: Any,
+    paths: Any,
+    pattern: str,
+    *,
+    include: Any = (),
+    exclude_dirs: Any = (),
+) -> list[tuple[str, int, str]]:
+    """``grep -rnE <pattern> [--include=GLOB ...] [--exclude-dir=GLOB ...] <paths>`` run from ``root``, in Python.
+
+    Returns ``(path relative to root, 1-based line, line text)`` in path order. ``include`` globs select files by
+    base name (empty: every file); ``exclude_dirs`` globs skip a directory by base name while recursing. A path that
+    does not exist raises ``FileNotFoundError`` (``grep`` exits 2 there; an unreadable path is never "no hit"). A file
+    with a NUL byte is binary and yields no line, as grep reports it with one "Binary file matches" line instead."""
+    rx = re.compile(pattern)
+    base = Path(root)
+    hits: list[tuple[str, int, str]] = []
+
+    def scan(path: Path) -> None:
+        if include and not _glob_match(path.name, include):
+            return
+        try:
+            data = path.read_bytes()
+        except OSError:
+            return
+        if b"\0" in data:
+            return
+        for number, line in enumerate(data.decode("utf-8", "replace").splitlines(), start=1):
+            if rx.search(line):
+                hits.append((path.relative_to(base).as_posix(), number, line))
+
+    def walk(directory: Path) -> None:
+        for entry in sorted(directory.iterdir(), key=lambda p: p.name):
+            if entry.is_dir():
+                if not _glob_match(entry.name, exclude_dirs):
+                    walk(entry)
+            elif entry.is_file():
+                scan(entry)
+
+    for rel in paths:
+        target = base / rel
+        if not target.exists():
+            raise FileNotFoundError(f"grep: {rel}: No such file or directory")
+        if target.is_dir():
+            walk(target)
+        else:
+            scan(target)
+    return hits
+
+
+#: AC-39(c): no test-only hooks in the product JS. ``--exclude-dir=__tests__`` is the spec's one exclusion: a
+#: ``*.test.js`` next to a source file IS scanned, so a test may not spell the token either (dock.test.js built
+#: its expression from pieces for this reason).
+AC39C_PATTERN = r"__praxis_test|data-praxis-test"
+AC39C_PATHS = ("web-repl/shell/display", "web-repl/overlay/assets/visualizer3d-augmentations")
+#: AC-41 R19: the serial-port prompts are the visualizer transport's; none of these paths may name them.
+R19_PATTERN = r"requestDevice|requestPort"
+R19_PATHS = (
+    "web-repl/overlay/assets/visualizer-augmentations",
+    "web-repl/overlay/assets/visualizer3d-augmentations",
+    "web-repl/shell/display",
+)
+#: AC-31, extended R21 (D7 "R21 check" over six paths): five directories and ``dock.js``.
+R21_EXTENDED_DIRS = (
+    "web-repl/overlay/assets/python/praxis/viz/",
+    "web-repl/overlay/assets/visualizer/",
+    "web-repl/overlay/assets/visualizer-augmentations/",
+    "web-repl/overlay/assets/visualizer3d/",
+    "web-repl/overlay/assets/visualizer3d-augmentations/",
+)
+R21_EXTENDED_FILES = ("web-repl/shell/display/dock.js",)
+R21_EXTENDED_PATHS = R21_EXTENDED_DIRS + R21_EXTENDED_FILES
+R21_CHANNEL = "praxis_repl"
+R21_DOC_FORM = "``praxis_repl``"
+
+
+def ac39c_hits(root: Any) -> list[tuple[str, int, str]]:
+    """AC-39(c) verbatim: ``grep -rnE '__praxis_test|data-praxis-test' shell/display visualizer3d-augmentations
+    --include='*.js' --exclude-dir=__tests__``. The gate passes iff this is empty."""
+    return grep_tree(root, AC39C_PATHS, AC39C_PATTERN, include=("*.js",), exclude_dirs=("__tests__",))
+
+
+def r19_check(root: Any) -> tuple[bool, list[tuple[str, int, str]]]:
+    """AC-41 R19: the grep must exit **1 exactly**. ``(ok, hits)``: ``ok`` is false on any hit and on a missing path
+    (grep's 2), so an unreadable tree never reads as a pass."""
+    try:
+        hits = grep_tree(root, R19_PATHS, R19_PATTERN)
+    except FileNotFoundError:
+        return False, []
+    return (not hits), hits
+
+
+def r21_extended_check(root: Any) -> dict[str, Any]:
+    """The D7 "R21 check" over the six paths of AC-31, in its Python form (same rule as the bash gate).
+
+    ``test -d`` on each directory and ``test -f`` on ``dock.js`` (``paths_exist``); the first grep must exit 0 or 1
+    (``first_grep_status``: 2, an unreadable path, fails); the RST documentation form `` ``praxis_repl`` `` is
+    stripped from every hit (``sed``); and NO line may still name the channel (``residual`` empty). Returns
+    ``{ok, paths_exist, first_grep_status, hits, residual}``; ``hits`` is the plain grep, ``residual`` what the strip
+    leaves."""
+    base = Path(root)
+    exist = all((base / d).is_dir() for d in R21_EXTENDED_DIRS) and all((base / f).is_file() for f in R21_EXTENDED_FILES)
+    out: dict[str, Any] = {"ok": False, "paths_exist": exist, "first_grep_status": 2, "hits": [], "residual": []}
+    if not exist:
+        return out
+    try:
+        hits = grep_tree(base, R21_EXTENDED_PATHS, R21_CHANNEL)
+    except FileNotFoundError:
+        return out
+    out["first_grep_status"] = 0 if hits else 1
+    out["hits"] = hits
+    out["residual"] = [h for h in hits if R21_CHANNEL in h[2].replace(R21_DOC_FORM, "")]
+    out["ok"] = out["first_grep_status"] in (0, 1) and not out["residual"]
+    return out
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
