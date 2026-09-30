@@ -1,0 +1,9 @@
+# 260929_s4_viewer3d_pyodide.bth.fab9979d-214c-4592-9e6f-849272d7898f.bth.lock.toml — written at run time, never modified
+[manifest]
+written_at = "2026-09-30T18:14:36.803193+00:00"
+sidecar_sha256 = "ace25f76507946ab1ea085e106bbb301520a7266b69fd6ab3bc1cc2c1a201c3f"
+sidecar_path = "/tmp/praxis-nd-b/scripts/spikes/260929_s4_viewer3d_pyodide.bth.toml"
+git_sha = "a4b37068b1099542d65b03ffd5d822a918e9d961"
+script_sha256 = "1dc5051325faec42436297eef9d58375dc9ae90cdc840311c2e90937bc920313"
+run_id = "fab9979d-214c-4592-9e6f-849272d7898f"
+agent_id = null
