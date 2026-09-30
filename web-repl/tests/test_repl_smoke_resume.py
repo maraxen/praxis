@@ -213,7 +213,7 @@ class SpyRunner:
 
 def drive(rs: Any, out_dir: Path, env: Any, runner: Any, **kw: Any) -> tuple[dict[str, Any], int]:
     return rs.run_units_driver(
-        table=rs.UNIT_TABLE, out_dir=out_dir,
+        table=[u for u in rs.UNIT_TABLE if u.check == rs.DISPLAY_CHECK], out_dir=out_dir,
         inputs_for=lambda u: rs.unit_inputs(u, env),
         argv_for=lambda u: ["fake-unit", "--scenario", u.id], runner=runner, cwd="/repo", **kw,
     )
@@ -240,7 +240,7 @@ D1_DARK_KEYS = (
 
 
 def test_unit_table_is_d16_through_sprint_b_for_the_chrome_units(rs):
-    assert [u.id for u in rs.UNIT_TABLE] == ALL_IDS
+    assert [u.id for u in rs.UNIT_TABLE if u.check == "display-check"] == ALL_IDS
     d1, dark = rs.UNIT_BY_ID["D1"], rs.UNIT_BY_ID["D1-dark"]
     assert (d1.check, d1.budget_s) == ("display-check", 6 * 60)
     assert (dark.check, dark.budget_s) == ("display-check", 5 * 60)
@@ -779,7 +779,7 @@ def test_driver_starts_each_unit_as_its_own_run_unit_with_budget_plus_60(rs, ur,
     assert runner.ids() == ALL_IDS, "table order, exactly one process per unit"
     assert [t for _, t, _ in runner.calls] == [m * 60 + 60 for m in BUDGET_MIN]
     assert all(c == "/repo" for _, _, c in runner.calls)
-    assert len(runner.calls) == len(rs.UNIT_TABLE), "no whole-run call"
+    assert len(runner.calls) == len([u for u in rs.UNIT_TABLE if u.check == rs.DISPLAY_CHECK]), "no whole-run call"
 
 
 def test_aggregate_shape_and_d1_dark_subobject(rs, ur, wds, tmp_path):
@@ -3574,3 +3574,168 @@ def test_clamp_low_ok_means_a_drag_to_300_ends_at_420(rs, width, ok):
 @pytest.mark.parametrize("width,ok", [(480.0, True), (478.1, True), (481.9, True), (700.0, False), (450.0, False), (None, False)])
 def test_clamp_high_ok_means_a_drag_to_700_ends_at_480(rs, width, ok):
     assert rs.clamp_high_ok(width) is ok
+
+
+# =========================================================================== #
+# Sprint C (C7): the dock units in the D16 table -- K1a, K1b, K2, N-d (AC-42 "the driver's unit table equals D16's")
+# =========================================================================== #
+
+DOCK_IDS = ["K1a", "K1b", "K2", "N-d"]
+DOCK_BUDGET_MIN = [10, 14, 15, 6]
+K1A_KEYS = (
+    "panel_is_split_right", "viewer_resources", "hello_backend", "canvas_nonblank", "embed_hidden", "pageerrors",  # AC-34
+    "click_focuses", "follow_focuses", "follow_off_holds", "follow_skips_null", "preset_directions",
+    "follow_keeps_preset",  # AC-35
+    "state_updates", "stale_and_panel",  # AC-37
+)
+#: AC-38's fixed execution order (Revision 6, C6-2; Revision 7): the listed keys run in exactly this order.
+K1B_KEYS = (
+    "reconnect_after_reload", "preset_survives_reload", "drawer_reconnect", "redock_live", "stop_placeholder",
+    "redock_reloads", "late_iframe", "many_reloads", "restart_placeholder",
+)
+#: AC-36 keys asserted in every D6 sizing case (the drawer keys, the height keys, the notebook cap, the reload count).
+K2_ALWAYS = (
+    "drawer_overlays", "drawer_no_reflow", "drawer_dismiss_reopen", "tier_up_rehomes", "viewer_height",
+    "motion_slot_height", "nb_content_width_1600", "nb_content_width_1920", "iframe_reloads_during_resize",
+)
+#: The width keys, in K2's step order, each with its D6 family.
+K2_WIDTH = (
+    ("open_width_1440", "open_width_1280_1599"),
+    ("drag_clamp_low_1440", "drag_clamp_1280_1599"),
+    ("drag_clamp_high_1440", "drag_clamp_1280_1599"),
+    ("fit_after_tier_change_wide", "fit_after_tier_change_ge_1600"),
+    ("fit_after_tier_change_medium", "fit_after_tier_change_1280_1599"),
+    ("open_width_1280", "open_width_1280_1599"),
+    ("drag_clamp_low_1280", "drag_clamp_1280_1599"),
+    ("drag_clamp_high_1280", "drag_clamp_1280_1599"),
+    ("panel_width_wide_1600", "open_width_ge_1600"),
+    ("resize_within_wide", "resize_within_wide"),
+    ("panel_width_wide_1920", "open_width_ge_1600"),
+)
+K2_ALL_KEYS = frozenset(K2_ALWAYS) | {k for k, _ in K2_WIDTH}
+
+
+def _expected_k2(statuses: dict[str, str]) -> set[str]:
+    return set(K2_ALWAYS) | {k for k, cat in K2_WIDTH if statuses[cat] == "asserted"}
+
+
+def test_unit_table_is_d16_with_the_dock_units_appended_in_table_order(rs):
+    assert [u.id for u in rs.UNIT_TABLE] == ALL_IDS + DOCK_IDS
+    assert [u.id for u in rs.UNIT_TABLE if u.check == "display-check"] == ALL_IDS
+    dock = [rs.UNIT_BY_ID[i] for i in DOCK_IDS]
+    assert rs.DOCK_CHECK == "dock-check" and all(u.check == "dock-check" for u in dock)
+    assert [u.budget_s for u in dock] == [m * 60 for m in DOCK_BUDGET_MIN], "10, 14, 15 and 6 min (D16)"
+    assert [u.acs for u in dock] == [("AC-34", "AC-35", "AC-37"), ("AC-38",), ("AC-36",), ("AC-39",)]
+
+
+def test_n_d_is_negative_only_and_never_part_of_the_aggregate(rs):
+    assert [u.id for u in rs.DOCK_AGGREGATE_UNITS] == ["K1a", "K1b", "K2"]
+    assert rs.UNIT_BY_ID["N-d"].in_aggregate is False
+    assert all(rs.UNIT_BY_ID[i].in_aggregate for i in ("D1", "D4", "K1a", "K1b", "K2"))
+
+
+def test_k1a_lists_the_ac34_ac35_ac37_keys(rs):
+    assert tuple(rs.UNIT_BY_ID["K1a"].keys) == K1A_KEYS
+    exp = dict(rs.UNIT_BY_ID["K1a"].expected)
+    assert exp["pageerrors"] == [] and all(exp[k] is True for k in K1A_KEYS if k not in ("pageerrors", "hello_backend"))
+    assert rs.UNIT_BY_ID["K1a"].viewports == ((1440, 900),)
+
+
+def test_hello_backend_holds_for_webgl2_or_webgpu_only(rs):
+    want = dict(rs.UNIT_BY_ID["K1a"].expected)["hello_backend"]
+    assert rs._holds("WebGL2", want) and rs._holds("WebGPU", want)
+    for bad in ("WebGL", "webgl2", "", None, ["WebGL2"], True, 2):
+        assert not rs._holds(bad, want), bad
+    assert rs._holds(want.example(), want), "the passing example a test builds a result from"
+
+
+def test_k1b_lists_the_ac38_keys_in_the_fixed_execution_order(rs):
+    k1b = rs.UNIT_BY_ID["K1b"]
+    assert tuple(k1b.keys) == K1B_KEYS, "AC-38 execution order is the listed-key order"
+    assert all(v is True for _, v in k1b.expected) and k1b.viewports == ((1440, 900),)
+    assert "pageerrors" not in k1b.keys, "AC-38 names no pageerrors key (the kernel restart ends the run)"
+
+
+def test_k2_steps_are_the_nine_ordered_steps_starting_at_1152_by_800(rs):
+    names = [n for n, _ in rs.K2_STEPS]
+    assert names == [
+        "drawer", "dismiss_reopen", "tier_up", "medium_1440", "fit", "medium_1280", "wide_1600",
+        "resize_within_wide", "wide_1920",
+    ]
+    assert [v for _, v in rs.K2_STEPS] == [
+        (1152, 800), (1152, 800), (1440, 900), (1440, 900), (1600, 900), (1280, 800), (1600, 900), (1920, 900), (1920, 1080),
+    ]
+    k2 = rs.UNIT_BY_ID["K2"]
+    assert k2.viewports == tuple(v for _, v in rs.K2_STEPS) and k2.viewports[0] == (1152, 800)
+
+
+def test_k2_family_map_covers_every_width_key_and_only_those(rs):
+    assert dict(rs.K2_WIDTH_KEYS) == dict(K2_WIDTH)
+    assert set(dict(K2_WIDTH).values()) == set(rs.WIDTH_CATEGORIES), "every D6 family has at least one key"
+
+
+def test_k2_listed_keys_under_the_recorded_case_are_all_asserted(rs):
+    k2 = rs.UNIT_BY_ID["K2"]
+    assert set(k2.keys) == K2_ALL_KEYS and len(k2.keys) == len(K2_ALL_KEYS), "no duplicates"
+    assert rs.k2_expected(rs.SIZING_STATUS) == k2.expected, "the table is built from the recorded AC-1 case"
+    exp = dict(k2.expected)
+    assert exp["iframe_reloads_during_resize"] == 0 and type(exp["iframe_reloads_during_resize"]) is int
+    assert exp["drawer_overlays"] is True and exp["panel_width_wide_1920"] is True
+    assert isinstance(exp["viewer_height"], rs.AtLeast) and exp["viewer_height"].limit == 300.0
+    assert isinstance(exp["motion_slot_height"], rs.AtMost) and exp["motion_slot_height"].limit == 36.0
+    assert isinstance(exp["nb_content_width_1600"], rs.AtMost) and exp["nb_content_width_1600"].limit == 960.0
+
+
+@pytest.mark.parametrize(
+    "hon,reach,refit,keeps",
+    [(h, r, f, k) for h in (True, False) for r in (True, False) for f in (True, False) for k in (True, False)],
+)
+def test_k2_listed_keys_follow_the_d6_sizing_case_asserted_versus_recorded_only(rs, hon, reach, refit, keeps):
+    statuses = rs.width_key_status(
+        css_limits_honoured=hon, layout_sizing_reachable=reach, css_limits_refit=refit, restore_layout_keeps_iframe=keeps
+    )
+    listed = {k for k, _ in rs.k2_expected(statuses)}
+    assert listed == _expected_k2(statuses)
+    # drawer, height, notebook cap and reload keys are asserted in every case (AC-36)
+    assert set(K2_ALWAYS) <= listed
+
+
+def test_k2_under_s1_l_lists_only_the_always_asserted_keys(rs):
+    statuses = rs.width_key_status(css_limits_honoured=False, layout_sizing_reachable=False, css_limits_refit=False)
+    assert {k for k, _ in rs.k2_expected(statuses)} == set(K2_ALWAYS)
+
+
+def test_n_d_lists_the_wide_width_key_which_must_fail_or_a_skip(rs):
+    n_d = rs.UNIT_BY_ID["N-d"]
+    assert n_d.expected == (("panel_width_wide_1600", True),) and n_d.viewports == ((1600, 900),)
+    assert rs.nd_expected(rs.SIZING_STATUS) == n_d.expected
+    skipped = rs.width_key_status(css_limits_honoured=True, layout_sizing_reachable=False, css_limits_refit=False)
+    assert rs.nd_expected(skipped) == (("skipped", True),), "recorded-only >= 1600: AC-39(d) is skipped and says so"
+
+
+def test_at_least_is_a_lower_bound_that_survives_json_and_rejects_non_numbers(rs):
+    bound = rs.AtLeast(300.0)
+    assert bound.holds(300.0) and bound.holds(812) and not bound.holds(299.99)
+    for bad in (True, False, None, "400", float("nan"), [400]):
+        assert not bound.holds(bad), bad
+    assert rs._holds(bound.example(), bound) and json.loads(json.dumps(bound.example())) == bound.example()
+
+
+def test_dock_unit_results_survive_the_unit_runner_path(rs, ur, wds, tmp_path):
+    for uid in DOCK_IDS:
+        out = tmp_path / uid
+        code = scenario_in_process(rs, ur, wds, uid, out, make_env(rs))
+        assert code == 0, uid
+        stamp = json.loads(rs.unit_paths(out, uid)["stamp"].read_text())
+        assert stamp["unit"] == uid and stamp["exit"] == 0 and stamp["budget_s"] == rs.UNIT_BY_ID[uid].budget_s
+
+
+def test_dock_unit_inputs_are_the_seven_d16_inputs_and_hash_the_viewports_and_neg(rs):
+    env = make_env(rs)
+    for uid in DOCK_IDS:
+        inputs = rs.unit_inputs(rs.UNIT_BY_ID[uid], env)
+        assert sorted(inputs) == sorted(["dist", "notebook", "harness", "runner", "chrome", "args", "driver"])
+    k1b = rs.UNIT_BY_ID["K1b"]
+    assert rs.unit_inputs(k1b, env, ())["args"] != rs.unit_inputs(k1b, env, ("drop-query",))["args"], "AC-39(e): --neg is hashed"
+    other = dataclasses.replace(rs.UNIT_BY_ID["K2"], viewports=((1152, 800),))
+    assert rs.unit_inputs(rs.UNIT_BY_ID["K2"], env)["args"] != rs.unit_inputs(other, env)["args"]
