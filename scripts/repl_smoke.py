@@ -4149,6 +4149,8 @@ DRIVER_EXTRA_S = 60.0
 DISPLAY_NAV_TIMEOUT_MS = 90_000
 DISPLAY_KERNEL_TIMEOUT_MS = 180_000
 DISPLAY_STEP_TIMEOUT_MS = 60_000
+#: B10: one cell run in D2-D4 (the FIRST cell of a fresh kernel also waits for the kernel's auto-setup).
+DISPLAY_CELL_TIMEOUT_MS = 120_000
 
 #: D16 "Persistence gate": the first-save modal (`dialog#praxis-persistence-first-save`) would
 #: block the harness's saves in a fresh context. The key is an existing one (core.js ACK_KEY);
@@ -5981,13 +5983,13 @@ class DisplayDriver:
     def run_cell(self, index: int) -> None:
         """Run one cell through ``notebook:run-cell`` and wait until the model says it is done. A command that
         rejects (an error cell can) is not fatal by itself: the model wait below decides; a timeout is."""
-        ran = self.page.evaluate(_DC_RUN_JS, {"i": index, "timeout_ms": DISPLAY_STEP_TIMEOUT_MS})
+        ran = self.page.evaluate(_DC_RUN_JS, {"i": index, "timeout_ms": DISPLAY_CELL_TIMEOUT_MS})
         if not ran.get("ok"):
             if ran.get("error") == "timeout":
-                raise DisplayCheckError(f"cell {index} did not finish within {DISPLAY_STEP_TIMEOUT_MS} ms")
+                raise DisplayCheckError(f"cell {index} did not finish within {DISPLAY_CELL_TIMEOUT_MS} ms")
             LOG.warning("notebook:run-cell for cell %s rejected (%s); waiting on the model", index, ran.get("error"))
         self.page.wait_for_function(
-            "(i) => window.__praxisDisplayCheck.modelDone(i)", arg=index, timeout=DISPLAY_STEP_TIMEOUT_MS
+            "(i) => window.__praxisDisplayCheck.modelDone(i)", arg=index, timeout=DISPLAY_CELL_TIMEOUT_MS
         )
 
     def report(self, index: int, res: str | None = None) -> dict[str, Any]:
