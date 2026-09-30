@@ -1,0 +1,69 @@
+# bathos sidecar for scripts/plr10/phase2_inventory.py
+# (backlog #5664, PLR 1.0 migration phase 2, PR-0 item 4; plan .praxia/docs/plans/260929_plr-1.0-phase2-plan.md §5, §8 item 1).
+# PRE-REGISTERED before any run of the root scans. Before this sidecar was committed, only the
+# instrument's synthetic controls were run (units `upstream` and `controls` into a scratch dir: positive
+# 93/93 .py and 86/86 .ts detected, negative 0 hits on 89 lines); no scan of any praxis root was run,
+# so the baseline count below is unseen. The 260929 recon's 88 code/data rows were measured by an
+# exploratory, untracked script on the tree BEFORE #191/#192/#193, so it is neither a prediction nor
+# evidence here: it is reported beside the new count, with a per-file attribution, and gates nothing.
+#
+# WHAT THIS RUN IS: a BASELINE measurement, not a hypothesis test of a count. The finding is the
+# before-count of code/data rows naming deprecated PLR 1.0 resource APIs on main at the run's git HEAD.
+# The outcome gates only on the instrument being complete and live: a count cannot "fail".
+#
+# SCHEDULING (owner rule 260929: preemption-safe and resumable; scheduling only, never [outcomes]):
+#   Nine units -- `upstream` (vocabulary regenerated from PLR source), one per scanned root
+#   (praxis, web-repl, coxswain, training, scripts, plr-sema, tests), and `controls` -- each in its own
+#   subprocess with a 30-min timeout, no whole-run timeout. Each persists units/<unit>.json and
+#   units/<unit>.stamp.json = {inputs: script sha256 + upstream-vocabulary sha256 + sha256 over
+#   (path, file sha256) of every scanned file in the root, output sha256}. A re-run reuses a unit only
+#   if inputs AND output hashes match; otherwise it recomputes. Any unit incomplete => no result.json
+#   => the run records no outcome (a crash, not a pass). The script refuses a dirty tracked tree under
+#   the scanned roots, so the count describes a commit.
+
+[experiment]
+hypothesis = "The tracked inventory scanner, run on main, is complete and live: every one of its nine units completes; its positive control (a synthetic file using every deprecated form in the vocabulary regenerated from PLR 1.0.0b1 source, in the form each is detected in, plus a .ts file with every text-scanned name) is detected in full; its negative control (the 1.0 replacements) produces zero hits; and every scanned Python file parses. Under those conditions the reported n_code_data_rows is the phase-2 baseline that PR-8's after-count must bring to 0 outside survey_data and docstrings. The count itself is reported, not predicted."
+stage_name = "plr10_phase2_inventory_baseline"
+novel = false
+
+[outcomes.pass]
+condition = "units_complete = true AND control_positive_detected = control_positive_expected AND control_positive_expected > 0 AND control_positive_ts_detected = control_positive_ts_expected AND control_positive_ts_expected > 0 AND control_negative_hits = 0 AND control_negative_lines > 0 AND n_parse_errors = 0 AND n_files_scanned > 0 AND n_upstream_rows > 0"
+is_residual = false
+decision = "Record n_code_data_rows / n_code_data_files as the phase-2 baseline (PR-0), with the per-usage-class counts and the per-file attribution against the recon's 88. PR-1..PR-8 diff against this run's inventory.tsv; PR-8's pre-registered after-run targets 0 code/data rows."
+reasoning = "Every deprecated form the vocabulary knows is detected when present, none of their replacements is, and no file escaped the AST pass, so the count is an undercount only where the vocabulary itself is incomplete, which the upstream unit derives from PLR source rather than a hand list."
+
+[outcomes.marginal]
+condition = "units_complete = true AND control_positive_detected = control_positive_expected AND control_positive_expected > 0 AND control_positive_ts_detected = control_positive_ts_expected AND control_positive_ts_expected > 0 AND control_negative_hits = 0 AND control_negative_lines > 0 AND n_parse_errors > 0 AND n_files_scanned > 0 AND n_upstream_rows > 0"
+is_residual = false
+decision = "The instrument is live but some Python files did not parse, so their AST hits are missing (their raw-text pass still ran). Publish the count with the parse-error file list from detail.json, check each listed file by hand for deprecated names, and state the count as a lower bound until then."
+reasoning = "A parse failure drops AST detection for that file only; the controls prove the detector itself works."
+
+[outcomes.fail]
+condition = "units_complete = false OR control_positive_detected != control_positive_expected OR control_positive_expected = 0 OR control_positive_ts_detected != control_positive_ts_expected OR control_positive_ts_expected = 0 OR control_negative_hits > 0 OR control_negative_lines = 0 OR n_files_scanned = 0 OR n_upstream_rows = 0"
+is_residual = true
+decision = "Do not cite any count. A missed positive form means the detector cannot see a deprecated usage it claims to cover; a negative hit means it would flag correct 1.0 code; an empty vocabulary or file set means the run measured nothing. Fix the scanner, commit, and re-run under this same sidecar."
+reasoning = "A baseline is only usable if the instrument that produced it is shown to fire on every form and stay quiet on the replacements."
+
+[result_schema]
+units_complete = "bool"
+git_head = "str"
+n_upstream_rows = "int"
+n_vocabulary = "int"
+n_files_scanned = "int"
+n_rows_total = "int"
+n_code_data_rows = "int"
+n_code_data_files = "int"
+n_survey_data_rows = "int"
+n_test_fixture_rows = "int"
+n_ambiguous_rows = "int"
+n_docstring_rows = "int"
+n_parse_errors = "int"
+n_skipped_large = "int"
+recon_code_data_rows = "int"
+code_data_delta_vs_recon = "int"
+control_positive_expected = "int"
+control_positive_detected = "int"
+control_positive_ts_expected = "int"
+control_positive_ts_detected = "int"
+control_negative_lines = "int"
+control_negative_hits = "int"
