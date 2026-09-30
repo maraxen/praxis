@@ -1,0 +1,26 @@
+/* Praxis Visualizer3D embed mode (task C4; spec D12). Injected by embed.js only when the page
+   was loaded with embed=1, and every rule is scoped to html.praxis-embed, which embed.js sets.
+   The deck panel's header and footer belong to the shell, so the page's own chrome is hidden
+   from inside the page rather than cropped from outside. */
+
+html.praxis-embed .navbar,
+html.praxis-embed #toolbar-left,
+html.praxis-embed #stats-panel,
+html.praxis-embed #sidepanel,
+html.praxis-embed #toolbar {
+  display: none !important;
+}
+
+/* The page reserves 60px for its navbar under .content; with the navbar hidden the viewport
+   takes the whole frame. */
+html.praxis-embed .content {
+  height: 100%;
+}
+
+/* The page ground. */
+html.praxis-embed,
+html.praxis-embed body,
+html.praxis-embed main,
+html.praxis-embed #viewport {
+  background: #EEF1F4;
+}
