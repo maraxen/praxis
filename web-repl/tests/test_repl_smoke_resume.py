@@ -6726,8 +6726,10 @@ def test_assemble_drag_evidence_reports_malformed_parts_without_raising(rs):
 
 _EL = r"""
 const cls = (list) => ({ contains: (c) => list.includes(c), [Symbol.iterator]: function* () { yield* list; } });
-const mkEl = (tag, id, classes, extra = {}) => ({ tagName: tag, id, classList: cls(classes),
-  closest: (sel) => (extra.closest && extra.closest[sel]) || null, ...extra });
+const mkEl = (tag, id, classes, extra = {}) => {
+  const { closest: map = {}, ...rest } = extra;
+  return { tagName: tag, id, classList: cls(classes), closest: (sel) => map[sel] || null, ...rest };
+};
 """
 
 

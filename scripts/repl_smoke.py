@@ -7548,6 +7548,136 @@ def drag_plan(geo: Any, width: float, *, inner_width: Any = None) -> dict[str, A
     }
 
 
+def drag_plan_by(geo: Any, dx: float, *, inner_width: Any = None) -> dict[str, Any] | None:
+    """A SHORT drag: press on the centre of the handle and move ``dx`` px to the right (``x1 = x0 + dx``). Same geometry
+    fields as ``drag_plan`` (``target_width`` is ``None``; ``dx`` says how far), ``None`` for unusable geometry."""
+    plan = drag_plan(geo, 0, inner_width=inner_width)
+    if plan is None:
+        return None
+    plan["x1"] = plan["x0"] + dx
+    plan["dx"] = dx
+    plan["target_width"] = None
+    plan["x1_in_window"] = None if not _num(inner_width) else bool(0 <= plan["x1"] <= inner_width)
+    return plan
+
+
+def path_points(plan: Any) -> list[list[float]]:
+    """``[x, y]`` at the press point and at four points along the path to ``x1`` (k/5 of the way, k = 1..4): where the harness
+    asks what element sits under the pointer before it presses."""
+    if not isinstance(plan, dict) or not all(_num(plan.get(k)) for k in ("x0", "x1", "y")):
+        return []
+    step = (plan["x1"] - plan["x0"]) / 5
+    return [[plan["x0"] + k * step, plan["y"]] for k in range(5)]
+
+
+def summarize_trace(events: Any, *, keep: int = 3) -> dict[str, Any]:
+    """The page's mouse/pointer events as ``{n, counts, events}``: ``counts`` per ``<type>@<phase>``; every event is kept
+    except that a run of ``*move`` events of one type and phase keeps its first and last ``keep``. Order is preserved."""
+    good = [e for e in events if isinstance(e, dict) and isinstance(e.get("type"), str)] if isinstance(events, list) else []
+    counts: dict[str, int] = {}
+    groups: dict[tuple[str, str], list[int]] = {}
+    for i, e in enumerate(good):
+        phase = e.get("phase") if isinstance(e.get("phase"), str) else "?"
+        counts[f"{e['type']}@{phase}"] = counts.get(f"{e['type']}@{phase}", 0) + 1
+        if e["type"].endswith("move"):
+            groups.setdefault((e["type"], phase), []).append(i)
+    dropped: set[int] = set()
+    for idxs in groups.values():
+        if len(idxs) > 2 * keep:
+            dropped.update(idxs[keep:-keep])
+    return {"n": len(good), "counts": counts, "events": [e for i, e in enumerate(good) if i not in dropped]}
+
+
+_ELEMENT_FIELDS = (("tag", "str"), ("id", "str"), ("classes", "list"), ("inside_iframe", "bool"), ("inside_deck", "bool"),
+                   ("inside_handle", "bool"), ("is_handle", "bool"))
+
+
+def _element_problems(where: str, el: Any) -> list[str]:
+    if el is None:
+        return []
+    if not isinstance(el, dict):
+        return [f"{where} is not an object"]
+    out = []
+    for name, kind in _ELEMENT_FIELDS:
+        if name not in el:
+            out.append(f"{where}.{name} missing")
+        elif kind == "list" and not isinstance(el[name], list):
+            out.append(f"{where}.{name} is not a list")
+        elif kind == "bool" and not isinstance(el[name], bool):
+            out.append(f"{where}.{name} is not a bool")
+        elif kind == "str" and name == "tag" and not isinstance(el[name], str):
+            out.append(f"{where}.{name} is not a string")
+        elif kind == "str" and name != "tag" and el[name] is not None and not isinstance(el[name], str):
+            out.append(f"{where}.{name} is not a string")
+    return out
+
+
+def element_probe_problems(probe: Any, n_points: int) -> list[str]:
+    """What is malformed about a ``D.pointsAt`` result: ``n_points`` points, each ``{x, y, element}`` (``element`` ``None``
+    where nothing is under the point), and an ``active_element``."""
+    if not isinstance(probe, dict):
+        return ["probe is not an object"]
+    problems = []
+    points = probe.get("points")
+    if not isinstance(points, list) or len(points) != n_points:
+        problems.append(f"points is not a list of {n_points}")
+        points = points if isinstance(points, list) else []
+    for i, pt in enumerate(points):
+        if not isinstance(pt, dict):
+            problems.append(f"points[{i}] is not an object")
+            continue
+        for k in ("x", "y"):
+            if not _num(pt.get(k)):
+                problems.append(f"points[{i}].{k} missing or not a number")
+        if "element" not in pt:
+            problems.append(f"points[{i}].element missing")
+        else:
+            problems += _element_problems(f"points[{i}].element", pt["element"])
+    if "active_element" not in probe:
+        problems.append("active_element missing")
+    else:
+        problems += _element_problems("active_element", probe["active_element"])
+    return problems
+
+
+def dock_probe_problems(probe: Any) -> list[str]:
+    """What is malformed about a ``D.dockProbe`` result. The private dock state (sizes, sizers, the freeze flags) is ``None``
+    where it could not be read, which is not a problem."""
+    if not isinstance(probe, dict):
+        return ["probe is not an object"]
+    problems = []
+    for name, kind in (("sizes", "list"), ("sizers", "dictlist"), ("optimize_resize", "bool"), ("resize_drag_active", "bool"),
+                       ("frozen_groups", "int")):
+        value = probe.get(name)
+        if value is None:
+            continue
+        if kind == "list" and not isinstance(value, list):
+            problems.append(f"{name} is not a list")
+        elif kind == "dictlist" and not (isinstance(value, list) and all(isinstance(x, dict) for x in value)):
+            problems.append(f"{name} is not a list of objects")
+        elif kind == "bool" and not isinstance(value, bool):
+            problems.append(f"{name} is not a bool")
+        elif kind == "int" and not (isinstance(value, int) and not isinstance(value, bool)):
+            problems.append(f"{name} is not an int")
+    if not isinstance(probe.get("inline"), dict):
+        problems.append("inline missing")
+    return problems
+
+
+def assemble_drag_evidence(plan: dict[str, Any], sent: Any, trace: Any, elements: Any, dock_before: Any, dock_after_up: Any) -> dict[str, Any]:
+    """One drag as evidence: the plan (``x0``, ``y``, ``x1``, handle, widget, ``n_handles``, ``x1_in_window``...), what the
+    harness SENT, the page's trace (``trace``, ``trace_n``, ``trace_counts``), the elements under the pointer before the press,
+    and the dock's own state before the press and right after the release. Never raises; ``problems`` lists what is malformed."""
+    summary = summarize_trace(trace)
+    problems = [f"elements: {p}" for p in element_probe_problems(elements, len(path_points(plan)))]
+    problems += [f"dock_probe_before: {p}" for p in dock_probe_problems(dock_before)]
+    problems += [f"dock_probe_after_up: {p}" for p in dock_probe_problems(dock_after_up)]
+    return {
+        **plan, "sent": sent, "trace": summary["events"], "trace_n": summary["n"], "trace_counts": summary["counts"],
+        "elements": elements, "dock_probe_before": dock_before, "dock_probe_after_up": dock_after_up, "problems": problems,
+    }
+
+
 # -- K1a diagnostic evidence: what one Follow click did, and what each cell's outputs are (evidence only) -------------
 
 #: The notebook/deck state read at one instant around a click: ``(field, type)``; every field may be ``None``.
@@ -7863,6 +7993,28 @@ __NOTEBOOK_HELPER__
   };
   const D = (window.__praxisDockCheck = {});
 
+  // The dock's own saved layout (saveLayout reads, it changes nothing): one entry per split area, or null when unreadable.
+  const splitSizesNow = () => {
+    try {
+      const cfg = app().shell._dockPanel.saveLayout();
+      const out = [];
+      const walk = (a) => {
+        if (a && a.type === "split-area") { out.push({ orientation: a.orientation, sizes: Array.from(a.sizes) }); (a.children || []).forEach(walk); }
+      };
+      walk(cfg && cfg.main);
+      return out;
+    } catch (e) { return null; }
+  };
+  const descElement = (el) => {
+    if (!el) return null;
+    return {
+      tag: el.tagName === undefined ? null : el.tagName, id: el.id || null, classes: Array.from(el.classList || []),
+      inside_iframe: el.tagName === "IFRAME",
+      inside_deck: !!(el.closest && el.closest(".praxis-deck-panel")),
+      inside_handle: !!(el.closest && el.closest(".lm-DockPanel-handle")),
+      is_handle: !!(el.classList && el.classList.contains && el.classList.contains("lm-DockPanel-handle")),
+    };
+  };
   D.snap = () => { const d = dockCtl(); try { return d ? d.snapshot() : null; } catch (e) { return null; } };
 
   D.facts = () => {
@@ -7997,17 +8149,9 @@ __NOTEBOOK_HELPER__
     const deck = panelNode();
     const dockNode = dockPanelNode();
     const byId = (id) => document.getElementById(id) || null;
-    let leftCollapsed = null, rightCollapsed = null, splitSizes = null;
+    let leftCollapsed = null, rightCollapsed = null;
     try { leftCollapsed = app().shell.leftCollapsed; rightCollapsed = app().shell.rightCollapsed; } catch (e) { /* no shell */ }
-    try {
-      const cfg = app().shell._dockPanel.saveLayout();
-      const out = [];
-      const walk = (a) => {
-        if (a && a.type === "split-area") { out.push({ orientation: a.orientation, sizes: Array.from(a.sizes) }); (a.children || []).forEach(walk); }
-      };
-      walk(cfg && cfg.main);
-      splitSizes = out;
-    } catch (e) { splitSizes = null; }
+    const splitSizes = splitSizesNow();
     const root = document.documentElement || {};
     return {
       inner_width: window.innerWidth, inner_height: window.innerHeight,
@@ -8032,18 +8176,82 @@ __NOTEBOOK_HELPER__
   };
   // The mouse events the PAGE received during a drag (window capture listeners): `start`, then `stop` (which removes
   // the listeners and returns them), or `read`. Evidence of what actually arrived, next to what the harness sent.
+  // What sits under each point (elementFromPoint: an IFRAME element means the point is over the deck's iframe) and what has focus.
+  D.pointsAt = (a) => ({
+    points: a.points.map(([x, y]) => ({ x, y, element: descElement(document.elementFromPoint(x, y)) })),
+    active_element: descElement(document.activeElement),
+  });
+  // Lumino's and JupyterLab's own state around a drag (all read-only; private fields are read in try/catch and are null when
+  // absent): the split sizes, the SplitLayout sizers of the dock (size, hint, min, max, stretch) and whether each handle is
+  // hidden, and JupyterLab's resize optimisation (`optimizeResize`, `_isResizeDragActive`, `_frozenGroups`), which on a
+  // handle press freezes DOM-heavy widgets by writing inline width/max-width/max-height onto their nodes: so the inline
+  // styles of the notebook panel, the deck panel and the notebook panel's children are read too.
+  D.dockProbe = () => {
+    let dockPanel = null;
+    try { dockPanel = app().shell._dockPanel || null; } catch (e) { dockPanel = null; }
+    const read = (fn) => { try { const v = fn(); return v === undefined ? null : v; } catch (e) { return null; } };
+    let sizers = null;
+    try {
+      const acc = [];
+      const walk = (n) => {
+        if (n && n.type === "split-area") {
+          acc.push({ orientation: n.orientation,
+            sizers: Array.from(n.sizers || []).map((z) => ({ size: z.size, size_hint: z.sizeHint, min_size: z.minSize, max_size: z.maxSize, stretch: z.stretch })),
+            handles_hidden: Array.from(n.handles || []).map((h) => h.classList.contains("lm-mod-hidden")) });
+          (n.children || []).forEach(walk);
+        }
+      };
+      walk(dockPanel.layout._root);
+      sizers = acc;
+    } catch (e) { sizers = null; }
+    const inline = (el) => (el ? { width: el.style.width, max_width: el.style.maxWidth, min_width: el.style.minWidth, height: el.style.height, max_height: el.style.maxHeight } : null);
+    const nbp = notebookPanel();
+    return {
+      sizes: splitSizesNow(), sizers,
+      optimize_resize: read(() => dockPanel.optimizeResize), resize_drag_active: read(() => dockPanel._isResizeDragActive),
+      frozen_groups: read(() => dockPanel._frozenGroups.length),
+      inline: {
+        notebook_panel: inline(nbp), deck_panel: inline(panelNode()), notebook: inline(notebookNode()),
+        notebook_children: nbp ? Array.from(nbp.children || []).slice(0, 6).map((c) => ({ tag: c.tagName, classes: c.className, width: c.style.width, max_width: c.style.maxWidth, max_height: c.style.maxHeight })) : [],
+      },
+    };
+  };
+  // The events the PAGE received during a drag. Lumino (and JupyterLab's dock subclass) drive a handle drag with POINTER events
+  // and call preventDefault on pointerdown, after which Chromium suppresses the compatibility MOUSE events for the rest of the
+  // press; a mouse-only trace therefore showed one stray event for a drag that worked. So both families are recorded, at three
+  // places (window capture, document capture, window bubble: a bubble listener that never hears an event means something
+  // stopped its propagation), each with its target, `defaultPrevented` (true only at bubble, after the handlers ran) and, on a
+  // press or release, the dock probe at that instant and once more a tick later. `start`, then `stop` (removes every listener
+  // and returns the events), or `read`.
   D.mouseTrace = (a) => {
-    const TYPES = ["mousedown", "mousemove", "mouseup"];
+    const TYPES = ["pointerdown", "pointermove", "pointerup", "pointercancel", "mousedown", "mousemove", "mouseup"];
+    const BASES = [["window:capture", window, true], ["document:capture", document, true], ["window:bubble", window, false]];
     if (a.op === "start") {
-      const t = { events: [], on: true };
-      t.handler = (e) => { if (t.events.length < 400) t.events.push({ type: e.type, x: e.clientX, y: e.clientY, buttons: e.buttons }); };
-      TYPES.forEach((ty) => window.addEventListener(ty, t.handler, true));
+      const t = { events: [], on: true, installed: [] };
+      for (const [phase, target, capture] of BASES) {
+        const handler = (e) => {
+          if (t.events.length >= 600) return;
+          const rec = { type: e.type, phase, x: e.clientX, y: e.clientY, buttons: e.buttons, target: descElement(e.target),
+                        prevented: !!e.defaultPrevented, pointer_id: e.pointerId === undefined ? null : e.pointerId,
+                        trusted: e.isTrusted === undefined ? null : e.isTrusted };
+          if (phase === "window:capture" && (e.type === "pointerdown" || e.type === "pointerup" || e.type === "mousedown")) {
+            rec.probe = D.dockProbe();
+            setTimeout(() => { rec.probe_after = D.dockProbe(); }, 0);
+          }
+          t.events.push(rec);
+        };
+        TYPES.forEach((ty) => target.addEventListener(ty, handler, capture));
+        t.installed.push({ target, capture, handler });
+      }
       window.__praxisMouseTrace = t;
       return true;
     }
     const t = window.__praxisMouseTrace;
     if (!t) return [];
-    if (a.op === "stop" && t.on) { t.on = false; TYPES.forEach((ty) => window.removeEventListener(ty, t.handler, true)); }
+    if (a.op === "stop" && t.on) {
+      t.on = false;
+      for (const { target, capture, handler } of t.installed) TYPES.forEach((ty) => target.removeEventListener(ty, handler, capture));
+    }
     return t.events.slice();
   };
   // -- diagnostic evidence (read-only): the notebook is found among the MAIN-AREA widgets, never through
@@ -8377,23 +8585,37 @@ class DockDriver(DisplayDriver):
     def drag_splitter_to(self, width: float) -> float | None:
         """A real drag of the splitter nearest the panel until the panel is ``width`` px wide (spike S1's drag); returns
         the panel's measured width afterwards, or ``None`` when no splitter handle is found."""
-        self.last_drag = None
         plan = drag_plan(self._dk("handleRect()"), width, inner_width=self.facts().get("inner_width"))
+        return self._perform_drag(plan)
+
+    def drag_splitter_by(self, dx: float) -> float | None:
+        """A SHORT real drag of the same splitter ``dx`` px to the right (evidence only); the panel's width afterwards."""
+        plan = drag_plan_by(self._dk("handleRect()"), dx, inner_width=self.facts().get("inner_width"))
+        return self._perform_drag(plan)
+
+    def _perform_drag(self, plan: dict[str, Any] | None) -> float | None:
+        """Press on the handle, move, release: real Playwright mouse events. Diagnostic evidence (``last_drag``): what sat
+        under the pointer along the path BEFORE the press, Lumino's state before and right after the release, what was sent
+        and what the page received (the trace is armed before the move to ``x0``)."""
+        self.last_drag = None
         if plan is None:
             return None
         x0, y, x1, steps = plan["x0"], plan["y"], plan["x1"], plan["steps"]
         sent = [["move", x0, y], ["down"], ["move", x1, y, steps], ["up"]]
+        elements = self._dk("pointsAt(a)", {"points": path_points(plan)})
+        dock_before = self._dk("dockProbe()")
         self._dk("mouseTrace(a)", {"op": "start"})
+        dock_after_up = None
         try:
             self.page.mouse.move(x0, y)
             self.page.mouse.down()
             self.page.mouse.move(x1, y, steps=steps)
             self.page.mouse.up()
+            dock_after_up = self._dk("dockProbe()")
             self.page.wait_for_timeout(500)
         finally:
             trace = self._dk("mouseTrace(a)", {"op": "stop"}) or []
-        # What was planned, what was sent, and what the PAGE received (diagnostic evidence only).
-        self.last_drag = {**plan, "sent": sent, "trace": trace[:TRACE_EVENTS_MAX], "trace_n": len(trace)}
+        self.last_drag = assemble_drag_evidence(plan, sent, trace, elements, dock_before, dock_after_up)
         rect = self.facts().get("panel_rect") or {}
         return rect.get("width")
 
@@ -8886,6 +9108,12 @@ def run_k2(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | No
         got = getattr(driver, "last_drag", None)
         return dict(got) if isinstance(got, dict) else None
 
+    def traced_drag(step: str, fn: Any) -> tuple[Any, Any]:
+        """One drag and its evidence. A drag that RAISED has no evidence (the driver's ``last_drag`` would be the previous drag's)."""
+        failed = object()
+        value = _guard(ev, step, fn, failed)
+        return (None, None) if value is failed else (value, last_drag())
+
     # 1. 1152x800: boot, draw, measure, dock() (its first announce opens the drawer, T2)
     def step_drawer() -> dict[str, Any]:
         nb_before = driver.facts().get("nb_content_width")
@@ -8951,13 +9179,18 @@ def run_k2(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | No
         out: dict[str, Any] = {"open": (driver.facts().get("panel_rect") or {}).get("width")}
         out["geo_before"] = snapshot(f"medium_{label}_before")
         loads0 = driver.loads()
-        out["drag_low"] = _guard(ev, f"drag_low_{label}", lambda: driver.drag_splitter_to(300))
-        out["drag_low_xy"] = last_drag()
+        out["drag_low"], out["drag_low_xy"] = traced_drag(f"drag_low_{label}", lambda: driver.drag_splitter_to(300))
         out["geo_after_low"] = snapshot(f"medium_{label}_after_low")
-        out["drag_high"] = _guard(ev, f"drag_high_{label}", lambda: driver.drag_splitter_to(700))
-        out["drag_high_xy"] = last_drag()
+        out["drag_high"], out["drag_high_xy"] = traced_drag(f"drag_high_{label}", lambda: driver.drag_splitter_to(700))
         out["geo_after_high"] = snapshot(f"medium_{label}_after_high")
         raw["reloads"][f"drag_{label}"] = (driver.loads() - loads0) if _num(loads0) and _num(driver.loads()) else None
+        if label == "1280":
+            # Evidence only, AFTER the two drags the keys read and after the load count: a SHORT rightward drag (does a press on
+            # the handle move it at all?), then the failing drag again. Nothing reads these.
+            out["drag_small_right"], out["drag_small_right_xy"] = traced_drag("drag_small_right_1280", lambda: driver.drag_splitter_by(30))
+            out["geo_after_small_right"] = snapshot("medium_1280_after_small_right")
+            out["drag_low_retry"], out["drag_low_retry_xy"] = traced_drag("drag_low_retry_1280", lambda: driver.drag_splitter_to(300))
+            out["geo_after_low_retry"] = snapshot("medium_1280_after_low_retry")
         return out
 
     raw["medium"] = {"1440": _guard(ev, "medium_1440", lambda: medium("1440"), {})}
