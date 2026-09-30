@@ -3739,3 +3739,205 @@ def test_dock_unit_inputs_are_the_seven_d16_inputs_and_hash_the_viewports_and_ne
     assert rs.unit_inputs(k1b, env, ())["args"] != rs.unit_inputs(k1b, env, ("drop-query",))["args"], "AC-39(e): --neg is hashed"
     other = dataclasses.replace(rs.UNIT_BY_ID["K2"], viewports=((1152, 800),))
     assert rs.unit_inputs(rs.UNIT_BY_ID["K2"], env)["args"] != rs.unit_inputs(other, env)["args"]
+
+
+# =========================================================================== #
+# Sprint C (C7): K1a -- AC-34, AC-35, AC-37. The pure key derivation over raw page evidence.
+# =========================================================================== #
+#
+# `derive_k1a_keys(raw)` is pure: it maps what the page reported to the listed keys. Each key has a POSITIVE control
+# (synthetic raw evidence that must pass) and NEGATIVE controls (evidence violating, or missing, that one thing must
+# fail exactly that key). A precondition that would make a key pass vacuously is itself a negative control.
+
+import copy  # noqa: E402
+import math  # noqa: E402
+
+
+def _dir(v):
+    n = math.sqrt(sum(c * c for c in v))
+    return [c / n for c in v]
+
+
+def cam_for(rs, name, at=(100.0, 200.0, 0.0), dist=500.0):
+    """A camera ``{from, at}`` looking along exactly the preset's direction."""
+    d = _dir(rs.VIEWS[name])
+    return {"from": [a + dist * c for a, c in zip(at, d)], "at": list(at)}
+
+
+def good_k1a(rs):
+    return {
+        "panel": {"state": "open-connected", "home": "split", "panel_left": 1002.0, "notebook_right": 1000.0},
+        "resources": ["deck", "tip_carrier", "tips_300", "plate_carrier", "source", "assay"],
+        "hello": {"backend": "WebGL2", "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device))"},
+        "canvas": {"diff_pixels": 54000, "total_pixels": 360000, "control_blank": 0.0, "control_marked": 0.05},
+        "embed": {".navbar": "none", "#toolbar-left": "none", "#stats-panel": "none", "#sidepanel": "none", "#toolbar": "none"},
+        "click": {"footer_before": "No resource focused.", "footer_after": "source",
+                  "at_before": [0.0, 0.0, 0.0], "at_after": [120.0, 80.0, 10.0]},
+        "follow_on": {"enabled": True, "focused": "assay", "footer": "assay",
+                      "at_before": [120.0, 80.0, 10.0], "at_after": [120.0, 160.0, 10.0]},
+        "follow_off": {"enabled": False, "footer_before": "assay", "footer_after": "assay",
+                       "at_before": [120.0, 160.0, 10.0], "at_after": [120.0, 160.0, 10.0]},
+        "follow_null": {"enabled": True, "ledger_resources": [None], "footer_before": "assay", "footer_after": "assay",
+                        "at_before": [120.0, 160.0, 10.0], "at_after": [120.0, 160.0, 10.0]},
+        "presets": {"top": cam_for(rs, "top"), "front": cam_for(rs, "front"), "iso": cam_for(rs, "iso")},
+        "follow_keeps": {"pressed": "top", "camera": cam_for(rs, "top", at=(300.0, 40.0, 5.0)), "footer_before": "assay",
+                         "footer_after": "tips_300"},
+        "state": {"well": "source_well_0", "before": '{"volume": 200}', "after": '{"volume": 190}'},
+        "stale": {"changed_notices": 1, "notice_text": rs.CHANGED_NOTICE, "panel_state": "open-connected"},
+    }
+
+
+K1A_DERIVED = (
+    "panel_is_split_right", "viewer_resources", "hello_backend", "canvas_nonblank", "embed_hidden", "click_focuses",
+    "follow_focuses", "follow_off_holds", "follow_skips_null", "preset_directions", "follow_keeps_preset", "state_updates",
+    "stale_and_panel",
+)
+
+
+def test_views_are_the_renderer_js_vectors_copied_into_the_harness(rs):
+    """AC-35: `VIEWS` is copied from renderer.js:117-121; read the real file so the copy cannot drift."""
+    src = (rs.REPO_ROOT / "web-repl/overlay/assets/visualizer3d/renderer.js").read_text()
+    block = src.split("export const VIEWS = {", 1)[1].split("};", 1)[0]
+    found = {}
+    for line in block.strip().splitlines():
+        m = re.match(r"\s*(\w+): new THREE\.Vector3\(([^)]*)\)", line)
+        assert m, line
+        found[m.group(1)] = tuple(float(x) for x in m.group(2).split(","))
+    assert found == {k: tuple(v) for k, v in rs.VIEWS.items()} and set(found) == {"iso", "top", "front"}
+
+
+@pytest.mark.parametrize("name", ["iso", "top", "front"])
+def test_preset_ok_is_the_normalised_direction_dot_above_0_99(rs, name):
+    assert rs.preset_ok(cam_for(rs, name), name) is True
+    assert rs.preset_ok(cam_for(rs, name, dist=10.0), name) is True, "a length-independent test"
+    for other in {"iso", "top", "front"} - {name}:
+        assert rs.preset_ok(cam_for(rs, other), name) is False, (name, other)
+
+
+def test_preset_ok_rejects_degenerate_and_garbage_cameras(rs):
+    assert rs.preset_ok({"from": [1, 1, 1], "at": [1, 1, 1]}, "top") is False, "no direction at all"
+    for bad in (None, {}, {"from": [1, 2], "at": [0, 0, 0]}, {"from": ["a", 1, 1], "at": [0, 0, 0]}, {"from": [0, 0, 1]}):
+        assert rs.preset_ok(bad, "top") is False, bad
+    assert rs.preset_ok(cam_for(rs, "top"), "nope") is False
+
+
+def test_preset_ok_threshold_is_strict_at_0_99(rs):
+    top = _dir(rs.VIEWS["top"])
+    def tilted(deg):
+        t = math.radians(deg)
+        v = [top[0], top[1] * math.cos(t) - top[2] * math.sin(t), top[1] * math.sin(t) + top[2] * math.cos(t)]
+        return {"from": v, "at": [0.0, 0.0, 0.0]}
+    assert rs.preset_ok(tilted(5.0), "top") is True  # cos 5 deg = 0.9962
+    assert rs.preset_ok(tilted(9.0), "top") is False  # cos 9 deg = 0.9877
+
+
+def test_k1a_positive_control_every_listed_key_holds(rs):
+    keys = rs.derive_k1a_keys(good_k1a(rs))
+    assert set(K1A_DERIVED) <= set(keys)
+    unit = rs.UNIT_BY_ID["K1a"]
+    assert rs.evaluate_unit_result(unit, dict(keys, pageerrors=[])) == ([], []), keys
+    assert keys["hello_backend"] == "WebGL2", "the page's own string, read from the kernel, not a boolean"
+
+
+def test_k1a_derive_never_raises_on_empty_or_garbage_evidence_and_fails_every_key(rs):
+    for raw in ({}, None, {"panel": None, "canvas": "x", "presets": 3}):
+        keys = rs.derive_k1a_keys(raw)
+        unit = rs.UNIT_BY_ID["K1a"]
+        missing, failing = rs.evaluate_unit_result(unit, dict(keys, pageerrors=[]))
+        assert missing == [] and set(failing) == set(K1A_DERIVED), (raw, failing)
+
+
+def _mut(rs, fn):
+    raw = copy.deepcopy(good_k1a(rs))
+    fn(raw)
+    keys = rs.derive_k1a_keys(raw)
+    return rs.evaluate_unit_result(rs.UNIT_BY_ID["K1a"], dict(keys, pageerrors=[]))[1], keys
+
+
+def _set(path, value):
+    def apply(raw):
+        d = raw
+        for p in path[:-1]:
+            d = d[p]
+        d[path[-1]] = value
+    return apply
+
+
+@pytest.mark.parametrize(
+    "key,fn",
+    [
+        ("panel_is_split_right", _set(("panel", "home"), "drawer")),
+        ("panel_is_split_right", _set(("panel", "panel_left"), 700.0)),
+        ("panel_is_split_right", _set(("panel", "state"), "open-waiting")),
+        ("panel_is_split_right", _set(("panel", "panel_left"), None)),
+        ("viewer_resources", _set(("resources",), ["deck", "assay", "source"])),
+        ("viewer_resources", _set(("resources",), ["deck", "assay", "tips_300"])),
+        ("viewer_resources", _set(("resources",), None)),
+        ("viewer_resources", _set(("resources",), [])),
+        ("hello_backend", _set(("hello", "backend"), "WebGL")),
+        ("hello_backend", _set(("hello", "backend"), None)),
+        ("hello_backend", _set(("hello",), None)),
+        ("canvas_nonblank", _set(("canvas", "diff_pixels"), 0)),
+        ("canvas_nonblank", _set(("canvas", "diff_pixels"), 3600)),  # exactly 1%: "> 1%" is strict
+        ("canvas_nonblank", _set(("canvas", "total_pixels"), 0)),
+        ("canvas_nonblank", _set(("canvas", "control_blank"), 0.5)),  # the measurement reads a blank image as drawn
+        ("canvas_nonblank", _set(("canvas", "control_marked"), 0.0)),  # ... or cannot see a marked image at all
+        ("canvas_nonblank", _set(("canvas",), None)),
+        ("embed_hidden", _set(("embed", ".navbar"), "flex")),
+        ("embed_hidden", _set(("embed", "#toolbar-left"), "block")),
+        ("embed_hidden", _set(("embed", "#stats-panel"), "block")),
+        ("embed_hidden", _set(("embed", "#sidepanel"), "block")),
+        ("embed_hidden", _set(("embed", "#toolbar"), "block")),
+        ("embed_hidden", _set(("embed", "#toolbar"), None)),  # the element was not found: nothing was verified hidden
+        ("click_focuses", _set(("click", "at_after"), [0.0, 0.0, 0.0])),
+        ("click_focuses", _set(("click", "footer_after"), "assay")),
+        ("click_focuses", _set(("click", "footer_before"), "source")),  # already focused: the click proves nothing
+        ("click_focuses", _set(("click", "at_before"), None)),
+        ("follow_focuses", _set(("follow_on", "footer"), "source")),
+        ("follow_focuses", _set(("follow_on", "focused"), "source")),
+        ("follow_focuses", _set(("follow_on", "at_after"), [120.0, 80.0, 10.0])),
+        ("follow_focuses", _set(("follow_on", "enabled"), False)),
+        ("follow_off_holds", _set(("follow_off", "at_after"), [0.0, 0.0, 0.0])),
+        ("follow_off_holds", _set(("follow_off", "footer_after"), "tips_300")),
+        ("follow_off_holds", _set(("follow_off", "enabled"), True)),  # Follow was never off: vacuous
+        ("follow_skips_null", _set(("follow_null", "at_after"), [0.0, 0.0, 0.0])),
+        ("follow_skips_null", _set(("follow_null", "footer_after"), "source")),
+        ("follow_skips_null", _set(("follow_null", "enabled"), False)),
+        ("follow_skips_null", _set(("follow_null", "ledger_resources"), ["assay"])),  # the cell names a resource: not a null cell
+        ("follow_skips_null", _set(("follow_null", "ledger_resources"), [None, "assay"])),
+        ("follow_skips_null", _set(("follow_null", "ledger_resources"), [])),  # no output at all: vacuous
+        ("preset_directions", _set(("presets", "top"), None)),
+        ("follow_keeps_preset", _set(("follow_keeps", "camera"), None)),
+        ("follow_keeps_preset", _set(("follow_keeps", "footer_after"), "assay")),  # Follow never focused anything new
+        ("follow_keeps_preset", _set(("follow_keeps", "pressed"), "front")),
+        ("state_updates", _set(("state", "after"), '{"volume": 200}')),
+        ("state_updates", _set(("state", "before"), None)),
+        ("state_updates", _set(("state", "after"), None)),
+        ("state_updates", _set(("state", "well"), "")),
+        ("stale_and_panel", _set(("stale", "changed_notices"), 0)),
+        ("stale_and_panel", _set(("stale", "notice_text"), "Changed since.")),
+        ("stale_and_panel", _set(("stale", "panel_state"), "closed")),
+    ],
+)
+def test_k1a_negative_controls_each_violation_fails_exactly_its_key(rs, key, fn):
+    failing, _ = _mut(rs, fn)
+    assert failing == [key], failing
+
+
+@pytest.mark.parametrize("name,other", [("top", "front"), ("front", "iso"), ("iso", "top")])
+def test_k1a_preset_directions_fails_when_any_one_preset_points_the_wrong_way(rs, name, other):
+    failing, _ = _mut(rs, lambda raw: raw["presets"].__setitem__(name, cam_for(rs, other)))
+    assert failing == ["preset_directions"]
+
+
+def test_k1a_follow_keeps_preset_needs_the_top_direction_not_another_preset(rs):
+    failing, _ = _mut(rs, lambda raw: raw["follow_keeps"].__setitem__("camera", cam_for(rs, "iso")))
+    assert failing == ["follow_keeps_preset"]
+
+
+def test_canvas_nonblank_fraction_is_strictly_above_one_percent(rs):
+    assert rs.canvas_nonblank({"diff_pixels": 3601, "total_pixels": 360000, "control_blank": 0.0, "control_marked": 0.05}) is True
+    assert rs.canvas_nonblank({"diff_pixels": 3600, "total_pixels": 360000, "control_blank": 0.0, "control_marked": 0.05}) is False
+    assert rs.canvas_fraction({"diff_pixels": 1, "total_pixels": 4}) == 0.25
+    assert rs.canvas_fraction({"diff_pixels": 1, "total_pixels": 0}) is None
+    assert rs.canvas_fraction(None) is None
