@@ -165,6 +165,29 @@ def _site_key(plr_site: Any) -> str:
     return f"{plr_site.file}:{plr_site.lineno}:{plr_site.qualname}"
 
 
+def count_ops_decided_at_site(collected_findings: Any, site_key: str) -> tuple[int, int]:
+    """``(attempted, decided)`` for one guard site, counted per OPERATION
+    (260929, spec 260929_plr-sema-plr1-tip-effect-increment.md §18.5.6, #5622,
+    T61): ``attempted`` is the number of ``(row, operation_id)`` pairs carrying
+    at least one finding at ``site_key`` (an operation can carry several
+    inlined records of one guard, and each unrolled loop iteration repeats
+    them -- none of which may inflate the count); ``decided`` is how many of
+    those had EVERY such finding ``safe``. ``collected_findings`` is
+    ``[(row_id, findings), ...]`` as ``FINDINGS_SINK`` collects it.
+    """
+    attempted = decided = 0
+    for _row_id, findings in collected_findings:
+        by_op: dict[str, list[Any]] = {}
+        for f in findings:
+            if _site_key(f.plr_site) == site_key:
+                by_op.setdefault(f.operation_id, []).append(f)
+        for op_findings in by_op.values():
+            attempted += 1
+            if all(f.verdict.value == "safe" for f in op_findings):
+                decided += 1
+    return attempted, decided
+
+
 @dataclasses.dataclass
 class RowResult:
     """Result for one row."""
@@ -960,6 +983,12 @@ def main(argv: list[str] | None = None) -> int:
     _SITE_ASSERT_RESOURCES = _site_by_symbol(
         "LiquidHandler._assert_resources_exist", "ValueError", "not resource_from_deck == resource"
     )
+    # 260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md §18.5.6, #5622,
+    # T61): the FOURTH D6 site rule's own site, `_check_tip_racks_available`'s
+    # guard (`:338` at the 1.0 pin), resolved by symbol like every other.
+    _SITE_TIP_RACKS = _site_by_symbol(
+        "_check_tip_racks_available", "ValueError", "not rack._available_for_tip_handling"
+    )
 
     def _resolved_declined(site_key: str) -> tuple[int, int]:
         resolved = n_findings_decided_by_site.get(site_key, 0)
@@ -1022,6 +1051,24 @@ def main(argv: list[str] | None = None) -> int:
     n_assert_resources_decided = {
         "total": _assert_resources_resolved,
         "attempted": _assert_resources_resolved + _assert_resources_declined,
+        "predicted_target": 288,
+    }
+    # 260929 (spec §18.5.6, #5622, T61): HM-26's loud half for the FOURTH
+    # site rule -- the published count that catches a silent reversion of the
+    # `:338` rule to `guard_predicate_unparsed` (a stale key, a renamed
+    # guard). Counted per OPERATION, not per finding: `attempted` is how
+    # many executed operations carry a `:338` finding (one operation can
+    # carry several inlined `:338` records -- a depth-1 one and a depth-2 one
+    # through `discard_tips` -- and each unrolled loop iteration repeats
+    # them); `total` is how many of those were decided `SAFE` (every `:338`
+    # finding of the operation `SAFE`). The per-conjunct decline attribution
+    # is NOT published here (ruling D-2: T63's measurement script computes it
+    # from `tip_racks_decline_reason` itself). `predicted_target` 288 is
+    # reasoned from the 288-finding `guard_predicate_unparsed` delta (§18.1).
+    _tip_racks_attempted, _tip_racks_decided = count_ops_decided_at_site(_collected_findings, _SITE_TIP_RACKS)
+    n_tip_racks_decided = {
+        "total": _tip_racks_decided,
+        "attempted": _tip_racks_attempted,
         "predicted_target": 288,
     }
 
@@ -1466,6 +1513,8 @@ def main(argv: list[str] | None = None) -> int:
         "n_quantifier_decided_by_qmono": n_quantifier_decided_by_qmono,
         "n_check_args_decided": n_check_args_decided,
         "n_assert_resources_decided": n_assert_resources_decided,
+        # 260929 (spec §18.5.6, #5622, T61): the `:338` rule's own count.
+        "n_tip_racks_decided": n_tip_racks_decided,
         # 260909 (§17.8.1 blocks (2)/(3)/(10), increment 8, T55).
         "n_seq_truthiness_decided": n_seq_truthiness_decided,
         "n_typestate_decided": n_typestate_decided,

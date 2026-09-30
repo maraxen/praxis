@@ -587,6 +587,7 @@ _SAMPLE_OBSERVATION = {
     "head_channels": [0, 1, 2, 3, 4, 5, 6, 7],
     "deck_resource_names": ["tip_rack", "source_plate", "dest_plate"],
     "arm_slots": [0],
+    "tip_racks_available": True,
 }
 
 
@@ -700,10 +701,12 @@ def test_observation_partitions_cache_key_via_env(contracts_json: str) -> None:
 
 def test_observation_record_closed_refusal_list() -> None:
     """§16.2.1's CLOSED record, extended by §17.3 (move-family increment,
-    T51) with `arm_slots`: exactly these five keys, no others. This is the
-    "fails if `plr_observation` grows an unnamed key" test the T40 task
-    row names -- against :data:`oracle_common.OBSERVATION_KEYS`, the same
-    constant `observation_env_members` and
+    T51) with `arm_slots` and by §18.5.2 (PLR 1.0 tip-effect increment,
+    T60, #5622) with `tip_racks_available`: exactly these six keys, no
+    others. This is the "fails if `plr_observation` grows an unnamed key"
+    test the T40 task row names -- against
+    :data:`oracle_common.OBSERVATION_KEYS`, the same constant
+    `observation_env_members` and
     `training/tests/test_verify_postconditions.py`'s own closed-list
     assertion (against a REAL `verify()` run) both key off.
     """
@@ -711,13 +714,126 @@ def test_observation_record_closed_refusal_list() -> None:
 
     assert OBSERVATION_KEYS == {
         "backend_class", "num_channels", "head_channels", "deck_resource_names",
-        "arm_slots",
+        "arm_slots", "tip_racks_available",
     }
     assert set(_SAMPLE_OBSERVATION) == OBSERVATION_KEYS, (
         "a sixth key on the sample fixture itself would mean this test file's "
         "own fixture has drifted from the closed record -- fix the fixture, "
         "not the constant"
     )
+
+
+@pytest.mark.parametrize(("value", "member"), [(True, "obs:tip_racks_available=true"), (False, "obs:tip_racks_available=false")])
+def test_observation_env_members_tip_racks_available_encoding(value: bool, member: str) -> None:
+    """AC-18.10 (#5622, T60): `obs:tip_racks_available=` + `json.dumps(value)`,
+    i.e. exactly `true` or `false`, read by NAME."""
+    from oracle_common import observation_env_members
+
+    members = observation_env_members(dict(_SAMPLE_OBSERVATION, tip_racks_available=value), {})
+    assert member in members
+    other = "obs:tip_racks_available=" + ("false" if value else "true")
+    assert other not in members
+    assert sum(m.startswith("obs:tip_racks_available=") for m in members) == 1
+
+
+def test_observations_differing_only_in_tip_racks_available_give_distinct_env_and_cache_keys() -> None:
+    """AC-18.10: the field partitions the cache through `env` (§16.2.3), with no sixth `cache_key` component --
+    a lidded deck must never share a cache entry with a clean one."""
+    from oracle_common import observation_env_members
+
+    stamp = _fake_stamp()
+    env_true = observation_env_members(dict(_SAMPLE_OBSERVATION, tip_racks_available=True), {})
+    env_false = observation_env_members(dict(_SAMPLE_OBSERVATION, tip_racks_available=False), {})
+    assert env_true != env_false
+    assert env_true ^ env_false == {"obs:tip_racks_available=true", "obs:tip_racks_available=false"}
+    key_true = ir.cache_key("bc", "{}", stamp, env=env_true)
+    key_false = ir.cache_key("bc", "{}", stamp, env=env_false)
+    assert key_true != key_false
+    assert key_true[:4] == key_false[:4] and len(key_true) == len(key_false) == 5
+    # the empty-env cache key is unchanged (AC-16.1): still `()` in the env slot.
+    assert ir.cache_key("bc", "{}", stamp)[4] == ()
+
+
+@pytest.mark.parametrize("bad", [1, 0, "true", None, [True], {}])
+def test_observation_env_members_refuses_a_non_bool_tip_racks_available(bad) -> None:
+    """A truthy non-bool must not be coerced into an `obs:...=true` member: that would be a manufactured `true`
+    for the `:338` site rule. Negative control that can fail: `json.dumps(bool(bad))` would pass `1`/`"true"`."""
+    from oracle_common import observation_env_members
+
+    with pytest.raises(AssertionError, match="tip_racks_available"):
+        observation_env_members(dict(_SAMPLE_OBSERVATION, tip_racks_available=bad), {})
+
+
+def test_observation_env_members_requires_the_tip_racks_available_key() -> None:
+    from oracle_common import observation_env_members
+
+    five = {k: v for k, v in _SAMPLE_OBSERVATION.items() if k != "tip_racks_available"}
+    with pytest.raises(KeyError):
+        observation_env_members(five, {})
+
+
+def test_row_to_verifier_inputs_never_emits_lidded_tip_racks() -> None:
+    """The real benchmark must be unaffected by T60 (#5622): `row_to_verifier_inputs` builds `deck_layout` from
+    `resources`/`seed_volumes`/`holders` only, so no benchmark row can ever request a lidded rack. Checked over
+    EVERY row of the tracked P2.5 corpus (a pure function, no execution)."""
+    from oracle_common import row_to_verifier_inputs
+
+    corpus = PLR_SEMA_ROOT.parent / "training" / "assemble" / "out" / "corpus_p25.jsonl"
+    assert corpus.is_file(), corpus
+    n_rows = n_layouts = 0
+    for line_no, raw in enumerate(corpus.read_text(encoding="utf-8").splitlines()):
+        if not raw.strip():
+            continue
+        n_rows += 1
+        try:
+            _seq, _intent, layout, _skip, _nocall = row_to_verifier_inputs(
+                json.loads(raw), source_file="corpus_p25", line=line_no
+            )
+        except Exception:  # noqa: BLE001 - oracle_replay.run_row catches exactly this and skips the row
+            continue
+        if layout is not None:
+            n_layouts += 1
+            assert set(layout) == {"resources", "seed_volumes", "holders"}, layout
+            assert "lidded_tip_racks" not in layout
+    assert n_rows > 1000 and n_layouts > 0, (n_rows, n_layouts)
+
+
+_OBS_SPEC = PLR_SEMA_ROOT.parent / ".praxia" / "docs" / "specs" / "260909_plr-sema-observation-increment.md"
+
+#: §18.5.2's frame-condition clause, verbatim (r1, M10). Asserted against the file, not a restatement of it.
+_FRAME_CONDITION_CLAUSE = (
+    "An observation that is a pre-execution state fact may coincide with the value a guard reads **only "
+    "together with a frame condition the analyzer itself checks over the program**, one that declines "
+    "whenever the program could have changed that state before the guard runs. `tip_racks_available` with "
+    "§18.5.4's `rack_topology_stable` is the one instance. Without a checked frame condition such a field "
+    "is the answer, not an observation, and is refused."
+)
+
+
+def _obs_spec_section(start_heading: str, end_heading: str) -> str:
+    text = _OBS_SPEC.read_text(encoding="utf-8")
+    start = text.index(start_heading)
+    return text[start : text.index(end_heading, start)]
+
+
+def test_observation_spec_16_2_2_carries_the_frame_condition_clause_verbatim() -> None:
+    """AC-18.10 (r1, M10): §16.2.2's third failure-mode paragraph carries §18.5.2's clause, in §16.2.2 itself
+    (not merely somewhere in the file)."""
+    section = _obs_spec_section("### 16.2.2 The legitimacy argument, per field", "## 16.3 ")
+    flat = " ".join(section.replace("\n> ", " ").split())
+    assert _FRAME_CONDITION_CLAUSE in flat
+    # it extends the third failure mode; it must not have replaced the mechanical test it qualifies
+    assert "could the harness compute this field only by evaluating the same expression the" in flat.replace("\n", " ")
+
+
+def test_observation_spec_16_2_1_carries_the_one_field_amendment_and_narrowed_lid_exception() -> None:
+    """AC-18.10: §16.2.1's closed-record text carries the sixth field and the narrowed lid-topology exception."""
+    section = _obs_spec_section("### 16.2.1 The record", "### 16.2.2 ")
+    flat = " ".join(section.replace("\n> ", " ").split())
+    assert "| `tip_racks_available` | a `bool` |" in flat
+    assert "lid topology** — refused" in flat
+    assert "narrowed, explicit exception" in flat
+    assert "aggregate boolean over lid **and** stack topology" in flat
 
 
 def test_obs_prefix_never_satisfies_e_uncond_way2() -> None:

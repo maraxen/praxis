@@ -635,7 +635,11 @@ def _measure_hm26() -> int:
     `plr_sema.check.predicate.D6_SITE_RULES` is the live registry
     `len()`s -- T49's `:375`/`:383` pair lands in the SAME dict, so this
     row's measured count moves 1 -> 3 without a second row or a further
-    ceiling bump.
+    ceiling bump. 260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md
+    §18.5.6, #5622, T61): the FOURTH entry (`:338`,
+    `_check_tip_racks_available`) moves it 3 -> 4 -- a ceiling change on this
+    same row (`declared` 3 -> 4, `live_rows()`/`BUDGET_CAP` unchanged at 25),
+    with no headroom.
     """
     from plr_sema.check.predicate import D6_SITE_RULES
 
@@ -1340,10 +1344,28 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "ships, moving the measured count to three -- this row and T49 "
             "SHARE it, per D6's own box: whichever task lands first adds "
             "the row, the second asserts it already exists rather than "
-            "adding a second."
+            "adding a second. 260929 (spec "
+            "260929_plr-sema-plr1-tip-effect-increment.md §18.5.3/§18.5.6, "
+            "#5622, T61): PLUS a FOURTH rule, keyed on "
+            "`(_check_tip_racks_available, ValueError, not "
+            "rack._available_for_tip_handling)` -- exactly this row's kind "
+            "(it hand-models what that ONE PLR function body's guard "
+            "checks: a lid, or a non-top position in a z-stack, on a tip "
+            "rack). It decides `False` (SAFE, never `True`) iff FOUR "
+            "conjuncts hold: the guard's kind is `raise_guard`; the "
+            "harness's own sixth observation field "
+            "`obs:tip_racks_available` (§18.5.2) is `true`; the existing "
+            "`obs:deck_resources_verified` aggregate is `true`; and "
+            "§18.5.4's `rack_topology_stable` -- computed by `check_ir` "
+            "over the program (no topology-disturbing CALL before this "
+            "one, and none anywhere when inside a loop) -- holds. The "
+            "decision is the pure `tip_racks_decline_reason(ctx)`. The "
+            "fourth rule is a CEILING change 3 -> 4 with no headroom "
+            "(`declared == live`, following T48/T49's own precedent), not "
+            "a new row: `live_rows()` and `BUDGET_CAP` stay 25."
         ),
         metric="site rules",
-        declared=3,
+        declared=4,
         status="CAPPED",
         why_not_derived=(
             "Each rule is a claim about what ONE specific PLR function's "
@@ -1371,7 +1393,21 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "to catch the silent reversion rather than trusting this box's "
             "word for the reach; each rule is ALSO one-directional by "
             "construction (D-G6: never returns `T`), so a broken match "
-            "cannot manufacture a false `SAFE` either."
+            "cannot manufacture a false `SAFE` either. 260929 (#5622, "
+            "T61): the FOURTH rule also stops dispatching if PLR changes "
+            "`_check_tip_racks_available`'s guard text, its raising class "
+            "or its qualname -- `test_d6_site_rule_keys_each_match_exactly_"
+            "one_site` turns red on a stale key rather than the rule "
+            "silently reverting to `guard_predicate_unparsed`, and "
+            "`n_tip_racks_decided` (the oracle replay report, §18.5.6) is "
+            "the published count a reader inspects. It is unsound if "
+            "A-RACK-STATIC fails (a NON-move-family same-receiver method "
+            "that lids or stacks a rack -- increment 1 §10.6.3), or if a "
+            "member of the derived move family decays to `\"TOP\"` "
+            "(AC-18.11(i) pins the family on the shipped table), or if the "
+            "harness's `tip_racks_available` stops reading PLR's own "
+            "`_available_for_tip_handling` -- each has its own test and "
+            "the tier-1 fence."
         ),
         measure="plr_sema._hand_maintained:_measure_hm26",
     ),

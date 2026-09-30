@@ -860,7 +860,7 @@ The shipped 1.0 contract record is inlined into each caller at depth 1, or at de
 `site.qualname: "_check_tip_racks_available"`, predicate `Not(Opaque("rack._available_for_tip_handling"))`
 and `reachability_clear: true` (`plr-sema/data/derived_contracts.json`, read under
 `LiquidHandler.discard_tips`). `guard_reason` maps any predicate containing `Opaque` to
-`guard_predicate_unparsed` (`plr-sema/src/plr_sema/check/predicate.py:1043-1053`). **This remains the
+`guard_predicate_unparsed` (`plr-sema/src/plr_sema/check/predicate.py:1076-1086`). **This remains the
 reason on every decline below, so the site rule adds no reason and moves no reason when it declines.**
 
 The guard cannot be read through the existing `:321` deck-membership rule, because the wire carries
@@ -953,7 +953,7 @@ is `None`.
 
 ### 18.5.3 The site rule (4th `D6_SITE_RULES` row)
 
-> **Normative.** `D6_SITE_RULES` (`plr-sema/src/plr_sema/check/predicate.py:1455-1463`) gains
+> **Normative.** `D6_SITE_RULES` (`plr-sema/src/plr_sema/check/predicate.py:1677-1688`) gains
 > **one** entry keyed by symbol:
 >
 > `("_check_tip_racks_available", "ValueError", "not rack._available_for_tip_handling")`
@@ -1059,6 +1059,22 @@ row (§18.5.5) now says so.
 - (d) its `receiver_type` differs from the receiver type of the call being checked. Only calls on the
   same liquid-handler type are presumed topology-neutral; a call on a deck, rack or any other resource
   receiver may place a lid.
+- (e) **(T60/T61 review, 260929)** `no_receiver_state`: it has a contract, but its receiver type has no
+  `receiver_state` entry, or the entry lacks the anchor fields the move-family predicate reads. This
+  covers `receiver_states=None`.
+- (f) **(T60/T61 review, 260929)** `anchor_touched_unmodelled`: its contract's guards read an anchor
+  field that has no `anchor_net_effects` entry. A `"TOP"` entry still counts as an entry, so
+  A-RACK-STATIC's named edge is unchanged. On the shipped table this makes `move_picked_up_resource`
+  disturbing: its guards read `_resource_pickup` and it has no net effect.
+
+> **Fail-closed principle (T60/T61 review).** A call is topology-neutral only when the tables
+> **prove** it. (e) and (f) close a fail-open on degraded inputs reachable through the public
+> `check_graph`/`check_ir` API, though not through the tier-1 harness: a missing `receiver_state`, or a
+> stripped `anchor_net_effects`, used to make `move_lid` neutral and the rule decide `SAFE`. Also,
+> when the lowered stream carries `Widen(execution_order)` (an invalid wire order, so payload order
+> is untrusted), `check_ir` forces both topology clauses false for every call. Every change is
+> fail-closed, and the decided count on the shipped table was unchanged in the implementer's
+> exploratory replay.
 
 **Normative (`rack_topology_stable`).** `check_ir` pre-scans `bytecode.instructions` **once** and keeps
 the pcs of the `CALL`s that are candidates for disturbance. For the `CALL` at pc `p`, visited with
@@ -1146,7 +1162,7 @@ unit on HM-26**. `declared` goes **3 → 4**; the measure `_measure_hm26`
     for it.
 - Tests move in the same commit. In `test_hm26_d6_spend_is_one_new_row_not_an_overrun`
   (`plr-sema/tests/test_hand_maintained_ratchet.py:373-391`), `declared` and live go 3 → 4. In
-  `test_d6_site_rule_keys_each_match_exactly_one_site` (`plr-sema/tests/test_check_graph.py:1567-1579`),
+  `test_d6_site_rule_keys_each_match_exactly_one_site` (`plr-sema/tests/test_check_graph.py:1598-1614`),
   the count goes 3 → 4. The latter test's `site.file.endswith("liquid_handler.py")` clause still holds.
 
 ---
@@ -1987,7 +2003,7 @@ Each criterion names its fixture or artifact field and states what a stub would 
     `m3_lid_on_tip_rack` is added to `_MUTATORS`, to `_EXPECTED_EXC` (`"ValueError"`) and to
     `by_class`, the hard-coded dict at `plr-sema/eval/tip_mutants.py:490-492`.
   - **Site-keyed capture (C6).** `run_one_mutant` installs `oc.FINDINGS_SINK`, chain-composed with any
-    prior sink and restored in `finally`, following `plr-sema/eval/oracle_replay.py:659-728`. From it,
+    prior sink and restored in `finally`, following `plr-sema/eval/oracle_replay.py:682-751`. From it,
     it records `site_verdicts_at_index`: `{PlrSite string: [verdict, …]}` at the raising index, held in
     a **new trailing `MutantResult` field with a default**, so existing positional constructions stay
     valid. **(r3, minor 4)** A second defaulted trailing field, `runtime_error`, carries `rt.error` and
@@ -2410,6 +2426,20 @@ cost at both pins. The §18.4.8 comparison stays at 36/36, old-pin parity at 10/
 | N2 | A `@staticmethod`/`@classmethod` method takes no receiver and is `UNRESOLVED` as an entry, matching the followed-call rule (re-review) | §18.4.3 amendments box |
 | F10 | Dead wrappers removed (hygiene) | — |
 | scope | R-E (T58's receiver suppression, AC-18.6) landed with T57, because §18.4.8's expected receiver set depends on it. T58 keeps its remaining items | T57, T58 |
+
+**T60/T61 implementation review, 260929.** The review of T60+T61 found the `:338` rule sound on every
+path the harness can reach. It also found a fail-open on degraded inputs reachable through the
+public API, and the orchestrator ruled it fixed rather than ratcheted into A-RACK-STATIC. All the
+changes below are fail-closed.
+
+| id | change | where |
+|---|---|---|
+| R1a | New disturber class `no_receiver_state`: a contract exists but the receiver type has no `receiver_state` or no anchor fields | §18.5.4 (e) |
+| R1b | New disturber class `anchor_touched_unmodelled`: guards read an anchor field with no `anchor_net_effects` entry. `move_picked_up_resource` becomes disturbing on the shipped table | §18.5.4 (f) |
+| R1c | `Widen(execution_order)` in the stream forces both topology clauses false | §18.5.4 box |
+| R2 | An `obs:` key present in more than one env member is dropped, which declines; this is shared, so `:321` and `arm_slots` are also decline-only | §18.5.2 |
+| R3–R5 | Test coverage added for a branch inside a loop, `receiver_states=None`, duplicate `obs:` members and the degraded tables; a brittle source-text assertion is dropped; stale text is fixed | AC-18.11 |
+| mutations | 52 of 52 killed, 9 of them new | — |
 
 ---
 

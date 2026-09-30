@@ -153,18 +153,18 @@ async def verify(
     # never reaches the `set_volume_tracking(True)` call).
     volume_tracking_observed = False
     # 260909 (spec §16.2.1, observation increment, T40, backlog #5023): the
-    # four-field observation record, read at ONE capture point below --
+    # six-field observation record, read at ONE capture point below --
     # after `await setup.machine.setup()`, before `_execute` -- inside a
     # fail-closed guard.  `None` is the default (deck-build early return,
     # same as `volume_tracking_observed`'s reasoning above) and stays
     # `None` if that capture window itself raises; it is never partial.
     # This function's own output shape is UNCHANGED by T48 (§16.1.3/§16.15
-    # D6, backlog #5026): `deck_resource_names` (one of the four fields
+    # D6, backlog #5026): `deck_resource_names` (one of the record's fields
     # below) was always part of this record; T48's own additions --
     # `plr_sema.check.predicate.D6_SITE_RULES`'s `:321` site rule and
     # `plr-sema/eval/oracle_common.py`'s `obs:deck_resources_verified`
     # aggregate derived from it -- live entirely downstream of what this
-    # function already returns.
+    # function already returns. (T60/#5622: 6th field `tip_racks_available`, same capture point.)
     plr_observation: dict[str, Any] | None = None
     # 260909 (spec §16.7 F1, fence increment, T45, backlog #5025): the
     # additive `error_frames` result key -- the WHOLE `traceback.extract_tb`

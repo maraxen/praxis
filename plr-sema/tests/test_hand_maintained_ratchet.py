@@ -386,13 +386,36 @@ def test_hm26_d6_spend_is_one_new_row_not_an_overrun() -> None:
     adds the `:375`/`:383` pair to the SAME `D6_SITE_RULES` dict -- three
     entries total, landing exactly on the `declared == 3` ceiling (D6's
     own "whichever lands first adds it, the second asserts it exists"
-    rule: ONE row for both rows, never a second)."""
+    rule: ONE row for both rows, never a second).
+
+    260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md §18.5.6, #5622,
+    T61): the FOURTH rule (`:338`, `_check_tip_racks_available`) is one
+    further unit on the SAME row -- `declared` 3 -> 4, a ceiling change, not
+    a new row, with no headroom (`declared == live`, T48/T49's own
+    precedent). `live_rows()` and `BUDGET_CAP` stay 25 (AC-18.12)."""
     (hm26,) = (row for row in REGISTRY if row.id == "HM-26")
-    assert hm26.declared == 3, f"HM-26: declared is {hm26.declared}, expected 3 (D6's full T48+T49 spend)"
+    assert hm26.declared == 4, (
+        f"HM-26: declared is {hm26.declared}, expected 4 (D6's T48+T49 spend plus #5622's `:338` rule)"
+    )
     live = resolve_measure(hm26.measure)
-    assert live == 3, f"HM-26: live count {live} != 3 -- T48's `:321` plus T49's `:375`/`:383` pair"
+    assert live == 4, (
+        f"HM-26: live count {live} != 4 -- T48's `:321`, T49's `:375`/`:383` pair and T61's `:338`"
+    )
     assert live <= hm26.declared
-    assert len(live_rows()) == 25, "D6's spend must move live_rows() 24 -> 25 exactly"
+    assert hm26.declared == live, "no headroom: a spare unit would pre-authorise a fifth site rule (§18.5.6)"
+    assert len(live_rows()) == 25, "AC-18.12: live_rows() stays 25 (a ceiling change, not a row)"
+    assert BUDGET_CAP == 25, "AC-18.12: BUDGET_CAP stays 25"
+    # the row's prose names the fourth rule, its conjuncts and the new observation field (AC-18.12)
+    text = hm26.what + " " + hm26.breaks_when
+    for needle in (
+        "_check_tip_racks_available",
+        "tip_racks_available",
+        "rack_topology_stable",
+        "deck_resources_verified",
+        "raise_guard",
+        "A-RACK-STATIC",
+    ):
+        assert needle in text, f"HM-26's what/breaks_when must name {needle!r}"
     assert BUDGET_CAP == 25, "D6's spend must move BUDGET_CAP 24 -> 25 exactly"
 
 
