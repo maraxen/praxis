@@ -47,12 +47,12 @@ jobs:
     name: Build + browser gates
     runs-on: ubuntu-latest
     # A BACKSTOP only (D16): 45 + the sum of this job's scenario step timeouts (8 + 7 after
-    # sprint A = 60; 8 + 7 + 14 + 10 + 8 = 47 after sprint B = 92; 137 after sprint C). Every
-    # browser unit is bounded by its own watchdog at its budget, the driver's run_unit at
-    # budget + 60 s and its step timeout at budget + 2 min, so this is never the limit that
-    # ends a unit. The reap step's 1 minute sits inside the 45-minute allowance and is not
-    # added to the sum.
-    timeout-minutes: 92
+    # sprint A = 60; 8 + 7 + 14 + 10 + 8 = 47 after sprint B = 92; 12 + 16 + 17 = 45 more after
+    # sprint C = 137). Every browser unit is bounded by its own watchdog at its budget, the
+    # driver's run_unit at budget + 60 s and its step timeout at budget + 2 min, so this is never
+    # the limit that ends a unit. The reap step's 1 minute sits inside the 45-minute allowance and
+    # is not added to the sum.
+    timeout-minutes: 137
     env:
       PYTHONDONTWRITEBYTECODE: 1
 
@@ -139,6 +139,15 @@ jobs:
           uv run python web-repl/scripts/check_wheel_coherence.py --check-untracked
           uv run python web-repl/scripts/check_wheel_contract.py
 
+      # AC-30 (C7): the vendored Visualizer3D static tree is byte-identical to the pin's
+      # `pylabrobot/visualizer3D/static/` (sha256 per file, the recorded commit, the two anchors in
+      # index.html). The source is the submodule this job's checkout already initialises at the pin:
+      # there is no separate PyLabRobot checkout step.
+      - name: Vendored Visualizer3D tree matches the pin
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python web-repl/scripts/vendor_visualizer3d.py --check
+
       - name: Gesture invariant (no await/async before gesture calls, D6)
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
@@ -220,6 +229,41 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --display-check --aggregate-only --base-path /praxis/
 
+      # Visualizer3D deck-panel gates (C7; D16). Same shape as the display steps above: ONE STEP PER
+      # UNIT, each in its own process with its own FULL Chromium (SwiftShader WebGL; the headless
+      # shell has no WebGL2), watchdog, result and stamp; step timeout = budget + 2 min (K1a 10 min ->
+      # 12, K1b 14 -> 16, K2 15 -> 17); `if: ${{ !cancelled() }}` so one failing unit does not hide
+      # the others. N-d (AC-39(d)) is negative-only and has NO step: the sensitivity driver runs it.
+      - name: Dock check K1a (viewer draws, Follow, presets, live state)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 12
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --dock-check --scenario K1a --base-path /praxis/
+
+      - name: Dock check K1b (reconnect, re-dock, stop, late iframe, kernel restart)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 16
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --dock-check --scenario K1b --base-path /praxis/
+
+      - name: Dock check K2 (tiers - drawer, split, 1280-1599 and >= 1600 widths)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 17
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --dock-check --scenario K2 --base-path /praxis/
+
+      # The step whose exit gates the PR for the dock units. Its hashed arguments MUST equal the scenario
+      # steps' (without --base-path /praxis/ every stamp's `args` hash mismatches and this gate is
+      # permanently red).
+      - name: Dock check aggregate
+        if: ${{ !cancelled() }}
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --dock-check --aggregate-only --base-path /praxis/
+
       # Playwright launches Chromium detached (its own process group), so a step timeout
       # orphans a hung one. This kills every process still carrying a unit token. No --force:
       # Actions sets CI=true, which is what --reap requires.
@@ -230,13 +274,16 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/unit_runner.py --reap
 
-      # Diagnosis only: nothing downloads this. Results, stamps, timeout markers, result.json.
-      - name: Upload display-check results
+      # Diagnosis only: nothing downloads this. Results, stamps, timeout markers, result.json of
+      # the display units and the dock units.
+      - name: Upload display-check and dock-check results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: display-check-results
-          path: outputs/repl_smoke/display-check/
+          name: display-and-dock-check-results
+          path: |
+            outputs/repl_smoke/display-check/
+            outputs/repl_smoke/dock-check/
           if-no-files-found: ignore
 
       # Every kernel sets PyLabRobot up automatically on startup via PYTHONSTARTUP
