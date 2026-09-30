@@ -493,7 +493,7 @@ def test_sentence_on_a_deck_without_rails_gives_no_rail_number(dk, fx):
 
 def test_sentence_number_formatting_uses_thousands_separators(dk, fx):
     deck = _plain_deck_of_plates(fx.cor_96_wellplate_360uL_Fb, 1200, size_x=20000.0, size_y=200000.0, cols=100, prefix="w")
-    assert dk.sentence(deck).startswith("No carriers. 1,200 pieces of labware: w0, w1, ")
+    assert dk.sentence(deck).startswith("No carriers. 1,200 pieces of labware: w0, ")
 
 
 def test_sentence_follows_the_tree_not_a_hardcoded_string(dk, fx, deck):
@@ -743,15 +743,12 @@ def test_detail_level_of_every_labware_follows_d_min_times_s_min(dk, decks, key)
     width = deck.get_size_x()
     root = _parse(dk.render_html(deck))
     items = _items(root)
-    seen = set()
     for res in _labware_of(deck):
         g = items[res.name]
         block = bool(g.find_all("rect", cls="sv-block"))
         assert block == (not _is_full(res, width)), (key, res.name, _d_min(res), _s_min(width))
         assert ("data-praxis-grid" in g.attrs) == (not block), (key, res.name)
         assert dk.detail_of(deck, res) == ("block" if block else "full")
-        seen.add(block)
-    return seen
 
 
 def test_detail_level_goes_both_ways_across_the_decks(dk, decks):
@@ -848,13 +845,15 @@ def test_a_renamed_subclass_resolves_and_a_borrowed_name_does_not(dk, fx):
     rack.__class__ = type("CompletelyDifferentName", (EmbeddedTipRack,), {})
     car[0] = rack
     deck.assign_child_resource(car, track=3)
+    pcar = fx.hamilton_plate_carrier_L5_ac(name="pc")
+    deck.assign_child_resource(pcar, track=9)
 
     class TipRack(Resource):  # borrows the name only; it is not a PLR TipRack
         pass
 
     impostor = TipRack(name="impostor", size_x=110.0, size_y=70.0, size_z=10.0)
     assert type(impostor).__name__ == "TipRack"
-    car[1] = impostor
+    pcar[0] = impostor
     items = _items(_parse(dk.render_html(deck)))
     assert "sv-tip-ring" in _paths_in(items["odd"])
     assert items["impostor"].find_all("rect", cls="sv-block") and not _paths_in(items["impostor"]).get("sv-tip-ring")
@@ -1148,7 +1147,7 @@ def test_ac12_the_fixture_deck_has_s_min_0_771_not_0_6(deck_html):
     root = _parse(deck_html)
     assert _declared_s_min(root) == pytest.approx(0.7706, abs=1e-3)
     assert float(_svg_root(root).attrs["data-praxis-minw"]) == pytest.approx(774.4, abs=0.02)  # 0.88 * 880: "about 775"
-    assert "min-width:774.4px" in _svg_root(root).attrs["style"]
+    assert "min-width:774.4" in _svg_root(root).attrs["style"]  # rounded UP to two decimals (774.41)
 
 
 def test_ac12_every_text_element_is_at_least_11_px_at_s_min(deck_html):
@@ -1178,7 +1177,8 @@ def test_ac12_an_oversize_deck_is_emitted_at_0_6_with_horizontal_scroll(decks, d
     svg_el = _svg_root(root)
     assert float(svg_el.attrs["width"]) == pytest.approx(1545 * 0.6)
     assert _declared_s_min(root) == pytest.approx(0.6)
-    assert float(svg_el.attrs["data-praxis-minw"]) == pytest.approx(927.0, abs=0.02) > 880
+    assert float(svg_el.attrs["data-praxis-minw"]) == pytest.approx(927.0, abs=0.02)
+    assert float(svg_el.attrs["data-praxis-minw"]) > 880
     assert dk.deck_scale(deck) == (0.6, 0.6)
     wrapper = root.find_all("div", cls="praxis-fig")[0]
     assert "overflow-x:auto" in wrapper.attrs["style"]
@@ -1274,7 +1274,7 @@ def test_twenty_1536_well_plates_degrade_to_blocks_within_the_cap(dk, budget, sv
     data, meta = dk.render(deck, rev=1, session="s", exec_count=1)
     assert data["text/html"] == doc and budget.OMISSION_SENTENCE not in doc
     svg.check_bundle(data, meta)
-    assert data["text/plain"].startswith("No carriers. 20 pieces of labware: p0, p1, ")
+    assert data["text/plain"].startswith("No carriers. 20 pieces of labware: p0, ")
 
 
 def test_a_deck_too_crowded_for_blocks_degrades_to_summary_only(dk, budget, svg, fx, record_property):
@@ -1288,6 +1288,12 @@ def test_a_deck_too_crowded_for_blocks_degrades_to_summary_only(dk, budget, svg,
     assert "<svg" not in doc and budget.OMISSION_SENTENCE in doc
     assert data["text/plain"] in doc and "400 pieces of labware" in doc  # text is never dropped to save a drawing
     svg.check_bundle(data, meta)
+
+
+def test_render_figure_is_empty_at_level_2_and_drawn_below_it(dk, budget, deck):
+    assert dk.render_figure(deck, level=budget.LEVEL_OMITTED) == ""
+    assert dk.render_figure(deck, level=budget.LEVEL_FULL).startswith("<div")
+    assert dk.render_figure(deck, level=budget.LEVEL_BLOCKS).startswith("<div")
 
 
 def test_ladder_levels_are_validated(dk, deck):

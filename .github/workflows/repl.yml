@@ -308,6 +308,7 @@ jobs:
           uv run python -m pytest web-repl/tests/test_d1_praxis_git_sha.py -q
           uv run python -m pytest web-repl/tests/test_display_budget.py -q
           uv run python -m pytest web-repl/tests/test_display_css.py -q
+          uv run python -m pytest web-repl/tests/test_display_deck.py -q
           uv run python -m pytest web-repl/tests/test_display_floor.py -q
           uv run python -m pytest web-repl/tests/test_display_labware.py -q
           uv run python -m pytest web-repl/tests/test_display_staging.py -q
