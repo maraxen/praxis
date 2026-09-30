@@ -47,6 +47,7 @@ Both assert that every emitted ``praxis-*`` / ``sv-*`` class appears in some sel
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import importlib
 import importlib.util
 import re
@@ -150,7 +151,8 @@ class _Rule:
 
 
 def _parse(css: str) -> list[_Rule]:
-  """Flat rules (no nested blocks; this file has no @media/@supports)."""
+  """Flat rules. Not nesting-aware: the file's one @media block (the D6 notebook cap, task C5b) is read
+  as a flat rule here with its media condition DROPPED; `_media_blocks` is the reader that keeps it."""
   rules = []
   for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", _strip_comments(css)):
     rules.append(_Rule(m.group(1).strip(), m.group(2)))
@@ -1199,3 +1201,177 @@ def test_vendored_roboto_flex_has_the_width_axis_the_names_ask_for() -> None:
   manifest = (_THEME_DIR / "fonts" / "VENDOR_MANIFEST.json").read_text(encoding="utf-8")
   entry = next(e for e in __import__("json").loads(manifest)["entries"] if e["file"] == "RobotoFlex-Variable.woff2")
   assert "wdth" in entry["source_css"], entry["source_css"]
+
+
+# --- the D6 notebook cap (task C5b, backlog #5673) ----------------------------------
+#
+# D6: at >= 1600 px the notebook content is capped at 960 px ("CSS on the notebook panel's content");
+# AC-36 asserts `nb_content_width <= 960` at 1600x900 and 1920x1080. The element is `.jp-Notebook`,
+# i.e. `NotebookPanel.content`: the very node dock.js reads `nb_h_padding` from (`notebookPadding()`,
+# `panel.content.node`). The rule is ONE `@media (min-width: 1600px)` block appended after everything
+# A4 and B-css wrote; it is the only @media in the file, which is why it needs a reader of its own.
+
+_CAP_SELECTOR = ".jp-NotebookPanel .jp-Notebook"
+_CAP_MEDIA = "(min-width:1600px)"
+_CAP_MAX_WIDTH = "960px"
+_DOCK_JS = _WEB_REPL_ROOT / "shell" / "display" / "dock.js"
+
+# The stylesheet as it stood at b1faa747 (A4 + B-css, before the cap): byte length and sha256. The cap is
+# a pure ADDITION, so the file must still begin with exactly these bytes. A legitimate later edit of an
+# earlier rule has to move this pin deliberately.
+_PRE_CAP_BYTES = 38960
+_PRE_CAP_SHA256 = "6ce2ee5bbac5abb96039eccada3f140bd00c552d3027860f218f3033a8f0c28f"
+
+
+def _media_blocks(css: str) -> list[tuple[str, list[_Rule]]]:
+  """Every `@media <cond> { rule { ... } ... }` as (condition with whitespace removed, its rules).
+
+  Flat inside (no nested @media), which is all this file will ever need.
+  """
+  blocks = []
+  for m in re.finditer(r"@media([^{}]*)\{((?:[^{}]*\{[^{}]*\})*)[^{}]*\}", _strip_comments(css)):
+    cond = re.sub(r"\s+", "", m.group(1))
+    blocks.append((cond, _parse(m.group(2))))
+  return blocks
+
+
+def _cap_problems(css: str) -> list[str]:
+  """Everything wrong with the notebook cap in `css`; [] means it is exactly the D6 rule."""
+  bad: list[str] = []
+  stripped = _strip_comments(css)
+  if stripped.count("@media") != 1:
+    return [f"expected exactly one @media in the file, found {stripped.count('@media')}"]
+  blocks = _media_blocks(css)
+  if len(blocks) != 1:
+    return ["the @media block is not a flat list of rules"]
+  cond, rules = blocks[0]
+  if cond != _CAP_MEDIA:
+    bad.append(f"media condition is {cond!r}, D6 says exactly {_CAP_MEDIA!r}")
+  if len(rules) != 1:
+    bad.append(f"the @media block holds {len(rules)} rules, expected one")
+    return bad
+  rule = rules[0]
+  if rule.selectors != [_CAP_SELECTOR]:
+    bad.append(f"selector is {rule.selectors}, expected [{_CAP_SELECTOR!r}]")
+  if rule.decls != {"max-width": _CAP_MAX_WIDTH}:
+    bad.append(f"declarations are {rule.decls}, expected only max-width: {_CAP_MAX_WIDTH}")
+  block_text = re.search(r"@media[^{}]*\{.*\}", stripped, flags=re.DOTALL)
+  body = block_text.group(0) if block_text else ""
+  if "!important" in body:
+    bad.append("!important in the cap block")
+  bad.extend(f"animation in the cap block: {v}" for v in _animation_violations(body))
+  return bad
+
+
+def _prefix_intact(data: bytes) -> bool:
+  return len(data) >= _PRE_CAP_BYTES and hashlib.sha256(data[:_PRE_CAP_BYTES]).hexdigest() == _PRE_CAP_SHA256
+
+
+_GOOD_CAP = "@media (min-width: 1600px) { .jp-NotebookPanel .jp-Notebook { max-width: 960px; } }"
+
+
+# controls on the cap reader (the positive one can only pass; the negatives must fail)
+
+
+def test_cap_reader_accepts_the_d6_rule_and_reads_its_media_condition() -> None:
+  assert _cap_problems(_GOOD_CAP) == []
+  assert _media_blocks(_GOOD_CAP)[0][0] == _CAP_MEDIA
+  # the flat reader used by the older tests drops the condition; the media reader must not
+  assert _parse(_GOOD_CAP)[0].decls == {"max-width": "960px"}
+
+
+@pytest.mark.parametrize(
+  ("label", "css"),
+  [
+    ("961px", _GOOD_CAP.replace("960px", "961px")),
+    ("1000px", _GOOD_CAP.replace("960px", "1000px")),
+    ("under 1500px", _GOOD_CAP.replace("1600px", "1499px")),
+    ("1280px", _GOOD_CAP.replace("1600px", "1280px")),
+    ("1601px", _GOOD_CAP.replace("1600px", "1601px")),
+    ("max-width condition too", _GOOD_CAP.replace("(min-width: 1600px)", "(min-width: 1600px) and (max-width: 2400px)")),
+    ("screen only", _GOOD_CAP.replace("(min-width", "screen and (min-width")),
+    ("wrong element: the viewport", _GOOD_CAP.replace(".jp-Notebook {", ".jp-Notebook .jp-WindowedPanel-viewport {")),
+    ("wrong element: a cell", _GOOD_CAP.replace(".jp-Notebook {", ".jp-Notebook .jp-CodeCell {")),
+    ("wrong element: the panel", _GOOD_CAP.replace(".jp-NotebookPanel .jp-Notebook {", ".jp-NotebookPanel {")),
+    ("unscoped: leaks past the panel", _GOOD_CAP.replace(".jp-NotebookPanel .jp-Notebook {", ".jp-Notebook {")),
+    ("unscoped: any widget", _GOOD_CAP.replace(".jp-NotebookPanel .jp-Notebook {", ".lm-Widget {")),
+    ("important", _GOOD_CAP.replace("960px;", "960px !important;")),
+    ("width instead of max-width", _GOOD_CAP.replace("max-width", "width")),
+    ("extra declaration", _GOOD_CAP.replace("960px;", "960px; margin: 0 auto;")),
+    ("transition", _GOOD_CAP.replace("960px;", "960px; transition: max-width 1s;")),
+    ("no media query at all", ".jp-NotebookPanel .jp-Notebook { max-width: 960px; }"),
+    ("a second @media", _GOOD_CAP + "\n@media (min-width: 1280px) { .a { color: red } }"),
+    ("a second rule in the block", _GOOD_CAP.replace("} }", "} .b { color: red } }")),
+  ],
+)
+def test_cap_reader_fails_every_wrong_variant(label: str, css: str) -> None:
+  """Negative controls: the 961px cap, one under 1500px, and one on the wrong element all FAIL."""
+  assert _cap_problems(css), f"a bad cap ({label}) passed the check"
+
+
+def test_prefix_check_fails_on_a_changed_or_truncated_earlier_rule() -> None:
+  data = _CSS.read_bytes()
+  assert len(data) >= _PRE_CAP_BYTES
+  mutated = bytearray(data)
+  mutated[1000] ^= 0x01  # one flipped bit inside the A4/B-css region
+  assert not _prefix_intact(bytes(mutated))
+  assert not _prefix_intact(data[: _PRE_CAP_BYTES - 1])
+
+
+# the real stylesheet
+
+
+def test_the_notebook_cap_exists_and_is_exactly_the_d6_rule() -> None:
+  """One `@media (min-width: 1600px)` (and only that) holding one scoped `max-width: 960px` rule."""
+  assert _cap_problems(_CSS.read_text(encoding="utf-8")) == []
+
+
+def test_cap_is_a_pure_addition_after_the_a4_and_b_css_rules() -> None:
+  """Every A4 / B-css rule (the `.jp-Notebook` ground, the `.jp-CodeCell` sheet, the rail `::before`,
+  the count `::after`, the prompt widths, the output vocabulary) is byte-identical: the file still starts
+  with its pre-cap bytes, and what follows them is the cap block and nothing else."""
+  data = _CSS.read_bytes()
+  assert _prefix_intact(data), "the stylesheet no longer begins with its pre-cap bytes (an earlier rule changed)"
+  tail = _strip_comments(data[_PRE_CAP_BYTES:].decode("utf-8")).strip()
+  assert tail, "no cap appended after the pre-cap bytes"
+  assert re.fullmatch(r"@media[^{}]*\{[^{}]*\{[^{}]*\}\s*\}", tail), f"what follows is not one @media rule: {tail!r}"
+
+
+def test_tail_check_fails_on_a_stray_rule_after_the_cap() -> None:
+  stray = _strip_comments(_GOOD_CAP + "\n.praxis-x { color: red }").strip()
+  assert not re.fullmatch(r"@media[^{}]*\{[^{}]*\{[^{}]*\}\s*\}", stray)
+
+
+def test_cap_is_not_theme_scoped_because_it_is_layout_not_colour() -> None:
+  """dock.js sizes the deck panel from 960 in every theme, High Contrast included, so the cap must not
+  vary with the theme (the file's colour rules do; this one is deliberately not among them)."""
+  (_, rules), = _media_blocks(_CSS.read_text(encoding="utf-8"))
+  for sel in rules[0].selectors:
+    assert "data-jp-theme" not in sel and not sel.startswith("body"), sel
+
+
+def test_nothing_gives_the_cap_element_horizontal_padding_or_border() -> None:
+  """`nb_h_padding` is read from this same node (dock.js `notebookPadding()`). JupyterLab 4's windowed
+  notebook keeps its 10 px on `.jp-WindowedPanel-viewport`, so this node reads 0; the theme must not
+  change that without the cap, the formula and the read moving together."""
+  props = ("padding", "padding-left", "padding-right", "padding-inline", "padding-inline-start",
+           "padding-inline-end", "border", "border-left", "border-right", "border-inline",
+           "border-left-width", "border-right-width")  # fmt: skip
+  for rule in _rules():
+    for sel in rule.selectors:
+      if re.search(r"\.jp-Notebook(?![\w-])$", sel.replace("::", " ::").split(" ::")[0].strip()):
+        assert not [p for p in props if p in rule.decls], f"{sel} sets {rule.decls}"
+
+
+def test_cap_matches_the_numbers_and_the_node_dock_js_sizes_from() -> None:
+  """Cross-file: dock.js's NOTEBOOK_CAP / WIDE_FROM equal the CSS's 960 / 1600, and its padding read is
+  on `panel.content.node`, which is `.jp-Notebook`, the element the cap is on."""
+  js = _DOCK_JS.read_text(encoding="utf-8")
+  cap = re.search(r"const NOTEBOOK_CAP = (\d+);", js)
+  wide = re.search(r"const WIDE_FROM = (\d+);", js)
+  assert cap and wide, "dock.js no longer declares NOTEBOOK_CAP / WIDE_FROM as plain constants"
+  assert f"{cap.group(1)}px" == _CAP_MAX_WIDTH
+  assert f"(min-width:{wide.group(1)}px)" == _CAP_MEDIA
+  body = re.search(r"function notebookPadding\(\) \{.*?\n  \}", js, flags=re.DOTALL)
+  assert body and "panel.content.node" in body.group(0)
+  assert "paddingLeft" in body.group(0) and "paddingRight" in body.group(0)
