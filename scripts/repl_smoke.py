@@ -6949,6 +6949,165 @@ UNIT_BY_ID = {u.id: u for u in UNIT_TABLE}
 DOCK_AGGREGATE_UNITS: tuple[HarnessUnit, ...] = tuple(u for u in DOCK_UNITS if u.in_aggregate)
 
 
+# -- K1a: pure key derivation (AC-34, AC-35, AC-37) ---------------------------------------------------------------
+
+#: The page's camera presets, copied from ``static/renderer.js:117-121`` (AC-35: "copied into the harness"). A test
+#: reads renderer.js and fails if this copy drifts.
+VIEWS: dict[str, tuple[float, float, float]] = {
+    "iso": (-0.7, -1.0, 0.85),
+    "top": (0.0, -0.001, 1.0),
+    "front": (0.0, -1.0, 0.12),
+}
+PRESET_DOT_MIN = 0.99
+#: AC-34: more than 1% of the iframe viewport's pixels must differ from the page ground ``#EEF1F4``.
+CANVAS_DIFF_MIN = 0.01
+CANVAS_GROUND_RGB = (0xEE, 0xF1, 0xF4)
+#: Per-channel tolerance for "differs from the ground": a screenshot round trip may shift the ground by a level
+#: or two, which must not read as drawing.
+CANVAS_CHANNEL_TOL = 6
+#: A camera point that moved by more than this (mm) has moved; by at most this it has held.
+CAMERA_EPS = 1e-3
+EMBED_HIDDEN_SELECTORS = (".navbar", "#toolbar-left", "#stats-panel", "#sidepanel", "#toolbar")
+DECK_RESOURCES_REQUIRED = ("assay", "source", "tips_300")
+OPEN_STATES = ("open-waiting", "open-connected", "open-lost")
+
+
+def _vec3(value: Any) -> tuple[float, float, float] | None:
+    if isinstance(value, (list, tuple)) and len(value) == 3 and all(_num(c) for c in value):
+        return (float(value[0]), float(value[1]), float(value[2]))
+    return None
+
+
+def _dist(a: Any, b: Any) -> float | None:
+    va, vb = _vec3(a), _vec3(b)
+    if va is None or vb is None:
+        return None
+    return sum((x - y) ** 2 for x, y in zip(va, vb)) ** 0.5
+
+
+def _moved(a: Any, b: Any) -> bool:
+    d = _dist(a, b)
+    return d is not None and d > CAMERA_EPS
+
+
+def _held(a: Any, b: Any) -> bool:
+    d = _dist(a, b)
+    return d is not None and d <= CAMERA_EPS
+
+
+def preset_ok(camera: Any, name: str) -> bool:
+    """AC-35: ``normalize(camera.from - camera.at) . normalize(VIEWS[name]) > 0.99``. A missing, malformed or
+    zero-length camera is a failure."""
+    view = VIEWS.get(name)
+    cam = camera if isinstance(camera, dict) else {}
+    frm, at = _vec3(cam.get("from")), _vec3(cam.get("at"))
+    if view is None or frm is None or at is None:
+        return False
+    d = tuple(f - a for f, a in zip(frm, at))
+    dn = sum(c * c for c in d) ** 0.5
+    vn = sum(c * c for c in view) ** 0.5
+    if dn < 1e-9 or vn < 1e-9:
+        return False
+    return sum((x / dn) * (y / vn) for x, y in zip(d, view)) > PRESET_DOT_MIN
+
+
+def canvas_fraction(canvas: Any) -> float | None:
+    """``diff_pixels / total_pixels`` of a canvas measurement, or ``None`` if it has no pixels to divide by."""
+    c = canvas if isinstance(canvas, dict) else {}
+    diff, total = c.get("diff_pixels"), c.get("total_pixels")
+    if not (_num(diff) and _num(total)) or total <= 0:
+        return None
+    return diff / total
+
+
+def canvas_nonblank(canvas: Any) -> bool:
+    """AC-34 ``canvas_nonblank``: the fraction of differing pixels is ABOVE 1%, and the instrument is valid: the same
+    measurement read a blank synthetic ground image as 0 and a marked one (5% of pixels) as above 1%."""
+    c = canvas if isinstance(canvas, dict) else {}
+    frac = canvas_fraction(c)
+    blank, marked = c.get("control_blank"), c.get("control_marked")
+    return bool(
+        frac is not None and frac > CANVAS_DIFF_MIN
+        and _num(blank) and blank == 0
+        and _num(marked) and marked > CANVAS_DIFF_MIN
+    )
+
+
+def _dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _is_str(value: Any) -> bool:
+    return isinstance(value, str) and value != ""
+
+
+def derive_k1a_keys(raw: Any) -> dict[str, Any]:
+    """K1a's listed keys (``pageerrors`` is added by ``run_scenario``) from the raw page evidence (pure; tested with
+    a positive control and a negative control per key, and on empty evidence, where every key fails).
+
+    ``raw``: ``panel`` ``{state, home, panel_left, notebook_right}``; ``resources`` (``plrViewer.resources()``);
+    ``hello`` (``viewer.clients_seen[-1]``, read from the kernel); ``canvas`` ``{diff_pixels, total_pixels,
+    control_blank, control_marked}``; ``embed`` (computed ``display`` per selector in the iframe); ``click``,
+    ``follow_on``, ``follow_off``, ``follow_null`` (footer and ``camera().at`` before and after one activation, with
+    the Follow switch as read), ``presets`` (camera after Top, Front, Iso), ``follow_keeps``, ``state`` (``stateOf``
+    before and after the aspirate) and ``stale`` (the notice text, its count, the panel state)."""
+    r = _dict(raw)
+    panel, click = _dict(r.get("panel")), _dict(r.get("click"))
+    on, off, null = _dict(r.get("follow_on")), _dict(r.get("follow_off")), _dict(r.get("follow_null"))
+    keeps, state, stale = _dict(r.get("follow_keeps")), _dict(r.get("state")), _dict(r.get("stale"))
+    presets, embed = _dict(r.get("presets")), _dict(r.get("embed"))
+    resources = r.get("resources")
+    left, right = panel.get("panel_left"), panel.get("notebook_right")
+    ledger = null.get("ledger_resources")
+    notices = stale.get("changed_notices")
+
+    keys: dict[str, Any] = {}
+    keys["panel_is_split_right"] = bool(
+        panel.get("state") == "open-connected" and panel.get("home") == "split"
+        and _num(left) and _num(right) and left >= right - 1.0
+    )
+    keys["viewer_resources"] = bool(
+        isinstance(resources, list) and all(n in resources for n in DECK_RESOURCES_REQUIRED)
+    )
+    keys["hello_backend"] = _dict(r.get("hello")).get("backend")
+    keys["canvas_nonblank"] = canvas_nonblank(r.get("canvas"))
+    keys["embed_hidden"] = all(embed.get(sel) == "none" for sel in EMBED_HIDDEN_SELECTORS)
+    keys["click_focuses"] = bool(
+        _is_str(click.get("footer_before")) and click.get("footer_before") != "source"
+        and click.get("footer_after") == "source" and _moved(click.get("at_before"), click.get("at_after"))
+    )
+    keys["follow_focuses"] = bool(
+        on.get("enabled") is True and on.get("focused") == "assay" and on.get("footer") == "assay"
+        and _moved(on.get("at_before"), on.get("at_after"))
+    )
+    keys["follow_off_holds"] = bool(
+        off.get("enabled") is False and _is_str(off.get("footer_before"))
+        and off.get("footer_before") == off.get("footer_after")
+        and _held(off.get("at_before"), off.get("at_after"))
+    )
+    keys["follow_skips_null"] = bool(
+        null.get("enabled") is True and isinstance(ledger, list) and len(ledger) >= 1 and all(n is None for n in ledger)
+        and _is_str(null.get("footer_before")) and null.get("footer_before") == null.get("footer_after")
+        and _held(null.get("at_before"), null.get("at_after"))
+    )
+    keys["preset_directions"] = all(preset_ok(presets.get(n), n) for n in ("top", "front", "iso"))
+    keys["follow_keeps_preset"] = bool(
+        keeps.get("pressed") == "top" and preset_ok(keeps.get("camera"), "top")
+        and _is_str(keeps.get("footer_before")) and _is_str(keeps.get("footer_after"))
+        and keeps.get("footer_before") != keeps.get("footer_after")
+    )
+    keys["state_updates"] = bool(
+        _is_str(state.get("well")) and _is_str(state.get("before")) and _is_str(state.get("after"))
+        and state.get("before") != state.get("after")
+    )
+    keys["stale_and_panel"] = bool(
+        _num(notices) and notices >= 1 and isinstance(stale.get("notice_text"), str)
+        and "deck panel" in stale["notice_text"]
+        and _is_str(stale.get("panel_state")) and stale.get("panel_state") != "closed"
+    )
+    return keys
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
