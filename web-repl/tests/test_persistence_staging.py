@@ -244,8 +244,13 @@ def test_assert_dist_complete_passes_with_all_persistence_modules(tmp_path: Path
 
     # A6, B9: assert_dist_complete also requires the display modules.
     (dist / "shell" / "display").mkdir(parents=True)
-    for name in ("index.js", "chrome.js", "stale.js", "interact.js"):
+    for name in ("index.js", "chrome.js", "stale.js", "interact.js", "dock.js"):
         (dist / "shell" / "display" / name).write_text(f"// display {name}\n")
+
+    # C6: and the 3D viewer's page, vendored three.js, augmentations and kernel-side module.
+    for rel in build_repl._REQUIRED_VIEWER3D_PATHS:
+        (dist / rel).parent.mkdir(parents=True, exist_ok=True)
+        (dist / rel).write_text(f"// {rel}\n")
 
     # assert_dist_complete should not raise
     build_repl.assert_dist_complete(dist, with_coxswain=False)  # must not raise
