@@ -4408,3 +4408,1150 @@ def test_n_d_is_skipped_and_says_so_where_the_ge_1600_key_is_recorded_only(rs):
     assert keys["skipped"] is True and "panel_width_wide_1600" not in keys and keys["skipped_reason"]
     unit = dataclasses.replace(rs.UNIT_BY_ID["N-d"], expected=rs.nd_expected(rs.width_key_status(**record)))
     assert rs.evaluate_unit_result(unit, keys) == ([], [])
+
+
+# =========================================================================== #
+# Sprint C (C7): the dock scenario bodies, the notebook they drive, the session, the in-page helpers, the CLI
+# =========================================================================== #
+#
+# The scenarios take a `driver` so their ORDER and key plumbing are tested against a scripted fake: `FakeDock` is a
+# small simulator of the deck panel's state machine (D11) and of the page the iframe holds. A real browser run
+# exercises `DockSession`, `DockDriver` and the in-page helpers; none of it runs here.
+
+import ast as _ast  # noqa: E402
+
+DOCK_CELLS = ("boot", "assemble", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck", "aspirate",
+              "dock", "hello", "viewer-id", "well-name", "ledger", "stop")
+
+
+@pytest.fixture(scope="module")
+def dnb(rs, nb):
+    return rs.build_dock_notebook(nb)
+
+
+def test_dock_notebook_is_the_fixture_cells_then_the_dock_cells_never_executed(rs, nb, dnb):
+    assert [c["id"] for c in dnb["cells"]] == list(DOCK_CELLS)
+    assert rs.DOCK_CELL_IDS == DOCK_CELLS and rs.DOCK_NOTEBOOK_NAME == "dock_check.ipynb"
+    for cell in dnb["cells"]:
+        assert cell["cell_type"] == "code" and cell["outputs"] == [] and cell["execution_count"] is None
+    src = {c["id"]: c["source"] for c in nb["cells"]}
+    for cid in DOCK_CELLS[:8]:  # cloned from the fixture, so its hash covers them
+        assert dnb["cells"][DOCK_CELLS.index(cid)]["source"] == src[cid], cid
+    assert {k: v for k, v in dnb.items() if k != "cells"} == {k: v for k, v in nb.items() if k != "cells"}
+
+
+def test_dock_notebook_does_not_mutate_the_fixture_it_was_built_from(rs, nb):
+    before = json.dumps(nb, sort_keys=True)
+    rs.build_dock_notebook(nb)
+    assert json.dumps(nb, sort_keys=True) == before
+
+
+def test_dock_notebook_refuses_a_fixture_lacking_a_cell_it_clones(rs, nb):
+    broken = {**nb, "cells": [c for c in nb["cells"] if c["id"] != "pickup"]}
+    with pytest.raises(KeyError):
+        rs.build_dock_notebook(broken)
+
+
+def _dsrc(dnb, cid):
+    return "".join(next(c for c in dnb["cells"] if c["id"] == cid)["source"])
+
+
+def test_dock_cells_parse_with_top_level_await(dnb):
+    for cell in dnb["cells"]:
+        _ast.parse("".join(cell["source"]), flags=_ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
+
+
+def test_dock_cells_say_what_ac34_ac35_ac37_and_ac38_need(dnb):
+    assert _dsrc(dnb, "dock") == "from praxis.viz.viewer3d import dock\nviewer = await dock(deck)"
+    assert _dsrc(dnb, "stop") == "await viewer.stop()"
+    assert _dsrc(dnb, "hello") == "viewer.clients_seen[-1]", "D11: evaluated in a cell, read from the output model"
+    assert _dsrc(dnb, "viewer-id") == "viewer.viewer_id"
+    assert _dsrc(dnb, "well-name") == 'source.get_well("A1").name', "AC-37: the well name is read from the kernel"
+    ledger = _dsrc(dnb, "ledger")
+    assert "RunLedger(lh)" in ledger and "with " in ledger and "await lh.aspirate" in ledger
+    assert ledger.count("display(") == 0, "the ledger is the cell's ONLY Praxis output (resource null)"
+
+
+def test_dock_cells_carry_no_test_hook_no_serial_prompt_and_no_repl_channel(dnb):
+    blob = json.dumps(dnb)
+    for token in ("__praxis" + "_test", "data-praxis" + "-test", "requestDevice", "requestPort", "praxis_repl"):
+        assert token not in blob, token
+
+
+def test_parse_py_repr_reads_what_a_cell_evaluates_to(rs):
+    assert rs.parse_py_repr("'v-abc123'") == "v-abc123"
+    assert rs.parse_py_repr("{'backend': 'WebGL2', 'renderer': 'ANGLE (SwiftShader)'}") == {
+        "backend": "WebGL2", "renderer": "ANGLE (SwiftShader)"}
+    assert rs.parse_py_repr('"source_well_0"\n') == "source_well_0"
+    for bad in (None, "", "Traceback (most recent call last):\n IndexError", "{'a':", "<object at 0x1>"):
+        assert rs.parse_py_repr(bad) is None, bad
+
+
+# -- the simulator -------------------------------------------------------------------------------------------
+
+
+POS = {"deck": (0.0, 0.0, 0.0), "tips_300": (10.0, 0.0, 0.0), "source": (20.0, 5.0, 0.0), "assay": (30.0, 5.0, 0.0)}
+
+
+class FakeDock:
+    """A scripted ``DockDriver``: every call is recorded in ``calls``; the state machine is D11's, in miniature.
+
+    ``broken`` names behaviours to break (each one makes a real product fail a real key): ``no_resources`` (the viewer
+    page never gets a scene, as with socket.js removed), ``drop_query`` (the harness's ``--neg drop-query``),
+    ``no_handle`` (no splitter handle can be found), ``lost_clamp`` (a drag is not clamped), ``reload_on_resize``."""
+
+    def __init__(self, rs: Any, nb: dict[str, Any], *, broken: tuple[str, ...] = (), start=(1440, 900)) -> None:
+        self.rs, self.broken = rs, set(broken)
+        self.ids = {i: c["id"] for i, c in enumerate(nb["cells"])}
+        self.calls: list[tuple[Any, ...]] = []
+        self.w, self.h = start
+        self.left_open = True
+        self.state, self.home, self.seen = "closed", None, False
+        self.frames: list[dict[str, Any]] = []
+        self.current: str | None = None
+        self.kernel_viewer: str | None = None
+        self.serial = 0
+        self.stopped = False
+        self.follow, self.preset, self.footer, self.cam_dir = True, "top", None, "top"
+        self.at = (0.0, 0.0, 0.0)
+        self.seq, self.events, self.loads_n, self.dropped = 0, [], 0, 0
+        self.text = ""
+        self.drag_w: float | None = None
+        self.stamps = {"draw-source": ["source"], "draw-assay": ["assay"], "draw-tips": ["tips_300"],
+                       "draw-deck": ["deck"], "ledger": [None]}
+        self.source_changed, self.aspirated = 0, False
+        self.cell_text: dict[str, str] = {}
+        self.restarted = False
+        self.closes_by_restart = 0
+        self.tab_closed = 0
+
+    # -- plumbing -----------------------------------------------------------------------------------------
+    def _log(self, *call: Any) -> None:
+        self.calls.append(call)
+
+    def _ev(self, type_: str, **kw: Any) -> int:
+        self.seq += 1
+        self.events.append({"seq": self.seq, "type": type_, **kw})
+        return self.seq
+
+    @property
+    def tier(self) -> str:
+        return "wide" if self.w >= 1600 else "medium" if self.w >= 1280 else "drawer"
+
+    def _home_for_tier(self) -> str:
+        return "drawer" if self.tier == "drawer" else "split"
+
+    # -- session/driver surface the scenarios use ------------------------------------------------------------
+    def open_lab(self) -> None:
+        self._log("open_lab")
+
+    def set_theme(self, name: str) -> None:
+        self._log("set_theme", name)
+
+    def theme_name(self) -> str:
+        return "JupyterLab Light"
+
+    def seed_and_open(self, name: str, nb: dict[str, Any]) -> None:
+        self._log("seed_and_open", name)
+
+    def wait_kernel_idle(self) -> None:
+        self._log("wait_kernel_idle")
+
+    def settle(self, ms: float) -> None:
+        pass
+
+    def poll(self, read: Any, ok: Any, timeout_s: float) -> tuple[Any, bool]:
+        value = read()
+        for _ in range(3):
+            if ok(value):
+                return value, True
+            value = read()
+        return value, bool(ok(value))
+
+    def restart_kernel(self) -> dict[str, Any]:
+        self._log("restart_kernel")
+        self.restarted = True
+        if self.state in ("open-connected", "open-lost"):  # T25: the viewer's kernel went away
+            self._remove_frames()
+            self.current, self.state, self.text = None, "open-waiting", NO_VIEWER_TEXT
+        return {"via": "kernelmenu:restart"}
+
+    def report(self, index: int, res: str | None = None) -> dict[str, Any]:
+        cid = self.ids[index]
+        changed = self.source_changed if (cid == "draw-source" and res == "source") else 0
+        return {"index": index, "res": {"found": True, "changed_notices": changed, "svg_count": 1}}
+
+    # -- world ----------------------------------------------------------------------------------------------
+    def _remove_frames(self) -> None:
+        for f in self.frames:
+            self._ev("iframe_removed", src_viewer=f["src_viewer"])
+        self.frames = []
+
+    def _insert_frame(self, viewer: str) -> None:
+        self.frames = [{"src_viewer": viewer, "src": f"x?viewer={viewer}"}]
+        self._ev("iframe_inserted", src_viewer=viewer)
+        self._ev("iframe_load", src_viewer=viewer)
+        self.loads_n += 1
+
+    def _connect(self, viewer: str) -> None:
+        self.state, self.text = "open-connected", ""
+        self.current = viewer
+        self._insert_frame(viewer)
+
+    def _announce(self) -> None:
+        if self.kernel_viewer is None or self.stopped:
+            return
+        self._ev("bc", kind="announce", viewer=self.kernel_viewer)
+        if self.state == "closed":
+            if not self.seen:
+                self.home = self._home_for_tier()
+                self._connect(self.kernel_viewer)
+        elif self.state in ("open-waiting", "open-lost"):
+            self._connect(self.kernel_viewer)
+        elif self.current != self.kernel_viewer:
+            self._remove_frames()
+            self._insert_frame(self.kernel_viewer)
+            self.current = self.kernel_viewer
+        self.seen = True
+
+    def run_cell(self, index: int) -> None:
+        cid = self.ids[index]
+        self._log("run_cell", cid)
+        if cid == "dock":
+            if self.kernel_viewer is not None and not self.stopped:  # dock() stops the previous viewer first
+                self._ev("bc", kind="close", viewer=self.kernel_viewer)
+                if self.state in ("open-connected", "open-lost") and self.current == self.kernel_viewer:
+                    self._remove_frames()
+                    self.state, self.current, self.text = "open-waiting", None, NO_VIEWER_TEXT
+            self.serial += 1
+            self.kernel_viewer, self.stopped = f"v-{self.serial}", False
+            self._announce()
+        elif cid == "stop":
+            if self.kernel_viewer is not None and not self.stopped:
+                self.stopped = True
+                self._ev("bc", kind="close", viewer=self.kernel_viewer)
+                if self.state in ("open-connected", "open-lost") and self.current == self.kernel_viewer:
+                    self._remove_frames()
+                    self.state, self.current, self.text = "open-waiting", None, NO_VIEWER_TEXT
+        elif cid == "aspirate":
+            self.aspirated = True
+            self.source_changed = 1
+        elif cid in ("hello", "viewer-id", "well-name"):
+            pass
+        if cid == "ledger":
+            self.aspirated = True
+
+    def kernel_text(self, index: int) -> str | None:
+        cid = self.ids[index]
+        self._log("kernel_text", cid)
+        if cid == "hello":
+            if "no_resources" in self.broken or self.kernel_viewer is None:
+                return None
+            return repr({"backend": "WebGL2", "renderer": "ANGLE (SwiftShader)"})
+        if cid == "viewer-id":
+            return repr(self.kernel_viewer)
+        if cid == "well-name":
+            return repr("source_well_0")
+        return None
+
+    def set_viewport(self, w: int, h: int) -> None:
+        self._log("set_viewport", w, h)
+        old_home = self.home
+        self.w, self.h = w, h
+        if self.state != "closed":
+            new_home = self._home_for_tier()
+            if old_home != new_home:  # T10 / T15 / T21: re-homed; a DOM move reloads the iframe
+                self.home = new_home
+                if self.frames:
+                    viewer = self.frames[0]["src_viewer"]
+                    self._remove_frames()
+                    self._insert_frame(viewer)
+            elif "reload_on_resize" in self.broken and self.tier == "wide" and self.frames:
+                self.loads_n += 1
+                self._ev("iframe_load", src_viewer=self.frames[0]["src_viewer"])
+        self.drag_w = None
+
+    def snap(self) -> dict[str, Any]:
+        return {"state": self.state, "home": self.home, "tier": self.tier, "follow": self.follow, "focused": self.footer,
+                "current": self.current, "preset": self.preset, "seen": self.seen}
+
+    def _main(self) -> float:
+        return float(self.w - 29 - (280 if self.left_open else 0))
+
+    def _panel_width(self) -> float | None:
+        if self.state == "closed":
+            return None
+        if self.home == "drawer":
+            return 480.0
+        if self.tier == "medium":
+            return self.drag_w if self.drag_w is not None else 450.0
+        return max(420.0, self._main() - 960.0) if self.drag_w is None else self.drag_w
+
+    def facts(self) -> dict[str, Any]:
+        pw = self._panel_width()
+        main = self._main()
+        nb_w = main if self.home != "split" or self.state == "closed" else main - (pw or 0)
+        if self.w >= 1600:
+            nb_w = min(nb_w, 960.0)
+        left = main - (pw or 0) if self.home == "split" else self.w - 480.0
+        nb_right = main - (pw or 0) if self.home == "split" else main
+        return {
+            "present": self.state != "closed", "state": self.state, "position": "fixed" if self.home == "drawer" else "static",
+            "panel_rect": None if pw is None else {"left": left, "right": left + pw, "width": pw, "height": 600.0},
+            "notebook_panel_rect": {"left": 0.0, "right": nb_right, "width": nb_right, "height": 700.0},
+            "nb_content_width": nb_w, "nb_h_padding": 0.0, "main_width": main,
+            "frames": [dict(f, height=420.0) for f in self.frames],
+            "text": self.text, "footer": self.footer if self.footer else "No resource focused.",
+            "follow_checked": self.follow, "pressed": [self.preset], "motion_height": 24.0,
+            "left_collapsed": not self.left_open, "inner_width": self.w,
+        }
+
+    def resources(self) -> list[str] | None:
+        if not self.frames or "no_resources" in self.broken:
+            return None if not self.frames else []
+        return ["deck", "tip_carrier", "tips_300", "plate_carrier", "source", "assay"]
+
+    def camera(self) -> dict[str, Any] | None:
+        if not self.frames or "no_resources" in self.broken:
+            return None
+        d = _dir(self.rs.VIEWS[self.cam_dir])
+        return {"from": [a + 500.0 * c for a, c in zip(self.at, d)], "at": list(self.at)}
+
+    def state_of(self, name: str) -> str | None:
+        if not self.frames or "no_resources" in self.broken:
+            return None
+        return json.dumps({"volume": 190 if self.aspirated else 200})
+
+    def wait_connected(self, timeout_s: float = 10.0) -> bool:
+        self._log("wait_connected")
+        return self.state == "open-connected" and len(self.frames) == 1 and "no_resources" not in self.broken
+
+    def wait_resources(self, timeout_s: float = 10.0) -> bool:
+        self._log("wait_resources")
+        return len(self.frames) == 1 and "no_resources" not in self.broken
+
+    def _focus(self, name: str) -> None:
+        self.footer, self.at, self.cam_dir = name, POS[name], self.preset
+
+    def click_resource(self, index: int, name: str) -> bool:
+        self._log("click_resource", self.ids[index], name)
+        if self.state != "open-connected" or "no_resources" in self.broken:
+            return True
+        self._focus(name)
+        return True
+
+    def click_cell_input(self, index: int) -> bool:
+        cid = self.ids[index]
+        self._log("click_cell_input", cid)
+        if self.follow and self.state == "open-connected" and "no_resources" not in self.broken:
+            res = next((r for r in self.stamps.get(cid, []) if r), None)
+            if res:
+                self._focus(res)
+        return True
+
+    def click_follow(self) -> None:
+        self._log("click_follow")
+        self.follow = not self.follow
+
+    def click_preset(self, name: str) -> None:
+        self._log("click_preset", name)
+        self.preset = name
+        if self.state == "open-connected" and "no_resources" not in self.broken:
+            self.cam_dir = name
+
+    def click_drawer_close(self) -> None:
+        self._log("click_drawer_close")
+        if self.home == "drawer" and self.state != "closed":
+            self._close()
+
+    def press_escape(self) -> None:
+        self._log("press_escape")
+        if self.home == "drawer" and self.state != "closed":
+            self._close()
+
+    def _close(self) -> None:
+        self._remove_frames()
+        self.state, self.current, self.footer, self.text = "closed", None, None, ""
+
+    def toggle_panel(self) -> None:
+        self._log("toggle_panel")
+        if self.state != "closed":
+            self._close()
+            return
+        self.home = self._home_for_tier()
+        self.state, self.text = "open-waiting", NO_VIEWER_TEXT
+        if "drop_query" in self.broken:
+            self.dropped += 1
+            return
+        self._ev("bc", kind="query", viewer=None)
+        self._announce()
+
+    def close_deck_tab(self) -> None:
+        self._log("close_deck_tab")
+        self.tab_closed += 1
+        if self.state != "closed" and self.home == "split":
+            self._close()
+
+    def drag_splitter_to(self, width: float) -> float | None:
+        self._log("drag_splitter_to", width)
+        if "no_handle" in self.broken or self.state == "closed" or self.home != "split":
+            return None
+        if self.tier == "medium" and "lost_clamp" not in self.broken:
+            width = min(480.0, max(420.0, width))
+        self.drag_w = width
+        return width
+
+    def collapse_left(self) -> bool:
+        self._log("collapse_left")
+        self.left_open = False
+        return True
+
+    def reload_frame(self) -> bool:
+        self._log("reload_frame")
+        if len(self.frames) != 1:
+            return False
+        self.loads_n += 1
+        self._ev("iframe_src", src_viewer=self.frames[0]["src_viewer"])
+        self._ev("iframe_load", src_viewer=self.frames[0]["src_viewer"])
+        return True
+
+    def loads(self) -> int:
+        return self.loads_n
+
+    def mark(self, name: str) -> int:
+        self._log("mark", name)
+        return self._ev("mark", name=name)
+
+    def events_since(self, seq: int) -> list[dict[str, Any]]:
+        return [e for e in self.events if e["seq"] >= seq]
+
+    def embed_hidden(self) -> dict[str, Any]:
+        return {sel: "none" for sel in ROOT_SELECTORS}
+
+    def canvas_measure(self) -> dict[str, Any]:
+        if "no_resources" in self.broken:
+            return {"diff_pixels": 0, "total_pixels": 360000, "control_blank": 0.0, "control_marked": 0.05}
+        return {"diff_pixels": 54000, "total_pixels": 360000, "control_blank": 0.0, "control_marked": 0.05}
+
+    def stamp_resources(self, index: int) -> list[Any]:
+        return list(self.stamps.get(self.ids[index], []))
+
+    def notice_text(self, index: int, res: str) -> str | None:
+        return "Changed since, see deck panel." if self.source_changed and self.ids[index] == "draw-source" else None
+
+    def stock_split(self) -> dict[str, Any]:
+        self._log("stock_split")
+        return {"panel": 785.0, "notebook": 786.0, "main": 1571.0, "padding": 0.0}
+
+    def neg_dropped(self) -> int:
+        return self.dropped
+
+
+ROOT_SELECTORS = (".navbar", "#toolbar-left", "#stats-panel", "#sidepanel", "#toolbar")
+NO_VIEWER_TEXT = "No deck viewer is running. Run `viewer = await praxis.viz.viewer3d.dock(deck)` in a cell."
+
+
+@pytest.fixture()
+def dnbf(rs, nb):
+    return rs.build_dock_notebook(nb)
+
+
+def _calls(d: FakeDock, name: str) -> list[tuple[Any, ...]]:
+    return [c for c in d.calls if c[0] == name]
+
+
+def _evaluate(rs, unit_id, result):
+    return rs.evaluate_unit_result(rs.UNIT_BY_ID[unit_id], dict(result, pageerrors=[]))
+
+
+def test_k1a_scenario_positive_control_every_listed_key_holds(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    keys = rs.run_k1a(d, nb)
+    assert _evaluate(rs, "K1a", keys) == ([], []), {k: keys.get(k) for k in K1A_DERIVED}
+    assert keys["evidence"]["hello"]["backend"] == "WebGL2"
+    assert d.calls[:4] == [("open_lab",), ("set_theme", "JupyterLab Light"), ("seed_and_open", "dock_check.ipynb"),
+                           ("wait_kernel_idle",)], "AC-34: Light theme, boots and draws and runs dock() itself"
+
+
+def test_k1a_runs_the_setup_then_the_draws_then_dock_and_reads_the_kernel_not_the_printed_hello(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    rs.run_k1a(d, nb)
+    runs = [c[1] for c in _calls(d, "run_cell")]
+    assert runs[:8] == ["boot", "assemble", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck", "dock"]
+    assert runs.index("hello") > runs.index("dock") and runs.index("well-name") > runs.index("dock")
+    assert runs.index("aspirate") > runs.index("dock"), "AC-37: the aspirate runs AFTER the viewer is live"
+    assert runs.index("ledger") < [c[1] for c in d.calls if c[0] == "click_cell_input"].index("draw-tips") + len(runs), "sanity"
+    assert ("kernel_text", "hello") in d.calls and ("kernel_text", "well-name") in d.calls
+
+
+def test_k1a_the_ledger_cell_is_activated_by_a_click_after_it_already_has_its_output(rs, nb, dnbf):
+    """`activeCellChanged` fires as the cell is activated. If the ledger were only ever activated by the run that
+    produces its output, the output would not exist at that moment and follow_skips_null would pass vacuously."""
+    d = FakeDock(rs, dnbf)
+    rs.run_k1a(d, nb)
+    names = [c[:2] for c in d.calls if c[0] in ("run_cell", "click_cell_input") and c[1] in ("ledger",)]
+    assert names[0] == ("run_cell", "ledger") and ("click_cell_input", "ledger") in names
+    assert names.index(("click_cell_input", "ledger")) > names.index(("run_cell", "ledger"))
+    before_click = [c for c in d.calls[: d.calls.index(("click_cell_input", "ledger"))] if c[0] == "click_cell_input"]
+    assert before_click[-1][1] == "draw-tips", "Follow had moved the focus to another resource first"
+
+
+def test_k1a_follow_off_is_a_real_click_on_the_switch_and_follow_is_turned_back_on(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    rs.run_k1a(d, nb)
+    assert len(_calls(d, "click_follow")) == 2 and d.follow is True, "off for follow_off_holds, on again for the rest"
+
+
+def test_k1a_presets_are_pressed_top_front_iso_with_real_clicks(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    rs.run_k1a(d, nb)
+    assert [c[1] for c in _calls(d, "click_preset")][:3] == ["top", "front", "iso"]
+    assert [c[1] for c in _calls(d, "click_preset")][3] == "top", "follow_keeps_preset presses Top again first"
+
+
+def test_k1a_without_a_scene_the_viewer_resources_key_fails_and_the_scenario_still_finishes(rs, nb, dnbf):
+    """AC-39(b): socket.js removed -> the page never gets a scene. The unit must NAME `viewer_resources`, not
+    raise (an error finding names no key and could never pass the negative's outcome)."""
+    d = FakeDock(rs, dnbf, broken=("no_resources",))
+    keys = rs.run_k1a(d, nb)
+    missing, failing = _evaluate(rs, "K1a", keys)
+    assert missing == [] and "viewer_resources" in failing, failing
+    assert "canvas_nonblank" in failing and "hello_backend" in failing
+
+
+def test_k1a_a_step_that_raises_is_recorded_and_the_other_keys_are_still_produced(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    d.embed_hidden = lambda: (_ for _ in ()).throw(rs.DockCheckError("no iframe document"))
+    keys = rs.run_k1a(d, nb)
+    missing, failing = _evaluate(rs, "K1a", keys)
+    assert missing == [] and failing == ["embed_hidden"]
+    assert "DockCheckError" in keys["evidence"]["step_errors"]["embed_hidden"]
+
+
+def test_k1b_scenario_positive_control_every_key_holds_in_the_listed_order(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    keys = rs.run_k1b(d, nb)
+    assert _evaluate(rs, "K1b", keys) == ([], []), {k: keys.get(k) for k in K1B_KEYS}
+    marks = [c[1] for c in _calls(d, "mark") if c[1].startswith("key:")]
+    assert marks == ["key:" + k for k in K1B_KEYS], "AC-38 execution order"
+    assert keys["evidence"]["recoveries"] == [], "nothing needed recovering"
+
+
+def test_k1b_action_sequence_follows_the_ac38_execution_order(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    rs.run_k1b(d, nb)
+    acts = [c for c in d.calls if c[0] in ("run_cell", "reload_frame", "set_viewport", "click_preset", "close_deck_tab",
+                                           "toggle_panel", "restart_kernel")]
+    flat = [c[1] if c[0] == "run_cell" else c[0] + (":" + str(c[1]) if len(c) > 1 else "") for c in acts]
+    setup = ["boot", "assemble", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck", "dock"]
+    assert flat[:8] == setup
+    tail = flat[8:]
+    # reconnect_after_reload: a reload; preset_survives_reload: Front then a reload; drawer_reconnect: 1152 then back to 1440
+    assert tail[:4] == ["reload_frame", "click_preset:front", "reload_frame", "set_viewport:1152"]
+    assert tail[4] == "set_viewport:1440"
+    # redock_live re-runs dock with a LIVE viewer; then the viewer id; stop_placeholder stops; redock_reloads re-docks
+    rest = tail[5:]
+    assert rest[:2] == ["dock", "viewer-id"]
+    assert "stop" in rest and rest.index("stop") > rest.index("dock")
+    after_stop = rest[rest.index("stop") + 1:]
+    assert after_stop[0] == "dock", "stop_placeholder runs immediately before redock_reloads' dock"
+    # late_iframe: tab closed, dock re-run while closed, reopened with the toggle AFTER dock returned
+    i_tab = after_stop.index("close_deck_tab")
+    assert after_stop[i_tab + 1] == "dock" and after_stop[i_tab + 2] == "toggle_panel"
+    # many_reloads: six reloads; restart_placeholder last
+    assert after_stop.count("reload_frame") == 6
+    assert after_stop[-1] == "restart_kernel" and flat.count("restart_kernel") == 1
+
+
+def test_k1b_reads_every_iframe_through_the_panel_dom_at_the_moment_of_the_read(rs, nb, dnbf):
+    """AC-38 DOM reads: the scenario holds no element between steps; every iframe fact comes from `facts()`."""
+    import inspect
+    src = inspect.getsource(rs.run_k1b)
+    assert "frames" in src and "facts()" in src
+    for forbidden in ("query_selector", "locator(", "element_handle", "ElementHandle"):
+        assert forbidden not in src, forbidden
+
+
+def test_k1b_drop_query_negative_fails_late_iframe_and_names_it_with_the_mutation_proven_to_have_fired(rs, nb, dnbf):
+    """AC-39(e): with every `query` dropped, reopening gets no announce. late_iframe must fail, and the harness
+    records how many queries were actually dropped (a mutation that never fired proves nothing)."""
+    d = FakeDock(rs, dnbf, broken=("drop_query",))
+    keys = rs.run_k1b(d, nb, neg=("drop-query",))
+    missing, failing = _evaluate(rs, "K1b", keys)
+    assert missing == [] and failing == ["late_iframe"], failing
+    assert keys["neg_dropped_queries"] >= 1
+    assert keys["evidence"]["recoveries"] == ["late_iframe"], "later keys still ran, after a recorded re-dock"
+
+
+def test_k1b_without_the_neg_flag_no_dropped_queries_are_reported(rs, nb, dnbf):
+    keys = rs.run_k1b(FakeDock(rs, dnbf), nb)
+    assert keys["neg_dropped_queries"] == 0
+
+
+def test_k1b_a_reload_that_never_repopulates_fails_its_keys_and_does_not_abort(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    d.wait_resources = lambda timeout_s=10.0: False
+    keys = rs.run_k1b(d, nb)
+    missing, failing = _evaluate(rs, "K1b", keys)
+    assert missing == [] and {"reconnect_after_reload", "preset_survives_reload", "many_reloads"} <= set(failing)
+
+
+# -- K2 ---------------------------------------------------------------------------------------------------------
+
+
+def test_k2_scenario_positive_control_under_the_recorded_case_every_key_holds(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800))
+    keys = rs.run_k2(d, nb)
+    assert _evaluate(rs, "K2", keys) == ([], []), {k: keys.get(k) for k in K2_ALL_KEYS}
+    assert keys["sizing_case"] == "honoured_reachable" and set(keys["width_key_status"].values()) == {"asserted"}
+
+
+def test_k2_uses_one_page_one_kernel_and_one_dock_and_the_nine_ordered_steps(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800))
+    rs.run_k2(d, nb)
+    assert len(_calls(d, "open_lab")) == 1 and len(_calls(d, "seed_and_open")) == 1, "one page"
+    assert len(_calls(d, "restart_kernel")) == 0
+    assert [c[1] for c in _calls(d, "run_cell")].count("dock") == 1, "one kernel, one dock()"
+    sizes = [(c[1], c[2]) for c in _calls(d, "set_viewport")]
+    assert sizes == [
+        (1440, 900), (1152, 800), (1440, 900),  # step 3: tier_up_rehomes
+        (1600, 900), (1440, 900),  # step 5: fit_after_tier_change 1440 -> 1600 -> 1440
+        (1280, 800),  # step 6
+        (1600, 900),  # step 7
+        (1920, 900),  # step 8: resize_within_wide
+        (1920, 1080),  # step 9
+    ]
+    assert len(_calls(d, "collapse_left")) == 1
+    order = [c[0] for c in d.calls]
+    assert order.index("collapse_left") > max(i for i, c in enumerate(d.calls) if c == ("set_viewport", 1280, 800)), "step 7"
+    assert order.index("collapse_left") < order.index("set_viewport", order.index("collapse_left")), "closed before 1600"
+
+
+def test_k2_reopens_are_through_the_toggle_command_never_a_second_dock(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800))
+    rs.run_k2(d, nb)
+    assert len(_calls(d, "toggle_panel")) >= 8
+    assert len(_calls(d, "click_drawer_close")) == 2 and len(_calls(d, "press_escape")) == 1
+
+
+def test_k2_splitter_drags_go_to_300_and_700_at_1440_and_1280_only(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800))
+    rs.run_k2(d, nb)
+    assert [c[1] for c in _calls(d, "drag_splitter_to")] == [300, 700, 300, 700]
+
+
+def test_k2_counts_iframe_loads_over_the_drags_and_the_wide_resize_only(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800), broken=("reload_on_resize",))
+    keys = rs.run_k2(d, nb)
+    _, failing = _evaluate(rs, "K2", keys)
+    assert failing == ["iframe_reloads_during_resize"], failing
+    assert keys["evidence"]["reloads"]["resize_within_wide"] >= 1
+
+
+def test_k2_a_splitter_that_cannot_be_found_fails_the_drag_keys_and_nothing_else(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800), broken=("no_handle",))
+    keys = rs.run_k2(d, nb)
+    _, failing = _evaluate(rs, "K2", keys)
+    assert set(failing) == {"drag_clamp_low_1440", "drag_clamp_high_1440", "drag_clamp_low_1280", "drag_clamp_high_1280"}
+
+
+def test_k2_an_unclamped_drag_fails_the_clamp_keys(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800), broken=("lost_clamp",))
+    _, failing = _evaluate(rs, "K2", rs.run_k2(d, nb))
+    assert set(failing) == {"drag_clamp_low_1440", "drag_clamp_high_1440", "drag_clamp_low_1280", "drag_clamp_high_1280"}
+
+
+def test_k2_a_failing_step_is_recorded_and_the_later_steps_still_run(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800))
+    real = d.drag_splitter_to
+
+    def boom(width):
+        if width == 300 and d.w == 1440:
+            raise rs.DockCheckError("mouse lost")
+        return real(width)
+
+    d.drag_splitter_to = boom
+    keys = rs.run_k2(d, nb)
+    missing, failing = _evaluate(rs, "K2", keys)
+    assert missing == [] and "drag_clamp_low_1440" in failing and "panel_width_wide_1920" not in failing
+    assert "mouse lost" in " ".join(keys["evidence"]["step_errors"].values())
+
+
+def test_k2_recorded_only_keys_do_not_gate_under_another_case_but_are_still_reported(rs, nb, dnbf, monkeypatch):
+    record = {"css_limits_honoured": True, "layout_sizing_reachable": False, "css_limits_refit": False,
+              "restore_layout_keeps_iframe": True}
+    d = FakeDock(rs, dnbf, start=(1152, 800))
+    keys = rs.run_k2(d, nb, record=record)
+    assert keys["sizing_case"] == "honoured_unreachable" and keys["width_key_status"]["panel_width_wide_1600"] == "recorded-only"
+    unit = dataclasses.replace(rs.UNIT_BY_ID["K2"], expected=rs.k2_expected(rs.width_key_status(**record)))
+    assert rs.evaluate_unit_result(unit, dict(keys, pageerrors=[])) == ([], [])
+
+
+# -- N-d ---------------------------------------------------------------------------------------------------------
+
+
+def test_n_d_scenario_the_stock_split_makes_the_wide_key_fail_and_it_is_the_only_failing_key(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1600, 900))
+    keys = rs.run_nd(d, nb)
+    assert _evaluate(rs, "N-d", keys) == ([], ["panel_width_wide_1600"])
+    assert [c[0] for c in d.calls][:3] == ["open_lab", "seed_and_open", "stock_split"], "no kernel, no dock(), no dock.js sizing"
+    assert ("run_cell", "dock") not in d.calls
+
+
+def test_n_d_scenario_is_skipped_without_touching_the_browser_where_the_key_is_recorded_only(rs, nb, dnbf):
+    record = {"css_limits_honoured": False, "layout_sizing_reachable": False, "css_limits_refit": False,
+              "restore_layout_keeps_iframe": True}
+    d = FakeDock(rs, dnbf, start=(1600, 900))
+    keys = rs.run_nd(d, nb, record=record)
+    assert keys["skipped"] is True and _calls(d, "stock_split") == [] and _calls(d, "open_lab") == []
+
+
+def test_n_d_scenario_an_untrustworthy_measurement_raises_so_the_unit_records_an_error(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1600, 900))
+    d.stock_split = lambda: {"panel": None, "notebook": 786.0, "main": 1571.0, "padding": 0.0}
+    with pytest.raises(rs.DockCheckError):
+        rs.run_nd(d, nb)
+
+
+# -- dispatch and the session ------------------------------------------------------------------------------------
+
+
+def test_run_dock_scenario_dispatches_each_unit_to_its_own_body(rs, monkeypatch, nb):
+    calls: list[tuple[str, Any]] = []
+
+    class Drv:
+        def __init__(self, session: Any, *a: Any, **k: Any) -> None:
+            calls.append(("driver", session))
+
+    monkeypatch.setattr(rs, "DockDriver", Drv)
+    for name in ("run_k1a", "run_k1b", "run_k2", "run_nd"):
+        monkeypatch.setattr(rs, name, lambda d, f, _n=name, **kw: calls.append((_n, kw)) or {"body": _n})
+    session = FakeSession()
+    for uid, body in (("K1a", "run_k1a"), ("K1b", "run_k1b"), ("K2", "run_k2"), ("N-d", "run_nd")):
+        assert rs.run_dock_scenario(session, rs.UNIT_BY_ID[uid], make_env(rs), notebook=nb) == {"body": body}
+    assert [c[0] for c in calls if c[0] != "driver"] == ["run_k1a", "run_k1b", "run_k2", "run_nd"]
+
+
+def test_run_dock_scenario_passes_the_neg_flags_to_k1b_only(rs, monkeypatch, nb):
+    seen: list[Any] = []
+    monkeypatch.setattr(rs, "DockDriver", lambda session, **k: object())
+    monkeypatch.setattr(rs, "run_k1b", lambda d, f, neg=(): seen.append(neg) or {})
+    session = FakeSession()
+    session._neg = ("drop-query",)
+    rs.run_dock_scenario(session, rs.UNIT_BY_ID["K1b"], make_env(rs), notebook=nb)
+    assert seen == [("drop-query",)]
+
+
+def test_run_dock_scenario_refuses_a_unit_it_has_no_body_for(rs):
+    with pytest.raises(rs.DockCheckError):
+        rs.run_dock_scenario(FakeSession(), rs.HarnessUnit("Kx", rs.DOCK_CHECK, 1.0, ()), make_env(rs))
+
+
+@pytest.mark.parametrize(
+    "path,full",
+    [
+        ("/home/u/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome", True),
+        ("/home/u/.cache/ms-playwright/chromium-1228/chrome-linux/chrome", True),
+        ("/home/u/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell", False),
+        ("/x/chromium_headless_shell-1234/chrome-linux/headless_shell", False),
+        ("/x/headless_shell", False),
+        ("", False),
+    ],
+)
+def test_is_full_chromium_rejects_the_headless_shell_which_has_no_webgl2(rs, path, full):
+    assert rs.is_full_chromium(path) is full
+
+
+def test_dock_launch_args_add_swiftshader_to_the_base_args(rs):
+    args = rs.dock_launch_args()
+    assert args[: len(rs.BASE_CHROMIUM_ARGS)] == rs.BASE_CHROMIUM_ARGS
+    assert args[len(rs.BASE_CHROMIUM_ARGS):] == ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
+
+
+def test_dock_context_init_scripts_always_carry_the_ack_and_the_monitor_and_drop_query_only_on_request(rs):
+    base = rs.dock_context_init_scripts(())
+    assert rs.PERSISTENCE_ACK_INIT_SCRIPT in base and rs.PERSISTENCE_GATE_MONITOR_INIT_SCRIPT in base
+    assert rs.DOCK_MONITOR_INIT_SCRIPT in base and rs.DROP_QUERY_INIT_SCRIPT not in base
+    neg = rs.dock_context_init_scripts(("drop-query",))
+    assert rs.DROP_QUERY_INIT_SCRIPT in neg and neg[: len(base)] == base
+
+
+def _fake_playwright(monkeypatch, launched, contexts):
+    import types
+
+    class Page:
+        def __init__(self):
+            self.handlers = {}
+
+        def on(self, name, fn):
+            self.handlers[name] = fn
+
+    class Context:
+        def __init__(self, kw):
+            self.kw, self.scripts, self.page = kw, [], Page()
+
+        def add_init_script(self, script):
+            self.scripts.append(script)
+
+        def new_page(self):
+            return self.page
+
+    class Browser:
+        def new_context(self, **kw):
+            ctx = Context(kw)
+            contexts.append(ctx)
+            return ctx
+
+        def close(self):
+            launched.append("close")
+
+    class Chromium:
+        def launch(self, **kw):
+            launched.append(kw)
+            return Browser()
+
+    class PW:
+        chromium = Chromium()
+
+        def stop(self):
+            launched.append("stop")
+
+    class Starter:
+        def start(self):
+            return PW()
+
+    mod = types.ModuleType("playwright.sync_api")
+    mod.sync_playwright = lambda: Starter()
+    mod.TimeoutError = TimeoutError
+    pkg = types.ModuleType("playwright")
+    pkg.sync_api = mod
+    monkeypatch.setitem(sys.modules, "playwright", pkg)
+    monkeypatch.setitem(sys.modules, "playwright.sync_api", mod)
+
+
+def test_dock_session_launches_full_chromium_with_swiftshader_and_the_dock_init_scripts(rs, monkeypatch, tmp_path):
+    launched: list[Any] = []
+    contexts: list[Any] = []
+    _fake_playwright(monkeypatch, launched, contexts)
+    serve = tmp_path / "dist"
+    serve.mkdir()
+    args = rs.parse_args(["--dock-check", "--serve-dir", str(serve), "--out-dir", str(tmp_path / "o"), "--neg", "drop-query",
+                          "--scenario", "K1b"])
+    env = make_env(rs, chrome_path="/pw/chromium-1243/chrome-linux64/chrome")
+    session = rs.DockSession(rs.UNIT_BY_ID["K1b"], args, env)
+    try:
+        kw = launched[0]
+        assert kw["executable_path"] == "/pw/chromium-1243/chrome-linux64/chrome"
+        assert kw["args"] == rs.dock_launch_args() and "--use-angle=swiftshader" in kw["args"]
+        assert contexts[0].kw == {"viewport": {"width": 1440, "height": 900}}
+        assert contexts[0].scripts == rs.dock_context_init_scripts(("drop-query",))
+        assert "pageerror" in contexts[0].page.handlers
+        assert session.lab_url.endswith("/praxis/lab/index.html") or session.lab_url.endswith("/lab/index.html")
+    finally:
+        session.close()
+    assert launched[-2:] == ["close", "stop"]
+
+
+def test_dock_session_k2_starts_at_the_first_k2_viewport(rs, monkeypatch, tmp_path):
+    launched: list[Any] = []
+    contexts: list[Any] = []
+    _fake_playwright(monkeypatch, launched, contexts)
+    serve = tmp_path / "dist"
+    serve.mkdir()
+    args = rs.parse_args(["--dock-check", "--serve-dir", str(serve), "--out-dir", str(tmp_path / "o")])
+    session = rs.DockSession(rs.UNIT_BY_ID["K2"], args, make_env(rs, chrome_path="/pw/chromium-1243/chrome-linux64/chrome"))
+    try:
+        assert contexts[0].kw == {"viewport": {"width": 1152, "height": 800}}
+    finally:
+        session.close()
+
+
+def test_dock_session_refuses_the_headless_shell_before_it_launches_anything(rs, monkeypatch, tmp_path):
+    launched: list[Any] = []
+    _fake_playwright(monkeypatch, launched, [])
+    args = rs.parse_args(["--dock-check", "--out-dir", str(tmp_path / "o")])
+    env = make_env(rs, chrome_path="/pw/chromium_headless_shell-1234/chrome-linux/headless_shell")
+    with pytest.raises(rs.DockCheckError):
+        rs.DockSession(rs.UNIT_BY_ID["K1a"], args, env)
+    assert launched == []
+
+
+def test_display_session_still_uses_the_stock_launch_args_and_scripts(rs, monkeypatch, tmp_path):
+    launched: list[Any] = []
+    contexts: list[Any] = []
+    _fake_playwright(monkeypatch, launched, contexts)
+    serve = tmp_path / "dist"
+    serve.mkdir()
+    args = rs.parse_args(["--display-check", "--serve-dir", str(serve), "--out-dir", str(tmp_path / "o")])
+    session = rs.DisplaySession(rs.UNIT_BY_ID["D1"], args, make_env(rs, chrome_path="/pw/chromium-1243/chrome-linux64/chrome"))
+    try:
+        assert launched[0]["args"] == rs.chromium_launch_args(offline=False)
+        assert contexts[0].scripts == rs.display_context_init_scripts(())
+    finally:
+        session.close()
+
+
+# -- the in-page helpers ---------------------------------------------------------------------------------------------
+
+
+def _js_names(source: str, prefix: str) -> set[str]:
+    return set(re.findall(prefix + r"\.(\w+)\s*=", source))
+
+
+def test_every_page_helper_the_driver_calls_is_defined_in_the_dock_check_js(rs):
+    import inspect
+    src = inspect.getsource(rs.DockDriver)
+    called = set(re.findall(r'_dk\(\s*self\.page,\s*"(\w+)\(', src)) | set(re.findall(r'self\._dk\(\s*"(\w+)\(', src))
+    defined = _js_names(rs.DOCK_CHECK_JS, "D")
+    assert called, "the driver does call page helpers"
+    assert called <= defined, sorted(called - defined)
+
+
+def test_the_dock_check_js_defines_no_helper_the_driver_never_calls(rs):
+    import inspect
+    src = inspect.getsource(rs.DockDriver)
+    called = set(re.findall(r'_dk\(\s*self\.page,\s*"(\w+)\(', src)) | set(re.findall(r'self\._dk\(\s*"(\w+)\(', src))
+    assert _js_names(rs.DOCK_CHECK_JS, "D") <= called, sorted(_js_names(rs.DOCK_CHECK_JS, "D") - called)
+
+
+def test_harness_page_code_has_no_test_switch_no_serial_prompt_and_no_repl_channel(rs):
+    for name in ("DOCK_CHECK_JS", "DOCK_MONITOR_INIT_SCRIPT", "DROP_QUERY_INIT_SCRIPT"):
+        text = getattr(rs, name)
+        for token in ("__praxis" + "_test", "data-praxis" + "-test", "requestDevice", "requestPort", "praxis_repl"):
+            assert token not in text, (name, token)
+
+
+def test_the_dock_check_js_reads_the_real_selectors_the_product_defines(rs):
+    """Every product selector the helpers use is one dock.js (or the vendored page) really defines."""
+    dock = (rs.REPO_ROOT / "web-repl/shell/display/dock.js").read_text()
+    for token in ("praxis-deck-panel", "praxis-deck-panel__body", "praxis-deck-panel__footer", "praxis-deck-panel__follow",
+                  "praxis-deck-panel__views", "praxis-deck-panel__motion", "praxis-deck-panel__close", "praxis-deck-panel__frame",
+                  "data-praxis-deck-state", "data-praxis-deck-focus", "aria-checked", "aria-pressed", "praxis:toggle-deck-panel"):
+        assert token in dock, token
+        assert token in rs.DOCK_CHECK_JS or token in rs.DOCK_MONITOR_INIT_SCRIPT or token in _dock_driver_source(rs), token
+    assert 'w.title.label = "Deck"' in dock, "the tab label the close-icon lookup matches"
+    assert "__praxisDisplay" in (rs.REPO_ROOT / "web-repl/shell/display/index.js").read_text()
+    assert "window.__praxisDisplay" in rs.DOCK_CHECK_JS
+
+
+def _dock_driver_source(rs) -> str:
+    import inspect
+    return inspect.getsource(rs.DockDriver) + inspect.getsource(rs.run_k1a) + inspect.getsource(rs.run_k1b)
+
+
+_BUN = shutil.which("bun") or str(Path.home() / ".bun" / "bin" / "bun")
+needs_bun = pytest.mark.skipif(not Path(_BUN).exists(), reason="bun not installed: the in-page code is exercised locally only")
+
+
+@needs_bun
+@pytest.mark.parametrize("name", ["DOCK_CHECK_JS", "DOCK_MONITOR_INIT_SCRIPT", "DROP_QUERY_INIT_SCRIPT", "DOCK_MEASURE_CANVAS_JS"])
+def test_in_page_code_parses_as_javascript(rs, tmp_path, name):
+    text = getattr(rs, name)
+    script = tmp_path / "p.js"
+    script.write_text(f"const src = {json.dumps(text)};\ntry {{ new Function(src); }} catch (e) {{\n"
+                      f"  try {{ new Function('return (' + src + ')'); }} catch (e2) {{ console.error(String(e2)); process.exit(3); }}\n}}\n")
+    done = subprocess.run([_BUN, str(script)], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr
+
+
+_JS_PRELUDE = r"""
+const posted = [];
+class FakeMO { constructor(cb) { globalThis.__mo = cb; } observe() {} }
+globalThis.MutationObserver = FakeMO;
+globalThis.window = globalThis; window.top = window;
+globalThis.document = { addEventListener() {}, querySelectorAll() { return []; } };
+globalThis.location = { href: "http://x/lab/index.html" };
+"""
+
+
+@needs_bun
+def test_monitor_init_script_logs_bc_messages_in_one_ordered_sequence(rs, tmp_path):
+    js = _JS_PRELUDE + f"""
+{rs.DOCK_MONITOR_INIT_SCRIPT}
+const other = new BroadcastChannel("praxis_viz3d");
+other.postMessage(JSON.stringify({{kind: "announce", viewer: "v-1", deck: "d"}}));
+other.postMessage("not json");
+other.postMessage(JSON.stringify({{kind: "query"}}));
+await new Promise((r) => setTimeout(r, 200));
+const log = window.__praxisDockLog;
+console.log(JSON.stringify(log.events.map((e) => [e.seq, e.type, e.kind, e.viewer])));
+log.push({{type: "mark", name: "m"}});
+console.log(log.events.at(-1).seq, log.loads);
+window.__praxisDockChannel.close(); other.close();
+"""
+    script = tmp_path / "m.mjs"
+    script.write_text(js)
+    done = subprocess.run([_BUN, str(script)], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr
+    first, second = done.stdout.strip().splitlines()[-2:]
+    assert json.loads(first) == [[1, "bc", "announce", "v-1"], [2, "bc", "query", None]], "junk is not an event; seq is 1, 2, ..."
+    assert second.split() == ["3", "0"]
+
+
+@needs_bun
+def test_drop_query_init_script_drops_query_only_and_counts_what_it_dropped(rs, tmp_path):
+    js = _JS_PRELUDE + f"""
+{rs.DROP_QUERY_INIT_SCRIPT}
+const a = new BroadcastChannel("t1"), b = new BroadcastChannel("t1");
+const got = []; b.onmessage = (e) => got.push(e.data);
+a.postMessage(JSON.stringify({{kind: "query"}}));
+a.postMessage(JSON.stringify({{kind: "announce", viewer: "v"}}));
+a.postMessage("plain string");
+a.postMessage({{kind: "query"}});
+await new Promise((r) => setTimeout(r, 200));
+console.log(JSON.stringify(got), window.__praxisDropQuery.dropped);
+a.close(); b.close();
+"""
+    script = tmp_path / "d.mjs"
+    script.write_text(js)
+    done = subprocess.run([_BUN, str(script)], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr
+    got, dropped = done.stdout.strip().splitlines()[-1].rsplit(" ", 1)
+    assert json.loads(got) == [json.dumps({"kind": "announce", "viewer": "v"}), "plain string"]
+    assert dropped == "2", "both the JSON-string query and the object query were dropped"
+
+
+@needs_bun
+def test_init_scripts_do_nothing_in_a_child_frame(rs, tmp_path):
+    js = _JS_PRELUDE.replace("window.top = window;", "window.top = {};") + f"""
+{rs.DOCK_MONITOR_INIT_SCRIPT}
+{rs.DROP_QUERY_INIT_SCRIPT}
+console.log(String(window.__praxisDockLog), String(window.__praxisDropQuery));
+"""
+    script = tmp_path / "f.mjs"
+    script.write_text(js)
+    done = subprocess.run([_BUN, str(script)], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip().splitlines()[-1] == "undefined undefined", "AC-39(e): the PARENT page only"
+
+
+# -- the CLI ------------------------------------------------------------------------------------------------------
+
+
+def test_dock_check_flag_exists_and_main_routes_to_run_dock_check(rs, monkeypatch):
+    args = rs.parse_args(["--dock-check"])
+    assert args.dock_check is True and args.display_check is False
+    calls: list[Any] = []
+    monkeypatch.setattr(rs, "run_dock_check", lambda a, **kw: calls.append(a) or 9)
+    assert rs.main(["--dock-check"]) == 9 and len(calls) == 1
+    assert rs.main([]) == 2
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [["--serve-dir", "{tmp}"], ["--neg", "drop-query", "--scenario", "K1b"], ["--serve-dir", "{tmp}", "--scenario", "K1a"]],
+)
+def test_run_dock_check_exits_2_before_launching_anything_without_out_dir(rs, tmp_path, argv):
+    spy = SpyRunner()
+    args = rs.parse_args(["--dock-check", *[a.format(tmp=tmp_path) for a in argv]])
+    assert rs.run_dock_check(args, runner=spy, hash_env=make_env(rs)) == 2
+    assert spy.calls == []
+
+
+def test_run_dock_check_conflicting_flags_and_unknown_scenarios_exit_2(rs, tmp_path):
+    out = ["--out-dir", str(tmp_path / "o")]
+    for extra in (["--aggregate-only", "--fresh"], ["--aggregate-only", "--scenario", "K1a"], ["--scenario", "D1"],
+                  ["--scenario", "K9"]):
+        args = rs.parse_args(["--dock-check", *out, *extra])
+        assert rs.run_dock_check(args, runner=SpyRunner(), hash_env=make_env(rs)) == 2, extra
+
+
+def test_the_drop_query_negative_belongs_to_k1b_alone(rs, tmp_path):
+    """AC-39(e): `--dock-check --scenario K1b --neg drop-query`. Any other unit, and the driver, refuse it."""
+    out = ["--out-dir", str(tmp_path / "o"), "--neg", "drop-query"]
+    for extra in (["--scenario", "K1a"], ["--scenario", "K2"], ["--scenario", "N-d"], []):
+        args = rs.parse_args(["--dock-check", *out, *extra])
+        assert rs.run_dock_check(args, runner=SpyRunner(), hash_env=make_env(rs)) == 2, extra
+    seen: list[Any] = []
+    args = rs.parse_args(["--dock-check", *out, "--scenario", "K1b"])
+    rc = rs.run_dock_check(args, runner=SpyRunner(), hash_env=make_env(rs),
+                           scenario_entry=lambda uid, **kw: seen.append((uid, kw["neg"])) or 0)
+    assert rc == 0 and seen == [("K1b", ("drop-query",))]
+
+
+@pytest.mark.parametrize("uid", DOCK_IDS)
+def test_scenario_flag_runs_exactly_that_dock_unit_including_n_d(rs, tmp_path, uid):
+    seen: list[Any] = []
+    args = rs.parse_args(["--dock-check", "--scenario", uid, "--out-dir", str(tmp_path / "o")])
+    rc = rs.run_dock_check(args, runner=SpyRunner(), hash_env=make_env(rs),
+                           scenario_entry=lambda unit_id, **kw: seen.append((unit_id, kw["out_dir"], kw["scenario_fn"])) or 0)
+    assert rc == 0 and [s[0] for s in seen] == [uid]
+    assert seen[0][1] == (tmp_path / "o").resolve() and seen[0][2] is rs.run_dock_scenario
+
+
+def test_the_default_dock_out_dir_is_gitignored_outputs(rs):
+    assert rs.default_out_dir(rs.DOCK_CHECK) == rs.REPO_ROOT / "outputs" / "repl_smoke" / "dock-check"
+
+
+def drive_dock(rs, out_dir, env, runner, **kw):
+    return rs.run_units_driver(
+        table=list(rs.DOCK_AGGREGATE_UNITS), out_dir=out_dir, inputs_for=lambda u: rs.unit_inputs(u, env),
+        argv_for=lambda u: ["fake-unit", "--scenario", u.id], runner=runner, cwd="/repo", check=rs.DOCK_CHECK, **kw,
+    )
+
+
+def test_the_dock_driver_runs_k1a_k1b_k2_as_one_run_unit_each_and_never_n_d(rs, ur, wds, tmp_path):
+    env = make_env(rs)
+    out = tmp_path / "out"
+    runner = InProcessRunner(rs, ur, wds, out, env)
+    args = rs.parse_args(["--dock-check", "--out-dir", str(out), "--base-path", "/praxis/", "--serve-dir", str(tmp_path)])
+    assert rs.run_dock_check(args, runner=runner, hash_env=env, unit_argv_prefix=["py", "smoke.py"]) == 0
+    assert runner.ids() == ["K1a", "K1b", "K2"], "table order; N-d is never part of the aggregate"
+    assert [t for _, t, _ in runner.calls] == [m * 60 + 60 for m in (10, 14, 15)], "budget + 60 s each, no whole-run timeout"
+    for argv, _, _ in runner.calls:
+        assert argv[:2] == ["py", "smoke.py"] and "--dock-check" in argv and "--display-check" not in argv
+        assert argv[argv.index("--base-path") + 1] == "/praxis/" and argv[argv.index("--out-dir") + 1] == str(out)
+        assert argv[argv.index("--serve-dir") + 1] == str(tmp_path) and "--chrome-path" in argv
+    agg = json.loads((out / "result.json").read_text())
+    assert agg["check"] == "dock-check" and set(agg["scenarios"]) == {"K1a", "K1b", "K2"} and agg["passed"] is True
+    assert "N-d" not in agg["scenarios"] and agg["sizing_case"] == "honoured_reachable"
+
+
+def test_the_dock_aggregate_fails_while_any_unit_is_missing_and_n_d_never_rescues_or_fails_it(rs, ur, wds, tmp_path):
+    env = make_env(rs)
+    out = tmp_path / "out"
+    runner = InProcessRunner(rs, ur, wds, out, env, skip_stamp={"K1b"})
+    agg, code = drive_dock(rs, out, env, runner)
+    assert code == 1 and agg["missing"] == ["K1b"] and agg["recomputed"] == ["K1a", "K2"]
+    # an N-d result on disk (it fails its own listed key BY DESIGN) does not touch the verdict
+    scenario_in_process(rs, ur, wds, "N-d", out, env, fields={"panel_width_wide_1600": False})
+    agg2, code2 = drive_dock(rs, out, env, InProcessRunner(rs, ur, wds, out, env), )
+    assert code2 == 0 and agg2["passed"] is True and "N-d" not in agg2["scenarios"]
+
+
+def test_the_dock_aggregate_only_path_starts_no_unit_and_deletes_nothing(rs, ur, wds, tmp_path):
+    env = make_env(rs)
+    out = tmp_path / "out"
+    drive_dock(rs, out, env, InProcessRunner(rs, ur, wds, out, env))
+    before = snapshot_files(out)
+    spy = SpyRunner()
+    args = rs.parse_args(["--dock-check", "--aggregate-only", "--out-dir", str(out), "--base-path", "/praxis/"])
+    assert rs.run_dock_check(args, runner=spy, hash_env=env) == 0 and spy.calls == []
+    stale = rs.parse_args(["--dock-check", "--aggregate-only", "--out-dir", str(out), "--base-path", "/other/"])
+    assert rs.run_dock_check(stale, runner=spy, hash_env=make_env(rs, base_path="/other/")) == 1
+    after = snapshot_files(out)
+    assert all(after[k] == v for k, v in before.items() if k != "result.json")
+
+
+def test_a_dock_unit_hang_exits_124_with_marker_and_no_stamp_or_result(rs, ur, tmp_path):
+    """The K-unit watchdog is the table's budget (AC-42: armed once, before the first deletion and the browser)."""
+    for uid, minutes in zip(DOCK_IDS, DOCK_BUDGET_MIN):
+        armed: list[tuple[float, bool]] = []
+
+        class Spy:
+            def __init__(self, budget_s, on_expire):
+                armed.append((budget_s, (tmp_path / "x").exists()))
+                self.wd = ur.Watchdog(budget_s, on_expire, token="t", exit_fn=lambda c: None, kill_fn=lambda *a, **k: [])
+
+            def __getattr__(self, name):
+                return getattr(self.wd, name)
+
+        out = tmp_path / uid
+        files = rs.unit_paths(out, uid)
+        assert rs.run_scenario(
+            uid, out_dir=out, env_fn=lambda: make_env(rs), session_factory=lambda u, e: FakeSession(),
+            scenario_fn=lambda s, u, e: passing_fields(u), ensure_token_fn=lambda: "t", watchdog_factory=Spy,
+            kill_tree_fn=lambda *a, **k: [], exit_fn=lambda c: c,
+        ) == 0
+        assert armed == [(minutes * 60.0, False)], (uid, armed)
+        assert files["stamp"].exists()
