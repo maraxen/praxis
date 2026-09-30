@@ -111,4 +111,16 @@ CONTRACT: tuple[tuple[str, str], ...] = (
     # Visualizer.__init__, not at import time -- so the throwaway-venv contract
     # check does not need websockets to verify this symbol resolves.
     ("pylabrobot.visualizer.visualizer", "Visualizer"),
+    # -- praxis/display/context.py (B5, D8 "Classes the code checks"): the error classes, the two
+    # trackers and the tip-spot tracker accessor, at their non-shim homes. ``resources.tip_tracker``
+    # is a DeprecationWarning shim at the pin (test_contract_names_no_deprecated_shim_paths), so the
+    # legacy home is named; the resolver reads committed tip state through ``tip_spot_tracker(spot)``
+    # and never the docstring-deprecated ``TipSpot.tracker``.
+    ("pylabrobot.resources.errors", "TooLittleLiquidError"),
+    ("pylabrobot.resources.errors", "TooLittleVolumeError"),
+    ("pylabrobot.resources.errors", "HasTipError"),
+    ("pylabrobot.resources.errors", "NoTipError"),
+    ("pylabrobot.resources.volume_tracker", "VolumeTracker"),
+    ("pylabrobot.legacy.tip_tracker", "TipTracker"),
+    ("pylabrobot.legacy.tip_tracker", "tip_spot_tracker"),
 )

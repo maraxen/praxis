@@ -28,10 +28,12 @@ and name only the pin's non-shim homes (and be in ``plr_contract.CONTRACT``).
 * the case checks are plain functions of a resolver; a resolver that always returns ``None``, one
   that always names the first op resource, and one that resolves by NAME (an impostor with the same
   name is accepted) must each FAIL the checks built to catch them;
-* the "committed, not pending" and "committed tip, not ``has_tip``" checks are run against a
-  mutant of the module (its committed readers patched to read pending state / ``has_tip``): the
-  mutant must fail E13, E15 and E14 while still passing E1 and E4, which shows the checks bite where
-  they claim to;
+* the "committed, not pending" and "committed tip, not ``has_tip``" checks are run against mutants
+  of the module (its committed readers patched to read pending state / ``has_tip``; its offending set
+  skipped): each must fail the cases built for it (the direct-residue cases, E14, E13/E15) while E1
+  and E4 still pass, which shows the checks bite where they claim to. (E13's own op rolls its
+  resource back, so at resolve time pending equals committed there; the direct-residue cases have no
+  op to roll back and are what catch a pending reader.)
 * the frame filter is run against a ``glossary.ACTIONS`` that also lists PLR's ``wrapper`` frames;
 * the ``*96`` short-circuit is checked on a real non-96 failure that has a ``*96`` frame above it,
   which resolves when the short-circuit is removed (E-96 alone would give ``None`` anyway, for a
@@ -497,6 +499,108 @@ async def _e13():
     return Raised(exc, deck=deck, lh=lh, trough=trough)
 
 
+@scenario("residue_direct_tll", TooLittleLiquidError)
+async def _residue_direct_tll():
+    """No LH frame, so no rollback erases the residue: committed 100, pending 90, and a direct
+    ``remove_liquid(95)`` raises although 95 fits the committed volume. ``deck`` is a local."""
+    deck, lh, tips, source, assay = await _world()
+    well = assay.get_item("A1")
+    well.tracker.set_volume(100)
+    well.tracker.remove_liquid(10.0)
+    assert (well.tracker.volume, well.tracker.pending_volume) == (100, 90)
+    try:
+        well.tracker.remove_liquid(95.0)
+    except TooLittleLiquidError as exc:
+        assert (well.tracker.volume, well.tracker.pending_volume) == (100, 90)  # residue survives
+        return Raised(exc, deck=deck, lh=lh, well=well)
+    raise AssertionError("expected TLL")
+
+
+@scenario("residue_direct_tlv", TooLittleVolumeError)
+async def _residue_direct_tlv():
+    """The TLV twin: committed 300 (room 60), pending 350 (room 10), a direct ``add_liquid(20)``."""
+    deck, lh, tips, source, assay = await _world()
+    well = assay.get_item("A1")
+    well.tracker.set_volume(300)
+    well.tracker.add_liquid(50.0)
+    assert (well.tracker.volume, well.tracker.pending_volume) == (300, 350)
+    try:
+        well.tracker.add_liquid(20.0)
+    except TooLittleVolumeError as exc:
+        return Raised(exc, deck=deck, lh=lh, well=well)
+    raise AssertionError("expected TLV")
+
+
+@scenario("over_committed_direct", TooLittleLiquidError)
+async def _over_committed_direct():
+    """The residue twin that committed state DOES explain: 105 exceeds the committed 100 too."""
+    deck, lh, tips, source, assay = await _world()
+    well = assay.get_item("A1")
+    well.tracker.set_volume(100)
+    well.tracker.remove_liquid(10.0)
+    try:
+        well.tracker.remove_liquid(105.0)
+    except TooLittleLiquidError as exc:
+        return Raised(exc, deck=deck, lh=lh, well=well)
+    raise AssertionError("expected TLL")
+
+
+@scenario("E4_channel1", HasTipError)
+async def _e4_channel1():
+    """Pick up on channels 0 and 1 while channel 1 holds a tip: the failing channel is 1, so the
+    ``channel`` loop local is what names it (channel 0 has none and only queues)."""
+    deck, lh, tips, _source, _assay = await _world()
+    await lh.pick_up_tips([tips.get_item("A1")], use_channels=[1])
+    exc = await _catch(lh.pick_up_tips(tips["A2:B2"], use_channels=[0, 1]))
+    return Raised(exc, deck=deck, lh=lh, tips=tips)
+
+
+@scenario("impostor_in_op", TooLittleLiquidError)
+async def _impostor_in_op():
+    """The impostor first, the deck's real (empty) A1 and B1 after it, in ONE op: the raising tracker is the
+    impostor's, but its name belongs to a well that IS in the op and IS short of liquid, so only
+    identity keeps the real well from being named."""
+    deck, lh, tips, _source, assay = await _world()
+    await lh.pick_up_tips(tips["A1:C1"])
+    impostor = cor_96_wellplate_360uL_Fb(name="assay").get_item("A1")
+    real, other = assay.get_item("A1"), assay.get_item("B1")
+    assert impostor.name == real.name and impostor is not real and real.tracker.volume == 0
+    # (PLR compares and hashes resources by value: [impostor, real] alone would be ONE resource)
+    exc = await _catch(lh.aspirate([impostor, real, other], vols=[50.0] * 3, use_channels=[0, 1, 2]))
+    return Raised(exc, deck=deck, lh=lh, impostor=impostor, real=real)
+
+
+@scenario("impostor_direct", TooLittleLiquidError)
+async def _impostor_direct():
+    """No LH frame: a standalone tracker named exactly like the deck well's. Rule (d) finds the
+    well by name, but the well's tracker is not this one."""
+    deck, lh, tips, source, assay = await _world()
+    real = assay.get_item("A1")
+    impostor = VolumeTracker(thing=real.tracker.thing, max_volume=real.max_volume)
+    assert impostor is not real.tracker
+    try:
+        impostor.remove_liquid(999.0)
+    except TooLittleLiquidError as exc:
+        return Raised(exc, deck=deck, lh=lh, real=real)
+    raise AssertionError("expected TLL")
+
+
+@scenario("nested_trackers", TooLittleLiquidError)
+async def _nested_trackers():
+    """Two DIFFERENT trackers on the stack: a callback on well A1's tracker removes 999 uL from well
+    B1. The one that raised is the INNERMOST tracker frame (B1's); A1's own request (1 uL) fits."""
+    deck, lh, tips, source, assay = await _world()
+    a1, b1 = assay.get_item("A1"), assay.get_item("B1")
+    a1.tracker.set_volume(100)
+    b1.tracker.set_volume(100)
+    a1.tracker.register_callback(lambda: b1.tracker.remove_liquid(999.0))
+    try:
+        a1.tracker.remove_liquid(1.0)
+    except TooLittleLiquidError as exc:
+        return Raised(exc, deck=deck, lh=lh, a1=a1, b1=b1)
+    raise AssertionError("expected TLL")
+
+
 @scenario("E14", HasTipError)
 async def _e14():
     """Pending tip residue from a failed pick-up, then a second pick-up on those channels."""
@@ -882,6 +986,45 @@ def check_e13(resolve):
     assert _resolve(resolve, r) is None
 
 
+def check_residue_direct_tll(resolve):
+    assert _resolve(resolve, case("residue_direct_tll")) is None
+
+
+def check_residue_direct_tlv(resolve):
+    assert _resolve(resolve, case("residue_direct_tlv")) is None
+
+
+def check_over_committed_direct(resolve):
+    r = case("over_committed_direct")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.owner is r.well and ctx.rule == "d"
+    assert (ctx.requested, ctx.available) == (105.0, 100.0)  # committed, not the pending 90
+
+
+def check_e4_channel1(resolve):
+    r = case("E4_channel1")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.owner_kind == CHANNEL and ctx.rule == "e"
+    assert ctx.channel == 1  # the loop local, not the first channel of the op
+    assert ctx.targets == (1,)  # committed: only channel 1 holds a tip
+    assert tuple(ctx.channels) == (0, 1)
+
+
+def check_impostor_in_op(resolve):
+    assert _resolve(resolve, case("impostor_in_op")) is None
+
+
+def check_impostor_direct(resolve):
+    assert _resolve(resolve, case("impostor_direct")) is None
+
+
+def check_nested_trackers(resolve):
+    r = case("nested_trackers")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.owner is r.b1 and ctx.rule == "d"
+    assert (ctx.requested, ctx.available) == (999.0, 100.0)  # the innermost tracker frame's own volume
+
+
 def check_e14(resolve):
     r = case("E14")
     assert _resolve(resolve, r) is None
@@ -941,6 +1084,10 @@ CHECKS = {
     "E5": check_e5, "E6": check_e6, "E6-off": check_e6_off, "E7": check_e7, "E8": check_e8,
     "E8_spot": check_e8_spot, "E8_channel": check_e8_channel, "E9": check_e9, "E10": check_e10,
     "E11": check_e11, "E12": check_e12, "E12_per_channel": check_e12_per_channel,
+    "residue_direct_tll": check_residue_direct_tll, "residue_direct_tlv": check_residue_direct_tlv,
+    "over_committed_direct": check_over_committed_direct,
+    "E4_channel1": check_e4_channel1, "impostor_in_op": check_impostor_in_op,
+    "impostor_direct": check_impostor_direct, "nested_trackers": check_nested_trackers,
     "E13": check_e13, "E14": check_e14, "E15": check_e15, "E16": check_e16, "E-96": check_e96,
     "E1_via_96": check_e1_via_96, "impostor": check_impostor,
     "neg_value_error": check_neg_value_error, "neg_ghost_volume": check_neg_ghost_volume,
@@ -1179,24 +1326,41 @@ def _mutant(monkeypatch, cx, **patches):
         monkeypatch.setattr(cx, name, fn)
 
 
-def test_a_resolver_that_reads_pending_volume_fails_e13_and_e15_but_not_e1(cx, monkeypatch):
-    """Positive/negative control for the committed-state rule: patch the module's committed readers
-    to read PENDING state. E13 (95 <= committed 100, PLR saw 90) must then resolve, and E15
-    (committed room 360, PLR saw 160) too, so their checks FAIL. E1 is unaffected (pending equals
-    committed after a rolled-back aspirate), which shows the mutant is specific.
+_DIRECT_RESIDUE = ("residue_direct_tll", "residue_direct_tlv", "over_committed_direct")
+
+
+def test_a_resolver_that_reads_pending_state_fails_the_direct_residue_cases_but_not_e1(cx, monkeypatch):
+    """Control for "committed, not pending". After a failed op PLR's rollback has already reset the
+    op's own resources (pending == committed, E13's own assert), so a pending reader cannot be
+    caught THERE. It can where no op rolls back: a direct tracker change with no LH frame. Patch the
+    committed readers to read pending state: those cases must then FAIL, while E1 (nothing pending)
+    still passes.
     """
-    for name in ("E13", "E15", "E1"):
+    for name in (*_DIRECT_RESIDUE, "E1"):
         CHECKS[name](cx.resolve)
     _mutant(monkeypatch, cx, _committed_volume=lambda tracker: tracker.pending_volume)
     check_e1(cx.resolve)
-    with pytest.raises(AssertionError):
-        check_e13(cx.resolve)
+    for name in _DIRECT_RESIDUE:
+        with pytest.raises(AssertionError):
+            CHECKS[name](cx.resolve)
 
 
-def test_a_resolver_that_reads_pending_room_fails_e15(cx, monkeypatch):
-    _mutant(monkeypatch, cx, _committed_volume=lambda tracker: tracker.pending_volume)
-    with pytest.raises(AssertionError):
-        check_e15(cx.resolve)
+def test_a_resolver_that_skips_the_committed_offending_set_fails_e13_e15_and_e14(cx, monkeypatch):
+    """Control for the pending-residue rule ("owner outside the committed offending set -> None"): a
+    resolver that treats every volume request as short, and every tip as conflicting, resolves
+    E13, E15 and E14, so their checks FAIL. E1 and E4, which committed state does explain, still
+    pass.
+    """
+
+    def always_short(tracker, requested, too_little_liquid):
+        return cx._committed_volume(tracker) if too_little_liquid else cx._committed_room(tracker)
+
+    _mutant(monkeypatch, cx, _shortfall=always_short, _tip_conflict=lambda exc, has_committed_tip: True)
+    check_e1(cx.resolve)
+    check_e4(cx.resolve)
+    for name in ("E13", "E15", "E14", *_DIRECT_RESIDUE[:2]):
+        with pytest.raises(AssertionError):
+            CHECKS[name](cx.resolve)
 
 
 def test_a_resolver_that_uses_has_tip_fails_e14_but_not_e4(cx, monkeypatch):
@@ -1257,24 +1421,30 @@ def _first_op_resource_resolver(cx):
     return resolver
 
 
+NONE_CASES = (
+    "E13", "E14", "E15", "E-96", "E1_via_96", "impostor", "impostor_in_op", "impostor_direct",
+    "residue_direct_tll", "residue_direct_tlv", "neg_value_error", "neg_ghost_volume", "neg_ghost_spot", "neg_tip_name_volume",
+    "neg_tip_name_tracker", "neg_bare_discard", "neg_bare_return",
+)
+
+
 def test_a_resolver_that_always_returns_none_fails_the_positive_cases(cx):
     def always_none(exc, tb=None, **kw):
         return None
 
-    positives = [n for n in CHECKS if not n.startswith("neg_") and n not in (
-        "E13", "E14", "E15", "E-96", "E1_via_96", "impostor")]
+    positives = [n for n in CHECKS if n not in NONE_CASES]
     assert len(positives) >= 20
     for name in positives:
         with pytest.raises(AssertionError):
             CHECKS[name](always_none)
     # ... and it passes exactly the None cases: the checks are not one-sided
-    for name in ("E13", "E14", "E15", "E-96", "E1_via_96", "impostor", "neg_value_error"):
+    for name in NONE_CASES:
         CHECKS[name](always_none)
 
 
 def test_a_resolver_that_always_names_the_first_op_resource_fails_the_discriminating_cases(cx):
     resolver = _first_op_resource_resolver(cx)
-    for name in ("E10", "E12", "E6", "E4", "E13", "E14", "E15", "E-96", "E3", "E9", "E16"):
+    for name in ("E10", "E12", "E6", "E4", "E13", "E14", "E15", "E3", "E9", "E16"):
         with pytest.raises(AssertionError):
             CHECKS[name](resolver)
 
@@ -1314,40 +1484,10 @@ def test_owner_outside_the_committed_offending_set_is_none_for_every_residue_cas
 
 
 def test_no_lh_frame_the_trackers_own_committed_state_decides(cx):
-    """E8 style, with residue: a direct pending change makes PLR raise for a request that fits the
-    committed volume. No LH frame, so the tracker's own committed volume decides: ``None``.
-    """
-
-    async def go():
-        deck, lh, tips, source, assay = await _world()
-        well = assay.get_item("A1")
-        well.tracker.set_volume(100)
-        well.tracker.remove_liquid(10.0)  # pending 90
-        try:
-            well.tracker.remove_liquid(95.0)
-        except TooLittleLiquidError as exc:
-            return Raised(exc, deck=deck, lh=lh, well=well)
-        raise AssertionError("expected TLL")
-
-    r = asyncio.run(go())
-    assert (r.well.tracker.volume, r.well.tracker.pending_volume) == (100, 90)
-    assert cx.resolve(r.exc) is None
-    # and 105 (over the committed 100 too) does resolve: the rule is committed state, not a blanket None
-
-    async def go2():
-        deck, lh, tips, source, assay = await _world()
-        well = assay.get_item("A1")
-        well.tracker.set_volume(100)
-        well.tracker.remove_liquid(10.0)
-        try:
-            well.tracker.remove_liquid(105.0)
-        except TooLittleLiquidError as exc:
-            return Raised(exc, deck=deck, lh=lh, well=well)
-        raise AssertionError("expected TLL")
-
-    r2 = asyncio.run(go2())
-    ctx = cx.resolve(r2.exc)
-    assert ctx is not None and ctx.owner is r2.well and (ctx.requested, ctx.available) == (105.0, 100.0)
+    """With no op frame the tracker that raised is checked against its own committed state:
+    residue that a request fits gives ``None``, a request over the committed volume too resolves."""
+    for name in _DIRECT_RESIDUE:
+        CHECKS[name](cx.resolve)
 
 
 # --------------------------------------------------------------------------- through a RunLedger
