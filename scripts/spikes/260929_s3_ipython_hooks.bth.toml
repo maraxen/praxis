@@ -1,0 +1,197 @@
+# Pre-registration sidecar for spike S3 (task 260929_notebook-display-design, backlog #5625 A3,
+# epic #5648). Spec: .praxia/docs/specs/260929_notebook-display-epic.md, D1 row S3, D2
+# (registration; the metadata["text/html"]["praxis"] carrier), D8 (set_custom_exc), D16 (shared
+# unit runner, bounded teardown), D17 (one bounded unit, resume, completeness), Sprint A task A3,
+# AC-3, AC-42.
+#
+# THIS FILE AND scripts/spikes/260929_s3_ipython_hooks.py ARE COMMITTED BEFORE ANY RUN. No
+# browser has been launched, no dist built and no `bth run` made against this probe when this
+# file was written: the outcome criteria below were chosen from the spec, not from numbers. Run
+# it with `bth`, never `uv run bth` (which silently skips sidecar enforcement). `bth run` has NO
+# `--out` option; the driver hands its result to bathos through $BTH_RESULTS_PATH:
+#
+#   bth run --project-slug praxis --output-paths outputs/spikes/260929_s3 -- \
+#     uv run --no-sync python3 scripts/spikes/260929_s3_ipython_hooks.py \
+#       --out-dir outputs/spikes/260929_s3 --dist <dist> [--resume]
+#
+# Verify the run by its RECORD (bth compact first if it is not visible yet):
+#   bth sql "SELECT id, status, outcome, exit_code, command FROM runs WHERE id LIKE '<prefix>%'"
+#
+# The driver writes the flat fields below to $BTH_RESULTS_PATH ONLY when the unit is complete.
+# An incomplete run (a timeout, a stampless crash) exits 3 and writes no result, so bathos
+# records no outcome, and the next `--resume` run is a new run record. A complete run whose
+# measurement is invalid still exits 0: its outcome is `invalid`.
+#
+# SOURCE READING BEFORE THE RUN (not a measurement, not a criterion): IPython 9.12.0
+# `InteractiveShell.run_code` calls `self.CustomTB(etype, value, tb)` for a registered class and
+# DISCARDS its return value (interactiveshell.py, the `except self.custom_exceptions` branch),
+# and pyodide_kernel 0.8.2's `Interpreter._showtraceback` only stores `_last_traceback`, which
+# `PyodideKernel.run` turns into the reply status; `post_run_cell` and `post_execute` are
+# triggered in the sync `run_cell` only, while the kernel awaits `run_cell_async` for a
+# top-level-await cell. That reading predicts (c) fails (S3-C, with the instance
+# `showtraceback` wrapper as the candidate fallback) and (d) fails for an await cell (S3-D),
+# while (b)/(b') hold. The run decides; every branch below is a pre-registered outcome.
+
+[experiment]
+hypothesis = "In the JupyterLite Pyodide kernel of the served dist (IPython 9.12.0 per the cached lock), inside ONE kernel and reading only the NOTEBOOK MODEL: (a) get_ipython() is not None; (b) display_formatter.mimebundle_formatter.for_type(cls, fn), with fn returning (data, metadata), emits fn's HTML with the stamp at the output's metadata[\"praxis\"]; (b') display_formatter.formatters['text/html'].for_type(cls, fn), with fn returning (html, {\"praxis\": stamp}), puts the stamp at the output's metadata[\"text/html\"][\"praxis\"]; (c) a set_custom_exc handler is invoked for a raise of its registered class in a plain cell AND in a top-level-await cell, display() inside the handler emits, the handler's returned structured traceback becomes the cell's error output, and Run All stops (with (c') the same four clauses for an instance-level showtraceback wrapper, measured so that S3-C can choose between the fallback and the B6 stop); (d) events.register('post_run_cell', cb) fires for a plain cell AND a top-level-await cell. Each branch of D1 S3 (S3-A all yes; S3-B (b) fails and (b') holds; S3-C (c) fails; S3-D (d) fails) is a pre-registered outcome; if (b) and (b') both fail, or (c) and (c') both fail, that is a STOP outcome. A control per instrument: a plain _repr_html_ object must read as carrying no stamp; an unregister must stop the post_run_cell events; a default (unregistered) error must be measurable as an error output and as stopping or not stopping Run All; and the D17 negative control (an exception class NOT registered with set_custom_exc, and not handled by the wrapper) must reach the default traceback. The prior (see the source-reading note above) is S3-C and S3-D, but the prior is NOT a criterion: the run is only INVALID (residual) if the instrument itself failed (an error finding, an uncontrolled or unmeasured hook, a cell that never settled, the deadline, an aborted boot, or a negative control that did not fail as required)."
+stage_name = "exploration"
+novel = true
+
+# ---------------------------------------------------------------------------------------
+# [outcomes]: over the flat fields the driver writes when the one unit is complete. Outcomes
+# are evaluated in file order (first match) and are written to be mutually exclusive.
+# measurement_valid is the conjunction of the named validity checks (see [design.derivations]):
+# no error finding anywhere (unit or sub-probe); the kernel reached idle; the warm-up cell
+# (which waits on the PLR boot gate) finished without an error output; the prelude bundle was
+# read back; every executed cell settled; the deadline was not hit; the probe was not aborted;
+# and, unless get_ipython() is None: (b), (b'), (c), (d) all measured (non-null), (c') measured
+# whenever (c) is false, the unstamped control read no stamp, the post_run_cell control did not
+# fire after unregister, the D17 negative control failed as required in all four cases, and
+# the Run All control (a default error) was measured with an error output. Any of these missing
+# lands in `invalid`: an error never satisfies a positive outcome.
+# branches: carrier_branch S3-A if (b) holds, else S3-B if (b') holds, else STOP (B7 and B9);
+# exc_branch S3-A if (c) holds, else S3-C if (c') holds, else STOP (B6); events_branch S3-A if
+# (d) holds, else S3-D. n_deviations counts the axes that are not S3-A (STOP counts).
+# ---------------------------------------------------------------------------------------
+
+[outcomes.s3_no_ipython]
+condition = "all_units_complete = true AND measurement_valid = true AND get_ipython_present = false"
+decision = "get_ipython() is None in the kernel: no hook of D2/D7/D8 is reachable. STOP B6, B7, B8 and B9 and escalate."
+reasoning = "Every hook verdict is False by construction when there is no shell; both modes agreed on None."
+is_residual = false
+
+[outcomes.runall_premise_fails]
+condition = "all_units_complete = true AND measurement_valid = true AND get_ipython_present = true AND runall_control_stops = false"
+decision = "The Run All control did not stop after a DEFAULT unregistered error in this build (the multi-cell Run path continued past an error output). The spec clause 'Run All stops' (D8, AC-15 and the E-cases) is false for every exception path, independent of any hook: amend the spec and escalate. The 'Run All stops' clause is waived from (c) and (c'); read d1_branch (and the per-axis fields) for the other three axes."
+reasoning = "The instrument could say 'does not stop' (an error output was present in the control and its follow-on cell ran), so the measurement is valid; the premise, not the hook, fails."
+is_residual = false
+
+[outcomes.s3_a]
+condition = "all_units_complete = true AND measurement_valid = true AND get_ipython_present = true AND runall_control_stops = true AND n_deviations = 0"
+decision = "S3-A: all four hooks work. Design as written (D2 mimebundle registration with the metadata praxis stamp, D8 set_custom_exc handler, D7 post_run_cell announcement)."
+reasoning = "(b) holds, (c) holds with Run All stopping, (d) holds; nothing deviates."
+is_residual = false
+
+[outcomes.s3_b]
+condition = "all_units_complete = true AND measurement_valid = true AND get_ipython_present = true AND runall_control_stops = true AND n_deviations = 1 AND carrier_branch = 'S3-B'"
+decision = "S3-B: (b) fails and (b') holds. Register text/html and text/plain separately via formatters[...].for_type; the text/html function returns (html, {\"praxis\": stamp}), so the D7 stamp is carried at metadata[\"text/html\"][\"praxis\"]; every reader goes through stampOf (D2). Record in the note that a text/plain for_type function takes (obj, p, cycle) and cannot carry metadata. (c) and (d) as written."
+reasoning = "Only the carrier axis deviates."
+is_residual = false
+
+[outcomes.s3_c]
+condition = "all_units_complete = true AND measurement_valid = true AND get_ipython_present = true AND runall_control_stops = true AND n_deviations = 1 AND exc_branch = 'S3-C'"
+decision = "S3-C: (c) fails and the instance showtraceback wrapper (c') holds. Wrap the kernel shell instance's showtraceback: an instance attribute that handles the four classes, displays the panel, emits the one-line structured traceback as the error output, and delegates everything else. PLR and IPython classes are not modified. (b) and (d) as written."
+reasoning = "Only the exception axis deviates, and its fallback is honoured in both cells, emits and stops Run All."
+is_residual = false
+
+[outcomes.s3_d]
+condition = "all_units_complete = true AND measurement_valid = true AND get_ipython_present = true AND runall_control_stops = true AND n_deviations = 1 AND events_branch = 'S3-D'"
+decision = "S3-D: (d) fails. The kernel announces from PLR state-update callbacks, debounced with loop.call_later(0.1, ...). Record in the note which of plain/await failed and whether pre_run_cell fired (both recorded)."
+reasoning = "Only the events axis deviates."
+is_residual = false
+
+[outcomes.s3_combined]
+condition = "all_units_complete = true AND measurement_valid = true AND get_ipython_present = true AND runall_control_stops = true AND n_deviations >= 2 AND carrier_branch <> 'STOP' AND exc_branch <> 'STOP'"
+decision = "Two or more axes deviate and none is a STOP: apply each named fallback (see d1_branch, e.g. S3-C+S3-D): the S3-B carrier, the S3-C wrapper, the S3-D debounced announcer, together."
+reasoning = "The three D1 axes are independent; every combination without a STOP is covered here."
+is_residual = false
+
+[outcomes.stop_b7_b9]
+condition = "all_units_complete = true AND measurement_valid = true AND get_ipython_present = true AND runall_control_stops = true AND carrier_branch = 'STOP'"
+decision = "STOP B7 and B9 and escalate: neither the mimebundle registration (b) nor the per-type text/html registration (b') carries the stamp to the output model, so the D7 stamp has no carrier (a DOM-attribute carrier is rejected: S2 may strip data-*). d1_branch also names any B6 stop."
+reasoning = "Both carriers failed with valid controls."
+is_residual = false
+
+[outcomes.stop_b6]
+condition = "all_units_complete = true AND measurement_valid = true AND get_ipython_present = true AND runall_control_stops = true AND exc_branch = 'STOP' AND carrier_branch <> 'STOP'"
+decision = "STOP B6 and escalate (MVP item 3 cannot be met): neither a set_custom_exc handler (c) nor an instance showtraceback wrapper (c') is honoured with display, returned traceback and Run All stopping."
+reasoning = "Both exception paths failed with valid controls."
+is_residual = false
+
+# The residual: the instrument did not produce a valid measurement. Not evidence for any branch.
+[outcomes.invalid]
+condition = "all_units_complete = true AND measurement_valid = false"
+decision = "INVALID: the unit carries an error finding (unit or sub-probe), or the kernel never reached idle, or the warm-up cell (PLR boot gate) raised, or a cell never settled, or the deadline was hit, or a hook verdict is unmeasured, or a control did not behave as required (including a negative control that errored, which has NOT failed as required). Fix the probe, commit, and re-run under this sidecar's design; cite no branch from this run."
+reasoning = "A verdict that could be a probe bug is never reported without a control that proves the instrument can say the opposite."
+is_residual = true
+
+[result_schema]
+all_units_complete = "bool"
+n_units = "int"
+n_error_units = "int"
+measurement_valid = "bool"
+kernel_ready = "bool"
+aborted = "str"
+get_ipython_present = "bool"
+ipython_version = "str"
+b_holds = "bool"
+b_prime_holds = "bool"
+c_holds = "bool"
+c_fallback_holds = "bool"
+d_holds = "bool"
+carrier_branch = "str"
+exc_branch = "str"
+events_branch = "str"
+n_deviations = "int"
+d1_branch = "str"
+runall_control_stops = "bool"
+runall_custom_stops = "bool"
+runall_wrap_stops = "bool"
+negative_control_failed_as_required = "bool"
+
+# ---------------------------------------------------------------------------------------
+# D17 design statement: pre-registered here, committed before the first run.
+# ---------------------------------------------------------------------------------------
+
+[design]
+spec = ".praxia/docs/specs/260929_notebook-display-epic.md D1 (S3 row), D2, D8, D16, D17, A3, AC-3, AC-42"
+driver = "scripts/spikes/260929_s3_ipython_hooks.py (argparse + logging); shared runner scripts/unit_runner.py; launch pattern and ServedDir/chromium_launch_args/resolve_chrome_path/_open_existing_notebook from scripts/repl_smoke.py, loaded by path. The plumbing is duplicated from the S1 driver on purpose (S2 and S3 stay independent; no shared spike module)."
+unit_list = ["ipython_hooks"]
+statement = "S3 is ONE declared bounded unit, ipython_hooks: (a), (b), (b'), (c) and (c') in a plain and a top-level-await cell, (d), the Run All blocks and the negative control share one kernel, so they are one unit. It runs in its own subprocess (<script> --unit ipython_hooks --out-dir <dir>) and its own browser context, started by the driver through unit_runner.run_unit with timeout = 10 min (600 s) + 60 s = 660 s, and self-bounded by a unit_runner.Watchdog armed at 10 min (600 s) as its first act after ensure_token(). The unit then deletes its own stamp, artifact and timeout marker, probes, writes <out>/units/ipython_hooks.json with unit_runner.write_atomic under the watchdog lock, runs the bounded teardown (browser and Playwright closed, kill_tree over residual descendants, output flushed), commits <out>/units/ipython_hooks.stamp.json last through Watchdog.commit, and then calls only os._exit(stamp.exit). There is no whole-run timeout. Outcomes are evaluated over the FULL unit set regardless of reuse: the driver writes its result (and so bathos evaluates [outcomes]) only when the unit is complete, reused or recomputed; a run with an incomplete unit writes no outcome and exits 3. The probe itself stops starting new work at 540 s (0.9 x the budget) so that an artifact saying how far it got is written before the watchdog can fire; a hit deadline or an aborted step is recorded and makes the run invalid."
+stamp = "{unit, inputs: {name: sha256}, artifact_sha256, started, finished, exit, timeout_s}; exit is 0 only if the probe did not raise (no unit-level error, no sub-probe error) and every pre-registered field is present."
+hashed_inputs = ["script (this driver, which also holds every kernel cell source)", "runner (scripts/unit_runner.py)", "harness (scripts/repl_smoke.py, loaded by path by the driver and the --unit branch)", "dist (unit_runner.dist_hash of the served dist)", "fixture (the sha256 of the canonical JSON of the seeded notebook, built in the driver from the kernel cell sources; no separate fixture file)", "chrome (resolved path + chrome --version)", "driver (unit_runner.driver_input: Playwright version + uv.lock sha256)", "args (unit, viewport 1440x900, base path; an addition to the D17 list, strictly more conservative)"]
+resume_rule = "--resume skips the unit only if its stamp exists, stamp.exit == 0, stamp.inputs equal the current inputs, stamp.artifact_sha256 equals the sha256 of the artifact on disk, the artifact has no error finding, and every field pre-registered for the unit (below) is present. Anything else is recomputed. Reuse changes how the work is scheduled, never the [outcomes] criteria; the research note records reused or recomputed, and for a reused unit its source path, input sha256s and artifact sha256."
+completeness = "The unit is complete when its artifact and a matching stamp (inputs equal the current inputs, artifact_sha256 equal to the artifact on disk) exist. A probe that raises, at the unit level or inside one sub-probe (a sub-probe is caught; the first sub-probe error is lifted into the unit's error), is recorded in the artifact as an error finding {type, message, traceback_tail <= 4 KiB} (a sub-probe error also names the sub_probe, and every sub-probe error is kept in sub_errors), and the unit still writes its artifact and stamp: it is complete, the error finding counts toward [outcomes] (an error never satisfies a positive outcome: measurement_valid is false and the outcome is `invalid`; a negative control that errors has NOT failed as required), and it is never reused. Only a timeout (exit 124, no stamp, no artifact, a timeout marker) or a stampless crash makes the unit incomplete. If the driver's run_unit times out over a valid stamp, the stamp governs and the driver logs a warning."
+teardown_order = "1 write artifact; 2 close browser and Playwright (errors logged, keys unchanged); 3 kill_tree over residual descendants; 4 flush stdout/stderr/logging; 5 Watchdog.commit(stamp); then only os._exit(stamp.exit). A hang in 1-4 is a timeout."
+reads = "Every result is read from the NOTEBOOK MODEL (notebook.content.model.cells: each cell's outputs and execution_count as JSON; for (b') the output's metadata[\"text/html\"][\"praxis\"]), never from the DOM, the console or printed text. Kernel-side observations with no output of their own (which hooks ran, which events fired) are echoed as structured display_data bundles (application/json, raw, metadata.s3 = tag) and read from the same model; a printed stream is never a measurement."
+kernel_and_plr = "The kernel is the Pyodide kernel of the served dist. It boots PLR through PYTHONSTARTUP and gates every cell on that boot (an async cleanup transform), so the wait for kernel idle (up to 240 s) and the warm-up cell (up to 180 s) may use much of the budget. The probe imports nothing from PLR. If the kernel does not reach idle, or the warm-up cell raises, the artifact records kernel_ready / boot.warmup_error and aborted, every later field is null, and the outcome is `invalid` (no branch is claimed)."
+
+[design.timeouts]
+unit_s = 600
+driver_kill_s = 660
+probe_deadline_s = 540
+kernel_idle_wait_s = 240
+warmup_cell_s = 180
+cell_s = 45
+run_block_s = 90
+whole_run_timeout = "none"
+note = "D17 S3 row: 10 min for the one unit; estimates from the spec, not measurements. The internal caps are each clipped to the time left before the deadline."
+
+[design.cells]
+notebook = "s3_ipython_hooks.ipynb, seeded through contents.save, opened with the Select Kernel dialog accepted; one code cell per probe cell, nothing pre-executed"
+order = "warm, setup, a_plain, a_await, path, b_reg, b_plain, b_await, b_control, bp_reg, bp_plain, bp_await, d_reg, d_plain, d_await, d_unreg, d_after, d_emit, c_reg, c_plain, c_await, c_neg_plain, c_neg_await, c_calls, w_install, w_plain, w_await, w_neg_plain, w_neg_await, w_calls, n1, n2, n3, r1, r2, r3, w1, w2, w3"
+execution = "one cell at a time through notebook:run-cell (the run command's promise settling marks the cell done), except the three Run blocks (n1-n3, r1-r3, w1-w3), each run as one multi-cell selection through the same command"
+top_level_await = "every '_await' cell begins with `await asyncio.sleep(0)`, so IPython runs it through run_cell_async"
+
+[design.derivations]
+a = "get_ipython_present: both the plain and the await cell report get_ipython() is not None (True) or both None (False); disagreement or a missing bundle is null"
+b = "(b) holds iff registration raised nothing and, in BOTH the plain and the await cell, the display_data output has text/html equal to the formatter's HTML and metadata[\"praxis\"] equal to the stamp {v, kind, resource, rev, session, exec: int}. False if registration raised or the stamp is missing or elsewhere; null if there was no output to inspect."
+b_prime = "(b') the same with formatters['text/html'].for_type and the stamp at metadata[\"text/html\"][\"praxis\"]. text/plain is registered too (pretty-printer signature (obj, p, cycle), which cannot carry metadata) and the last-expression execute_result path is recorded, both for information only."
+c = "(c) holds iff set_custom_exc raised nothing and, in BOTH modes, the handler was invoked (kernel-side call list), display() inside it produced a display_data with the handler's marker, an error output is present and its traceback is exactly the handler's returned one-line structured traceback, AND the Run All clause holds (the block's third cell never ran, or the clause is waived when the control does not stop either). False on any measured no; null if unmeasured."
+c_prime = "(c') the same four clauses for an instance-level showtraceback wrapper (ip.showtraceback replaced; it handles S3WrapError, displays, emits the one-line traceback through ip._showtraceback, and delegates every other class to the original)."
+d = "(d) holds iff the post_run_cell callback fired for the plain marker cell AND the await marker cell, and did NOT fire for the marker cell run after unregister (control); null if that control fired or the event list was unreadable; False if registration raised. pre_run_cell and post_execute counts are recorded for information."
+runall = "Three three-cell blocks (marker, raiser, marker), each run as one selection through notebook:run-cell (the runCells path Run All uses; the run-all-cells command itself is not used because it would re-execute the earlier probe cells): control (a default S3PlainError), custom (S3CustomError, handled by the set_custom_exc handler) and wrap (S3WrapError, handled by the wrapper). stops = the third cell never ran, provided the block settled, the first marker and the raiser ran, and the third cell's execution_count agrees with its marker; else null. runall_control_stops is the control's value."
+negative_control = "failed_as_required is true iff, for BOTH the set_custom_exc handler and the wrapper, in BOTH modes, an unregistered S3PlainError was not handled by the hook, produced no hook display, and reached the default traceback (an error output whose traceback is the multi-line IPython traceback naming the class); null if any case is unmeasured."
+validity_checks = "no_error_findings, kernel_ready, boot_ok, prelude_ok, all_cells_done, deadline_not_hit, not_aborted, a_measured; and, unless get_ipython_present is false: b_measured, b_prime_measured, c_measured, c_prime_measured_if_needed, d_measured, b_control_reads_none, d_control_did_not_fire, negative_control_failed_as_required, runall_control_measured"
+
+[design.controls]
+positive = "the warm-up and prelude cells prove the kernel executes and the model reader returns kernel-side bundles; the Run All control's raiser must produce an error output (the instrument can see an error); each carrier is read from an output the formatter demonstrably produced (its HTML is present)"
+negative = "D17: an exception class NOT registered with set_custom_exc (S3PlainError) must reach the default traceback, under the handler and under the wrapper, in a plain and an await cell. A negative control that ERRORS has NOT failed as required."
+instrument_can_say_no = "a plain _repr_html_ object must read as carrying no stamp at either location; a post_run_cell callback unregistered must not fire on the next marker cell; the Run All control (a default error) is read as stopping or not stopping; a handler whose returned traceback did not become the error output reads False."
+plumbing = "web-repl/tests/test_s3_spike_driver.py: driver, unit, stamp, resume, completeness and outcome-gating against a stub probe (no browser), and the probe's own logic against a fake IPython kernel running the real kernel cell sources (every branch and every control)"
+
+[design.units.ipython_hooks]
+timeout_s = 600
+upstream = []
+required_fields = ["kernel_ready", "boot", "prelude", "cells", "sub_errors", "get_ipython_present", "ipython_version", "path_evidence", "a", "b", "b_prime", "c", "c_prime", "d", "runall", "negative_control", "all_cells_done", "deadline_hit", "aborted"]
+description = "Seed the notebook, open it in full Chromium, wait for the Pyodide kernel to reach idle, run the warm-up cell (gated on the PLR boot), then run the probe cells in the one kernel and read every result from the notebook model: (a) get_ipython(); (b) the mimebundle formatter; (b') the per-type text/html formatter and the metadata[\"text/html\"][\"praxis\"] carrier; (d) post_run_cell (with pre_run_cell and post_execute recorded, and an unregister control); (c) set_custom_exc, then (c') the instance showtraceback wrapper, each in a plain and a top-level-await cell with the D17 negative control (an unregistered class) and a kernel-side call list; then the three Run blocks. path_evidence records the IPython version, the source of run_code's custom-exception branch (whether the CustomTB return value is used), the kernel's status derivation and which run_cell variants trigger post_run_cell, for information (never a criterion)."
