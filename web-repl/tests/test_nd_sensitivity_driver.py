@@ -732,3 +732,244 @@ def test_sprint_b_sidecar_is_a_pre_registration_not_a_receipt():
     text = SIDECAR_B_PATH.read_text()
     assert "COMMITTED BEFORE ANY RUN" in text and "No browser has been" in text
     assert "bth run --project-slug praxis" in text and "uv run bth" in text, "names the right invocation and the wrong one"
+
+
+# --------------------------------------------------------------------------- #
+# Sprint C (C7): the shared driver's negatives b, c, d and e (AC-39(b)-(e)); pure plumbing, no subprocess
+# --------------------------------------------------------------------------- #
+
+SOCKET = "assets/visualizer3d-augmentations/socket.js"
+SRC_FILES = (
+    "web-repl/shell/display/dock.js", "web-repl/shell/display/index.js",
+    "web-repl/overlay/assets/visualizer3d-augmentations/socket.js", "web-repl/overlay/assets/visualizer3d-augmentations/embed.js",
+)
+
+
+def _src_tree(root: Path, extra: dict[str, str] | None = None) -> Path:
+    for rel in SRC_FILES:
+        f = root / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text("// benign\nexport const x = 1;\n")
+    for rel, text in (extra or {}).items():
+        f = root / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(text)
+    return root
+
+
+def test_the_sprint_c_negatives_are_the_ac39_b_c_d_e_mutations_and_keys(nd):
+    n = nd.NEGATIVES
+    assert {"a", "b", "c", "d", "e"} <= set(n)
+    b, c, d, e = n["b"], n["c"], n["d"], n["e"]
+    assert (b.harness_flag, b.harness_unit, b.expected_key, b.delete, b.harness_neg) == (
+        "--dock-check", "K1a", "viewer_resources", SOCKET, ())
+    assert (d.harness_flag, d.harness_unit, d.expected_key, d.delete, d.harness_neg) == (
+        "--dock-check", "N-d", "panel_width_wide_1600", None, ())
+    assert (e.harness_flag, e.harness_unit, e.expected_key, e.delete, e.harness_neg) == (
+        "--dock-check", "K1b", "late_iframe", None, ("drop-query",))
+    assert c.kind == "grep" and c.harness_unit == "" and c.delete is None
+    assert all(n[i].kind == "harness" for i in ("a", "b", "d", "e"))
+    assert d.skippable is True and not b.skippable and not e.skippable
+    assert ("neg_dropped_queries", "ge1") in e.result_checks, "the drop-query mutation must be shown to have fired"
+    assert ("control_formula_passes", "true") in d.result_checks, "the predicate must be shown able to pass"
+    assert n["a"].result_checks == () and n["a"].kind == "harness" and n["a"].skippable is False
+
+
+def test_negative_a_is_unchanged_by_the_sprint_c_extension(nd):
+    a = nd.NEGATIVES["a"]
+    assert (a.harness_flag, a.harness_unit, a.expected_key, a.delete) == (
+        "--display-check", "D1", "rail_state_after_run", "shell/display/index.js")
+
+
+def test_a_skipped_d_passes_only_where_the_recorded_sizing_case_allows_the_skip(nd):
+    d = nd.NEGATIVES["d"]
+    base = dict(stamp_valid=True, harness_exit=0, failing_keys=[], harness_error=None)
+    assert nd.negative_outcome(d, skipped=True, skip_allowed=True, **base) == (True, [])
+    passed, reasons = nd.negative_outcome(d, skipped=True, skip_allowed=False, **base)
+    assert passed is False and any("skip" in r for r in reasons), "the >= 1600 key is asserted: a skip is a gate bug"
+    # skipped is not a way to pass for any other negative, and not without a valid stamp
+    assert nd.negative_outcome(nd.NEGATIVES["e"], skipped=True, skip_allowed=True, **base)[0] is False
+    assert nd.negative_outcome(d, skipped=True, skip_allowed=True, **{**base, "stamp_valid": False})[0] is False
+    assert nd.negative_outcome(d, skipped=True, skip_allowed=True, **{**base, "harness_error": {"type": "X"}})[0] is False
+
+
+def test_the_unskipped_d_follows_the_standard_rule(nd):
+    d = nd.NEGATIVES["d"]
+    ok = dict(stamp_valid=True, harness_exit=1, failing_keys=["panel_width_wide_1600"], harness_error=None)
+    assert nd.negative_outcome(d, **ok) == (True, [])
+    assert nd.negative_outcome(d, **{**ok, "harness_exit": 0})[0] is False
+    assert nd.negative_outcome(d, **{**ok, "failing_keys": ["viewer_height"]})[0] is False
+
+
+@pytest.mark.parametrize(
+    "check,value,holds",
+    [(("neg_dropped_queries", "ge1"), 3, True), (("neg_dropped_queries", "ge1"), 1, True), (("neg_dropped_queries", "ge1"), 0, False),
+     (("neg_dropped_queries", "ge1"), None, False), (("neg_dropped_queries", "ge1"), True, False),
+     (("control_formula_passes", "true"), True, True), (("control_formula_passes", "true"), False, False),
+     (("control_formula_passes", "true"), 1, False), (("control_formula_passes", "true"), None, False)],
+)
+def test_result_checks_are_strict_about_type_and_value(nd, check, value, holds):
+    assert nd.result_check_holds(check, {check[0]: value}) is holds
+    assert nd.result_check_holds(check, {}) is False, "an absent key proves nothing"
+
+
+def test_the_grep_negative_passes_on_a_clean_tree_and_its_scan_is_shown_to_see_a_planted_token(nd, tmp_path):
+    root = _src_tree(tmp_path / "src")
+    fields = nd.probe_grep(argparse.Namespace(source_root=str(root)), nd.NEGATIVES["c"])
+    assert fields["outcome"] is True and fields["match_count"] == 0 and fields["harness_exit"] == 1, "grep exits 1: nothing found"
+    assert fields["scan_covers_required_files"] is True and fields["scan_control_finds_planted_token"] is True
+    assert fields["files_scanned"] == len(SRC_FILES) and fields["failing_keys"] == []
+    assert fields["kind"] == "grep" and fields["harness_flag"] is None and fields["harness_unit"] is None
+
+
+@pytest.mark.parametrize("token", ["__praxis" + "_test", "data-praxis" + "-test"])
+@pytest.mark.parametrize("rel", ["web-repl/shell/display/dock.js", "web-repl/shell/display/dock.test.js",
+                                 "web-repl/overlay/assets/visualizer3d-augmentations/socket.js"])
+def test_the_grep_negative_fails_naming_the_match_when_a_test_hook_is_present(nd, tmp_path, token, rel):
+    root = _src_tree(tmp_path / "src", {rel: f"window.{token} = 1;\n"})
+    fields = nd.probe_grep(argparse.Namespace(source_root=str(root)), nd.NEGATIVES["c"])
+    assert fields["outcome"] is False and fields["match_count"] >= 1 and fields["harness_exit"] == 0
+    assert fields["failing_keys"][0].startswith(rel + ":"), fields["failing_keys"]
+    assert fields["scan_covers_required_files"] is True, "a hook is a FINDING about the tree, not an invalid measurement"
+
+
+def test_the_grep_negative_ignores_the_one_exclusion_the_spec_states(nd, tmp_path):
+    root = _src_tree(tmp_path / "src", {"web-repl/shell/display/__tests__/fakes.js": "window.__praxis" + "_test = 1;\n"})
+    assert nd.probe_grep(argparse.Namespace(source_root=str(root)), nd.NEGATIVES["c"])["outcome"] is True
+
+
+def test_a_grep_over_a_tree_that_does_not_contain_the_product_files_is_not_a_valid_measurement(nd, tmp_path):
+    empty = tmp_path / "empty"
+    (empty / "web-repl/shell/display").mkdir(parents=True)
+    (empty / "web-repl/overlay/assets/visualizer3d-augmentations").mkdir(parents=True)
+    fields = nd.probe_grep(argparse.Namespace(source_root=str(empty)), nd.NEGATIVES["c"])
+    assert fields["outcome"] is True and fields["match_count"] == 0, "nothing matched, vacuously"
+    assert fields["scan_covers_required_files"] is False
+    flat = nd.derive_outcome_fields({"c": {**fields, "error": None}}, {"c": nd.NEGATIVES["c"]})["flat"]
+    assert flat["measurement_valid"] is False, "a scan that read none of dock.js, socket.js, embed.js, index.js proves nothing"
+
+
+def test_a_grep_whose_scan_cannot_see_a_planted_token_is_not_a_valid_measurement(nd, tmp_path, monkeypatch):
+    root = _src_tree(tmp_path / "src")
+    rs = nd.repl_smoke()
+    monkeypatch.setattr(rs, "ac39c_hits", lambda r: [])  # a blind scan
+    fields = nd.probe_grep(argparse.Namespace(source_root=str(root)), nd.NEGATIVES["c"])
+    assert fields["scan_control_finds_planted_token"] is False
+    flat = nd.derive_outcome_fields({"c": {**fields, "error": None}}, {"c": nd.NEGATIVES["c"]})["flat"]
+    assert flat["measurement_valid"] is False
+
+
+def test_a_grep_over_a_missing_source_tree_raises_so_the_unit_records_an_error(nd, tmp_path):
+    with pytest.raises(FileNotFoundError):
+        nd.probe_grep(argparse.Namespace(source_root=str(tmp_path / "nope")), nd.NEGATIVES["c"])
+
+
+def test_the_grep_negatives_inputs_hash_the_scanned_sources_and_no_harness_inputs_change(nd, tmp_path):
+    root = _src_tree(tmp_path / "src")
+    env = nd.InputEnv("s", "e", "r", "h", "dp", "c", "d")
+    before = nd.compute_inputs(nd.NEGATIVES["c"], env, "dm", tmp_path / "neg", source_root=root)
+    assert "sources" in before
+    (root / SRC_FILES[0]).write_text("// changed\n")
+    assert nd.compute_inputs(nd.NEGATIVES["c"], env, "dm", tmp_path / "neg", source_root=root)["sources"] != before["sources"]
+    harness = nd.compute_inputs(nd.NEGATIVES["a"], env, "dm", tmp_path / "neg")
+    assert "sources" not in harness and set(harness) == {
+        "script", "entry", "runner", "harness", "dist_pristine", "dist_mutated", "chrome", "driver", "args"}
+
+
+def _art(**over):
+    base = {"error": None, "harness_stamp_valid": True, "harness_error": None, "pristine_has_target": True,
+            "mutated_lacks_target": True, "harness_exit": 1, "failing_keys": [], "outcome": True}
+    base.update(over)
+    return base
+
+
+def _c_art(**over):
+    base = {"error": None, "kind": "grep", "harness_exit": 1, "failing_keys": [], "outcome": True, "match_count": 0,
+            "files_scanned": 4, "scan_covers_required_files": True, "scan_control_finds_planted_token": True}
+    base.update(over)
+    return base
+
+
+def _arts_bcde(**over):
+    arts = {
+        "b": _art(failing_keys=["viewer_resources", "canvas_nonblank"]),
+        "c": _c_art(),
+        "d": _art(failing_keys=["panel_width_wide_1600"], result_checks={"control_formula_passes": True}, skipped=False,
+                  skip_allowed=False),
+        "e": _art(failing_keys=["late_iframe"], result_checks={"neg_dropped_queries": True}, dropped_queries=4),
+    }
+    arts.update(over)
+    return arts
+
+
+def _flat(nd, arts):
+    chosen = {k: nd.NEGATIVES[k] for k in arts}
+    return nd.derive_outcome_fields(arts, chosen)["flat"]
+
+
+def test_the_flat_fields_for_b_c_d_e_carry_each_negatives_own_verdict(nd):
+    flat = _flat(nd, _arts_bcde())
+    assert flat["all_units_complete"] is True and flat["n_negatives"] == 4 and flat["n_error_units"] == 0
+    assert flat["measurement_valid"] is True
+    for nid in ("b", "d", "e"):
+        assert flat[f"{nid}_detected"] is True and flat[f"{nid}_expected_key_failed"] is True
+        assert flat[f"{nid}_negative_passed"] is True and flat[f"{nid}_harness_exit"] == 1
+    assert flat["b_failing_keys"] == "viewer_resources,canvas_nonblank"
+    assert flat["c_negative_passed"] is True and flat["c_match_count"] == 0 and flat["c_files_scanned"] == 4
+    assert flat["c_harness_exit"] == 1
+    assert "c_detected" not in flat and "c_failing_keys" not in flat, "a grep has no harness keys"
+    assert flat["d_skipped"] is False and flat["e_dropped_queries"] == 4
+
+
+def test_each_negative_can_be_missed_independently_without_invalidating_the_run(nd):
+    for nid, over in (
+        ("b", _art(harness_exit=0, failing_keys=[], outcome=False)),
+        ("c", _c_art(match_count=2, failing_keys=["web-repl/shell/display/dock.js:3"], harness_exit=0, outcome=False)),
+        ("d", _art(harness_exit=0, failing_keys=[], outcome=False, result_checks={"control_formula_passes": True},
+                   skipped=False, skip_allowed=False)),
+        ("e", _art(harness_exit=1, failing_keys=["many_reloads"], outcome=False, result_checks={"neg_dropped_queries": True},
+                   dropped_queries=2)),
+    ):
+        flat = _flat(nd, _arts_bcde(**{nid: over}))
+        assert flat["measurement_valid"] is True, nid
+        assert flat[f"{nid}_negative_passed"] is False, nid
+        assert [flat[f"{o}_negative_passed"] for o in "bcde" if o != nid] == [True, True, True], nid
+
+
+@pytest.mark.parametrize(
+    "nid,over",
+    [
+        ("e", {"result_checks": {"neg_dropped_queries": False}, "dropped_queries": 0}),  # the mutation never fired
+        ("d", {"result_checks": {"control_formula_passes": False}}),  # the predicate cannot pass
+        ("b", {"pristine_has_target": False}),  # socket.js was not in the pristine dist: the copy changed nothing
+        ("b", {"mutated_lacks_target": False}),
+        ("e", {"harness_exit": 124}),
+        ("d", {"error": {"type": "DockCheckError"}}),
+        ("c", {"scan_covers_required_files": False}),
+        ("c", {"scan_control_finds_planted_token": False}),
+        ("c", {"error": {"type": "FileNotFoundError"}}),
+    ],
+)
+def test_an_invalid_measurement_in_any_one_negative_invalidates_the_whole_run(nd, nid, over):
+    arts = _arts_bcde()
+    arts[nid] = {**arts[nid], **over}
+    assert _flat(nd, arts)["measurement_valid"] is False
+
+
+def test_a_skipped_d_is_reported_as_skipped_and_its_validity_does_not_need_the_control(nd):
+    art = _art(harness_exit=0, failing_keys=[], outcome=True, skipped=True, skip_allowed=True)
+    flat = _flat(nd, _arts_bcde(d=art))
+    assert flat["d_skipped"] is True and flat["d_negative_passed"] is True and flat["d_detected"] is False
+    assert flat["measurement_valid"] is True
+
+
+def test_the_dry_run_plan_lists_the_kind_of_every_negative(nd):
+    args = argparse.Namespace(sprint="c", entry_path=Path("x.py"), dist="d", neg_root="/tmp/claude-1000/nd-neg", out_dir="o")
+    # _dry_run prints JSON; the kinds must be in it
+    import contextlib, io
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        nd._dry_run(args, {k: nd.NEGATIVES[k] for k in "bcde"})
+    plan = json.loads(buf.getvalue())
+    assert {n["id"]: n["kind"] for n in plan["negatives"]} == {"b": "harness", "c": "grep", "d": "harness", "e": "harness"}
+    assert [n["harness_neg"] for n in plan["negatives"] if n["id"] == "e"] == [["drop-query"]]
