@@ -32,6 +32,9 @@ today's working tree:
 * a line ``<!-- citations-at: <rev> -->`` re-pins every following line, until
   the next such marker -- the form a later amendment uses, since it cites newer
   code than the text around it;
+* the same comment written INSIDE a line (after its text) pins that one line
+  only -- the form for a single edited table row or blockquote line, where a
+  standalone marker line would break the markdown;
 * ``live`` (also the default when nothing is declared) means today's working
   tree;
 * a pin may be an ORDERED list, ``<rev> <rev2> ...``: each citation resolves at
@@ -261,6 +264,7 @@ def _co_named_identifiers(line: str, cite_start: int) -> list[str]:
 _REVS = r"[0-9A-Za-z_.\-/^~]+(?:\s+[0-9A-Za-z_.\-/^~]+)*"
 FRONTMATTER_PIN_RE = re.compile(rf"^citations_at:\s*[\"']?(?P<rev>{_REVS})[\"']?\s*$")
 MARKER_PIN_RE = re.compile(rf"^\s*<!--\s*citations-at:\s*(?P<rev>{_REVS})\s*-->\s*$")
+INLINE_PIN_RE = re.compile(rf"<!--\s*citations-at:\s*(?P<rev>{_REVS})\s*-->")
 
 
 def line_pins(text: str) -> list[str]:
@@ -278,7 +282,11 @@ def line_pins(text: str) -> list[str]:
     for line in lines:
         if m := MARKER_PIN_RE.match(line):
             current = m.group("rev")
-        pins.append(current)
+            pins.append(current)
+        elif m := INLINE_PIN_RE.search(line):
+            pins.append(m.group("rev"))  # this line only; `current` is untouched
+        else:
+            pins.append(current)
     return pins
 
 

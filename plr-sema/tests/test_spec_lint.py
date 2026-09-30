@@ -309,6 +309,26 @@ def test_line_pins_default_live_and_marker_order() -> None:
     assert pins[lines.index("c")] == "live"
 
 
+def test_inline_pin_applies_to_its_own_line_only() -> None:
+    doc = "---\ncitations_at: base1\n---\n| row a |\n| row b | <!-- citations-at: def456 -->\n| row c |\n"
+    pins = citations.line_pins(doc)
+    lines = doc.splitlines()
+    assert pins[lines.index("| row a |")] == "base1"
+    assert pins[lines.index("| row b | <!-- citations-at: def456 -->")] == "def456"
+    assert pins[lines.index("| row c |")] == "base1"
+
+
+def test_inline_pin_resolves_the_line_at_its_rev(pinned_repo) -> None:
+    root, v1, v2 = pinned_repo
+    doc = (
+        f"---\ncitations_at: {v1}\n---\n"
+        "| old | `foo` (`pkg/mod.py:2-3`) |\n"
+        f"| edited | `foo` (`pkg/mod.py:4-5`) | <!-- citations-at: {v2} -->\n"
+        "| old again | `foo` (`pkg/mod.py:2-3`) |\n"
+    )
+    assert _failing(root, doc) == []
+
+
 #: A commit on main whose recorded `external/pylabrobot` gitlink is the OLD pin
 #: (dd79c4c89, PyLabRobot 0.2.2): the parent of the 1.0.0b1 bump.
 PRE_BUMP_REV = "6b1e5121^"
