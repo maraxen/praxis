@@ -16,10 +16,15 @@ import { pathToFileURL } from "node:url";
 import { mount } from "./index.js";
 import { EXEC_ATTR, STATE_ATTR } from "./chrome.js";
 import {
+  announcement,
   createFakeApp,
+  createFakeBroadcastHub,
   createFakeCell,
+  createFakeDocument,
   createFakeNotebookPanel,
   createFakeWindow,
+  praxisOutput,
+  stamp,
 } from "./__tests__/fakes.js";
 
 function recordingLogger() {
@@ -129,6 +134,131 @@ describe("mount(window)", () => {
       logger: recordingLogger(),
     });
     expect(bad.__praxisDisplay.status).toBe("failed");
+  });
+});
+
+// -- B9: stale and interact rows ------------------------------------------------------------
+
+describe("mount(window): the stale and interact rows (B9)", () => {
+  function rows({ stale, interact, chrome } = {}) {
+    const order = [];
+    const modules = {
+      chrome: async () => ({
+        mountChrome: (opts) => {
+          order.push("chrome");
+          if (chrome) throw chrome;
+          return { tag: "chrome-controller", onExecution() {}, windowing() {} };
+        },
+      }),
+      stale: async () => {
+        if (stale === "load") throw new SyntaxError("stale.js does not parse");
+        return {
+          mountStale: (opts) => {
+            order.push("stale");
+            if (stale === "throw") throw new Error("stale mount blew up");
+            order.push(["stale sees chrome", opts.controllers.chrome?.tag]);
+            return { tag: "stale-controller" };
+          },
+        };
+      },
+      interact: async () => ({
+        mountInteract: (opts) => {
+          order.push("interact");
+          if (interact === "throw") throw new Error("interact mount blew up");
+          order.push(["interact sees stale", opts.controllers.stale?.tag]);
+          return { tag: "interact-controller" };
+        },
+      }),
+    };
+    return { modules, order };
+  }
+
+  test("chrome, then stale, then interact; each receives the earlier controllers", async () => {
+    const { modules, order } = rows();
+    const win = createFakeWindow({ app: createFakeApp() });
+    const result = await mount(win, { modules, logger: recordingLogger() });
+    expect(result.errors).toEqual([]);
+    expect(order).toEqual([
+      "chrome",
+      "stale",
+      ["stale sees chrome", "chrome-controller"],
+      "interact",
+      ["interact sees stale", "stale-controller"],
+    ]);
+    expect(Object.keys(result.controllers)).toEqual(["chrome", "stale", "interact"]);
+  });
+
+  test("a stale module that fails to load does not stop interact, and is named", async () => {
+    const { modules, order } = rows({ stale: "load" });
+    const logger = recordingLogger();
+    const result = await mount(createFakeWindow({ app: createFakeApp() }), { modules, logger });
+    expect(result.errors.map((e) => e.module)).toEqual(["stale"]);
+    expect(result.errors[0].message).toContain("does not parse");
+    expect(order).toContain("interact");
+    expect(result.controllers.interact.tag).toBe("interact-controller");
+    expect(logger.errors.length).toBeGreaterThan(0);
+  });
+
+  test("a stale mount that throws does not stop interact", async () => {
+    const { modules, order } = rows({ stale: "throw" });
+    const result = await mount(createFakeWindow({ app: createFakeApp() }), { modules, logger: recordingLogger() });
+    expect(result.errors.map((e) => e.module)).toEqual(["stale"]);
+    expect(order).toContain("interact");
+  });
+
+  test("an interact mount that throws leaves chrome and stale mounted", async () => {
+    const { modules } = rows({ interact: "throw" });
+    const result = await mount(createFakeWindow({ app: createFakeApp() }), { modules, logger: recordingLogger() });
+    expect(result.errors.map((e) => e.module)).toEqual(["interact"]);
+    expect(result.controllers.chrome.tag).toBe("chrome-controller");
+    expect(result.controllers.stale.tag).toBe("stale-controller");
+  });
+
+  test("a chrome that fails still lets stale and interact mount (stale runs without it)", async () => {
+    const { modules, order } = rows({ chrome: new Error("chrome blew up") });
+    const result = await mount(createFakeWindow({ app: createFakeApp() }), { modules, logger: recordingLogger() });
+    expect(result.errors.map((e) => e.module)).toEqual(["chrome"]);
+    expect(order).toContain(["stale sees chrome", undefined]);
+    expect(order).toContain("interact");
+  });
+
+  test("a modules table that omits a row skips it (the seam of the chrome-only tests above)", async () => {
+    const result = await mount(createFakeWindow({ app: createFakeApp() }), {
+      modules: { chrome: async () => ({ mountChrome: () => ({}) }) },
+      logger: recordingLogger(),
+    });
+    expect(result.errors).toEqual([]);
+    expect(Object.keys(result.controllers)).toEqual(["chrome"]);
+  });
+
+  test("with the real modules: an announcement marks a stamped output, a click reaches the dock", async () => {
+    const cell = createFakeCell({
+      source: "x",
+      executionCount: 2,
+      outputs: [praxisOutput(stamp({ resource: "assay", rev: 1, session: "sA", exec: 2 }))],
+    });
+    const app = createFakeApp({ panels: [createFakeNotebookPanel({ cells: [cell] })] });
+    const hub = createFakeBroadcastHub();
+    const document = createFakeDocument();
+    const win = createFakeWindow({ app, document, broadcast: hub });
+    const logger = recordingLogger();
+    const result = await mount(win, { logger });
+    expect(result.errors).toEqual([]);
+    expect(result.status).toBe("mounted");
+    expect(Object.keys(result.controllers)).toEqual(["chrome", "stale", "interact"]);
+
+    hub.post("praxis_repl", announcement({ session: "sA", exec: 3, revs: { assay: 2 } }));
+    const marks = cell.host(0).children.filter((c) => c.classList.contains("praxis-stale"));
+    expect(marks.map((m) => m.textContent)).toEqual(["Changed since, see deck panel."]);
+
+    const calls = [];
+    result.controllers.dock = { focus: (name) => calls.push(name) };
+    const g = document.createElement("g");
+    g.setAttribute("data-praxis-res", "assay");
+    document.body.appendChild(g);
+    g.dispatch("click", {});
+    expect(calls).toEqual(["assay"]);
+    expect(logger.errors).toEqual([]);
   });
 });
 

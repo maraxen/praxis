@@ -9,7 +9,8 @@ network. One case runs stage_shell against the REAL shell/ source into a
 temporary dist: that is AC-6's `test -f dist/shell/display/index.js` and
 `! test -e dist/shell/display/__tests__` without the wheel/JupyterLite build.
 
-Later tasks (B9, C6) extend the staged/required lists and this file.
+B9 (this file's second revision) adds stale.js and interact.js to the required
+list. Later tasks (C6) extend the staged/required lists and this file.
 """
 
 from __future__ import annotations
@@ -25,8 +26,9 @@ if str(_SCRIPTS_DIR) not in sys.path:
 
 import build_repl  # noqa: E402 -- path setup must precede this import
 
-# What A6 requires of a dist. B9 and C6 append to this in their own commits.
-_REQUIRED_DISPLAY = ("index.js", "chrome.js")
+# What a dist requires under shell/display/. A6: index.js, chrome.js. B9 appends
+# stale.js and interact.js; C6 appends dock.js in its own commit.
+_REQUIRED_DISPLAY = ("index.js", "chrome.js", "stale.js", "interact.js")
 
 
 def _make_shell_source_tree(tmp_path: Path) -> tuple[Path, Path]:
@@ -221,7 +223,7 @@ def test_assert_dist_complete_requires_each_display_module(
 
 
 def test_assert_dist_complete_requires_display_dir(tmp_path: Path) -> None:
-    """Both modules missing (no display/ at all) -> both are named."""
+    """Every module missing (no display/ at all) -> every one is named."""
     dist = _make_dist_dir(tmp_path)
     _write_complete_dist(dist)
     for name in _REQUIRED_DISPLAY:
