@@ -665,6 +665,27 @@ def _circle_radius(sp):
     return float(m.group(3))
 
 
+def _summaries(root):
+    """The body and fix sentences: ``p.praxis-summary`` in document order (A4's theme has no rule for
+    dedicated ``praxis-error__body`` / ``__fix`` classes, and the CSS gate refuses classes with no rule)."""
+    return [n for n in root.find_all("p", "praxis-summary")]
+
+
+def _part(root, which):
+    """``body`` or ``fix`` text; ``step`` is the ``p.praxis-omitted`` that starts "Step "."""
+    if which == "step":
+        hits = [n.text() for n in root.find_all("p", "praxis-omitted") if n.text().startswith("Step ")]
+        assert len(hits) == 1, hits
+        return hits[0]
+    ps = _summaries(root)
+    assert len(ps) == 2, f"expected a body and a fix, found {len(ps)}"
+    return ps[{"body": 0, "fix": 1}[which]].text()
+
+
+def _has_step(root):
+    return any(n.text().startswith("Step ") for n in root.find_all("p", "praxis-omitted"))
+
+
 def _details_text(root):
     return _one(root, "praxis-details-body", "pre").text()
 
@@ -672,7 +693,7 @@ def _details_text(root):
 def _without_plr_and_traceback(root):
     """The text of the panel with the verbatim PLR line and the traceback removed."""
     parts = []
-    for cls in ("praxis-error__step", "praxis-error__title", "praxis-error__body", "praxis-error__fix"):
+    for cls in ("praxis-omitted", "praxis-error__title", "praxis-summary"):
         parts += [n.text() for n in root.find_all(None, cls)]
     return "\n".join(parts)
 
@@ -774,8 +795,8 @@ def test_each_template_row(errors, svg, row):
     name, heading, body, fix, resource, drawn, fault = row
     data, meta, root = _render(errors, name)
     assert _text_of(root, "praxis-error__title") == heading
-    assert _text_of(root, "praxis-error__body") == body
-    assert _text_of(root, "praxis-error__fix") == fix
+    assert _part(root, "body") == body
+    assert _part(root, "fix") == fix
     # the stamp by owner (D2): the drawn labware, else null; rev is always null
     assert meta == {"praxis": {"v": 1, "kind": "error", "resource": resource, "rev": None,
                                "session": SESSION, "exec": EXEC}}
@@ -794,8 +815,8 @@ def test_e1_states_the_fixtures_error_cell_in_the_spec_words(errors):
     """Section 3.3's closing paragraph: 80 uL from assay A1:H1, which holds 50."""
     data, _meta, root = _render(errors, "E1")
     assert _text_of(root, "praxis-error__title") == "Not enough liquid in assay A1:H1."
-    assert "Each well holds 50 µL; the aspirate asked for 80 µL." in _text_of(root, "praxis-error__body")
-    assert "Nothing was aspirated." in _text_of(root, "praxis-error__body")
+    assert "Each well holds 50 µL; the aspirate asked for 80 µL." in _part(root, "body")
+    assert "Nothing was aspirated." in _part(root, "body")
 
 
 def test_the_fault_wells_carry_a_brick_ring_and_a_cross(errors):
@@ -803,7 +824,7 @@ def test_the_fault_wells_carry_a_brick_ring_and_a_cross(errors):
     _data, _meta, root = _render(errors, "E1")
     p = _paths(root)
     assert len(p["sv-fault"]) == 1 and len(_subpaths(p["sv-fault"][0])) == 8
-    assert len(p["sv-fault-x"]) == 1 and len(_subpaths(p["sv-fault-x"][0])) == 8
+    assert len(p["sv-fault-x"]) == 1 and len(_subpaths(p["sv-fault-x"][0])) == 16  # two strokes per well
     for cls in ("sv-fault", "sv-fault-x"):
         (node,) = [n for n in root.find_all("path", cls)]
         assert node.attrs["stroke"] == "#B3402A"  # brick
@@ -813,6 +834,7 @@ def test_e10_marks_exactly_the_offending_wells(errors):
     _d, _m, root = _render(errors, "E10")
     assert _fault_ids(root) == {"A1", "B1", "C1", "D1"}
     assert len(_subpaths(_paths(root)["sv-fault"][0])) == 4
+    assert len(_subpaths(_paths(root)["sv-fault-x"][0])) == 8
 
 
 def test_a_tip_owner_and_a_channel_owner_have_a_null_resource_and_no_drawing(errors):
@@ -904,7 +926,7 @@ def test_the_h12_case_keeps_e1s_exact_heading_and_body(errors):
     """H12 is outside the op and outside the offending set, so E1's strings are unchanged."""
     _d, _m, root = _render(errors, "E1_h12")
     assert _text_of(root, "praxis-error__title") == "Not enough liquid in assay A1:H1."
-    assert _text_of(root, "praxis-error__body").startswith("Each well holds 50 µL; the aspirate asked for 80 µL.")
+    assert _part(root, "body").startswith("Each well holds 50 µL; the aspirate asked for 80 µL.")
     assert _fault_ids(root) == {f"{r}1" for r in "ABCDEFGH"}
 
 
@@ -928,7 +950,7 @@ def test_control_a_panel_that_draws_pending_volume_fails_the_h12_check(errors, m
 # --------------------------------------------------------------------------- D8 "Panel drawing": the backend spy
 
 
-@pytest.mark.parametrize("name", ["E1", "E2", "E3", "E12", "E6", "E9", "E10"])
+@pytest.mark.parametrize("name", ["E1", "E2", "E3", "E12", "E9", "E10"])
 def test_nothing_was_aspirated_or_dispensed_the_backend_was_not_reached(errors, name):
     """A tracker refusal is raised before the backend is called (LH:1269-1274, :1470-1475): the spy
     records no aspirate or dispense call during the failing op (a confirmatory assert of the ordering,
@@ -937,8 +959,16 @@ def test_nothing_was_aspirated_or_dispensed_the_backend_was_not_reached(errors, 
     before, after = r.lh.calls_at_failure
     assert after == before, (name, r.lh.backend_calls)
     _d, _m, root = _render(errors, name)
-    body = _text_of(root, "praxis-error__body")
+    body = _part(root, "body")
     assert ("Nothing was aspirated." in body) or ("Nothing was dispensed." in body)
+
+
+def test_a_no_tip_aspirate_never_reaches_the_backend_either():
+    """E6 (NoTip on aspirate): the head tracker refuses before the backend too, but its template makes no
+    "Nothing was aspirated" claim (section 3.3), so only the spy is asserted."""
+    r = case("E6")
+    before, after = r.lh.calls_at_failure
+    assert after == before
 
 
 def test_the_spy_is_live_e1_setup_made_one_real_aspirate_and_one_real_dispense():
@@ -976,8 +1006,7 @@ def test_a_context_that_is_none_gets_the_generic_panel(errors, ctxmod, svg, name
     sentence = f"PyLabRobot raised {type(r.exc).__name__}: {r.exc}"
     assert _text_of(root, "praxis-error__title") == sentence  # the heading IS PLR's sentence
     assert data["text/plain"].startswith(sentence)
-    assert not root.find_all(None, "praxis-error__body")
-    assert not root.find_all(None, "praxis-error__fix")
+    assert not _summaries(root)  # no body, no fix
     assert not root.find_all("svg")
     assert _details_text(root) == "".join(traceback.format_exception(type(r.exc), r.exc, r.tb))
     assert meta["praxis"] == {"v": 1, "kind": "error", "resource": None, "rev": None,
@@ -995,6 +1024,27 @@ def test_a_resolver_that_raises_degrades_to_the_generic_panel_and_never_raises(e
     assert _text_of(root, "praxis-error__title") == f"PyLabRobot raised TooLittleLiquidError: {r.exc}"
     assert meta["praxis"]["resource"] is None
     svg.check_bundle(data, meta)
+
+
+def test_a_context_no_template_can_build_degrades_to_the_generic_panel(errors, ctxmod):
+    """A real ``ErrorContext`` whose offending set names no well of the plate: the template raises, the panel is generic."""
+    import dataclasses
+
+    r = case("E1")
+    good = ctxmod.resolve(r.exc, r.tb)
+    assert good is not None
+    broken = dataclasses.replace(good, offending=(object(),))  # min() of no wells raises
+    data, meta = errors.render(r.exc, r.tb, session=SESSION, exec_count=EXEC, resolver=lambda *a, **k: broken)
+    assert data["text/plain"].startswith("PyLabRobot raised TooLittleLiquidError")
+    assert meta["praxis"]["resource"] is None
+
+
+def test_a_missing_session_is_stamped_unset_not_refused(errors):
+    r = case("E1")
+    _d, meta = errors.render(r.exc, r.tb)
+    assert meta["praxis"]["session"] == "unset" and meta["praxis"]["exec"] is None
+    _d, meta = errors.render(r.exc, r.tb, session=lambda: 1 / 0, exec_count=lambda: -3)
+    assert meta["praxis"]["session"] == "unset" and meta["praxis"]["exec"] is None
 
 
 def test_a_resolver_that_returns_garbage_degrades_to_the_generic_panel(errors):
@@ -1019,7 +1069,7 @@ def test_the_generic_panel_of_e13_and_e15_carries_no_committed_number(errors):
     """The residue cases must not invent numbers: no body, no fix, no drawing (D8 step 4)."""
     for name in ("E13", "E15"):
         _d, _m, root = _render(errors, name)
-        assert not root.find_all(None, "praxis-error__body") and not root.find_all("svg")
+        assert not _summaries(root) and not root.find_all("svg")
 
 
 # --------------------------------------------------------------------------- the step line (D9)
@@ -1027,25 +1077,26 @@ def test_the_generic_panel_of_e13_and_e15_carries_no_committed_number(errors):
 
 def test_the_step_line_names_the_step_when_one_is_given(errors):
     _d, _m, root = _render(errors, "E1", step=4)
-    assert _text_of(root, "praxis-error__step") == "Step 4 of the run."
+    assert _part(root, "step") == "Step 4 of the run."
 
 
 def test_no_step_line_without_a_step(errors):
     _d, _m, root = _render(errors, "E1")
-    assert not root.find_all(None, "praxis-error__step")
+    assert not _has_step(root)
 
 
 def test_the_step_line_comes_first_in_the_text_and_in_the_panel(errors):
     data, _m, root = _render(errors, "E1", step=2)
     assert data["text/plain"].startswith("Step 2 of the run.")
     order = [n.attrs["class"] for n in root.walk()
-             if n.attrs.get("class") in ("praxis-error__step", "praxis-error__title")]
-    assert order == ["praxis-error__step", "praxis-error__title"]
+             if n.attrs.get("class") == "praxis-error__title"
+             or (n.attrs.get("class") == "praxis-omitted" and n.text().startswith("Step "))]
+    assert order == ["praxis-omitted", "praxis-error__title"]
 
 
 def test_the_generic_panel_also_names_the_step(errors):
     _d, _m, root = _render(errors, "E13", step=3)
-    assert _text_of(root, "praxis-error__step") == "Step 3 of the run."
+    assert _part(root, "step") == "Step 3 of the run."
 
 
 def test_handle_reads_the_step_from_the_ledger_once_and_the_entry_is_gone(errors, led):
@@ -1083,7 +1134,8 @@ def test_hostile_exception_messages_are_escaped_everywhere(errors, svg, payload)
             assert needle not in doc, (payload, needle)
         assert "&lt;" in doc or "&amp;" in doc or "&quot;" in doc or "&#x27;" in doc
         root = _parse(doc)
-        assert _text_of(root, "praxis-error__plr") == f"PyLabRobot raised {type(exc).__name__}: {payload}"
+        # a resolver-less exception is the generic panel: PLR's sentence is its heading
+        assert _text_of(root, "praxis-error__title") == f"PyLabRobot raised {type(exc).__name__}: {payload}"
         assert payload in _details_text(root)  # the text survives, only as text
 
 
@@ -1128,7 +1180,8 @@ def _check_traceback_cap(errors, bud):
     data, _meta = errors.render(exc, exc.__traceback__, session=SESSION, exec_count=EXEC)
     body = _details_text(_parse(data["text/html"]))
     assert len(body.encode()) <= TB_CAP
-    first, tail = body.split("\n", 1)
+    first, newline, tail = body.partition("\n")
+    assert newline and tail, "a capped traceback keeps its tail under the marker line"
     match = re.fullmatch(r"… (\d+) earlier lines omitted", first)
     assert match, first
     assert full.endswith(tail)  # the TAIL is kept, whole lines
@@ -1174,6 +1227,8 @@ def test_the_whole_panel_stays_under_64_kib_whatever_the_escaping_expands_to(err
     assert len(data["text/html"].encode("utf-8")) <= CAP
     svg.check_bundle(data, meta)
     assert "Show traceback" in data["text/html"]  # text is never dropped to save a drawing
+    body = _details_text(_parse(data["text/html"]))
+    assert body.count(quote) > 1000  # the traceback SHRANK to fit; it was not dropped
 
 
 def test_a_long_resource_name_and_message_still_fit_the_cap(errors, svg):
@@ -1222,6 +1277,8 @@ class FakeShell:
                       running_compiled_code=False):
         etype, value, _tb = exc_tuple or sys.exc_info()
         self.default_calls.append(value)
+        if etype is None:  # IPython: "No traceback available to show."
+            return
         stb = [f"---- Traceback (most recent call last) ----\n{etype.__name__}: {value}"]
         self._showtraceback(etype, value, stb)
 
@@ -1338,7 +1395,7 @@ def test_handled_classes_emit_the_panel_and_still_stop_run_all(errors):
 
 def test_control_a_handler_that_swallows_the_error_output_fails_the_wrapper_check(errors, monkeypatch):
     _check_wrapper_semantics(errors)  # the good module passes
-    monkeypatch.setattr(errors, "_finish", lambda *a, **k: None)  # never reaches _showtraceback
+    monkeypatch.setattr(errors, "_finish", lambda *a, **k: True)  # claims done, never reaches _showtraceback
     with pytest.raises(AssertionError):
         _check_wrapper_semantics(errors)
 
@@ -1598,7 +1655,7 @@ def test_the_ledger_is_displayed_before_the_panel_and_the_step_is_named(errors, 
     assert rec.calls[1]["raw"] is True
     panel = rec.calls[1]["obj"]
     root = _parse(panel["text/html"])
-    assert _text_of(root, "praxis-error__step") == "Step 4 of the run."
+    assert _part(root, "step") == "Step 4 of the run."
     assert _text_of(root, "praxis-error__title") == "Not enough liquid in assay A1:H1."
     assert id(exc_box["exc"]) not in led._ERROR_STEPS
     assert out["error"] is not None
@@ -1741,8 +1798,8 @@ def test_every_action_string_in_a_panel_equals_a_glossary_value(errors, gl):
     """AC-28, first bullet, for the error half: the {Action} in each body is ``glossary.action_name``."""
     for name, op in (("E5", "drop_tips"), ("E11", "return_tips"), ("E16", "discard_tips"), ("E6", "aspirate")):
         _d, _m, root = _render(errors, name)
-        body = _text_of(root, "praxis-error__body")
+        body = _part(root, "body")
         assert gl.action_name(op) in body, (name, body)
     _d, _m, root = _render(errors, "E16")
-    assert gl.verb_form("discard_tips") in _text_of(root, "praxis-error__fix")
-    assert gl.action_name("pick_up_tips") in _text_of(root, "praxis-error__fix")
+    assert gl.verb_form("discard_tips") in _part(root, "fix")
+    assert gl.action_name("pick_up_tips") in _part(root, "fix")
