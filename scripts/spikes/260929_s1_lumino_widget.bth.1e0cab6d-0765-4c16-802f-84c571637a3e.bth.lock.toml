@@ -1,0 +1,9 @@
+# 260929_s1_lumino_widget.bth.1e0cab6d-0765-4c16-802f-84c571637a3e.bth.lock.toml — written at run time, never modified
+[manifest]
+written_at = "2026-09-30T00:17:02.575559+00:00"
+sidecar_sha256 = "04ffa644207b0971b99f3dd715ac4dda41ead93bab33b384ac40c62f272913dc"
+sidecar_path = "/tmp/praxis-nd-a/scripts/spikes/260929_s1_lumino_widget.bth.toml"
+git_sha = "b44c196cfd8679778debf7efa6e85e1cd3abc8ec"
+script_sha256 = "7702944e7b696b6b8eefaceb0f008930e9282eabdcd0029f869b7ef1f3af7a6a"
+run_id = "1e0cab6d-0765-4c16-802f-84c571637a3e"
+agent_id = null
