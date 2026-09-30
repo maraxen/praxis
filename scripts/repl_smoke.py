@@ -5045,6 +5045,29 @@ _DC_THEME_JS = """async (theme) => {
     } catch (e) { return {ok: false, error: String(e)}; }
 }"""
 
+# Ready to change theme: all three must hold. `window.jupyterapp` appears before JupyterLab's
+# plugins have activated, so the command may not be registered yet; `restored` (JupyterFrontEnd's
+# promise, resolved after layout restoration) is read through a flag armed on the first poll,
+# because the predicate is polled synchronously; and the splash plugin removes
+# `#jupyterlab-splash` 200 ms after the first theme load, so a theme change made before that
+# overlaps the initial load and double-removes the splash.
+THEME_READY_JS = """() => {
+    const app = window.jupyterapp;
+    if (!app || !app.commands || !app.restored) return false;
+    if (window.__praxisRestored === undefined) {
+        window.__praxisRestored = false;
+        app.restored.then(() => { window.__praxisRestored = true; });
+    }
+    return app.commands.hasCommand('apputils:change-theme')
+        && window.__praxisRestored === true
+        && !document.getElementById('jupyterlab-splash');
+}"""
+
+
+def wait_for_theme_ready(page: Any, timeout_ms: int = DISPLAY_NAV_TIMEOUT_MS) -> None:
+    """Block until ``apputils:change-theme`` can be executed safely (see ``THEME_READY_JS``)."""
+    page.wait_for_function(THEME_READY_JS, timeout=timeout_ms)
+
 
 class DisplayCheckError(RuntimeError):
     """A display-check scenario could not reach the state it needs to measure."""
@@ -5166,6 +5189,7 @@ def run_chrome_scenario(session: Any, unit: HarnessUnit, env: Any, *, notebook: 
     )
     page.evaluate(DISPLAY_CHECK_JS)
     if light:
+        wait_for_theme_ready(page)
         changed = page.evaluate(_DC_THEME_JS, THEME_NAMES[True])
         if not changed.get("ok"):
             raise DisplayCheckError(f"apputils:change-theme failed: {changed.get('error')!r}")
