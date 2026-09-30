@@ -4324,3 +4324,69 @@ notes below, not a Revision 12.
   reads the PLR submodule's version.txt at import") in the amendment commit.
 - **S2 (C3):** AC-31's positive control should run a scene build without triggering the rebind: a stock
   `Viewer3D(deck, open_browser=False)` over the seeded root, since constructing `DockedViewer3D` rebinds.
+
+## Sprint notes recorded during execution (260929, orchestrator)
+
+These are implementer findings from merged tasks that later tasks must honour. They interpret the
+spec where it was silent or self-inconsistent; none reopens a ruling. Source: each task's verified
+report and the S1/S2/S3 research notes in `.praxia/docs/research/`.
+
+- **Spike results in force.** S1 = `s1_a` (run `1e0cab6d`): real Lumino widget by prototype-chain walk,
+  D6 case `honoured_reachable`, every AC-36 width key asserted, `restoreLayout()` keeps the iframe,
+  `windowingMode = contentVisibility` (no re-attach signal; A5 warns and subscribes to
+  `inViewportChanged` for any other mode). S2 = `s2_b_exec_t` (run `bf83a4e6`): an untrusted reopen keeps
+  only `class` on table/details/summary and strips the SVG and `style`/`data-*`/`tabindex`/`aria-label`/
+  `role`; an executed-saved-reopened notebook is trusted and live. S3 = `s3_combined` (run `a3458bf2`):
+  carriers work (S3-A), `set_custom_exc` yields no error output so B6 wraps the shell instance's
+  `showtraceback` (S3-C), `post_run_cell` does not fire for top-level-`await` cells so B7 announces from
+  debounced PLR callbacks (S3-D). All three ran against the local 260828 dist (PLR 0.2.2), a recorded
+  deviation; A7's CI `--display-check` on a fresh build is authoritative.
+- **A4 (theme CSS).** Light sets `--jp-layout-color1` = ground `#EEF1F4` (painted by `.jp-Notebook`) and
+  `--jp-layout-color0` = sheet `#FFFFFF` (painted by `.jp-CodeCell`); AC-7's `light_ground` and
+  `light_sheet` read exactly those two elements. The rail is `.jp-CodeCell::before` keyed on
+  `data-praxis-cell-state`; the execution count is `.jp-CodeCell::after` with
+  `content: attr(data-praxis-exec)`. The error rail is keyed on the attribute only (the stderr mime also
+  marks plain stderr streams, so it is not a reliable error signal). The class vocabulary B2-B6 must emit
+  is in the CSS header (`.praxis-out`, `.praxis-error`, `.praxis-error__title`, `.praxis-error__plr`,
+  `.praxis-stale`, `.praxis-readout`, `.praxis-focus-ring`, `.praxis-deck-panel__*`). Inline `style` text
+  colours cannot be remapped for Dark without `!important`, so HTML text must use classes; SVG colours are
+  mapped by attribute value.
+- **A5 (chrome.js).** State precedence is running > stale > error > ran > not-run; stale needs a non-null
+  execution count and a snapshot taken when an execution was observed in this page (the snapshot form,
+  not `isDirty`); an error output with a null count is `error`; `data-praxis-exec` is `""` for a null
+  count. `onExecution` events carry `phase: "started" | "finished"`, and B9 must filter on `phase`. The
+  loader logs and records `window.__praxisDisplay` on failure and posts nothing on `praxis_repl`;
+  `praxis:display-error` (D13) is B8's.
+- **A7 (harness).** Entry script and sidecar for the sprint A negative-sensitivity run are under
+  `scripts/spikes/`, the shared driver under `scripts/negatives/`; the spec's file plan puts entry
+  scripts under `negatives/` (a `git mv` plus path strings if that is preferred). D1-dark's listed keys omit
+  `pageerrors` (a pageerror in D1-dark is recorded, not failing).
+- **B1 (primitives).** `praxis/display/` has no `__init__.py` until B8. `budget.enforce` raises
+  `BudgetExceeded` when even level 2 is over the cap, so B2-B6 must keep names short enough for level 2 to
+  fit. `check_bundle` requires both `text/html` and `text/plain` (B8 may need a variant for the S3-B
+  fallback, which is not in force). Measured about 60 bytes per circle subpath and about 5.7 KB for 96 wells
+  in one path (D4's "about 35 bytes" was unmeasured). B1's floor tests use stand-in geometry; B2 (labware) and
+  B3 (deck) must redo AC-12 with real PLR definitions.
+- **C2 (vendoring).** `visualizer3d/index.html` is the one transformed file (three anchored edits, per
+  D11/AC-30); the other 42 files are byte-identical to upstream at `786ac2c4e` (checked by blob sha
+  through the GitHub API). The manifest has no `pylabrobot_version` field. `stage_overlay` copies all of
+  `overlay/assets/`, so a build carries `assets/visualizer3d/`.
+- **C4 (socket shim), for C3, C5 and C7.**
+  - `msg` in BOTH directions carries `viewer` and `client` as well as `data` (the D11 prose at "Protocol
+    on `praxis_viz3d`" governs; the table row `msg | {client, data}` is short by `viewer`). C3 must put
+    `viewer` on every kernel-to-page message, or the page drops every scene. `msg` is delivered only after
+    `accept`.
+  - The page posts only `open`, `msg` and `bye` (`bye` once, on `close()`, `pagehide` or the accept
+    timeout, never after `evict` or a kernel `close`); it never posts `close`, `query`, `announce`,
+    `accept` or `evict`. Malformed or unknown kinds are dropped silently.
+  - `close()` goes to CLOSING and fires `onclose` on a 0 ms timer, like a WebSocket; `send()` with
+    non-string data throws `TypeError`, and while CONNECTING throws `InvalidStateError`.
+  - `embed.js` forwards the page's `plr:status` and `plr:gone` to `window.parent` as `praxis:dock-status`
+    CustomEvents with `detail = {event: "plr:status", connected: boolean, viewer}` or
+    `{event: "plr:gone", viewer}` (C5 reads this). A `plr:status` fired before `embed.js` registers is
+    not replayed.
+  - The vendored page's three.js scene background is `0xe8ecef` (`renderer.js:34-35`), drawn on the canvas;
+    `embed.css` can only paint the DOM ground `#EEF1F4`. AC-34 `canvas_nonblank` (C7) must expect a slight
+    offset or compare against `#E8ECEF`, unless C5 decides to change the canvas colour (no setter exists
+    without a vendored edit).
+  - `embed.css` adds `.content{height:100%}` (not in D12) so the hidden navbar leaves no 60 px gap.
