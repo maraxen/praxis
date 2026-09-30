@@ -739,12 +739,10 @@ def test_plate_palette_is_inline_and_uppercase_for_the_theme_selectors(assay_htm
     strokes = {n.attrs.get("stroke") for n in root.walk() if "stroke" in n.attrs}
     assert {SHEET, MOONSTONE} <= fills
     assert {INK, RAIL} <= strokes
-    p = _paths(root)
     assert _one(root, "sv-well").attrs["fill"] == SHEET and _one(root, "sv-well").attrs["stroke"] == RAIL
     assert _one(root, "sv-liquid").attrs["fill"] == MOONSTONE
     rect = root.find_all("rect")
     assert len(rect) == 1 and rect[0].attrs["stroke"] == INK and rect[0].attrs["fill"] == SHEET
-    assert p
 
 
 def _one(root: _Node, cls: str) -> _Node:
@@ -1017,7 +1015,8 @@ def test_tiprack_palette_and_dashed_taken_rings(tips_html):
     root = _parse(tips_html)
     ring, core, gone = _one(root, "sv-tip-ring"), _one(root, "sv-tip"), _one(root, "sv-tip-gone")
     assert (ring.attrs["fill"], ring.attrs["stroke"]) == (SHEET, INK)
-    assert core.attrs["fill"] == INK and "stroke" not in core.attrs
+    # the core is an ink dot: a zero-length subpath under a round cap (it keeps the rack in budget)
+    assert core.attrs["stroke"] == INK and core.attrs["fill"] == "none" and core.attrs["stroke-linecap"] == "round"
     assert gone.attrs["fill"] == "none" and gone.attrs["stroke"] == RAIL and "stroke-dasharray" in gone.attrs
 
 
@@ -1025,12 +1024,23 @@ def test_tiprack_ring_size_comes_from_plr_and_cores_sit_inside(tips, tips_html):
     root = _parse(tips_html)
     spot = tips.get_item("A1")
     assert spot.get_size_x() == 7.2  # the pin's tip spot (9.0 at 0.2.2)
-    rings = [_circle(s) for s in _subpaths(_one(root, "sv-tip-ring").attrs["d"])]
-    cores = [_circle(s) for s in _subpaths(_one(root, "sv-tip").attrs["d"])]
+    ring_path, core_path = _one(root, "sv-tip-ring"), _one(root, "sv-tip")
+    rings = [_circle(s) for s in _subpaths(ring_path.attrs["d"])]
+    cores = [_dot(s) for s in _subpaths(core_path.attrs["d"])]
+    assert len(rings) == len(cores) == 72
     for c in rings:
         assert abs(c[2] - 3.6) < 0.011
     for ring, core in zip(rings, cores):
-        assert abs(ring[0] - core[0]) < 0.02 and abs(ring[1] - core[1]) < 0.02 and core[2] < ring[2]
+        assert abs(ring[0] - core[0]) < 0.02 and abs(ring[1] - core[1]) < 0.02
+    # the dot's diameter is the stroke width: 0.45 of the ring's, and it fits inside the ring
+    assert float(core_path.attrs["stroke-width"]) == pytest.approx(2 * 3.6 * 0.45, abs=0.006)
+    assert float(core_path.attrs["stroke-width"]) < 2 * 3.6
+
+
+def _dot(sp: str):
+    m = re.fullmatch(rf"M({_NUM})[ ,]?({_NUM})h0", sp)
+    assert m, sp
+    return float(m.group(1)), float(m.group(2))
 
 
 def test_tiprack_present_and_taken_rings_cover_every_spot_exactly_once(tips, tips_html):
@@ -1203,7 +1213,7 @@ def test_ac12_checker_controls_fail_on_a_shrunken_font_min_width_and_well(lw, so
     small_min = re.sub(r"min-width:[\d.]+px", "min-width:100px", doc)
     assert _floor_problems(small_min)
     # wells shrunk below 4 px at the declared s_min
-    shrunk = re.sub(r"a3\.43 3\.43", "a1 1", doc)
+    shrunk = re.sub(r"a3\.43 3\.43", "a0.5 0.5", doc)  # d = 1 mm -> 2.64 px at s_min
     assert any("sv-well" in p for p in _floor_problems(shrunk))
 
 
@@ -1481,6 +1491,24 @@ def test_a_huge_hostile_name_never_breaks_the_cap_and_the_text_is_kept(lw, svg, 
     assert data["text/plain"].startswith("1 of 96 wells hold liquid")
     assert meta["praxis"]["resource"] == name  # the stamp is JSON, not html: it keeps the full name
     svg.check_bundle(data, meta)
+
+
+def test_long_names_are_shortened_for_display_only(lw, svg, fx):
+    """A 250-character name reads shortened in the text, but the shell's exact match on
+    ``data-praxis-res`` and the stamp keep the FULL name (D2: never a selector from a name)."""
+    name = "n" * 249 + "Z"
+    plate = fx.cor_96_wellplate_360uL_Fb(name=name)
+    plate.get_item("B2").tracker.set_volume(30)
+    data, meta = lw.render(plate, rev=1, session="s", exec_count=1)
+    root = _parse(data["text/html"])
+    assert _figure_group(root).attrs["data-praxis-res"] == name
+    assert _grid_of(root)["res"] == name
+    assert meta["praxis"]["resource"] == name
+    shown = root.find_all(cls="praxis-name__title")[0].text()
+    assert len(shown) == 200 and shown.endswith("…") and name.startswith(shown[:-1])
+    well = plate.get_item("B2")
+    sentence = lw.container_sentence(well)
+    assert sentence.startswith(shown + " B2 holds 30 µL of 360 µL")
 
 
 def test_labware_source_never_builds_markup_by_hand_or_escapes_on_its_own(lw):
