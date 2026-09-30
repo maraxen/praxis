@@ -47,9 +47,8 @@ import textwrap
 import types
 from pathlib import Path
 
-import pytest
-
 import pylabrobot
+import pytest
 
 _TESTS_DIR = Path(__file__).resolve().parent
 _WEB_REPL = _TESTS_DIR.parent
@@ -452,7 +451,7 @@ def test_r21_check_control_a_missing_path_fails_where_a_plain_pipeline_would_pas
     missing = str(tmp_path / "does-not-exist")
     assert _pipestatus(missing)[0] == 2, "an unreadable path makes the first grep exit 2"
     assert _run_gate(missing).returncode != 0
-    plain_pipeline = R21_LINE_1.split("; s=")[0].replace("<paths>", missing)  # no PIPESTATUS capture
+    plain_pipeline = R21_LINE_1.split("; s=", maxsplit=1)[0].replace("<paths>", missing)  # no PIPESTATUS capture
     naive = subprocess.run(["bash", "-c", plain_pipeline], capture_output=True, text=True, timeout=60)
     assert naive.returncode == 1, "a plain pipeline reads that error as a clean pass (C11-8)"
 
@@ -651,7 +650,7 @@ def test_announcement_json_switches_to_all_true_past_the_cap(st):
         return {f"resource_with_a_long_name_{i:04d}": i for i in range(n)}
 
     forms = []
-    for n in range(0, 400):
+    for n in range(400):
         payload = st.announcement_json("sess-0123456789ab", 12, make(n))
         assert len(payload.encode("utf-8")) <= JSON_CAP, n
         obj = json.loads(payload)
@@ -670,13 +669,16 @@ def test_announcement_json_switches_to_all_true_past_the_cap(st):
 
 
 @_async_test
-async def test_a_cell_that_changes_every_drawn_well_announces_all_true_within_the_cap(st, fx):
-    w = await _world(fx)
+async def test_a_cell_that_changes_hundreds_of_drawn_wells_announces_all_true_within_the_cap(st, fx):
+    from pylabrobot.resources.corning import cor_96_wellplate_360uL_Fb
+
+    await _world(fx)  # the fixture switches volume tracking on
+    plates = [cor_96_wellplate_360uL_Fb(name=f"reagent_plate_{i}") for i in range(3)]
     s, posts, _ = _session(st)
-    wells = w.source.get_all_items() + w.assay.get_all_items()
+    wells = [well for plate in plates for well in plate.get_all_items()]
     for well in wells:
-        s.draw(well)  # one drawn resource per well: 192 revs
-    assert len(wells) == 192
+        s.draw(well)  # one drawn resource per well: 288 revs, ~30 bytes each in the map
+    assert len(wells) == 288
     for well in wells:
         well.tracker.set_volume(well.tracker.get_used_volume() + 1.0)
     s.post_run_cell()
@@ -969,7 +971,7 @@ async def test_a_different_object_drawn_under_a_drawn_name_never_lowers_the_rev(
 
 @_async_test
 async def test_subscription_is_idempotent_through_the_subscribed_set(st, fx, monkeypatch):
-    from pylabrobot.resources import Resource
+    from pylabrobot.resources import Resource, TipSpot
 
     w = await _world(fx)
     state_regs: dict[int, int] = {}
@@ -1007,7 +1009,9 @@ async def test_subscription_is_idempotent_through_the_subscribed_set(st, fx, mon
     s.draw(w.deck)
     s.draw(w.assay)
     s.draw(w.deck)
-    assert all(state_regs.get(id(n)) == 1 for n in _all_nodes(w.deck)), "no node registered twice"
+    for node in _all_nodes(w.deck):
+        held_tip = isinstance(node.parent, TipSpot)  # a resting tip is its spot's state: not watched
+        assert state_regs.get(id(node), 0) == (0 if held_tip else 1), f"{node.name} registered wrongly"
     assert assign_regs.get(id(w.deck)) == 1 and assign_regs.get(id(w.assay)) == 1
     # a callback fires once per change, so a dirty mark is not doubled
     n = _count_state_callbacks(w.assay.get_item("A1"))
