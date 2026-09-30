@@ -434,7 +434,7 @@ def test_text_line_is_class_only_and_escapes(svg):
 
 
 def test_text_el_font_size_is_in_user_units_and_never_rounded_down(svg):
-    for size in (12.5 / 3, 12.5 / 0.8756, 12.5 / 2.5, 4.16, 14.27, 5.0, 100.0):
+    for size in (12.5 / 3, 12.5 / 0.8756, 12.5 / 2.5, 4.16, 14.27, 5.0, 100.0, 4.164, 12.5 / 0.6):
         doc = svg.text_el(1, 2, "A1", size)
         (_, attrs), = _parse(doc).tags
         d = dict(attrs)
@@ -551,6 +551,7 @@ def test_rect_path_plain_rect_visits_exactly_its_four_corners(svg):
     d = svg.rect_path(5, 6, 10, 4)
     assert d.count("M") == 1
     assert set(_endpoints(d)) == {(5, 6), (15, 6), (15, 10), (5, 10)}
+    assert not any(c in "Aa" for c, _ in _path_tokens(d))   # no degenerate zero-radius arcs
 
 
 def test_rect_path_rounded_rect_stays_inside_its_box_and_clamps_radius(svg):
@@ -776,7 +777,7 @@ def test_check_bundle_rejects_missing_or_extra_stamp_keys_or_no_stamp(svg):
 ])
 def test_check_bundle_enforces_the_null_values_D2_fixes_by_kind(svg, kind, over):
     data, _ = _bundle()
-    stamp = _stamp(kind=kind, resource=None, rev=None, **over)
+    stamp = {**_stamp(kind=kind, resource=None, rev=None), **over}
     with pytest.raises(svg.UnsafeHtmlError):
         svg.check_bundle(data, {"praxis": stamp})
 
@@ -790,8 +791,9 @@ def test_stamp_is_json_serialisable_and_roundtrips(svg):
 
 
 def test_b1_modules_reach_dist_through_the_manifest_walk():
-    """`build_manifest.collect_sources` walks overlay/assets/python recursively, so the three
-    B1 modules stage with no build change; assert that rather than assume it."""
+    """`build_manifest.collect_sources` walks overlay/assets/python recursively, so the B1
+    modules stage with no build change; assert that rather than assume it (floor.py and
+    budget.py have the same check in their own files)."""
     scripts = Path(__file__).resolve().parents[1] / "scripts"
     spec = importlib.util.spec_from_file_location("_bm_under_test_b1", scripts / "build_manifest.py")
     bm = importlib.util.module_from_spec(spec)
@@ -799,5 +801,4 @@ def test_b1_modules_reach_dist_through_the_manifest_walk():
     spec.loader.exec_module(bm)
     overlay = Path(__file__).resolve().parents[1] / "overlay"
     paths = {e["path"] for e in bm.collect_sources(overlay)}
-    for name in ("svg", "floor", "budget"):
-        assert f"assets/python/praxis/display/{name}.py" in paths, sorted(paths)
+    assert "assets/python/praxis/display/svg.py" in paths, sorted(paths)

@@ -332,7 +332,7 @@ def _verify_tail(orig: str, out: str, limit: int) -> None:
 
 def test_cap_tail_on_a_200_frame_traceback_keeps_the_tail_within_16_kib(budget):
     tb = _frame_text(200)
-    assert _size(tb) > 3 * TB_CAP
+    assert _size(tb) > TB_CAP  # 200 frames: about 26 KB, 1.6x the cap
     out = budget.cap_tail(tb, TB_CAP)
     _verify_tail(tb, out, TB_CAP)
     first, _, _ = out.partition("\n")
@@ -390,6 +390,24 @@ def test_a_single_line_longer_than_the_cap_is_cut_at_a_character_boundary(budget
     assert head == f"{ELLIPSIS} 1 earlier lines omitted"
     assert tail and set(tail) == {"€"}
     assert out.encode("utf-8").decode("utf-8") == out
+
+
+def test_dropping_only_the_first_line_is_found(budget):
+    """The smallest possible truncation (N = 1) must be reachable, and must be chosen when it fits."""
+    text = "\n".join(["a" * 500, "b" * 10, "c" * 10])
+    out = budget.cap_tail(text, 100)
+    _verify_tail(text, out, 100)
+    assert out.split("\n")[0] == f"{ELLIPSIS} 1 earlier lines omitted"
+    assert out.split("\n")[1:] == ["b" * 10, "c" * 10]
+
+
+def test_a_giant_last_line_with_a_trailing_newline_still_keeps_its_own_tail(budget):
+    text = "first\n" + "z" * 5_000 + "\n"
+    out = budget.cap_tail(text, 300)
+    assert _size(out) <= 300 and out.endswith("z\n")
+    head, _, rest = out.partition("\n")
+    assert head == f"{ELLIPSIS} 1 earlier lines omitted"
+    assert set(rest.rstrip("\n")) == {"z"} and len(rest) > 200
 
 
 def test_a_trailing_newline_is_preserved_only_when_present(budget):
