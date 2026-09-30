@@ -171,17 +171,88 @@ def _build_deck_from_manifest(deck_manifest):
   return deck, resource_registry
 
 
+# PLR 1.0 moved the machine-agnostic LiquidHandler stack (and the other legacy machine
+# frontends/backends) under ``pylabrobot.legacy``; the old top-level packages are
+# DeprecationWarning shims and several of their submodules have no shim at all.
+# A browser that opened praxis before the 1.0 bump keeps the 0.2.2 catalog in its OPFS
+# database (it reloads only on a ``user_version`` bump), so the FQNs it hands us can
+# still be pre-1.0 paths.
+#
+# MIRRORS ``_PLR_LEGACY_PACKAGES`` / ``get_class_from_fqn`` in
+# ``praxis/backend/core/workcell_runtime/utils.py`` (the server-side fallback); a test
+# (``test_web_bridge_fqn_fallback.py``) fails if the two package lists drift.
+_PLR_LEGACY_PACKAGES = frozenset({
+  "liquid_handling",
+  "machines",
+  "plate_reading",
+  "heating_shaking",
+  "shaking",
+  "temperature_controlling",
+  "thermocycling",
+  "powder_dispensing",
+  "pumps",
+  "centrifuge",
+  "storage",
+  "scales",
+  "tilting",
+  "only_fans",
+  "sealing",
+  "peeling",
+  "arms",
+})
+
+# stored (pre-1.0) FQN -> number of times it had to be rewritten to its legacy twin.
+# One entry per distinct FQN (the log line is printed on the first use only); the
+# phase-2 telemetry step reads this to see how many stale FQNs a browser still holds.
+_FQN_FALLBACK_COUNTS = {}
+
+
+def _legacy_twin_fqn(fqn):
+  """Return the ``pylabrobot.legacy.*`` twin of a pre-1.0 PLR FQN, or None if it has none."""
+  parts = fqn.split(".")
+  if len(parts) >= 3 and parts[0] == "pylabrobot" and parts[1] in _PLR_LEGACY_PACKAGES:
+    return ".".join(["pylabrobot", "legacy", *parts[1:]])
+  return None
+
+
+def _resolve_plr_class(fqn):
+  """Import a class/factory by FQN with the same order as the server's ``get_class_from_fqn``.
+
+  A pre-1.0 ``pylabrobot.<machine package>`` FQN is tried at its explicit
+  ``pylabrobot.legacy`` home first (no shim DeprecationWarning, and it also covers
+  submodules the upstream shims dropped); the FQN as given is the fallback. Any other
+  FQN, including one already under ``pylabrobot.legacy``, is imported as given. When the
+  twin is what resolved, the rewrite is logged once per distinct FQN and counted in
+  ``_FQN_FALLBACK_COUNTS``. Raises the import error of the FQN as given when nothing
+  resolves.
+  """
+  module_path, class_name = fqn.rsplit(".", 1)
+  twin = _legacy_twin_fqn(fqn)
+  if twin is not None:
+    twin_module, _ = twin.rsplit(".", 1)
+    try:
+      cls = getattr(importlib.import_module(twin_module), class_name)
+    except (ImportError, AttributeError):
+      pass
+    else:
+      if fqn not in _FQN_FALLBACK_COUNTS:
+        _FQN_FALLBACK_COUNTS[fqn] = 0
+        print(f"[web_bridge] Stale PLR FQN {fqn} resolved via legacy twin {twin}")
+      _FQN_FALLBACK_COUNTS[fqn] += 1
+      return cls
+  return getattr(importlib.import_module(module_path), class_name)
+
+
 def _import_class(fqn):
   """Import a class/factory by its fully qualified name.
-  
+
   Falls back to pylabrobot.resources top-level if the specified
   module path does not resolve (e.g., in Pyodide with a different
   wheel layout).
   """
   module_path, class_name = fqn.rsplit(".", 1)
   try:
-    module = importlib.import_module(module_path)
-    return getattr(module, class_name)
+    return _resolve_plr_class(fqn)
   except (ModuleNotFoundError, AttributeError):
     # Fallback: PLR re-exports many resources at pylabrobot.resources
     try:
@@ -665,7 +736,9 @@ def emit_well_state(lh: Any):
       tip_bits = 0
 
       for i in range(num_tips):
-        if resource.get_item(i).has_tip:
+        # PLR 1.0: ``has_tip`` is a (deprecated) METHOD on TipSpot, so the bare attribute was
+        # always truthy. ``TipSpot.tip`` reads the tip from the resource tree.
+        if resource.get_item(i).tip is not None:
           tip_bits |= 1 << i
 
       state_update[res_name] = {"tip_mask": hex(tip_bits)}
@@ -1257,8 +1330,8 @@ def create_configured_backend(config):
   # Dynamic import using importlib (works with Pyodide lazy wheel loading)
   try:
     module_path, class_name = fqn.rsplit(".", 1)
-    module = importlib.import_module(module_path)
-    BackendClass = getattr(module, class_name)
+    BackendClass = _resolve_plr_class(fqn)
+    module_path = BackendClass.__module__
 
     # Category-specific extra constructor args
     extra_kwargs = {}
