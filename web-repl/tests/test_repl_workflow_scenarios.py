@@ -276,7 +276,9 @@ def test_display_check_and_display_js_harness_are_wired(wf):
     assert text.count("bun test web-repl/shell/display") >= 1  # AC-40, sprint A
 
 
-@pytest.mark.parametrize("name", ["test_repl_smoke_resume.py", "test_repl_workflow_scenarios.py"])
+@pytest.mark.parametrize(
+    "name", ["test_repl_smoke_resume.py", "test_repl_workflow_scenarios.py", "test_nd_sensitivity_driver.py"]
+)
 def test_new_test_files_are_wired_in_the_tests_step(steps, name):
     tests = "\n".join(_command_lines(_by_name(steps, "Tests")))
     assert f"uv run python -m pytest web-repl/tests/{name} -q" in tests
