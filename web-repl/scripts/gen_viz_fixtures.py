@@ -64,16 +64,23 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import importlib
+import importlib.util
 import json
 import logging
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger("gen_viz_fixtures")
 
-GENERATOR_VERSION = "1.0.0"
+GENERATOR_VERSION = "1.1.0"
+# 1.1.0: the root payload now passes through praxis.viz.browser.add_legacy_num_rails, the
+# same adapter BrowserVisualizer.send_command applies, so the fixture is what the browser
+# really receives (PLR 1.0 serializes num_tracks; the vendored lib.js draws rails from
+# num_rails). Without it the gate would assert the rail-less render (355 shapes, not 394).
 
 
 class FixtureError(RuntimeError):
@@ -101,6 +108,32 @@ def find_repo_root(start: Path) -> Path:
 REPO_ROOT = find_repo_root(Path(__file__).parent)
 DEFAULT_OUT_DIR = REPO_ROOT / "web-repl" / "tests" / "fixtures" / "visualizer"
 DEFAULT_PLR_SUBMODULE = REPO_ROOT / "external" / "pylabrobot"
+
+
+_VIZ_PKG = "_praxis_viz_for_fixtures"
+
+
+def _load_viz_adapter() -> Any:
+    """Return ``praxis.viz.browser.add_legacy_num_rails`` without touching ``sys.path``.
+
+    ``web-repl/overlay/assets/python`` holds a ``praxis/`` package that must never be put on
+    ``sys.path`` (it would shadow the repo's real top-level ``praxis``), so the package is
+    loaded by path under a synthetic name -- the same way ``tests/test_browser_visualizer.py``
+    does it.
+    """
+    viz_dir = REPO_ROOT / "web-repl" / "overlay" / "assets" / "python" / "praxis" / "viz"
+    if _VIZ_PKG not in sys.modules:
+        spec = importlib.util.spec_from_file_location(
+            _VIZ_PKG,
+            viz_dir / "__init__.py",
+            submodule_search_locations=[str(viz_dir)],
+        )
+        if spec is None or spec.loader is None:
+            raise FixtureError(f"cannot load praxis.viz from {viz_dir}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[_VIZ_PKG] = module
+        spec.loader.exec_module(module)
+    return importlib.import_module(f"{_VIZ_PKG}.browser").add_legacy_num_rails
 
 
 def _count_resources(node: dict[str, Any]) -> int:
@@ -181,9 +214,12 @@ async def _capture(plr_submodule: Path) -> dict[str, Any]:
         rec(resource)
         return state
 
+    add_legacy_num_rails = _load_viz_adapter()
     root_payload = _sanitize_floats(
         {
-            "resource": _serialize_resource_tree(root),
+            # The adapter is applied here exactly as BrowserVisualizer.send_command applies it
+            # to set_root_resource, so this fixture is the payload the browser really gets.
+            "resource": add_legacy_num_rails(_serialize_resource_tree(root)),
             "method_registry": _build_method_registry(root),
         }
     )
