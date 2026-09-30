@@ -403,8 +403,11 @@ def test_plain_grep_hits_exactly_the_three_documentation_mentions_in_transport_p
     )
     assert plain.returncode == 0, "the plain grep is non-empty on main (Revision 10, BLOCKER-3)"
     hits = sorted(line.split(":")[0:2] for line in plain.stdout.splitlines())
-    transport = "web-repl/overlay/assets/python/praxis/viz/transport.py"
-    assert hits == [[transport, "10"], [transport, "11"], [transport, "26"]], hits
+    viz = "web-repl/overlay/assets/python/praxis/viz/"
+    # transport.py:10,11,26 on main (Revision 10), plus viewer3d.py:61 since C3: one more RST documentation
+    # mention ("and not ``praxis_repl`` (R21)"), in the same directory. Still documentation only, all stripped.
+    assert hits == [[viz + "transport.py", "10"], [viz + "transport.py", "11"], [viz + "transport.py", "26"],
+                    [viz + "viewer3d.py", "61"]], hits
     assert all(f"``{CHANNEL}``" in line for line in plain.stdout.splitlines())
 
 
@@ -414,6 +417,37 @@ def test_r21_check_passes_on_the_real_paths_and_is_not_vacuous():
     # first grep 0 (the three hits ARE found), sed 0, final grep exactly 1 (nothing left after the strip).
     assert _pipestatus(real) == [0, 0, 1]
     assert _run_gate(real, echo_status=True).stdout.strip() == "0 0 1", "no residual line is printed"
+
+
+# From sprint C (AC-31) the same gate runs over SIX paths: the three above, the two Visualizer3D directories and
+# dock.js (a file: `test -f`, not `test -d`). C7 closes it; the Python form lives in scripts/repl_smoke.py.
+R21_EXTENDED_PATHS = R21_PATHS + (
+    "web-repl/overlay/assets/visualizer3d/",
+    "web-repl/overlay/assets/visualizer3d-augmentations/",
+    "web-repl/shell/display/dock.js",
+)
+
+
+def test_r21_extended_paths_exist_dirs_and_the_dock_file():
+    for rel in R21_EXTENDED_PATHS[:-1]:
+        assert (_REPO_ROOT / rel).is_dir(), rel
+    assert (_REPO_ROOT / R21_EXTENDED_PATHS[-1]).is_file()
+
+
+def test_r21_extended_check_passes_on_the_six_real_paths_and_is_not_vacuous():
+    real = " ".join(R21_EXTENDED_PATHS)
+    assert _run_gate(real).returncode == 0
+    assert _pipestatus(real) == [0, 0, 1], "the documentation mentions are found (0), stripped (0), nothing left (1)"
+
+
+def test_r21_extended_check_control_fires_on_a_use_in_dock_js_or_the_new_directories(tmp_path):
+    for rel in ("visualizer3d/app.js", "visualizer3d-augmentations/socket.js", "dock.js"):
+        bad = tmp_path / rel.split("/")[0]
+        bad.mkdir(exist_ok=True)
+        target = bad / rel.split("/")[-1]
+        target.write_text('const c = new BroadcastChannel("praxis_repl");\n')
+        assert _run_gate(str(bad)).returncode != 0, rel
+        assert _pipestatus(str(bad))[2] == 0, rel
 
 
 @pytest.mark.parametrize(
