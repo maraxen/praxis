@@ -575,6 +575,46 @@ def test_pageerrors_come_from_the_session(rs, ur, wds, tmp_path):
     assert code == 1 and result["pageerrors"] == ["Uncaught boom"] and result["failing_keys"] == ["pageerrors"]
 
 
+class PwError:
+    """Stands in for Playwright's ``Error`` (the ``pageerror`` payload): ``str()`` is the message,
+    ``stack`` is the JavaScript stack or None."""
+
+    def __init__(self, message: str, stack: str | None) -> None:
+        self.message = message
+        self.stack = stack
+
+    def __str__(self) -> str:
+        return self.message
+
+
+def test_pageerror_entry_carries_the_message_and_a_truncated_stack(rs):
+    """The recorded entry stays ONE string (the ``pageerrors`` key is still a list of them) and
+    now says where the error was thrown. Stack truncated to 600 characters."""
+    msg = "Failed to execute 'removeChild' on 'Node'"
+    stack = "Error: boom\n    at frame0 (http://x/a.js:1:1)\n" + "x" * 700 + "TAIL"
+    entry = rs.format_pageerror(PwError(msg, stack))
+    assert isinstance(entry, str)
+    assert entry == f"{msg}\n{stack[:600]}"
+    assert "TAIL" not in entry, "negative control: the stack beyond 600 characters is cut"
+    assert "at frame0" in entry
+
+
+@pytest.mark.parametrize("stack", [None, ""])
+def test_pageerror_entry_without_a_stack_is_just_the_message(rs, stack):
+    assert rs.format_pageerror(PwError("Uncaught boom", stack)) == "Uncaught boom"
+    assert rs.format_pageerror(ValueError("plain exception, no stack attribute")) == "plain exception, no stack attribute"
+
+
+def test_display_session_records_pageerrors_through_format_pageerror(rs):
+    """The listener is built inside a browser-only constructor, so this reads its source."""
+    import inspect
+
+    init_src = inspect.getsource(rs.DisplaySession.__init__)
+    listener = [line for line in init_src.splitlines() if '"pageerror"' in line]
+    assert len(listener) == 1, listener
+    assert "format_pageerror" in listener[0] and "str(exc)" not in listener[0], listener[0]
+
+
 def test_inputs_that_cannot_be_built_exit_2_with_no_stamp(rs, ur, wds, tmp_path):
     log: list[Any] = []
 
