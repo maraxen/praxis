@@ -1,0 +1,118 @@
+# Pre-registration sidecar for the AC-39(a) sensitivity run of sprint A (task
+# 260929_notebook-display-design, backlog #5635 A7 part A7a, epic #5648). Spec:
+# .praxia/docs/specs/260929_notebook-display-epic.md, D16 ("AC-39 negatives run only their own
+# unit", the harness's --out-dir rule C8-5), D17 ("AC-39 sensitivity runs are pre-registered
+# too", C7-8; units, resume, completeness), AC-39, AC-42, AC-7.
+#
+# THIS FILE, scripts/spikes/260929_nd_sensitivity_sprint_a.py and the shared driver
+# scripts/negatives/260929_nd_sensitivity.py ARE COMMITTED BEFORE ANY RUN. No browser has been
+# launched, no dist copied and no `bth run` executed against this driver when this file was
+# written: the outcome criteria below were chosen from the spec, not from numbers. Run it with
+# `bth`, never `uv run bth` (which silently skips sidecar enforcement), from a checkout whose
+# web-repl/dist is a FRESH build at the pin, unsandboxed (full Chromium):
+#
+#   bth run --project-slug praxis --output-paths outputs/nd_sensitivity/sprint_a -- \
+#     uv run --no-sync python3 scripts/spikes/260929_nd_sensitivity_sprint_a.py \
+#       --out-dir outputs/nd_sensitivity/sprint_a --dist web-repl/dist [--resume]
+#
+# (`bth run` has NO --out option: the driver reads $BTH_RESULTS_PATH, which bathos provides;
+# artifacts are declared with --output-paths.) Verify the run by its RECORD, never by exit code
+# (`bth compact` first if it is not visible yet):
+#   bth sql "SELECT id, status, outcome, exit_code, command FROM runs WHERE id LIKE '<prefix>%'"
+#
+# The driver writes the flat fields below to $BTH_RESULTS_PATH ONLY when the negative's unit is
+# complete. An incomplete run (a timeout or a stampless crash) exits 3 and writes no result, so
+# bathos records no outcome, and the next `--resume` run is a new run record.
+#
+# PAIRED CONTROLS (BATHOS.md): the NEGATIVE control is this run itself (the harness must FAIL on
+# the mutated dist). The POSITIVE control is the unmutated D1 unit passing on the real dist
+# (`repl_smoke.py --display-check --scenario D1`, AC-7), recorded separately in the sprint A PR:
+# a gate that fails on a broken dist is only sensitive if it passes on the good one. Plumbing is
+# proved without a browser by web-repl/tests/test_nd_sensitivity_driver.py, with its own
+# positive control (a stub harness that fails naming the key) and negative controls (a harness
+# that passes, fails another key, times out or whose instrument raised).
+
+[experiment]
+hypothesis = "The D1 chrome scenario of the --display-check harness (AC-7) is SENSITIVE to the display module being absent. Negative (a): the built dist is copied to /tmp/claude-1000/nd-neg/a/dist/ and shell/display/index.js is removed from the copy, so the display modules never mount (window.__praxisDisplay is never recorded), no cell carries data-praxis-cell-state and the status rail cannot reach `ran`. The harness unit D1, run ALONE in its own process with its own --out-dir /tmp/claude-1000/nd-neg/a/out/ (the harness refuses a non-default --serve-dir without one), exits nonzero and names rail_state_after_run among its FAILING keys (present in the result and not holding). Two ways the run could be misread are excluded by pre-registered validity checks: (1) the mutation must really have removed something (the pristine dist contained shell/display/index.js and the copy lost it), otherwise 'the harness did not notice' would be a mutation that changed nothing; (2) the failure must come from a valid harness stamp whose result carries no error finding, so a harness that timed out (exit 124: no stamp, no result) or whose scenario raised is an instrument failure and never a detection. The prior is that D1 is sensitive, but the prior is NOT a criterion: both a_sensitive and a_insensitive are pre-registered outcomes, and the run is only INVALID (residual) if the instrument itself failed."
+stage_name = "exploration"
+novel = true
+
+# ---------------------------------------------------------------------------------------
+# [outcomes]: one outcome per negative, over the flat fields the driver writes when the
+# negative's unit is complete. a_detected = (a_harness_exit is nonzero) AND (rail_state_after_run
+# is among the harness's failing keys). measurement_valid is the conjunction of: the unit carries
+# no error finding, the harness stamp is valid (its inputs equal the ones the MUTATED copy implies,
+# so the harness served the mutated copy), the harness result carries no error finding, the
+# pristine dist contained the mutation target, the copy lost it, and the harness did not time out
+# (exit 124). A harness timeout is nonzero but names no key, so it never passes: it lands in
+# `invalid`.
+# ---------------------------------------------------------------------------------------
+
+[outcomes.a_sensitive]
+condition = "all_units_complete = true AND measurement_valid = true AND a_detected = true"
+decision = "AC-39(a) passes: the D1 unit is sensitive to the display module. Cite this run id in the sprint A PR description together with the observed harness exit (a_harness_exit) and the unmutated D1 unit's passing record."
+reasoning = "The harness exited nonzero on the mutated dist and named rail_state_after_run among its failing keys, from a valid stamp on the mutated copy, with the mutation demonstrably applied."
+is_residual = false
+
+[outcomes.a_insensitive]
+condition = "all_units_complete = true AND measurement_valid = true AND a_detected = false"
+decision = "AC-39(a) FAILS: with shell/display/index.js removed the D1 unit did not exit nonzero naming rail_state_after_run (a_harness_exit and a_failing_keys in result.json say which). The gate cannot see the display module being absent. Do NOT merge sprint A: fix how D1 reads rail_state_after_run (it must come from the state the display module writes), re-run the D1 unit on the real dist, and re-run this driver under this sidecar's design. Cite the failed run."
+reasoning = "The mutation was applied and the harness ran validly, so a pass or a failure on some other key is a real finding about the gate's sensitivity, not an instrument fault."
+is_residual = false
+
+# The residual: the instrument did not produce a valid measurement. Not evidence about the gate.
+[outcomes.invalid]
+condition = "all_units_complete = true AND measurement_valid = false"
+decision = "INVALID: the unit carries an error finding, the mutation applied to nothing, the harness result carries an error finding, the harness timed out or left no valid stamp for the mutated copy. Fix the driver or the environment, commit, and re-run under this sidecar's design; cite no sensitivity verdict from this run."
+reasoning = "A verdict that could be an instrument bug is never reported without a valid measurement (BATHOS.md)."
+is_residual = true
+
+[result_schema]
+all_units_complete = "bool"
+n_negatives = "int"
+n_error_units = "int"
+measurement_valid = "bool"
+a_harness_exit = "int"
+a_expected_key_failed = "bool"
+a_detected = "bool"
+a_failing_keys = "str"
+a_negative_passed = "bool"
+
+# ---------------------------------------------------------------------------------------
+# D17 design statement: pre-registered here, committed before the first run.
+# ---------------------------------------------------------------------------------------
+
+[design]
+spec = ".praxia/docs/specs/260929_notebook-display-epic.md D16, D17 (AC-39 sensitivity runs), AC-39(a), AC-42"
+driver = "scripts/negatives/260929_nd_sensitivity.py (shared, argparse + logging), entered through scripts/spikes/260929_nd_sensitivity_sprint_a.py (this sidecar's script; fixes the negative set to a); loads scripts/repl_smoke.py and scripts/unit_runner.py by path"
+driver_unit_runner = "scripts/unit_runner.py: every unit (the negative's own and the harness unit it starts) is started and killed through unit_runner.run_unit / kill_tree / Watchdog; nothing else in the driver starts or kills a process"
+unit_list = ["a"]
+statement = "One unit per negative. The driver starts negative `a` as its own subprocess (<entry script> --unit a --out-dir <dir> --dist <pristine> --neg-root <root> --base-path <bp> --chrome-path <path>) through unit_runner.run_unit with timeout = 600 s + 60 s. The unit calls unit_runner.ensure_token(), arms a unit_runner.Watchdog at 600 s as its first act, then deletes its own stamp, artifact and timeout marker; copies the PRISTINE dist to /tmp/claude-1000/nd-neg/a/dist/ (a fresh copy every time; nothing outside that directory is ever written or deleted), removes shell/display/index.js from the copy, asserts the copy's dist_hash equals the one predicted from the pristine tree minus that file, deletes the harness unit's own earlier files under /tmp/claude-1000/nd-neg/a/out/, and runs ONLY the harness unit D1 (`repl_smoke.py --display-check --scenario D1 --serve-dir /tmp/claude-1000/nd-neg/a/dist --out-dir /tmp/claude-1000/nd-neg/a/out --base-path /praxis/ --chrome-path <path>`) as a subprocess through unit_runner.run_unit with timeout = D1's 360 s budget + 60 s (the harness's own --scenario watchdog fires at 360 s). It reads the harness stamp: the stamp is valid only if it exists, its inputs equal the inputs the mutated copy implies (the dist input is the mutated copy's hash) and its result_sha256 matches the result on disk; the stamp governs even if run_unit timed out over it (logged with logging.warning); a harness unit with no stamp is a timeout (harness_exit 124) and names no key. It writes <out>/units/a.json with unit_runner.write_atomic under the watchdog lock, runs the bounded teardown (kill_tree over residual descendants, output flushed), commits <out>/units/a.stamp.json last through Watchdog.commit, and then calls only os._exit(stamp.exit). There is no whole-run timeout. Outcomes are evaluated over the full unit set regardless of reuse: the driver writes its result to $BTH_RESULTS_PATH (and so bathos evaluates [outcomes]) only when every unit is complete, reused or recomputed; a run with an incomplete unit writes no outcome and exits 3."
+stamp = "{unit, inputs: {name: sha256}, artifact_sha256, started, finished, exit, timeout_s}; exit is 0 only if the driver code did not raise and every pre-registered field is present (a MISSED negative, outcome false, is still exit 0: it is a finding, not a crash)."
+hashed_inputs = ["script (the shared driver scripts/negatives/260929_nd_sensitivity.py)", "entry (this sidecar's script)", "runner (scripts/unit_runner.py)", "harness (scripts/repl_smoke.py, loaded by path)", "dist_pristine (unit_runner.dist_hash of the pristine dist)", "dist_mutated (the dist_hash of the mutated copy, predicted from the pristine tree minus the mutation target and asserted equal to the real copy's before the harness runs)", "chrome (resolved path + chrome --version)", "driver (unit_runner.driver_input: Playwright version + uv.lock sha256)", "args (negative, harness unit and flag, mutation target, base path, negative root; an addition to the D17 list, strictly more conservative)"]
+resume_rule = "--resume skips a negative only if its stamp exists, stamp.exit == 0, stamp.inputs equal the current inputs, stamp.artifact_sha256 equals the sha256 of the artifact on disk, the artifact has no error finding, every pre-registered field (below) is present, and its recorded outcome passed. Anything else is recomputed: a missed negative (outcome false) is always rerun."
+completeness = "A negative's unit is complete when its artifact and a matching stamp (inputs equal the current inputs, artifact_sha256 equal to the artifact on disk) exist. A driver that raises is caught, recorded in the artifact as an error finding {type, message, traceback_tail <= 4 KiB} with harness_exit null, failing_keys [] and outcome false, and the unit still writes its artifact and stamp: it is complete, counts as a failed outcome (measurement_valid false, so `invalid`) and is never reused. Only a timeout (exit 124, no stamp, no artifact, a timeout marker) or a stampless crash makes a unit incomplete. If the driver's run_unit times out over a valid stamp, the stamp governs and a warning is logged."
+teardown_order = "1 write artifact through Watchdog.write_result; 2 kill_tree over residual descendants of the unit (it holds no browser: the harness unit closed its own); 3 flush stdout/stderr/logging; 4 Watchdog.commit(stamp); then only os._exit(stamp.exit). A hang in 1-3 is a timeout."
+reads = "The negative's outcome is read from the harness unit's stamp (exit) and result file (failing_keys, error), written by repl_smoke.py's run_scenario; never from printed console text."
+
+[design.timeouts]
+harness_unit_s = 360
+harness_run_unit_s = 420
+negative_unit_s = 600
+driver_kill_s = 660
+whole_run_timeout = "none"
+note = "D16: D1 budget 6 min; the harness run_unit timeout is that + 60 s; the negative unit adds an estimated 180 s for copying and hashing the dist (hundreds of MB) and teardown; the driver kills the unit at its timeout + 60 s. Estimates from the spec, not measurements; the first real run records wall times in result.json for the D16 first-run rule."
+
+[design.units.a]
+timeout_s = 600
+harness_flag = "--display-check"
+harness_unit = "D1"
+expected_key = "rail_state_after_run"
+required_fields = ["harness_exit", "failing_keys", "outcome"]
+mutation = "remove shell/display/index.js from /tmp/claude-1000/nd-neg/a/dist/, a fresh copy of the pristine dist; the harness is served that copy (--serve-dir /tmp/claude-1000/nd-neg/a/dist/) with its own --out-dir /tmp/claude-1000/nd-neg/a/out/"
+description = "outcome is true iff the harness stamp is valid, harness_exit is nonzero, rail_state_after_run is among failing_keys (present in the harness result and not holding; an absent key of a scenario that raised does not count) and the harness result carries no error finding. A harness timeout (exit 124, no stamp, and no result file because the watchdog deletes it under the lock) is nonzero but names no key, so it never passes."
+
+[design.controls]
+negative = "This run: the harness on the mutated dist must FAIL naming rail_state_after_run. Plumbing negative controls (web-repl/tests/test_nd_sensitivity_driver.py): a stub harness that passes, one that fails a different key, one that times out, and one whose scenario raised must each NOT pass the negative's outcome; a mutation whose target is absent must invalidate the measurement."
+positive = "The unmutated D1 unit passing on the real dist (AC-7), recorded in the sprint A PR: without it 'the harness fails on a broken dist' could mean the harness fails on everything. Plumbing positive control: a stub harness that fails naming the expected key passes the negative."
+plumbing = "web-repl/tests/test_nd_sensitivity_driver.py exercises driver, unit, stamp, resume, completeness and outcome gating against a stub harness, with no browser"

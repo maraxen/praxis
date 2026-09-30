@@ -1048,6 +1048,24 @@ def stage_shell(out_dir: Path) -> Path:
             "staged %d persistence module file(s) -> %s", staged, dst_modules
         )
 
+    # Stage the display modules (notebook display epic, A6). Same contract as
+    # persistence: unconditional stale-target removal, then copy. The source dir
+    # is resolved from SHELL_DIR at call time. Tests never ship: `__tests__/`
+    # and the `*.test.js` files that sit next to the modules. New display files
+    # need no change here; list the ones that must exist in
+    # _REQUIRED_DISPLAY_MODULES.
+    src_display = SHELL_DIR / "display"
+    dst_display = dst_dir / "display"
+    if dst_display.exists():
+        shutil.rmtree(dst_display)
+    if src_display.is_dir():
+        staged = _copytree_filtered(
+            src_display,
+            dst_display,
+            skip=lambda rel: "__tests__" in rel.parts or rel.name.endswith(".test.js"),
+        )
+        logger.info("staged %d display module file(s) -> %s", staged, dst_display)
+
     return dst
 
 
@@ -1070,6 +1088,13 @@ _REQUIRED_PERSISTENCE_MODULES = (
     "codec.js",
     "core.js",
     "panel.js",
+)
+
+# Required under dist/shell/display/. Later tasks append one line each (B9:
+# stale.js, interact.js; C6: dock.js).
+_REQUIRED_DISPLAY_MODULES = (
+    "index.js",
+    "chrome.js",
 )
 
 
@@ -1213,6 +1238,7 @@ def assert_dist_complete(out_dir: Path, *, with_coxswain: bool = False) -> None:
         out_dir / "bootstrap" / "transport.py",
         out_dir / "shell" / "praxis-shell.js",
         *(out_dir / "shell" / "persistence" / name for name in _REQUIRED_PERSISTENCE_MODULES),
+        *(out_dir / "shell" / "display" / name for name in _REQUIRED_DISPLAY_MODULES),
         out_dir / "lab" / "index.html",
         out_dir / "repl" / "index.html",
         # The welcome notebook, and the contents index that makes it VISIBLE. Both,

@@ -18,6 +18,9 @@ on:
       - 'web-repl/**'
       - 'coxswain/**'
       - 'scripts/repl_smoke.py'
+      - 'scripts/unit_runner.py'
+      - 'scripts/spikes/**'
+      - 'scripts/negatives/**'
       - 'external/pylabrobot'
       - '.github/workflows/repl.yml'
       - 'pyproject.toml'
@@ -27,6 +30,9 @@ on:
       - 'web-repl/**'
       - 'coxswain/**'
       - 'scripts/repl_smoke.py'
+      - 'scripts/unit_runner.py'
+      - 'scripts/spikes/**'
+      - 'scripts/negatives/**'
       - 'external/pylabrobot'
       - '.github/workflows/repl.yml'
       - 'pyproject.toml'
@@ -40,7 +46,12 @@ jobs:
   repl:
     name: Build + browser gates
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # A BACKSTOP only (D16): 45 + the sum of this job's scenario step timeouts (8 + 7 after
+    # sprint A = 60; 92 after sprint B, 137 after sprint C). Every browser unit is bounded
+    # by its own watchdog at its budget, the driver's run_unit at budget + 60 s and its step
+    # timeout at budget + 2 min, so this is never the limit that ends a unit. The reap step's
+    # 1 minute sits inside the 45-minute allowance and is not added to the sum.
+    timeout-minutes: 60
     env:
       PYTHONDONTWRITEBYTECODE: 1
 
@@ -152,6 +163,55 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --notebook-check --base-path /praxis/
 
+      # Notebook display gates (epic 260929_notebook-display-design, D16 "Preemption-safe
+      # harness design"). ONE STEP PER UNIT: each scenario runs in its own process with its
+      # own browser, watchdog, result and stamp, and its step-level timeout is the unit's
+      # budget + 2 min (D1 6 min -> 8, D1-dark 5 min -> 7). `if: ${{ !cancelled() }}` so one
+      # failing unit does not hide the others. CI never reuses across workflow runs: every
+      # unit recomputes on this run's head; the only reuse is the aggregate step below, which
+      # reads the stamps the two steps above it just wrote in THIS job.
+      - name: Display check D1 (chrome, Light)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 8
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --display-check --scenario D1 --base-path /praxis/
+
+      - name: Display check D1-dark (chrome, Dark)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 7
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --display-check --scenario D1-dark --base-path /praxis/
+
+      # The step whose exit gates the PR. --aggregate-only recomputes nothing and never
+      # deletes. Its hashed arguments MUST equal the scenario steps' (without --base-path
+      # /praxis/ every stamp's `args` hash mismatches and this gate is permanently red).
+      - name: Display check aggregate
+        if: ${{ !cancelled() }}
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --display-check --aggregate-only --base-path /praxis/
+
+      # Playwright launches Chromium detached (its own process group), so a step timeout
+      # orphans a hung one. This kills every process still carrying a unit token. No --force:
+      # Actions sets CI=true, which is what --reap requires.
+      - name: Reap unit processes
+        if: always()
+        timeout-minutes: 1
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/unit_runner.py --reap
+
+      # Diagnosis only: nothing downloads this. Results, stamps, timeout markers, result.json.
+      - name: Upload display-check results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: display-check-results
+          path: outputs/repl_smoke/display-check/
+          if-no-files-found: ignore
+
       # Every kernel sets PyLabRobot up automatically on startup via PYTHONSTARTUP
       # (web-repl/jupyter-lite.json -> web-repl/files/praxis_startup.py). This gate
       # proves a bare first cell gets a ready kernel with no setup code, that the gate
@@ -246,20 +306,32 @@ jobs:
           uv run python -m pytest web-repl/tests/test_check_wheel_coherence.py -q
           uv run python -m pytest web-repl/tests/test_contract_covers_imports.py -q
           uv run python -m pytest web-repl/tests/test_d1_praxis_git_sha.py -q
+          uv run python -m pytest web-repl/tests/test_display_css.py -q
+          uv run python -m pytest web-repl/tests/test_display_staging.py -q
           uv run python -m pytest web-repl/tests/test_fetch_vendored_wheels.py -q
           uv run python -m pytest web-repl/tests/test_inject_branding.py -q
           uv run python -m pytest web-repl/tests/test_inject_shell_coxswain.py -q
+          uv run python -m pytest web-repl/tests/test_nd_sensitivity_driver.py -q
           uv run python -m pytest web-repl/tests/test_persistence_staging.py -q
           uv run python -m pytest web-repl/tests/test_plr_contract.py -q
           uv run python -m pytest web-repl/tests/test_praxis_boot_autosetup.py -q
           uv run python -m pytest web-repl/tests/test_praxis_bootstrap_loader.py -q
           uv run python -m pytest web-repl/tests/test_praxis_startup.py -q
           uv run python -m pytest web-repl/tests/test_prune_pyodide.py -q
+          uv run python -m pytest web-repl/tests/test_repl_smoke_import.py -q
+          uv run python -m pytest web-repl/tests/test_repl_smoke_resume.py -q
           uv run python -m pytest web-repl/tests/test_repl_workflow_covers_tests.py -q
+          uv run python -m pytest web-repl/tests/test_repl_workflow_scenarios.py -q
           uv run python -m pytest web-repl/tests/test_rid_invariant.py -q
+          uv run python -m pytest web-repl/tests/test_s1_spike_driver.py -q
+          uv run python -m pytest web-repl/tests/test_s2_spike_driver.py -q
+          uv run python -m pytest web-repl/tests/test_s3_spike_driver.py -q
           uv run python -m pytest web-repl/tests/test_stamp_loader_shas.py -q
           uv run python -m pytest web-repl/tests/test_theme_staging.py -q
           uv run python -m pytest web-repl/tests/test_transport.py -q
+          # test_unit_runner's real-Chromium case runs HERE (Actions sets CI=true) and uses
+          # the Chromium installed above; locally it is skipped, so this run is its gate.
+          uv run python -m pytest web-repl/tests/test_unit_runner.py -q
           uv run python -m pytest web-repl/tests/test_vendor_staging.py -q
           uv run python -m pytest web-repl/tests/test_viz_highlight_staging.py -q
           uv run python -m pytest web-repl/tests/test_web_bridge_fqn_fallback.py -q
@@ -329,3 +401,6 @@ jobs:
 
       - name: Persistence JS harness
         run: bun test web-repl/shell/persistence
+
+      - name: Display JS harness
+        run: bun test web-repl/shell/display

@@ -45,6 +45,11 @@ D1's `praxis:shell-ping`/`pong` handshake has no listener there and can only fai
 closed. ADR Sec 7 leaves `repl/` vs `lab/` an open product question; this is "pick what
 the build actually produces" for that question, not a preference.
 
+  --display-check  ADDED for the notebook display epic (260929_notebook-display-design, D16,
+                  task A7): scenarios D1 (Light) and D1-dark, each its own unit in its own
+                  process with its own watchdog, result and stamp, resumable. See the
+                  "--display-check" section above `parse_args`.
+
 Do NOT create a second harness for this project — see the ADR at
 .praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md and the execution
 plan at .praxia/docs/plans/260817_praxis-repl-refocus-execution-plan.md (P0.4).
@@ -63,6 +68,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import contextlib
 import dataclasses
 import json
 import logging
@@ -74,6 +80,7 @@ import tempfile
 import textwrap
 import threading
 import time
+import traceback
 import urllib.parse
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -1443,15 +1450,26 @@ def expected_plr_version_prefix() -> str:
 
 DEFAULT_NOTEBOOK = "welcome.ipynb"
 
-#: Strings the welcome notebook must print. These are the notebook's own output,
-#: not the harness's -- if the notebook's cells change, this list must change with
-#: them, and that coupling is deliberate: it is what makes this a test OF the
-#: notebook rather than a test that some notebook ran.
-NOTEBOOK_EXPECTED = (
-    "praxis auto-setup state: ready",
-    f"PyLabRobot {expected_plr_version_prefix()}",
-    "Serial is the browser shim: True",
-)
+def notebook_expected() -> tuple[str, ...]:
+    """Strings the welcome notebook must print.
+
+    These are the notebook's own output, not the harness's -- if the notebook's cells
+    change, this list must change with them, and that coupling is deliberate: it is what
+    makes this a test OF the notebook rather than a test that some notebook ran.
+
+    A function, not a module-level tuple: the PLR version comes from the submodule's
+    ``version.txt`` (``expected_plr_version_prefix``), and reading it at import made every
+    harness consumer that loads this module by path fail without an initialised submodule
+    (epic 260929_notebook-display-design, D16 "Import-time submodule dependency, removed in
+    A1"). ``run_notebook_check`` binds the result once at its top; ``main`` reads only the
+    length off the returned result dict's ``expected`` list. Raises ``VizCheckError`` when
+    ``version.txt`` is missing or empty.
+    """
+    return (
+        "praxis auto-setup state: ready",
+        f"PyLabRobot {expected_plr_version_prefix()}",
+        "Serial is the browser shim: True",
+    )
 
 
 def find_forbidden_bootstrap_in_notebook(nb_path: Path) -> list[str]:
@@ -1503,6 +1521,11 @@ def run_notebook_check(
     has no `?code=&execute=1` parameter -- that is a REPL-app feature -- so
     clicking or command-dispatch is the only way to run cells there.
     """
+    # Bind the expected strings ONCE, first: a missing PLR ``version.txt`` must fail here,
+    # before Playwright is imported or a browser launched. Every later use in this function
+    # reads ``expected``; ``main`` uses ``len(result["expected"])`` (no second call).
+    expected = notebook_expected()
+
     from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
     from playwright.sync_api import sync_playwright
 
@@ -1653,7 +1676,7 @@ def run_notebook_check(
                     page.wait_for_function(
                         "(needles) => { const t = window.__praxisCollectOutputs(); "
                         "return t !== null && needles.every(n => t.includes(n)); }",
-                        arg=list(NOTEBOOK_EXPECTED),
+                        arg=list(expected),
                         timeout=timeout_ms,
                     )
                     timed_out = False
@@ -1663,7 +1686,7 @@ def run_notebook_check(
                 outputs_text = page.evaluate("() => window.__praxisCollectOutputs() || ''") or ""
                 body_text = page.evaluate("() => document.body.innerText")
                 run_all_error = page.evaluate("() => window.__praxisRunAllError || null")
-                found = {n: (n in outputs_text) for n in NOTEBOOK_EXPECTED}
+                found = {n: (n in outputs_text) for n in expected}
                 # A traceback in the rendered output is the single most useful
                 # signal and is invisible to a needle check that only looks for
                 # success strings.
@@ -1677,7 +1700,7 @@ def run_notebook_check(
                     "notebook": notebook,
                     "url": url,
                     "cell_count": cell_count,
-                    "expected": list(NOTEBOOK_EXPECTED),
+                    "expected": list(expected),
                     "found": found,
                     "all_found": all(found.values()),
                     "timed_out": timed_out,
@@ -4093,6 +4116,1102 @@ def run_viz_check(
     return result
 
 
+# ---------------------------------------------------------------------------
+# --display-check (epic 260929_notebook-display-design, task A7; spec D16 and AC-7).
+#
+# The chrome scenarios D1 (Light) and D1-dark (default Dark), and the preemption-safe unit
+# machinery every later browser unit of the epic reuses (D2-D4 in sprint B, K1a/K1b/K2/N-d
+# in sprint C). The unit is the scenario: one process, one browser, one fresh context, its own
+# result and stamp. `--scenario <id>` runs exactly one unit, bounded by a `Watchdog` armed at
+# the unit's D16 budget as its FIRST act; with no `--scenario` the flag is the driver (one
+# `unit_runner.run_unit` subprocess per unit, budget + 60 s, stamp-matched resume);
+# `--aggregate-only` recomputes nothing and never deletes.
+#
+# Everything that starts, kills or atomically writes a unit's files comes from
+# scripts/unit_runner.py, loaded by path (nothing edits sys.path). The pure functions
+# (unit table, input hashing, skip rule, aggregate, key derivation) are tested without a
+# browser or the PLR submodule by web-repl/tests/test_repl_smoke_resume.py; the browser
+# scenario body (`run_display_scenario`, `DisplaySession`) is exercised only by a real run.
+# ---------------------------------------------------------------------------
+
+DISPLAY_CHECK = "display-check"
+DISPLAY_NOTEBOOK_NAME = "display_check.ipynb"
+DISPLAY_NOTEBOOK_PATH = (
+    REPO_ROOT / "web-repl" / "tests" / "fixtures" / "notebooks" / DISPLAY_NOTEBOOK_NAME
+)
+UNIT_RUNNER_PATH = Path(__file__).resolve().parent / "unit_runner.py"
+#: The driver kills a unit at its budget + this; the unit's own watchdog fires at the budget
+#: and CI's step timeout is the budget + 2 min, so each outer bound is only a backstop (D16).
+DRIVER_EXTRA_S = 60.0
+
+DISPLAY_NAV_TIMEOUT_MS = 90_000
+DISPLAY_KERNEL_TIMEOUT_MS = 180_000
+DISPLAY_STEP_TIMEOUT_MS = 60_000
+
+#: D16 "Persistence gate": the first-save modal (`dialog#praxis-persistence-first-save`) would
+#: block the harness's saves in a fresh context. The key is an existing one (core.js ACK_KEY);
+#: this epic adds none.
+PERSISTENCE_ACK_INIT_SCRIPT = (
+    'window.localStorage.setItem("praxis-repl-persistence-ack", "browser-only");'
+)
+
+_UNIT_RUNNER: Any = None
+
+
+def unit_runner_module() -> Any:
+    """``scripts/unit_runner.py`` loaded by path, once, under a private module name."""
+    global _UNIT_RUNNER
+    if _UNIT_RUNNER is None:
+        import importlib.util
+
+        name = "_repl_smoke_unit_runner"
+        spec = importlib.util.spec_from_file_location(name, UNIT_RUNNER_PATH)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"cannot load the shared unit runner from {UNIT_RUNNER_PATH}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        spec.loader.exec_module(module)
+        _UNIT_RUNNER = module
+    return _UNIT_RUNNER
+
+
+# -- The unit table (D16) -------------------------------------------------------
+
+
+@dataclasses.dataclass(frozen=True)
+class HarnessUnit:
+    """One D16 unit: its id, check, budget, and the listed keys with the value each must hold.
+
+    ``expected`` is an ordered tuple of ``(key, value)`` pairs; the keys are the "listed keys"
+    (the result keys the unit's ACs name). ``budget_s`` is the per-subprocess timeout that the
+    unit's own watchdog enforces; estimates from the spec, not measurements (a change needs the
+    orchestrator's approval, D16).
+    """
+
+    id: str
+    check: str
+    budget_s: float
+    expected: tuple[tuple[str, Any], ...]
+    acs: tuple[str, ...] = ()
+    #: The viewport list, hashed into the ``args`` input. The spec states none for the chrome
+    #: units; 1440x900 is the baseline the spike and dock units use.
+    viewports: tuple[tuple[int, int], ...] = ((1440, 900),)
+
+    @property
+    def keys(self) -> tuple[str, ...]:
+        return tuple(k for k, _ in self.expected)
+
+
+_RAIL_STATE_KEYS = (
+    ("rail_state_never_run", "not-run"),
+    ("rail_state_after_run", "ran"),
+    ("rail_state_while_sleep", "running"),
+    ("rail_state_after_raise", "error"),
+    ("rail_state_after_edit", "stale"),
+)
+
+UNIT_TABLE: tuple[HarnessUnit, ...] = (
+    HarnessUnit(
+        "D1",
+        DISPLAY_CHECK,
+        6 * 60.0,
+        (
+            *_RAIL_STATE_KEYS,
+            ("rail_colors_match", True),
+            ("prompts_take_no_space", True),
+            ("light_ground", "rgb(238, 241, 244)"),
+            ("light_sheet", "rgb(255, 255, 255)"),
+            ("exec_count_on_rail", True),
+            ("pageerrors", []),
+        ),
+        acs=("AC-7",),
+    ),
+    HarnessUnit(
+        "D1-dark",
+        DISPLAY_CHECK,
+        5 * 60.0,
+        (*_RAIL_STATE_KEYS, ("prompts_take_no_space", True), ("rail_colors_match_dark", True)),
+        acs=("AC-7",),
+    ),
+)
+UNIT_BY_ID: dict[str, HarnessUnit] = {u.id: u for u in UNIT_TABLE}
+
+
+def _holds(actual: Any, expected: Any) -> bool:
+    """Strict: a boolean key holds only as that boolean (1 is not True), others by type and value."""
+    if isinstance(expected, bool):
+        return actual is expected
+    return type(actual) is type(expected) and actual == expected
+
+
+def evaluate_unit_result(unit: HarnessUnit, result: Any) -> tuple[list[str], list[str]]:
+    """``(missing_keys, failing_keys)`` of a unit's result against its listed keys."""
+    if not isinstance(result, dict):
+        return list(unit.keys), []
+    missing = [k for k, _ in unit.expected if k not in result]
+    failing = [k for k, want in unit.expected if k in result and not _holds(result[k], want)]
+    return missing, failing
+
+
+def unit_paths(out_dir: Path, unit_id: str) -> dict[str, Path]:
+    """``result.<id>.json``, its stamp (the completion marker) and the timeout marker."""
+    out = Path(out_dir)
+    return {
+        "result": out / f"result.{unit_id}.json",
+        "stamp": out / f"result.{unit_id}.stamp.json",
+        "timeout": out / f"result.{unit_id}.timeout.json",
+    }
+
+
+def default_out_dir(check: str) -> Path:
+    """``outputs/repl_smoke/<check>/`` (gitignored)."""
+    return REPO_ROOT / "outputs" / "repl_smoke" / check
+
+
+def out_dir_rule_error(args: argparse.Namespace) -> str | None:
+    """D16 (C8-5): a non-default ``--serve-dir`` or any ``--neg`` needs an explicit ``--out-dir``,
+    so a negative or a copied dist can never overwrite the default results. Returns the error
+    message (the caller exits 2) or ``None``."""
+    non_default_dist = Path(args.serve_dir).resolve() != DEFAULT_SERVE_DIR.resolve()
+    if (non_default_dist or args.neg) and args.out_dir is None:
+        why = "a non-default --serve-dir" if non_default_dist else "--neg"
+        return f"{why} requires an explicit --out-dir (it must never overwrite the default results)"
+    return None
+
+
+# -- Input hashing ---------------------------------------------------------------
+
+
+def _sha256_bytes(data: bytes) -> str:
+    import hashlib
+
+    return hashlib.sha256(data).hexdigest()
+
+
+def _sha256_file(path: Path) -> str:
+    return unit_runner_module()._sha256_file(Path(path))
+
+
+@dataclasses.dataclass
+class HashEnv:
+    """Everything a unit's inputs are built from, already hashed (so tests can fake it)."""
+
+    dist: str
+    notebook: str
+    harness: str
+    runner: str
+    chrome: str
+    driver: str
+    base_path: str = "/"
+    chrome_path: str = ""
+    chrome_version: str = ""
+
+
+def chrome_version_of(chrome_path: str) -> str:
+    """``chrome --version`` output (the only process ``--aggregate-only`` runs)."""
+    try:
+        proc = subprocess.run(
+            [chrome_path, "--version"], capture_output=True, text=True, timeout=30, check=False
+        )
+        return (proc.stdout or proc.stderr).strip()
+    except (OSError, subprocess.SubprocessError) as exc:
+        return f"unavailable: {type(exc).__name__}"
+
+
+def build_hash_env(
+    args: argparse.Namespace,
+    chrome_path: str,
+    *,
+    notebook_path: Path | None = None,
+    harness_path: Path | None = None,
+    runner_path: Path | None = None,
+    driver_fn: Any = None,
+    chrome_version_fn: Any = None,
+    dist_hash_fn: Any = None,
+) -> HashEnv:
+    """Resolve and hash the real inputs. Raises ``FileNotFoundError`` for a missing dist,
+    notebook or ``uv.lock`` (a missing input is never hashed as empty)."""
+    ur = unit_runner_module()
+    dist = (dist_hash_fn or ur.dist_hash)(Path(args.serve_dir).resolve())
+    version = (chrome_version_fn or chrome_version_of)(chrome_path)
+    return HashEnv(
+        dist=dist,
+        notebook=_sha256_file(notebook_path or DISPLAY_NOTEBOOK_PATH),
+        harness=_sha256_file(harness_path or Path(__file__).resolve()),
+        runner=_sha256_file(runner_path or UNIT_RUNNER_PATH),
+        chrome=_sha256_bytes(f"{chrome_path}\n{version}".encode()),
+        driver=(driver_fn or ur.driver_input)(),
+        base_path=_normalize_base_path(args.base_path),
+        chrome_path=str(chrome_path),
+        chrome_version=version,
+    )
+
+
+def unit_inputs(unit: HarnessUnit, env: HashEnv, neg: Any = ()) -> dict[str, str]:
+    """The stamp's ``inputs``: dist, notebook, harness, runner, chrome, args, driver (D16)."""
+    args_blob = json.dumps(
+        {
+            "unit": unit.id,
+            "base_path": env.base_path,
+            "viewports": [list(v) for v in unit.viewports],
+            "neg": sorted(neg),
+        },
+        sort_keys=True,
+    )
+    return {
+        "dist": env.dist,
+        "notebook": env.notebook,
+        "harness": env.harness,
+        "runner": env.runner,
+        "chrome": env.chrome,
+        "args": _sha256_bytes(args_blob.encode()),
+        "driver": env.driver,
+    }
+
+
+# -- Inspecting a unit's files against the CURRENT inputs (the skip rule) ---------
+
+
+def _read_json_file(path: Path) -> Any:
+    try:
+        return json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def _rm(path: Path) -> None:
+    try:
+        Path(path).unlink()
+    except FileNotFoundError:
+        pass
+
+
+def clear_unit_files(out_dir: Path, unit_id: str) -> None:
+    """Delete a unit's stamp (first: never a stamp without its result), result and timeout marker."""
+    paths = unit_paths(out_dir, unit_id)
+    for key in ("stamp", "result", "timeout"):
+        _rm(paths[key])
+
+
+def inspect_unit(out_dir: Path, unit: HarnessUnit, current_inputs: dict[str, str]) -> dict[str, Any]:
+    """Classify a unit's files against the current inputs (D16 skip rule, C8-3).
+
+    * ``valid``: a stamp exists, its ``inputs`` equal ``current_inputs`` and its
+      ``result_sha256`` equals the sha256 of the result on disk.
+    * ``reusable`` (the skip rule): valid AND ``stamp.exit == 0`` AND every listed key present
+      and holding.
+    * ``mismatched``: the names of the inputs whose hash differs from the stamp's.
+    """
+    paths = unit_paths(out_dir, unit.id)
+    try:
+        result_bytes: bytes | None = paths["result"].read_bytes()
+    except OSError:
+        result_bytes = None
+    result: Any = None
+    if result_bytes is not None:
+        try:
+            result = json.loads(result_bytes)
+        except ValueError:
+            result = None
+    stamp = _read_json_file(paths["stamp"])
+    state: dict[str, Any] = {
+        "unit": unit.id,
+        "result": result if isinstance(result, dict) else None,
+        "stamp": stamp if isinstance(stamp, dict) else None,
+        "result_path": str(paths["result"]),
+        "has_timeout_marker": paths["timeout"].exists(),
+        "valid": False,
+        "reusable": False,
+        "mismatched": [],
+        "missing_keys": [],
+        "failing_keys": [],
+        "reasons": [],
+    }
+    if state["stamp"] is None:
+        state["reasons"].append("no stamp")
+        return state
+    recorded = state["stamp"].get("inputs") or {}
+    state["mismatched"] = sorted(
+        n for n in set(recorded) | set(current_inputs) if recorded.get(n) != current_inputs.get(n)
+    )
+    if state["mismatched"]:
+        state["reasons"].append("stamp inputs differ from the current inputs")
+        return state
+    if result_bytes is None or state["result"] is None:
+        state["reasons"].append("no readable result")
+        return state
+    if state["stamp"].get("result_sha256") != _sha256_bytes(result_bytes):
+        state["reasons"].append("result_sha256 does not match the result on disk")
+        return state
+    state["valid"] = True
+    missing, failing = evaluate_unit_result(unit, state["result"])
+    state["missing_keys"], state["failing_keys"] = missing, failing
+    if state["stamp"].get("exit") != 0:
+        state["reasons"].append(f"stamp.exit == {state['stamp'].get('exit')!r}")
+    if missing:
+        state["reasons"].append(f"listed keys missing: {missing}")
+    if failing:
+        state["reasons"].append(f"listed keys failing: {failing}")
+    state["reusable"] = not state["reasons"]
+    return state
+
+
+# -- The driver and the aggregate --------------------------------------------------
+
+
+def run_units_driver(
+    *,
+    table: Any,
+    out_dir: Path,
+    inputs_for: Any,
+    argv_for: Any,
+    runner: Any,
+    fresh: bool = False,
+    aggregate_only: bool = False,
+    cwd: Any = None,
+    check: str = DISPLAY_CHECK,
+    driver_extra_s: float = DRIVER_EXTRA_S,
+    meta: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], int]:
+    """Run (or, with ``aggregate_only``, only judge) every unit of ``table`` in table order.
+
+    A unit is skipped only if its stamp meets the skip rule (``inspect_unit``); ``fresh``
+    ignores every stamp. Each recomputed unit is ONE ``runner.run_unit`` call with timeout =
+    its budget + ``driver_extra_s`` (there is no whole-run timeout); the driver clears the
+    unit's files first and never kills anything itself. A ``run_unit`` timeout over a VALID
+    stamp defers to the stamp (logged with ``logging.warning``). ``aggregate_only`` starts no
+    unit, and NEVER deletes: a missing, timed-out or stale unit counts as failed and stays on
+    disk. Returns ``(aggregate, exit_code)``; the exit is 0 only if every listed key of every
+    unit holds. The pass rule is the same for a reused and a recomputed unit.
+    """
+    ur = unit_runner_module()
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    scenarios: dict[str, Any] = {}
+    reused: list[dict[str, Any]] = []
+    recomputed: list[str] = []
+    timed_out: list[str] = []
+    missing: list[str] = []
+    stale: list[dict[str, Any]] = []
+    failed: list[dict[str, Any]] = []
+    judged: dict[str, dict[str, Any]] = {}
+
+    for unit in table:
+        inputs = inputs_for(unit)
+        state = inspect_unit(out_dir, unit, inputs)
+        if state["reusable"] and not fresh:
+            reused.append(
+                {
+                    "id": unit.id,
+                    "source": state["result_path"],
+                    "inputs": state["stamp"]["inputs"],
+                    "result_sha256": state["stamp"]["result_sha256"],
+                }
+            )
+            judged[unit.id] = state
+            continue
+        if not aggregate_only:
+            clear_unit_files(out_dir, unit.id)
+            argv = list(argv_for(unit))
+            LOG.info("starting unit %s (timeout %.0f s)", unit.id, unit.budget_s + driver_extra_s)
+            outcome = runner.run_unit(argv, unit.budget_s + driver_extra_s, cwd=cwd)
+            state = inspect_unit(out_dir, unit, inputs)
+            if state["valid"]:
+                if outcome.timed_out:
+                    LOG.warning(
+                        "unit %s: run_unit timed out over a VALID stamp; the stamp governs", unit.id
+                    )
+                recomputed.append(unit.id)
+                judged[unit.id] = state
+                continue
+            hung = outcome.timed_out or state["has_timeout_marker"] or outcome.exit == 124
+            (timed_out if hung else missing).append(unit.id)
+            LOG.error("unit %s is INCOMPLETE (exit %s): %s", unit.id, outcome.exit, state["reasons"])
+            continue
+        # --aggregate-only: classify, never touch the files
+        if state["stamp"] is not None and not state["valid"]:
+            stale.append(
+                {"id": unit.id, "mismatched": state["mismatched"], "reasons": state["reasons"]}
+            )
+        elif state["stamp"] is not None:
+            judged[unit.id] = state  # a valid stamp whose unit failed: judged from its result
+        elif state["has_timeout_marker"]:
+            timed_out.append(unit.id)
+        else:
+            missing.append(unit.id)
+
+    for unit in table:
+        st = judged.get(unit.id)
+        scenarios[unit.id] = st["result"] if st is not None else None
+        if st is not None and not st["reusable"]:
+            failed.append(
+                {
+                    "id": unit.id,
+                    "exit": st["stamp"].get("exit"),
+                    "missing_keys": st["missing_keys"],
+                    "failing_keys": st["failing_keys"],
+                    "reasons": st["reasons"],
+                }
+            )
+    passed = all(u.id in judged and judged[u.id]["reusable"] for u in table)
+    aggregate: dict[str, Any] = {
+        "check": check,
+        "mode": "aggregate-only" if aggregate_only else ("fresh" if fresh else "driver"),
+        "passed": passed,
+        "scenarios": scenarios,
+        "reused": reused,
+        "recomputed": recomputed,
+        "timed_out": timed_out,
+        "missing": missing,
+        "stale": stale,
+        "failed": failed,
+        "out_dir": str(out_dir),
+    }
+    if "D1-dark" in scenarios:  # keys must not collide with D1's (AC-7)
+        aggregate["d1_dark"] = scenarios["D1-dark"]
+    aggregate.update(meta or {})
+    ur.write_atomic(
+        out_dir / "result.json", json.dumps(aggregate, indent=1, sort_keys=True, default=str).encode()
+    )
+    print(json.dumps(aggregate, sort_keys=True, default=str))
+    return aggregate, (0 if passed else 1)
+
+
+# -- run_scenario: ONE unit in ONE process ------------------------------------------
+
+
+def _tail(text: str, limit: int = 4096) -> str:
+    return text.encode("utf-8", "replace")[-limit:].decode("utf-8", "replace")
+
+
+def _flush_all() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.flush()
+        except (OSError, ValueError):
+            pass
+    for handler in logging.getLogger().handlers:
+        try:
+            handler.flush()
+        except Exception:  # pragma: no cover - a broken handler must not stop the unit
+            pass
+
+
+def _sleep_forever_until_killed() -> None:  # pragma: no cover - the watchdog exits the process
+    while True:
+        time.sleep(1)
+
+
+def run_scenario(
+    unit_id: str,
+    *,
+    out_dir: Path,
+    env_fn: Any,
+    session_factory: Any,
+    scenario_fn: Any,
+    table: Any = None,
+    neg: Any = (),
+    ensure_token_fn: Any = None,
+    watchdog_factory: Any = None,
+    kill_tree_fn: Any = None,
+    exit_fn: Any = None,
+    budget_s: float | None = None,
+) -> int:
+    """Run exactly one unit in this process, in the D16 order; ends in ``exit_fn(stamp.exit)``.
+
+    1. ``ensure_token`` (may re-exec; a no-op under the driver);
+    2. arm a ``Watchdog`` at the unit's table budget, the FIRST act after that: on expiry it
+       deletes the result if present, writes ``result.<id>.timeout.json``, prints one JSON
+       line and exits 124 with no stamp;
+    3. clear this unit's own stamp, result and timeout marker (stamp first);
+    4. hash the inputs (``env_fn``), open the session, run the scenario. A scenario that
+       raises is an ``error`` finding: the unit still writes its result and stamp (complete,
+       exit 1, never reused);
+    5. write the result through ``Watchdog.write_result``;
+    6. bounded teardown: ``session.close()`` (browser and Playwright; a failure is logged),
+       ``kill_tree(os.getpid(), token)`` over residual descendants, flush;
+    7. commit the stamp through ``Watchdog.commit``, then ONLY ``exit_fn(stamp.exit)``
+       (``os._exit`` in production: no ``atexit``, no threads, no interpreter shutdown).
+
+    ``budget_s`` overrides the table budget for tests (never a CLI flag: budgets are
+    pre-registered). The seams (``ensure_token_fn``, ``watchdog_factory``, ``kill_tree_fn``,
+    ``exit_fn``) default to the production ``unit_runner`` behaviour.
+    """
+    ur = unit_runner_module()
+    unit = {u.id: u for u in (table or UNIT_TABLE)}[unit_id]
+    budget = float(unit.budget_s if budget_s is None else budget_s)
+    token = (ensure_token_fn or ur.ensure_token)()
+    exit_fn = exit_fn or os._exit
+    kill_tree_fn = kill_tree_fn or ur.kill_tree
+    out_dir = Path(out_dir)
+    paths = unit_paths(out_dir, unit.id)
+    started = time.time()
+
+    def on_expire() -> None:
+        _rm(paths["result"])
+        marker = {"unit": unit.id, "budget_s": budget, "started": started, "expired": time.time()}
+        try:
+            ur.write_atomic(paths["timeout"], json.dumps(marker).encode())
+        except OSError:
+            pass
+        ur.emit_line(json.dumps({"unit": unit.id, "status": "timeout", "budget_s": budget}))
+
+    make_watchdog = watchdog_factory or (lambda b, cb: ur.Watchdog(b, cb, token=token))
+    watchdog = make_watchdog(budget, on_expire)  # the first act after ensure_token
+
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        clear_unit_files(out_dir, unit.id)
+        env = env_fn()
+        inputs = unit_inputs(unit, env, neg)
+    except Exception:
+        LOG.exception("unit %s cannot build its inputs; no result, no stamp", unit.id)
+        watchdog.disarm()
+        return exit_fn(2)
+
+    session: Any = None
+    error: dict[str, Any] | None = None
+    fields: dict[str, Any] = {}
+    try:
+        session = session_factory(unit, env)
+        fields = dict(scenario_fn(session, unit, env) or {})
+    except Exception as exc:  # a raised scenario is an `error` finding; the unit still completes
+        LOG.exception("scenario %s raised", unit.id)
+        error = {
+            "type": type(exc).__name__,
+            "message": str(exc)[:2000],
+            "traceback_tail": _tail(traceback.format_exc()),
+        }
+
+    result: dict[str, Any] = dict(fields)
+    result.update(
+        {
+            "unit": unit.id,
+            "check": unit.check,
+            "pageerrors": list(getattr(session, "pageerrors", None) or []),
+            "chrome_path": env.chrome_path,
+            "chrome_version": env.chrome_version,
+            "error": error,
+            "budget_s": budget,
+            "started": started,
+            "finished": time.time(),
+        }
+    )
+    missing, failing = evaluate_unit_result(unit, result)
+    result["missing_keys"], result["failing_keys"] = missing, failing
+    data = json.dumps(result, indent=1, sort_keys=True, default=str).encode()
+    if not watchdog.write_result(lambda: ur.write_atomic(paths["result"], data)):
+        _sleep_forever_until_killed()
+    ur.emit_line(
+        json.dumps(
+            {"unit": unit.id, "status": "done", "missing_keys": missing, "failing_keys": failing,
+             "error": error["type"] if error else None}
+        )
+    )
+
+    # Bounded teardown (D16, C9-1), still inside the watchdog-bounded region.
+    if session is not None:
+        try:
+            session.close()
+        except Exception:
+            LOG.exception("session close raised")
+    try:
+        survivors = kill_tree_fn(os.getpid(), token)
+        if survivors:
+            LOG.error("descendants survived kill_tree: %s", survivors)
+    except Exception:
+        LOG.exception("kill_tree raised during teardown")
+    _flush_all()
+
+    stamp_exit = 0 if (error is None and not missing and not failing) else 1
+    stamp = {
+        "unit": unit.id,
+        "inputs": inputs,
+        "result_sha256": _sha256_bytes(data),
+        "started": started,
+        "finished": time.time(),
+        "exit": stamp_exit,
+        "budget_s": budget,
+    }
+    stamp_bytes = json.dumps(stamp, indent=1, sort_keys=True).encode()
+    if not watchdog.commit(lambda: ur.write_atomic(paths["stamp"], stamp_bytes)):
+        _sleep_forever_until_killed()
+    return exit_fn(stamp_exit)  # nothing runs after the stamp but the exit
+
+
+# -- D1 / D1-dark: the browser scenario body ----------------------------------------
+#
+# What is read, and how (AC-7). Every value comes from the DOM's computed styles or the notebook
+# MODEL through page.evaluate, never from printed console text:
+#   rail_state_*          the cell node's `data-praxis-cell-state` attribute (written by
+#                         shell/display/chrome.js from the model), read at each stage together
+#                         with the model's ground truth (execution count/state, output types)
+#   rail_colors_match     getComputedStyle(cell, '::before'): backgroundColor per state, and for
+#                         stale the dashed backgroundImage (a repeating gradient of moonstone ink
+#                         over a transparent backgroundColor); not-run is compared with the
+#                         computed `--jp-border-color1` (resolved through a probe element)
+#   prompts_take_no_space getBoundingClientRect().width of `.jp-InputPrompt` and `.jp-OutputPrompt`
+#                         of the executed cell, with a live-layout guard (cell and editor widths)
+#   light_ground          getComputedStyle(<notebook>.content.node).backgroundColor (`.jp-Notebook`)
+#   light_sheet           getComputedStyle(cell 0).backgroundColor (`.jp-CodeCell`)
+#   exec_count_on_rail    getComputedStyle(cell, '::after').content (quotes stripped) against
+#                         the model's execution count, for every cell
+#   pageerrors            the session's `pageerror` listener
+
+RAIL_RGB = {"ran": "rgb(47, 104, 130)", "running": "rgb(237, 122, 155)", "error": "rgb(179, 64, 42)"}
+STALE_RAIL_NEEDLES = ("repeating-linear-gradient", RAIL_RGB["ran"])
+CSS_TRANSPARENT = frozenset({"rgba(0, 0, 0, 0)", "transparent"})
+D1_STAGES = (
+    ("never_run", "not-run"),
+    ("after_run", "ran"),
+    ("while_sleep", "running"),
+    ("after_raise", "error"),
+    ("after_edit", "stale"),
+)
+THEME_NAMES = {True: "JupyterLab Light", False: "JupyterLab Dark"}
+#: A cell whose node is narrower than this has no live layout (content-visibility, detached).
+MIN_LIVE_CELL_WIDTH_PX = 100.0
+
+
+def strip_css_content(raw: Any) -> str | None:
+    """A computed ``content`` value as text: ``'"3"'`` -> ``"3"``, ``'""'`` -> ``""``;
+    ``none`` / ``normal`` / missing -> ``None`` (no pseudo-element is generated)."""
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if text in ("none", "normal"):
+        return None
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in "\"'":
+        return text[1:-1]
+    return text
+
+
+def rail_color_ok(state: str, snap: dict[str, Any] | None, grey: str | None) -> bool:
+    """Is this snapshot's computed rail the section 3.1 colour for ``state``?"""
+    snap = snap or {}
+    bg = snap.get("before_bg")
+    if state == "not-run":  # rail grey: the computed --jp-border-color1
+        return bool(grey) and bg == grey
+    if state == "stale":  # dashed: a repeating gradient of moonstone ink over transparent
+        image = snap.get("before_bg_image") or ""
+        return bg in CSS_TRANSPARENT and all(needle in image for needle in STALE_RAIL_NEEDLES)
+    return bg == RAIL_RGB.get(state)
+
+
+def _num(v: Any) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def prompts_ok(prompts: dict[str, Any] | None) -> bool:
+    """Both prompts found and each <= 1 px wide, with a live layout so a hidden cell proves nothing."""
+    p = prompts or {}
+    widths = (p.get("input_w"), p.get("output_w"))
+    if not all(_num(w) for w in widths) or not all(w <= 1 for w in widths):
+        return False
+    return (
+        _num(p.get("cell_w"))
+        and p["cell_w"] >= MIN_LIVE_CELL_WIDTH_PX
+        and _num(p.get("editor_w"))
+        and p["editor_w"] > 0
+    )
+
+
+def exec_counts_on_rail(final: list[dict[str, Any]] | None) -> bool:
+    """Each cell's ``::after`` text equals its model execution count (none for a never-run
+    cell), and at least one cell has a count, so a page with no counts at all cannot pass."""
+    if not final:
+        return False
+    counted = 0
+    for snap in final:
+        count = (snap.get("model") or {}).get("execution_count")
+        text = strip_css_content(snap.get("after_content"))
+        if count is None:
+            if text not in (None, ""):
+                return False
+        else:
+            counted += 1
+            if text != str(count):
+                return False
+    return counted >= 1
+
+
+def derive_chrome_keys(raw: dict[str, Any], *, light: bool) -> dict[str, Any]:
+    """The D1 (``light``) or D1-dark result keys from the raw snapshots (pure; tested on synthetic
+    ground truth with a positive control and negative controls)."""
+    keys: dict[str, Any] = {}
+    for (stage, _), (name, _) in zip(D1_STAGES, _RAIL_STATE_KEYS):
+        keys[name] = (raw.get(stage) or {}).get("state")
+    theme_ok = raw.get("theme_name") == THEME_NAMES[light]
+    grey = raw.get("grey_token")
+    colors = theme_ok and all(
+        rail_color_ok(state, raw.get(stage), grey) for stage, state in D1_STAGES
+    )
+    keys["prompts_take_no_space"] = prompts_ok(raw.get("prompts"))
+    keys["exec_count_on_rail"] = exec_counts_on_rail(raw.get("final"))
+    if light:
+        keys["rail_colors_match"] = colors
+        keys["light_ground"] = raw.get("ground")
+        keys["light_sheet"] = raw.get("sheet")
+    else:
+        keys["rail_colors_match_dark"] = colors
+    return keys
+
+
+#: Harness-only page helpers (installed with page.evaluate; nothing here ships in dist). They only
+#: read: computed styles, the notebook model, and the DOM attributes the product writes.
+DISPLAY_CHECK_JS = r"""
+(() => {
+  const app = () => window.jupyterapp;
+  const panel = () => app().shell.currentWidget;
+  const widgets = () => panel().content.widgets;
+  const model = (i) => panel().content.model.cells.get(i);
+  const outTypes = (m) => {
+    const o = m.outputs, out = [];
+    if (!o) return out;
+    const n = o.length ?? o.size ?? 0;
+    for (let j = 0; j < n; j++) {
+      const x = o.get ? o.get(j) : o[j];
+      const d = x && x.toJSON ? x.toJSON() : x;
+      out.push(d && d.output_type ? d.output_type : (x && x.type) || null);
+    }
+    return out;
+  };
+  const snapshot = (i) => {
+    const node = widgets()[i].node, m = model(i);
+    const before = getComputedStyle(node, '::before'), after = getComputedStyle(node, '::after');
+    return {
+      index: i, in_document: document.contains(node),
+      state: node.getAttribute('data-praxis-cell-state'),
+      exec_attr: node.getAttribute('data-praxis-exec'),
+      before_bg: before.backgroundColor, before_bg_image: before.backgroundImage,
+      before_width: before.width, after_content: after.content,
+      sheet_bg: getComputedStyle(node).backgroundColor,
+      model: {
+        execution_count: m.executionCount ?? null, execution_state: m.executionState ?? null,
+        output_types: outTypes(m), source: m.sharedModel.getSource(),
+      },
+    };
+  };
+  window.__praxisDisplayCheck = {
+    themeName: () => document.body.getAttribute('data-jp-theme-name'),
+    cellsReady: (n) => { try { return panel().content.model.cells.length >= n && widgets().length >= n; } catch (e) { return false; } },
+    kernelStatus: () => { try { return panel().sessionContext.session.kernel.status; } catch (e) { return null; } },
+    markCells: () => { widgets().forEach((w, i) => w.node.setAttribute('data-dcheck-index', String(i))); return widgets().length; },
+    runCell: (i) => {
+      panel().content.activeCellIndex = i;
+      try {
+        const p = app().commands.execute('notebook:run-cell');
+        if (p && p.catch) p.catch((e) => { window.__praxisDisplayCheckError = String(e); });
+        return {dispatched: true};
+      } catch (e) { return {dispatched: false, error: String(e)}; }
+    },
+    modelDone: (i) => { const m = model(i); return (m.executionCount ?? null) !== null && m.executionState !== 'running'; },
+    snapshot,
+    pollState: async (a) => {
+      const t0 = performance.now();
+      let last = snapshot(a.i);
+      while (performance.now() - t0 < a.ms) {
+        last = snapshot(a.i);
+        if (last.state === a.want) return last;
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      return last;
+    },
+    greyToken: () => {
+      const el = document.createElement('div');
+      el.style.backgroundColor = 'var(--jp-border-color1)';
+      document.body.appendChild(el);
+      const c = getComputedStyle(el).backgroundColor;
+      el.remove();
+      return c;
+    },
+    ground: () => getComputedStyle(panel().content.node).backgroundColor,
+    prompts: (i) => {
+      const node = widgets()[i].node;
+      node.scrollIntoView({block: 'nearest'});
+      const w = (e) => (e ? e.getBoundingClientRect().width : null);
+      return {
+        input_w: w(node.querySelector('.jp-InputPrompt')),
+        output_w: w(node.querySelector('.jp-OutputPrompt')),
+        cell_w: node.getBoundingClientRect().width,
+        editor_w: w(node.querySelector('.jp-InputArea-editor')),
+      };
+    },
+    displayStatus: () => (window.__praxisDisplay ? window.__praxisDisplay.status : null),
+    firstSaveDialogOpen: () => { const d = document.querySelector('dialog#praxis-persistence-first-save'); return !!(d && d.open); },
+  };
+})()
+"""
+
+_DC_SAVE_JS = """async (a) => {
+    try {
+        await window.jupyterapp.serviceManager.contents.save(a.path, {
+            type: "notebook", format: "json", content: a.content});
+        return {ok: true};
+    } catch (e) { return {ok: false, error: String(e)}; }
+}"""
+
+_DC_THEME_JS = """async (theme) => {
+    try {
+        await window.jupyterapp.commands.execute('apputils:change-theme', {theme: theme});
+        return {ok: true};
+    } catch (e) { return {ok: false, error: String(e)}; }
+}"""
+
+
+class DisplayCheckError(RuntimeError):
+    """A display-check scenario could not reach the state it needs to measure."""
+
+
+def display_context_init_scripts(neg: Any = ()) -> list[str]:
+    """The init scripts every display-check context carries: the persistence ack (D16)."""
+    return [PERSISTENCE_ACK_INIT_SCRIPT]
+
+
+class DisplaySession:
+    """A served dist + Playwright + one fresh Chromium context and page.
+
+    ``close()`` is the teardown's step 2: browser closed, Playwright stopped, the served dir
+    shut down; every failure is logged with ``logging.error`` and never changes the keys.
+    """
+
+    def __init__(self, unit: HarnessUnit, args: argparse.Namespace, env: HashEnv) -> None:
+        from playwright.sync_api import sync_playwright
+
+        self.pageerrors: list[str] = []
+        self.prefix = _normalize_base_path(args.base_path)
+        self._stack = contextlib.ExitStack()
+        self._pw: Any = None
+        self._browser: Any = None
+        try:
+            served = self._stack.enter_context(
+                ServedDir(Path(args.serve_dir).resolve(), args.base_path, coi=False)
+            )
+            self.origin = f"http://127.0.0.1:{served.port}"
+            self._pw = sync_playwright().start()
+            self._browser = self._pw.chromium.launch(
+                executable_path=env.chrome_path,
+                headless=True,
+                args=chromium_launch_args(offline=False),
+            )
+            width, height = unit.viewports[0]
+            context = self._browser.new_context(viewport={"width": width, "height": height})
+            for script in display_context_init_scripts(neg=tuple(getattr(args, "neg", ()) or ())):
+                context.add_init_script(script)
+            self.page = context.new_page()
+            self.page.on("pageerror", lambda exc: self.pageerrors.append(str(exc)))
+        except BaseException:
+            self.close()
+            raise
+
+    @property
+    def lab_url(self) -> str:
+        return f"{self.origin}{self.prefix}lab/index.html"
+
+    def close(self) -> None:
+        for label, fn in (
+            ("browser.close", lambda: self._browser and self._browser.close()),
+            ("playwright.stop", lambda: self._pw and self._pw.stop()),
+            ("served dir", self._stack.close),
+        ):
+            try:
+                fn()
+            except Exception:
+                LOG.exception("teardown step failed: %s", label)
+
+
+def _dc(page: Any, expr: str, arg: Any = None) -> Any:
+    """``page.evaluate`` of ``window.__praxisDisplayCheck.<expr>`` (an expression body over ``a``)."""
+    return page.evaluate(f"async (a) => window.__praxisDisplayCheck.{expr}", arg)
+
+
+def run_display_scenario(session: Any, unit: HarnessUnit, env: Any, *, notebook: dict | None = None) -> dict[str, Any]:
+    """D1 (Light via ``apputils:change-theme``) or D1-dark (default Dark, no theme change).
+
+    Cells run ONE AT A TIME through ``notebook:run-cell``; Run All is never used. Stage by
+    stage: the never-run cell is snapshotted untouched; cell 1 runs (ran); cell 2 sleeps 3 s and
+    is polled to ``running``; cell 3 raises (error); cell 4 runs and is then typed into with a
+    real keyboard (stale). Returns the derived keys plus informational evidence.
+    """
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    page = session.page
+    light = unit.id == "D1"
+    fixture = notebook if notebook is not None else json.loads(DISPLAY_NOTEBOOK_PATH.read_text())
+    n_cells = len(fixture["cells"])
+
+    page.goto(session.lab_url, wait_until="load", timeout=DISPLAY_NAV_TIMEOUT_MS)
+    page.wait_for_function(
+        "() => !!window.jupyterapp && !!window.jupyterapp.shell", timeout=DISPLAY_NAV_TIMEOUT_MS
+    )
+    page.evaluate(DISPLAY_CHECK_JS)
+    if light:
+        changed = page.evaluate(_DC_THEME_JS, THEME_NAMES[True])
+        if not changed.get("ok"):
+            raise DisplayCheckError(f"apputils:change-theme failed: {changed.get('error')!r}")
+    try:
+        page.wait_for_function(
+            "(want) => window.__praxisDisplayCheck.themeName() === want",
+            arg=THEME_NAMES[light], timeout=30_000,
+        )
+    except PlaywrightTimeoutError:
+        LOG.warning("theme %r never applied; the keys will say so", THEME_NAMES[light])
+
+    saved = page.evaluate(_DC_SAVE_JS, {"path": DISPLAY_NOTEBOOK_NAME, "content": fixture})
+    if not saved.get("ok"):
+        raise DisplayCheckError(f"could not seed {DISPLAY_NOTEBOOK_NAME}: {saved.get('error')!r}")
+    _open_existing_notebook(page, DISPLAY_NOTEBOOK_NAME, timeout_ms=DISPLAY_NAV_TIMEOUT_MS)
+    page.wait_for_function(
+        "(n) => window.__praxisDisplayCheck.cellsReady(n)", arg=n_cells, timeout=DISPLAY_NAV_TIMEOUT_MS
+    )
+    _dc(page, "markCells()")
+    page.wait_for_function(
+        "() => window.__praxisDisplayCheck.kernelStatus() === 'idle'", timeout=DISPLAY_KERNEL_TIMEOUT_MS
+    )
+
+    def run_and_wait(index: int) -> None:
+        ran = _dc(page, "runCell(a)", index)
+        if not ran.get("dispatched"):
+            raise DisplayCheckError(f"could not run cell {index}: {ran.get('error')!r}")
+        page.wait_for_function(
+            "(i) => window.__praxisDisplayCheck.modelDone(i)", arg=index, timeout=DISPLAY_STEP_TIMEOUT_MS
+        )
+
+    def settle(index: int, want: str) -> dict[str, Any]:
+        return _dc(page, "pollState(a)", {"i": index, "want": want, "ms": 10_000})
+
+    raw: dict[str, Any] = {"never_run": _dc(page, "snapshot(a)", 0)}
+    run_and_wait(1)
+    raw["after_run"] = settle(1, "ran")
+    raw["prompts"] = _dc(page, "prompts(a)", 1)
+    ran = _dc(page, "runCell(a)", 2)  # dispatched, not awaited: polled while it sleeps
+    if not ran.get("dispatched"):
+        raise DisplayCheckError(f"could not run the sleep cell: {ran.get('error')!r}")
+    raw["while_sleep"] = _dc(page, "pollState(a)", {"i": 2, "want": "running", "ms": 30_000})
+    page.wait_for_function(
+        "(i) => window.__praxisDisplayCheck.modelDone(i)", arg=2, timeout=DISPLAY_STEP_TIMEOUT_MS
+    )
+    run_and_wait(3)
+    raw["after_raise"] = settle(3, "error")
+    run_and_wait(4)
+    settle(4, "ran")
+    page.locator('[data-dcheck-index="4"] .cm-content').click()
+    page.keyboard.press("Control+End")
+    page.keyboard.type(" # edited")
+    raw["after_edit"] = settle(4, "stale")
+
+    raw["final"] = [_dc(page, "snapshot(a)", i) for i in range(n_cells)]
+    raw["grey_token"] = _dc(page, "greyToken()")
+    raw["ground"] = _dc(page, "ground()")
+    raw["sheet"] = raw["never_run"].get("sheet_bg")
+    raw["theme_name"] = _dc(page, "themeName()")
+
+    keys = derive_chrome_keys(raw, light=light)
+    keys.update(
+        {
+            "theme_name": raw["theme_name"],
+            "grey_token": raw["grey_token"],
+            "display_status": _dc(page, "displayStatus()"),
+            "persistence_first_save_dialog_open": _dc(page, "firstSaveDialogOpen()"),
+            "rail_width_px": {
+                stage: (raw.get(stage) or {}).get("before_width") for stage, _ in D1_STAGES
+            },
+            "evidence": raw,
+        }
+    )
+    return keys
+
+
+# -- The --display-check entry point --------------------------------------------------
+
+
+def run_display_check(
+    args: argparse.Namespace,
+    *,
+    runner: Any = None,
+    hash_env: HashEnv | None = None,
+    unit_argv_prefix: list[str] | None = None,
+    scenario_entry: Any = None,
+) -> int:
+    """``--display-check``: one unit (``--scenario``), the driver, or ``--aggregate-only``.
+
+    Returns the exit code (2 for a usage error, raised before anything launches); a real
+    ``--scenario`` run ends in ``os._exit(stamp.exit)`` inside ``run_scenario`` and never
+    returns. ``runner``, ``hash_env``, ``unit_argv_prefix`` and ``scenario_entry`` are test seams.
+    """
+    problem = out_dir_rule_error(args)
+    if problem is None and args.neg:
+        problem = (
+            f"--neg {args.neg[0]} is a --dock-check flag; --display-check has no negative "
+            "flag (AC-39(a) mutates a dist copy instead)"
+        )
+    if problem is None and args.aggregate_only and (args.fresh or args.scenario):
+        problem = "--aggregate-only recomputes nothing: it cannot be combined with --fresh or --scenario"
+    table = [u for u in UNIT_TABLE if u.check == DISPLAY_CHECK]
+    if problem is None and args.scenario and args.scenario not in {u.id for u in table}:
+        problem = f"unknown --display-check scenario {args.scenario!r}; units are {[u.id for u in table]}"
+    if problem is not None:
+        LOG.error("%s", problem)
+        return 2
+    out_dir = Path(args.out_dir).resolve() if args.out_dir else default_out_dir(DISPLAY_CHECK)
+    neg = tuple(args.neg)
+
+    def make_env() -> HashEnv:
+        if hash_env is not None:
+            return hash_env
+        return build_hash_env(args, str(resolve_chrome_path(args.chrome_path)))
+
+    if args.scenario:
+        entry = scenario_entry or run_scenario
+        return entry(
+            args.scenario,
+            out_dir=out_dir,
+            env_fn=make_env,
+            session_factory=lambda unit, env: DisplaySession(unit, args, env),
+            scenario_fn=run_display_scenario,
+            neg=neg,
+        )
+
+    try:
+        env = make_env()
+    except (FileNotFoundError, RuntimeError, OSError) as exc:
+        LOG.error("cannot build the input set: %s: %s", type(exc).__name__, exc)
+        return 2
+    prefix = unit_argv_prefix if unit_argv_prefix is not None else [sys.executable, str(Path(__file__).resolve())]
+
+    def argv_for(unit: HarnessUnit) -> list[str]:
+        argv = prefix + [
+            "--display-check", "--scenario", unit.id,
+            "--base-path", args.base_path,
+            "--out-dir", str(out_dir),
+            "--serve-dir", str(Path(args.serve_dir).resolve()),
+        ]
+        if env.chrome_path:
+            argv += ["--chrome-path", env.chrome_path]
+        for flag in neg:
+            argv += ["--neg", flag]
+        return argv
+
+    _, code = run_units_driver(
+        table=table,
+        out_dir=out_dir,
+        inputs_for=lambda unit: unit_inputs(unit, env, neg),
+        argv_for=argv_for,
+        runner=runner or unit_runner_module(),
+        fresh=args.fresh,
+        aggregate_only=args.aggregate_only,
+        cwd=str(REPO_ROOT),
+        check=DISPLAY_CHECK,
+        meta={
+            "chrome_path": env.chrome_path,
+            "chrome_version": env.chrome_version,
+            "base_path": env.base_path,
+        },
+    )
+    return code
+
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -4354,6 +5473,59 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "route() does not intercept Web Worker requests and the kernel is a worker."
         ),
     )
+    p.add_argument(
+        "--display-check",
+        action="store_true",
+        help=(
+            "Notebook display gates (epic 260929_notebook-display-design, D16). With "
+            "--scenario <id> runs exactly ONE unit (D1 Light, D1-dark) in this process, "
+            "bounded by its own watchdog; with no --scenario it is the driver: one "
+            "unit_runner.run_unit subprocess per unit, resuming over stamp-matched units, "
+            "writing <out-dir>/result.json. Needs a fresh web-repl/dist."
+        ),
+    )
+    p.add_argument(
+        "--scenario",
+        default=None,
+        metavar="ID",
+        help="--display-check only. Run exactly this unit (one process, one browser). Default: the driver.",
+    )
+    p.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory for result.<id>.json, stamps, timeout markers and result.json. Default "
+            "outputs/repl_smoke/<check>/ (gitignored). REQUIRED (else exit 2) with a "
+            "non-default --serve-dir or any --neg, so a negative or a copied dist can never "
+            "overwrite the default results."
+        ),
+    )
+    p.add_argument(
+        "--fresh",
+        action="store_true",
+        help="--display-check driver only. Ignore every stamp and recompute every unit.",
+    )
+    p.add_argument(
+        "--aggregate-only",
+        action="store_true",
+        help=(
+            "--display-check only. Recompute nothing, start no unit subprocess and NEVER delete: "
+            "judge the stamps on disk against the current inputs and write <out-dir>/result.json. "
+            "Give it the same hashed arguments (--base-path, and --serve-dir/--out-dir when "
+            "non-default) as the scenario runs. CI's final step."
+        ),
+    )
+    p.add_argument(
+        "--neg",
+        action="append",
+        default=[],
+        choices=["drop-query"],
+        help=(
+            "Harness-only negative flag (AC-39(e), --dock-check K1b; sprint C). Hashed into the "
+            "unit's args input; requires --out-dir. --display-check has none and rejects it."
+        ),
+    )
     p.add_argument("--out", type=Path, default=None, help="Also write the JSON result to this path.")
     p.add_argument("-v", "--verbose", action="store_true", help="Enable DEBUG logging.")
     return p.parse_args(argv)
@@ -4376,15 +5548,19 @@ def main(argv: list[str] | None = None) -> int:
         and not args.autosetup_fault_check
         and not args.restart_check
         and not args.persistence_check
+        and not args.display_check
         and not args.expect_fail
     ):
         LOG.error(
             "nothing to do: pass --probe, --viz-check, --notebook-check, "
             "--completion-check, --typeahead-check, --fresh-boot-check, "
             "--autosetup-fault-check, --restart-check, --persistence-check, "
-            "and/or --expect-fail"
+            "--display-check, and/or --expect-fail"
         )
         return 2
+
+    if args.display_check:
+        return run_display_check(args)
 
     try:
         chrome_path = resolve_chrome_path(args.chrome_path)
@@ -4448,7 +5624,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         LOG.info(
             "notebook-check PASSED: %s ran %d cell(s) and printed all %d expected "
-            "output(s).", result["notebook"], result["cell_count"], len(NOTEBOOK_EXPECTED),
+            "output(s).", result["notebook"], result["cell_count"], len(result["expected"]),
         )
         return 0
 
