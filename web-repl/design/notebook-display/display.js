@@ -18,6 +18,12 @@
 
   const byName = (n) => index.get(n);
 
+  // At the 1.0.0b1 pin the fixture's tip rack serializes as type EmbeddedTipRack (a TipRack
+  // subclass), and PLR calls rails tracks. The prototype reads serialized data only, so it
+  // matches the type name here; the shipped Python renderer resolves the TipRack class instead.
+  const isTipRack = (n) => /TipRack$/.test(n.type);
+  const railCount = (deck) => deck.num_tracks || deck.num_rails || 30;
+
   // ---- deck states the notebook steps through ------------------------------
   const allTips = Object.fromEntries(Object.keys(FX.tips).map((k) => [k, true]));
   const fill = (v) => Object.fromEntries(Object.keys(FX.volumes.source).map((k) => [k, v]));
@@ -97,7 +103,7 @@
     });
     const g = el('g', { transform: `translate(${pad.l} ${pad.t})`, 'data-res': name }, svg);
     const st = STATES[state];
-    if (node.type === 'TipRack') drawTipsBody(g, node, st.tips, node.size_y);
+    if (isTipRack(node)) drawTipsBody(g, node, st.tips, node.size_y);
     else drawPlateBody(g, node, st.vols[name], node.size_y, marks);
 
     // Addresses: the real well coordinates, so they are information, not decoration.
@@ -137,7 +143,7 @@
     const st = STATES[state];
 
     // Rails and their ruler along the front edge. Every fifth rail is numbered.
-    const rails = deck.num_rails || 30;
+    const rails = railCount(deck);
     const railTop = 63 + 497;
     for (let r = 1; r <= rails; r++) {
       const x = RAIL0 + (r - 1) * RAIL_PITCH;
@@ -192,7 +198,7 @@
       transform: `translate(${x} ${Y(y, lw.size_y)})`,
       class: focus === lw.name ? 'is-focus' : undefined,
     }, svg);
-    if (lw.type === 'TipRack') drawTipsBody(g, lw, st.tips, lw.size_y);
+    if (isTipRack(lw)) drawTipsBody(g, lw, st.tips, lw.size_y);
     else drawPlateBody(g, lw, st.vols[lw.name] || {}, lw.size_y);
     el('text', { class: 'sv-label', x: lw.size_x + 5, y: lw.size_y / 2 + 4, style: `font-size:${14}px` }, g).textContent = lw.name;
   }
@@ -233,9 +239,9 @@
     deck(state) {
       const d = FX.deck;
       const wrap = document.createElement('div');
-      wrap.append(nameLine(d, `<span class="res__model">${d.num_rails} rails</span>`));
+      wrap.append(nameLine(d, `<span class="res__model">${railCount(d)} rails</span>`));
       wrap.append(deckFigure({ state, width: 820 }));
-      const labware = [...index.values()].filter((e) => ['Plate', 'TipRack'].includes(e.node.type) && e.parent && /-\d+$/.test(e.parent));
+      const labware = [...index.values()].filter((e) => (e.node.type === 'Plate' || isTipRack(e.node)) && e.parent && /-\d+$/.test(e.parent));
       wrap.append(h(`<p class="res__summary">Tip carrier on rail 3, plate carrier on rail 9. ${labware.length} pieces of labware: ${labware.map((e) => e.node.name).join(', ')}.</p>`));
       return wrap;
     },
@@ -350,7 +356,7 @@ pip#  resource             offset           tip type     max volume (µL)  fitti
     if (!e) return name;
     const n = e.node;
     if (n.type === 'Plate') return `<strong>${name}</strong> ${plateSummary(name, 'after')}`;
-    if (n.type === 'TipRack') return `<strong>${name}</strong> ${tipSummary('after')}`;
+    if (isTipRack(n)) return `<strong>${name}</strong> ${tipSummary('after')}`;
     return `<strong>${name}</strong> ${n.type}, ${fmt(n.size_x)} by ${fmt(n.size_y)} mm.`;
   }
 

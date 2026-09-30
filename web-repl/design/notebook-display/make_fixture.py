@@ -6,9 +6,13 @@ simulated liquid-handling steps on the chatterbox backend, and writes what the
 notebook display layer would receive: the serialized deck plus per-well volume
 and tip-presence state, and a log of the operations.
 
-Design fixture only -- it produces no finding.
+Design fixture only -- it produces no finding. Ported to the PyLabRobot 1.0.0b1 pin: it must run
+clean under `-W error` (no deprecated name, no shim import), and `fixture.js` is regenerated from
+it, never hand-edited. The prototype's `display.js` reads the old 0.2.2 `serialize()` shape; the
+shipped renderer reads live PLR objects instead (see praxis/display/labware.py).
 
-  uv run --no-sync python web-repl/design/notebook-display/make_fixture.py
+  PYTHONPATH=<PLR 1.0.0b1 source> uv run --no-sync python -W error \\
+      web-repl/design/notebook-display/make_fixture.py
 """
 
 from __future__ import annotations
@@ -21,15 +25,19 @@ import traceback
 from pathlib import Path
 
 import pylabrobot
-from pylabrobot.liquid_handling import LiquidHandler
-from pylabrobot.liquid_handling.backends import LiquidHandlerChatterboxBackend
+
+# PyLabRobot 1.0.0b1 (the pin). Every import is from a non-shim home: the old top-level
+# `pylabrobot.liquid_handling` is a DeprecationWarning shim over `pylabrobot.legacy`, and this
+# script must run clean under `python -W error`.
+from pylabrobot.legacy.liquid_handling import LiquidHandler
+from pylabrobot.legacy.liquid_handling.backends import LiquidHandlerChatterboxBackend
 from pylabrobot.resources import set_tip_tracking, set_volume_tracking
-from pylabrobot.resources.corning.plates import Cor_96_wellplate_360ul_Fb
+from pylabrobot.resources.corning import cor_96_wellplate_360uL_Fb
 from pylabrobot.resources.hamilton import (
-  PLT_CAR_L5AC_A00,
   STARLetDeck,
-  TIP_CAR_480_A00,
   hamilton_96_tiprack_300uL_filter,
+  hamilton_plate_carrier_L5_ac,
+  hamilton_tip_carrier_L5,
 )
 
 log = logging.getLogger("make_fixture")
@@ -37,7 +45,7 @@ HERE = Path(__file__).resolve().parent
 
 
 async def assemble() -> tuple[STARLetDeck, LiquidHandler]:
-  """The layout: tips on rail 3, a source and an assay plate on rail 9."""
+  """The layout: tips on rail (track) 3, a source and an assay plate on rail (track) 9."""
   set_tip_tracking(True)
   set_volume_tracking(True)
 
@@ -45,14 +53,14 @@ async def assemble() -> tuple[STARLetDeck, LiquidHandler]:
   lh = LiquidHandler(backend=LiquidHandlerChatterboxBackend(num_channels=8), deck=deck)
   await lh.setup()
 
-  tip_car = TIP_CAR_480_A00(name="tip_carrier")
+  tip_car = hamilton_tip_carrier_L5(name="tip_carrier")
   tip_car[0] = hamilton_96_tiprack_300uL_filter(name="tips_300")
-  deck.assign_child_resource(tip_car, rails=3)
+  deck.assign_child_resource(tip_car, track=3)
 
-  plate_car = PLT_CAR_L5AC_A00(name="plate_carrier")
-  plate_car[0] = source = Cor_96_wellplate_360ul_Fb(name="source")
-  plate_car[1] = Cor_96_wellplate_360ul_Fb(name="assay")
-  deck.assign_child_resource(plate_car, rails=9)
+  plate_car = hamilton_plate_carrier_L5_ac(name="plate_carrier")
+  plate_car[0] = source = cor_96_wellplate_360uL_Fb(name="source")
+  plate_car[1] = cor_96_wellplate_360uL_Fb(name="assay")
+  deck.assign_child_resource(plate_car, track=9)
 
   for well in source.get_all_items():
     well.tracker.set_volume(200.0)
@@ -107,10 +115,15 @@ async def build() -> dict:
   return data
 
 
+# What the Pyodide kernel shows for an installed package. The kernel is CPython 3.14 (Pyodide 314.x),
+# not 3.12 (the prototype's guess), so tracebacks in the fixture read like the ones a user sees.
+KERNEL_SITE_PACKAGES = "/lib/python3.14/site-packages/"
+
+
 def _as_in_kernel(tb: str) -> str:
   """Rewrite local paths to what a Pyodide kernel shows, so no home path is committed."""
   plr_root = str(Path(pylabrobot.__file__).resolve().parent.parent) + "/"
-  return tb.replace(plr_root, "/lib/python3.12/site-packages/").replace(str(Path(__file__).resolve()), "<cell 6>")
+  return tb.replace(plr_root, KERNEL_SITE_PACKAGES).replace(str(Path(__file__).resolve()), "<cell 6>")
 
 
 def main() -> None:
