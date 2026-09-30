@@ -4500,7 +4500,11 @@ class FakeDock:
     page never gets a scene, as with socket.js removed), ``drop_query`` (the harness's ``--neg drop-query``),
     ``no_handle`` (no splitter handle can be found), ``lost_clamp`` (a drag is not clamped), ``reload_on_resize``."""
 
-    def __init__(self, rs: Any, nb: dict[str, Any], *, broken: tuple[str, ...] = (), start=(1440, 900)) -> None:
+    def __init__(self, rs: Any, nb: dict[str, Any], *, broken: tuple[str, ...] = (), start=(1440, 900),
+                 old_reader: bool = True) -> None:
+        #: ``old_reader``: the harness reads the notebook through ``shell.currentWidget`` (the pre-fix behaviour, which
+        #: ``deck_steals_current`` breaks); False is the fixed reader (main-area widget list), which finds the cell anyway.
+        self.old_reader = old_reader
         self.rs, self.broken = rs, set(broken)
         self.ids = {i: c["id"] for i, c in enumerate(nb["cells"])}
         self.calls: list[tuple[Any, ...]] = []
@@ -4754,10 +4758,11 @@ class FakeDock:
     def click_cell_input(self, index: int) -> bool:
         cid = self.ids[index]
         self._log("click_cell_input", cid)
-        if "deck_steals_current" in self.broken and not self.nb_current:
+        if "deck_steals_current" in self.broken and not self.nb_current and self.old_reader:
             return False  # cellAt reads shell.currentWidget, which is the deck panel: no rect, no click
         changed = index != self.active  # Lumino emits activeCellChanged only on a CHANGE
         self.active = index
+        self.nb_current = True  # a real click in a cell makes the notebook the current widget again
         if changed and self.follow and self.state == "open-connected" and "no_resources" not in self.broken:
             res = next((r for r in self.stamps.get(cid, []) if r), None)
             if res:
@@ -4788,7 +4793,7 @@ class FakeDock:
                          "stamp": {"v": 1, "kind": kind, "resource": res, "rev": None if res is None else 1, "session": "s", "exec": 1},
                          "ename": None, "evalue": None})
         real = [o["stamp"]["resource"] for o in outs]
-        steals = "deck_steals_current" in self.broken and not self.nb_current
+        steals = "deck_steals_current" in self.broken and not self.nb_current and self.old_reader
         return self.rs.annotate_probe({
             "found": True, "index": index, "in_document": True, "rect": {"left": 0, "right": 900, "width": 900, "top": 0, "bottom": 100, "height": 100},
             "content_visibility": "visible", "execution_count": 1, "execution_state": "idle", "outputs": outs,
@@ -4898,7 +4903,7 @@ class FakeDock:
         return {"diff_pixels": 54000, "total_pixels": 360000, "control_blank": 0.0, "control_marked": 0.05}
 
     def stamp_resources(self, index: int) -> list[Any]:
-        if "deck_steals_current" in self.broken and not self.nb_current:
+        if "deck_steals_current" in self.broken and not self.nb_current and self.old_reader:
             return []  # D.stampResources -> cellAt -> shell.currentWidget.content: the deck panel has none
         return list(self.stamps.get(self.ids[index], []))
 
@@ -6394,3 +6399,186 @@ def test_the_real_driver_reads_the_notebook_through_the_shell_widget_list_not_th
     assert 'self._dk("cellProbe(a)"' in inspect.getsource(rs.DockDriver.cell_probe)
     assert "annotate_probe(" in inspect.getsource(rs.DockDriver.cell_probe)
     assert 'widgets("main")' in rs.DOCK_CHECK_JS, "the notebook is found among the main-area widgets"
+
+
+# =========================================================================== #
+# C7a follow-up 2, request 1: the harness reads the notebook through the MAIN-AREA widget list, never only through
+# `shell.currentWidget` (which is the deck panel once something inside it has had focus)
+# =========================================================================== #
+
+_READER_FAKE = r"""
+const cls = (list) => ({ contains: (c) => list.includes(c), [Symbol.iterator]: function* () { yield* list; } });
+const out = (o) => ({ toJSON: () => o });
+const mkCell = (outputs, editor) => ({
+  model: { executionCount: 3, executionState: "idle", sharedModel: { getSource: () => "src" },
+           outputs: { length: outputs.length, get: (j) => out(outputs[j]) } },
+  node: { classList: cls(["jp-Cell"]), scrollIntoView() {}, getBoundingClientRect: () => ({ left: 0, right: 900, top: 0, bottom: 100, width: 900, height: 100 }),
+          querySelector: (sel) => (sel === ".jp-InputArea-editor" ? editor : null), querySelectorAll: () => [] },
+});
+const editor = { getBoundingClientRect: () => ({ left: 50, right: 850, top: 20, bottom: 60, width: 800, height: 40 }) };
+const ledger = { output_type: "display_data", data: { "text/plain": "x" }, metadata: { praxis: { kind: "ledger", resource: null } } };
+const mkNotebook = (id, cells) => ({ id, node: { classList: cls(["jp-NotebookPanel"]) },
+  content: { activeCellIndex: 0, widgets: cells, model: { cells: { length: cells.length, get: (i) => cells[i].model } } },
+  sessionContext: { session: { kernel: { status: "idle" } } } });
+const notebook = mkNotebook("nb-1", [mkCell([], editor), mkCell([ledger], editor)]);
+const other = mkNotebook("nb-2", [mkCell([], editor)]);
+const deck = { id: "praxis-deck-panel", node: { classList: cls(["praxis-deck-panel"]) } };  // no `content`
+const executed = [];
+const setShell = (current, main) => {
+  window.jupyterapp = { shell: { currentWidget: current, widgets: main === null ? undefined : (area) => (area === "main" ? main : []) },
+                        commands: { execute: (id) => { executed.push(id); return Promise.resolve(); } } };
+};
+"""
+
+
+def _run_reader_js(rs, tmp_path, body: str, *, dock_js: str | None = None) -> Any:
+    """DISPLAY_CHECK_JS, DISPLAY_CHECK_OUTPUT_JS and DOCK_CHECK_JS loaded in bun over a fake shell; ``body`` is async JS."""
+    js = f"""
+const nodes = {{}};
+globalThis.window = globalThis;
+window.innerWidth = 1440;
+window.__praxisDisplay = {{ controllers: {{ dock: {{ snapshot: () => ({{ state: "open-connected" }}) }} }} }};
+globalThis.location = {{ href: "http://x/lab/index.html" }};
+globalThis.getComputedStyle = (el) => el.__style || {{ position: "static", display: "block", paddingLeft: "0px", paddingRight: "0px" }};
+globalThis.document = {{ querySelector: (s) => nodes[s] || null, querySelectorAll: (s) => nodes[s + "*"] || [],
+  getElementById: (id) => nodes["#" + id] || null, contains: () => true, body: {{ getAttribute: () => null }} }};
+const box = (w, h = 10, left = 0) => ({{ left, right: left + w, top: 0, bottom: h, width: w, height: h }});
+{_READER_FAKE}
+{rs.DISPLAY_CHECK_JS}
+{rs.DISPLAY_CHECK_OUTPUT_JS}
+{dock_js if dock_js is not None else rs.DOCK_CHECK_JS}
+const dc = window.__praxisDisplayCheck, D = window.__praxisDockCheck, RUN = (0, eval)("(" + {json.dumps(rs._DC_RUN_JS)} + ")");
+const result = await (async () => {{ {body} }})();
+process.stdout.write(JSON.stringify(result) + "\\n");
+"""
+    script = tmp_path / "reader.mjs"
+    script.write_text(js)
+    done = subprocess.run([_BUN, str(script)], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr[-1500:]
+    return json.loads(done.stdout.strip().splitlines()[-1])
+
+
+@needs_bun
+def test_the_notebook_helper_prefers_a_current_notebook_then_the_main_area_list_then_the_current_widget(rs, tmp_path):
+    got = _run_reader_js(rs, tmp_path, """
+const pick = () => { const w = window.__praxisDisplayCheckNotebook(); return w ? w.id : null; };
+setShell(deck, [deck, notebook]); const deck_current = pick();
+setShell(other, [deck, notebook, other]); const second_notebook_current = pick();   // D2's Run All notebook: the CURRENT one wins
+setShell(notebook, [deck, notebook, other]); const first_current = pick();
+setShell(deck, [deck, other, notebook]); const first_in_list = pick();
+setShell(notebook, null); const no_list = pick();                                    // a shell with no widget list: old behaviour
+setShell(deck, []); const nothing_else = pick();                                     // no notebook anywhere: the current widget, as before
+setShell(null, []); const none = pick();
+return { deck_current, second_notebook_current, first_current, first_in_list, no_list, nothing_else, none };
+""")
+    assert got == {"deck_current": "nb-1", "second_notebook_current": "nb-2", "first_current": "nb-1", "first_in_list": "nb-2",
+                   "no_list": "nb-1", "nothing_else": "praxis-deck-panel", "none": None}
+
+
+@needs_bun
+def test_with_the_deck_as_the_current_widget_every_reader_the_dock_units_use_still_finds_the_notebook(rs, tmp_path):
+    got = _run_reader_js(rs, tmp_path, """
+setShell(deck, [deck, notebook]);
+const before = notebook.content.activeCellIndex;
+const run = await RUN({ i: 1, timeout_ms: 500 });
+return {
+  ready: dc.cellsReady(2), kernel: dc.kernelStatus(), done: dc.modelDone(1),
+  rect: D.cellInputRect({ i: 1 }), stamps: D.stampResources({ i: 1 }), text: D.cellText({ i: 1 }),
+  run, active_before: before, active_after: notebook.content.activeCellIndex, executed,
+  probe: D.cellProbe({ i: 1 }).stamp_resources_current,
+};
+""")
+    assert got["ready"] is True and got["kernel"] == "idle" and got["done"] is True
+    assert got["rect"]["left"] == 50 and got["rect"]["width"] == 800, "click_cell_input's rect lookup finds the cell editor"
+    assert got["stamps"] == [None], "the ledger stamp (resource null) is read even with the deck current"
+    assert got["run"] == {"ok": True, "error": None} and got["executed"] == ["notebook:run-cell"]
+    assert (got["active_before"], got["active_after"]) == (0, 1), "_DC_RUN_JS set the NOTEBOOK's active cell"
+    assert got["probe"] == [None], "cellProbe's currentWidget-named field now reads through the same fixed reader"
+
+
+@needs_bun
+def test_negative_control_the_old_current_widget_reader_finds_nothing_while_the_deck_is_current(rs, tmp_path):
+    """The same fake, with `cellAt` and `panel` reading `shell.currentWidget` as before the fix: every read comes back empty."""
+    assert "window.__praxisDisplayCheckNotebook()" in rs.DOCK_CHECK_JS
+    old_dock = rs.DOCK_CHECK_JS.replace("window.__praxisDisplayCheckNotebook()", "app().shell.currentWidget")
+    assert old_dock != rs.DOCK_CHECK_JS
+    got = _run_reader_js(rs, tmp_path, """
+setShell(deck, [deck, notebook]);
+return { rect: D.cellInputRect({ i: 1 }), stamps: D.stampResources({ i: 1 }), text: D.cellText({ i: 1 }) };
+""", dock_js=old_dock)
+    assert got == {"rect": None, "stamps": [], "text": None}
+
+
+def test_no_reader_the_dock_units_use_goes_through_current_widget_except_the_helpers_own_fallback(rs):
+    assert rs.DISPLAY_CHECK_OUTPUT_JS.count("currentWidget") == 0, "report/figure/paints/trust/... read the notebook via the helper"
+    assert rs.DISPLAY_CHECK_JS.count("currentWidget") == 1, "only the helper looks at the current widget (first choice, and the last fallback)"
+    assert rs._DC_RUN_JS.count("currentWidget") == 1 and "__praxisDisplayCheckNotebook" in rs._DC_RUN_JS
+    assert "panel = () => window.__praxisDisplayCheckNotebook()" in rs.DISPLAY_CHECK_JS
+    assert "panel = () => window.__praxisDisplayCheckNotebook()" in rs.DISPLAY_CHECK_OUTPUT_JS
+    assert "cellAt = (i) => { try { return window.__praxisDisplayCheckNotebook()" in rs.DOCK_CHECK_JS
+    # D.layout (a nodes-first preference with a fallback) and D.notebookState (which REPORTS the current widget) are the two others
+    assert rs.DOCK_CHECK_JS.count("currentWidget") == 2
+
+
+# -- run_k1a: a fixed reader finds the cell after a deck click; a click that finds no target can never pass a key --------------
+
+
+def test_k1a_with_the_fixed_reader_every_key_holds_even_though_the_deck_becomes_the_current_widget(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, broken=("deck_steals_current",), old_reader=False)
+    keys = rs.run_k1a(d, nb)
+    assert _evaluate(rs, "K1a", keys) == ([], []), {k: keys[k] for k in K1A_DERIVED}
+    tr = keys["evidence"]["follow_trace"]
+    for step in ("follow_off", "follow_null", "follow_keeps"):
+        s = tr[step]["summary"]
+        assert s["clicked_ok"] is True and s["clicked_cell_became_active"] is True, step
+    assert tr["follow_off"]["summary"]["current_widget_was_notebook_before"] is False, "the deck really was current when the cell was clicked"
+    assert tr["follow_off"]["summary"]["current_widget_was_notebook_after"] is True, "and the click made the notebook current again"
+    assert keys["evidence"]["follow_null"]["ledger_resources"] == [None]
+    assert keys["evidence"]["step_errors"] == {}
+
+
+def test_k1a_with_the_old_reader_a_click_that_found_no_target_now_fails_its_key_loudly(rs, nb, dnbf):
+    """Negative control (the old `currentWidget` reader): `click_cell_input` returns False. Before, follow_off_holds PASSED
+    vacuously (nothing was clicked, so nothing moved). Now every such click records a step error and fails its key."""
+    d = FakeDock(rs, dnbf, broken=("deck_steals_current",))
+    keys = rs.run_k1a(d, nb)
+    missing, failing = _evaluate(rs, "K1a", keys)
+    assert missing == [] and {"follow_off_holds", "follow_skips_null", "follow_keeps_preset"} <= set(failing), failing
+    errs = keys["evidence"]["step_errors"]
+    for key in ("follow_off_holds", "follow_skips_null", "follow_keeps_preset"):
+        assert "click_cell_input" in errs[key] and "DockCheckError" in errs[key], (key, errs.get(key))
+    assert "follow_focuses" not in errs and "follow_focuses" not in failing, "it ran before any deck-button click"
+    assert keys["evidence"]["follow_trace"]["follow_off"]["actions"][-1]["returned"] is False, "the trace still says what happened"
+
+
+def test_a_single_failed_click_in_an_otherwise_healthy_world_fails_exactly_its_key(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    real = d.click_cell_input
+
+    def flaky(index):
+        if d.ids[index] == "draw-assay":
+            d._log("click_cell_input", "draw-assay")
+            return False
+        return real(index)
+
+    d.click_cell_input = flaky
+    keys = rs.run_k1a(d, nb)
+    missing, failing = _evaluate(rs, "K1a", keys)
+    assert missing == [] and failing == ["follow_focuses"]
+    assert "draw-assay" in keys["evidence"]["step_errors"]["follow_focuses"]
+
+
+def test_a_click_that_found_no_target_in_click_focuses_also_fails_its_key(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    real = d.click_cell_input
+
+    def flaky(index):
+        if d.ids[index] == "draw-deck":
+            d._log("click_cell_input", "draw-deck")
+            return False
+        return real(index)
+
+    d.click_cell_input = flaky
+    keys = rs.run_k1a(d, nb)
+    assert _evaluate(rs, "K1a", keys)[1] == ["click_focuses"]
+    assert "step_errors" in keys["evidence"] and "click_focuses" in keys["evidence"]["step_errors"]
