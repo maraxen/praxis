@@ -512,3 +512,38 @@
       console.error("praxis-shell.js: failed to load/mount the persistence panel:", err);
     });
 })();
+
+// ---------------------------------------------------------------------
+// A5 -- notebook display loader (notebook display epic, spec
+// .praxia/docs/specs/260929_notebook-display-epic.md, section 4
+// praxis-shell.js row and D13). One appended IIFE; the IIFEs above are
+// untouched. Same shape as the persistence loader: `document.currentScript`
+// is captured SYNCHRONOUSLY as the very first statement (it reads null from
+// any async callback), and the display mounts only on the `lab/` entry.
+// A failed dynamic import or mount is logged and never breaks the shell --
+// display failures are non-fatal (D13); the REPL keeps working without the
+// display layer.
+(function () {
+  "use strict";
+
+  var thisScript = document.currentScript;
+  if (!/\/lab\/(index\.html)?$/.test(location.pathname)) {
+    return;
+  }
+  if (!thisScript || !thisScript.src) {
+    console.error("praxis-shell.js: display loader could not resolve its own script src.");
+    return;
+  }
+
+  try {
+    import(new URL("display/index.js", thisScript.src).href)
+      .then(function (mod) {
+        return mod.mount(window);
+      })
+      .catch(function (err) {
+        console.error("praxis-shell.js: failed to load/mount the notebook display:", err);
+      });
+  } catch (err) {
+    console.error("praxis-shell.js: failed to start the notebook display loader:", err);
+  }
+})();

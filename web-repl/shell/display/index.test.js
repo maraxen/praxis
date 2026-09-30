@@ -172,8 +172,9 @@ describe("praxis-shell.js loader IIFE", () => {
     expect(text.split("display/index.js").length - 1).toBeGreaterThanOrEqual(1);
     expect(text.split(MARKER).length - 1).toBe(1);
     expect(text.indexOf("persistence/panel.js")).toBeLessThan(text.indexOf(MARKER));
-    // Gated to the lab/ entry, like the persistence loader.
-    expect(loaderSource()).toContain("/lab/");
+    // Gated to the lab/ entry, like the persistence loader (the regex literal
+    // \/lab\/(index\.html)?$; the behavioural cases below prove the gate).
+    expect(loaderSource()).toContain("\\/lab\\/");
   });
 
   test("on /lab/ it imports display/index.js and calls mount(window)", async () => {
