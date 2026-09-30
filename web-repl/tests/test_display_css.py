@@ -1525,11 +1525,14 @@ _CAP_MEDIA = "(min-width:1600px)"
 _CAP_MAX_WIDTH = "960px"
 _DOCK_JS = _WEB_REPL_ROOT / "shell" / "display" / "dock.js"
 
-# The stylesheet as it stood at b1faa747 (A4 + B-css, before the cap): byte length and sha256. The cap is
-# a pure ADDITION, so the file must still begin with exactly these bytes. A legitimate later edit of an
-# earlier rule has to move this pin deliberately.
-_PRE_CAP_BYTES = 38960
-_PRE_CAP_SHA256 = "6ce2ee5bbac5abb96039eccada3f140bd00c552d3027860f218f3033a8f0c28f"
+# The stylesheet as it stood before the cap (A4 + B-css + the light-sheet specificity fix): byte length and
+# sha256. The cap is a pure ADDITION, so the file must still begin with exactly these bytes. A legitimate
+# later edit of an earlier rule has to move this pin deliberately. Moved once, from 38960 bytes / sha256
+# 6ce2ee5b...f28f (b1faa747), when the light sheet selector was raised above JupyterLab's command-mode
+# transparent cell: only the comment above the ground rule and the second sheet selector changed, both at
+# offset 18108 onward, +264 bytes.
+_PRE_CAP_BYTES = 39224
+_PRE_CAP_SHA256 = "c71b26909d598857e19399b6e8bd6c4d60f623f6c3440add00e875f2f11f9942"
 
 
 def _media_blocks(css: str) -> list[tuple[str, list[_Rule]]]:
