@@ -630,3 +630,105 @@ def test_sidecar_names_its_negative_control_and_its_paired_positive_control(side
     assert "must FAIL" in controls or "must fail" in controls
     assert "positive" in sidecar["design"]["controls"] and "negative" in sidecar["design"]["controls"]
     assert "test_nd_sensitivity_driver.py" in json.dumps(sidecar["design"])
+
+
+# --------------------------------------------------------------------------- #
+# Sprint B (B10): the same negative (a), its own thin entry script, sidecar and out dir
+# --------------------------------------------------------------------------- #
+
+ENTRY_B_PATH = REPO_ROOT / "scripts" / "spikes" / "260929_nd_sensitivity_sprint_b.py"
+SIDECAR_B_PATH = ENTRY_B_PATH.with_suffix(".bth.toml")
+
+
+def test_sprint_b_entry_fixes_negative_a_for_sprint_b_and_loads_the_same_shared_driver():
+    assert ENTRY_B_PATH.is_file(), "the sprint B entry script exists (D17: one entry script and sidecar per sprint)"
+    entry = _load(ENTRY_B_PATH, "nd_entry_b_under_test")
+    assert entry.NEGATIVES == ("a",) and entry.SPRINT == "b"
+    assert entry.SHARED_PATH == SHARED_PATH and SHARED_PATH.is_file()
+    assert entry._load_shared() is entry._load_shared(), "loaded once"
+    assert "sys.path" not in ENTRY_B_PATH.read_text().replace("nothing edits sys.path", "")
+
+
+def test_sprint_b_dry_run_defaults_to_its_own_out_dir_and_the_spec_dirs(tmp_path):
+    proc = subprocess.run([sys.executable, str(ENTRY_B_PATH), "--dry-run"], capture_output=True, text=True, timeout=60)
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    plan = json.loads(proc.stdout)
+    assert plan["sprint"] == "b" and [n["id"] for n in plan["negatives"]] == ["a"]
+    assert plan["out_dir"] == str(REPO_ROOT / "outputs" / "nd_sensitivity" / "sprint_b")
+    assert plan["out_dir"] != str(REPO_ROOT / "outputs" / "nd_sensitivity" / "sprint_a"), "never overwrites sprint A's records"
+    assert plan["neg_root"] == "/tmp/claude-1000/nd-neg"
+    assert plan["negatives"][0]["serve_dir"] == "/tmp/claude-1000/nd-neg/a/dist"
+    assert plan["negatives"][0]["harness_out_dir"] == "/tmp/claude-1000/nd-neg/a/out"
+
+
+def test_sprint_b_entry_runs_end_to_end_against_the_stub_harness_and_records_its_own_sprint(bed, nd):
+    """The whole driver path through the SPRINT B entry: positive control (a failing harness naming the
+    key passes the negative), the harness run alone on its own dist and out dir, sprint 'b' recorded."""
+    base_env = bed.env
+
+    def env_b() -> dict[str, str]:
+        e = base_env()
+        e["ND_ENTRY"] = str(ENTRY_B_PATH)
+        return e
+
+    bed.env = env_b  # type: ignore[method-assign]
+    code, agg = bed.driver()
+    assert code == 0 and agg["sprint"] == "b" and agg["all_units_complete"] and agg["outcome_evaluated"]
+    art = bed.artifact()
+    assert art["outcome"] is True and "rail_state_after_run" in art["failing_keys"]
+    (argv,) = bed.harness_runs()
+    assert argv[:1] == ["--display-check"] and argv[argv.index("--scenario") + 1] == "D1"
+    flat = json.loads(bed.results.read_text())
+    assert flat["a_negative_passed"] is True and flat["measurement_valid"] is True
+
+
+@pytest.fixture(scope="module")
+def sidecar_b() -> dict[str, Any]:
+    assert SIDECAR_B_PATH.is_file(), "the sprint B sidecar is committed BEFORE the run"
+    return tomllib.loads(SIDECAR_B_PATH.read_text())
+
+
+def test_sprint_b_sidecar_pre_registers_the_same_single_negative_with_a_residual(sidecar_b):
+    outcomes = sidecar_b["outcomes"]
+    assert set(outcomes) == {"a_sensitive", "a_insensitive", "invalid"}
+    assert outcomes["invalid"]["is_residual"] is True
+    assert "a_detected = true" in outcomes["a_sensitive"]["condition"]
+    assert "a_detected = false" in outcomes["a_insensitive"]["condition"]
+    for name in ("a_sensitive", "a_insensitive"):
+        assert "measurement_valid = true" in outcomes[name]["condition"]
+        assert "all_units_complete = true" in outcomes[name]["condition"]
+    hyp = sidecar_b["experiment"]["hypothesis"]
+    assert "sprint B" in hyp and "rail_state_after_run" in hyp and "shell/display/index.js" in hyp
+    assert sidecar_b["experiment"]["stage_name"]
+
+
+def test_sprint_b_sidecar_result_schema_matches_the_flat_fields_the_driver_writes(sidecar_b, nd):
+    arts = {"a": {"error": None, "harness_stamp_valid": True, "harness_error": None, "pristine_has_target": True,
+                  "mutated_lacks_target": True, "harness_exit": 1, "failing_keys": ["rail_state_after_run"], "outcome": True}}
+    flat = nd.derive_outcome_fields(arts, {"a": nd.NEGATIVES["a"]})["flat"]
+    assert set(sidecar_b["result_schema"]) == set(flat)
+
+
+def test_sprint_b_sidecar_design_names_its_entry_units_timeouts_and_out_dir(sidecar_b, nd):
+    d = sidecar_b["design"]
+    text = json.dumps(d)
+    assert d["unit_list"] == ["a"] and "260929_nd_sensitivity_sprint_b.py" in text
+    assert "outputs/nd_sensitivity/sprint_b" in text
+    assert d["timeouts"]["harness_unit_s"] == 360 and d["timeouts"]["negative_unit_s"] == 600
+    assert d["timeouts"]["whole_run_timeout"] == "none"
+    unit = d["units"]["a"]
+    assert unit["required_fields"] == list(nd.REQUIRED_FIELDS) and unit["harness_unit"] == "D1"
+    assert unit["expected_key"] == "rail_state_after_run" and unit["mutation"].startswith("remove shell/display/index.js")
+    for needle in ("unit_runner.driver_input", "dist_pristine", "dist_mutated", "exit == 0", "error finding",
+                   "never reused", "full unit set", "Watchdog", "os._exit", "bth run", "B10"):
+        assert needle in text or needle in json.dumps(sidecar_b["experiment"]), needle
+    controls = json.dumps(d["controls"])
+    assert ("must FAIL" in controls or "must fail" in controls) and "positive" in d["controls"] and "negative" in d["controls"]
+    assert "test_nd_sensitivity_driver.py" in text
+
+
+def test_sprint_b_sidecar_is_a_pre_registration_not_a_receipt():
+    """It says, in its own words, that no run had happened when it was written."""
+    text = SIDECAR_B_PATH.read_text()
+    assert "COMMITTED BEFORE ANY RUN" in text and "No browser has been" in text
+    assert "bth run --project-slug praxis" in text and "uv run bth" in text, "names the right invocation and the wrong one"

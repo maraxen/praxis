@@ -14,7 +14,7 @@ AC-42's workflow test. ``.github/workflows/repl.yml`` is parsed (PyYAML) and che
 * an ``actions/upload-artifact`` step with ``if: always()`` covering the out dir, and NO
   ``actions/download-artifact`` step (CI never reuses across workflow runs);
 * the job-level ``timeout-minutes`` backstop: at least 45 plus the sum of the scenario step
-  timeouts (60 after sprint A);
+  timeouts (60 after sprint A, 92 after sprint B);
 * both ``paths:`` filters (``push`` and ``pull_request``) listing ``scripts/repl_smoke.py``,
   ``scripts/unit_runner.py``, ``scripts/spikes/**`` and ``scripts/negatives/**`` (C11-11).
 
@@ -22,7 +22,8 @@ The D16 budgets are written out here, not imported from ``repl_smoke.py``: a cha
 unit table must not silently move the CI step timeouts (the unit-table test in
 ``test_repl_smoke_resume.py`` pins the table to the same numbers).
 
-Sprint B (B10) and sprint C (C7) extend ``BUDGET_MIN`` and ``CHECKS`` with their units.
+Sprint B (B10) extended ``BUDGET_MIN`` and ``CHECKS`` with D2, D3 and D4 (budgets 12, 8 and 6 min,
+step timeouts 14, 10 and 8, backstop 92); sprint C (C7) extends them with its units.
 """
 
 from __future__ import annotations
@@ -38,10 +39,10 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "repl.yml"
 
-#: D16 unit budgets in minutes, sprint A. CI step timeout = budget + 2.
-BUDGET_MIN = {"D1": 6, "D1-dark": 5}
+#: D16 unit budgets in minutes, sprints A and B. CI step timeout = budget + 2.
+BUDGET_MIN = {"D1": 6, "D1-dark": 5, "D2": 12, "D3": 8, "D4": 6}
 #: check flag -> ordered unit ids that belong to it
-CHECKS = {"--display-check": ["D1", "D1-dark"]}
+CHECKS = {"--display-check": ["D1", "D1-dark", "D2", "D3", "D4"]}
 OUT_DIRS = {"--display-check": "outputs/repl_smoke/display-check"}
 HASHED_ARGS = ("--base-path", "--serve-dir", "--out-dir", "--neg")
 REQUIRED_PATHS = (
@@ -137,7 +138,7 @@ def test_step_timeout_is_the_budget_plus_two_minutes(steps, check):
     for uid, step in _scenario_steps(steps, check).items():
         assert step["timeout-minutes"] == BUDGET_MIN[uid] + 2, uid
     if check == "--display-check":
-        assert {u: BUDGET_MIN[u] + 2 for u in CHECKS[check]} == {"D1": 8, "D1-dark": 7}
+        assert {u: BUDGET_MIN[u] + 2 for u in CHECKS[check]} == {"D1": 8, "D1-dark": 7, "D2": 14, "D3": 10, "D4": 8}
 
 
 @pytest.mark.parametrize("check", sorted(CHECKS))
@@ -247,9 +248,11 @@ def test_job_timeout_is_only_a_backstop_over_the_sum_of_the_step_timeouts(wf, st
         assert all(s["timeout-minutes"] < limit for s in _scenario_steps(steps, check).values())
 
 
-def test_job_backstop_is_60_after_sprint_a(wf):
-    """D16: 60 after sprint A, 92 after sprint B, 137 after sprint C (B10 and C7 update this)."""
-    assert wf["jobs"]["repl"]["timeout-minutes"] == 60
+def test_job_backstop_is_92_after_sprint_b(wf, steps):
+    """D16: 60 after sprint A, 92 after sprint B, 137 after sprint C (C7 updates this)."""
+    assert wf["jobs"]["repl"]["timeout-minutes"] == 92
+    total = sum(s["timeout-minutes"] for s in _scenario_steps(steps, "--display-check").values())
+    assert total == 47 and 92 == 45 + total, "8 + 7 + 14 + 10 + 8 scenario minutes, plus the 45-minute allowance"
 
 
 def test_the_coxswain_job_keeps_its_own_timeout(wf):
@@ -277,8 +280,52 @@ def test_display_check_and_display_js_harness_are_wired(wf):
 
 
 @pytest.mark.parametrize(
-    "name", ["test_repl_smoke_resume.py", "test_repl_workflow_scenarios.py", "test_nd_sensitivity_driver.py"]
+    "name",
+    [
+        "test_repl_smoke_resume.py",
+        "test_repl_workflow_scenarios.py",
+        "test_nd_sensitivity_driver.py",
+        "test_display_check_fixture.py",  # B10: the fixture notebook's cells run against real PLR at the pin
+    ],
 )
 def test_new_test_files_are_wired_in_the_tests_step(steps, name):
     tests = "\n".join(_command_lines(_by_name(steps, "Tests")))
     assert f"uv run python -m pytest web-repl/tests/{name} -q" in tests
+
+
+# --------------------------------------------------------------------------- #
+# Sprint B (B10): D2, D3 and D4 are wired one step each, in table order, before the aggregate
+# --------------------------------------------------------------------------- #
+
+
+def test_b10_steps_exist_with_their_own_names_and_the_d16_commands(steps):
+    found = _scenario_steps(steps, "--display-check")
+    for uid, timeout in (("D2", 14), ("D3", 10), ("D4", 8)):
+        step = found[uid]
+        assert step["timeout-minutes"] == timeout and step["if"] == "${{ !cancelled() }}"
+        assert _smoke_args(step) == ["--display-check", "--scenario", uid, "--base-path", "/praxis/"]
+        assert "name" in step and uid in step["name"], "a named step per unit"
+    assert len({found[u]["name"] for u in found}) == len(found), "step names are unique"
+
+
+def test_the_five_units_run_in_the_d16_table_order_right_before_the_aggregate(steps):
+    found = _scenario_steps(steps, "--display-check")
+    order = [_index(steps, found[u]) for u in ("D1", "D1-dark", "D2", "D3", "D4")]
+    assert order == list(range(order[0], order[0] + 5)), "adjacent, in order"
+    agg = _index(steps, _aggregate_steps(steps, "--display-check")[0])
+    assert agg == order[-1] + 1, "the gating aggregate is the very next step"
+
+
+def test_the_aggregate_still_carries_base_path_and_names_no_scenario(steps):
+    (agg,) = _aggregate_steps(steps, "--display-check")
+    assert _smoke_args(agg) == ["--display-check", "--aggregate-only", "--base-path", "/praxis/"]
+
+
+def test_the_one_upload_step_still_covers_the_display_check_out_dir(steps):
+    uploads = [
+        s for s in steps
+        if str(s.get("uses", "")).startswith("actions/upload-artifact") and s.get("if") == "always()"
+        and "outputs/repl_smoke" in str(s.get("with", {}).get("path", ""))
+    ]
+    assert len(uploads) == 1 and uploads[0]["with"]["path"].rstrip("/") == "outputs/repl_smoke/display-check"
+
