@@ -8,6 +8,7 @@ task_id: 260903_sema-followups
 date: '260903'
 confidence: medium
 sources: "Read this session, in full or in the cited ranges. Specs and plans: .praxia/docs/specs/260903_plr-sema-real-programs-increment.md (in full, including the section 12.13 implementation record and the round-1 remediation changelog); .praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md:55-170,173-501,505-646,650-701,1136-1165; .praxia/docs/specs/260902_plr-sema-ir-bytecode-increment.md:88-160,425-491,624-653; .praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md:42-138 (Open decisions), 139-205 (section 0 and 0.1), 2287-2345 (section 9.1), 2347-2385 (section 9.2 inventory), 2412-2495 (section 9.4), 2499-2535 (Deferred + boundary summary), plus the section-header index. Audits read in full during round-1 remediation: .praxia/docs/audits/260903_plr-sema-families-cache-round1-challenger.md (O1-O6) and .praxia/docs/audits/260903_plr-sema-families-cache-round1-defender.md (all six CONCEDED; ordered remediation list); and, for objection style, .praxia/docs/audits/260903_plr-sema-real-programs-round1-challenger.md:1-58. Analyzer source: plr-sema/src/plr_sema/verdict.py:100-179; plr-sema/src/plr_sema/_hand_maintained.py:1-80,240-263,640-690,753-847,851-871 plus a grep index of every `what=`/`id=` field across all 25 REGISTRY rows; plr-sema/src/plr_sema/derive/__init__.py:840-959; plr-sema/src/plr_sema/derive/receiver_state.py:160-190,523-563,770-799; plr-sema/src/plr_sema/check/ir.py:50-95,178-192,690-702,770-781,830-870,900-926; plr-sema/src/plr_sema/check/__init__.py:443-457,686-700,713-727. Harness: plr-sema/eval/oracle_common.py:690-739,976-1006; plr-sema/eval/tip_mutants.py:63-70,86-166,166-224,227-251. Front end: praxis/backend/utils/plr_static_analysis/models.py:95-105,340-350,555-563,575-599. PLR at submodule pin dd79c4c89: liquid_handling/liquid_handler.py:90-229,968-1069,1170-1199,1273-1289,1330-1374 and the `_check_no_lid`/`does_volume_tracking`/`maximal_volume` grep index over the whole file; resources/lid.py (in full, 121 lines); resources/volume_tracker.py (in full, 171 lines); resources/container.py:22-88; resources/tip.py:16-80; liquid_handling/standard.py:40-67. Artifacts: plr-sema/data/derived_contracts.json:53592-53633,58363-58394,58432-58486,157962-158133,159897-159936,161251-161253; plr-sema/data/gap_ledger.json:28-60 (the 50063d52 inert-filter run: `derive_python_version` at :38, the newly-admitted `logger.debug`/`logger.warning` entries at :119,:139); training/verify/data/plr_exception_taxonomy.json:2964-2972,2991-2999,3010-3056; training/verify/data/plr_preconditions.json:49764-49773,49863-49864. Data: outputs/plr-sema/oracle_replay_260903_rebaseline.json:2-29; outputs/plr-sema/oracle_replay_260903_4950.json:1-29; outputs/plr-sema/tip_mutants_260903_4938.json:1-38; outputs/plr-sema/tip_mutants_260903_4946.json:1-38; outputs/plr-sema/tier2a_260903.json:1-26; outputs/plr-sema/tier2b_260903.json:1-45."
+citations_at: f82ce87dfdefe6fb9b44db6919a4892de7586b5b
 ---
 
 # Increment 4: cache, inert names, delegate binding
@@ -456,7 +457,7 @@ and AC-13.1 asserts the `resource.*` case directly so the correction cannot regr
 `requires-python`, main spec §1.1) and is a fact about **Python**, not about PLR — so it cannot go
 stale when PLR changes, which is the `breaks_when` question §9.1 makes every hand-maintained row
 answer. The same is true of `dir(dict)`. **It is a fact about a specific Python, though**, which is why
-the gap ledger's stamp records `derive_python_version` (`plr-sema/data/gap_ledger.json:100`, `"3.14.6"`
+the gap ledger's stamp records `derive_python_version` (`plr-sema/data/gap_ledger.json:100`, `"3.14.6"` <!-- citations-at: 378bfd4c5746659ade2ec2058a2080c41417258e -->
 at the 50063d52 run): the same derivation on a different interpreter can select a different set, and
 that is a provenance fact, not a bug.
 
@@ -487,7 +488,7 @@ re-running this must reproduce them, not re-derive them from scratch:
 - **Newly admitted: `logger.debug` and `logger.warning`, +3 entries whole-surface.** Both are visible
   in the shipped ledger (`plr-sema/data/gap_ledger.json:119` and `:139`), which is the published
   evidence that the typed prefix list is gone and nothing silently replaced it.
-- **The interpreter is stamped.** `derive_python_version` (`plr-sema/data/gap_ledger.json:100`) joins
+- **The interpreter is stamped.** `derive_python_version` (`plr-sema/data/gap_ledger.json:100`) joins <!-- citations-at: 378bfd4c5746659ade2ec2058a2080c41417258e -->
   the existing `plr`/`praxis` provenance in the ledger's stamp block (`:37-59`), so a ledger diff
   caused by a Python upgrade is attributable rather than mysterious.
 

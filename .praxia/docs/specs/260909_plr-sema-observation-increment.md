@@ -8,6 +8,7 @@ task_id: 260909_sema-observation
 date: '260909'
 confidence: medium
 sources: "Increment 6 read in FULL as the structural model and as the text this document extends: .praxia/docs/specs/260904_plr-sema-predicate-increment.md (frontmatter 1-11; preamble 13-105; section 15.0 108-223; section 15.1 226-423; section 15.2 426-707; section 15.3 710-840; section 15.4 843-1312; section 15.5 1315-1448; section 15.6 1451-1504; section 15.7 1507-1646; section 15.8 1649-1797; section 15.9 1800-2086; section 15.10 2089-2201; section 15.11 2204-2446; section 15.12 2449-2531; section 15.13 2534-2617; section 15.14 2620-2694; section 15.15 2697-2711; section 15.16 2714-2841; References 2844-2855). Increment 5 section 14.6 read in full as the environment-member precedent every legitimacy argument here is stated against: .praxia/docs/specs/260903_plr-sema-volume-increment.md:602-741 (the conditional-guard rule 619-636, R1 638-673, the TWO FAILED is_disabled discharges 675-689, the env argument 691-698, O5 -- observed inside the window, returned by the executed side 700-723, the consequence 725-741). Main spec: .praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md:574-581 (the join table), :2514-2524 (the deferred rows, (c) at 2518, (e) at 2520, (f) at 2524), :2526-2534 (the boundary summary), :3316-3345 (Open decisions 3, the additive direction at 3322-3326). Increment 1: .praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md:744-754 (the named-assumption table -- A-SINGLE 751, A-COMPLETES 752, A-COMMIT 753, A-ENABLED 754). PLR at submodule pin dd79c4c89, every line below read THIS pass: external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:155-203 (the receiver fields at 158-166, `setup` and the head construction at 187-197), :300-321 (`_assert_resources_exist`), :323-389 (`_check_args` in full -- the AsyncMock early return 347-350, `inspect.signature` 353-359, `non_default`/`missing` 369-375, the **kwargs early return 377-378, `extra`/`strictness` 380-389), :391-409 (`_compute_spread_offsets`, `_make_sure_channels_exist`), :488-524 (pick_up_tips' body), :541-556, :575-576; external/pylabrobot/pylabrobot/liquid_handling/strictness.py:1-24 (the module-global and its two accessors); external/pylabrobot/pylabrobot/liquid_handling/backends/backend.py:1-60 and :175-188 (`LiquidHandlerBackend`, the abstract `can_pick_up_tip`); external/pylabrobot/pylabrobot/liquid_handling/backends/chatterbox.py:30-79 and :232-243 (`__init__`, `num_channels`, `pick_up_tips`, `can_pick_up_tip`); external/pylabrobot/pylabrobot/liquid_handling/backends/serializing_backend.py:236-242; external/pylabrobot/pylabrobot/resources/resource.py:160-174 (`__eq__`) and :566-589 (`get_resource` and its ResourceNotFoundError). The six direct LiquidHandlerBackend subclasses enumerated by ripgrep over the whole PLR tree at the pin and each class line read: external/pylabrobot/pylabrobot/liquid_handling/backends/opentrons_backend.py:80, external/pylabrobot/pylabrobot/liquid_handling/backends/chatterbox.py:24, external/pylabrobot/pylabrobot/liquid_handling/backends/tecan/EVO_backend.py:56, external/pylabrobot/pylabrobot/liquid_handling/backends/serializing_backend.py:26, external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/base.py:46, external/pylabrobot/pylabrobot/liquid_handling/backends/hamilton/tcp_backend.py:66; the eight can_pick_up_tip definitions likewise, of which exactly two are a single return of a constant. Analyzer source, each citation verified against the file this pass: plr-sema/src/plr_sema/check/ir.py:170-204 and :905-953; plr-sema/src/plr_sema/verdict.py:125-199, :250-275, :278-323; plr-sema/src/plr_sema/check/__init__.py:400-470, :600-639, :920-990; plr-sema/src/plr_sema/check/predicate.py:262-295, :597-658, :666-679, :765-800, :818-888; plr-sema/src/plr_sema/derive/__init__.py:454-528; plr-sema/src/plr_sema/derive/bindings.py:113-124,158,215,279-304,690-737,778-815; plr-sema/src/plr_sema/derive/receiver_state.py:1275-1308; plr-sema/src/plr_sema/_hand_maintained.py:36-49, :648-667, :890-1019; plr-sema/eval/oracle_common.py:398,415-439,446,463,551,623,767-786. Harness: training/verify/verifier.py:95-200; training/verify/deck.py:130-163. Lint, read in full so every citation and every task row in this document is written against the checker rather than against a memory of it: plr-sema/scripts/check_spec_citations.py:1-80,100-213; plr-sema/scripts/check_spec_crossrefs.py:45-199; plr-sema/tests/test_spec_lint.py:20-51,205-258. The instrument and its companions, read this pass: outputs/plr-sema/unknown_ledger_260909_after.json:2-19,29-38,41-45,90-94,136-148,177-188,217-223,257-261,2119-2156,2158-2169; outputs/plr-sema/oracle_replay_260909_inc6.json:2-30,105-137,138-199; outputs/plr-sema/predicate_mutants_260909_inc6.json:2-58; outputs/plr-sema/t30_measured_260908.json:28555-28610. plr-sema/data/derived_contracts.json read for its FOUR top-level keys only (`contracts`, `receiver_state`, `schema_version`, `stamp`). Not read this pass and therefore cited BY SYMBOL rather than by line throughout: plr-sema/eval/predicate_mutants.py, plr-sema/eval/region_oracle.py, plr-sema/eval/unknown_ledger.py, plr-sema/src/plr_sema/derive/predicate_ast.py, plr-sema/src/plr_sema/check/tipstate.py. ROUND-1 PASS (spec_version 2) sources, both reports read in FULL and dispositioned in section 16.17: .praxia/docs/audits/260909_plr-sema-observation-round1-challenger.md:1-158 (the frontmatter classification 1-9, the summary 16, C1-C5 the blockers 20-43, C6-C19 the must-fix set 45-113, C20-C25 the should-fix set 115-143, C26 the note 145-148, the verdict and the two objection-impact lists 150-158); .praxia/docs/audits/260909_plr-sema-observation-round1-defender.md:1-125 (the frontmatter adjudication summary 1-9, the opening 18, the per-objection adjudications C1-C26 at 22-73, the six defender gaps D-G1..D-G6 at 77-89, the post-round user-decision table 93-102 including the NEW D6 row at 102, the 14-step ordered remediation list 106-121, the verdict 123-125). Analyzer source re-read THIS pass for the round-1 remediation, every citation verified against the file: plr-sema/src/plr_sema/check/predicate.py:218-256 (`_resolve_var` and its origin contract), :400-481 (the G3 alpha-existential path D-G1 turns on -- the module note at 402-410, `_eval_alpha_existential` at 433-456 with the per-item override at 449-451, `_maybe_alpha_emptiness` at 459-480), :530-559 (`_eval_cmp`'s dispatch and the membership half at 542-543), :561-607 (`_eval_is`, the quantifier module note at 574-579, `_resolve_seq_length`, `_eval_allof_anyof` at 597-606), :700-739 (`guard_reason` at 704-714 and `_scope_entry_value` at 724-738). plr-sema/data/derived_contracts.json read at the three guard records the round turns on: :88795-88824 (line 321's predicate, empty bindings, `reachability_clear` true and the two-entry `scope_trail` whose second entry is the `for` header), :88862-88879 (line 375's `reachability_clear` false and its one-entry trail), :88880-88913 (line 383's recorded enclosing scope entry `if len(extra) > 0 and len(vars_keyword) == 0`, and its `reachability_clear` false)."
+citations_at: 53c510fc84dc5415858522461cbfc309df6f45f4
 ---
 
 # Increment 7: the observation record
@@ -619,7 +620,7 @@ program" is sound only if the analyzed graph is the whole world*
 > that its digest is in the key**, so no two observations share a verdict.
 >
 > **The `obs:` prefix is load-bearing and is reserved.** `E-UNCOND` way (2) tests a bare zero-argument
-> callee **name** against `env` (`plr-sema/src/plr_sema/check/predicate.py:1132-1142`). A member
+> callee **name** against `env` (`plr-sema/src/plr_sema/check/predicate.py:1132-1142`). A member <!-- citations-at: c4a42f64a5e404d65284e66533f79f79add0c787 -->
 > containing `:` and `=` can never equal a Python identifier, so no `obs:` member can satisfy way (2)
 > and **no observation can manufacture reachability**. No member without the prefix is ever added by
 > this increment, and `does_volume_tracking` — the one existing member — is untouched.
@@ -740,7 +741,7 @@ T41 publishes the whole-surface counts and this paragraph is a prediction for it
 
 > **Normative (registry: ZERO).** §16.3 adds no registry row, no per-row ceiling, and no vocabulary
 > member. Its derivation is an AST shape test over PLR's own recorded surface, in the same class as
-> `is_dynamic_raise` (`plr-sema/src/plr_sema/derive/__init__.py:1105-1109`) and `reachability_clear`
+> `is_dynamic_raise` (`plr-sema/src/plr_sema/derive/__init__.py:1105-1109`) and `reachability_clear` <!-- citations-at: b2e53e3b5e22bb3e65f506fc9d675ff1cdaadbce -->
 > (`plr-sema/src/plr_sema/derive/bindings.py:778-815`), both of which increment 6 established cost
 > nothing. **This is recorded as a NON-decision (`D3`) precisely so the round can attack it**: if a
 > reviewer can name one literal PLR fact this section hand-types, the claim is false and the section
@@ -910,7 +911,7 @@ bind and `:409`, `:321` and `:875` are permanently ½.
 > > `["if not resource_from_deck == resource", "for resource in resources"]`
 > > (`plr-sema/data/derived_contracts.json:88819-88822`) — and `_scope_entry_value` gives a `for`/`while`
 > > header ½ and never `F`, because `ast.parse` on a bare header text is a `SyntaxError` and therefore
-> > `Opaque` (`plr-sema/src/plr_sema/check/predicate.py:1096-1111`). `_entry_satisfies_uncond` then returns
+> > `Opaque` (`plr-sema/src/plr_sema/check/predicate.py:1096-1111`). `_entry_satisfies_uncond` then returns <!-- citations-at: c4a42f64a5e404d65284e66533f79f79add0c787 -->
 > > `False` for such an entry, so `guard_is_unconditional`'s `all(...)` can never pass
 > > (`plr-sema/src/plr_sema/check/predicate.py:773-788`). **An in-loop guard has a non-empty trail with
 > > an unsatisfiable entry and can never emit `WILL_FAIL`, before or after the lift**, and precondition
@@ -1053,7 +1054,7 @@ which §15.8 argues this production is not."*
 >
 > **The invariant holds vacuously across the whole shipped evaluator today**, which is what makes it a
 > real constraint rather than a description: `_eval_is_instance` returns `None` on a non-`Ref`,
-> `_eval_is` requires a `Lit` (`plr-sema/src/plr_sema/check/predicate.py:895-900`), `_eval_cmp` returns
+> `_eval_is` requires a `Lit` (`plr-sema/src/plr_sema/check/predicate.py:895-900`), `_eval_cmp` returns <!-- citations-at: c4a42f64a5e404d65284e66533f79f79add0c787 -->
 > `None` on every membership operator and on any unresolved `Len`
 > (`plr-sema/src/plr_sema/check/predicate.py:535-558`), `_maybe_setof_uniqueness` requires a `Seq` of
 > hashable `Lit`s, and `_eval_alpha_existential` returns `None` unless the iterand is a concrete `Seq`
@@ -1144,7 +1145,7 @@ conditions. Each is discharged here, in order, and none is waived.
 > `False`, so an unknown length cannot falsify either. The two ½ cells are the ones the empty sequence
 > falsifies — `AllOf` over an empty ⊤ seq with an `F` body is `T`, not `F` — and they stay ½ **by
 > rule**. A `seq` that resolves to a concrete `Seq` is governed by the shipped
-> `_eval_allof_anyof` path unchanged (`plr-sema/src/plr_sema/check/predicate.py:953-962`); the two do
+> `_eval_allof_anyof` path unchanged (`plr-sema/src/plr_sema/check/predicate.py:953-962`); the two do <!-- citations-at: c4a42f64a5e404d65284e66533f79f79add0c787 -->
 > not overlap. Q-MONO is an instance of §16.5.3's E-INV invariant and is named there.
 >
 > **This is the clause that decides `:514`**, and it decides it without resolving the `Zip`: `p` is
@@ -1199,7 +1200,7 @@ conditions. Each is discharged here, in order, and none is waived.
 ## 16.6 Q1 — the scoped joined verdict
 
 Increment 6 §15.5 established the representation's two halves and left the third. Tier (iii) is derived
-from `is_dynamic_raise` (`plr-sema/src/plr_sema/check/predicate.py:1206-1210`); it emits **one**
+from `is_dynamic_raise` (`plr-sema/src/plr_sema/check/predicate.py:1206-1210`); it emits **one** <!-- citations-at: c4a42f64a5e404d65284e66533f79f79add0c787 -->
 `Finding`, `UNKNOWN`/`guard_env_dependent`, and folds its site into `AnalysisReport.scope.excludes_sites`
 (`plr-sema/src/plr_sema/check/__init__.py:409-470` collects them, `:920-955` constructs the report,
 `plr-sema/src/plr_sema/verdict.py:261-275` is the `SoundnessScope` type and `:298-310` the optional

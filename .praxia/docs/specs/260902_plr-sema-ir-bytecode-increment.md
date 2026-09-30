@@ -8,6 +8,7 @@ task_id: 260902_sema-oracle-tipstate
 date: '260902'
 confidence: medium
 sources: "Read this session, in full or in the cited ranges: .praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md (§Open decisions 1-3, §0, §2.1-2.2, §3.1-3.3, §6.1-6.5, §7.3-7.4, §9.1-9.4, §Deferred, boundary summary); .praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md (all of §10, incl. §10.1.3, §10.5, §10.7's task row, §10.8, §10.10 Q3/Q7); .praxia/docs/plans/260902_plr-sema-oracle-harness.md; praxis/backend/utils/plr_static_analysis/models.py:504-661; praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py:430-591; plr-sema/src/plr_sema/check/graph.py (whole file); plr-sema/src/plr_sema/check/__init__.py:120-358; plr-sema/src/plr_sema/_provenance/stamp.py (whole file); plr-sema/src/plr_sema/derive/__init__.py:124-192 and the symbol index of the whole module; plr-sema/eval/oracle_common.py (whole file); training/verify/dispatcher.py:1-198; training/verify/verifier.py:20-99; coxswain/src/coxswain/plr/param_namespace.py:78-187,270-273; scripts/survey_plr_preconditions.py:267-274; plr_sema/verdict.py symbol index; one row of training/assemble/out/corpus_p25.jsonl. PLR source at submodule pin dd79c4c89: external/pylabrobot/pylabrobot/liquid_handling/liquid_handler.py:438,501,535. Read additionally during round-1 remediation: praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py:376-389,391-419,476-493,495-517,537-570; coxswain/src/coxswain/plr/param_namespace.py:138-172,245-276; training/verify/dispatcher.py:140-164; training/verify/grounding.py:100; .praxia/docs/specs/260901_plr-sema-pre-corpus-spec.md:1378-1385 (RISK-5); .praxia/docs/specs/260902_plr-sema-tip-typestate-increment.md:648-684 (§10.5); the round-1 challenger and defender reports."
+citations_at: 436c0edbeb7c231a8feced37c8468a2d8e10d21e
 ---
 
 # Increment 2: SEMA-IR, the analyzer's middle
@@ -655,7 +656,7 @@ and this increment does not need one. Every fact it relies on is derived:
 | what could have been typed | what it is instead |
 |---|---|
 | a tool→PLR parameter name map | `PlanResult.kwargs` at runtime — written by `plan_call`'s `bind` from `spec.plr_arg` (`dispatcher.py:117-135`). `PARAM_NAMESPACE` is hand-maintained, but it is **coxswain's** table, consumed across the boundary and never copied into `plr_sema` — the same relationship HM-9 records for `SUPPORTED_TOOLS`. A copy would need a row; there is no copy |
-| a per-method PLR parameter list | `SurveyRecord.params` (`derive/__init__.py:182-191`), already surveyed by `_function_params` (`survey_plr_preconditions.py:422-433`), shipped as an additive `params` key (§11.2.4) |
+| a per-method PLR parameter list | `SurveyRecord.params` (`derive/__init__.py:182-191`), already surveyed by `_function_params` (`survey_plr_preconditions.py:422-433`), shipped as an additive `params` key (§11.2.4) | <!-- citations-at: 31639a0d292c796de3904aae0e93b8ae9358ba5a -->
 | a `WIDEN` reason vocabulary | upstream field names, checked by set-inclusion against `model_fields` (§11.1.5, AC-11.8) |
 | an opcode↔field mapping table | it *is* the disposition table, and the disposition table is checked exhaustive against `model_fields` (AC-11.1) rather than maintained against a memory of what upstream looks like |
 
