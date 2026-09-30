@@ -523,6 +523,21 @@ async def test_digest_includes_structure_child_name_parent_and_location(st, fx):
     assert st.state_digest(w.deck) != base, "a removed child is not drawn"
 
 
+@_async_test
+async def test_swapping_the_tip_a_spot_holds_changes_nothing_drawn(st, fx):
+    """A tip's identity is not drawn: only whether the spot holds one (`spot.tip is not None`)."""
+    w = await _world(fx)
+    spot = w.tips.get_item("A5")
+    base = st.state_digest(w.tips)
+    old = spot.tip
+    spot.unassign_child_resource(old)
+    assert st.state_digest(w.tips) != base, "an empty spot is drawn differently"
+    new = spot.make_tip()
+    spot.assign_child_resource(new)
+    assert spot.tip is new and new.name != old.name
+    assert st.state_digest(w.tips) == base, "a spot holding another tip draws the same"
+
+
 # --------------------------------------------------------------------------- session basics
 
 
@@ -974,6 +989,7 @@ async def test_subscription_is_idempotent_through_the_subscribed_set(st, fx, mon
     from pylabrobot.resources import Resource, TipSpot
 
     w = await _world(fx)
+    w2 = await _world(fx)  # an equal deck: the same names, other objects
     state_regs: dict[int, int] = {}
     assign_regs: dict[int, int] = {}
     orig_state = Resource.register_state_update_callback
@@ -1013,6 +1029,11 @@ async def test_subscription_is_idempotent_through_the_subscribed_set(st, fx, mon
         held_tip = isinstance(node.parent, TipSpot)  # a resting tip is its spot's state: not watched
         assert state_regs.get(id(node), 0) == (0 if held_tip else 1), f"{node.name} registered wrongly"
     assert assign_regs.get(id(w.deck)) == 1 and assign_regs.get(id(w.assay)) == 1
+    # another object under a drawn name, and back: the original is not registered a second time
+    s.draw(w2.assay)
+    s.draw(w.assay)
+    assert all(state_regs.get(id(n)) == 1 for n in nodes)
+    assert assign_regs.get(id(w.assay)) == 1 and unassign_regs.get(id(w.assay)) == 1
     # a callback fires once per change, so a dirty mark is not doubled
     n = _count_state_callbacks(w.assay.get_item("A1"))
     w.assay.get_item("A1").tracker.set_volume(1.0)
@@ -1158,6 +1179,23 @@ async def test_a_loop_that_cannot_schedule_never_breaks_a_liquid_handling_call(s
     await w.lh.pick_up_tips(w.tips["A6:H6"])
     s.post_run_cell()
     assert posts.msgs[0]["revs"] == {"source": r + 1}
+
+
+@_async_test
+async def test_a_bug_inside_the_callback_is_logged_and_never_reaches_plr(st, fx, monkeypatch, caplog):
+    def boom(self):
+        raise RuntimeError("scheduler bug")
+
+    w = await _world(fx)
+    s, posts, _ = _session(st)
+    s.draw(w.source)
+    monkeypatch.setattr(st.DisplaySession, "_schedule", boom)
+    with caplog.at_level("ERROR"):
+        w.source.get_item("A1").tracker.set_volume(1.0)  # inside PLR's tracker call: must not raise
+    assert any("scheduler bug" in (rec.exc_text or "") or "callback failed" in rec.getMessage() for rec in caplog.records)
+    assert w.source.get_item("A1").tracker.get_used_volume() == 1.0, "the operation itself completed"
+    s.post_run_cell()
+    assert len(posts) == 1, "the dirty mark survived, so post_run_cell still announces"
 
 
 @_async_test
