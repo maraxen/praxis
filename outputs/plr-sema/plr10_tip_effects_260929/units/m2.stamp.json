@@ -1,0 +1,25 @@
+{
+ "completed_at": "2026-09-30T06:05:02.567719+00:00",
+ "elapsed_s": 60.011587133049034,
+ "inputs": {
+  "chatterbox_runner_sha256": "2d59d1dc8a48af346747fb64a71c626f6179b75b3c78075f28267352a7a78bfb",
+  "code_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "corpus": {
+   "training/assemble/out/corpus_p25.jsonl": "9803b5b8d5220040e5f1d67380d1f67a301b6efc01482b746c1351b6f17c8f83"
+  },
+  "crosscheck": {
+   "training/out/corpus_p23_floor.jsonl": "33a69e95c9f103acc79ecd6fc13b9cf4c794c3f476b772561397e1b79a77a353",
+   "training/overlay_gen/out/overlay_full.jsonl": "483ae6456d509613485a7566d5868307b40c45ba0859f1416766bb25a454f9be"
+  },
+  "derived_contracts_json": "bc3c94f41cc5feac3f7486bbdaa89730a16f88fbfae254409dbc0cba7999a408",
+  "git_head": "f1a02465b5e2970ed5de8b6d04484faeae7681ed",
+  "limit": null,
+  "mutant_examples_sha256": "c9db3926e16366e8110da559396749d22bb12597bc890e361889156eba0d1a0a",
+  "pylabrobot_head": "786ac2c4e4f7afe37885af2d98ff5b0afe274c67",
+  "sidecar": {
+   "training/assemble/out/corpus_p25_sidecar.jsonl": "134ecb8e555a251043ece667df66bdf6145537b4b558ced3a23525e1c29ef94b"
+  }
+ },
+ "output_sha256": "f6623338cdd2ca3ac3dbb7124b6a15d5bcd63be5b0f8231efa00c1c5103349e3",
+ "unit": "m2"
+}

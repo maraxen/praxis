@@ -24,7 +24,7 @@ import warnings
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
-from pylabrobot.resources import ResourceHolder
+from pylabrobot.resources import Lid, ResourceHolder, TipRack
 
 from coxswain.plr.param_namespace import (
     RESOURCE_TYPE_CONTAINER,
@@ -50,6 +50,11 @@ RESOURCE_TYPES = ("Plate", "TipRack", "Trough", "TubeRack", "Container")
 #: Rails used for harness-added parking holders (plate carrier spans ~rails
 #: 9-12; tip carrier 1-2; troughs go to rails=21; keep clear of those).
 _PARK_RAILS = (5, 7, 13, 15, 17, 23)
+
+#: Harness-built tip-rack lid geometry (``DeckLayout.lidded_tip_racks``): the
+#: lid is as tall as a thin plate lid and nests 2 mm into the rack.
+_LID_SIZE_Z_MM = 8.0
+_LID_NESTING_Z_MM = 2.0
 
 _RUNNER_PATH = (
     Path(__file__).resolve().parents[2]
@@ -101,6 +106,17 @@ class DeckLayout:
     #: Extra empty ResourceHolders placed directly on the deck (move/plate
     #: parking destinations), addressable by bare name in refs.
     holders: list[str] = field(default_factory=list)
+    #: Names of tip racks (keys of ``resources`` with kind "TipRack", or the
+    #: factory rack "tip_rack") that ``build_setup`` seals with a real PLR
+    #: ``Lid`` after the racks are placed -- so ``rack.lid`` is set and
+    #: ``rack._available_for_tip_handling`` is False.  Spec
+    #: 260929_plr-sema-plr1-tip-effect-increment.md §18.5.2 (#5622, T60):
+    #: nothing in ``training/`` built a ``Lid`` before, so neither the
+    #: ``tip_racks_available`` observation's lidded fixture nor the m3 mutant
+    #: could exist.  Default empty: every existing layout builds byte-
+    #: identically, and ``row_to_verifier_inputs`` never emits it, so the
+    #: 343-row benchmark's decks are unchanged.
+    lidded_tip_racks: list[str] = field(default_factory=list)
 
     def merged(self, other: "DeckLayout | None") -> "DeckLayout":
         if other is None:
@@ -109,6 +125,7 @@ class DeckLayout:
             resources={**self.resources, **other.resources},
             seed_volumes={**self.seed_volumes, **other.seed_volumes},
             holders=[*self.holders, *other.holders],
+            lidded_tip_racks=[*self.lidded_tip_racks, *other.lidded_tip_racks],
         )
 
 
@@ -182,6 +199,27 @@ class SetupHandle:
                 names.append(name)
             stack.extend(getattr(node, "children", []))
         return names
+
+    def tip_racks_available(self) -> bool:
+        """§18.5.2 (spec 260929_plr-sema-plr1-tip-effect-increment.md, #5622,
+        T60): ``all(node._available_for_tip_handling for node in <deck tree>
+        if isinstance(node, TipRack))`` -- the aggregate the ``:338`` site
+        rule (``_check_tip_racks_available``) reads.  Walked by the SAME
+        stack walk :meth:`deck_resource_names` uses, over the LIVE tree.
+        Vacuously ``True`` on a deck with no tip rack.  It quantifies over
+        EVERY rack on the deck, not the operation's racks, so one lidded
+        rack anywhere makes it ``False``.  ``_available_for_tip_handling``
+        is a PRIVATE PLR property: a raising read propagates, and the
+        caller's ONE capture guard turns that into a ``None`` record.
+        """
+        available = True
+        stack = [self.deck]
+        while stack:
+            node = stack.pop()
+            if isinstance(node, TipRack) and not node._available_for_tip_handling:
+                available = False
+            stack.extend(getattr(node, "children", []))
+        return available
 
 
 def _prefix_classification(name: str) -> tuple[str, str]:
@@ -388,9 +426,11 @@ def _has_tail(ref: str) -> bool:
 
 def capture_observation(setup: SetupHandle) -> dict[str, Any]:
     """§16.2.1 (spec 260909, observation increment, T40), extended by
-    §17.3 (spec 260909, move-family increment, T51): the five-field
+    §17.3 (spec 260909, move-family increment, T51) and §18.5.2 (spec
+    260929, PLR 1.0 tip-effect increment, T60): the six-field
     observation record -- ``backend_class``, ``num_channels``,
-    ``head_channels``, ``deck_resource_names``, ``arm_slots`` -- read off
+    ``head_channels``, ``deck_resource_names``, ``arm_slots``,
+    ``tip_racks_available`` -- read off
     the LIVE ``setup`` at whatever instant the caller invokes this
     function.  This function does no fail-closed handling of its own: it
     either returns a complete record or raises, and the ONE capture-point
@@ -423,6 +463,10 @@ def capture_observation(setup: SetupHandle) -> dict[str, Any]:
         "head_channels": sorted(machine.head),
         "deck_resource_names": setup.deck_resource_names(),
         "arm_slots": sorted(machine._resource_pickups),
+        # §18.5.2 (spec 260929_plr-sema-plr1-tip-effect-increment.md, #5622,
+        # T60): the SIXTH field, read at the SAME single capture point --
+        # the `:338` site rule's observation conjunct and nothing else.
+        "tip_racks_available": setup.tip_racks_available(),
     }
 
 
@@ -541,6 +585,38 @@ def build_setup(
         )
         _place_on_free_rail(holder, f"parking holder {holder_name!r}")
         handle.resources[holder_name] = holder
+
+    # §18.5.2 (spec 260929_plr-sema-plr1-tip-effect-increment.md, #5622, T60):
+    # seal each named tip rack with a REAL PLR ``Lid``, AFTER every rack,
+    # trough and holder is placed so the lid's deck-unique name is checked
+    # against the whole final tree.  ``Liddable.assign_child_resource``
+    # (``external/pylabrobot/pylabrobot/resources/lid.py``) raises only if the
+    # rack already has a lid or the lid is more than LID_UNDERSIZE_TOLERANCE
+    # smaller than the rack -- so the lid takes the rack's own footprint, and
+    # a nonzero ``nesting_z_height`` (PLR warns on 0, and a lid that nests 0
+    # mm is not a physical lid).  A name that is not a tip rack of THIS
+    # layout, or a rack named twice, fails the build closed (ValueError ->
+    # ``verify``'s deck-build failure path), never a silently unlidded deck.
+    for rack_name in layout.lidded_tip_racks:
+        rack = handle.resources.get(rack_name)
+        if not isinstance(rack, TipRack):
+            raise ValueError(
+                f"lidded_tip_racks names {rack_name!r}, which is not a tip rack in this layout "
+                f"(tip racks: {sorted(n for n, r in handle.resources.items() if isinstance(r, TipRack))})"
+            )
+        lid_name = f"{rack.name}_lid"
+        suffix = 1
+        while deck.has_resource(lid_name):
+            suffix += 1
+            lid_name = f"{rack.name}_lid_{suffix}"
+        lid = Lid(
+            name=lid_name,
+            size_x=rack.get_size_x(),
+            size_y=rack.get_size_y(),
+            size_z=_LID_SIZE_Z_MM,
+            nesting_z_height=_LID_NESTING_Z_MM,
+        )
+        rack.assign_child_resource(lid)  # raises "already has a lid" on a repeat
 
     # Seed volumes AFTER all assignment (trackers exist from construction).
     for ref, volume_ul in layout.seed_volumes.items():

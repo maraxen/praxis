@@ -1,0 +1,110 @@
+# bathos sidecar for plr-sema/eval/plr10_tip_effects_measure.py
+# (backlog #5622, task 260929_plr-1.0-migration, spec 260929 §18.9).
+# PRE-REGISTERED before any run. Baseline: run fd63e9cd (1.0 floor, 0 scope-SAFE),
+# dd79c4c89 ledger unknown_ledger_260911_volwire (216 scope-SAFE, all pick_up_tips).
+# No number from the #5622 recon's exploratory scripts is evidence for or against this hypothesis.
+#
+# SCHEDULING (owner rule 260929: preemption-safe and resumable; scheduling only, never [outcomes]):
+#   Seven units, each in its own subprocess with its own timeout and no whole-run timeout:
+#   real, all_safe (30 min each) and m1, m2, p3a, m3, v1 (30 min each). The timeouts are a judgement,
+#   about 10x fd63e9cd's ~148 s real-arm wall-clock.
+#   Each unit persists units/<unit>.json as it completes, then units/<unit>.stamp.json holding
+#   {unit, input sha256s (derived_contracts.json, corpus files, sidecar input, crosschecks, git HEAD),
+#   output sha256}.
+#   Re-invocation reuses a unit only if its input hashes AND its output sha256 match; otherwise it
+#   recomputes. result.json records per unit: reused|computed, source path, hashes.
+#   Any required unit incomplete (timeout or crash) => no result.json => FAIL by construction.
+
+[experiment]
+hypothesis = "With spec §18's derived rules (R-A..R-E, L1's effects_unresolved->widen) and the fourth D6 site rule at :338, the analyzer at PLR 1.0.0b1 (a) stays sound and total on the frozen 343-row tier-1 benchmark with a live negative control; (b) fires tip-state WILL_FAIL at the raising index in m1/m2 on every row that raised as expected, above pre-registered floors, never emits a WILL_FAIL where the simulator ran clean in any class (p3a included), keeps the v1 volume direction control, and never calls :338 SAFE on an m3 lidded-rack mutant that raised at :338; (c) recovers pick_up_tips scope-SAFE from 0 to at least 205 of the 216 it had at dd79c4c89, and no other method reaches scope-SAFE; (d) publishes LiquidHandler.load_state channel_effect = 'widen' with exactly one baseline divergence, which is the only intended one; (e) changes no benchmark counter through load_state, which the tier-1 vocabulary never calls; and (f) every :338 decline on a planned pick_up_tips is attributed to exactly one conjunct, and the topology-prefix declines agree with an independent IR scan. p3a's floor is reported, not predicted."
+stage_name = "tip_effect_increment"
+novel = false
+
+# HARD block H (both pass and marginal require all of it; fail is exactly NOT H):
+#   control_fires = true AND real_unsound = 0 AND real_unsound_scoped = 0 AND real_totality_violations = 0
+#   AND real_check_graph_exceptions = 0 AND real_rows_setup_error = 0 AND real_rows_executed = 343
+#   AND mutants_unsound = 0 AND mutants_criterion_ii = 0 AND mutants_hard_violations_excl_p3a_floor = 0
+#   AND static_338_safe_on_m3 = 0 AND runtime_raised_m3 > 0
+#   AND m1_will_fail_fired = true AND m2_will_fail_fired = true AND load_state_channel_effect = 'widen'
+#   AND baseline_divergences = baseline_intended_divergences AND n_ops_load_state = 0
+#   AND n_338_declined_unattributed = 0 AND n_338_safe_with_reason = 0
+#   AND n_338_declined_topology_prefix = n_pickups_with_preceding_disturber_indep
+#   AND real_pick_up_tips_scope_safe >= 123
+# EXTRAS X (pass requires all; marginal is H AND NOT X):
+#   m1_achieved = m1_attempted AND m1_attempted >= 150 AND m2_achieved = m2_attempted AND m2_attempted >= 200
+#   AND v1_gate_passed = true AND v1_achieved = v1_attempted AND v1_attempted >= 50
+#   AND baseline_intended_divergences = 1 AND n_338_declined_topology_loop = 0
+#   AND real_pick_up_tips_scope_safe >= 205 AND real_pick_up_tips_scope_safe <= 216
+#   AND real_n_operations_scope_verdict_safe = real_pick_up_tips_scope_safe
+# Exclusive and exhaustive by construction: pass = H AND X, marginal = H AND NOT X, fail = NOT H.
+# (H and X are written out in full in each condition below; these comments are for the reader only.)
+
+[outcomes.pass]
+condition = "control_fires = true AND real_unsound = 0 AND real_unsound_scoped = 0 AND real_totality_violations = 0 AND real_check_graph_exceptions = 0 AND real_rows_setup_error = 0 AND real_rows_executed = 343 AND mutants_unsound = 0 AND mutants_criterion_ii = 0 AND mutants_hard_violations_excl_p3a_floor = 0 AND static_338_safe_on_m3 = 0 AND runtime_raised_m3 > 0 AND m1_will_fail_fired = true AND m2_will_fail_fired = true AND load_state_channel_effect = 'widen' AND baseline_divergences = baseline_intended_divergences AND n_ops_load_state = 0 AND n_338_declined_unattributed = 0 AND n_338_safe_with_reason = 0 AND n_338_declined_topology_prefix = n_pickups_with_preceding_disturber_indep AND real_pick_up_tips_scope_safe >= 123 AND m1_achieved = m1_attempted AND m1_attempted >= 150 AND m2_achieved = m2_attempted AND m2_attempted >= 200 AND v1_gate_passed = true AND v1_achieved = v1_attempted AND v1_attempted >= 50 AND baseline_intended_divergences = 1 AND n_338_declined_topology_loop = 0 AND real_pick_up_tips_scope_safe >= 205 AND real_pick_up_tips_scope_safe <= 216 AND real_n_operations_scope_verdict_safe = real_pick_up_tips_scope_safe"
+is_residual = false
+decision = "Precision at PLR 1.0 is recovered to within 5% of the dd79c4c89 headline with soundness intact, every gated direction control at floor, every :338 decline attributed, and the instrument live. Close #5622's measurement; publish the per-conjunct decline counts and the reported-only p3a and m3 counts beside the result."
+reasoning = "The 216 at 1.0 are blocked by exactly {:338, :758, tip_tracker:153}; R-A..R-C restore the last two by the old pin's own mechanism, the site rule decides the first. The only decline paths the old pin did not have are an observed lidded/stacked rack and a preceding topology disturber; a loss of at most 11 (5%) is a judgement, stated as one."
+
+[outcomes.marginal]
+condition = "control_fires = true AND real_unsound = 0 AND real_unsound_scoped = 0 AND real_totality_violations = 0 AND real_check_graph_exceptions = 0 AND real_rows_setup_error = 0 AND real_rows_executed = 343 AND mutants_unsound = 0 AND mutants_criterion_ii = 0 AND mutants_hard_violations_excl_p3a_floor = 0 AND static_338_safe_on_m3 = 0 AND runtime_raised_m3 > 0 AND m1_will_fail_fired = true AND m2_will_fail_fired = true AND load_state_channel_effect = 'widen' AND baseline_divergences = baseline_intended_divergences AND n_ops_load_state = 0 AND n_338_declined_unattributed = 0 AND n_338_safe_with_reason = 0 AND n_338_declined_topology_prefix = n_pickups_with_preceding_disturber_indep AND real_pick_up_tips_scope_safe >= 123 AND (m1_achieved != m1_attempted OR m1_attempted < 150 OR m2_achieved != m2_attempted OR m2_attempted < 200 OR v1_gate_passed = false OR v1_achieved != v1_attempted OR v1_attempted < 50 OR baseline_intended_divergences != 1 OR n_338_declined_topology_loop != 0 OR real_pick_up_tips_scope_safe < 205 OR real_pick_up_tips_scope_safe > 216 OR real_n_operations_scope_verdict_safe != real_pick_up_tips_scope_safe)"
+is_residual = false
+decision = "Sound, instrument live, every :338 decline attributed and the topology prefix reconciled, but a floor or prediction missed: a direction control under its floor, a second intended baseline divergence, a loop-clause decline, recovery below 205, or an unpredicted SAFE population. Publish every n_338_declined_* counter and the per-class mutant counts; attribute every miss to a named rule; the owner decides whether a finer conjunct or a harness fix is worth an increment. No precision claim beyond the measured number."
+reasoning = "Every soundness and accounting term held, so what missed is precision or coverage, not correctness."
+
+[outcomes.fail]
+condition = "control_fires = false OR real_unsound > 0 OR real_unsound_scoped > 0 OR real_totality_violations > 0 OR real_check_graph_exceptions > 0 OR real_rows_setup_error > 0 OR real_rows_executed != 343 OR mutants_unsound > 0 OR mutants_criterion_ii > 0 OR mutants_hard_violations_excl_p3a_floor > 0 OR static_338_safe_on_m3 > 0 OR runtime_raised_m3 = 0 OR m1_will_fail_fired = false OR m2_will_fail_fired = false OR load_state_channel_effect != 'widen' OR baseline_divergences != baseline_intended_divergences OR n_ops_load_state != 0 OR n_338_declined_unattributed != 0 OR n_338_safe_with_reason > 0 OR n_338_declined_topology_prefix != n_pickups_with_preceding_disturber_indep OR real_pick_up_tips_scope_safe < 123"
+is_residual = true
+decision = "Stop and attribute the cause through the published counters before any claim. Soundness/instrument: a soundness counter, criterion (ii) in any class, a non-p3a-floor hard violation, a wrong :338 SAFE on m3, m3 never raising at :338 (including an unbuildable m3a), a dead negative control, or a changed denominator (the observation-field or DeckLayout change touched the harness runtime path). Derivation: a wrong load_state value or an unintended baseline divergence. Accounting: an unattributed decline, a SAFE with a decline reason, or topology-prefix declines that disagree with the independent scan. Precision below 123: read n_338_declined_{kind,observation,deck,topology_prefix,topology_loop} against the non-:338 residual sites to say which mechanism lost the operations, and do not infer 'mechanism broken' until that breakdown says so."
+reasoning = "Every prior increment held 0 unsound on this 343-row denominator; a failed direction control, a wrong load_state value, or an unaccounted decline means the implementation is not the one specified."
+
+[result_schema]
+control_fires = "bool"
+real_rows_executed = "int"
+real_rows_setup_error = "int"
+real_operations_executed = "int"
+real_unsound = "int"
+real_unsound_scoped = "int"
+real_totality_violations = "int"
+real_check_graph_exceptions = "int"
+real_n_operations_scope_verdict_safe = "int"
+real_pick_up_tips_scope_safe = "int"
+real_pick_up_tips_n_ops = "int"
+real_n_findings_decided = "int"
+real_n_tip_racks_decided = "int"
+real_n_tip_racks_attempted = "int"
+n_338_pickups_attempted = "int"
+n_338_pickups_safe = "int"
+n_338_declined_kind = "int"
+n_338_declined_observation = "int"
+n_338_declined_deck = "int"
+n_338_declined_topology_prefix = "int"
+n_338_declined_topology_loop = "int"
+n_338_declined_unattributed = "int"
+n_338_safe_with_reason = "int"
+n_pickups_with_preceding_disturber_indep = "int"
+all_safe_unsound = "int"
+all_safe_operations_executed = "int"
+runtime_raised_ops_all_safe_arm = "int"
+m1_will_fail_fired = "bool"
+m2_will_fail_fired = "bool"
+m1_attempted = "int"
+m1_achieved = "int"
+m2_attempted = "int"
+m2_achieved = "int"
+p3a_attempted = "int"
+p3a_achieved = "int"
+mutants_hard_violations_excl_p3a_floor = "int"
+mutants_unsound = "int"
+mutants_criterion_ii = "int"
+m3_attempted = "int"
+runtime_raised_m3 = "int"
+static_338_safe_on_m3 = "int"
+v1_attempted = "int"
+v1_achieved = "int"
+v1_gate_passed = "bool"
+load_state_channel_effect = "str"
+baseline_divergences = "int"
+baseline_intended_divergences = "int"
+baseline_parity_matched = "int"
+baseline_parity_total = "int"
+n_ops_load_state = "int"

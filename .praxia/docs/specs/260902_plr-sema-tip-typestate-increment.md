@@ -305,6 +305,16 @@ Measured over `TipTracker`: `add_tip` writes `self._pending_tip = tip` (`tip_tra
 `self._tip = self._pending_tip` (`:113`) → both-kinds-unknown → no effect, which is right, since
 under A-COMMIT a commit is a no-op on the abstraction. **DERIVED.**
 
+> **Amendment (#5622, T64; spec `260929_plr-sema-plr1-tip-effect-increment.md` §18.4.4, dated 260929).**
+> The third bullet's "or writes of both kinds → no effect" is **withdrawn for tracker methods**. Under
+> that spec's L1, a method whose writes are of both kinds (or whose write the classifier cannot resolve)
+> is **UNRESOLVED**: it is published in `receiver_state.effects_unresolved` and omitted from
+> `effects`, and a bridge to it makes the bridging contract entry's `channel_effect` `"widen"` (E4),
+> never "no effect". The old reading was omission-as-no-op, the same unsoundness the conflicting-bridge
+> rule below already closes one level up. A method that writes no state field at all is still
+> transparent. The worked `commit` example above is unchanged in outcome at the old pin and is
+> re-derived, not assumed, at 1.0 (§18.3, §18.4.2).
+
 **Conflicting depth-0 bridges — widen, never E2, and never "no effect" (round 1, O2).** The
 three-way classification above is about a class `C`'s *own* direct field writes. The bridge
 mechanism (§10.2.5) can additionally attach two *different* `C` methods to one contract entry `K`,
@@ -627,6 +637,15 @@ For operation `op` on receiver `v`, with `channels(op)` from §10.1.3 and the pr
   tracker-mutating `C` method agrees on `e` — and `channels(op)` is exact, then for each
   `c ∈ channels(op)`: `σ'.exact[c] = e`. Channels outside the set are unchanged. If the depth-0
   bridges disagree, E2 does **not** apply; E4 does.
+
+  > **Amendment (#5622, T64; spec `260929_plr-sema-plr1-tip-effect-increment.md` §18.4.4, r1 M2,
+  > dated 260929).** E2 also does **not** apply when the method's depth-0 effect **coexists with a
+  > deep tracker-mutating effect** (a direct bridge plus one reached only at depth > 0, §10.2.6). In
+  > that case `channel_effect` is `"widen"` (E4), not the depth-0 effect. Before the amendment the
+  > depth-0 effect was taken even with a nested one present. The same widen applies when any bridged
+  > method is `UNRESOLVED` (the §10.2.4 amendment above), and unresolved takes precedence. The
+  > breadth of the coexistence rule is published as
+  > `receiver_state_diagnostics.n_contracts_depth0_and_deep_coexist`, measured 0 at PLR 1.0.0b1.
 - **E3 (no effect).** If the method has no depth-0 tracker-mutating bridge, `σ' = σ`. This covers
   `aspirate`, `dispense`, `transfer` and every non-tip method: they read tip state and do not change
   it.
@@ -753,6 +772,8 @@ a reviewer can attack them; none of them is buried in code.
 | **A-COMMIT** (narrowed, round 1 O1) | at operation boundaries **of `pick_up_tips` and `drop_tips` only**, `_tip` and `_pending_tip` agree | P2 merges two concrete fields into one abstract cell (§10.2.2) | verified for exactly those two: each ends in a commit-or-rollback fold over every touched channel (`liquid_handler.py:570-573`, `:716-723`). It is **known false** for `update_head_state` (`liquid_handler.py:262-282`, `remove_tip(commit=False)` with no later `commit()`) and `clear_head_state` (`:284-287`) — both of which widen to `TOP` before any later guard is evaluated, by §10.4's E4.2 and E4.3 respectively, so neither can read the merged cell. What breaks it is a *new* PLR method that mutates a head tracker at depth 0 with a single non-conflicting effect and no commit; Fork D's pin test is the tripwire, and §10.6.4 is the worked non-example |
 | **A-ENABLED** | the head trackers are not `disable()`d | `TipTracker.add_tip`/`remove_tip` raise `RuntimeError` when disabled (`tip_tracker.py:89-90`, `:102-103`) | **largely self-discharging**: under A-COMPLETES, if `op_0`'s `add_tip` had raised `RuntimeError`, `op_0` would not have completed, so a completed `pick_up_tips` implies its head tracker was enabled. The residual is a `disable()` call *between* two operations, which no graph emits |
 | **A-DECK-OBJECT** (added 260909, observation increment, T48, D2/D6) | a resource the program passes to a `LiquidHandler` operation is the deck's own object of that name | `Resource.__eq__` compares name, all three absolute sizes, location, category **and children** (`external/pylabrobot/pylabrobot/resources/resource.py:160-170`); the IR's `Resource` carries no name, let alone geometry, so the `:321` site rule (`.praxia/docs/specs/260909_plr-sema-observation-increment.md:332-427`) can only ever decide the *name* half of the comparison, never the structural one | a program that constructs a second `Resource` with a name already on the deck and passes it gets a `SAFE` where PLR raises `ValueError` — the unsound direction. Checked **on the corpus**, not in general: the tier-1 fence (`plr-sema/eval/oracle_common.py:767-786`, unmodified) would count such a row `unsound` were A-DECK-OBJECT false on any of the 288 real operations it decides; one **hand-built** duplicate-name-mismatched-geometry fixture (AC-16.13) gives it an adversarial witness beyond the corpus's own 288 |
+| **A-RACK-STATIC** (added 260929, §18.5.5; r1) | between the observation capture point and an operation, a `TipRack`'s lid and stack position change only through a topology-disturbing call (§18.5.4) | the `:338` site rule reads a pre-execution observation (§18.5.2) | a non-move-family `LiquidHandler` method that places a lid on, or stacks onto, a tip rack before a pickup gives `SAFE` at `:338` where PLR raises `ValueError`, which is unsound. **Known fail-open edge (r1, M5):** a method whose P6 net effect is `"TOP"` (P6 declined) is treated as non-disturbing. The shipped-table family pin (AC-18.11(i)) catches a known member decaying to `"TOP"`, but not an unknown method that moves resources while being `"TOP"`. **Checked on the corpus** by the unmodified tier-1 fence, and given one **hand-built** adversarial witness per disturber class in AC-18.11(d)(e)(f). The in-run m3 mutant (§18.9) exercises only the **observation** conjunct, not this frame condition (r2, C16) |
+| **A-CALLBACK-INERT** (added 260929, PLR 1.0 tip-effect increment §18.4.3, owner ruling on OI-21) | a state-update callback reached from a head tracker's `commit` does not write any head tracker's tip state | the §18 effect derivation does not follow `commit`'s `self._callback()`, because `_callback` is an instance attribute, not a method, so any tracker write made through a callback would be invisible to it | **checked at the pin** (AC-18.2(q)): every `register_callback` argument in `LiquidHandler` is `self._state_updated`, which resolves to `Resource._state_updated`, a notifier that only passes `serialize_state()` to its registered callbacks. **Assumed, not checkable from PLR source:** the user-registered downstream state-update callbacks do not write a head tracker. If one does, a method judged `UNTOUCHED` or `HAS_TIP`/`NO_TIP` could leave a different tip state than the walk records, and both a false `SAFE` and a false `WILL_FAIL` become possible. Follow-up, backlog #5661 (outside #5622): any analysed protocol that registers its own state-update callback makes tip state `UNKNOWN`, which turns this assumption into a check |
 
 **The brief's premise about `does_tip_tracking()` is, for this family, false — and that is good news
 worth stating.** Main spec §Open decisions 2 correctly notes that PLR's *volume* guards are gated by

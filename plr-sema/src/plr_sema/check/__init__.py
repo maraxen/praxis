@@ -419,6 +419,8 @@ def _findings_for_guards(
     poisoned: bool,
     excludes_sites: list[PlrSite] | None,
     scope_excluded_sites: list[PlrSite] | None = None,
+    rack_topology_prefix_ok: bool | None = None,
+    rack_topology_loop_ok: bool | None = None,
 ) -> list[Finding]:
     """260904 (spec §15.4/§15.5/§15.7, increment 6, T31-2): every guard in
     ``contract["guards"]`` the tip family did not already consume is
@@ -462,6 +464,8 @@ def _findings_for_guards(
             channels=channels,
             class_hierarchy=class_hierarchy,
             k_reachability_clear=guard.get("reachability_clear"),
+            rack_topology_prefix_ok=rack_topology_prefix_ok,
+            rack_topology_loop_ok=rack_topology_loop_ok,
         )
         findings.append(_finding_from_guard_result(operation_id, guard, result))
         if result.tier_iii and excludes_sites is not None:
@@ -495,6 +499,8 @@ def _findings_for_call(
     class_hierarchy: dict[str, frozenset[str]] | None = None,
     excludes_sites: list[PlrSite] | None = None,
     scope_excluded_sites: list[PlrSite] | None = None,
+    rack_topology_prefix_ok: bool | None = None,
+    rack_topology_loop_ok: bool | None = None,
 ) -> list[Finding]:
     """The per-``CALL`` body: exactly today's (pre-IR) per-operation logic
     (§11.4.1), re-keyed from an ``OperationNode`` to a ``CALL`` instruction
@@ -570,6 +576,8 @@ def _findings_for_call(
             poisoned=poisoned,
             excludes_sites=excludes_sites,
             scope_excluded_sites=scope_excluded_sites,
+            rack_topology_prefix_ok=rack_topology_prefix_ok,
+            rack_topology_loop_ok=rack_topology_loop_ok,
         )
     )
     findings.extend(anchor_findings)
@@ -748,7 +756,26 @@ def check_ir(
         instr.slot: instr for instr in instructions if isinstance(instr, ir.Resource)
     }
 
+    # 260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md §18.5.4,
+    # #5622, T61): the `:338` site rule's frame condition. ONE pre-scan of the
+    # whole stream for topology-disturbing CALLs (move family, unknown
+    # receiver, no contract), read per call by `rack_topology_clauses`.
+    rack_disturbers = predicate.rack_topology_disturbers(instructions, contracts, receiver_states)
+    # Review fix (#5622 T61): clause (i) reads pc order as execution order. When
+    # `lower_graph` could not trust the payload's `execution_order` it fell back
+    # to payload order and recorded `Widen(execution_order)` -- pc order is then
+    # NOT execution order, so no pc-relative claim about "earlier" or "later"
+    # holds: every call declines both clauses.
+    rack_order_untrusted = any(
+        isinstance(instr, ir.Widen) and instr.reason == ir._EXECUTION_ORDER for instr in instructions
+    )
+
     def process_call(pc: int, instr: ir.Call, *, inside_loop: bool) -> list[Finding]:
+        prefix_ok, loop_ok = predicate.rack_topology_clauses(
+            rack_disturbers, pc, instr.receiver_type, inside_loop
+        )
+        if rack_order_untrusted:
+            prefix_ok = loop_ok = False
         return list(
             _findings_for_call(
                 str(pc),
@@ -765,6 +792,8 @@ def check_ir(
                 excludes_sites=excludes_sites,
                 scope_excluded_sites=scope_excluded_sites,
                 poisoned=instr.receiver in poisoned_slots,
+                rack_topology_prefix_ok=prefix_ok,
+                rack_topology_loop_ok=loop_ok,
             )
         )
 

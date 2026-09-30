@@ -487,7 +487,7 @@ class RuntimeOutcome:
     #: (a harness-level exception -- `result` is never built in that case).
     volume_tracking_observed: bool = False
     #: 260909 (spec §16.2.1, observation increment, T40, backlog #5023):
-    #: the five-field observation record (§17.3 extends it), read off `verify()`'s own
+    #: the six-field observation record (§17.3 and §18.5.2 extend it), read off `verify()`'s own
     #: additive `plr_observation` result key -- itself captured at ONE
     #: window inside `verify()`, never re-derived here.  `None` on the
     #: same two conditions `verify()` documents: the deck-build early
@@ -732,14 +732,16 @@ def run_static(graph: dict[str, Any], contracts_json: str) -> dict[str, dict[str
 
 
 #: §16.2.1's CLOSED field list, extended by §17.3 (move-family increment,
-#: T51) with `arm_slots` -- read here by NAME and nowhere else, so a SIXTH
-#: key silently added upstream (e.g. a stale/experimental `verify()`
-#: caller) can never widen `env`. The sorted key-set equality this backs
-#: is what the closed-refusal-list tests in `plr-sema/tests/test_cache.py`
-#: and `training/tests/test_verify_postconditions.py` assert against.
+#: T51) with `arm_slots` and by §18.5.2 (PLR 1.0 tip-effect increment, T60,
+#: #5622) with `tip_racks_available` -- read here by NAME and nowhere else,
+#: so a SEVENTH key silently added upstream (e.g. a stale/experimental
+#: `verify()` caller) can never widen `env`. The sorted key-set equality
+#: this backs is what the closed-refusal-list tests in
+#: `plr-sema/tests/test_cache.py` and
+#: `training/tests/test_verify_postconditions.py` assert against.
 OBSERVATION_KEYS = frozenset({
     "backend_class", "num_channels", "head_channels", "deck_resource_names",
-    "arm_slots",
+    "arm_slots", "tip_racks_available",
 })
 
 
@@ -748,7 +750,7 @@ def observation_env_members(
     resources: Mapping[str, Any],
 ) -> frozenset[str]:
     """§16.2.3 (spec 260909, observation increment, T40, backlog #5023):
-    the `obs:` cache-key partition built off §16.2's four-field record.
+    the `obs:` cache-key partition built off §16.2's record (four fields at T40; six now).
 
     `None` (§16.2.1's fail-closed default -- the deck-build early return,
     or any raising read inside `verify()`'s own capture window) adds
@@ -800,8 +802,18 @@ def observation_env_members(
     identical `head_channels` rule, for the identical reason (a 16-arm
     backend would otherwise put arm 10 before arm 2). `arm_slots` is read
     off `plr_observation["arm_slots"]` by NAME, exactly as every other
-    field here, so `OBSERVATION_KEYS` staying closed at five continues to
+    field here, so `OBSERVATION_KEYS` staying closed at six continues to
     be what keeps a further key from ever entering `env` unnamed.
+
+    260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md §18.5.2, #5622,
+    T60): a SEVENTH member, `obs:tip_racks_available=` +
+    ``json.dumps(value)`` -- `true` or `false` -- read BY NAME off
+    `plr_observation["tip_racks_available"]`. It is a `bool` by
+    construction (`SetupHandle.tip_racks_available`); anything else is a
+    malformed record and fails loudly here rather than being coerced (a
+    coerced truthy value would be an unsound `true`). The cache key
+    partitions on it through `env` (§16.2.3) with no further `cache_key`
+    component. Only the `:338` site rule reads it.
     """
     if not plr_observation:
         return frozenset()
@@ -849,6 +861,13 @@ def observation_env_members(
     # NUMERICALLY -- the identical `head_channels` rule above, same reason.
     arm_slots = list(plr_observation["arm_slots"])
     members.add("obs:arm_slots=" + json.dumps(sorted(arm_slots), separators=(",", ":")))
+    # 260929 (spec §18.5.2, #5622, T60): the aggregate `:338` reads -- a bool
+    # or a loud failure, never a coerced value.
+    tip_racks_available = plr_observation["tip_racks_available"]
+    assert isinstance(tip_racks_available, bool), (
+        f"plr_observation malformed: tip_racks_available={tip_racks_available!r} is not a bool"
+    )
+    members.add("obs:tip_racks_available=" + json.dumps(tip_racks_available))
     return frozenset(members)
 
 

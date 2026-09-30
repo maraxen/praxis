@@ -77,7 +77,7 @@ from plr_sema.derive.receiver_state import (
     build_plr_class_index,
     build_plr_function_index,
     collect_env_ref_method_names,
-    compute_channel_bridge,
+    compute_channel_bridge_detailed,
     compute_singleton_typestate_anchors,
     compute_tip_families,
     compute_volume_anchors,
@@ -251,6 +251,11 @@ def build_derived_contracts_payload(
     volume_class_modules = volume_class_modules or {}
     volume_anchors = volume_anchors or {}
     contracts: dict[str, Any] = {}
+    # 260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md §18.4.4/§18.4.8,
+    # T57, r2 C14): how many contracts have a depth-0 AND a deep tracker
+    # effect (M2's widen rule), published so the rule's breadth is a
+    # measurement, not an argument. Predicted 0 at PLR 1.0.
+    n_contracts_depth0_and_deep_coexist = 0
     for record_key in sorted(unique_records):
         rec = unique_records[record_key]
         contract = derive_contract(
@@ -303,9 +308,11 @@ def build_derived_contracts_payload(
         # empty/`None` default (AC-10.7).
         if rec.class_name is not None and rec.class_name in receiver_states:
             rs = receiver_states[rec.class_name]
-            channel_guards, channel_effect = compute_channel_bridge(
+            channel_guards, channel_effect, coexist = compute_channel_bridge_detailed(
                 (rec.module, rec.qualname), index, receiver_state=rs, stamp=stamp
             )
+            if coexist:
+                n_contracts_depth0_and_deep_coexist += 1
             if channel_guards:
                 entry["channel_guards"] = channel_guards
             if channel_effect is not None:
@@ -477,6 +484,11 @@ def build_derived_contracts_payload(
         # receiver class. `{}` when no `--taxonomy-json` was given (fail
         # closed -- degrades to today's all-`channel_guards`-free table).
         "receiver_state": {name: receiver_state_to_json(rs) for name, rs in sorted(receiver_states.items())},
+        # 260929 (§18.4.8, r2 C14): additive TOP-LEVEL derivation counts,
+        # always emitted (also with `--taxonomy-json` omitted, where it is 0).
+        "receiver_state_diagnostics": {
+            "n_contracts_depth0_and_deep_coexist": n_contracts_depth0_and_deep_coexist,
+        },
         "contracts": contracts,
         "backend_surface": backend_surface,
     }
@@ -696,7 +708,10 @@ def main(argv: list[str] | None = None) -> int:
                 print(
                     f"receiver_state[{name!r}]: channel_attr={rs.channel_attr!r} "
                     f"tracker_class={rs.tracker_class!r} state_fields={list(rs.state_fields)} "
-                    f"effects={rs.effects} channel_default_param={rs.channel_default_param} "
+                    f"effects={rs.effects} effects_unresolved={list(rs.effects_unresolved)} "
+                    f"effect_backing_fields={list(rs.effect_backing_fields)} "
+                    f"effects_max_depth={rs.effects_max_depth} "
+                    f"channel_default_param={rs.channel_default_param} "
                     f"channel_default_disablers={list(rs.channel_default_disablers)} "
                     f"entry_reset={rs.entry_reset if rs.entry_reset is not None else rs.entry_reset_ledger!r}",
                     file=sys.stderr,

@@ -3206,11 +3206,22 @@ def test_ac_16_2_backend_surface_is_additive_fifth_top_level_key(
     """§16.3: `backend_surface` is the additive FIFTH top-level key of the
     payload `build_derived_contracts_payload` returns, alongside the four
     that already existed (`contracts`, `receiver_state`, `schema_version`,
-    `stamp`)."""
+    `stamp`). 260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md
+    §18.4.8, T57, r2 C14): a SIXTH, `receiver_state_diagnostics`, joins them
+    -- always emitted, `{"n_contracts_depth0_and_deep_coexist": 0}` when no
+    receiver states were supplied."""
     payload = build_derived_contracts_payload(
         survey_records, survey_index, real_stamp, function_index=plr_function_index
     )
-    assert set(payload.keys()) == {"schema_version", "stamp", "receiver_state", "contracts", "backend_surface"}
+    assert set(payload.keys()) == {
+        "schema_version",
+        "stamp",
+        "receiver_state",
+        "receiver_state_diagnostics",
+        "contracts",
+        "backend_surface",
+    }
+    assert payload["receiver_state_diagnostics"] == {"n_contracts_depth0_and_deep_coexist": 0}
     surface = payload["backend_surface"]
     assert set(surface.keys()) == {"n_surface_candidates", "n_surface_absent_by_c15", "n_surface_rows", "n_entries_with_backend_surface", "rows"}
     assert surface["n_surface_rows"] > 0

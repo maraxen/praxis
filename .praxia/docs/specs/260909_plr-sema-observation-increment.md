@@ -477,6 +477,19 @@ are multi-statement. §16.3 publishes the whole-surface count rather than this o
 > | `num_channels` | an `int` | published; **decides nothing on its own** — see the box below |
 > | `head_channels` | a list of `int` | R-HEAD (§16.5.1) — the key set `:409` reads |
 > | `deck_resource_names` | a list of `str` | **D6 only** — §16.1.3's `:321` site rule |
+> | `tip_racks_available` | a `bool` | **added by #5622 (spec 260929 §18.5.2)** — the `:338` site rule's observation conjunct, and nothing else |
+>
+> **Amendment (#5622, T60; spec `260929_plr-sema-plr1-tip-effect-increment.md` §18.5.2).** The closed
+> field list above grows by exactly one field, `tip_racks_available`, taken at the **same single
+> capture point** (after `machine.setup()`, before `_execute`, inside the same fail-closed guard). It
+> is `all(node._available_for_tip_handling for node in <deck tree> if isinstance(node, TipRack))`,
+> vacuously `True` on a deck with no tip rack, and a raising read makes the **whole** record `None`.
+> The refusal list below names **"lid topology — refused"**; this field is an aggregate boolean over lid
+> **and** stack topology, so it is a **narrowed, explicit exception** to that refusal. It is not a
+> general admission of lid topology: no per-rack or per-lid fact enters the record. §17.3's `arm_slots`
+> set the precedent for extending the closed record inside a later increment. The legitimacy argument
+> for admitting a field that coincides with a guard's own read, and the frame condition that makes it
+> sound, are §18.5.2 and §16.2.2's amended third failure mode.
 >
 > **Normative (ONE capture point, and it is fail-closed — C13, C17, conceded).** All four fields are
 > read at a **single** point: **after** `await setup.machine.setup()` and **before** `_execute`
@@ -518,7 +531,9 @@ are multi-statement. §16.3 publishes the whole-surface count rather than this o
 >   defers, it belongs to the volume family's `volume_state_unknown` cell, and admitting it here would
 >   move a number this increment's gate does not read.
 > - **lid topology** — refused. Increment 4 §13.1's disposition stands and `:116`/`:117` are not on the
->   gate candidate.
+>   gate candidate. *(Amended by #5622: the one aggregate boolean `tip_racks_available` is a narrowed,
+>   explicit exception — see the amendment directly under the field table. No per-rack or per-lid fact is
+>   admitted.)*
 > - **`head96`** and **`_default_use_channels`** — refused. Neither appears in any guard on any of the
 >   544 executed operations; admitting a field no guard reads is exactly the surface growth §9.4 exists
 >   to prevent.
@@ -549,6 +564,15 @@ program" is sound only if the analyzed graph is the whole world*
 > evaluates a membership test *against* the key set; the field is the key set). A hypothetical
 > `assert_resources_exist_passed` fails. This test is what makes the closed list above a rule rather
 > than a preference.
+>
+> **Amendment (#5622, T60; spec `260929_plr-sema-plr1-tip-effect-increment.md` §18.5.2, r1 M10).** The
+> paragraph above gains one clause, verbatim:
+>
+> *"An observation that is a pre-execution state fact may coincide with the value a guard reads **only
+> together with a frame condition the analyzer itself checks over the program**, one that declines
+> whenever the program could have changed that state before the guard runs. `tip_racks_available` with
+> §18.5.4's `rack_topology_stable` is the one instance. Without a checked frame condition such a field
+> is the answer, not an observation, and is refused."*
 
 ### 16.2.3 The cache key
 
@@ -595,7 +619,7 @@ program" is sound only if the analyzed graph is the whole world*
 > that its digest is in the key**, so no two observations share a verdict.
 >
 > **The `obs:` prefix is load-bearing and is reserved.** `E-UNCOND` way (2) tests a bare zero-argument
-> callee **name** against `env` (`plr-sema/src/plr_sema/check/predicate.py:1099-1109`). A member
+> callee **name** against `env` (`plr-sema/src/plr_sema/check/predicate.py:1132-1142`). A member
 > containing `:` and `=` can never equal a Python identifier, so no `obs:` member can satisfy way (2)
 > and **no observation can manufacture reachability**. No member without the prefix is ever added by
 > this increment, and `does_volume_tracking` — the one existing member — is untouched.
@@ -886,7 +910,7 @@ bind and `:409`, `:321` and `:875` are permanently ½.
 > > `["if not resource_from_deck == resource", "for resource in resources"]`
 > > (`plr-sema/data/derived_contracts.json:88819-88822`) — and `_scope_entry_value` gives a `for`/`while`
 > > header ½ and never `F`, because `ast.parse` on a bare header text is a `SyntaxError` and therefore
-> > `Opaque` (`plr-sema/src/plr_sema/check/predicate.py:1063-1078`). `_entry_satisfies_uncond` then returns
+> > `Opaque` (`plr-sema/src/plr_sema/check/predicate.py:1096-1111`). `_entry_satisfies_uncond` then returns
 > > `False` for such an entry, so `guard_is_unconditional`'s `all(...)` can never pass
 > > (`plr-sema/src/plr_sema/check/predicate.py:773-788`). **An in-loop guard has a non-empty trail with
 > > an unsatisfiable entry and can never emit `WILL_FAIL`, before or after the lift**, and precondition
@@ -1029,7 +1053,7 @@ which §15.8 argues this production is not."*
 >
 > **The invariant holds vacuously across the whole shipped evaluator today**, which is what makes it a
 > real constraint rather than a description: `_eval_is_instance` returns `None` on a non-`Ref`,
-> `_eval_is` requires a `Lit` (`plr-sema/src/plr_sema/check/predicate.py:862-867`), `_eval_cmp` returns
+> `_eval_is` requires a `Lit` (`plr-sema/src/plr_sema/check/predicate.py:895-900`), `_eval_cmp` returns
 > `None` on every membership operator and on any unresolved `Len`
 > (`plr-sema/src/plr_sema/check/predicate.py:535-558`), `_maybe_setof_uniqueness` requires a `Seq` of
 > hashable `Lit`s, and `_eval_alpha_existential` returns `None` unless the iterand is a concrete `Seq`
@@ -1101,7 +1125,7 @@ conditions. Each is discharged here, in order, and none is waived.
 >
 > **A-C13 is therefore untouched.** A name bound by a genuine `AllOf`/`AnyOf` comprehension target
 > still resolves to ⊤ and is still never resolved against `call.kwargs`, exactly as increment 6 states
-> and as `_resolve_var` implements (`plr-sema/src/plr_sema/check/predicate.py:434-446`). G8(1)'s
+> and as `_resolve_var` implements (`plr-sema/src/plr_sema/check/predicate.py:467-479`). G8(1)'s
 > "no node gains a field" sentence stands, unamended.
 
 **One clause survives, it is the load-bearing novelty of §16.5, and it decides `:514`.**
@@ -1120,7 +1144,7 @@ conditions. Each is discharged here, in order, and none is waived.
 > `False`, so an unknown length cannot falsify either. The two ½ cells are the ones the empty sequence
 > falsifies — `AllOf` over an empty ⊤ seq with an `F` body is `T`, not `F` — and they stay ½ **by
 > rule**. A `seq` that resolves to a concrete `Seq` is governed by the shipped
-> `_eval_allof_anyof` path unchanged (`plr-sema/src/plr_sema/check/predicate.py:920-929`); the two do
+> `_eval_allof_anyof` path unchanged (`plr-sema/src/plr_sema/check/predicate.py:953-962`); the two do
 > not overlap. Q-MONO is an instance of §16.5.3's E-INV invariant and is named there.
 >
 > **This is the clause that decides `:514`**, and it decides it without resolving the `Zip`: `p` is
@@ -1175,7 +1199,7 @@ conditions. Each is discharged here, in order, and none is waived.
 ## 16.6 Q1 — the scoped joined verdict
 
 Increment 6 §15.5 established the representation's two halves and left the third. Tier (iii) is derived
-from `is_dynamic_raise` (`plr-sema/src/plr_sema/check/predicate.py:1173-1177`); it emits **one**
+from `is_dynamic_raise` (`plr-sema/src/plr_sema/check/predicate.py:1206-1210`); it emits **one**
 `Finding`, `UNKNOWN`/`guard_env_dependent`, and folds its site into `AnalysisReport.scope.excludes_sites`
 (`plr-sema/src/plr_sema/check/__init__.py:409-470` collects them, `:920-955` constructs the report,
 `plr-sema/src/plr_sema/verdict.py:261-275` is the `SoundnessScope` type and `:298-310` the optional

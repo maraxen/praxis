@@ -1512,6 +1512,10 @@ class TestT46ObservationThreading:
         assert gate["n_operations_scope_verdict_safe"] == 1
         assert report["n_check_args_decided"]["total"] == 2
         assert report["n_assert_resources_decided"]["total"] == 1
+        # #5622 T61 (spec 260929 §18.5.3): the FOURTH site rule, `:338`, decides the same operation's
+        # `_check_tip_racks_available` guard SAFE too -- without it the GO above is unreachable, because
+        # `scope_verdict` needs EVERY non-excluded site on the operation decided.
+        assert report["n_tip_racks_decided"]["total"] == 1
 
     def test_unsound_scoped_and_rows_excused_by_frame_present_and_zero_on_clean_row(self, tmp_path):
         """The fence's second counter pair (§16.7 F3, T45) -- wired to
@@ -1847,3 +1851,264 @@ class TestNormalizePlrPath:
         foreign = str(REPO_ROOT / "training" / "verify" / "verifier.py")
         site = _load_real_site("LiquidHandler.pick_up_tips", 630)
         assert normalize_plr_path(foreign) != normalize_plr_path(site.file)
+
+
+class TestT61TipRacksSiteRule:
+    """260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md §18.5.3-§18.5.6, #5622, T61): the `:338` site
+    rule through the REAL tier-1 pipeline -- `run_runtime` (`verify()` and its one observation capture point),
+    `run_static_calls`, `compare` -- and `n_tip_racks_decided` in the report."""
+
+    def _run_main(self, tmp_path, rows):
+        import oracle_replay
+
+        corpus_path = tmp_path / "corpus.jsonl"
+        corpus_path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+        report_path = tmp_path / "report.json"
+        rc = oracle_replay.main(["--corpus", str(corpus_path), "--report", str(report_path)])
+        return rc, json.loads(report_path.read_text())
+
+    # --- (g) the published count ---------------------------------------------------------------------------------
+
+    def test_n_tip_racks_decided_is_published_with_attempted_and_predicted_target(self, tmp_path):
+        row = _chat_row("pick_up_tips", {"at": ["tip_rack.A1"]}, utterance="pick up a tip")
+        rc, report = self._run_main(tmp_path, [row])
+        block = report["n_tip_racks_decided"]
+        assert set(block) == {"total", "attempted", "predicted_target"}
+        assert block["predicted_target"] == 288
+        # a clean `pick_up_tips` row: its one operation carries a `:338` finding and it is decided SAFE
+        # (`tip_racks_available` observed True, the deck fact True, nothing disturbs the rack, no loop)
+        assert block["attempted"] == 1
+        assert block["total"] == 1
+        assert block["total"] <= block["attempted"]
+        assert report["summary_flat"]["unsound"] == 0 and rc == 0
+
+    def test_n_tip_racks_decided_counts_operations_not_findings(self, tmp_path, monkeypatch):
+        """`pick_up_tips` and `discard_tips` (whose scaffold prepends a pickup): the published counts equal an
+        INDEPENDENT per-operation tally of the same run's `:338` findings, taken through `FINDINGS_SINK` -- one
+        count per (row, operation), never one per inlined record or per unrolled iteration."""
+        import oracle_common as oc
+
+        seen: list = []
+        monkeypatch.setattr(oc, "FINDINGS_SINK", lambda row_id, findings: seen.append((row_id, findings)))
+        rows = [
+            _chat_row("pick_up_tips", {"at": ["tip_rack.A1"]}, utterance="pick up a tip"),
+            _chat_row("discard_tips", {"at": ["tip_rack.A1"]}, utterance="discard the tip"),
+        ]
+        _rc, report = self._run_main(tmp_path, rows)
+        attempted = decided = n_findings = 0
+        for _row_id, findings in seen:
+            by_op: dict = {}
+            for f in findings:
+                if f.plr_site is not None and f.plr_site.qualname == "_check_tip_racks_available":
+                    by_op.setdefault(f.operation_id, []).append(f)
+                    n_findings += 1
+            attempted += len(by_op)
+            decided += sum(all(f.verdict.value == "safe" for f in fs) for fs in by_op.values())
+        block = report["n_tip_racks_decided"]
+        assert attempted >= 2, "the fixture must exercise the site on more than one operation"
+        assert (block["attempted"], block["total"]) == (attempted, decided)
+        assert block["total"] <= block["attempted"] <= n_findings
+
+    def test_count_ops_decided_at_site_counts_per_operation_over_repeated_and_mixed_findings(self):
+        """Synthetic findings where per-finding and per-operation counting DISAGREE (real tier-1 rows carry one
+        `:338` finding per op, so they cannot tell the two apart): an op with three iteration-repeated SAFE findings
+        counts once; an op with one SAFE and one UNKNOWN finding is attempted but NOT decided; the same operation id
+        in a different row counts again; another site never counts."""
+        from oracle_replay import count_ops_decided_at_site
+        from plr_sema.verdict import Finding, PlrSite, Verdict
+
+        site = PlrSite(file="f.py", lineno=338, qualname="_check_tip_racks_available")
+        other = PlrSite(file="f.py", lineno=1, qualname="elsewhere")
+
+        def f(op, verdict, plr_site=site):
+            return Finding(
+                verdict=verdict, operation_id=op, category="", plr_site=plr_site,
+                reason="" if verdict is Verdict.SAFE else "guard_predicate_unparsed", detail="",
+            )
+
+        key = "f.py:338:_check_tip_racks_available"
+        row1 = [
+            f("op_0", Verdict.SAFE), f("op_0", Verdict.SAFE), f("op_0", Verdict.SAFE),  # unrolled iterations
+            f("op_1", Verdict.SAFE), f("op_1", Verdict.UNKNOWN),                          # mixed -> not decided
+            f("op_2", Verdict.SAFE, other),                                               # another site
+        ]
+        row2 = [f("op_0", Verdict.SAFE)]
+        assert count_ops_decided_at_site([("r1", row1), ("r2", row2)], key) == (3, 2)
+        assert count_ops_decided_at_site([], key) == (0, 0)
+        assert count_ops_decided_at_site([("r1", [f("op_0", Verdict.UNKNOWN)])], key) == (1, 0)
+
+    # --- (f) the hand-built adversarial runtime fixture (r2, C5) --------------------------------------------------
+
+    @staticmethod
+    def _example():
+        calls = [
+            {"name": "move_lid", "params": {"lid": "free_lid", "destination": "tip_rack"}},
+            {"name": "pick_up_tips", "params": {"at": ["tip_rack.A1"]}},
+        ]
+        return {
+            "call_sequence": calls,
+            "intent_record": {
+                "record_id": "t61_move_lid_onto_rack",
+                "utterance": "put the lid on the tip rack then pick up a tip",
+                "source": "synthetic",
+                "calls": calls,
+                "expected_effects": [],
+                "normalized_refs": [],
+            },
+            # `free_lid` is declared as a holder ONLY so `infer_layout` does not invent a `Plate` under that name;
+            # the patched `build_setup` below rebinds the name to a REAL `Lid`.
+            "deck_layout": {"resources": {}, "seed_volumes": {}, "holders": ["free_lid"]},
+        }
+
+    @staticmethod
+    def _patch_real_lid(monkeypatch):
+        """Wrap `verify.verifier.build_setup` so the deck also carries a REAL PLR `Lid`, sized to the tip rack,
+        sitting free on the deck and addressable as `free_lid`. It is NOT a Plate standing in for a lid: moving a
+        Plate onto a rack leaves `rack.lid` None, so it would never trip `_available_for_tip_handling`."""
+        import oracle_common as oc
+        from pylabrobot.resources import Lid
+
+        verifier = oc._import_verifier()
+        real_build = verifier.build_setup
+        placed: dict = {}
+
+        def build_with_lid(backend, layout):
+            handle = real_build(backend, layout)
+            rack = handle.resources["tip_rack"]
+            lid = Lid(
+                name="real_lid",
+                size_x=rack.get_size_x(),
+                size_y=rack.get_size_y(),
+                size_z=8.0,
+                nesting_z_height=2.0,
+            )
+            for rails in range(3, 28):
+                try:
+                    handle.deck.assign_child_resource(lid, rails=rails)
+                    break
+                except ValueError:
+                    continue
+            else:  # pragma: no cover
+                raise RuntimeError("no free rails for the fixture lid")
+            handle.resources["free_lid"] = lid
+            placed["lid"], placed["rack"] = lid, rack
+            return handle
+
+        monkeypatch.setattr(verifier, "build_setup", build_with_lid)
+        return placed
+
+    def _tier1(self, example, monkeypatch, *, contracts_json):
+        """The real tier-1 pipeline on `example`; returns everything a fence check needs."""
+        import oracle_common as oc
+
+        rt = run_runtime(example)
+        captured: dict = {}
+        monkeypatch.setattr(oc, "FINDINGS_SINK", lambda row_id, findings: captured.setdefault("findings", findings))
+        monkeypatch.setattr(oc, "LOWERED_SINK", lambda row_id, bc, bc1, np_, et: captured.setdefault("bc", bc))
+        st, _not_planned = run_static_calls(
+            example,
+            rt.plr_kwargs,
+            contracts_json,
+            volume_tracking_observed=rt.volume_tracking_observed,
+            plr_observation=rt.plr_observation,
+        )
+        return rt, st, captured
+
+    def test_move_lid_onto_a_real_rack_lid_raises_at_338_and_the_static_side_declines_at_topology_prefix(
+        self, monkeypatch
+    ):
+        from plr_sema.check.predicate import (
+            _Ctx,
+            rack_topology_clauses,
+            rack_topology_disturbers,
+            tip_racks_decline_reason,
+        )
+        from plr_sema.check import ir as _ir
+        import oracle_common as oc
+
+        contracts_json = CONTRACTS_PATH.read_text(encoding="utf-8")
+        payload = json.loads(contracts_json)
+        placed = self._patch_real_lid(monkeypatch)
+        example = self._example()
+        rt, st, captured = self._tier1(example, monkeypatch, contracts_json=contracts_json)
+
+        # -- the runtime half: a REAL lid really is on the rack, and PLR's own `:338` guard really raised ------
+        rack, lid = placed["rack"], placed["lid"]
+        assert isinstance(lid, __import__("pylabrobot.resources", fromlist=["Lid"]).Lid)
+        assert rack.lid is lid and rack._available_for_tip_handling is False
+        assert rt.exc_class == "ValueError" and rt.failing_index == 1
+        assert "something is stacked on top of it" in rt.error
+        # ...while the observation, captured BEFORE execution, said the racks were fine (the whole point: the
+        # observation alone cannot see the move; only the topology conjunct can)
+        assert rt.plr_observation is not None and rt.plr_observation["tip_racks_available"] is True
+
+        # -- the static half: `:338` at the pickup is NOT decided, and declines at the topology clause ----------
+        findings = captured["findings"]
+        f338 = [
+            f
+            for f in findings
+            if f.operation_id == "op_1" and f.plr_site is not None and f.plr_site.qualname == "_check_tip_racks_available"
+        ]
+        assert f338, "the pickup carries a `:338` finding"
+        assert all(f.verdict.value == "unknown" and f.reason == "guard_predicate_unparsed" for f in f338), f338
+        bc = captured["bc"]
+        pick_pc = next(
+            pc for pc, i in enumerate(bc.instructions) if isinstance(i, _ir.Call) and i.method == "pick_up_tips"
+        )
+        disturbers = rack_topology_disturbers(bc.instructions, payload["contracts"], payload["receiver_state"])
+        prefix_ok, loop_ok = rack_topology_clauses(disturbers, pick_pc, "LiquidHandler", False)
+        assert (prefix_ok, loop_ok) == (False, True)
+        env = oc.observation_env_members(rt.plr_observation, oc.resources_from_example(example))
+        ctx = _Ctx(
+            call=bc.instructions[pick_pc],
+            resources_by_slot={},
+            param_defaults={},
+            bindings_by_name={},
+            depth=1,
+            channel_kwarg=None,
+            channels=None,
+            env=env,
+            class_hierarchy=None,
+            guard_kind="raise_guard",
+            rack_topology_prefix_ok=prefix_ok,
+            rack_topology_loop_ok=loop_ok,
+        )
+        assert tip_racks_decline_reason(ctx) == "topology_prefix"
+
+        # -- the tier-1 fence: 0 unsound ---------------------------------------------------------------------
+        rows = compare(example, rt, st)
+        assert rows[1]["runtime"] == "raised:ValueError"
+        assert rows[1]["static"] != "safe"
+        assert sum(r["unsound"] for r in rows) == 0
+        assert sum(r["unsound_scoped"] for r in rows) == 0
+
+    def test_the_fence_instrument_fires_on_this_fixture_when_the_static_side_is_forced_safe(self, monkeypatch):
+        """Negative control that must fail: the SAME runtime, with the static verdict forced `safe` for every op
+        (what a rule that ignored the move would produce), IS counted unsound. Without this the `0 unsound`
+        above could be a dead counter."""
+        contracts_json = CONTRACTS_PATH.read_text(encoding="utf-8")
+        self._patch_real_lid(monkeypatch)
+        example = self._example()
+        rt, st, _captured = self._tier1(example, monkeypatch, contracts_json=contracts_json)
+        forced = {oid: dict(entry, verdict="safe", scoped_verdict="safe") for oid, entry in st.items()}
+        rows = compare(example, rt, forced)
+        assert rows[1]["runtime"] == "raised:ValueError"
+        assert sum(r["unsound"] for r in rows) == 1
+
+    def test_the_same_pickup_without_the_move_lid_decides_safe_and_does_not_raise(self, monkeypatch):
+        """The positive control: drop `move_lid` and the identical pickup runs clean AND `:338` decides `SAFE`
+        -- so the decline above is caused by the move and by nothing else in the fixture."""
+        contracts_json = CONTRACTS_PATH.read_text(encoding="utf-8")
+        self._patch_real_lid(monkeypatch)
+        example = self._example()
+        example["call_sequence"] = example["call_sequence"][1:]
+        example["intent_record"] = dict(example["intent_record"], calls=example["call_sequence"])
+        rt, st, captured = self._tier1(example, monkeypatch, contracts_json=contracts_json)
+        assert rt.error is None, rt.error
+        f338 = [
+            f
+            for f in captured["findings"]
+            if f.plr_site is not None and f.plr_site.qualname == "_check_tip_racks_available"
+        ]
+        assert f338 and all(f.verdict.value == "safe" for f in f338), f338
+        assert sum(r["unsound"] for r in compare(example, rt, st)) == 0

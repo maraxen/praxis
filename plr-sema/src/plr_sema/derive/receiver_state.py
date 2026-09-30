@@ -27,17 +27,18 @@ Four passes, matching the spec section numbers:
   ``<p> = <p> or self.<x> or list(range(len(<q>)))`` idiom match, per
   method of the RECEIVER class (not the tracker class); P3b derives the
   disabler method set from P1b's writer index for the same class.
-* **P4** (§10.2.4) -- ``_effects``: classifies each of the tracker class's
-  own methods' writes to a field in ``state_fields`` as NO_TIP / HAS_TIP /
-  no-effect. A write whose RHS is itself another ``state_fields`` member
-  (e.g. ``TipTracker.commit``'s ``self._tip = self._pending_tip``) is
-  "ambiguous", which folds into "no effect" under the same both-kinds rule
-  as a method that writes both a literal ``None`` and a literal non-``None``
-  -- the literal P4 text ("`self.<F> = <expr>` where `<expr>` is not the
-  literal `None`") under-specifies this case, and §10.2.4's own worked
-  measurement of `commit` ("both-kinds-unknown -> no effect") only holds
-  under this reading; see this module's own test for the synthetic
-  counterexample that pins it.
+* **P4** (§10.2.4, REWRITTEN by spec 260929 §18.4, backlog #5622, T57) --
+  ``analyze_tip_effects``: R-A resolves the tracker's state fields to their
+  backing fields through their property getters; R-B classifies each of the
+  tracker class's own methods by following its self-call chain with
+  argument classes (``NO_TIP`` / ``HAS_TIP`` / ``COPY`` / ``UNRESOLVED``);
+  L1 publishes a method whose result is ``UNRESOLVED`` as
+  ``effects_unresolved`` (the bridge widens on it, never omits it); R-D
+  publishes only public methods. A write whose RHS is another write target
+  (e.g. the old pin's ``self._tip = self._pending_tip``) is ``COPY`` -- the
+  old ``"ambiguous"``, with identical semantics under A-COMMIT -- and the
+  fold drops it. The old P4 text ("both kinds -> no effect") is withdrawn
+  for tracker methods: both kinds is ``UNRESOLVED``.
 
 **The channel bridge (§10.2.5) is the fifth piece and lives in
 ``compute_channel_bridge``.** It walks the SAME depth-tracked
@@ -124,6 +125,20 @@ __all__ = [
     "SingletonAnchorCandidate",
     "compute_singleton_typestate_anchors",
     "compute_anchor_guard_states",
+    # 260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md §18.4, T57,
+    # backlog #5622): the rewritten P4 -- R-A/R-B/R-D/L1/R-C.
+    "NO_TIP",
+    "HAS_TIP",
+    "COPY",
+    "UNRESOLVED",
+    "UNTOUCHED",
+    "TipEffectAnalysis",
+    "analyze_tip_effects",
+    "tip_getter_dependencies",
+    "tip_attribute_writers",
+    "tip_getters_that_write",
+    "reset_constructions_bind_no_optional_collaborator",
+    "compute_channel_bridge_detailed",
 ]
 
 #: §10.2.5's second conjunct: the taxonomy module path that narrows the
@@ -882,47 +897,857 @@ def _state_fields_for_class(
 
 
 # ---------------------------------------------------------------------------
-# P4 (§10.2.4) -- effects. Scanned over the TRACKER class C's own methods.
+# P4 (§10.2.4), REWRITTEN under spec 260929 (`260929_plr-sema-plr1-tip-effect-
+# increment.md` §18.4, backlog #5622, task T57): the tracker class C's own
+# effects -- R-A (backing-field alias), R-B (argument-classified helper
+# following), R-D (publication hygiene) and L1 (`effects_unresolved`), plus the
+# constructor state R-C(1) reads. Everything below is DERIVED from C's own
+# AST; no PLR class, method, field or exception name is typed here (the
+# AC-10.9 literal scan covers this file).
+#
+# Vocabulary (§18.4.1): every tip write / argument / local receives ONE class
+# of {NO_TIP, HAS_TIP, COPY, UNRESOLVED}; a method's RESULT is one of
+# {NO_TIP, HAS_TIP, UNRESOLVED, UNTOUCHED}. COPY replaces the old
+# `_classify_write`'s `"ambiguous"` with identical semantics under A-COMMIT (a
+# write of the cell to itself is the identity on the merged cell).
 # ---------------------------------------------------------------------------
 
+NO_TIP = "NO_TIP"
+HAS_TIP = "HAS_TIP"
+COPY = "COPY"
+UNRESOLVED = "UNRESOLVED"
+UNTOUCHED = "UNTOUCHED"
 
-def _classify_write(value: ast.expr, state_field_set: frozenset[str]) -> str:
-    """One write's classification: `"NO_TIP"` (literal `None`),
-    `"ambiguous"` (the RHS is itself `self.<G>` for another/the-same state
-    field -- its own runtime value is not analyzable as one literal kind,
-    e.g. `TipTracker.commit`'s `self._tip = self._pending_tip`), or
-    `"HAS_TIP"` (anything else non-`None`).
-    """
-    if isinstance(value, ast.Constant) and value.value is None:
-        return "NO_TIP"
-    if _is_self_attr(value) and value.attr in state_field_set:  # type: ignore[union-attr]
-        return "ambiguous"
-    return "HAS_TIP"
+_FUNC_DEFS = (ast.FunctionDef, ast.AsyncFunctionDef)
+#: Scopes whose bodies do not run when the enclosing method is called
+#: (§18.4.3 "Scope of a method body"): the scope NODE is visited (its name
+#: binds in the enclosing scope), its children are not.
+_SCOPE_NODES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
 
 
-def _effects(class_node: ast.ClassDef, state_fields: tuple[str, ...]) -> dict[str, str]:
-    """P4: `method_name -> "HAS_TIP"|"NO_TIP"` for every method of C whose
-    writes to `state_fields` unambiguously establish one polarity. A method
-    with no such write, or whose writes disagree/are ambiguous, is omitted
-    (no effect -- E3).
-    """
-    state_field_set = frozenset(state_fields)
-    out: dict[str, str] = {}
-    for member in ast.iter_child_nodes(class_node):
-        if not isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+def _join(x: str | None, y: str | None) -> str | None:
+    """`join(x, y) = x` if `x == y` else `UNRESOLVED`, with `None` standing
+    for the bottom element of the local-fixpoint lattice (identity)."""
+    if x is None:
+        return y
+    if y is None:
+        return x
+    return x if x == y else UNRESOLVED
+
+
+def _scope_nodes(body: list[ast.stmt]) -> list[ast.AST]:
+    """Every node reachable from `body` without entering a nested
+    `FunctionDef`/`AsyncFunctionDef`/`Lambda`/`ClassDef` (§18.4.3). A
+    deliberate narrowing of `ast.walk(member)`."""
+    out: list[ast.AST] = []
+    stack: list[ast.AST] = list(reversed(body))
+    while stack:
+        node = stack.pop()
+        out.append(node)
+        if isinstance(node, _SCOPE_NODES):
             continue
-        kinds: set[str] = set()
-        for node in ast.walk(member):
-            if isinstance(node, ast.Assign):
-                for target in node.targets:
-                    if _is_self_attr(target) and target.attr in state_field_set:  # type: ignore[union-attr]
-                        kinds.add(_classify_write(node.value, state_field_set))
-        if kinds == {"NO_TIP"}:
-            out[member.name] = "NO_TIP"
-        elif kinds == {"HAS_TIP"}:
-            out[member.name] = "HAS_TIP"
-        # {} (untouched), {"ambiguous"}, or any mix -> no effect, omitted.
+        stack.extend(reversed(list(ast.iter_child_nodes(node))))
     return out
+
+
+def _direct_defs(class_node: ast.ClassDef) -> dict[str, list[ast.FunctionDef | ast.AsyncFunctionDef]]:
+    """The direct methods of C: `FunctionDef`/`AsyncFunctionDef` nodes that
+    are immediate children of C's `ClassDef` ("same class" means exactly
+    this -- no base-class resolution, no subclass overrides, §18.4.3)."""
+    out: dict[str, list[ast.FunctionDef | ast.AsyncFunctionDef]] = {}
+    for member in ast.iter_child_nodes(class_node):
+        if isinstance(member, _FUNC_DEFS):
+            out.setdefault(member.name, []).append(member)
+    return out
+
+
+def _is_property_def(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    return any(_is_property_decorator(d) for d in node.decorator_list)
+
+
+def _is_setter_def(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    return any(isinstance(d, ast.Attribute) and d.attr == "setter" for d in node.decorator_list)
+
+
+def _property_getter(
+    defs: dict[str, list[ast.FunctionDef | ast.AsyncFunctionDef]], name: str
+) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+    """`G_F` (§18.4.2): the UNIQUE direct `FunctionDef` named `name` whose
+    `decorator_list` contains the bare `Name("property")`; `None` when there
+    is none or more than one."""
+    cands = [d for d in defs.get(name, ()) if _is_property_def(d)]
+    return cands[0] if len(cands) == 1 else None
+
+
+def _self_attr_name(node: ast.AST, recv: str | None = "self") -> str | None:
+    """`<recv>.<attr>` -> `attr`. `recv` is the method's own receiver
+    parameter name (F6: derived from the first parameter, not assumed to be
+    `self`); `None` means no receiver is known and nothing matches."""
+    if (
+        recv is not None
+        and isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == recv
+    ):
+        return node.attr
+    return None
+
+
+def _receiver_name(member: ast.FunctionDef | ast.AsyncFunctionDef) -> str | None:
+    """The name of `member`'s receiver parameter: its first positional
+    parameter (`None` for a method with none)."""
+    a = member.args
+    full = list(a.posonlyargs) + list(a.args)
+    return full[0].arg if full else None
+
+
+def _is_static_or_class_def(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """`@staticmethod` / `@classmethod` (bare or attribute-qualified)."""
+    for d in node.decorator_list:
+        name = d.id if isinstance(d, ast.Name) else (d.attr if isinstance(d, ast.Attribute) else None)
+        if name in ("staticmethod", "classmethod"):
+            return True
+    return False
+
+
+def _method_names(defs: dict[str, list[ast.FunctionDef | ast.AsyncFunctionDef]]) -> frozenset[str]:
+    """The direct NON-property methods of C (F1): a name with no
+    `@property`/`@x.setter` definition among its definitions."""
+    return frozenset(
+        name for name, ds in defs.items() if not any(_is_property_def(d) or _is_setter_def(d) for d in ds)
+    )
+
+
+def _store_names(target: ast.AST) -> list[str]:
+    """Every `Name` bound (Store context) anywhere under an assignment-like
+    target -- tuple/list unpacking, starred, and so on. Names under an
+    `Attribute`/`Subscript` base are loads of that base, not bindings."""
+    names: list[str] = []
+    stack: list[ast.AST] = [target]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, ast.Name):
+            if isinstance(node.ctx, (ast.Store, ast.Del)):
+                names.append(node.id)
+        elif isinstance(node, (ast.Tuple, ast.List)):
+            stack.extend(node.elts)
+        elif isinstance(node, ast.Starred):
+            stack.append(node.value)
+    return names
+
+
+def _name_bindings(nodes: list[ast.AST]) -> tuple[dict[str, list[ast.expr]], set[str]]:
+    """`(assigns, unclassifiable)` over a scope's node list (§18.4.3
+    "Binding forms"). `assigns[n]` lists the value of every plain `n = v`
+    (an `Assign` with `Name(n)` as a WHOLE target) and every `AnnAssign`
+    `n: T = v`. EVERY other form that binds `n` puts `n` in
+    `unclassifiable`: unpacking, `for`/`async for`, `with ... as`,
+    `except ... as`, walrus, `AugAssign`, `global`/`nonlocal`, `del`,
+    `import`/`from ... import`, `match` captures, and a nested
+    `def`/`class` statement."""
+    assigns: dict[str, list[ast.expr]] = {}
+    unclassifiable: set[str] = set()
+    for node in nodes:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    assigns.setdefault(target.id, []).append(node.value)
+                else:
+                    unclassifiable.update(_store_names(target))
+        elif isinstance(node, ast.AnnAssign):
+            if node.value is not None and isinstance(node.target, ast.Name):
+                assigns.setdefault(node.target.id, []).append(node.value)
+            elif node.value is not None:
+                unclassifiable.update(_store_names(node.target))
+        elif isinstance(node, (ast.AugAssign, ast.For, ast.AsyncFor)):
+            unclassifiable.update(_store_names(node.target))
+        elif isinstance(node, (ast.With, ast.AsyncWith)):
+            for item in node.items:
+                if item.optional_vars is not None:
+                    unclassifiable.update(_store_names(item.optional_vars))
+        elif isinstance(node, ast.ExceptHandler):
+            if node.name is not None:
+                unclassifiable.add(node.name)
+        elif isinstance(node, ast.NamedExpr):
+            unclassifiable.update(_store_names(node.target))
+        elif isinstance(node, (ast.Global, ast.Nonlocal)):
+            unclassifiable.update(node.names)
+        elif isinstance(node, ast.Delete):
+            for target in node.targets:
+                unclassifiable.update(_store_names(target))
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in node.names:
+                if alias.name != "*":
+                    unclassifiable.add(alias.asname or alias.name.split(".")[0])
+        elif isinstance(node, _SCOPE_NODES) and not isinstance(node, ast.Lambda):
+            unclassifiable.add(node.name)  # type: ignore[union-attr]
+        elif hasattr(ast, "MatchAs") and isinstance(node, (ast.MatchAs, ast.MatchStar)):
+            if node.name is not None:
+                unclassifiable.add(node.name)
+        elif hasattr(ast, "MatchMapping") and isinstance(node, ast.MatchMapping):
+            if node.rest is not None:
+                unclassifiable.add(node.rest)
+        elif hasattr(ast, "TypeAlias") and isinstance(node, ast.TypeAlias):
+            unclassifiable.update(_store_names(node.name))
+    return assigns, unclassifiable
+
+
+def _class_level_names(class_node: ast.ClassDef) -> set[str]:
+    """Names C binds at class level (§18.4.2's C11 rule): a `FunctionDef` of
+    any decoration, a class-body assignment `F = ...` (including
+    `F = property(get, set)`), and any other binding form."""
+    assigns, other = _name_bindings(_scope_nodes(class_node.body))
+    return set(assigns) | other
+
+
+def _base_closure(class_node: ast.ClassDef, class_nodes: dict[str, ast.ClassDef] | None) -> list[ast.ClassDef]:
+    """C's PLR base closure: every ancestor `ClassDef` reachable by bare
+    base-class name through `class_nodes`, cycle-safe."""
+    if not class_nodes:
+        return []
+    out: list[ast.ClassDef] = []
+    seen: set[str] = {class_node.name}
+    queue: list[ast.ClassDef] = [class_node]
+    while queue:
+        cur = queue.pop(0)
+        for base in cur.bases:
+            base_name = base.id if isinstance(base, ast.Name) else (base.attr if isinstance(base, ast.Attribute) else None)
+            if base_name is None or base_name in seen:
+                continue
+            seen.add(base_name)
+            node = class_nodes.get(base_name)
+            if node is not None:
+                out.append(node)
+                queue.append(node)
+    return out
+
+
+# ---- the write-shape scan (§18.4.3 "Tip writes in a body") ----------------
+
+
+@dataclass(frozen=True, slots=True)
+class _WriteEvent:
+    """One write-shaped node in a method body. `attr` is the written
+    `self.<attr>`, or `None` for a catch-all that cannot name its target
+    (`setattr`-family, `self.__dict__`/`vars(self)`, an escape of bare
+    `self`): those count as a write of EVERY attribute."""
+
+    attr: str | None
+    kind: str  # assign|annassign|aug|tuple|del|store|setattr|dict|escape
+    value: ast.expr | None = None
+
+
+def _write_events(
+    member: ast.FunctionDef | ast.AsyncFunctionDef, method_names: frozenset[str] = frozenset()
+) -> list[_WriteEvent]:
+    """The full write-shape set of §18.4.3: `Assign`/`AnnAssign`-with-value,
+    `AugAssign`, tuple/list targets, `Delete`, and the r2 C3 / r3 X1
+    catch-alls (any other Store/Del `self.<x>`; `setattr`/`delattr`/
+    `object.__setattr__`/`object.__delattr__` on `self`; any Load of
+    `self.__dict__` or `vars(self)`; any Load of bare `Name("self")` that is
+    not an `Attribute`'s `value`).
+
+    Review fixes (T57, all fail-closed, zero cost at both pins):
+    * **F1** -- a non-call Load of a bound method (`f = self._put`,
+      `map(self._put, xs)`, `partial(self._put, None)`): `method_names` is
+      C's direct non-property methods, and such a Load is an `escape`.
+    * **F2** -- a nested `def`/`lambda`/`class` whose body names the
+      receiver is a deferred write the narrowed scope cannot see: `escape`.
+    * **F6** -- the receiver is the method's own first parameter, not the
+      literal `self`; `super().__setattr__`/`__delattr__` are `setattr`."""
+    recv = _receiver_name(member)
+    if recv is None:
+        # N1: no positional parameter (`def m(*args)`, `def m(*, self)`), so the
+        # receiver cannot be named and `args[0]._carried = None` is invisible.
+        return [_WriteEvent(None, "escape")]
+    nodes = _scope_nodes(member.body)
+    handled: set[int] = set()
+    events: list[_WriteEvent] = []
+
+    def emit_target(target: ast.AST, kind: str, value: ast.expr | None) -> None:
+        attr = _self_attr_name(target, recv)
+        if attr is not None:
+            handled.add(id(target))
+            events.append(_WriteEvent(attr, kind, value))
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            for elt in target.elts:
+                emit_target(elt, "tuple" if kind in ("assign", "annassign", "tuple") else kind, None)
+        elif isinstance(target, ast.Starred):
+            emit_target(target.value, "tuple", None)
+
+    for node in nodes:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                emit_target(target, "assign", node.value)
+        elif isinstance(node, ast.AnnAssign):
+            if node.value is not None:
+                emit_target(node.target, "annassign", node.value)
+            elif _self_attr_name(node.target, recv) is not None:
+                handled.add(id(node.target))  # annotation only: no write happens
+        elif isinstance(node, ast.AugAssign):
+            emit_target(node.target, "aug", None)
+        elif isinstance(node, ast.Delete):
+            for target in node.targets:
+                emit_target(target, "del", None)
+
+    based_ids = {
+        id(n.value)
+        for n in nodes
+        if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id == recv
+    }
+    call_func_ids = {id(n.func) for n in nodes if isinstance(n, ast.Call)}
+    for node in nodes:
+        if isinstance(node, _SCOPE_NODES):
+            # F2: a nested def/lambda/class naming the receiver is deferred code.
+            if any(isinstance(n, ast.Name) and n.id == recv for n in ast.walk(node)):
+                events.append(_WriteEvent(None, "escape"))
+        elif isinstance(node, ast.Attribute):
+            attr = _self_attr_name(node, recv)
+            if attr is not None:
+                if attr == "__dict__":
+                    events.append(_WriteEvent(None, "dict"))  # any Load/Store of self.__dict__
+                elif attr in ("__setattr__", "__delattr__"):
+                    # Not in the spec's C3 list, closed here because it is the
+                    # same hole as `setattr(self, ...)` spelled as a method
+                    # call (zero cost at both pins; flagged in the T57 report).
+                    events.append(_WriteEvent(None, "setattr"))
+                elif isinstance(node.ctx, (ast.Store, ast.Del)) and id(node) not in handled:
+                    events.append(_WriteEvent(attr, "store"))
+                elif attr in method_names and isinstance(node.ctx, ast.Load) and id(node) not in call_func_ids:
+                    events.append(_WriteEvent(None, "escape"))  # F1: an escaping bound method
+            elif (
+                node.attr in ("__setattr__", "__delattr__")
+                and isinstance(node.value, ast.Call)
+                and isinstance(node.value.func, ast.Name)
+                and node.value.func.id == "super"
+            ):
+                events.append(_WriteEvent(None, "setattr"))  # F6: super().__setattr__
+        elif isinstance(node, ast.Call):
+            func = node.func
+            first_is_self = bool(node.args) and isinstance(node.args[0], ast.Name) and node.args[0].id == recv
+            is_setattr_family = (
+                isinstance(func, ast.Name) and func.id in ("setattr", "delattr")
+            ) or (
+                isinstance(func, ast.Attribute)
+                and func.attr in ("__setattr__", "__delattr__")
+                and isinstance(func.value, ast.Name)
+                and func.value.id == "object"
+            )
+            if is_setattr_family and first_is_self:
+                events.append(_WriteEvent(None, "setattr"))
+            elif isinstance(func, ast.Name) and func.id == "vars" and first_is_self:
+                events.append(_WriteEvent(None, "dict"))
+        elif isinstance(node, ast.Name) and node.id == recv and isinstance(node.ctx, ast.Load):
+            if id(node) not in based_ids:
+                events.append(_WriteEvent(None, "escape"))
+    return events
+
+
+def _self_calls(member: ast.FunctionDef | ast.AsyncFunctionDef) -> list[tuple[ast.Call, str]]:
+    """Every `ast.Call`, at any expression position, whose `func` is exactly
+    `Attribute(value=Name(<receiver>), attr=h)`."""
+    out: list[tuple[ast.Call, str]] = []
+    recv = _receiver_name(member)
+    for node in _scope_nodes(member.body):
+        if isinstance(node, ast.Call):
+            h = _self_attr_name(node.func, recv)
+            if h is not None:
+                out.append((node, h))
+    return out
+
+
+def _param_defaults(callee: ast.FunctionDef | ast.AsyncFunctionDef) -> dict[str, ast.expr]:
+    a = callee.args
+    full = list(a.posonlyargs) + list(a.args)
+    out: dict[str, ast.expr] = {}
+    for i, d in enumerate(a.defaults):
+        out[full[len(full) - len(a.defaults) + i].arg] = d
+    for p, d in zip(a.kwonlyargs, a.kw_defaults, strict=True):
+        if d is not None:
+            out[p.arg] = d
+    return out
+
+
+def _bind_parameters(
+    call: ast.Call, callee: ast.FunctionDef | ast.AsyncFunctionDef
+) -> dict[str, ast.expr] | None:
+    """§18.4.3 "Binding", rules 1, 4 and 5: `param -> argument expression`
+    for the callee's parameters after `self`, or `None` when the call is
+    inadmissible (starred / `**` at the call site, `*args`/`**kwargs` in the
+    callee's signature, or a call Python would not bind: too many
+    positionals, an unknown keyword, a keyword aimed at a positional-only
+    parameter, the same parameter bound twice)."""
+    a = callee.args
+    if a.vararg is not None or a.kwarg is not None:
+        return None
+    if any(isinstance(x, ast.Starred) for x in call.args) or any(k.arg is None for k in call.keywords):
+        return None
+    full = list(a.posonlyargs) + list(a.args)
+    pos_params = [p.arg for p in full][1:]
+    n_posonly = max(len(a.posonlyargs) - 1, 0)
+    all_params = pos_params + [p.arg for p in a.kwonlyargs]
+    if len(call.args) > len(pos_params):
+        return None
+    bound: dict[str, ast.expr] = {}
+    for name, arg in zip(pos_params, call.args, strict=False):  # len(call.args) <= len(pos_params) here
+        bound[name] = arg
+    posonly = set(pos_params[:n_posonly])
+    for kw in call.keywords:
+        if kw.arg in posonly or kw.arg not in all_params or kw.arg in bound:
+            return None
+        bound[kw.arg] = kw.value  # type: ignore[index]
+    return bound
+
+
+def _fold(classes: list[str]) -> str:
+    """§18.4.3's fold: drop every COPY; empty -> UNTOUCHED; one polarity ->
+    that polarity; UNRESOLVED or both polarities -> UNRESOLVED."""
+    kept = {c for c in classes if c != COPY}
+    if not kept:
+        return UNTOUCHED
+    if kept == {HAS_TIP}:
+        return HAS_TIP
+    if kept == {NO_TIP}:
+        return NO_TIP
+    return UNRESOLVED
+
+
+def _combine_results(results: list[str]) -> str:
+    """One name defined more than once (a property getter/setter pair): the
+    UNTOUCHED-transparent join of each definition's result."""
+    kept = {r for r in results if r != UNTOUCHED}
+    if not kept:
+        return UNTOUCHED
+    return next(iter(kept)) if len(kept) == 1 else UNRESOLVED
+
+
+class _MethodEval:
+    """One method under one context `E` (§18.4.3): the argument/value
+    classification `cls_E`, with locals evaluated as a Kleene least
+    fixpoint (r2 C10 / r3), so the result is independent of query order."""
+
+    def __init__(self, member: ast.FunctionDef | ast.AsyncFunctionDef, env: dict[str, str], write_fields: frozenset[str]):
+        self.env = env
+        self.write_fields = write_fields
+        self.recv = _receiver_name(member)
+        nodes = _scope_nodes(member.body)
+        self.assigns, self.unclassifiable = _name_bindings(nodes)
+        names = list(self.assigns)
+        vals: dict[str, str | None] = dict.fromkeys(names)
+        for _ in range(3 * len(names) + 5):
+            new: dict[str, str | None] = {}
+            for n in names:
+                acc: str | None = None
+                if n in env:
+                    acc = _join(acc, env[n])
+                if n in self.unclassifiable:
+                    acc = _join(acc, UNRESOLVED)
+                for v in self.assigns[n]:
+                    acc = _join(acc, self._cls(v, vals))
+                new[n] = acc
+            if new == vals:
+                break
+            vals = new
+        else:  # pragma: no cover -- the lattice has height 2, so this cannot happen
+            vals = dict.fromkeys(names, UNRESOLVED)
+        # F5: bottom is the join identity ONLY while iterating. The result maps
+        # every name still at bottom (no grounded source) to UNRESOLVED per
+        # name, so it can never act as an identity inside an `IfExp` later.
+        self.vals: dict[str, str | None] = {n: UNRESOLVED if v is None else v for n, v in vals.items()}
+
+    def _cls(self, e: ast.expr, vals: dict[str, str | None]) -> str | None:
+        if isinstance(e, ast.Constant):
+            return NO_TIP if e.value is None else UNRESOLVED
+        attr = _self_attr_name(e, self.recv)
+        if attr is not None and attr in self.write_fields:
+            return COPY
+        if isinstance(e, ast.IfExp):
+            return _join(self._cls(e.body, vals), self._cls(e.orelse, vals))
+        if isinstance(e, ast.Name):
+            n = e.id
+            if n in self.unclassifiable:
+                return UNRESOLVED
+            if n in self.assigns:
+                return vals[n]
+            if n in self.env:
+                return self.env[n]
+            return UNRESOLVED
+        return UNRESOLVED
+
+    def classify(self, e: ast.expr) -> str:
+        """`cls_E(e)` under the final fixpoint; a name still at bottom (no
+        grounded source) is `UNRESOLVED`."""
+        out = self._cls(e, self.vals)
+        return UNRESOLVED if out is None else out
+
+
+def _classify_static(e: ast.expr) -> str:
+    """`cls(default)` for an unbound parameter: the callee's default is
+    evaluated in the callee's own scope, where only `None` is a known tip
+    class."""
+    if isinstance(e, ast.Constant) and e.value is None:
+        return NO_TIP
+    return UNRESOLVED
+
+
+def _annotation_names_type(ann: ast.expr, tip_type: str) -> bool:
+    """The C2 node-shape allowlist: EXACTLY `Name(id=t)`, `Attribute(attr=t)`
+    (any value) or a string `Constant(value=t)`. Deliberately NOT
+    `_unwrap_annotation(ann) == t`: that helper strips `Optional[...]` and
+    `X | None`, which would re-admit `Optional[Tip]`."""
+    if isinstance(ann, ast.Name):
+        return ann.id == tip_type
+    if isinstance(ann, ast.Attribute):
+        return ann.attr == tip_type
+    if isinstance(ann, ast.Constant) and isinstance(ann.value, str):
+        return ann.value == tip_type
+    return False
+
+
+@dataclass(frozen=True, slots=True)
+class TipEffectAnalysis:
+    """§18.4.8's per-tracker-class derivation record."""
+
+    #: `B` (R-A), sorted.
+    backing_fields: tuple[str, ...]
+    #: R-B results `HAS_TIP`/`NO_TIP` for the PUBLIC direct methods (R-D).
+    effects: dict[str, str]
+    #: PUBLIC direct methods whose R-B result is UNRESOLVED (L1), sorted.
+    effects_unresolved: tuple[str, ...]
+    #: L4's structural maximum followed-call chain length ending in a `W` write.
+    effects_max_depth: int
+    #: `constructor_state(C)` (R-C(1)): `NO_TIP`/`HAS_TIP` or `None`.
+    constructor_state: str | None
+    #: Names of C's direct methods (the bridge's rule 0 reads this).
+    direct_methods: frozenset[str]
+    #: The entry-context R-B result of EVERY direct method, private ones
+    #: included (`UNTOUCHED` for a method with no tip write). Not published.
+    results: dict[str, str]
+    #: The derived tip type name `T` (singleton) or `None`.
+    tip_type: str | None
+
+
+#: F4: names an annotation can unwrap to that are never a tip class.
+_NON_TIP_TYPE_NAMES = frozenset(
+    {
+        "Any", "object", "None", "NoneType", "Optional", "Union", "Callable", "Type", "Literal", "Annotated",
+        "TypeVar", "str", "int", "float", "bool", "bytes", "list", "dict", "set", "tuple",
+    }
+)  # fmt: skip
+
+
+class _TipEffectModel:
+    def __init__(
+        self,
+        class_node: ast.ClassDef,
+        state_fields: tuple[str, ...],
+        class_nodes: dict[str, ast.ClassDef] | None,
+        memoize: bool,
+    ):
+        self.class_node = class_node
+        self.state_fields = tuple(state_fields)
+        self.defs = _direct_defs(class_node)
+        self.method_names = _method_names(self.defs)
+        self.memoize = memoize
+        self._memo: dict[tuple[int, tuple[tuple[str, str], ...], frozenset[str]], str] = {}
+        self._event_cache: dict[int, list[_WriteEvent]] = {}
+
+        # R-A / C11: plain field vs property vs other class-level binding.
+        bound = _class_level_names(class_node)
+        for base in _base_closure(class_node, class_nodes):
+            bound |= _class_level_names(base)
+        self.property_fields: set[str] = set()  # F in S with a property getter in C
+        self.other_bound_fields: set[str] = set()  # F in S bound at class level without one
+        for f in self.state_fields:
+            if f in bound:
+                if _property_getter(self.defs, f) is not None:
+                    self.property_fields.add(f)
+                else:
+                    self.other_bound_fields.add(f)
+        self.backing = self._backing_fields()
+        self.write_fields = frozenset(self.state_fields) | frozenset(self.backing)
+        self.unresolved_write_fields = self.property_fields | self.other_bound_fields
+
+        # C2: the tip type name `T`, derived over W (a singleton or nothing).
+        annotated = _annotated_attributes(class_node)
+        types = {annotated[x] for x in self.write_fields if x in annotated}
+        tip_type: str | None = next(iter(types)) if len(types) == 1 else None
+        # F4: `T` must name a class, not a typing construct or builtin
+        # (`Optional[Any]` unwraps to "Any"), and, when the whole-PLR class
+        # index is available, must be a class in it. Otherwise fail closed.
+        if tip_type is not None and (
+            tip_type in _NON_TIP_TYPE_NAMES or (class_nodes is not None and tip_type not in class_nodes)
+        ):
+            tip_type = None
+        self.tip_type: str | None = tip_type
+
+    # -- R-A ---------------------------------------------------------------
+
+    def _backing_fields(self) -> set[str]:
+        backing: set[str] = set()
+
+        def walk(getter: ast.FunctionDef | ast.AsyncFunctionDef, visited: set[str]) -> None:
+            for node in _scope_nodes(getter.body):
+                if not isinstance(node, ast.Return) or node.value is None:
+                    continue
+                x = _self_attr_name(node.value, _receiver_name(getter))
+                if x is None:
+                    continue  # a Call (incl. cast(...)), Name, Constant, holder.tip, ...
+                if x not in self.defs:
+                    backing.add(x)
+                elif _property_getter(self.defs, x) is not None:
+                    if x not in visited:
+                        visited.add(x)
+                        walk(_property_getter(self.defs, x), visited)  # type: ignore[arg-type]
+                # else: a bound method is not a tip
+
+        for f in sorted(self.property_fields):
+            walk(_property_getter(self.defs, f), {f})  # type: ignore[arg-type]
+        return backing
+
+    # -- R-B ---------------------------------------------------------------
+
+    def events(self, member: ast.FunctionDef | ast.AsyncFunctionDef) -> list[_WriteEvent]:
+        key = id(member)
+        if key not in self._event_cache:
+            self._event_cache[key] = _write_events(member, self.method_names)
+        return self._event_cache[key]
+
+    def _followable(self, name: str) -> ast.FunctionDef | ast.AsyncFunctionDef | None | bool:
+        """`None`: not followed, contributes nothing (no direct method).
+        `False`: contributes UNRESOLVED (several definitions, a property, or
+        any decorator). Otherwise the callee."""
+        defs = self.defs.get(name, [])
+        if not defs:
+            return None
+        if len(defs) == 1 and not defs[0].decorator_list:
+            return defs[0]
+        return False
+
+    def entry_context(self, member: ast.FunctionDef | ast.AsyncFunctionDef) -> dict[str, str]:
+        a = member.args
+        full = list(a.posonlyargs) + list(a.args)
+        defaults = _param_defaults(member)
+        env: dict[str, str] = {}
+        for p in full[1:] + list(a.kwonlyargs):
+            default = defaults.get(p.arg)
+            is_tip = (
+                self.tip_type is not None
+                and p.annotation is not None
+                and _annotation_names_type(p.annotation, self.tip_type)
+                and not (isinstance(default, ast.Constant) and default.value is None)
+            )
+            env[p.arg] = HAS_TIP if is_tip else UNRESOLVED
+        if a.vararg is not None:
+            env[a.vararg.arg] = UNRESOLVED
+        if a.kwarg is not None:
+            env[a.kwarg.arg] = UNRESOLVED
+        return env
+
+    def result(
+        self, member: ast.FunctionDef | ast.AsyncFunctionDef, env: dict[str, str], stack: frozenset[str]
+    ) -> str:
+        memo_key = (id(member), tuple(sorted(env.items())), stack)
+        if self.memoize and memo_key in self._memo:
+            return self._memo[memo_key]
+        ev = _MethodEval(member, env, self.write_fields)
+        klasses: list[str] = []
+        for w in self.events(member):
+            if w.attr is None:
+                klasses.append(UNRESOLVED)
+            elif w.attr in self.write_fields:
+                if (
+                    w.kind in ("assign", "annassign")
+                    and w.attr not in self.unresolved_write_fields
+                    and w.value is not None
+                ):
+                    klasses.append(ev.classify(w.value))
+                else:
+                    klasses.append(UNRESOLVED)  # M3, AugAssign, tuple, Delete, C3 store
+        for call, h in _self_calls(member):
+            callee = self._followable(h)
+            if callee is None:
+                continue
+            if callee is False or h in stack:
+                klasses.append(UNRESOLVED)  # also: a call already on the stack (L4's cycle guard)
+                continue
+            bound = _bind_parameters(call, callee)  # type: ignore[arg-type]
+            params = self._all_params(callee)  # type: ignore[arg-type]
+            if bound is None:
+                callee_env = dict.fromkeys(params, UNRESOLVED)
+            else:
+                defaults = _param_defaults(callee)  # type: ignore[arg-type]
+                callee_env = {}
+                for p in params:
+                    if p in bound:
+                        callee_env[p] = ev.classify(bound[p])
+                    elif p in defaults:
+                        callee_env[p] = _classify_static(defaults[p])
+                    else:
+                        callee_env[p] = UNRESOLVED
+            sub = self.result(callee, callee_env, stack | {h})  # type: ignore[arg-type]
+            if sub != UNTOUCHED:
+                klasses.append(sub)
+        out = _fold(klasses)
+        if self.memoize:
+            self._memo[memo_key] = out
+        return out
+
+    @staticmethod
+    def _all_params(callee: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
+        a = callee.args
+        full = list(a.posonlyargs) + list(a.args)
+        return [p.arg for p in full][1:] + [p.arg for p in a.kwonlyargs]
+
+    def entry_result(self, name: str) -> str:
+        defs = self.defs.get(name, [])
+        if len(defs) > 1 and name in self.method_names:
+            # F8: several definitions of one NON-property name -- which one
+            # runs is not decided here (a getter/setter pair is unaffected).
+            return UNRESOLVED
+        results = [
+            # N2: a static/class method takes no receiver, so its first
+            # parameter is not one (matches `_followable`'s callee rule).
+            UNRESOLVED if _is_static_or_class_def(d) else self.result(d, self.entry_context(d), frozenset({name}))
+            for d in defs
+        ]
+        return _combine_results(results)
+
+    # -- L4: the structural maximum depth ---------------------------------
+
+    def chain(self, member: ast.FunctionDef | ast.AsyncFunctionDef, stack: frozenset[str]) -> int | None:
+        """Longest chain of followed self-calls ending in a `W` write, as a
+        number of call edges (a write in `member`'s own body is 0). A chain
+        through a cycle-guarded call ends at that call and does not count."""
+        best: int | None = 0 if any(w.attr is None or w.attr in self.write_fields for w in self.events(member)) else None
+        for _call, h in _self_calls(member):
+            callee = self._followable(h)
+            if callee is None or callee is False or h in stack:
+                continue
+            sub = self.chain(callee, stack | {h})  # type: ignore[arg-type]
+            if sub is not None:
+                best = sub + 1 if best is None else max(best, sub + 1)
+        return best
+
+    def max_depth(self) -> int:
+        best = 0
+        for name, defs in self.defs.items():
+            if name.startswith("_") and name != "__init__":
+                continue
+            for d in defs:
+                c = self.chain(d, frozenset({name}))
+                if c is not None:
+                    best = max(best, c)
+        return best
+
+
+def analyze_tip_effects(
+    class_node: ast.ClassDef,
+    state_fields: tuple[str, ...],
+    class_nodes: dict[str, ast.ClassDef] | None = None,
+    *,
+    memoize: bool = True,
+) -> TipEffectAnalysis:
+    """R-A + R-B + R-D + L1 + R-C(1) over the tracker class `class_node`
+    (spec 260929 §18.4.2-§18.4.6). `class_nodes` (the whole-PLR class index)
+    is consulted only for C's base closure (r2 C11's class-level-binding
+    rule); `None` means no bases are known. `memoize=False` exists so the
+    order-independence control (AC-18.2(p)) can compare both."""
+    model = _TipEffectModel(class_node, state_fields, class_nodes, memoize)
+    results = {name: model.entry_result(name) for name in sorted(model.defs)}
+    effects: dict[str, str] = {}
+    unresolved: list[str] = []
+    for name, res in results.items():
+        if name.startswith("_"):
+            continue  # R-D: publication hygiene
+        if res in (HAS_TIP, NO_TIP):
+            effects[name] = res
+        elif res == UNRESOLVED:
+            unresolved.append(name)
+    init_result = results.get("__init__", UNTOUCHED)
+    return TipEffectAnalysis(
+        backing_fields=tuple(sorted(model.backing)),
+        effects=effects,
+        effects_unresolved=tuple(sorted(unresolved)),
+        effects_max_depth=model.max_depth(),
+        constructor_state=init_result if init_result in (HAS_TIP, NO_TIP) else None,
+        direct_methods=frozenset(model.defs),
+        results=results,
+        tip_type=model.tip_type,
+    )
+
+
+# ---- R-A's checked tripwires (§18.4.2 (i)/(ii)), asserted over the pin ----
+
+
+def tip_getter_dependencies(
+    class_node: ast.ClassDef, getter_name: str, backing_fields: frozenset[str] | tuple[str, ...]
+) -> frozenset[str]:
+    """`D(F)` (r2 C8/C9): the names `a` such that some `self.a` in LOAD
+    context occurs ANYWHERE in the body of `getter_name`'s getter (behind a
+    local such as `holder = self._holder`, not only in return expressions);
+    every property name found is followed into its own getter; `B` and all
+    property names are removed."""
+    defs = _direct_defs(class_node)
+    props = {name for name in defs if _property_getter(defs, name) is not None}
+    getter = _property_getter(defs, getter_name)
+    deps: set[str] = set()
+    if getter is None:
+        return frozenset()
+    seen = {getter_name}
+
+    def visit(g: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
+        for stmt in g.body:
+            for node in ast.walk(stmt):
+                if not (isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Load)):
+                    continue
+                a = _self_attr_name(node, _receiver_name(g))
+                if a is None:
+                    continue
+                if a in props:
+                    if a not in seen:
+                        seen.add(a)
+                        visit(_property_getter(defs, a))  # type: ignore[arg-type]
+                else:
+                    deps.add(a)
+
+    visit(getter)
+    return frozenset(deps - set(backing_fields))
+
+
+def tip_attribute_writers(class_node: ast.ClassDef, attrs: frozenset[str] | tuple[str, ...]) -> dict[str, tuple[str, ...]]:
+    """`attr -> sorted methods of C writing self.<attr>`, over §18.4.3's FULL
+    write-shape set (never P1b's `_attribute_writers`, which counts only
+    `ast.Assign`). The catch-alls (`setattr`-family, `self.__dict__`/
+    `vars(self)`, escaped bare `self`) count as a write of EVERY attr. A
+    property setter is labelled `"<name> (setter)"`."""
+    wanted = tuple(attrs)
+    out: dict[str, set[str]] = {a: set() for a in wanted}
+    all_defs = _direct_defs(class_node)
+    method_names = _method_names(all_defs)
+    for name, defs in all_defs.items():
+        for d in defs:
+            label = f"{name} (setter)" if _is_setter_def(d) else name
+            for ev in _write_events(d, method_names):
+                targets = wanted if ev.attr is None else ((ev.attr,) if ev.attr in out else ())
+                for a in targets:
+                    out[a].add(label)
+    return {a: tuple(sorted(v)) for a, v in out.items()}
+
+
+def tip_getters_that_write(class_node: ast.ClassDef) -> tuple[str, ...]:
+    """The `@property` getters of C whose body writes any self attribute
+    (§18.4.2 tripwire (ii): none may)."""
+    all_defs = _direct_defs(class_node)
+    method_names = _method_names(all_defs)
+    return tuple(
+        sorted(
+            d.name
+            for defs in all_defs.values()
+            for d in defs
+            if _is_property_def(d) and _write_events(d, method_names)
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1012,60 +1837,79 @@ def reset_rule_candidates(
     return frozenset(conj12), frozenset(conj123)
 
 
-def _constructor_state(tracker_node: ast.ClassDef, state_fields: tuple[str, ...]) -> str | None:
-    """`constructor_state(C)` (§12.1.2): P4's OWN three-way classification
-    (`_classify_write`) applied to `C.__init__`'s writes to
-    `state_fields` -- the same rule `_effects` applies to every other
-    method of `C`, but via a DEDICATED pass over `__init__` specifically,
-    because `__init__` conventionally writes its state fields via
-    `ast.AnnAssign` (e.g. `TipTracker.__init__`'s `self._tip:
-    Optional["Tip"] = None`), which `_effects`'s `ast.Assign`-only scan --
-    matching how every OTHER tracker method writes them, by plain
-    reassignment -- does not match at all. Returns `"NO_TIP"`/`"HAS_TIP"`
-    when `__init__` unambiguously establishes one polarity over
-    `state_fields`, `None` otherwise (no such write, a polarity mix, or
-    `"ambiguous"` -- E3's own "no effect" disposition, reused here per
-    §12.1.2's "both-kinds or ambiguous is not a reset").
-    """
-    state_field_set = frozenset(state_fields)
-    init_method: ast.FunctionDef | ast.AsyncFunctionDef | None = None
-    for member in ast.iter_child_nodes(tracker_node):
-        if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)) and member.name == "__init__":
-            init_method = member
-            break
-    if init_method is None:
-        return None
-    kinds: set[str] = set()
-    for node in ast.walk(init_method):
-        if isinstance(node, ast.Assign):
-            targets: list[ast.expr] = list(node.targets)
-            value = node.value
-        elif isinstance(node, ast.AnnAssign) and node.value is not None:
-            targets = [node.target]
-            value = node.value
-        else:
+def reset_constructions_bind_no_optional_collaborator(
+    receiver_node: ast.ClassDef,
+    method_name: str,
+    attr_name: str,
+    tracker_node: ast.ClassDef,
+    tracker_class: str,
+    class_index: Any,
+) -> bool:
+    """R-C(2), the holder-less conjunct (spec 260929 §18.4.5, fail-closed):
+    `True` iff EVERY constructor call of the tracker class in the reset
+    method's `conj123` assignment(s) binds NO parameter of `C.__init__`
+    whose default is `Constant(None)`. Binding follows R-B's rules
+    (`_bind_parameters`); a call site with `*`/`**`, an `__init__` with
+    `*args`/`**kwargs`, or a call Python would not bind makes the call
+    inadmissible, i.e. `False`.
+
+    Why (§18.4.5): R-A treats the backing field as `_pending_tip`'s value
+    only on the getter's holder-less path. A tracker built with a
+    `None`-default collaborator bound (e.g. `T(thing=..., holder=h)`)
+    starts in the OTHER path's state, so its constructor state says nothing
+    about the reset. This is a signature heuristic, not a proof (OI-5)."""
+    inits = _direct_defs(tracker_node).get("__init__", [])
+    if len(inits) > 1:
+        return False
+    defaults = _param_defaults(inits[0]) if inits else {}
+    for member in ast.iter_child_nodes(receiver_node):
+        if not (isinstance(member, _FUNC_DEFS) and member.name == method_name):
             continue
-        for target in targets:
-            if _is_self_attr(target) and target.attr in state_field_set:  # type: ignore[union-attr]
-                kinds.add(_classify_write(value, state_field_set))
-    if kinds == {"NO_TIP"}:
-        return "NO_TIP"
-    if kinds == {"HAS_TIP"}:
-        return "HAS_TIP"
-    return None
+        for stmt in member.body:
+            if not (isinstance(stmt, ast.Assign) and len(stmt.targets) == 1):
+                continue
+            if not _is_self_attr(stmt.targets[0], attr_name):
+                continue
+            if not (
+                _is_fresh_only_construction(stmt.value, tracker_class, class_index)
+                and _no_self_attr_load(stmt.value, attr_name)
+            ):
+                continue
+            for node in ast.walk(stmt.value):
+                if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == tracker_class):
+                    continue
+                if not inits:
+                    if node.args or node.keywords:
+                        return False
+                    continue
+                bound = _bind_parameters(node, inits[0])
+                if bound is None:
+                    return False
+                for p in bound:
+                    d = defaults.get(p)
+                    if isinstance(d, ast.Constant) and d.value is None:
+                        return False
+    return True
 
 
-def _entry_reset(conj123: frozenset[str], constructor_state: str | None) -> tuple[dict[str, str] | None, str]:
+def _entry_reset(
+    conj123: frozenset[str], constructor_state: str | None, holderless_ok: bool = True
+) -> tuple[dict[str, str] | None, str]:
     """`(entry_reset, ledger_reason)`. `entry_reset` is
     `{"method": <name>, "post": "no_tip"|"has_tip"}` iff exactly one
     method satisfies all three conjuncts (`conj123`) AND
-    `constructor_state` (`_constructor_state(C)`, above) is admissible
-    (`"NO_TIP"` or `"HAS_TIP"`, never `None`). `ledger_reason` is
-    `"ambiguous"` when more than one method satisfies all three conjuncts
-    (§12.1.2's own more-than-one rule, fail-closed), `"absent"` for every
-    other nothing-emitted case (zero qualifying methods, or a qualifying
-    method whose constructor state is itself inadmissible), and `"ok"`
-    when `entry_reset` is populated.
+    `constructor_state` (`TipEffectAnalysis.constructor_state`, R-C(1): the
+    R-B result of `C.__init__`) is admissible
+    (`"NO_TIP"` or `"HAS_TIP"`, never `None`) AND (R-C(2), spec 260929
+    §18.4.5) `holderless_ok` -- every constructor call in the reset binds
+    no `None`-default `__init__` parameter
+    (`reset_constructions_bind_no_optional_collaborator`). `ledger_reason`
+    is `"ambiguous"` when more than one method satisfies all three
+    conjuncts (§12.1.2's own more-than-one rule, fail-closed), `"absent"`
+    for every other nothing-emitted case (zero qualifying methods, a
+    qualifying method whose constructor state is itself inadmissible, or a
+    failed R-C(2) -- no new ledger vocabulary), and `"ok"` when
+    `entry_reset` is populated.
     """
     if len(conj123) > 1:
         return None, "ambiguous"
@@ -1073,6 +1917,8 @@ def _entry_reset(conj123: frozenset[str], constructor_state: str | None) -> tupl
         return None, "absent"
     method = next(iter(conj123))
     if constructor_state not in ("NO_TIP", "HAS_TIP"):
+        return None, "absent"
+    if not holderless_ok:
         return None, "absent"
     # `.lower()`, not a hand-typed `"has_tip"` literal: that string is
     # ALSO PLR's own bool-view attribute name (`TipTracker.has_tip`),
@@ -1126,6 +1972,22 @@ class ReceiverState:
     #: the caller did not supply a `function_index` --
     #: `compute_channel_bridge`'s same fail-closed-by-omission discipline).
     anchor_fields: tuple[str, ...] = ()
+    #: 260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md §18.4.8,
+    #: T57): PUBLIC direct methods of the tracker class whose R-B result is
+    #: UNRESOLVED (L1). The bridge widens on any bridge to one of these.
+    effects_unresolved: tuple[str, ...] = ()
+    #: 260929 (§18.4.2, R-A): the backing-field set `B`, sorted.
+    effect_backing_fields: tuple[str, ...] = ()
+    #: 260929 (§18.4.3, L4/M4): the structural maximum followed-call chain
+    #: length ending in a `W` write, over the entry methods.
+    effects_max_depth: int = 0
+    #: 260929 (§18.4.4 rule 0): the names of the tracker class's DIRECT
+    #: methods. Internal -- NOT serialised. REQUIRED by
+    #: `compute_channel_bridge_detailed` (F7): `None` (a hand-built
+    #: `ReceiverState` that never went through `derive_receiver_states`) is
+    #: fine for every consumer that does not bridge, and makes the bridge
+    #: raise rather than silently skip rule 0's direct-method half.
+    tracker_methods: frozenset[str] | None = None
 
 
 def receiver_state_to_json(rs: ReceiverState) -> dict[str, Any]:
@@ -1135,6 +1997,12 @@ def receiver_state_to_json(rs: ReceiverState) -> dict[str, Any]:
         "bool_view": {"attr": rs.bool_view_attr, "field": rs.bool_view_field, "true_when": rs.true_when},
         "state_fields": list(rs.state_fields),
         "effects": dict(sorted(rs.effects.items())),
+        # 260929 (§18.4.8): the four new keys are ALWAYS emitted (possibly
+        # empty / 0), so AC-18.8 can tell "the derivation ran and found
+        # nothing" from "this table predates §18".
+        "effects_unresolved": sorted(rs.effects_unresolved),
+        "effect_backing_fields": sorted(rs.effect_backing_fields),
+        "effects_max_depth": rs.effects_max_depth,
         "channel_default_param": dict(sorted(rs.channel_default_param.items())),
         "channel_default_disablers": list(rs.channel_default_disablers),
         "tip_state_exceptions": list(rs.tip_state_exceptions),
@@ -1203,9 +2071,8 @@ def derive_receiver_states(
     # Cache P2/P4 results per tracker class -- multiple receiver classes
     # could type an attribute to the same tracker class.
     anchor_cache: dict[str, tuple[str, str, str] | None] = {}
-    effects_cache: dict[str, dict[str, str]] = {}
+    analysis_cache: dict[str, TipEffectAnalysis] = {}
     state_fields_cache: dict[str, tuple[str, ...]] = {}
-    constructor_state_cache: dict[str, str | None] = {}
 
     # 260909 (T52, spec §17.4.2, P5, additive, opt-in): the singleton
     # typestate anchor's whole-surface selection, computed ONCE (not per
@@ -1217,12 +2084,13 @@ def derive_receiver_states(
     if function_index is not None:
         singleton_anchors, _candidates = compute_singleton_typestate_anchors(class_nodes, class_modules, function_index)
 
-    out: dict[str, ReceiverState] = {}
+    # R-E (spec 260929 §18.4.7, L2), pass 1: the CANDIDATE receivers -- every
+    # class with a P1a attribute whose target class has a P2 anchor (today's
+    # alphabetical attribute tie-break, "head" < "head96"). No class name
+    # appears in the rule.
+    candidates: dict[str, tuple[str, str, ast.ClassDef, tuple[str, str, str]]] = {}
     for receiver_name, receiver_node in sorted(class_nodes.items()):
         annotated = _annotated_attributes(receiver_node)
-        # Deterministic tie-break (§10.2's own note): among attributes
-        # typing to an anchored class, pick alphabetically first
-        # ("head" < "head96").
         for attr_name in sorted(annotated):
             tracker_class = annotated[attr_name]
             tracker_node = class_nodes.get(tracker_class)
@@ -1233,59 +2101,80 @@ def derive_receiver_states(
             anchor = anchor_cache[tracker_class]
             if anchor is None:
                 continue  # P2 fail-closed: feature disabled for this class.
-            bool_view_attr, bool_view_field, true_when = anchor
-
-            if tracker_class not in state_fields_cache:
-                state_fields_cache[tracker_class] = _state_fields_for_class(
-                    records_by_class, tracker_class, tip_state_exceptions_set, bool_view_field
-                )
-            state_fields = state_fields_cache[tracker_class]
-
-            if tracker_class not in effects_cache:
-                effects_cache[tracker_class] = _effects(tracker_node, state_fields)
-            effects = effects_cache[tracker_class]
-
-            idiom_matches = _channel_default_idiom(receiver_node)
-            channel_default_param = {m: q for m, (q, _x, _p) in idiom_matches.items()}
-            attribute_writers = _attribute_writers(receiver_node, receiver_name)
-            disablers = _channel_default_disablers(idiom_matches, attribute_writers)
-            channel_kwarg = _channel_kwarg_name(idiom_matches)
-            # P9 (§13.5.2): purely syntactic over `receiver_node`'s own
-            # body -- computed once per receiver, independent of any
-            # `delegates_to` closure walk (that happens per contract entry,
-            # in `compute_channel_bridge`, which looks this table up).
-            delegate_channel_binding = compute_delegate_channel_bindings(
-                receiver_node, channel_default_param, channel_kwarg
-            )
-
-            # P5 (§12.1.2): `class_nodes` IS the "P1 class index" conjunct 1
-            # matches `ast.Call` funcs against -- every top-level class
-            # across the whole PLR source tree, already built above.
-            if tracker_class not in constructor_state_cache:
-                constructor_state_cache[tracker_class] = _constructor_state(tracker_node, state_fields)
-            constructor_state = constructor_state_cache[tracker_class]
-            _conj12, conj123 = reset_rule_candidates(receiver_node, attr_name, tracker_class, class_nodes)
-            entry_reset, entry_reset_ledger = _entry_reset(conj123, constructor_state)
-
-            out[receiver_name] = ReceiverState(
-                channel_attr=attr_name,
-                tracker_class=tracker_class,
-                tracker_module=class_modules[tracker_class],
-                bool_view_attr=bool_view_attr,
-                bool_view_field=bool_view_field,
-                true_when=true_when,
-                state_fields=state_fields,
-                effects=effects,
-                channel_default_param=channel_default_param,
-                channel_default_disablers=disablers,
-                tip_state_exceptions=tip_state_exceptions,
-                entry_reset=entry_reset,
-                entry_reset_ledger=entry_reset_ledger,
-                channel_kwarg=channel_kwarg,
-                delegate_channel_binding=delegate_channel_binding,
-                anchor_fields=singleton_anchors.get(receiver_name, ()),
-            )
+            candidates[receiver_name] = (attr_name, tracker_class, tracker_node, anchor)
             break  # first (alphabetically) qualifying attribute wins.
+    # Pass 2: the published receivers are `Cand \ T`, where `T` is the set of
+    # tracker classes of the candidates. A class that is some candidate's
+    # tracker is never a receiver ("rooted at machine-frontend attributes,
+    # not recursing into tracker classes' own annotated attributes").
+    tracker_set = {tracker_class for (_a, tracker_class, _n, _anc) in candidates.values()}
+
+    out: dict[str, ReceiverState] = {}
+    for receiver_name, (attr_name, tracker_class, tracker_node, anchor) in candidates.items():
+        if receiver_name in tracker_set:
+            continue
+        receiver_node = class_nodes[receiver_name]
+        bool_view_attr, bool_view_field, true_when = anchor
+
+        if tracker_class not in state_fields_cache:
+            state_fields_cache[tracker_class] = _state_fields_for_class(
+                records_by_class, tracker_class, tip_state_exceptions_set, bool_view_field
+            )
+        state_fields = state_fields_cache[tracker_class]
+
+        if tracker_class not in analysis_cache:
+            analysis_cache[tracker_class] = analyze_tip_effects(tracker_node, state_fields, class_nodes)
+        analysis = analysis_cache[tracker_class]
+
+        idiom_matches = _channel_default_idiom(receiver_node)
+        channel_default_param = {m: q for m, (q, _x, _p) in idiom_matches.items()}
+        attribute_writers = _attribute_writers(receiver_node, receiver_name)
+        disablers = _channel_default_disablers(idiom_matches, attribute_writers)
+        channel_kwarg = _channel_kwarg_name(idiom_matches)
+        # P9 (§13.5.2): purely syntactic over `receiver_node`'s own
+        # body -- computed once per receiver, independent of any
+        # `delegates_to` closure walk (that happens per contract entry,
+        # in `compute_channel_bridge`, which looks this table up).
+        delegate_channel_binding = compute_delegate_channel_bindings(
+            receiver_node, channel_default_param, channel_kwarg
+        )
+
+        # P5 (§12.1.2): `class_nodes` IS the "P1 class index" conjunct 1
+        # matches `ast.Call` funcs against -- every top-level class
+        # across the whole PLR source tree, already built above.
+        constructor_state = analysis.constructor_state
+        _conj12, conj123 = reset_rule_candidates(receiver_node, attr_name, tracker_class, class_nodes)
+        # R-C(2) (§18.4.5): the holder-less conjunct, checked on the single
+        # conj123 method (only meaningful when exactly one qualifies).
+        holderless_ok = True
+        if len(conj123) == 1:
+            holderless_ok = reset_constructions_bind_no_optional_collaborator(
+                receiver_node, next(iter(conj123)), attr_name, tracker_node, tracker_class, class_nodes
+            )
+        entry_reset, entry_reset_ledger = _entry_reset(conj123, constructor_state, holderless_ok)
+
+        out[receiver_name] = ReceiverState(
+            channel_attr=attr_name,
+            tracker_class=tracker_class,
+            tracker_module=class_modules[tracker_class],
+            bool_view_attr=bool_view_attr,
+            bool_view_field=bool_view_field,
+            true_when=true_when,
+            state_fields=state_fields,
+            effects=analysis.effects,
+            channel_default_param=channel_default_param,
+            channel_default_disablers=disablers,
+            tip_state_exceptions=tip_state_exceptions,
+            entry_reset=entry_reset,
+            entry_reset_ledger=entry_reset_ledger,
+            channel_kwarg=channel_kwarg,
+            delegate_channel_binding=delegate_channel_binding,
+            anchor_fields=singleton_anchors.get(receiver_name, ()),
+            effects_unresolved=analysis.effects_unresolved,
+            effect_backing_fields=analysis.backing_fields,
+            effects_max_depth=analysis.effects_max_depth,
+            tracker_methods=analysis.direct_methods,
+        )
     return out
 
 
@@ -1487,6 +2376,22 @@ def compute_channel_bridge(
     receiver_state: ReceiverState,
     stamp: Any,
 ) -> tuple[list[dict[str, Any]], str | None]:
+    """`compute_channel_bridge_detailed` without its diagnostics: the
+    `(channel_guards_json, channel_effect)` pair every existing caller
+    reads."""
+    guards, effect, _coexist = compute_channel_bridge_detailed(
+        entry, index, receiver_state=receiver_state, stamp=stamp
+    )
+    return guards, effect
+
+
+def compute_channel_bridge_detailed(
+    entry: Qualkey,
+    index: dict[Qualkey, SurveyRecord],
+    *,
+    receiver_state: ReceiverState,
+    stamp: Any,
+) -> tuple[list[dict[str, Any]], str | None, bool]:
     """§10.2.5: walk `entry`'s SAME depth-tracked `delegates_to` closure
     `derive_contract` walks, matching every `dropped_calls` entry against
     `self.<channel_attr>[<name>].<method>`. Returns
@@ -1509,10 +2414,35 @@ def compute_channel_bridge(
     depth-0 bridge, or a chain more than one hop deep) is out of P9's
     stated scope (§13.5.2: "a delegates_to hop", singular) and never gets
     `bound_channels`.
+
+    **260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md §18.4.4, T57;
+    L1 + M1 + M2).** For each bridge `self.<channel_attr>[..].<m>`, four rules
+    run BEFORE the survey-index skip (an omitted bridge is omission-as-no-op,
+    which L1 forbids), each setting `any_unresolved`: (0) `m` is not a direct
+    method of the tracker class, or `(tracker_module, "C.m")` is not in the
+    survey index; (1) `m` is in `effects_unresolved`, at any depth; (2) `m`
+    begins with `_` (a private method is never published, so a bridge to it
+    cannot be justified from the artifact); (3) otherwise the depth-0/deep
+    bookkeeping over `effects.get(m)` applies. `channel_effect` is then
+    `"widen"` if `any_unresolved`; otherwise `"widen"` if a depth-0 and a deep
+    effect coexist (M2, an amendment of §10.4's E2); otherwise the existing
+    three-way outcome. The third return value is that coexistence flag (C14's
+    `n_contracts_depth0_and_deep_coexist` counts it), independent of
+    `any_unresolved`.
     """
+    if receiver_state.tracker_methods is None:
+        # F7: rule 0's direct-method half is REQUIRED -- a receiver state that
+        # cannot say which methods its tracker class defines cannot be bridged
+        # soundly, and silently skipping the half would be fail-open.
+        raise ValueError(
+            "compute_channel_bridge_detailed: ReceiverState.tracker_methods is required "
+            "(spec 260929 §18.4.4 rule 0); build the state with derive_receiver_states "
+            "or supply the tracker class's direct method names"
+        )
     channel_guards: list[dict[str, Any]] = []
     depth0_effects: set[str] = set()
     any_deep_effect = False
+    any_unresolved = False
     seen: set[tuple[int, str]] = set()
     k_bare = entry[1].rsplit(".", 1)[-1]
     k_rec = index.get(entry)
@@ -1534,8 +2464,16 @@ def compute_channel_bridge(
                 continue
             method = m.group(3)
             c_key: Qualkey = (receiver_state.tracker_module, f"{receiver_state.tracker_class}.{method}")
+            # §18.4.4 rules 0-2, BEFORE the index skip (r1, M1).
+            if (
+                method not in receiver_state.tracker_methods
+                or c_key not in index  # rule 0
+                or method in receiver_state.effects_unresolved  # rule 1
+                or method.startswith("_")  # rule 2
+            ):
+                any_unresolved = True
             if c_key not in index:
-                continue
+                continue  # no guards to attach for a method the index lacks.
             if (depth, method) in seen:
                 continue
             seen.add((depth, method))
@@ -1573,13 +2511,16 @@ def compute_channel_bridge(
                 else:
                     any_deep_effect = True
 
-    if len(depth0_effects) == 1:
-        channel_effect: str | None = next(iter(depth0_effects))
+    coexist = bool(depth0_effects) and any_deep_effect
+    if any_unresolved or coexist:
+        channel_effect: str | None = "widen"
+    elif len(depth0_effects) == 1:
+        channel_effect = next(iter(depth0_effects))
     elif len(depth0_effects) >= 2 or any_deep_effect:
         channel_effect = "widen"
     else:
         channel_effect = None
-    return channel_guards, channel_effect
+    return channel_guards, channel_effect, coexist
 
 
 @dataclass(frozen=True, slots=True)

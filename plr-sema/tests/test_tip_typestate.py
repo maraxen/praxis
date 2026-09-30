@@ -209,7 +209,27 @@ def test_ac_10_4_shipped_fixture_unchanged(contracts_json: str) -> None:
     pre_report = _check("simple_transfer_graph", pre_contracts)
     _VOLUME_REASONS = {"volume_state_unknown", "volume_tracking_unasserted"}
     non_volume = [f for f in report.findings if f.reason not in _VOLUME_REASONS]
-    assert len(non_volume) == len(pre_report.findings)
+    # 260929 (plr-1.0 migration, T62, spec 260929_plr-sema-plr1-tip-effect-
+    # increment §18.13): PLR 1.0 added a NEW guard, the module-level
+    # `_check_tip_racks_available` (liquid_handler.py:338), inside
+    # `pick_up_tips` and `drop_tips`. The pre-increment table cannot contain
+    # it, so those findings are a PLR change, not a tip-state regression.
+    # Exclude findings SITED at that function BY NAME (never a line number, a
+    # count bump would silently absorb any other new finding) and assert
+    # there are exactly 2 of them; the remaining non-volume findings must
+    # equal the pre-increment 38.
+    _TIP_RACKS_SITE = "_check_tip_racks_available"
+    tip_racks = [
+        f for f in non_volume if f.plr_site is not None and f.plr_site.qualname == _TIP_RACKS_SITE
+    ]
+    assert len(tip_racks) == 2, (
+        f"expected exactly 2 findings sited at {_TIP_RACKS_SITE} (pick_up_tips + drop_tips), "
+        f"got {[(f.operation_id, f.reason) for f in tip_racks]}"
+    )
+    assert sorted(f.operation_id for f in tip_racks) == ["op_1", "op_4"]
+    assert all(f.reason == "guard_predicate_unparsed" for f in tip_racks)
+    tip_family = [f for f in non_volume if f not in tip_racks]
+    assert len(tip_family) == len(pre_report.findings) == 38
     assert len(report.findings) - len(non_volume) == 4, (
         "expected exactly 4 additive volume findings (aspirate's 2 guards + "
         "dispense's 2 guards) over this fixture"

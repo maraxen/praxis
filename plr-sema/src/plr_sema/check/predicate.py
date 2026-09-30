@@ -202,7 +202,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field, replace
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from plr_sema.check import ir
 from plr_sema.derive import bindings as bindings_mod
@@ -216,6 +216,9 @@ __all__ = [
     "subclass_closure_from_bases",
     "is_dynamic_raise",
     "D6_SITE_RULES",
+    "rack_topology_disturbers",
+    "rack_topology_clauses",
+    "tip_racks_decline_reason",
 ]
 
 
@@ -287,6 +290,22 @@ class _Ctx:
     # `caller_args` otherwise, so a table carrying only the old field
     # keeps deciding exactly as before T54.
     caller_args_sites: "tuple[Mapping[str, Any], ...] | None" = None
+    # 260929 (spec 260929_plr-sema-plr1-tip-effect-increment.md §18.5.3,
+    # #5622, T61, r1 m5): the guard's own `kind`, set by `evaluate_guard`.
+    # `None` (the default) is NOT `"raise_guard"`: a hand-built `_Ctx` that
+    # never set it makes the `:338` site rule decline. The three older D6
+    # rules ignore it.
+    guard_kind: "str | None" = None
+    # 260929 (spec §18.5.4, T61, r2 C4): `rack_topology_stable`'s two
+    # clauses, computed by `check_ir` from `rack_topology_disturbers` and
+    # threaded `process_call` -> `_findings_for_call` -> `_findings_for_guards`
+    # -> `evaluate_guard` -> here. Clause (i): no topology-disturbing CALL at
+    # an earlier pc. Clause (ii): if inside a loop, none anywhere in the
+    # stream. Both default to `None`, which counts as FAILING clause (i): a
+    # caller that does not thread them gets a decline, never a `SAFE`. Only
+    # the `:338` site rule reads them.
+    rack_topology_prefix_ok: "bool | None" = None
+    rack_topology_loop_ok: "bool | None" = None
 
 
 def _with_override(ctx: _Ctx, override: Mapping[str, ir.Value]) -> _Ctx:
@@ -321,18 +340,32 @@ def _observation(env: "frozenset[str]") -> "dict[str, Any]":
     no `obs:` member in `env`, every rule below declines). A member whose
     value fails to parse as JSON is skipped rather than raised on -- this
     module never raises on a malformed `env` string, matching every other
-    total function here."""
+    total function here.
+
+    260929 (review fix, #5622 T61): a key that appears in MORE THAN ONE `obs:`
+    member (e.g. both `obs:tip_racks_available=true` and `=false`) is
+    AMBIGUOUS and is left out entirely. Before, `frozenset` iteration order --
+    PYTHONHASHSEED-dependent -- silently picked the winner. The harness emits
+    exactly one member per key, so this only ever declines; every rule reads
+    an absent key as a decline."""
     obs: dict[str, Any] = {}
+    seen_keys: set[str] = set()
+    ambiguous: set[str] = set()
     for member in env:
         if not member.startswith(_OBS_PREFIX):
             continue
         key, sep, raw = member[len(_OBS_PREFIX) :].partition("=")
         if not sep:
             continue
+        if key in seen_keys:
+            ambiguous.add(key)
+        seen_keys.add(key)
         try:
             obs[key] = json.loads(raw)
         except ValueError:
             continue
+    for key in ambiguous:
+        obs.pop(key, None)
     return obs
 
 
@@ -1440,11 +1473,200 @@ def _eval_check_args_strict_site_rule(ctx: _Ctx) -> "bool | None":
     return _fold_conjunctive_never_true([_eval_strict_for_one_site(a) for a in sites])
 
 
+# ---------------------------------------------------------------------------
+# The `:338` site rule (260929, spec 260929_plr-sema-plr1-tip-effect-increment.md
+# §18.5.3-§18.5.6, #5622, T61): `_check_tip_racks_available`'s own guard,
+# `not rack._available_for_tip_handling`. FALSE-ONLY (never `True`), so it can
+# add `SAFE` findings and never a `WILL_FAIL` (D-G6). It decides `False` iff
+# EVERY conjunct of :func:`tip_racks_decline_reason` holds:
+#
+#   kind      -- the guard is a `raise_guard` (`evaluate_guard` negates the
+#                value for any other kind, which would turn a `False` into a
+#                firing `True`);
+#   obs       -- the harness observed, over the INITIAL deck, that every tip
+#                rack on it is available (`tip_racks_available`);
+#   deck      -- defence in depth: `deck_resources_verified`;
+#   topology  -- §18.5.4's frame condition, checked over the program by
+#                `check_ir`: nothing before this call (clause (i)), and, if
+#                inside a loop, nothing anywhere (clause (ii)), could have
+#                lidded or stacked a rack.
+#
+# The residual assumption -- that a NON-move-family same-receiver method never
+# does so -- is A-RACK-STATIC (increment 1 §10.6.3, §18.5.5 here).
+# ---------------------------------------------------------------------------
+
+#: `classes` members of :func:`rack_topology_disturbers`'s values. The rule is
+#: FAIL-CLOSED: a CALL is a non-disturber only if the tables PROVE it, so every
+#: class below is a reason the proof is unavailable or the call moves things.
+#:
+#: * `move_family` -- derived net effect `EMPTY`/`HELD` on an anchor field;
+#: * `receiver_type_none` -- no receiver type, nothing can be said;
+#: * `no_contract` -- no contract entry (`unsupported_tool`);
+#: * `no_receiver_state` -- a contract exists but the receiver type has no
+#:   `receiver_state` block, or the block carries no `anchor_fields`: the move
+#:   family cannot be derived for this type, so absence of a net effect proves
+#:   nothing (a degraded or pre-P6 table must decline, never decide SAFE);
+#: * `anchor_touched_unmodelled` -- the method's own guards read an anchor
+#:   field but its `anchor_net_effects` carries no entry for that field (a
+#:   method that touches the arm state with no derived net effect, e.g. a
+#:   stripped `move_lid`, or `move_picked_up_resource` on the shipped table).
+_DISTURBER_CLASSES = frozenset(
+    {"move_family", "receiver_type_none", "no_contract", "no_receiver_state", "anchor_touched_unmodelled"}
+)
+
+
+def _anchor_fields_of(receiver_state: "Mapping[str, Any] | None") -> "tuple[str, ...]":
+    fields = (receiver_state or {}).get("anchor_fields") or ()
+    return tuple(fields)
+
+
+def _is_move_family(contract: Mapping[str, Any], receiver_state: "Mapping[str, Any] | None") -> bool:
+    """§18.5.4: a CALL is a move-family call iff its contract carries
+    `anchor_net_effects` mapping some field of the receiver type's own
+    `anchor_fields` to `"EMPTY"` or `"HELD"` -- P6's DERIVED net effects, no
+    hand-typed method names. `"TOP"` (P6 declined) does NOT count; that
+    fail-open edge is named in A-RACK-STATIC's row."""
+    anchor_fields = _anchor_fields_of(receiver_state)
+    net = contract.get("anchor_net_effects") or {}
+    return any(net.get(field_name) in ("EMPTY", "HELD") for field_name in anchor_fields)
+
+
+def _anchor_touched_unmodelled(contract: Mapping[str, Any], receiver_state: "Mapping[str, Any] | None") -> bool:
+    """True iff some guard of the contract is anchored to one of the receiver
+    type's anchor fields while `anchor_net_effects` has NO entry for that
+    field -- the method reads the arm/anchor state but the tables say nothing
+    about what it leaves behind. (`"TOP"` IS an entry: P6 looked and declined,
+    the named A-RACK-STATIC fail-open edge; absence is different -- nothing
+    was derived at all.)"""
+    anchor_fields = set(_anchor_fields_of(receiver_state))
+    net = contract.get("anchor_net_effects") or {}
+    return any(
+        isinstance(g, Mapping) and g.get("anchor_field") in anchor_fields and g.get("anchor_field") not in net
+        for g in contract.get("guards", ())
+    )
+
+
+def rack_topology_disturbers(
+    instructions: "Sequence[Any]",
+    contracts: Mapping[str, Any],
+    receiver_states: "Mapping[str, Any] | None",
+) -> "dict[int, tuple[str | None, frozenset[str]]]":
+    """§18.5.4's pre-scan (r1, m3): each `CALL` pc -> `(receiver_type,
+    classes)`, `classes ⊆ _DISTURBER_CLASSES` (empty for a call the tables
+    PROVE is not a rack-topology disturber). These classes are absolute;
+    clause (d) -- a receiver type that differs from the CHECKED
+    call's -- is relative, so it is evaluated by the caller from the
+    `receiver_type` this returns (see :func:`rack_topology_clauses`).
+
+    FAIL-CLOSED (review fix): a call is a non-disturber only when its
+    contract exists, its receiver type has a `receiver_state` block with
+    `anchor_fields` (so the move family CAN be derived for it), it is not in
+    the derived move family, and none of its guards reads an anchor field it
+    has no net effect for. A missing/degraded `receiver_state` or a stripped
+    `anchor_net_effects` therefore makes the call a disturber
+    (`no_receiver_state` / `anchor_touched_unmodelled`) instead of silently
+    emptying the family.
+
+    Pure and total over any instruction stream: non-`CALL` instructions are
+    skipped, and the scan reads only the contract table and the derived
+    `receiver_state` block -- never a method name.
+    """
+    receiver_states = receiver_states or {}
+    out: "dict[int, tuple[str | None, frozenset[str]]]" = {}
+    for pc, instr in enumerate(instructions):
+        if not isinstance(instr, ir.Call):
+            continue
+        receiver_type = instr.receiver_type
+        classes: "set[str]" = set()
+        if receiver_type is None:
+            classes.add("receiver_type_none")
+        else:
+            contract = contracts.get(f"{receiver_type}.{instr.method}")
+            receiver_state = receiver_states.get(receiver_type)
+            if contract is None:
+                classes.add("no_contract")
+            elif not _anchor_fields_of(receiver_state):
+                classes.add("no_receiver_state")
+            elif _is_move_family(contract, receiver_state):
+                classes.add("move_family")
+            elif _anchor_touched_unmodelled(contract, receiver_state):
+                classes.add("anchor_touched_unmodelled")
+        out[pc] = (receiver_type, frozenset(classes))
+    return out
+
+
+def rack_topology_clauses(
+    disturbers: "Mapping[int, tuple[str | None, frozenset[str]]]",
+    pc: int,
+    receiver_type: "str | None",
+    inside_loop: bool,
+) -> "tuple[bool, bool]":
+    """§18.5.4's `rack_topology_stable(p)` as its two clauses `(prefix_ok,
+    loop_ok)`. A `CALL` is topology-disturbing relative to `receiver_type` iff
+    it carries any class, or (clause (d)) its own receiver type differs.
+
+    (i)  `prefix_ok`: no CALL at a pc `q < pc` is disturbing.
+    (ii) `loop_ok`: if `inside_loop`, no CALL ANYWHERE in the stream is
+         disturbing (a later pc runs before `pc` on the next iteration);
+         vacuously true outside a loop.
+    """
+
+    def disturbing(entry: "tuple[str | None, frozenset[str]]") -> bool:
+        entry_type, classes = entry
+        return bool(classes) or entry_type != receiver_type
+
+    prefix_ok = not any(disturbing(entry) for q, entry in disturbers.items() if q < pc)
+    loop_ok = (not inside_loop) or not any(disturbing(entry) for entry in disturbers.values())
+    return prefix_ok, loop_ok
+
+
+def tip_racks_decline_reason(ctx: _Ctx) -> "str | None":
+    """§18.5.3 (r2, C4): the `:338` decision as a PURE function of `ctx`. The
+    FIRST failing conjunct, in this fixed attribution order, or `None` when
+    every conjunct holds:
+
+    1. `"kind"`            -- `ctx.guard_kind != "raise_guard"`;
+    2. `"observation"`     -- `tip_racks_available` is not `True`;
+    3. `"deck"`            -- `deck_resources_verified` is not `True`;
+    4. `"topology_prefix"` -- clause (i) is not `True` (`None` counts as failing);
+    5. `"topology_loop"`   -- clause (i) holds, clause (ii) is not `True`;
+    6. `None`              -- decided.
+
+    Anything absent, `None`, non-bool or unreadable declines: every test is an
+    identity check against `True`, and an unreadable `env` is an "observation"
+    decline rather than a raise. The measurement script calls this same
+    function, so the published attribution cannot drift from the decision.
+    """
+    if ctx.guard_kind != "raise_guard":
+        return "kind"
+    try:
+        obs = _observation(ctx.env)
+    except Exception:  # noqa: BLE001 - fail closed on any unreadable env
+        return "observation"
+    if obs.get("tip_racks_available") is not True:
+        return "observation"
+    if obs.get("deck_resources_verified") is not True:
+        return "deck"
+    if ctx.rack_topology_prefix_ok is not True:
+        return "topology_prefix"
+    if ctx.rack_topology_loop_ok is not True:
+        return "topology_loop"
+    return None
+
+
+def _eval_tip_racks_available_site_rule(ctx: _Ctx) -> "bool | None":
+    """§18.5.3: `False` iff :func:`tip_racks_decline_reason` is `None`, else
+    `None` (decline). NEVER `True`."""
+    return False if tip_racks_decline_reason(ctx) is None else None
+
+
 #: HM-26's own live measure (`plr_sema._hand_maintained:_measure_hm26`):
 #: `len(D6_SITE_RULES)`. T48's `:321` plus T49's `:375`/`:383` pair (line
 #: numbers at the dd79c4c89 pin) -- three entries, the SAME registry row
 #: (§16.15's D6 box: "whichever lands first adds it, the second asserts it
-#: already exists"). Keyed BY SYMBOL, `(qualname, raises, condition)` --
+#: already exists"); #5622 T61 adds the FOURTH, `_check_tip_racks_available`'s
+#: own guard (§18.5.6: a ceiling change 3 -> 4, not a new row).
+#: Keyed BY SYMBOL, `(qualname, raises, condition)` --
 #: re-anchored 260929 for the PLR 1.0.0b1 bump (task
 #: 260929_plr-1.0-migration), where the same three guards moved to
 #: `legacy/liquid_handling/liquid_handler.py:542/:596/:604`. A line-number
@@ -1459,6 +1681,9 @@ D6_SITE_RULES: "dict[tuple[str, str, str], Any]" = {
     ("LiquidHandler._check_args", "TypeError", "len(missing) > 0"): _eval_check_args_missing_site_rule,
     ("LiquidHandler._check_args", "TypeError", "strictness == Strictness.STRICT"): (
         _eval_check_args_strict_site_rule
+    ),
+    ("_check_tip_racks_available", "ValueError", "not rack._available_for_tip_handling"): (
+        _eval_tip_racks_available_site_rule
     ),
 }
 
@@ -1479,7 +1704,7 @@ def d6_site_rule_key(guard: Mapping[str, Any]) -> "tuple[str, str, str] | None":
 
 def _site_rule_for(guard: Mapping[str, Any]) -> "Any | None":
     """`guard` -> its `D6_SITE_RULES` entry, or `None` when the guard is
-    not one of the three `(qualname, raises, condition)` sites D6 covers --
+    not one of the four `(qualname, raises, condition)` sites D6 covers --
     the ordinary `evaluate_predicate` path, unchanged, for every other
     guard in the contract table."""
     key = d6_site_rule_key(guard)
@@ -1530,10 +1755,18 @@ def evaluate_guard(
     channels: "tuple[int, ...] | None" = None,
     class_hierarchy: "Mapping[str, frozenset[str]] | None" = None,
     k_reachability_clear: "bool | None" = None,
+    rack_topology_prefix_ok: "bool | None" = None,
+    rack_topology_loop_ok: "bool | None" = None,
 ) -> GuardResult:
     """The full per-guard decision: tier (iii) short-circuit, E-SCOPE,
     E-CALL/E-TYPE/E-ENV (via :func:`evaluate_predicate`), G6's polarity,
     E-UNCOND, E-VERDICT, and (for a ½ outcome) §15.7's reason.
+
+    `rack_topology_prefix_ok`/`rack_topology_loop_ok` (260929, spec
+    260929_plr-sema-plr1-tip-effect-increment.md §18.5.4, #5622, T61): the two
+    clauses of the `:338` rule's frame condition, computed once per call by
+    `check_ir`. Keyword-only, default `None` (= failing), read by no guard but
+    `_check_tip_racks_available`'s.
 
     `guard` is one entry of `contract["guards"]` (the wire shape
     `derive/__main__.py::_guard_to_json` emits). `channel_kwarg`/`channels`
@@ -1589,6 +1822,12 @@ def evaluate_guard(
         # complete (S17.5.1's two fail-closed conditions); `None`
         # otherwise, same fail-closed default `caller_args` uses.
         caller_args_sites=tuple(guard["caller_args_sites"]) if guard.get("caller_args_sites") else None,
+        # 260929 (spec §18.5.3/§18.5.4, #5622, T61): the guard's `kind`
+        # (same default the polarity step below uses) and the `:338`
+        # rule's two topology clauses.
+        guard_kind=guard.get("kind", "raise_guard"),
+        rack_topology_prefix_ok=rack_topology_prefix_ok,
+        rack_topology_loop_ok=rack_topology_loop_ok,
     )
 
     scope_entries = _exclude_self_entry(guard)
