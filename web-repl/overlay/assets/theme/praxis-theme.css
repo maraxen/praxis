@@ -1148,3 +1148,27 @@ body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab 
   line-height: 1.55;
   overflow-x: auto;
 }
+
+/* --- the notebook cap (D6, AC-36; task C5b) ------------------------------------ */
+/*
+ * At >= 1600 px the notebook content is capped at 960 px and the deck panel takes
+ * the rest (dock.js: panel_width = max(420, main_area_width - 960 - nb_h_padding)).
+ *
+ * The element is `.jp-Notebook`: NotebookPanel.content, the node dock.js reads
+ * `nb_h_padding` from, so the cap and the padding read describe one box. In
+ * JupyterLab 4's windowed notebook that node has no horizontal padding (the 10 px
+ * is on its `.jp-WindowedPanel-viewport`, inside it), so `nb_h_padding` reads 0 and
+ * the cell column at the cap is 960 minus that inner padding. Any other value
+ * would only leave a slack, never break `nb_content_width <= 960`.
+ *
+ * The one deliberate @media in this file: D6 defines the tier by WINDOW width, and
+ * nothing in the DOM below the window knows it. It is not theme-scoped, because it
+ * is layout and dock.js sizes from 960 in every theme. It applies whether or not
+ * the deck panel is open (CSS cannot see the panel); with the panel closed the
+ * notebook is capped and the space to its right is empty. No animation.
+ */
+@media (min-width: 1600px) {
+  .jp-NotebookPanel .jp-Notebook {
+    max-width: 960px;
+  }
+}
