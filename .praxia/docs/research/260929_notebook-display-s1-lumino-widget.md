@@ -116,8 +116,9 @@ Hashed inputs (stamp `inputs`, identical across units except upstream artifact h
   - `not_run`: model (no execution count and no outputs); the prompt text is `[ ]:`.
   - `running`: model (`exec_state: running`); the prompt text is `[*]:`.
   - `ran`: a combination of model features (execution count set, not dirty, no error output).
-  - `error`: a **CSS hook**, the class `jp-mime-... application/vnd.jupyter.stderr` output feature
-    (recorded as `mime:application/vnd.jupyter.stderr`), with model `out_types: error`.
+  - `error`: a **CSS hook**, recorded by the probe as the single feature
+    `mime:application/vnd.jupyter.stderr` (the exact selector or attribute is in
+    `units/cell_hooks.json`; A5 reads it from there), with model `out_types: error`.
   - `stale` (edited since run): a **CSS hook**, the class **`jp-mod-dirty`** on the cell (model
     `dirty: true`).
   - `n_states_with_css_hook = 2`; the other three come from the model, so chrome.js (A5) should read
