@@ -4154,3 +4154,257 @@ def test_redock_live_ok_requires_the_inserted_iframe_to_be_the_only_one_after_th
     raw = good_k1b(rs)["redock_live"]
     raw["events"] = redock_events() + [ev(7, "iframe_removed", src_viewer="v-2"), ev(8, "iframe_inserted", src_viewer="v-2")]
     assert rs.redock_live_ok(raw) is False, "a replaced element after the announce is a second insertion"
+
+
+# =========================================================================== #
+# Sprint C (C7): K2 (AC-36) and N-d (AC-39(d)) -- the pure key derivations over the page evidence.
+# =========================================================================== #
+
+
+def good_k2():
+    wide = lambda main, panel, nb=960.0: {"nb": nb, "panel": panel, "main": main, "padding": 0.0}  # noqa: E731
+    return {
+        "drawer": {"nb_before": 1000.0, "nb_open": 1000.0, "position": "fixed", "home": "drawer", "state": "open-connected"},
+        "dismiss": {
+            "first_open": {"state": "open-connected", "home": "drawer", "iframes": 1},
+            "after_close_button": {"state": "closed", "iframes": 0},
+            "after_toggle": {"state": "open-connected", "iframes": 1},
+            "after_escape": {"state": "closed", "iframes": 0},
+            "after_reopen": {"state": "open-connected", "iframes": 1},
+        },
+        "tier_up": {
+            "before": {"home": "drawer", "state": "open-connected", "iframes": 1, "src": "S"},
+            "after_up": {"home": "split", "state": "open-connected", "iframes": 1, "src": "S", "split_right": True,
+                         "resources_ok": True},
+            "back_down": {"home": "drawer", "state": "open-connected", "iframes": 1},
+            "after_button_close": {"state": "closed", "iframes": 0},
+            "after_up_closed": {"state": "closed", "iframes": 0},
+            "reopen": {"home": "split", "state": "open-connected", "iframes": 1},
+        },
+        "medium": {
+            "1440": {"open": 450.0, "drag_low": 420.0, "drag_high": 480.0},
+            "1280": {"open": 430.0, "drag_low": 420.0, "drag_high": 480.0},
+        },
+        "fit": {"wide": {"panel": 611.0, "main": 1571.0, "padding": 0.0}, "medium": {"panel": 450.0}},
+        "wide": {"1600": wide(1571.0, 611.0), "1920": wide(1891.0, 931.0)},
+        "resize": {"panel": 931.0, "main": 1891.0, "padding": 0.0},
+        "reloads": {"drag_1440": 0, "drag_1280": 0, "resize_within_wide": 0},
+        "heights": {"viewer": 420.0, "motion": 24.0},
+    }
+
+
+def _k2(rs, raw, record=None):
+    return rs.derive_k2_keys(raw, record=record or rs.SIZING_RECORD)
+
+
+def test_k2_positive_control_every_listed_key_holds(rs):
+    keys = _k2(rs, good_k2())
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], []), keys
+    assert set(K2_ALL_KEYS) <= set(keys)
+
+
+def test_k2_names_the_sizing_case_and_lists_each_width_key_as_asserted_or_recorded_only(rs):
+    keys = _k2(rs, good_k2())
+    assert keys["sizing_case"] == "honoured_reachable"
+    assert keys["sizing_record"] == rs.SIZING_RECORD
+    status = keys["width_key_status"]
+    assert set(status) == {k for k, _ in K2_WIDTH} and set(status.values()) == {"asserted"}
+    assert keys["ac39d"] == "run"
+
+
+def test_k2_recorded_only_keys_are_still_measured_and_reported_but_marked(rs):
+    record = {"css_limits_honoured": True, "layout_sizing_reachable": False, "css_limits_refit": False,
+              "restore_layout_keeps_iframe": True}
+    keys = _k2(rs, good_k2(), record)
+    assert keys["sizing_case"] == "honoured_unreachable"
+    status = keys["width_key_status"]
+    for k in ("panel_width_wide_1600", "panel_width_wide_1920", "resize_within_wide", "fit_after_tier_change_wide"):
+        assert status[k] == "recorded-only" and keys[k] is True, k
+    for k in ("open_width_1440", "drag_clamp_low_1280", "fit_after_tier_change_medium"):
+        assert status[k] == "asserted", k
+    assert keys["ac39d"] == "skipped"
+    # a recorded-only key can be WRONG without any listed key failing (that is what recorded-only means) ...
+    raw = good_k2()
+    raw["wide"]["1600"]["panel"] = 800.0
+    k2 = rs.UNIT_BY_ID["K2"]
+    assert rs.derive_k2_keys(raw, record=record)["panel_width_wide_1600"] is False
+    # ... while the listed keys the table was built for under THAT case ignore it
+    listed = dict(rs.k2_expected(rs.width_key_status(**record)))
+    assert "panel_width_wide_1600" not in listed and k2 is not None
+
+
+def _mutk2(rs, fn):
+    raw = good_k2()
+    fn(raw)
+    return rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], _k2(rs, raw))[1]
+
+
+def _k2set(path, value):
+    def apply(raw):
+        d = raw
+        for p in path[:-1]:
+            d = d[p]
+        d[path[-1]] = value
+    return apply
+
+
+@pytest.mark.parametrize(
+    "key,fn",
+    [
+        # step 1: drawer_overlays, drawer_no_reflow
+        ("drawer_overlays", _k2set(("drawer", "position"), "static")),
+        ("drawer_overlays", _k2set(("drawer", "position"), "absolute")),
+        ("drawer_overlays", _k2set(("drawer", "home"), "split")),
+        ("drawer_overlays", _k2set(("drawer", "state"), "closed")),
+        ("drawer_no_reflow", _k2set(("drawer", "nb_open"), 700.0)),
+        ("drawer_no_reflow", _k2set(("drawer", "nb_open"), 1001.0)),
+        ("drawer_no_reflow", _k2set(("drawer", "nb_before"), None)),
+        # step 2: drawer_dismiss_reopen (close button T17, toggle T4 -> T6, Escape T17, then reopen)
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "first_open"), {"state": "closed", "home": "drawer", "iframes": 0})),
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "after_close_button"), {"state": "closed", "iframes": 1})),
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "after_close_button"), {"state": "open-connected", "iframes": 0})),
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "after_toggle"), {"state": "open-waiting", "iframes": 0})),
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "after_toggle"), {"state": "open-connected", "iframes": 2})),
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "after_escape"), {"state": "open-connected", "iframes": 1})),
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "after_escape"), {"state": "closed", "iframes": 1})),
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "after_reopen"), {"state": "closed", "iframes": 0})),
+        # step 3: tier_up_rehomes (T15, T15, T17, T5, T4 -> T6)
+        ("tier_up_rehomes", _k2set(("tier_up", "after_up", "home"), "drawer")),
+        ("tier_up_rehomes", _k2set(("tier_up", "after_up", "split_right"), False)),
+        ("tier_up_rehomes", _k2set(("tier_up", "after_up", "src"), "OTHER")),  # the iframe did not keep its src
+        ("tier_up_rehomes", _k2set(("tier_up", "after_up", "iframes"), 2)),
+        ("tier_up_rehomes", _k2set(("tier_up", "after_up", "resources_ok"), False)),
+        ("tier_up_rehomes", _k2set(("tier_up", "before", "home"), "split")),
+        ("tier_up_rehomes", _k2set(("tier_up", "back_down", "home"), "split")),
+        ("tier_up_rehomes", _k2set(("tier_up", "after_button_close"), {"state": "open-connected", "iframes": 1})),
+        ("tier_up_rehomes", _k2set(("tier_up", "after_up_closed"), {"state": "open-connected", "iframes": 1})),  # T5: stays closed
+        ("tier_up_rehomes", _k2set(("tier_up", "after_up_closed"), {"state": "closed", "iframes": 1})),
+        ("tier_up_rehomes", _k2set(("tier_up", "reopen"), {"home": "split", "state": "open-waiting", "iframes": 0})),
+        ("tier_up_rehomes", _k2set(("tier_up", "reopen"), {"home": "drawer", "state": "open-connected", "iframes": 1})),
+        # step 4 and 6: the 1280-1599 keys
+        ("open_width_1440", _k2set(("medium", "1440", "open"), 600.0)),
+        ("open_width_1440", _k2set(("medium", "1440", "open"), 300.0)),
+        ("open_width_1440", _k2set(("medium", "1440", "open"), None)),
+        ("drag_clamp_low_1440", _k2set(("medium", "1440", "drag_low"), 300.0)),  # not clamped: the drag went through
+        ("drag_clamp_low_1440", _k2set(("medium", "1440", "drag_low"), 450.0)),
+        ("drag_clamp_high_1440", _k2set(("medium", "1440", "drag_high"), 700.0)),
+        ("drag_clamp_high_1440", _k2set(("medium", "1440", "drag_high"), 450.0)),
+        ("open_width_1280", _k2set(("medium", "1280", "open"), 700.0)),
+        ("drag_clamp_low_1280", _k2set(("medium", "1280", "drag_low"), 300.0)),
+        ("drag_clamp_high_1280", _k2set(("medium", "1280", "drag_high"), 700.0)),
+        # step 5: fit_after_tier_change (both tiers)
+        ("fit_after_tier_change_wide", _k2set(("fit", "wide", "panel"), 480.0)),  # still the 1440 clamp at 1600
+        ("fit_after_tier_change_wide", _k2set(("fit", "wide", "main"), None)),
+        ("fit_after_tier_change_medium", _k2set(("fit", "medium", "panel"), 611.0)),  # still the 1600 width at 1440
+        ("fit_after_tier_change_medium", _k2set(("fit", "medium", "panel"), None)),
+        # step 6: heights
+        ("viewer_height", _k2set(("heights", "viewer"), 299.0)),
+        ("viewer_height", _k2set(("heights", "viewer"), None)),
+        ("motion_slot_height", _k2set(("heights", "motion"), 37.0)),
+        ("motion_slot_height", _k2set(("heights", "motion"), None)),
+        # step 7 and 9: the >= 1600 keys
+        ("nb_content_width_1600", _k2set(("wide", "1600", "nb"), 961.0)),
+        ("nb_content_width_1600", _k2set(("wide", "1600", "nb"), None)),
+        ("panel_width_wide_1600", _k2set(("wide", "1600", "panel"), 785.0)),  # the stock 50/50 split
+        ("panel_width_wide_1600", _k2set(("wide", "1600", "panel"), 420.0)),
+        ("panel_width_wide_1600", _k2set(("wide", "1600", "padding"), 40.0)),  # the formula moves with the padding
+        ("nb_content_width_1920", _k2set(("wide", "1920", "nb"), 1200.0)),
+        ("panel_width_wide_1920", _k2set(("wide", "1920", "panel"), 611.0)),  # the 1600 width carried over to 1920
+        ("panel_width_wide_1920", _k2set(("wide", "1920", "panel"), None)),
+        # step 8: resize_within_wide and the reload count
+        ("resize_within_wide", _k2set(("resize", "panel"), 611.0)),  # not recomputed after the window grew
+        ("resize_within_wide", _k2set(("resize", "main"), None)),
+        ("iframe_reloads_during_resize", _k2set(("reloads", "resize_within_wide"), 1)),
+        ("iframe_reloads_during_resize", _k2set(("reloads", "drag_1440"), 2)),
+        ("iframe_reloads_during_resize", _k2set(("reloads", "drag_1280"), 1)),
+        ("iframe_reloads_during_resize", _k2set(("reloads", "drag_1280"), None)),  # a window nobody counted
+    ],
+)
+def test_k2_negative_controls_each_violation_fails_exactly_its_key(rs, key, fn):
+    assert _mutk2(rs, fn) == [key]
+
+
+def test_k2_empty_evidence_fails_every_listed_key_without_raising(rs):
+    for raw in ({}, None, {"drawer": 3, "wide": None}):
+        keys = _k2(rs, raw)
+        missing, failing = rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys)
+        assert missing == [] and set(failing) == K2_ALL_KEYS, (raw, sorted(set(failing) ^ K2_ALL_KEYS))
+
+
+def test_k2_iframe_reload_count_is_the_sum_over_the_drags_and_the_resize_and_must_be_int_zero(rs):
+    keys = _k2(rs, good_k2())
+    assert keys["iframe_reloads_during_resize"] == 0 and type(keys["iframe_reloads_during_resize"]) is int
+    raw = good_k2()
+    raw["reloads"] = {"drag_1440": 1, "drag_1280": 2, "resize_within_wide": 3}
+    assert _k2(rs, raw)["iframe_reloads_during_resize"] == 6
+    raw["reloads"] = {"drag_1440": 0.0, "drag_1280": 0, "resize_within_wide": 0}
+    assert _k2(rs, raw)["iframe_reloads_during_resize"] is None, "a float or bool count is not a count"
+
+
+def test_k2_drawer_no_reflow_is_zero_px_with_a_half_pixel_allowance(rs):
+    raw = good_k2()
+    raw["drawer"]["nb_open"] = 1000.4
+    assert _k2(rs, raw)["drawer_no_reflow"] is True
+    raw["drawer"]["nb_open"] = 1000.6
+    assert _k2(rs, raw)["drawer_no_reflow"] is False
+
+
+def test_the_resize_windows_are_recorded_even_when_a_width_key_is_recorded_only(rs):
+    """AC-36: iframe_reloads_during_resize is asserted in EVERY sizing case, so every case still lists it."""
+    for hon in (True, False):
+        for reach in (True, False):
+            status = rs.width_key_status(css_limits_honoured=hon, layout_sizing_reachable=reach, css_limits_refit=False)
+            assert "iframe_reloads_during_resize" in {k for k, _ in rs.k2_expected(status)}
+
+
+# -- N-d -----------------------------------------------------------------------------------------------------
+
+
+def good_nd():
+    return {"panel": 785.0, "notebook": 786.0, "main": 1571.0, "padding": 0.0}
+
+
+def test_n_d_stock_even_split_makes_the_wide_width_predicate_report_failure(rs):
+    keys = rs.derive_nd_keys(good_nd(), record=rs.SIZING_RECORD)
+    assert keys["panel_width_wide_1600"] is False, "a 50/50 split is not max(420, main - 960 - padding)"
+    assert keys["skipped"] is False and keys["control_formula_passes"] is True
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["N-d"], keys) == ([], ["panel_width_wide_1600"]), "it FAILS, by design"
+
+
+def test_n_d_positive_control_the_predicate_passes_on_the_width_the_formula_gives(rs):
+    """Without this the negative could pass because the predicate can never pass."""
+    raw = dict(good_nd(), panel=rs.wide_panel_width_expected(1571.0, 0.0))
+    # not an even split any more, so this is a control of the PREDICATE only
+    assert rs.wide_width_ok(raw["panel"], raw["main"], raw["padding"]) is True
+    assert rs.derive_nd_keys(good_nd(), record=rs.SIZING_RECORD)["control_formula_passes"] is True
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda r: r.update(panel=None),
+        lambda r: r.update(panel=0.0),
+        lambda r: r.update(main=None),
+        lambda r: r.update(main=0.0),
+        lambda r: r.update(padding=None),
+        lambda r: r.update(notebook=None),
+        lambda r: r.update(panel=300.0, notebook=1271.0),  # not an even split: the widget was not split 50/50
+        lambda r: r.update(panel=1571.0),
+    ],
+)
+def test_n_d_an_invalid_measurement_is_an_error_never_a_detected_negative(rs, mutate):
+    """A None or absurd measurement would make the predicate 'fail' for the wrong reason: the sensitivity run would
+    pass vacuously. The unit raises instead (an `error` finding, which never passes a negative's outcome)."""
+    raw = good_nd()
+    mutate(raw)
+    with pytest.raises(rs.DockCheckError):
+        rs.derive_nd_keys(raw, record=rs.SIZING_RECORD)
+
+
+def test_n_d_is_skipped_and_says_so_where_the_ge_1600_key_is_recorded_only(rs):
+    record = {"css_limits_honoured": True, "layout_sizing_reachable": False, "css_limits_refit": False,
+              "restore_layout_keeps_iframe": True}
+    keys = rs.derive_nd_keys({}, record=record)  # nothing is measured when skipped
+    assert keys["skipped"] is True and "panel_width_wide_1600" not in keys and keys["skipped_reason"]
+    unit = dataclasses.replace(rs.UNIT_BY_ID["N-d"], expected=rs.nd_expected(rs.width_key_status(**record)))
+    assert rs.evaluate_unit_result(unit, keys) == ([], [])
