@@ -306,8 +306,11 @@ jobs:
           uv run python -m pytest web-repl/tests/test_check_wheel_coherence.py -q
           uv run python -m pytest web-repl/tests/test_contract_covers_imports.py -q
           uv run python -m pytest web-repl/tests/test_d1_praxis_git_sha.py -q
+          uv run python -m pytest web-repl/tests/test_display_budget.py -q
           uv run python -m pytest web-repl/tests/test_display_css.py -q
+          uv run python -m pytest web-repl/tests/test_display_floor.py -q
           uv run python -m pytest web-repl/tests/test_display_staging.py -q
+          uv run python -m pytest web-repl/tests/test_display_svg.py -q
           uv run python -m pytest web-repl/tests/test_fetch_vendored_wheels.py -q
           uv run python -m pytest web-repl/tests/test_inject_branding.py -q
           uv run python -m pytest web-repl/tests/test_inject_shell_coxswain.py -q
