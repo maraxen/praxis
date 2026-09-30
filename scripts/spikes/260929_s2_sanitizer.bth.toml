@@ -1,0 +1,226 @@
+# Pre-registration sidecar for spike S2 (task 260929_notebook-display-design, backlog #5624 = A2,
+# epic #5648). Spec: .praxia/docs/specs/260929_notebook-display-epic.md, D1 row S2, D2 (the
+# mimebundle), D16 (shared unit runner, bounded teardown), D17 (units, resume, completeness),
+# AC-2, AC-42.
+#
+# THIS FILE AND scripts/spikes/260929_s2_sanitizer.py ARE COMMITTED BEFORE ANY RUN. No browser
+# has been launched against this probe, no dist has been built for it, and `bth run` has not
+# been invoked when this file was written: the outcome criteria below were chosen from the
+# spec, not from numbers. Run it with `bth`, never `uv run bth` (which silently skips sidecar
+# enforcement). `bth run` has NO `--out` option; the driver reads $BTH_RESULTS_PATH:
+#
+#   bth run --project-slug praxis --output-paths outputs/spikes/260929_s2 -- \
+#     uv run --no-sync python3 scripts/spikes/260929_s2_sanitizer.py \
+#       --out-dir outputs/spikes/260929_s2 --dist <dist> [--resume]
+#
+# Verify the run by its RECORD (bth compact first if it is not visible yet):
+#   bth sql "SELECT id, status, outcome, exit_code, command FROM runs WHERE id LIKE '<prefix>%'"
+#
+# The driver writes the flat fields below to $BTH_RESULTS_PATH ONLY when every unit is
+# complete. An incomplete run (a timeout, a stampless crash) exits 3 and writes no result, so
+# bathos records no outcome, and the next `--resume` run is a new run record. A run whose four
+# units are complete exits 0 even when the outcome is `invalid`.
+#
+# Needs FULL Chromium (never headless_shell; the driver refuses it) and a dist. `live` and
+# `executed_saved_reopened` run two IPython.display cells in the dist's Pyodide kernel (the
+# probe never imports PLR; a dist whose kernel bootstrap fails delays or blocks those two
+# units). `crafted` and `neg_script_onclick` never run a cell.
+[experiment]
+hypothesis = "In the praxis JupyterLite lab build (JupyterLab's own rendermime and sanitizer, no labextension), for a notebook reopened UNTRUSTED, JupyterLab chooses a mimetype from {text/html, text/plain} for a bundle that carries both, and its sanitizer keeps some subset of our HTML and SVG. The spike authors one text/html fragment containing every element (svg g path rect text title details summary table) and every attribute (fill stroke stroke-width stroke-dasharray class style role aria-label tabindex data-* and viewBox, plus the geometry attributes d x y width height) named in D1's S2 row, and measures, per reopen path, the trust state, the chosen mimetype and what survives. Two reopen paths are probed: (1) CRAFTED, a notebook JSON written to the drive and never executed (untrusted by construction; stands for download/upload), and (2) EXECUTED-SAVED-REOPENED, a notebook executed in the browser, saved, closed and reopened, then reloaded and reopened again, whose trust state is recorded (S2-T if trusted on both reopens). The live path (trusted, displayed by the kernel) is the positive control: every authored element and attribute must be visible and intact. The negative control is its own crafted notebook holding a <script> element and an onclick attribute, which must be observed STRIPPED, proving the sanitizer ran. The prior is unknown and is NOT a criterion: every D1 branch, and two non-branch findings (crafted-trusted, S2-unmapped), are pre-registered outcomes, and the run is only INVALID (residual) if the instrument itself failed (an error finding, an unrendered output, trust that could not be read and corroborated, a control that did not behave as required, a reopen pair that disagrees, or inconsistent paths)."
+stage_name = "exploration"
+novel = true
+
+# ---------------------------------------------------------------------------------------
+# [outcomes]: one outcome per D1 S2 branch of the CRAFTED path, split by whether the
+# executed-saved-reopened path reopened trusted (S2-T, D1: "the branches below then apply only
+# to the crafted path"), plus the two non-branch findings and the residual. All conditions read
+# the flat fields the driver writes when all four units are complete. Labels: crafted_branch is
+# one of S2-A, S2-A-prime (D1's S2-A'), S2-B, S2-C, S2-unmapped (not a D1 branch), crafted-trusted
+# (not a D1 branch), or null. measurement_valid is the conjunction of the named validity checks in
+# [design.derivations]; any error finding, anywhere, therefore lands in `invalid`: an error never
+# satisfies a positive outcome.
+# ---------------------------------------------------------------------------------------
+[outcomes.s2_a_exec_t]
+condition = "all_units_complete = true AND measurement_valid = true AND negative_control_failed_as_required = true AND crafted_branch = 'S2-A' AND exec_trusted = true"
+decision = "S2-A: text/html is chosen for the untrusted crafted notebook and the SVG survives with class and style intact on every SVG element. Full design, with token-mapped CSS (D3) applied to reopened outputs. Executed-saved-reopened path: S2-T. It reopened TRUSTED (corroborated on both reopens), so it renders as live and the branch above applies only to the crafted path (D1)."
+reasoning = "Crafted path: S2-A. measurement_valid already requires the corroborated trust reads, the live positive control, the crafted/negative-control agreement and the negative control's consistency; see [design.derivations]."
+is_residual = false
+
+[outcomes.s2_a_exec_u]
+condition = "all_units_complete = true AND measurement_valid = true AND negative_control_failed_as_required = true AND crafted_branch = 'S2-A' AND exec_trusted = false"
+decision = "S2-A: text/html is chosen for the untrusted crafted notebook and the SVG survives with class and style intact on every SVG element. Full design, with token-mapped CSS (D3) applied to reopened outputs. Executed-saved-reopened path: reopened UNTRUSTED on both reopens, on the same D1 branch as the crafted path (no S2-T)."
+reasoning = "Crafted path: S2-A. measurement_valid already requires the corroborated trust reads, the live positive control, the crafted/negative-control agreement and the negative control's consistency; see [design.derivations]."
+is_residual = false
+
+[outcomes.s2_ap_exec_t]
+condition = "all_units_complete = true AND measurement_valid = true AND negative_control_failed_as_required = true AND crafted_branch = 'S2-A-prime' AND exec_trusted = true"
+decision = "S2-A' (label S2-A-prime): text/html is chosen and the SVG survives (all six elements, viewBox, paint and geometry attributes) but class and/or style is stripped or altered on at least one SVG element. Reopened outputs keep their inline light palette (D3) and scale freely without the D5 min-width until re-run. Accepted and stated. Executed-saved-reopened path: S2-T. It reopened TRUSTED (corroborated on both reopens), so it renders as live and the branch above applies only to the crafted path (D1)."
+reasoning = "Crafted path: S2-A-prime. measurement_valid already requires the corroborated trust reads, the live positive control, the crafted/negative-control agreement and the negative control's consistency; see [design.derivations]."
+is_residual = false
+
+[outcomes.s2_ap_exec_u]
+condition = "all_units_complete = true AND measurement_valid = true AND negative_control_failed_as_required = true AND crafted_branch = 'S2-A-prime' AND exec_trusted = false"
+decision = "S2-A' (label S2-A-prime): text/html is chosen and the SVG survives (all six elements, viewBox, paint and geometry attributes) but class and/or style is stripped or altered on at least one SVG element. Reopened outputs keep their inline light palette (D3) and scale freely without the D5 min-width until re-run. Accepted and stated. Executed-saved-reopened path: reopened UNTRUSTED on both reopens, on the same D1 branch as the crafted path (no S2-T)."
+reasoning = "Crafted path: S2-A-prime. measurement_valid already requires the corroborated trust reads, the live positive control, the crafted/negative-control agreement and the negative control's consistency; see [design.derivations]."
+is_residual = false
+
+[outcomes.s2_b_exec_t]
+condition = "all_units_complete = true AND measurement_valid = true AND negative_control_failed_as_required = true AND crafted_branch = 'S2-B' AND exec_trusted = true"
+decision = "S2-B: text/html is chosen and the svg element is stripped (with table, details and summary surviving). Reopened outputs show name line, sentence, ledger table and error text, with no drawings until re-run. Accepted: 'survives trust loss' is met by the text. Executed-saved-reopened path: S2-T. It reopened TRUSTED (corroborated on both reopens), so it renders as live and the branch above applies only to the crafted path (D1)."
+reasoning = "Crafted path: S2-B. measurement_valid already requires the corroborated trust reads, the live positive control, the crafted/negative-control agreement and the negative control's consistency; see [design.derivations]."
+is_residual = false
+
+[outcomes.s2_b_exec_u]
+condition = "all_units_complete = true AND measurement_valid = true AND negative_control_failed_as_required = true AND crafted_branch = 'S2-B' AND exec_trusted = false"
+decision = "S2-B: text/html is chosen and the svg element is stripped (with table, details and summary surviving). Reopened outputs show name line, sentence, ledger table and error text, with no drawings until re-run. Accepted: 'survives trust loss' is met by the text. Executed-saved-reopened path: reopened UNTRUSTED on both reopens, on the same D1 branch as the crafted path (no S2-T)."
+reasoning = "Crafted path: S2-B. measurement_valid already requires the corroborated trust reads, the live positive control, the crafted/negative-control agreement and the negative control's consistency; see [design.derivations]."
+is_residual = false
+
+[outcomes.s2_c_exec_t]
+condition = "all_units_complete = true AND measurement_valid = true AND crafted_branch = 'S2-C' AND exec_trusted = true"
+decision = "S2-C: text/plain is chosen for the untrusted crafted notebook. Reopened outputs show the summary sentence. Accepted; OQ-9 asks whether a labextension is wanted later. (The negative control is vacuous here, no HTML is rendered; it is required only to be consistent.) Executed-saved-reopened path: S2-T. It reopened TRUSTED (corroborated on both reopens), so it renders as live and the branch above applies only to the crafted path (D1)."
+reasoning = "Crafted path: S2-C. measurement_valid already requires the corroborated trust reads, the live positive control, the crafted/negative-control agreement and the negative control's consistency; see [design.derivations]."
+is_residual = false
+
+[outcomes.s2_c_exec_u]
+condition = "all_units_complete = true AND measurement_valid = true AND crafted_branch = 'S2-C' AND exec_trusted = false"
+decision = "S2-C: text/plain is chosen for the untrusted crafted notebook. Reopened outputs show the summary sentence. Accepted; OQ-9 asks whether a labextension is wanted later. (The negative control is vacuous here, no HTML is rendered; it is required only to be consistent.) Executed-saved-reopened path: reopened UNTRUSTED on both reopens, on the same D1 branch as the crafted path (no S2-T)."
+reasoning = "Crafted path: S2-C. measurement_valid already requires the corroborated trust reads, the live positive control, the crafted/negative-control agreement and the negative control's consistency; see [design.derivations]."
+is_residual = false
+
+[outcomes.s2_unmapped_exec_t]
+condition = "all_units_complete = true AND measurement_valid = true AND crafted_branch = 'S2-unmapped' AND exec_trusted = true"
+decision = "NOT A D1 BRANCH: the untrusted crafted output rendered, but its survivorship fits no D1 branch (svg partial, drawing attributes lost while the tags survive, table/details/summary lost with the svg, or a mimetype other than text/html and text/plain). Cite no branch. Escalate to the orchestrator with survivorship_table from result.json; the spec needs a branch before A5/B2/B4 rely on S2. Executed-saved-reopened path: S2-T. It reopened TRUSTED (corroborated on both reopens), so it renders as live and the branch above applies only to the crafted path (D1)."
+reasoning = "Crafted path: S2-unmapped. measurement_valid already requires the corroborated trust reads, the live positive control, the crafted/negative-control agreement and the negative control's consistency; see [design.derivations]."
+is_residual = false
+
+[outcomes.s2_unmapped_exec_u]
+condition = "all_units_complete = true AND measurement_valid = true AND crafted_branch = 'S2-unmapped' AND exec_trusted = false"
+decision = "NOT A D1 BRANCH: the untrusted crafted output rendered, but its survivorship fits no D1 branch (svg partial, drawing attributes lost while the tags survive, table/details/summary lost with the svg, or a mimetype other than text/html and text/plain). Cite no branch. Escalate to the orchestrator with survivorship_table from result.json; the spec needs a branch before A5/B2/B4 rely on S2. Executed-saved-reopened path: reopened UNTRUSTED on both reopens, on the same D1 branch as the crafted path (no S2-T)."
+reasoning = "Crafted path: S2-unmapped. measurement_valid already requires the corroborated trust reads, the live positive control, the crafted/negative-control agreement and the negative control's consistency; see [design.derivations]."
+is_residual = false
+[outcomes.s2_crafted_trusted]
+condition = "all_units_complete = true AND measurement_valid = true AND crafted_branch = 'crafted-trusted'"
+decision = "NOT A D1 BRANCH: the crafted notebook (never executed, no trusted flag on the drive) reopened TRUSTED in this build, corroborated by the output model, the cell model and the surviving onclick, and the negative control's <script> and onclick survived as consistent with trust. D1's premise (an untrusted reopen for a notebook written to the drive, which stands for download/upload) does not hold here: every reopened output renders as live, no sanitizer branch was measured, and the negative control is not observed stripped by construction. Cite no S2-A/A'/B/C branch. Escalate to the orchestrator: the spec's degrade-on-trust-loss design (D1 S2, D3, AC-24) needs a ruling."
+reasoning = "Trust is corroborated three ways and agrees across the crafted and negative-control notebooks, so this is a finding about the build, not an instrument failure. Registered as its own outcome so that it is neither forced into a sanitizer branch nor discarded as invalid."
+is_residual = false
+
+# The residual: the instrument did not produce a valid measurement. Not evidence for any branch.
+[outcomes.invalid]
+condition = "all_units_complete = true AND measurement_valid = false"
+decision = "INVALID: at least one unit carries an error finding, an output never rendered, trust could not be read and corroborated, the live positive control did not see the whole bundle, the negative control did not behave as required (including a negative control that errored, which has NOT failed as required), the two reopen reads disagree, or the paths are inconsistent. Fix the probe, commit, and re-run under this sidecar's design; cite no branch from this run."
+reasoning = "A verdict that could be a probe bug is never reported without a control that proves the instrument can say the opposite. In-page API names in this probe had never met a real JupyterLab when it was pre-registered, so an unreadable measurement is null and then invalid, never a branch."
+is_residual = true
+
+[result_schema]
+all_units_complete = "bool"
+n_units = "int"
+n_error_units = "int"
+measurement_valid = "bool"
+negative_control_failed_as_required = "bool"
+live_positive_control_ok = "bool"
+live_trusted = "bool"
+crafted_trust_state = "bool"
+crafted_chosen_mime = "str"
+crafted_svg_state = "str"
+crafted_class_survives = "bool"
+crafted_style_survives = "bool"
+crafted_data_star_survives = "bool"
+crafted_tabindex_survives = "bool"
+crafted_branch = "str"
+exec_trusted = "bool"
+exec_chosen_mime = "str"
+exec_branch = "str"
+reopen_agree = "bool"
+paths_consistent = "bool"
+d1_branch = "str"
+
+# ---------------------------------------------------------------------------------------
+# D17 design statement: pre-registered here, committed before the first run.
+# ---------------------------------------------------------------------------------------
+[design]
+spec = ".praxia/docs/specs/260929_notebook-display-epic.md D1 (S2 row), D2, D16, D17, AC-2, AC-42"
+driver = "scripts/spikes/260929_s2_sanitizer.py (argparse + logging); shared runner scripts/unit_runner.py; launch pattern and ServedDir/chromium_launch_args/resolve_chrome_path/_open_existing_notebook from scripts/repl_smoke.py, loaded by path. Self-contained: it shares no code with the S1 driver."
+unit_list = ["live", "crafted", "executed_saved_reopened", "neg_script_onclick"]
+statement = "Each unit runs in its own subprocess (<script> --unit <name> --out-dir <dir>) and its own browser context, started by the driver through unit_runner.run_unit with timeout = 5 min + 60 s, and self-bounded by a unit_runner.Watchdog armed at 5 min as its first act after ensure_token(). The unit then deletes its own stamp, artifact and timeout marker, probes, writes <out>/units/<name>.json with unit_runner.write_atomic under the watchdog lock, runs the bounded teardown (browser and Playwright closed, kill_tree over residual descendants, output flushed), commits <out>/units/<name>.stamp.json last through Watchdog.commit, and then calls only os._exit(stamp.exit). There is no whole-run timeout. Outcomes are evaluated over the FULL unit set regardless of reuse: the driver writes its result (and so bathos evaluates [outcomes]) only when all four units are complete, reused or recomputed; a run with an incomplete unit writes no outcome and exits 3. A run whose units are all complete exits 0 even if the outcome is invalid."
+stamp = "{unit, inputs: {name: sha256}, artifact_sha256, started, finished, exit, timeout_s}; exit is 0 only if the probe did not raise and every pre-registered field is present."
+hashed_inputs = ["script (this driver)", "runner (scripts/unit_runner.py)", "harness (scripts/repl_smoke.py, loaded by path by the driver and the --unit branch)", "dist (unit_runner.dist_hash of the served dist)", "fixture (sha256 of the canonical JSON of the four authored notebooks and the carrier table; conservative: any change recomputes every unit)", "chrome (resolved path + chrome --version; headless_shell is refused)", "driver (unit_runner.driver_input: Playwright version + uv.lock sha256)", "args (unit, viewport 1440x900, base path; an addition to the D17 list, strictly more conservative)"]
+upstream_inputs = "none: no S2 unit builds on another unit's result (D17: only a unit that builds on another's result hashes that unit's artifact_sha256), so no upstream:* input exists. The units are combined only by the outcome."
+resume_rule = "--resume skips a unit only if its stamp exists, stamp.exit == 0, stamp.inputs equal the current inputs, stamp.artifact_sha256 equals the sha256 of the artifact on disk, the artifact has no error finding, and every field pre-registered for that unit (below) is present. Anything else is recomputed."
+completeness = "A unit is complete when its artifact and a matching stamp (inputs equal the current inputs, artifact_sha256 equal to the artifact on disk) exist. A probe that raises is caught, recorded in the artifact as an error finding {type, message, traceback_tail <= 4 KiB}, and the unit still writes its artifact and stamp: it is complete, the error counts toward [outcomes] (an error never satisfies a positive outcome: measurement_valid is false and the outcome is `invalid`; a negative control that errors has NOT failed as required), and it is never reused. Only a timeout (exit 124, no stamp, no artifact, a timeout marker) or a stampless crash makes a unit incomplete. If the driver's run_unit times out over a valid stamp, the stamp governs and the driver logs a warning."
+outcomes_over = "Outcomes are evaluated over the full unit set (all four units, reused or recomputed) regardless of reuse; reuse changes how the work is scheduled, never the [outcomes] criteria. The research note lists every unit as recomputed or reused with source path, input sha256s and artifact sha256."
+teardown_order = "1 write artifact; 2 close browser and Playwright (errors logged, keys unchanged); 3 kill_tree over residual descendants; 4 flush stdout/stderr/logging; 5 Watchdog.commit(stamp); then only os._exit(stamp.exit). A hang in 1-4 is a timeout."
+reads = "Every result is read from the notebook model (cell model, output model, contents API) and the rendered DOM via page.evaluate, never from printed console text. In-page API names had never met a real JupyterLab when this probe was written: an unreadable or uncontrolled read is null and then invalid, never a branch claim."
+browser = "Full Chromium resolved by repl_smoke.resolve_chrome_path (never headless_shell), 1440x900."
+kernel_dependency = "live and executed_saved_reopened need the dist's Pyodide kernel to run IPython.display; the probe never imports PLR. Sprint A's local run serves a dist built with the submodule initialised at the pin (D16, C11-3); a run against another dist is recorded as a deviation in the research note, as S1 did."
+fixture = "Authored in the driver (build_main_html, build_neg_html, crafted_notebook, neg_notebook, live_notebook, exec_notebook). One carrier element per tag, located by tag name alone; every D1 element and attribute appears; data-* is tested as data-praxis-res and data-praxis-grid (the two names D14 uses); a sentinel span (id s2-sentinel, text S2-SENTINEL) carries an onclick attribute and is the trust corroborator; the bundle carries both text/html and text/plain."
+real_run_command = "bth run --project-slug praxis --output-paths outputs/spikes/260929_s2 -- uv run --no-sync python3 scripts/spikes/260929_s2_sanitizer.py --out-dir outputs/spikes/260929_s2 --dist <dist>"
+plumbing = "web-repl/tests/test_s2_spike_driver.py exercises driver, unit, stamp, resume, completeness and outcome gating against stub probes with no browser, the derivations against synthetic reads with a positive and a negative control, the sidecar's outcome partition, and (when bun and jsdom resolve) the in-page reader over a real DOM"
+
+[design.timeouts]
+unit_s = 300
+driver_kill_s = 360
+whole_run_timeout = "none"
+note = "D17 S2 row: 5 min each; estimates from the spec, not measurements. Per-step waits inside a unit (navigation 60 s, kernel 100 s, other steps 30 s) are shorter than the budget so a stalled step is an error finding (a complete unit), not a timeout."
+
+[design.fact_keys]
+keys = ["rendered", "chosen_mime", "trust_state", "trust_corroborated", "corroboration", "trust_reads", "corroborator_onclick", "tags_present", "attrs", "svg_state", "svg_drawing_ok", "svg_class_all", "svg_style_all", "svg_role_all", "svg_aria_all", "svg_data_all", "svg_tabindex_all", "html_class_all", "html_style_all", "html_data_all", "html_tabindex_all", "html_text_ok", "plain_text_ok", "interaction_data_star", "interaction_tabindex", "all_present_intact"]
+note = "Every key is present in every path unit's facts; null means unmeasured (never false)."
+
+[design.authored]
+elements = ["svg", "g", "path", "rect", "text", "title", "table", "details", "summary"]
+d1_attributes = ["fill", "stroke", "stroke-width", "stroke-dasharray", "class", "style", "role", "aria-label", "tabindex", "data-*", "viewBox"]
+data_attribute_names = ["data-praxis-res", "data-praxis-grid"]
+geometry_attributes = ["d", "x", "y", "width", "height"]
+drawing_attributes = ["viewBox", "fill", "stroke", "stroke-width", "stroke-dasharray", "d", "x", "y", "width", "height"]
+style_declarations = ["fill:#2266aa", "stroke-width:3px", "min-width:120px"]
+svg_family = ["svg", "g", "path", "rect", "text", "title"]
+svg_drawing_family = ["svg", "g", "path", "rect", "text"]
+html_family = ["table", "details", "summary"]
+
+[design.derivations]
+element_present = "the first element of that tag in the rendered output node, in the right namespace (SVG namespace for the svg family, XHTML for the html family); a stripped-tag child that survives as an unknown HTML element is NOT present"
+attribute_survived = "present (name compared case-insensitively) with exactly the authored value; style: present with every authored declaration property kept (fill, stroke-width, min-width); present with a different value is altered, not survived"
+svg_state = "full: svg, g, path, rect, text and title all present; absent: none of the six present; partial: anything else (including the svg element with a child stripped, or a child present without the svg element)"
+svg_drawing_ok = "svg_state full AND every authored drawing attribute (viewBox, fill, stroke, stroke-width, stroke-dasharray, d, x, y, width, height) survived on every carrier that authored it (svg g path rect text)"
+svg_class_all_and_style_all = "class (resp. style) survived on ALL five drawing carriers svg, g, path, rect, text; a conservative reading of D1's 'class and/or style stripped' (S2-A needs both intact everywhere; A-prime is any loss)"
+interaction = "crafted_data_star_survives and crafted_tabindex_survives: both data-* names (resp. tabindex) survived on all svg drawing carriers when svg_state is full, else on table, details and summary"
+trust_state = "the output model's trusted (outputs.get(0).trusted), reported only when CORROBORATED: the cell model's trusted, when readable, agrees, AND either (onclick) the corroborator element's onclick attribute survived exactly when the output is trusted, or (plain_choice, only when text/plain was chosen and no HTML exists) the model says untrusted and no rendered node has the jp-mod-trusted class. Otherwise null."
+chosen_mime = "the data-mime-type of the first .jp-OutputArea-output node in the cell (fallback: the first data-mime-type node under .jp-OutputArea)"
+crafted_branch = "null unless rendered, trust corroborated and the mimetype read. Trusted: crafted-trusted. Untrusted: text/plain -> S2-C (if the plain summary text is visible, else S2-unmapped); another mimetype -> S2-unmapped; text/html -> svg_state absent -> S2-B if table, details and summary are present, else S2-unmapped; full -> S2-unmapped unless svg_drawing_ok, then S2-A if class and style survive on all five carriers, else S2-A-prime (D1's S2-A'); partial -> S2-unmapped"
+exec_branch = "the same rule on the executed-saved-reopened facts, with a trusted result being S2-T"
+paths_consistent = "exec_branch is S2-T, or equals crafted_branch (both untrusted, same sanitizer); null on either side is inconsistent"
+negative_control_failed_as_required = "rendered as text/html with both marker elements, corroborated untrusted, script element count 0 and no onclick attribute (see [design.units.neg_script_onclick])"
+validity_checks = "no_error_findings, all_rendered, trust_corroborated_all, live_executed_ok, live_trusted, live_positive_control_ok, crafted_file_ok, neg_file_ok, crafted_neg_trust_agree, crafted_neg_mime_agree, neg_consistent_with_trust (trust false: script and onclick stripped, or a text/plain render; trust true: neither stripped), exec_executed_and_saved, reopen_paths_agree, crafted_branch_measured, exec_branch_measured, paths_consistent"
+measurement_valid = "the conjunction of validity_checks"
+survivorship_table = "result.json (details.survivorship) carries the AC-2 table: element presence and per-element attribute survived flags for trusted live, untrusted reopened (crafted) and executed-saved-reopened"
+
+[design.controls]
+positive = "the live unit: a trusted live render must show every authored element and attribute intact and the negative bundle's <script> and onclick visible (live_positive_control_ok). The crafted-file readback and the saved-file readback prove the notebook on the drive is what was authored, and that the executed one was saved with its output."
+negative = "neg_script_onclick: a <script> element and an onclick attribute must be observed STRIPPED from an untrusted render whose marker elements are present. A negative control that errors has NOT failed as required."
+corroboration = "trust is never taken from one read: the output-model read, the cell-model read and the surviving-onclick corroborator must agree, else trust is null and the run is invalid"
+plumbing_positive_negative = "web-repl/tests/test_s2_spike_driver.py runs both: a synthetic fully-intact trusted render passes the live positive control and a stripped or uncorroborated one fails it; a sanitized render passes the negative control and one whose script survived while the model said untrusted fails it"
+
+[design.units.live]
+timeout_s = 300
+upstream = []
+required_fields = ["path", "kernel_ready", "executed_ok", "reads", "facts", "neg_bundle_live", "positive_control_ok", "reason"]
+description = "Seed a two-cell notebook (cell 0 displays the main bundle, cell 1 the negative bundle, each as a raw mimebundle through IPython.display in the Pyodide kernel), open it, wait for the kernel to be idle, run each cell (dispatched, never awaited) and read the rendered output from the DOM and the models. The output is TRUSTED (displayed live). positive_control_ok iff: rendered as text/html, trust corroborated True, every authored element present in its namespace and every authored attribute present and intact on every carrier (style: every declared property kept), the svg family complete, the sentinel onclick kept, and the negative bundle's <script> element and onclick attribute both visible (script_present, onclick_present). This is the instrument's positive control: it can only pass if the fixture and the reader see the whole bundle."
+
+[design.units.crafted]
+timeout_s = 300
+upstream = []
+required_fields = ["path", "file_readback", "file_ok", "read", "facts", "reason"]
+description = "Write the crafted notebook JSON (one code cell, execution_count null, no trusted metadata anywhere, one display_data output with text/html and text/plain) to the drive with contents.save, read it back from the drive (file_readback: one output, both mimetypes at the authored length, never executed, no trusted flag; file_ok), open it with docmanager:open (Select Kernel dialog accepted), never run a cell, wait for the output to render and read output 0 from the DOM and models. Records the trust state (corroborated), the chosen mimetype and the per-element and per-attribute survivorship (the AC-2 untrusted-reopened column) and the crafted branch."
+
+[design.units.executed_saved_reopened]
+timeout_s = 300
+upstream = []
+required_fields = ["path", "kernel_ready", "executed_ok", "live_read", "live_trust_before_save", "save_method", "saved_file", "saved_file_ok", "close_ok", "reopen_close", "reload_reopen_method", "reopen_reload", "facts_close", "facts_reload", "reopen_agree", "facts", "reason"]
+description = "Seed the exec notebook, open it, wait for the kernel, run cell 0 (raw mimebundle display) and read the LIVE output (live_trust_before_save). Save through the document context (then the docmanager:save command if the file on the drive still lacks the output), verified by reading the FILE (saved_file_ok: display_data output with both mimetypes, an execution count). Close the panel (close_ok). Reopen 1: docmanager:open in the same page, read output 0 (reopen_close). Reopen 2: full page reload, then open from the drive (or reveal, if the workspace restored it; reload_reopen_method), read output 0 (reopen_reload). facts is the reload read; reopen_agree iff trust is corroborated and equal in both reads and both reads agree on the chosen mimetype and every survivorship rollup, else the merged trust state is null (invalid). Trust state and mimetype of this path give exec_trusted (S2-T if true) and exec_branch."
+
+[design.units.neg_script_onclick]
+timeout_s = 300
+upstream = []
+required_fields = ["path", "file_readback", "file_ok", "read", "facts", "neg", "negative_control_failed_as_required", "reason"]
+description = "Negative control. Its own crafted notebook (never executed) holds a display_data output whose text/html has a <script> element, an element with an onclick attribute and two marker elements, and a text/plain. Written, read back from the drive, opened and read like the crafted unit. negative_control_failed_as_required iff: rendered as text/html, both marker elements present (so stripped cannot mean not rendered), trust corroborated UNTRUSTED, the <script> element count is 0 and no element carries onclick. A control that errors, or that saw an unrendered or uncorroborated output, has NOT failed as required. A text/plain render (S2-C) shows no HTML, so the control is vacuous there (failed_as_required false) and only its consistency is required."
