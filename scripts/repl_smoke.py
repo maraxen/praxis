@@ -6668,6 +6668,123 @@ def r21_extended_check(root: Any) -> dict[str, Any]:
     return out
 
 
+# -- the D6 sizing table (AC-36 "keyed by the D6 sizing case"; AC-39(d)'s skip rule) ----------------------------
+
+
+#: AC-1 (spike S1, bathos run 1e0cab6d-0765-4c16-802f-84c571637a3e, outcome ``s1_a``): the four facts the D6
+#: table is keyed by. ``css_limits_honoured`` (inline ``min-width``/``max-width`` held after a splitter drag),
+#: ``layout_sizing_reachable`` (``saveLayout`` -> edit ``sizes`` -> ``restoreLayout`` moved the split),
+#: ``css_limits_refit`` (limits + ``parent.fit()`` moved the widget) and ``restore_layout_keeps_iframe``
+#: (``restoreLayout()`` reloaded nothing). Re-recording AC-1 means editing THIS constant (and so the harness hash).
+SIZING_RECORD: dict[str, bool] = {
+    "css_limits_honoured": True,
+    "layout_sizing_reachable": True,
+    "css_limits_refit": True,
+    "restore_layout_keeps_iframe": True,
+}
+SIZING_CASES = ("honoured_reachable", "ignored_reachable", "honoured_unreachable", "ignored_unreachable")  # last is S1-L
+ASSERTED = "asserted"
+RECORDED_ONLY = "recorded-only"
+#: The width-key families of AC-36 (the names S1 recorded in ``width_key_status``; ``fit_after_tier_change`` is one
+#: family per tier it re-satisfies, because a case can assert one tier and record the other).
+WIDTH_CATEGORIES = (
+    "open_width_1280_1599",
+    "drag_clamp_1280_1599",
+    "fit_after_tier_change_1280_1599",
+    "open_width_ge_1600",
+    "fit_after_tier_change_ge_1600",
+    "resize_within_wide",
+)
+_WIDE_CATEGORIES = ("open_width_ge_1600", "fit_after_tier_change_ge_1600", "resize_within_wide")
+
+#: AC-36 tolerances. The wide formula is ±8 px (D6). The 420-480 clamp has no stated tolerance: 2 px absorbs
+#: sub-pixel layout (S1 measured with 3); a drag target is 300 / 700 px, far outside either.
+WIDE_TOL_PX = 8.0
+CLAMP_TOL_PX = 2.0
+PANEL_MIN_PX = 420.0
+PANEL_MAX_PX = 480.0
+NOTEBOOK_CAP_PX = 960.0
+VIEWER_MIN_HEIGHT_PX = 300.0
+MOTION_MAX_HEIGHT_PX = 36.0
+
+
+def sizing_case(css_limits_honoured: bool, layout_sizing_reachable: bool) -> str:
+    """The D6 table row: ``honoured_reachable``, ``ignored_reachable``, ``honoured_unreachable`` or
+    ``ignored_unreachable`` (S1-L)."""
+    return f"{'honoured' if css_limits_honoured else 'ignored'}_{'reachable' if layout_sizing_reachable else 'unreachable'}"
+
+
+def width_key_status(
+    *,
+    css_limits_honoured: bool,
+    layout_sizing_reachable: bool,
+    css_limits_refit: bool,
+    restore_layout_keeps_iframe: bool = True,
+) -> dict[str, str]:
+    """``{width-key family: "asserted" | "recorded-only"}`` per the D6 table (AC-36).
+
+    * honoured/reachable and ignored/reachable: every width key asserted;
+    * honoured/unreachable: the 1280-1599 keys asserted (CSS), the >= 1600 keys asserted only if ``css_limits_refit``;
+    * S1-L (ignored/unreachable): every width key recorded-only;
+    * ``restore_layout_keeps_iframe`` false: the open-time keys and ``fit_after_tier_change`` keep their case status;
+      the drag-clamp keys and ``resize_within_wide`` take the ``unreachable`` row's status for the same CSS column
+      (CSS ignored: recorded-only; CSS honoured: the 1280-1599 drag is CSS, ``resize_within_wide`` is inline px and
+      asserted only if ``css_limits_refit``).
+
+    The drawer keys, the height keys, ``nb_content_width`` and ``iframe_reloads_during_resize`` are asserted in every
+    case and are not families here."""
+
+    def base(unreachable: bool) -> dict[str, str]:
+        if not unreachable:
+            return {c: ASSERTED for c in WIDTH_CATEGORIES}
+        medium = ASSERTED if css_limits_honoured else RECORDED_ONLY
+        wide = ASSERTED if (css_limits_honoured and css_limits_refit) else RECORDED_ONLY
+        return {c: (wide if c in _WIDE_CATEGORIES else medium) for c in WIDTH_CATEGORIES}
+
+    status = base(not layout_sizing_reachable)
+    if not restore_layout_keeps_iframe:
+        unreachable = base(True)
+        status["drag_clamp_1280_1599"] = unreachable["drag_clamp_1280_1599"]
+        status["resize_within_wide"] = unreachable["resize_within_wide"]
+    return status
+
+
+def ac39d_status(status: dict[str, str]) -> str:
+    """AC-39(d): ``run`` where the >= 1600 width key is asserted, else ``skipped`` (and recorded as such)."""
+    return "run" if status.get("open_width_ge_1600") == ASSERTED else "skipped"
+
+
+SIZING_STATUS: dict[str, str] = width_key_status(**SIZING_RECORD)
+
+
+def wide_panel_width_expected(main_width: float, nb_h_padding: float) -> float:
+    """D6, >= 1600 px: ``panel_width = max(420, main_area_width - 960 - nb_h_padding)``."""
+    return max(PANEL_MIN_PX, float(main_width) - NOTEBOOK_CAP_PX - float(nb_h_padding))
+
+
+def wide_width_ok(panel_width: Any, main_width: Any, nb_h_padding: Any) -> bool:
+    """The AC-36 >= 1600 predicate: ``panel_width`` equals the D6 formula within ±8 px. Missing or non-numeric
+    measurements are a failure, never a pass."""
+    if not (_num(panel_width) and _num(main_width) and _num(nb_h_padding)):
+        return False
+    return abs(float(panel_width) - wide_panel_width_expected(main_width, nb_h_padding)) <= WIDE_TOL_PX
+
+
+def open_width_ok(width: Any) -> bool:
+    """AC-36 at 1440x900 and 1280x800: ``panel_width`` is in [420, 480] after opening."""
+    return _num(width) and PANEL_MIN_PX - CLAMP_TOL_PX <= width <= PANEL_MAX_PX + CLAMP_TOL_PX
+
+
+def clamp_low_ok(width: Any) -> bool:
+    """A real splitter drag to 300 px is clamped to 420."""
+    return _num(width) and abs(width - PANEL_MIN_PX) <= CLAMP_TOL_PX
+
+
+def clamp_high_ok(width: Any) -> bool:
+    """A real splitter drag to 700 px is clamped to 480."""
+    return _num(width) and abs(width - PANEL_MAX_PX) <= CLAMP_TOL_PX
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
