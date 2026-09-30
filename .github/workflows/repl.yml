@@ -366,6 +366,7 @@ jobs:
           uv run python -m pytest web-repl/tests/test_s1_spike_driver.py -q
           uv run python -m pytest web-repl/tests/test_s2_spike_driver.py -q
           uv run python -m pytest web-repl/tests/test_s3_spike_driver.py -q
+          uv run python -m pytest web-repl/tests/test_s4_spike_driver.py -q
           uv run python -m pytest web-repl/tests/test_stamp_loader_shas.py -q
           uv run python -m pytest web-repl/tests/test_theme_staging.py -q
           uv run python -m pytest web-repl/tests/test_transport.py -q

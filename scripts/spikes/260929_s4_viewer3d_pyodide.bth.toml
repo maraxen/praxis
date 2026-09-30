@@ -1,0 +1,222 @@
+# Pre-registration sidecar for spike S4 (task 260929_notebook-display-design, backlog #5628 C1,
+# epic #5648). Spec: .praxia/docs/specs/260929_notebook-display-epic.md, D1 row S4, D11 (the
+# docked viewer: pylabrobot.visualizer3D imported from the pin, the Viewer3D subclass, the
+# PACKAGE_ROOT rebind through the guarded first-construction helper _ensure_package_root(),
+# GATE X), D16 (shared unit runner, bounded teardown), D17 (one bounded unit, resume,
+# completeness), Sprint C task C1, AC-29, AC-30, AC-42, and the section 4 rows for the S4 files.
+#
+# THIS FILE AND scripts/spikes/260929_s4_viewer3d_pyodide.py ARE COMMITTED BEFORE ANY RUN. No
+# browser has been launched, no dist built and no `bth run` made against this probe when this
+# file was written: the outcome criteria below were chosen from the spec, not from numbers. The
+# only executions before the commit are the plumbing tests (web-repl/tests/test_s4_spike_driver.py),
+# which run the kernel cell sources in CPython against PLR's own visualizer3D source as a STAND-IN
+# for the kernel; they are not S4 evidence (CPython is not Pyodide: no WebLoop, no threads
+# restriction, no boot stubs) and no number from them is cited. Run the spike with `bth`, never
+# `uv run bth` (which silently skips sidecar enforcement). `bth run` has NO `--out` option; the
+# driver hands its result to bathos through $BTH_RESULTS_PATH:
+#
+#   bth run --project-slug praxis --output-paths outputs/spikes/260929_s4 -- \
+#     uv run --no-sync python3 scripts/spikes/260929_s4_viewer3d_pyodide.py \
+#       --out-dir outputs/spikes/260929_s4 --dist <dist built at the pin> [--resume]
+#
+# Verify the run by its RECORD (bth compact first if it is not visible yet):
+#   bth sql "SELECT id, status, outcome, exit_code, command FROM runs WHERE id LIKE '<prefix>%'"
+#
+# DIST REQUIREMENT (a stated limitation): pylabrobot/visualizer3D exists only from the PLR pin,
+# 1.0.0b1 (786ac2c4e4f7afe37885af2d98ff5b0afe274c67; Revision 10). The local web-repl/dist built
+# 260828 carries PLR 0.2.2 and does NOT contain it, so this spike can only be run against a dist
+# built at the pin (from a checkout branched from origin/main with the submodule at the pin; D16
+# "Import-time submodule dependency"). Against any other dist the probe FAILS FAST: it reads
+# find_spec("pylabrobot.visualizer3D") in the kernel, records the PLR version, sha and build id it
+# actually saw, sets aborted = "visualizer3d_absent", skips every later cell, and the outcome is
+# `invalid` (never a branch claim). A dist whose PLR is not the pin (sha from
+# pylabrobot._praxis_build_info when readable, else the version prefix 1.0.0b1) is `invalid` too.
+#
+# The driver writes the flat fields below to $BTH_RESULTS_PATH ONLY when the unit is complete.
+# An incomplete run (a timeout, a stampless crash) exits 3 and writes no result, so bathos
+# records no outcome, and the next `--resume` run is a new run record. A complete run whose
+# measurement is invalid still exits 0: its outcome is `invalid`.
+#
+# READING CHOICES (each is the most conservative reading of the spec; none is a numeric
+# criterion):
+#  * "Stub-free": every import is importlib.import_module of the real name. A module that is
+#    present only as a boot stub (spec is None, e.g. the seven install_native_stubs names) is NOT a
+#    real success. The ssl import is recorded but is not a criterion (it is boot-stubbed).
+#  * S4-B is claimed only for a failing STDLIB import (socket, http.server, webbrowser,
+#    threading) or a failing socket.gethostname(). A failing websockets or pylabrobot.visualizer3D
+#    import, even if it is caused by a stub's missing attribute, is UNMAPPED: no D1 branch names
+#    it, the run stops and the orchestrator rules (it may rule it S4-B's mechanism, a richer named
+#    stub, in a follow-up). Under S4-B the viewer-path measurements cannot exist and are waived
+#    (not required); the run lists the stubs required (the failing names) and takes no stubbed retry.
+#  * S4-C is claimed only when call_later is missing or raises NotImplementedError/AttributeError.
+#    A timer that never fires, or any other error, is inconclusive (null, so `invalid`). S4-C
+#    dominates S4-B (a stop).
+#  * A raised STEP inside the viewer path (construct, start, handler, hello, flush) is null
+#    (inconclusive), never a measured "no": a probe bug and a real failure are indistinguishable
+#    there. Only the import attempts and the direct loop-API calls turn an exception into a
+#    measured failure.
+#  * The "no mesh after the rebind" reading is taken from the FIRST scene message the real
+#    inherited _handler sends over the rebound root; mesh_models_rebound must be exactly 0 for S4-A.
+#    A nonzero count with everything else working is the MESH outcome (D11's premise is false).
+#  * The walk time is read from an instrument wrapper around the module's _models_on_disk during
+#    the inherited scene build (the first, cache-missing call on the root); it is valid only if it
+#    ran over the rebound root. Timer resolution in the page may be coarse (perf_counter_resolution_s
+#    is recorded); the time is recorded, not a criterion.
+#  * The fixture deck is a small Facility with a Hamilton tip carrier + rack and a plate carrier +
+#    plate, built in the kernel with the pin's public resource API (make_fixture.py's assemble() is
+#    sprint B and is not on this branch). Its models match .glb files the pin ships, so the stock
+#    root is EXPECTED to yield mesh entries: that is the natural positive control, and a seeded
+#    <model>.glb in a temporary root is the independent one.
+
+[experiment]
+hypothesis = "In the Pyodide kernel of a served dist built at the PLR pin (1.0.0b1, so its PLR wheel contains pylabrobot/visualizer3D and websockets 17.0.1 is a vendored wheel), inside ONE kernel and reading only the NOTEBOOK MODEL: the pin's pylabrobot.visualizer3D (and its sub-modules scene, facility, server) imports STUB-FREE together with websockets, websockets.asyncio.server, websockets.http11, http.server, webbrowser, threading and socket, and socket.gethostname() returns a name; a Viewer3D subclass stub shaped like D11's DockedViewer3D (overrides __init__, start, stop only; start() synchronous legacy_size, no websockets.serve, no file server, no threads, no browser) constructs and start()s with threading.Thread.start, websockets.serve and webbrowser.open each patched to raise and never called; WebLoop supports call_later and call_soon_threadsafe as the viewer uses them, including the real chain assign_child_resource -> call_soon_threadsafe(_mark_scene_dirty) -> call_later(SCENE_DEBOUNCE_S) -> a rebuilt scene and state message on the virtual client; and, over the rebound PACKAGE_ROOT (D11: one guarded rebind to an empty tempfile.mkdtemp() before the first construction), the fixture deck's first scene message, built by the real inherited _handler, carries no mesh on any model (mesh_models_rebound = 0), where over the STOCK root (inside the installed PLR package, which ships 63 .glb files) it does. The probe records the stock and rebound roots, the bytes of the first scene message, the first _models_on_disk walk time on each root, the stubs required (possibly none) and the PLR version it saw. Each D1 S4 branch is a pre-registered outcome: S4-A all yes; S4-B a stdlib import or gethostname fails (stubs listed); S4-C WebLoop lacks call_later (a stop); plus two the spec does not name and which stop the run: UNMAPPED (something the design-as-written needs fails and no D1 branch names it) and MESH (everything works but the rebind did not remove every mesh). Controls per instrument: a stub-free import of tkinter and of curses, modules known absent from Pyodide, must FAIL (the D17 negative control); json must import for real and a bare ModuleType must read as stub-like; a cancelled call_later must NOT fire while an uncancelled one does; each patched function must raise when called directly; a .glb seeded for a model of the deck into a temporary root must produce a mesh for exactly that model (the mesh reader can say yes). The run is INVALID (residual) if the instrument itself failed (an error finding, pylabrobot.visualizer3D absent from the kernel, a PLR that is not the pin, an uncontrolled or unmeasured verdict, a cell that never settled, the deadline, an aborted boot, or a negative control that did not fail as required). There is no numeric prior recorded: the design is unmeasured in this kernel."
+stage_name = "exploration"
+novel = true
+
+# ---------------------------------------------------------------------------------------
+# [outcomes]: over the flat fields the driver writes when the one unit is complete. Outcomes
+# are evaluated in file order (first match) and are mutually exclusive by construction: each
+# valid run has exactly one d1_branch, derived by the driver (derive_branch) from the valid
+# measured fields: S4-C if call_later_supported is false; else S4-B if a stdlib import or
+# gethostname failed; else UNMAPPED if any of websockets_imports_ok, visualizer3d_import_ok,
+# construct_ok, start_ok, start_without_threads, call_soon_threadsafe_supported, scene_flush_ok
+# is not true or the first scene message was not measured; else MESH if mesh_models_rebound is
+# not 0; else S4-A. measurement_valid is the conjunction of the named validity checks (see
+# [design.derivations]); when it is false d1_branch is null and only `invalid` matches.
+# ---------------------------------------------------------------------------------------
+
+[outcomes.s4_a]
+condition = "all_units_complete = true AND measurement_valid = true AND d1_branch = 'S4-A'"
+decision = "S4-A: all yes. Design as written (D11: import the pin's pylabrobot.visualizer3D, subclass Viewer3D with __init__/start/stop, rebind PACKAGE_ROOT through _ensure_package_root(), no stubs)."
+reasoning = "Every stub-free import worked, gethostname worked, the subclass constructed and started without threads, WebLoop supports call_later and call_soon_threadsafe end to end, and the rebound root removes every mesh."
+is_residual = false
+
+[outcomes.s4_b]
+condition = "all_units_complete = true AND measurement_valid = true AND d1_branch = 'S4-B'"
+decision = "S4-B: a stdlib import or gethostname fails (stubs_required names it). praxis/viz/viewer3d.py installs minimal named stubs into sys.modules BEFORE importing pylabrobot.visualizer3D, the same mechanism stages.install_native_stubs uses; each stub is listed and tested (C3). No PLR file is modified. The viewer-path measurements (construct, start, scene bytes, both roots, the walk time) were not taken behind a failed import and are a follow-up under a new pre-registration with the stubs."
+reasoning = "A stdlib name the viewer needs is missing or broken in the kernel; call_later exists, so the design survives with stubs."
+is_residual = false
+
+[outcomes.s4_c]
+condition = "all_units_complete = true AND measurement_valid = true AND d1_branch = 'S4-C'"
+decision = "S4-C: WebLoop lacks call_later. STOP and escalate: making it work needs a fourth override (_mark_scene_dirty), which trips GATE X (D11). The recommended path is to upstream a transport hook to PLR. stubs_required and the other fields are recorded (a stdlib failure alongside is possible and also listed)."
+reasoning = "call_later is missing or raises NotImplementedError/AttributeError with the timer instrument controlled."
+is_residual = false
+
+[outcomes.s4_mesh]
+condition = "all_units_complete = true AND measurement_valid = true AND d1_branch = 'MESH'"
+decision = "MESH: everything the design needs works, but the fixture deck's first scene message still carries mesh entries after the PACKAGE_ROOT rebind (mesh_models_rebound is not 0). D11's claim that the rebind alone removes every mesh is FALSE: STOP C3/C4 and escalate (AC-29 and AC-31 cannot assert it); read the recorded mesh model names and the rebound root's listing."
+reasoning = "The seeded control saw a mesh (the reader can say yes), so a nonzero count on the rebound root is real."
+is_residual = false
+
+[outcomes.s4_unmapped]
+condition = "all_units_complete = true AND measurement_valid = true AND d1_branch = 'UNMAPPED'"
+decision = "UNMAPPED: a valid measurement in which something the design-as-written needs failed and no D1 branch names it (a websockets or pylabrobot.visualizer3D import failing, construct or start failing, start using a thread, websocket serve or browser, call_soon_threadsafe missing, or the loop-driven rebuild not delivering a scene). STOP and escalate with the recorded failures; the orchestrator rules whether it is S4-B's mechanism (a richer named stub for a stdlib module such as ssl) or a new branch."
+reasoning = "The instrument was controlled and the failure is a measured no, but D1 S4 has no branch for it."
+is_residual = false
+
+# The residual: the instrument did not produce a valid measurement. Not evidence for any branch.
+[outcomes.invalid]
+condition = "all_units_complete = true AND measurement_valid = false"
+decision = "INVALID: the unit carries an error finding (unit or sub-probe), or pylabrobot.visualizer3D is absent from the served kernel (a dist not built at the pin, for example PLR 0.2.2: aborted = visualizer3d_absent, plr_version recorded), or the PLR is not the pin, or the kernel never reached idle, or the warm-up cell (PLR boot gate) raised, or a cell never settled, or the deadline was hit, or a verdict is unmeasured or uncontrolled (invalid_reason names the first failing check), or the negative control did not fail as required (including one that errored). Fix the probe or the dist, commit, and re-run under this sidecar's design; cite no branch from this run."
+reasoning = "A verdict that could be a probe bug or a wrong dist is never reported without a control that proves the instrument can say the opposite."
+is_residual = true
+
+[result_schema]
+all_units_complete = "bool"
+n_units = "int"
+n_error_units = "int"
+measurement_valid = "bool"
+invalid_reason = "str"
+kernel_ready = "bool"
+aborted = "str"
+plr_version = "str"
+plr_source_sha = "str"
+plr_at_pin = "bool"
+visualizer3d_present = "bool"
+stdlib_imports_ok = "bool"
+gethostname_ok = "bool"
+stubs_required = "str"
+websockets_imports_ok = "bool"
+visualizer3d_import_ok = "bool"
+construct_ok = "bool"
+start_ok = "bool"
+start_without_threads = "bool"
+call_later_supported = "bool"
+call_soon_threadsafe_supported = "bool"
+scene_flush_ok = "bool"
+first_scene_message_bytes = "int"
+stock_root = "str"
+stock_root_in_plr_package = "bool"
+stock_glb_count = "int"
+rebound_root = "str"
+rebound_root_empty = "bool"
+rebound_differs_from_stock = "bool"
+rebind_idempotent = "bool"
+mesh_models_stock = "int"
+mesh_models_rebound = "int"
+walk_stock_seconds = "float"
+walk_rebound_seconds = "float"
+walk_on_rebound_root = "bool"
+negative_control_failed_as_required = "bool"
+d1_branch = "str"
+
+# ---------------------------------------------------------------------------------------
+# D17 design statement: pre-registered here, committed before the first run.
+# ---------------------------------------------------------------------------------------
+
+[design]
+spec = ".praxia/docs/specs/260929_notebook-display-epic.md D1 (S4 row), D11, D16, D17, C1, AC-29, AC-30, AC-42"
+driver = "scripts/spikes/260929_s4_viewer3d_pyodide.py (argparse + logging); shared runner scripts/unit_runner.py; launch pattern and ServedDir/chromium_launch_args/resolve_chrome_path/_open_existing_notebook from scripts/repl_smoke.py, loaded by path. The plumbing is duplicated from the S3 driver on purpose (the spikes stay independent; no shared spike module; no committed spike file is modified)."
+unit_list = ["viewer3d_pyodide"]
+statement = "S4 is ONE declared bounded unit, viewer3d_pyodide: the stub-free imports (the pin's pylabrobot.visualizer3D from the dist's PLR wheel, nothing staged), gethostname, the WebLoop checks, the construction and start of the Viewer3D subclass stub, the scene bytes and whether any model carries mesh, both PACKAGE_ROOTs, the first _models_on_disk walk time on each root, the seeded-glb control and the negative control share one kernel, so they are one unit. It runs in its own subprocess (<script> --unit viewer3d_pyodide --out-dir <dir>) and its own browser context, started by the driver through unit_runner.run_unit with timeout = 10 min (600 s) + 60 s = 660 s, and self-bounded by a unit_runner.Watchdog armed at 10 min (600 s) as its first act after ensure_token(). The unit then deletes its own stamp, artifact and timeout marker, probes, writes <out>/units/viewer3d_pyodide.json with unit_runner.write_atomic under the watchdog lock, runs the bounded teardown (browser and Playwright closed, kill_tree over residual descendants, output flushed), commits <out>/units/viewer3d_pyodide.stamp.json last through Watchdog.commit, and then calls only os._exit(stamp.exit). There is no whole-run timeout. Outcomes are evaluated over the FULL unit set regardless of reuse: the driver writes its result (and so bathos evaluates [outcomes]) only when the unit is complete, reused or recomputed; a run with an incomplete unit writes no outcome and exits 3. The probe itself stops starting new work at 540 s (0.9 x the budget) so that an artifact saying how far it got is written before the watchdog can fire; a hit deadline or an aborted step is recorded and makes the run invalid."
+stamp = "{unit, inputs: {name: sha256}, artifact_sha256, started, finished, exit, timeout_s}; exit is 0 only if the probe did not raise (no unit-level error, no sub-probe error) and every pre-registered field is present."
+hashed_inputs = ["script (this driver, which also holds every kernel cell source)", "runner (scripts/unit_runner.py)", "harness (scripts/repl_smoke.py, loaded by path by the driver and the --unit branch)", "dist (unit_runner.dist_hash of the served dist; it covers the PLR wheel that carries pylabrobot.visualizer3D, Revision 10)", "fixture (the sha256 of the canonical JSON of the seeded notebook, built in the driver from the kernel cell sources: the probe's kernel code; no separate fixture file)", "chrome (resolved path + chrome --version)", "driver (unit_runner.driver_input: Playwright version + uv.lock sha256)", "args (unit, viewport 1440x900, base path; an addition to the D17 list, strictly more conservative)"]
+resume_rule = "--resume skips the unit only if its stamp exists, stamp.exit == 0, stamp.inputs equal the current inputs (each of script, runner, harness, dist, fixture, chrome, driver, args), stamp.artifact_sha256 equals the sha256 of the artifact on disk, the artifact has no error finding, and every field pre-registered for the unit (below) is present. Anything else is recomputed. Reuse changes how the work is scheduled, never the [outcomes] criteria; the research note records reused or recomputed, and for a reused unit its source path, input sha256s and artifact sha256."
+completeness = "The unit is complete when its artifact and a matching stamp (inputs equal the current inputs, artifact_sha256 equal to the artifact on disk) exist. A probe that raises, at the unit level or inside one sub-probe (a sub-probe is caught; the first sub-probe error is lifted into the unit's error), is recorded in the artifact as an error finding {type, message, traceback_tail <= 4 KiB} (a sub-probe error also names the sub_probe, and every sub-probe error is kept in sub_errors), and the unit still writes its artifact and stamp: it is complete, the error finding counts toward [outcomes] (an error never satisfies a branch outcome: measurement_valid is false and the outcome is `invalid`; a negative control that errors has NOT failed as required), and it is never reused. Only a timeout (exit 124, no stamp, no artifact, a timeout marker) or a stampless crash makes the unit incomplete. If the driver's run_unit times out over a valid stamp, the stamp governs and the driver logs a warning."
+teardown_order = "1 write artifact; 2 close browser and Playwright (errors logged, keys unchanged); 3 kill_tree over residual descendants; 4 flush stdout/stderr/logging; 5 Watchdog.commit(stamp); then only os._exit(stamp.exit). A hang in 1-4 is a timeout."
+reads = "Every result is read from the NOTEBOOK MODEL (notebook.content.model.cells: each cell's outputs and execution_count as JSON), never from the DOM, the console or printed text. Kernel-side observations are echoed as structured display_data bundles (application/json, raw, metadata.s4 = tag) and read from the same model; a printed stream (the viewer prints its hello line) is never a measurement."
+kernel_and_plr = "The kernel is the Pyodide kernel of the served dist. It boots PLR through PYTHONSTARTUP and gates every cell on that boot, so the wait for kernel idle (up to 240 s) and the warm-up cell (up to 180 s) may use much of the budget. The probe imports pylabrobot.visualizer3D from the installed PLR wheel and stages nothing. If the kernel does not reach idle, or the warm-up cell raises, the artifact records kernel_ready / boot.warmup_error and aborted, every later field is null, and the outcome is `invalid`. If find_spec('pylabrobot.visualizer3D') is None (a dist not at the pin, e.g. PLR 0.2.2) the probe records the PLR version, sha and build id it saw, sets aborted = visualizer3d_absent, skips every later cell, and the outcome is `invalid` (no branch claim)."
+dist_at_the_pin = "REQUIRED. Only a dist built at the PLR pin (1.0.0b1, 786ac2c4e4f7afe37885af2d98ff5b0afe274c67) contains pylabrobot/visualizer3D. The local web-repl/dist built 260828 (PLR 0.2.2) does not, so a run against it is `invalid` by design, not a finding. The PLR version actually seen is recorded in the artifact (plr.version, plr.source_sha, plr.build_id) and in the flat result (plr_version, plr_source_sha, plr_at_pin, visualizer3d_present)."
+
+[design.timeouts]
+unit_s = 600
+driver_kill_s = 660
+probe_deadline_s = 540
+kernel_idle_wait_s = 240
+warmup_cell_s = 180
+cell_s = 45
+heavy_cell_s = 90
+whole_run_timeout = "none"
+note = "D17 S4 row: 10 min for the one unit; estimates from the spec, not measurements. The internal caps are each clipped to the time left before the deadline. heavy_cell_s applies to imports, viewer_setup, viewer, roots_stock, roots_rebound and seeded."
+
+[design.cells]
+notebook = "s4_viewer3d_pyodide.ipynb, seeded through contents.save, opened with the Select Kernel dialog accepted; one code cell per probe cell, nothing pre-executed"
+order = "warm, setup, imports, hostname, neg_import, loop, viewer_setup, viewer, roots_stock, roots_rebound, seeded, restore"
+execution = "one cell at a time through notebook:run-cell (the run command's promise settling marks the cell done). The viewer cells (viewer_setup .. restore) are run only if the stub-free imports of pylabrobot.visualizer3D and the stdlib names succeeded; otherwise they are skipped and named in `skipped`."
+top_level_await = "loop, viewer, roots_stock, roots_rebound and seeded use top-level await (the S3 spike established that await cells run in this kernel)"
+fixture_deck = "a Facility (1200 x 800 x 600 mm) with a Hamilton tip carrier holding a 1000 uL tip rack and a plate carrier holding a Corning 96-well plate, built in the kernel; the first scene message is the real inherited Viewer3D._handler output over a virtual connection"
+
+[design.derivations]
+plr = "visualizer3d_present from importlib.util.find_spec (no import); at_pin: the build-info sha == the pin, else (sha unreadable) the version starts with 1.0.0b1; null if neither is readable"
+imports = "each name is imported with importlib.import_module STUB-FREE and read as a REAL success only if it imported and its module has a spec (a module without one is a bare stub, e.g. a boot stub); stdlib_ok over socket, http.server, webbrowser, threading; websockets_ok over websockets, websockets.asyncio.server, websockets.http11; visualizer3d_ok over pylabrobot.visualizer3D and its scene, facility and server modules; ssl is recorded (info) only. Controls: json imports for real; a bare types.ModuleType reads as stub-like."
+gethostname = "gethostname_ok: socket.gethostname() returned a non-empty str; False if it raised; null if unread"
+loop = "call_later_supported / call_soon_threadsafe_supported: True if the timer fired within 3 s; False if the attribute is missing or the call raised NotImplementedError/AttributeError; null otherwise (a timer that never fired, another error). Control: a cancelled call_later must not fire (timer_cancel_control_ok)."
+viewer = "construct_ok / start_ok: the subclass constructed / start() returned; a raised step is null. start_without_threads: start() ran with Thread.start, websockets.serve and webbrowser.open patched to raise, none of them was called, and each patched function raised when called directly (the control); null if the control did not hold."
+scene = "first_scene_message_bytes: utf-8 bytes of the first message the real _handler sent to a virtual client over the rebound root, which must decode to event scene followed by state; mesh_models_rebound / mesh_models_stock: the count of models with a mesh key in the rebound-root handler message / the stock-root scene payload. scene_flush_ok: after assign_child_resource the client receives scene then state, rebuilds == 1 and the epoch advanced by 1 (the loop chain call_soon_threadsafe -> call_later)."
+roots_and_walk = "stock_root: server.PACKAGE_ROOT before any rebind, with in_plr_package (== the pylabrobot package directory), in_site_packages and the .glb count under it; rebound_root: the value after the first guarded construction (must exist, be empty and differ from the stock root; a second guard call must leave it unchanged); the walk seconds are the first (cache-missing) _models_on_disk call on each root during the inherited scene build, measured by an instrument wrapper; walk_on_rebound_root asserts the timed walk ran over the rebound root."
+seeded_control = "a <model>.glb (the deck's tip-carrier model) seeded into a temporary root must make exactly that model carry a mesh; the previous PACKAGE_ROOT is restored and _models_on_disk is restored in the last cell"
+negative_control = "failed_as_required is true iff a stub-free import of EVERY candidate (tkinter, curses; absent from Pyodide) failed with an ImportError that names the candidate; null if unread; a candidate that imported, or a control that errored, has NOT failed as required."
+validity_checks = "no_error_findings, kernel_ready, boot_ok, prelude_ok, visualizer3d_present, plr_at_pin, not_aborted, all_cells_done, deadline_not_hit, imports_measured, import_positive_control, stub_detector_control, hostname_measured, negative_control_failed_as_required, loop_measured, timer_cancel_control; and, only when the viewer path can exist (no stdlib failure, call_later not false, visualizer3D imported): viewer_measured, patch_control_ok, start_without_threads_measured, scene_measured, flush_measured, roots_measured, walk_measured (on the rebound root, a cache miss), mesh_counts_measured, seeded_control_sees_mesh, rebind_effective (empty root, different from the stock root). invalid_reason is the first failing check in this order."
+
+[design.controls]
+positive = "the warm-up and setup cells prove the kernel executes and the model reader returns kernel-side bundles; json imports for real; the uncancelled timer fires; the seeded .glb yields a mesh; the stock root yields the pin's meshes (the expected natural positive)"
+negative = "D17: a stub-free import of a module known absent from Pyodide (tkinter, curses) must fail. A negative control that ERRORS or imports has NOT failed as required."
+instrument_can_say_no = "a bare ModuleType reads as a stub, not a real import; a cancelled timer must not fire; each patched function must raise when called directly; the rebound (empty) root must read zero mesh while the seeded root reads one; a viewer step that raised reads null, never False"
+plumbing = "web-repl/tests/test_s4_spike_driver.py: driver, unit, stamp, resume (each input incl. harness), completeness and outcome-gating against a stub probe (no browser); the judges and the branch derivation over synthetic artifacts; the sidecar outcomes evaluated by bathos; and the kernel cell sources run in CPython against PLR's own visualizer3D source when importable (a stand-in, not S4 evidence)."
+
+[design.units.viewer3d_pyodide]
+timeout_s = 600
+upstream = []
+required_fields = ["kernel_ready", "boot", "prelude", "cells", "sub_errors", "plr", "imports", "hostname", "negative_control", "loop", "viewer", "roots", "scene", "walk", "seeded_control", "skipped", "all_cells_done", "deadline_hit", "aborted"]
+description = "Seed the notebook, open it in full Chromium, wait for the Pyodide kernel to reach idle, run the warm-up cell (gated on the PLR boot) and the setup cell (find_spec, PLR version, sha, build id), then, in the one kernel and reading every result from the notebook model: the stub-free imports; socket.gethostname(); the negative control (tkinter, curses); the WebLoop checks (call_later with a cancel control, call_soon_threadsafe, ensure_future, wait_for, and whether threads exist, for information); the construction, start and stop of the Viewer3D subclass stub under patched Thread.start / websockets.serve / webbrowser.open; the stock PACKAGE_ROOT and the scene built over it (mesh models, first _models_on_disk walk); the D11 rebind to an empty temporary root, the real inherited _handler over a virtual connection (first scene and state message bytes, mesh models, hello and wait_for_browser, the loop-driven rebuild after assign_child_resource); the seeded-glb control; and the restore cell. `skipped` names any viewer cell not run and why."
