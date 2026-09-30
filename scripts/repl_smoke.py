@@ -7593,9 +7593,13 @@ DOCK_CHECK_JS = r"""
       : [];
     let leftCollapsed = null;
     try { leftCollapsed = app().shell.leftCollapsed; } catch (e) { leftCollapsed = null; }
+    // A closed panel's node is detached from the document (so `node` is null and no iframe is in the DOM): its state
+    // is then the controller's. `present` says which read this was.
+    let ctlState = null;
+    try { const d = dockCtl(); ctlState = d ? d.snapshot().state : null; } catch (e) { ctlState = null; }
     return {
       present: !!node, in_document: node ? document.contains(node) : false,
-      state: node ? node.getAttribute("data-praxis-deck-state") : null,
+      state: node ? node.getAttribute("data-praxis-deck-state") : ctlState,
       position: style ? style.position : null,
       panel_rect: box(node), notebook_panel_rect: box(notebookPanel()),
       nb_content_width: nb ? nb.getBoundingClientRect().width : null,
