@@ -4431,3 +4431,43 @@ Interpretation calls and open live-browser checks from B2, B3, B4, B7 and B9. No
   `s2_b_exec_t`, where an untrusted reopen strips `style` and `data-*` together.
 - **CSS gap, tracked as #5669.** B2/B3/B4 emit class names A4's theme has no rules for; B10 depends on
   #5669 so the D2/D3 computed-style checks read styled output.
+
+### Sprint B/C notes recorded during execution, continued (260929, orchestrator)
+
+- **Branch stacking.** C5 depends on B9's `stale.js` (`stampOf`) and `interact.js`, so sprint C cannot
+  sit on sprint A alone: the delivered stack is A, then B, then C
+  (`feat/notebook-display-sprint-a`, `-sprint-b`, `-sprint-c-stacked`), merge order A, B, C. The earlier
+  branch `feat/notebook-display-sprint-c` (C1/C2/C4 on A) is superseded by the stacked one (same seven commits
+  cherry-picked onto B).
+- **B10a (D2, D3, D4 harness, authored, never run).**
+  - AC-25's ArrowRight expectation ("assay A2: 50 µL", spec :2421, and section 3.4's "assay B3: 100 µL")
+    contradicts the fixture and AC-9: column 2 of the assay plate holds 100 µL (`run_transfers` writes 50, 100,
+    150 µL to columns 1-3). The harness asserts `assay A2: 100 µL` and that the live text changed; the spec text
+    is wrong, not the harness.
+  - `html_bytes_max` (AC-21) is a bound, not an equality: the harness uses an `AtMost` predicate, so an
+    AC-42 conformance check that compares listed values literally must know it.
+  - AC-22's separate Run All of the E1-then-marker pair runs in a SECOND notebook (a second kernel cloned from
+    the fixture, run last): the main notebook cannot host it because `d1-error` precedes it and would make the
+    marker's null execution count vacuous. Its cost sits inside D2's 12 min, and D2 boots up to three Pyodide
+    kernels (initial, restart, Run All notebook): it is the tightest budget, so its first CI wall time matters.
+  - AC-23's re-run after a restart uses a self-contained `redraw` cell (the fixture's drawing cells need names
+    the restart loses). The fixture row's `RunLedger` cell (:1913) was not added: no AC-21..26 key reads it.
+  - `mark_survives_scroll` does not cover widget-list index drift; under `contentVisibility` scrolling
+    detaches nothing, so the harness also re-renders via one same-value `outputs.set`.
+  - `persistence_gate_never_open` polls the first-save dialog for the whole scenario from an init script,
+    and its sightings survive the D3 reload through `sessionStorage`; a dead monitor counts as a failure.
+  - D4's `hc_text_color` may be non-discriminating (JupyterLab's own inherited colour in High Contrast may
+    already equal `--jp-content-font-color0`); the harness blocks `praxis-theme.css` by route and requires the
+    custom property empty with the block and set without it, but confirm on the first live run.
+  - The sprint B AC-39(a) entry script and sidecar are under `scripts/spikes/` (like sprint A's), the shared
+    driver under `scripts/negatives/`; the spec's file plan (:1896) puts entry scripts under `negatives/`.
+- **Colour-vision (B8).** AC-27 states only rose vs brick >= 10, which holds by colour alone (min 21.9,
+  tritan). Moonstone (volume) vs rose (attention) is 9.5 under protanopia, below the 10 the test uses for
+  marks, and passes on the shape cue only (filled disk vs unfilled ring). The other thresholds (5 for
+  hairlines, 4.5 for text) are the test author's choices. These are exploratory numbers, not a registered run.
+- **`main` has moved.** `origin/main` is now f78c4bf2, two documentation commits past the a176bac7 base of
+  all three sprint branches (a plr-sema spec and the PLR phase 2 plan); rebase before opening PRs. The
+  plan's phase 2 (#5664) will replace the deprecated names the fixture and tests already avoid (`rails=`,
+  the old carrier and plate factories), so expect little friction.
+- **Open follow-ups.** #5671 (re-vendor Roboto Flex with the width axis): the design's condensed names do not
+  render because the vendored font has only `opsz` and `wght`; the re-vendor needs network access.
