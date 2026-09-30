@@ -51,6 +51,11 @@ the build actually produces" for that question, not a preference.
                   Contrast), each its own unit in its own process with its own watchdog,
                   result and stamp, resumable. See the
                   "--display-check" section above `parse_args`.
+  --dock-check     ADDED for the same epic (task C7, D16, AC-34..AC-42): units K1a (viewer draws, Follow,
+                  presets, live state), K1b (reconnect, re-dock, stop, late iframe, kernel restart) and K2
+                  (layout tiers), plus the negative-only N-d, on the same unit machinery, in a FULL Chromium
+                  with SwiftShader WebGL (the headless shell has no WebGL2). `--neg drop-query` is AC-39(e)'s
+                  harness-only negative for K1b. See the "--dock-check" section above `parse_args`.
 
 Do NOT create a second harness for this project — see the ADR at
 .praxia/docs/decisions/260817_repl-layout-and-delivery-mechanism.md and the execution
