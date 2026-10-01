@@ -2176,7 +2176,8 @@ def test_none96_a_pending_volume_reader_resolves_the_residue_retry(cx, monkeypat
 
 def test_none96_a_mutant_without_the_notip_clause_and_the_mask_resolves_the_notip_cases(cx, monkeypatch):
     """NoTip on the 96 path always gives ``None`` (A9). Dropping that clause alone is not enough
-    (the committed mask excludes the tipless channels); drop the mask too and all three resolve."""
+    (the committed mask excludes the tipless channels); drop the mask too and the drop_tips96 case
+    and the TipSpot.get_tip case resolve."""
     for name in ("E96-noTip-residue", "E96-noTip-residue-asp", "E96-noTip-spot"):
         NONE_96[name](cx.resolve)
     _mutant(
@@ -2184,9 +2185,33 @@ def test_none96_a_mutant_without_the_notip_clause_and_the_mask_resolves_the_noti
         _tip_error_explainable_on_96=lambda exc: True,
         _positions_with_committed_tip=lambda pairs: [i for i, _ in pairs],
     )
-    for name in ("E96-noTip-residue", "E96-noTip-residue-asp", "E96-noTip-spot"):
+    for name in ("E96-noTip-residue", "E96-noTip-spot"):
         with pytest.raises(AssertionError):
             NONE_96[name](cx.resolve)
+
+
+def test_none96_the_aspirate_notip_is_raised_before_the_locals_it_would_need_exist(cx, monkeypatch):
+    """E96-noTip-residue-asp: aspirate96 builds ``tips`` (LH:1981) BEFORE it binds ``containers``
+    (:1990-2002), so the frame the NoTip comes from has no ``containers`` to map. That, not only the
+    NoTip clause, is why the case is ``None``: it stays ``None`` even with both guards mutated away.
+    (Spec A3 says the locals are bound before any tracker call; that holds for the volume sites
+    :2016/:2045 and :2163-:2200, not for the tips comprehension.)"""
+    frame = next(f for f in _frames_of("E96-noTip-residue-asp") if f.f_code.co_name == "aspirate96")
+    assert "volume" in frame.f_locals and "containers" not in frame.f_locals
+    _mutant(
+        monkeypatch, cx,
+        _tip_error_explainable_on_96=lambda exc: True,
+        _positions_with_committed_tip=lambda pairs: [i for i, _ in pairs],
+    )
+    NONE_96["E96-noTip-residue-asp"](cx.resolve)
+
+
+def _frames_of(name):
+    out, tb = [], case(name).tb
+    while tb is not None:
+        out.append(tb.tb_frame)
+        tb = tb.tb_next
+    return out
 
 
 def test_none96_dropping_only_the_notip_clause_is_not_enough(cx, monkeypatch):
