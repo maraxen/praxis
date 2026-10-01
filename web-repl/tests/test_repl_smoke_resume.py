@@ -2676,7 +2676,9 @@ OUTPUT_JS_DRIVER = textwrap.dedent(
         ex("p", { class: "praxis-summary" }, [], "FIX96"),
         ex("div", { class: "praxis-summary" }, [], NOTE96),
         svgFor("assay"),
-        ex("p", { class: "praxis-error__plr" }, [], "PyLabRobot raised TooLittleLiquidError: x")])])] }));
+        ex("p", { class: "praxis-error__plr" }, [], "PyLabRobot raised TooLittleLiquidError: x")]),
+        // a decoy OUTSIDE the panel root, in the same output: the read is scoped to `.praxis-error`
+        ex("p", { class: "praxis-summary" }, [], "OUTSIDE"), ex("div", { class: "praxis-summary" }, [], "OUTSIDE NOTE")])] }));
     const listeners = [];
     const panel = {
       content: { widgets: cells, model: { cells: { length: cells.length, get: (i) => cells[i].model }, trusted: true }, node: ex("div") },
