@@ -23,6 +23,21 @@
 // JupyterLab's), a panel's sessionContext (kernel restart signals), and a
 // BroadcastChannel hub. See the "B9" section at the end of this file.
 //
+// TWO MODES OF THE MAIN DOCK PANEL (`createFakeDockPanel` / `createFakeDeckApp`, #5656).
+//   "legacy" (the default; every existing test): a tab area whose node has an inline max-width is clamped and the clamped
+//     difference goes to its unlimited siblings. Node rectangles are all `{width: 0}` except the dock's, `layoutModified`
+//     fires synchronously inside `shell.add`. K2 (the recorded real-browser run) contradicts the siblings rule: the real
+//     split hands the deck's half any amount above the minimum and the capped deck sits centred in it, leaving a strip
+//     that nobody uses (73.5 px at 1440 open, 220 px after a drag past 480). A test of the OUTCOME cannot use this mode.
+//   "measured" (opt-in, `{mode: "measured"}`): Lumino's allocation as the bundle reads it (a child's minimum is honoured, its
+//     maximum is not, so the half stays wide), the deck node capped by max-width and centred in its half, a fixed inset on
+//     each side of the dock (`inset`, default 5) and a handle (`handle`, default 5), real node rectangles after every layout,
+//     `saveLayout()` sizes that are the allocation, and a QUEUED `layoutModified`: `addWidget`, `restoreLayout`, a drag's
+//     release and a shell call that changes the main area post it, `app.flushLayout()` emits it once (the shell's 0 ms
+//     debouncer). A window resize posts nothing. `resizeRule` is how a width change is shared out: "proportional" (relative
+//     sizes kept) or "equalExcess" (every child gets the same extra px). `dock.drag(widget, px)` sets the widget's HALF.
+//     dock_reclaim.test.js calibrates it against the five snapshots of the recorded run before any outcome is asserted.
+//
 // Lumino's Signal calls a slot as slot(sender, args) in connection order;
 // createFakeSignal does the same and counts live connections so a test can
 // assert idempotent re-attachment.
@@ -407,7 +422,9 @@ export function createFakeWindow({ app = null, document = null, broadcast = null
     },
     getComputedStyle(el) {
       const px = `${(el && el._padding) || 0}px`;
-      return { paddingLeft: px, paddingRight: px };
+      // `maxWidth` / `minWidth` (measured-mode tests): the inline value, else the stylesheet default (`none` / `0px`).
+      const style = (el && el.style) || {};
+      return { paddingLeft: px, paddingRight: px, maxWidth: style.maxWidth || "none", minWidth: style.minWidth || "0px" };
     },
   };
   return win;
@@ -882,7 +899,15 @@ function prune(area, widget) {
   return { ...area, children: kept, sizes: sizes.map((s) => s / sum) };
 }
 
-export function createFakeDockPanel(lumino, doc, { width = 1440 } = {}) {
+export function createFakeDockPanel(
+  lumino,
+  doc,
+  { width = 1440, mode = "legacy", inset = 5, handle = 5, resizeRule = "proportional" } = {},
+) {
+  if (mode !== "legacy" && mode !== "measured") throw new Error(`fake dock panel: unknown mode ${JSON.stringify(mode)}`);
+  if (resizeRule !== "proportional" && resizeRule !== "equalExcess") {
+    throw new Error(`fake dock panel: unknown resizeRule ${JSON.stringify(resizeRule)}`);
+  }
   class FakeDockPanel extends lumino.Widget {
     constructor() {
       super({ node: doc.createElement("div") });
@@ -892,6 +917,15 @@ export function createFakeDockPanel(lumino, doc, { width = 1440 } = {}) {
       this.restoreCalls = [];
       this._limits = new Map();
       this._px = new Map();
+      // Measured mode only (opt-in; see the MEASURED MODE paragraph of this file's header). Legacy mode never reads these.
+      this.mode = mode;
+      this.measured = mode === "measured";
+      this.inset = inset;
+      this.handleWidth = handle;
+      this.resizeRule = resizeRule;
+      this.pendingLayoutModified = 0;
+      this.layoutModifiedPosts = 0;
+      this._splitInfo = new Map();
     }
 
     get mainWidth() {
@@ -902,6 +936,8 @@ export function createFakeDockPanel(lumino, doc, { width = 1440 } = {}) {
     seed(widget) {
       widget.parent = this;
       widget.isAttached = true;
+      // JupyterLab's CSS gives a notebook panel `min-width: 2px` (recorded: styles.notebook_panel.min_width "2px").
+      if (this.measured && !widget.node.style.minWidth) widget.node.style.minWidth = "2px";
       this.node.appendChild(widget.node);
       if (!this.layoutTree) this.layoutTree = { type: "tab-area", widgets: [widget], currentIndex: 0 };
       else firstTabArea(this.layoutTree).widgets.push(widget);
@@ -933,6 +969,7 @@ export function createFakeDockPanel(lumino, doc, { width = 1440 } = {}) {
       this.node.appendChild(widget.node);
       this._readLimits(widget);
       this._reflow(false);
+      if (this.measured) this.postLayoutModified(); // DockPanel.addWidget posts LayoutModified (A12)
     }
 
     removeWidget(widget) {
@@ -943,6 +980,7 @@ export function createFakeDockPanel(lumino, doc, { width = 1440 } = {}) {
       this._px.delete(widget);
       this._limits.delete(widget);
       this._reflow(false);
+      if (this.measured) this.postLayoutModified();
     }
 
     saveLayout() {
@@ -955,6 +993,7 @@ export function createFakeDockPanel(lumino, doc, { width = 1440 } = {}) {
       this.layoutTree = cloneArea(config.main);
       for (const w of this.allWidgets()) this._readLimits(w);
       this._reflow(false);
+      if (this.measured) this.postLayoutModified(); // DockPanel.restoreLayout posts LayoutModified (A12)
     }
 
     fit() {
@@ -1010,6 +1049,10 @@ export function createFakeDockPanel(lumino, doc, { width = 1440 } = {}) {
     _reflow(readAll) {
       if (readAll) for (const w of this.allWidgets()) this._readLimits(w);
       this._px.clear();
+      if (this.measured) {
+        this._reflowMeasured();
+        return;
+      }
       if (this.layoutTree) this._assign(this.layoutTree, this.mainWidth);
     }
 
@@ -1020,6 +1063,7 @@ export function createFakeDockPanel(lumino, doc, { width = 1440 } = {}) {
 
     /** The user drags the splitter so that `widget` is `px` wide (clamped to the cached limits). */
     drag(widget, px) {
+      if (this.measured) return this._dragMeasured(widget, px);
       const area = tabAreaOf(this.layoutTree, widget);
       const findSplit = (node) => {
         if (node.type === "tab-area") return null;
@@ -1040,9 +1084,172 @@ export function createFakeDockPanel(lumino, doc, { width = 1440 } = {}) {
       return this.widthOf(widget);
     }
 
-    /** The main area (not the window) changes width: a window resize or a sidebar toggle. */
-    setWidth(px) {
+    /** The main area (not the window) changes width: a window resize or a sidebar toggle. Measured mode: `layoutModified: true`
+     * is a shell call that posts LayoutModified (`collapseLeft()` / `expandLeft()`, A13); a window resize posts nothing. */
+    setWidth(px, { layoutModified = false } = {}) {
+      if (this.measured) {
+        this._resizeMeasured(px);
+        if (layoutModified) this.postLayoutModified();
+        return;
+      }
       this.node.rect.width = px;
+      this._reflow(false);
+    }
+
+    // -- measured mode (opt-in) --------------------------------------------------------------------------------------------
+
+    /** DockPanel posts a LayoutModified message; the shell's 0 ms debouncer will emit `shell.layoutModified` once, later. */
+    postLayoutModified() {
+      this.pendingLayoutModified += 1;
+      this.layoutModifiedPosts += 1;
+    }
+
+    /** The shell's debouncer fires: true when at least one post was pending (they coalesce into one emission). */
+    takeLayoutModified() {
+      const pending = this.pendingLayoutModified > 0;
+      this.pendingLayoutModified = 0;
+      return pending;
+    }
+
+    /** The node rectangle of `widget` as the last layout left it (a copy). */
+    rectOf(widget) {
+      return widget && widget.node ? { ...widget.node.rect } : null;
+    }
+
+    /** The space that neither node, the splitter handle nor the dock's own padding takes: the AC-N1 formula applied to the
+     * node rectangles, `slack - 2 x (notebook.left - dock.left)`, with `slack = dock - notebook - deck - handle`. */
+    deadSpace(deck, notebook) {
+      const dock = this.node.rect;
+      const d = deck.node.rect;
+      const n = notebook.node.rect;
+      const slack = dock.width - n.width - d.width - this.handleWidth;
+      return slack - 2 * (n.left - dock.left);
+    }
+
+    /** The width the first horizontal split gave its children, `dock - 2 x inset - handles`, at the last layout. */
+    availableWidth() {
+      for (const info of this._splitInfo.values()) return info.avail;
+      return null;
+    }
+
+    _splitFractions(area) {
+      const total = area.sizes.reduce((a, b) => a + b, 0) || 1;
+      return area.sizes.map((s) => s / total);
+    }
+
+    /** Lumino's allocation (A7): every child gets its share of the available width, a child below its MINIMUM is raised to it
+     * and the others share what is left in proportion; a MAXIMUM is not part of the allocation at all. */
+    _allocate(avail, fractions, mins) {
+      const widths = fractions.map((f) => f * avail);
+      const fixed = new Set();
+      for (let round = 0; round < fractions.length; round += 1) {
+        let changed = false;
+        fractions.forEach((_f, i) => {
+          if (fixed.has(i) || widths[i] >= mins[i]) return;
+          fixed.add(i);
+          widths[i] = mins[i];
+          changed = true;
+        });
+        if (!changed) break;
+        const free = fractions.map((_f, i) => i).filter((i) => !fixed.has(i));
+        const left = avail - Array.from(fixed).reduce((sum, i) => sum + widths[i], 0);
+        const weight = free.reduce((sum, i) => sum + fractions[i], 0) || 1;
+        for (const i of free) widths[i] = (fractions[i] / weight) * left;
+      }
+      return widths;
+    }
+
+    _reflowMeasured() {
+      this._splitInfo.clear();
+      if (!this.layoutTree) return;
+      const rect = this.node.rect;
+      this._layoutArea(this.layoutTree, rect.left + this.inset, rect.width - 2 * this.inset);
+    }
+
+    _layoutArea(area, left, px) {
+      const rect = this.node.rect;
+      if (area.type === "tab-area") {
+        area.widgets.forEach((w, i) => {
+          const [lo, hi] = this._limits.get(w) || [0, Infinity];
+          const shown = i === area.currentIndex;
+          // CSS: the node is capped by max-width, a min-width wins over it, and it is centred in its cell (A8).
+          const nodeWidth = shown ? Math.max(Math.min(px, hi), lo) : 0;
+          w.node.rect = {
+            left: shown ? left + (px - nodeWidth) / 2 : 0,
+            top: rect.top + this.inset,
+            width: nodeWidth,
+            height: shown ? rect.height - 2 * this.inset : 0,
+          };
+          this._px.set(w, nodeWidth);
+        });
+        return;
+      }
+      if (area.orientation !== "horizontal") {
+        for (const child of area.children) this._layoutArea(child, left, px);
+        return;
+      }
+      const handles = (area.children.length - 1) * this.handleWidth;
+      const avail = px - handles;
+      const mins = area.children.map((child) => this._areaLimits(child)[0]);
+      const widths = this._allocate(avail, this._splitFractions(area), mins);
+      area.sizes = widths.map((w) => w / avail); // like Lumino's sizers: what saveLayout() reports is the allocation
+      this._splitInfo.set(area, { avail, widths: widths.slice() });
+      let at = left;
+      area.children.forEach((child, i) => {
+        this._layoutArea(child, at, widths[i]);
+        at += widths[i] + this.handleWidth;
+      });
+    }
+
+    /** A splitter drag that leaves `widget`'s HALF (its cell of the split, not its node) `px` wide, then the release. */
+    _dragMeasured(widget, px) {
+      const area = tabAreaOf(this.layoutTree, widget);
+      const findSplit = (node) => {
+        if (node.type === "tab-area") return null;
+        const idx = node.children.findIndex((c) => c === area);
+        if (idx >= 0 && node.orientation === "horizontal") return { node, idx };
+        for (const c of node.children) {
+          const hit = findSplit(c);
+          if (hit) return hit;
+        }
+        return null;
+      };
+      const hit = this.layoutTree ? findSplit(this.layoutTree) : null;
+      if (!hit) return this.widthOf(widget);
+      const info = this._splitInfo.get(hit.node);
+      const avail = info ? info.avail : this.node.rect.width - 2 * this.inset - this.handleWidth;
+      const frac = Math.min(1, Math.max(0, px / avail));
+      const old = this._splitFractions(hit.node);
+      const rest = old.reduce((sum, f, i) => (i === hit.idx ? sum : sum + f), 0);
+      const others = hit.node.children.length - 1;
+      hit.node.sizes = old.map((f, i) => (i === hit.idx ? frac : rest > 0 ? (f / rest) * (1 - frac) : (1 - frac) / others));
+      this._reflow(false);
+      this.postLayoutModified(); // the release: DockPanel._evtPointerUp posts LayoutModified (A11)
+      return this.widthOf(widget);
+    }
+
+    /** The main area changes width: Lumino keeps relative sizes ("proportional"), or gives every child the same extra px
+     * ("equalExcess", the alternative the spec could not rule out, A29). */
+    _resizeMeasured(px) {
+      const before = new Map(this._splitInfo);
+      this.node.rect.width = px;
+      if (this.resizeRule === "equalExcess" && this.layoutTree) {
+        const reshape = (area, newPx) => {
+          if (area.type === "tab-area") return;
+          if (area.orientation !== "horizontal") {
+            for (const child of area.children) reshape(child, newPx);
+            return;
+          }
+          const was = before.get(area);
+          if (!was) return;
+          const newAvail = newPx - (area.children.length - 1) * this.handleWidth;
+          const extra = (newAvail - was.avail) / area.children.length;
+          const widths = was.widths.map((w) => Math.max(0, w + extra));
+          area.sizes = widths.map((w) => w / newAvail);
+          area.children.forEach((child, i) => reshape(child, widths[i]));
+        };
+        reshape(this.layoutTree, px - 2 * this.inset);
+      }
       this._reflow(false);
     }
   }
@@ -1121,8 +1328,17 @@ export function createFakeCommands() {
  * a main DockPanel that lays out split-right, a shell whose `add` insists on a widget `id`
  * like the LabShell, commands, and one notebook panel per requested notebook.
  */
-export function createFakeDeckApp({ doc, notebooks = 1, width = 1440, lumino = createFakeLumino(doc) } = {}) {
-  const dock = createFakeDockPanel(lumino, doc, { width });
+export function createFakeDeckApp({
+  doc,
+  notebooks = 1,
+  width = 1440,
+  lumino = createFakeLumino(doc),
+  mode = "legacy",
+  inset = 5,
+  handle = 5,
+  resizeRule = "proportional",
+} = {}) {
+  const dock = createFakeDockPanel(lumino, doc, { width, mode, inset, handle, resizeRule });
   doc.body.appendChild(dock.node); // the main area is part of the page
   const panels = [];
   for (let i = 0; i < notebooks; i += 1) {
@@ -1146,11 +1362,19 @@ export function createFakeDeckApp({ doc, notebooks = 1, width = 1440, lumino = c
       }
       if (area !== "main") throw new Error(`fake shell: area ${area} is not modelled`);
       dock.addWidget(widget, options || {});
-      shell.layoutModified.emit(shell, undefined);
+      // Legacy: the signal fires inside `add`. Measured: DockPanel posted LayoutModified (queued in the dock); the shell's 0 ms
+      // debouncer emits it later, from `flushLayout()` (A11, A12).
+      if (!dock.measured) shell.layoutModified.emit(shell, undefined);
     },
   };
   const commands = createFakeCommands();
   const app = { shell, commands, restored: Promise.resolve(), dock, panels, lumino };
+  /** Measured mode: the shell's debouncer fires. One `layoutModified` emission when any post was pending; true if it emitted. */
+  app.flushLayout = () => {
+    if (!dock.takeLayoutModified()) return false;
+    shell.layoutModified.emit(shell, undefined);
+    return true;
+  };
   return app;
 }
 
