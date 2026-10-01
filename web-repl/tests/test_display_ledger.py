@@ -54,6 +54,7 @@ import pytest
 
 import pylabrobot
 from pylabrobot.legacy.liquid_handling import LiquidHandler
+from pylabrobot.resources.errors import TooLittleVolumeError
 
 _TESTS_DIR = Path(__file__).resolve().parent
 _WEB_REPL = _TESTS_DIR.parent
@@ -2185,3 +2186,138 @@ def test_huge_hostile_names_never_break_the_cap(led, budget, svg, fx):
     assert budget.html_bytes(data["text/html"]) <= CAP
     svg.check_bundle(data, meta)
     assert data["text/plain"].startswith("run  2 steps")
+
+
+# --------------------------------------------------------------------------- the after-state reads COMMITTED volumes (#5659)
+#
+# Spec: ``261001_nd-next-5659-96head-errors.md`` N5659-10 and AC-96-8 (``-k after96``). PLR's four 96 ops
+# queue their tracker changes OUTSIDE their ``try`` (LH:2010-2046, :2158-2200), so a refused 96 op
+# leaves PENDING volume on wells nothing was dispensed into. The after-state plate must show what PLR
+# recorded as done, so it reads ``tracker.volume`` (committed), not ``get_used_volume()`` (pending).
+
+
+async def _refused_dispense96(fx, led):
+    """E: assay room is 30 uL at indices 10, 11 and 40 and 200 elsewhere; the tips hold 100 and each
+    dispenses 100. Wells 0-9 are queued before C2 raises; nothing reaches the backend."""
+    deck, lh = await fx.assemble()
+    tips, assay = deck.get_resource("tips_300"), deck.get_resource("assay")
+    for i, well in enumerate(assay.get_all_items()):
+        well.tracker.set_volume(330 if i in (10, 11, 40) else 160)
+    await lh.pick_up_tips96(tips)
+    for tracker in lh.head96.values():
+        tracker.get_tip().tracker.set_volume(100)
+    exc = None
+    with led.RunLedger(lh, show=False) as run:
+        try:
+            await lh.dispense96(assay, volume=100.0)
+        except TooLittleVolumeError as e:
+            exc = e
+    return run, exc, assay
+
+
+def _check_no_changed_well(led, fx):
+    run, exc, assay = _run(_refused_dispense96(fx, led))
+    assert isinstance(exc, TooLittleVolumeError)
+    # the premise a pending reader trips over: wells 0-9 hold committed 160 and pending 260
+    first = assay.get_item(0).tracker
+    assert (first.volume, first.pending_volume) == (160, 260)
+    (row,) = run.rows
+    assert row.op == "dispense96" and row.status == led.ERROR
+    assert led.step_for(exc) == 1
+    assert run._after_state() == []  # nothing was dispensed, so no plate is shown as changed
+    assert "praxis-ledger__after" not in run.render_html()
+
+
+def test_after96_a_refused_dispense96_shows_no_changed_well(led, fx):
+    _check_no_changed_well(led, fx)
+
+
+def _pending_compute_after_for(led):
+    """The pre-#5659 ``_compute_after``, which reads pending volume (``get_used_volume``)."""
+
+    def compute(self):
+        plates: dict = {}
+        for well, before in self._touched.values():
+            plate = well.parent
+            if plate is None or led._labware_kind(plate) != "plate":
+                continue
+            changed = plates.setdefault(id(plate), (plate, set()))[1]
+            if abs(well.tracker.get_used_volume() - before) > 1e-6:
+                changed.add(well.get_identifier())
+        return [
+            (plate, ids, {id(w): w.tracker.get_used_volume() for w in plate.get_all_items()})
+            for plate, ids in plates.values() if ids
+        ]
+
+    return compute
+
+
+def test_after96_control_a_pending_reading_compute_after_sees_changed_wells(led, fx, monkeypatch):
+    _check_no_changed_well(led, fx)  # the real module passes
+    monkeypatch.setattr(led.RunLedger, "_compute_after", _pending_compute_after_for(led))
+    with pytest.raises(AssertionError):
+        _check_no_changed_well(led, fx)
+    run, _exc, _assay = _run(_refused_dispense96(fx, led))
+    ((_plate, changed, _volumes),) = run._after_state()
+    assert len(changed) == 10  # the ten wells PLR queued before it refused
+
+
+async def _direct_residue_then_a_successful_dispense(fx, led):
+    """E13's pattern on a well the run then dispenses into: committed 100, pending 90 by direct tracker
+    use. The dispense of 10 uL succeeds and commits (pending 90 + 10 = 100 becomes the volume)."""
+    deck, lh = await fx.assemble()
+    tips, assay = deck.get_resource("tips_300"), deck.get_resource("assay")
+    well = assay.get_item("A1")
+    well.tracker.set_volume(100)
+    well.tracker.remove_liquid(10.0)  # direct, NOT committed
+    await lh.pick_up_tips([tips.get_item("A1")])
+    lh.head[0].get_tip().tracker.set_volume(10)
+    with led.RunLedger(lh, show=False) as run:
+        await lh.dispense([well], vols=[10.0], use_channels=[0])
+    return run, well
+
+
+def _check_before_value_is_committed(led, fx):
+    run, well = _run(_direct_residue_then_a_successful_dispense(fx, led))
+    assert (well.tracker.volume, well.tracker.pending_volume) == (100, 100)  # committed by the dispense
+    assert run._touched[id(well)][1] == 100.0  # the before-value is the COMMITTED 100, not the pending 90
+    # 100 -> 100: the dispense of 10 onto a pending -10 reads as no change (the pending reading said 90 -> 100)
+    assert run._after_state() == []
+
+
+def test_after96_direct_residue_before_a_successful_dispense_reads_committed(led, fx):
+    """Changes shipped 1-channel behaviour on purpose (C9): a well carrying residue when the run touches
+    it has its COMMITTED volume as the before-value."""
+    _check_before_value_is_committed(led, fx)
+
+
+def test_after96_control_a_pending_reading_touch_makes_the_before_value_90(led, fx, monkeypatch):
+    _check_before_value_is_committed(led, fx)
+
+    def pending_touch(self, targets):
+        for res in targets:
+            wells = res.get_all_items() if led._labware_kind(res) == "plate" else [res]
+            for well in wells:
+                if id(well) not in self._touched:
+                    self._touched[id(well)] = (well, well.tracker.get_used_volume())
+
+    monkeypatch.setattr(led.RunLedger, "_touch", pending_touch)
+    with pytest.raises(AssertionError):
+        _check_before_value_is_committed(led, fx)
+
+
+def test_after96_a_successful_96_dispense_still_shows_its_changed_wells(led, fx):
+    """The change must not hide a real change: after a SUCCESSFUL dispense96 every well is changed."""
+
+    async def go():
+        deck, lh = await fx.assemble()
+        tips, assay = deck.get_resource("tips_300"), deck.get_resource("assay")
+        await lh.pick_up_tips96(tips)
+        await lh.aspirate96(deck.get_resource("source"), volume=40.0)
+        with led.RunLedger(lh, show=False) as run:
+            await lh.dispense96(assay, volume=40.0)
+        return run
+
+    run = _run(go())
+    ((_plate, changed, volumes),) = run._after_state()
+    assert len(changed) == 96 and set(volumes.values()) == {40.0}
