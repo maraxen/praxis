@@ -1921,10 +1921,14 @@ def _all_ids_of(res):
     return {i.get_identifier() for i in res.get_all_items()}
 
 
-FAULTED_TARGET = 20 * 1024  # approved under D4:198 for a 96-fault plate figure and a 96-fault rack figure
+# D4:198 target revision for an ALL-FAULTED 96-position figure (plate or rack): 28 KiB. History: spec r2 proposed 20 KiB from a
+# measurement on an EMPTY plate (19,746 B plate, 19,437 B rack); the user approved it on 2026-10-01; verifying the build then found a
+# plate holding liquid is 26,370 B once all 96 wells are faulted (the fill adds ~6.6 KB), so the user approved the measured 28 KiB
+# (option (a), 2026-10-01): 26,370 B + ~8.7 % margin. The normal (unfaulted) D4 targets, 16 KiB plate and 12 KiB rack, are unchanged.
+FAULTED_TARGET = 28 * 1024
 
 
-def test_faulted_96_plate_and_rack_figures_meet_the_approved_20_kib_target(lw, budget, fx, record_property):
+def test_faulted_96_plate_and_rack_figures_meet_the_approved_28_kib_target(lw, budget, fx, record_property):
     plate = fx.cor_96_wellplate_360uL_Fb(name="empty_assay")  # the fixture's assay plate as assembled
     rack = fx.hamilton_96_tiprack_300uL_filter(name="full_rack")
     sizes = {

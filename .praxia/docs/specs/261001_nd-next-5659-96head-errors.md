@@ -615,3 +615,13 @@ them". Recorded answers:
 | Q9 wording | **accept as written** (the provisional strings get pinned by the tests) |
 
 Core = tasks 1-7 then 9; task 8 (residue) runs after the core is verified. `status` is now `accepted-r2`.
+
+### Amendment to Q3 (user, 2026-10-01, after the core build) -- appended by the orchestrator
+
+The 20,480-byte target in the Q3 ruling was measured on an EMPTY plate (spec A14). The core build's verification found that an
+all-faulted 96-well plate **holding liquid** is 26,370 bytes (200 uL per well), 29 % over it (a throwaway probe reproduced the
+build agent's report: empty 19,758 B, 200 uL per well 26,372 B, full rack 19,441 B; the unfaulted filled plate is 15,790 B, so the
+fault marks add ~10.6 KB and the fill ~6.6 KB). The user chose option **(a): amend to a measured 28 KiB (28,672 B)** for an
+all-faulted plate or rack, under D4:198. Unchanged: the unfaulted D4 targets (16 KiB plate, 12 KiB rack) and the 64 KiB cap.
+Pinned in `test_display_labware.py` (`FAULTED_TARGET`, the empty-plate and rack test, the filled-plate test, and the
+one-path-per-fault control that must still exceed it). Commits: RED 97ee665b (the gap), then GREEN (the amendment).
