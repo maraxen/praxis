@@ -1937,6 +1937,18 @@ def test_faulted_96_plate_and_rack_figures_meet_the_approved_20_kib_target(lw, b
         assert size <= FAULTED_TARGET, f"the all-faulted {which} figure is {size} bytes"
 
 
+def test_faulted_96_plate_holding_liquid_meets_the_faulted_target(lw, budget, fx, record_property):
+    """The first target (20 KiB) was measured on an EMPTY plate. A plate whose wells hold liquid draws a volume fill per well on
+    top of the fault marks, so its all-faulted figure is bigger: a dispense into a full plate is exactly the case (TooMuchLiquid)
+    where all 96 wells can be faulted AND full. Measured on the fixture's 200 uL source plate."""
+    plate = fx.cor_96_wellplate_360uL_Fb(name="full_source")
+    for well in plate.get_all_items():
+        well.tracker.set_volume(200.0)
+    size = budget.html_bytes(lw.render_figure(plate, fault=_all_ids_of(plate)))
+    record_property("bytes_plate96_200uL_all_faulted", size)
+    assert size <= FAULTED_TARGET, f"the all-faulted plate holding 200 uL per well is {size} bytes"
+
+
 def test_faulted_figure_control_one_path_per_fault_exceeds_the_target(lw, budget, fx, monkeypatch):
     plate = fx.cor_96_wellplate_360uL_Fb(name="empty_assay")
     real_svg = importlib.import_module(f"{_PKG}.svg")
