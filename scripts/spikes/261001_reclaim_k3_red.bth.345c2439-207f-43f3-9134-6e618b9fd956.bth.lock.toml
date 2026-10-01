@@ -1,0 +1,8 @@
+# 261001_reclaim_k3_red.bth.345c2439-207f-43f3-9134-6e618b9fd956.bth.lock.toml — written at run time, never modified
+[manifest]
+written_at = "2026-10-01T20:33:58.770856+00:00"
+sidecar_sha256 = "5b26fdebd6f0d1202cbde331434c14bfda305ab757d393f171e8c1bca5cda1cd"
+sidecar_path = "/tmp/praxis-nd-b/scripts/spikes/261001_reclaim_k3_red.bth.toml"
+git_sha = "388f53f20bab42d02710be14622a817f0d7c5922"
+script_sha256 = "82773634f4a0d5df02bcdb1c077be42ebbca76b7331fe076fc66bea3cf73f1fd"
+run_id = "345c2439-207f-43f3-9134-6e618b9fd956"
