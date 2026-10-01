@@ -7621,3 +7621,211 @@ return out;
     assert got["blocked"]["armed"] is False and "SecurityError" in got["blocked"]["reason"]
     assert got["replaced"]["window_replaced"] is True and got["replaced"]["counts"]["pointermove"] == 1
     assert got["none"] == {"armed": False, "reason": "no deck iframe"}
+
+
+# =========================================================================== #
+# C7a round 6: the narrow, user-approved tolerance for ONE stock-JupyterLab page error
+# =========================================================================== #
+#
+# DELIBERATE LOOSENING (approved by the user on 2026-10-01). JupyterLab's splash plugin schedules an unguarded 200 ms
+# `document.body.removeChild(splash)` every time its counter reaches zero, so two theme loads inside 200 ms make the second
+# throw. It is stock, benign and intermittent. `split_pageerrors` tolerates exactly that signature and nothing else; the
+# tolerated entries stay visible in `tolerated_pageerrors`; every other page error still blocks the `pageerrors` key.
+
+REMOVE_CHILD = "Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node."
+CORE_FRAME = "    at http://127.0.0.1:36775/praxis/build/jlab_core.c0153ee.js:19:720"
+REAL_ENTRY = f"{REMOVE_CHILD}\nNotFoundError: {REMOVE_CHILD}\n{CORE_FRAME}"
+
+
+def _entry(first=REMOVE_CHILD, second=f"NotFoundError: {REMOVE_CHILD}", frame=CORE_FRAME, *more):
+    return "\n".join(x for x in (first, second, frame, *more) if x is not None)
+
+
+def test_the_real_removechild_entry_is_tolerated_and_kept_visible(rs):
+    blocking, tolerated = rs.split_pageerrors([REAL_ENTRY])
+    assert blocking == [] and tolerated == [REAL_ENTRY]
+    assert all(isinstance(x, str) for x in tolerated)
+
+
+@pytest.mark.parametrize("frame", [
+    "    at http://127.0.0.1:36775/praxis/build/jlab_core.c0153ee.js:19:720",
+    "    at Object.hide (http://127.0.0.1:36775/praxis/build/jlab_core.c0153ee.js:19:720)",
+    "    at http://localhost:8000/build/jlab_core.0123abcdef.js:437:331634",
+    "\tat https://example.test/a/b/build/jlab_core.deadbeef.js:1:2",
+])
+def test_other_shapes_of_the_same_core_frame_are_tolerated(rs, frame):
+    assert rs.split_pageerrors([_entry(frame=frame)]) == ([], [_entry(frame=frame)])
+
+
+def test_a_stack_without_the_notfounderror_line_is_tolerated_when_the_frame_follows_the_message(rs):
+    entry = _entry(second=None)
+    assert rs.split_pageerrors([entry]) == ([], [entry])
+
+
+# -- the negative controls: each of these MUST stay blocking ------------------------------------------------------------------------
+
+NEGATIVE_ENTRIES = {
+    "the same message from a non-core file (shell)": _entry(frame="    at http://127.0.0.1:1/praxis/shell/display/dock.js:19:720"),
+    "the same message from an asset": _entry(frame="    at http://127.0.0.1:1/praxis/assets/visualizer3d/index.js:19:720"),
+    "the same message from visualizer3d": _entry(frame="    at http://127.0.0.1:1/praxis/build/visualizer3d.c0153ee.js:19:720"),
+    "the same message from an inline frame": _entry(frame="    at <anonymous>:1:1"),
+    "the same message from a blob frame": _entry(frame="    at blob:http://127.0.0.1:1/8d1f-aa:1:1"),
+    "the same message from an eval frame": _entry(frame="    at eval (eval at <anonymous> (http://127.0.0.1:1/praxis/build/jlab_core.c0153ee.js:1:1), <anonymous>:1:1)"),
+    "a bundle name that merely ends the same way": _entry(frame="    at http://h/praxis/build/xjlab_core.c0153ee.js:19:720"),
+    "a core file outside /build/": _entry(frame="    at http://h/praxis/jlab_core.c0153ee.js:19:720"),
+    "a core file with a non-hex hash": _entry(frame="    at http://h/praxis/build/jlab_core.nothex.js:19:720"),
+    "a source map": _entry(frame="    at http://h/praxis/build/jlab_core.c0153ee.js.map:19:720"),
+    "a core file name with a suffix": _entry(frame="    at http://h/praxis/build/jlab_core.c0153ee.js.evil:19:720"),
+    "a core file with no line and column": _entry(frame="    at http://h/praxis/build/jlab_core.c0153ee.js"),
+    "a core file with a query string": _entry(frame="    at http://h/praxis/build/jlab_core.c0153ee.js?x=1:19:720"),
+    "a first frame from the shell and a later one from core": _entry(
+        frame="    at http://h/praxis/shell/display/dock.js:5:5", *("    at http://h/praxis/build/jlab_core.c0153ee.js:19:720",)),
+    "a core frame that is not the first line after the message": _entry(
+        frame="Some other line", *(CORE_FRAME,)),
+    "the same core frame but a different first line": _entry(first="Failed to execute 'removeChild' on 'Node': something else",
+                                                              second="NotFoundError: Failed to execute 'removeChild' on 'Node': something else"),
+    "an Uncaught prefix on the message": _entry(first=f"Uncaught {REMOVE_CHILD}", second=f"NotFoundError: {REMOVE_CHILD}"),
+    "a message that merely contains the target text": _entry(first=f"Wrapped: {REMOVE_CHILD} (while doing x)"),
+    "the target text plus a suffix": _entry(first=f"{REMOVE_CHILD} Extra."),
+    "the target text in different case": _entry(first=REMOVE_CHILD.lower()),
+    "a wildcard-ish variant of the message": _entry(first="Failed to execute 'removeChild' on 'Element': The node to be removed is not a child of this node."),
+    "a wrong second line": _entry(second=f"Error: {REMOVE_CHILD}"),
+    "a second line with a different error text": _entry(second="NotFoundError: something else"),
+    "a different error from the core bundle (TypeError)": _entry(
+        first="Cannot read properties of undefined (reading 'x')", second="TypeError: Cannot read properties of undefined (reading 'x')"),
+    "an error from praxis shell code": _entry(first="boom", second="Error: boom", frame="    at mount (http://127.0.0.1:1/praxis/shell/display/index.js:10:5)"),
+    "an entry with no stack": REMOVE_CHILD,
+    "an entry with the message and the second line but no frame": f"{REMOVE_CHILD}\nNotFoundError: {REMOVE_CHILD}",
+    "an empty string": "",
+    "a plain unrelated error": "Uncaught boom",
+}
+
+
+@pytest.mark.parametrize("name", list(NEGATIVE_ENTRIES))
+def test_negative_control_stays_blocking(rs, name):
+    entry = NEGATIVE_ENTRIES[name]
+    assert rs.split_pageerrors([entry]) == ([entry], []), name
+
+
+def test_non_string_entries_are_never_tolerated(rs):
+    odd = [None, 5, {"message": REMOVE_CHILD}, [REAL_ENTRY]]
+    blocking, tolerated = rs.split_pageerrors(odd)
+    assert blocking == odd and tolerated == []
+
+
+def test_at_most_two_are_tolerated_a_third_is_blocking_and_the_order_is_kept(rs):
+    three = [REAL_ENTRY, REAL_ENTRY, REAL_ENTRY]
+    blocking, tolerated = rs.split_pageerrors(three)
+    assert tolerated == [REAL_ENTRY, REAL_ENTRY] and blocking == [REAL_ENTRY], "the cap is two per session"
+    assert rs.PAGEERROR_TOLERATED_MAX == 2
+    mixed = ["Uncaught boom", REAL_ENTRY, "second boom", REAL_ENTRY, REAL_ENTRY]
+    blocking, tolerated = rs.split_pageerrors(mixed)
+    assert blocking == ["Uncaught boom", "second boom", REAL_ENTRY] and tolerated == [REAL_ENTRY, REAL_ENTRY]
+
+
+def test_the_split_never_mutates_its_input_and_returns_fresh_lists(rs):
+    entries = [REAL_ENTRY, "boom"]
+    snapshot = list(entries)
+    blocking, tolerated = rs.split_pageerrors(entries)
+    assert entries == snapshot and blocking is not entries and tolerated is not entries
+    assert rs.split_pageerrors([]) == ([], []) and rs.split_pageerrors(None) == ([], [])
+
+
+def test_the_message_constant_is_the_exact_text_and_not_a_pattern(rs):
+    assert rs.PAGEERROR_TOLERATED_MESSAGE == REMOVE_CHILD
+    import inspect
+    src = inspect.getsource(rs.split_pageerrors)
+    assert "re.compile" not in src or "REMOVE" not in src
+    assert "== PAGEERROR_TOLERATED_MESSAGE" in src or "PAGEERROR_TOLERATED_MESSAGE ==" in src, "the message is compared for equality, never matched"
+
+
+# -- through run_scenario: what a unit's result and key do ------------------------------------------------------------------------------
+
+
+ALL_UNIT_IDS = ["D1", "D1-dark", "D2", "D3", "D4", "K1a", "K1b", "K2", "N-d"]
+
+
+@pytest.mark.parametrize("unit_id", ALL_UNIT_IDS)
+def test_every_display_and_dock_unit_splits_its_pageerrors(rs, ur, wds, tmp_path, unit_id):
+    sess = FakeSession()
+    sess.pageerrors.append(REAL_ENTRY)
+    sess.pageerrors.append("Uncaught boom")
+    scenario_in_process(rs, ur, wds, unit_id, tmp_path, make_env(rs), session=sess)
+    result = json.loads(rs.unit_paths(tmp_path, unit_id)["result"].read_text())
+    assert result["pageerrors"] == ["Uncaught boom"], "only the blocking entries"
+    assert result["tolerated_pageerrors"] == [REAL_ENTRY], "the tolerated entry stays visible"
+
+
+def test_the_unit_passes_with_only_the_tolerated_error_and_reports_it(rs, ur, wds, tmp_path):
+    sess = FakeSession()
+    sess.pageerrors.append(REAL_ENTRY)
+    code = scenario_in_process(rs, ur, wds, "D1", tmp_path, make_env(rs), session=sess)
+    result = json.loads(rs.unit_paths(tmp_path, "D1")["result"].read_text())
+    assert code == 0 and result["pageerrors"] == [] and result["tolerated_pageerrors"] == [REAL_ENTRY]
+    assert result["failing_keys"] == [] and result["error"] is None
+
+
+def test_a_unit_without_any_page_error_has_an_empty_tolerated_field(rs, ur, wds, tmp_path):
+    scenario_in_process(rs, ur, wds, "D2", tmp_path, make_env(rs))
+    result = json.loads(rs.unit_paths(tmp_path, "D2")["result"].read_text())
+    assert result["pageerrors"] == [] and result["tolerated_pageerrors"] == []
+
+
+@pytest.mark.parametrize("name", list(NEGATIVE_ENTRIES))
+def test_a_blocking_entry_still_fails_the_pageerrors_key_in_the_unit(rs, ur, wds, tmp_path, name):
+    sess = FakeSession()
+    sess.pageerrors.append(NEGATIVE_ENTRIES[name])
+    code = scenario_in_process(rs, ur, wds, "D1", tmp_path, make_env(rs), session=sess)
+    result = json.loads(rs.unit_paths(tmp_path, "D1")["result"].read_text())
+    assert code == 1 and result["failing_keys"] == ["pageerrors"], name
+    assert result["pageerrors"] == [NEGATIVE_ENTRIES[name]] and result["tolerated_pageerrors"] == []
+
+
+def test_a_mixed_list_with_one_blocking_entry_fails_the_key_and_keeps_the_tolerated_one_visible(rs, ur, wds, tmp_path):
+    sess = FakeSession()
+    sess.pageerrors.extend([REAL_ENTRY, NEGATIVE_ENTRIES["a different error from the core bundle (TypeError)"]])
+    code = scenario_in_process(rs, ur, wds, "K1a", tmp_path, make_env(rs), session=sess)
+    result = json.loads(rs.unit_paths(tmp_path, "K1a")["result"].read_text())
+    assert code == 1 and result["failing_keys"] == ["pageerrors"]
+    assert result["pageerrors"] == [NEGATIVE_ENTRIES["a different error from the core bundle (TypeError)"]]
+    assert result["tolerated_pageerrors"] == [REAL_ENTRY]
+
+
+def test_a_third_occurrence_fails_the_key_through_the_unit(rs, ur, wds, tmp_path):
+    sess = FakeSession()
+    sess.pageerrors.extend([REAL_ENTRY, REAL_ENTRY, REAL_ENTRY])
+    code = scenario_in_process(rs, ur, wds, "D1", tmp_path, make_env(rs), session=sess)
+    result = json.loads(rs.unit_paths(tmp_path, "D1")["result"].read_text())
+    assert code == 1 and result["failing_keys"] == ["pageerrors"]
+    assert result["pageerrors"] == [REAL_ENTRY] and result["tolerated_pageerrors"] == [REAL_ENTRY, REAL_ENTRY]
+
+
+def test_the_key_name_its_meaning_when_empty_and_the_listed_keys_are_unchanged(rs):
+    for uid in ("D1", "D2", "K1a"):
+        expected = dict(rs.UNIT_BY_ID[uid].expected)
+        assert expected["pageerrors"] == []
+        assert "tolerated_pageerrors" not in expected, "an evidence field, never a listed key"
+    for unit in rs.UNIT_TABLE:
+        assert "tolerated_pageerrors" not in unit.keys
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["D1"], dict(passing_fields(rs.UNIT_BY_ID["D1"]), pageerrors=["x"]))[1] == ["pageerrors"]
+
+
+def test_the_split_is_used_in_exactly_one_place_and_no_other_check_uses_it(rs):
+    import inspect
+    source = REPL_SMOKE.read_text()
+    assert source.count("split_pageerrors(") == 2, "its definition and the one call in run_scenario"
+    assert "split_pageerrors(" in inspect.getsource(rs.run_scenario)
+    for name in ("run_notebook_check", "run_persistence_check", "run_viz_check", "run_probe"):
+        fn = getattr(rs, name, None)
+        if fn is not None:
+            assert "split_pageerrors" not in inspect.getsource(fn), name
+
+
+def test_the_rule_and_its_reason_are_written_down_where_the_key_is_documented(rs):
+    doc = rs.split_pageerrors.__doc__ or ""
+    for needle in ("2026-10-01", "deliberate", "approved", "splash", "removeChild", "jlab_core", "tolerated_pageerrors", "two"):
+        assert needle in doc, needle
+    source = REPL_SMOKE.read_text()
+    block = source[source.index("#   pageerrors            the session's"):]
+    block = block[:block.index("RAIL_RGB")]
+    assert "tolerated_pageerrors" in block and "2026-10-01" in block and "splash" in block
