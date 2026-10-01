@@ -1,0 +1,9 @@
+# 261001_nd_dark_tokens_contrast.bth.07edfb7f-eb0e-4fc7-abc7-81b9a77d35f5.bth.lock.toml — written at run time, never modified
+[manifest]
+written_at = "2026-10-01T17:32:02.283751+00:00"
+sidecar_sha256 = "6bcb03c938ebfa27bf979965705095b623d7b7971a40eb38a32be9d624e2f5e3"
+sidecar_path = "/tmp/praxis-nd-b/.claude/worktrees/agent-a66a20c6b6a51fdc6/scripts/spikes/261001_nd_dark_tokens_contrast.bth.toml"
+git_sha = "d88db08419b7312ea27ad177a719024e799b3b6e"
+script_sha256 = "d5cc8e9f9fc6edee32921b8693f69886c6fb58844fe75529b276330be960f842"
+run_id = "07edfb7f-eb0e-4fc7-abc7-81b9a77d35f5"
+agent_id = null
