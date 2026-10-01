@@ -2435,3 +2435,414 @@ describe("negative controls: each broken panel must fail its probe", () => {
     });
   }
 });
+
+// -- the drag guard (round 5): a splitter press makes the deck iframe inert until the release ---------------------------------------
+//
+// WHY. When the deck iframe is flush against the splitter handle (1280 px: the handle's right edge is the iframe's left edge), the
+// first pointer moves of a drag land on the IFRAME, and a cross-document target takes the rest of the drag with it: the page sees
+// the press and one move, the iframe sees the other moves and the release, and Lumino's drag is left open. A real run showed it
+// (the iframe received every move and the release; `elementFromPoint` at the first move target answered the iframe at every
+// sample for 750 ms, though Lumino's cursor backdrop was in the document); with `pointer-events: none` on the iframe before the
+// press, the same drag delivered every move and the release to the page and clamped correctly.
+//
+// WHAT THESE TESTS PIN. A pointerdown (document, CAPTURE: Lumino stops the press at the handle, so a bubble listener never hears
+// it) whose target is a Lumino dock or split handle (or inside one) sets `pointer-events: none` inline on every iframe the dock owns,
+// remembering each one's previous inline value; pointerup, pointercancel and window blur restore it; so does every teardown path;
+// a frame born during a press is inert until the release; nothing else is touched (no sizes, no limits, no timers) and neither
+// preventDefault nor stopPropagation is called.
+
+describe("the drag guard: a handle press makes the deck iframe inert until the release", () => {
+  const DOCK_HANDLE = "lm-DockPanel-handle";
+  const SPLIT_HANDLE = "lm-SplitPanel-handle";
+
+  function addHandle(env, cls = DOCK_HANDLE, parent = env.doc.body) {
+    const handle = env.doc.createElement("div");
+    handle.classList.add(cls);
+    parent.appendChild(handle);
+    return handle;
+  }
+
+  function connected(opts = {}) {
+    const env = makeEnv(opts);
+    env.announce("v1");
+    return env;
+  }
+
+  const inert = (frame) => frame.style.pointerEvents === "none";
+  const releaseWith = (env, how) => {
+    if (how === "blur") env.win.dispatchEvent({ type: "blur" });
+    else env.doc.dispatch(how, {});
+  };
+
+  for (const cls of [DOCK_HANDLE, SPLIT_HANDLE]) {
+    test(`a pointerdown on a ${cls} sets the deck iframe inert`, () => {
+      const env = connected();
+      const frame = env.frames()[0];
+      expect(frame.style.pointerEvents ?? "").toBe("");
+      addHandle(env, cls).dispatch("pointerdown", { button: 0 });
+      expect(frame.style.pointerEvents).toBe("none");
+    });
+  }
+
+  test("a pointerdown on an element INSIDE a handle counts as a handle press", () => {
+    const env = connected();
+    const frame = env.frames()[0];
+    const handle = addHandle(env);
+    const inner = env.doc.createElement("span");
+    handle.appendChild(inner);
+    inner.dispatch("pointerdown", { button: 0 });
+    expect(inert(frame)).toBe(true);
+  });
+
+  for (const how of ["pointerup", "pointercancel", "blur"]) {
+    test(`${how} restores the iframe's previous inline value (empty)`, () => {
+      const env = connected();
+      const frame = env.frames()[0];
+      addHandle(env).dispatch("pointerdown", { button: 0 });
+      expect(inert(frame)).toBe(true);
+      releaseWith(env, how);
+      expect(frame.style.pointerEvents).toBe("");
+      expect(inert(frame)).toBe(false);
+    });
+
+    test(`${how} restores a NON-EMPTY previous inline value, not a blind empty string`, () => {
+      const env = connected();
+      const frame = env.frames()[0];
+      frame.style.pointerEvents = "auto";
+      addHandle(env).dispatch("pointerdown", { button: 0 });
+      expect(frame.style.pointerEvents).toBe("none");
+      releaseWith(env, how);
+      expect(frame.style.pointerEvents).toBe("auto");
+    });
+  }
+
+  test("a previous value of `none` is kept as `none` after the release", () => {
+    const env = connected();
+    const frame = env.frames()[0];
+    frame.style.pointerEvents = "none";
+    addHandle(env).dispatch("pointerdown", { button: 0 });
+    releaseWith(env, "pointerup");
+    expect(frame.style.pointerEvents).toBe("none");
+  });
+
+  test("a second handle press while one is active does not overwrite the remembered value with `none`", () => {
+    const env = connected();
+    const frame = env.frames()[0];
+    frame.style.pointerEvents = "auto";
+    const handle = addHandle(env);
+    handle.dispatch("pointerdown", { button: 0 });
+    handle.dispatch("pointerdown", { button: 0 });
+    releaseWith(env, "pointerup");
+    expect(frame.style.pointerEvents).toBe("auto");
+  });
+
+  test("a release with no press, and a second release, change nothing", () => {
+    const env = connected();
+    const frame = env.frames()[0];
+    frame.style.pointerEvents = "auto";
+    releaseWith(env, "pointerup");
+    releaseWith(env, "blur");
+    expect(frame.style.pointerEvents).toBe("auto");
+    addHandle(env).dispatch("pointerdown", { button: 0 });
+    releaseWith(env, "pointerup");
+    releaseWith(env, "pointerup");
+    expect(frame.style.pointerEvents).toBe("auto");
+  });
+
+  test("every iframe the dock owns is made inert and restored to its OWN previous value; a foreign iframe is never touched", () => {
+    const env = connected();
+    const [first] = env.frames();
+    first.style.pointerEvents = "auto";
+    const second = env.doc.createElement("iframe");
+    env.find(".praxis-deck-panel__body").appendChild(second);
+    const foreign = env.doc.createElement("iframe");
+    foreign.style.pointerEvents = "auto";
+    env.doc.body.appendChild(foreign);
+    expect(env.frames().length).toBe(2);
+    addHandle(env).dispatch("pointerdown", { button: 0 });
+    expect(inert(first) && inert(second)).toBe(true);
+    expect(foreign.style.pointerEvents).toBe("auto");
+    releaseWith(env, "pointerup");
+    expect(first.style.pointerEvents).toBe("auto");
+    expect(second.style.pointerEvents).toBe("");
+    expect(foreign.style.pointerEvents).toBe("auto");
+  });
+
+  test("a pointerdown that is not on a handle never touches the iframe (the iframe itself, the notebook, the deck header, a look-alike class)", () => {
+    const env = connected();
+    const frame = env.frames()[0];
+    frame.style.pointerEvents = "auto";
+    const lookalike = addHandle(env, "lm-DockPanel-handle-not");
+    const plain = env.doc.createElement("div");
+    env.doc.body.appendChild(plain);
+    const targets = [frame, env.panels[0].node, env.find(".praxis-deck-panel__header"), env.find(".praxis-deck-panel__follow"), lookalike, plain, env.doc.body];
+    for (const target of targets) {
+      target.dispatch("pointerdown", { button: 0 });
+      expect(frame.style.pointerEvents).toBe("auto");
+    }
+    releaseWith(env, "pointerup");
+    expect(frame.style.pointerEvents).toBe("auto");
+  });
+
+  test("it hears the press even when the handle's own listener stops propagation (the listener is on the document, in the CAPTURE phase), and never stops or prevents anything itself", () => {
+    const env = connected();
+    const frame = env.frames()[0];
+    const handle = addHandle(env);
+    const seen = [];
+    handle.addEventListener("pointerdown", (event) => {
+      seen.push(event);
+      event.stopPropagation(); // what Lumino does on a handle press
+    });
+    const event = handle.dispatch("pointerdown", { button: 0 });
+    expect(seen.length).toBe(1);
+    expect(inert(frame)).toBe(true);
+    expect(event.defaultPrevented).toBe(false); // the guard did not prevent the default (Lumino's own handler is the only one that may)
+    const plain = env.doc.createElement("div");
+    env.doc.body.appendChild(plain);
+    const other = plain.dispatch("pointerdown", { button: 0 });
+    expect(other.defaultPrevented).toBe(false);
+    expect(other.propagationStopped).toBe(false);
+    const up = env.doc.dispatch("pointerup", {});
+    expect(up.defaultPrevented).toBe(false);
+    expect(up.propagationStopped).toBe(false);
+  });
+
+  test("a frame born during a press (the viewer announces mid-drag) is inert until the release, then normal", () => {
+    const env = makeEnv(); // closed: no iframe yet
+    addHandle(env).dispatch("pointerdown", { button: 0 });
+    env.announce("v1"); // T2: the panel opens with its iframe while the press is active
+    const frame = env.frames()[0];
+    expect(inert(frame)).toBe(true);
+    releaseWith(env, "pointerup");
+    expect(frame.style.pointerEvents).toBe("");
+    // and a frame born after the release is never inert
+    env.toggle();
+    env.toggle();
+    env.announce("v2");
+    expect(env.frames()[0].style.pointerEvents ?? "").toBe("");
+  });
+
+  test("closing the panel mid-press restores the removed iframe; a later release is harmless and a later frame is normal", () => {
+    const env = connected();
+    const frame = env.frames()[0];
+    frame.style.pointerEvents = "auto";
+    addHandle(env).dispatch("pointerdown", { button: 0 });
+    env.toggle(); // T17: the iframe is removed
+    expect(env.frames().length).toBe(0);
+    expect(frame.style.pointerEvents).toBe("auto");
+    releaseWith(env, "pointerup");
+    env.toggle();
+    env.announce("v2");
+    expect(env.frames()[0].style.pointerEvents ?? "").toBe("");
+    expect(env.logger.errors).toEqual([]);
+  });
+
+  test("a kernel close (T12) that removes the iframe mid-press restores it too", () => {
+    const env = connected();
+    const frame = env.frames()[0];
+    addHandle(env).dispatch("pointerdown", { button: 0 });
+    env.kernelClose("v1");
+    expect(env.frames().length).toBe(0);
+    expect(frame.style.pointerEvents).toBe("");
+  });
+
+  test("re-homing the panel (a tier crossing detaches it) mid-press restores the iframe", () => {
+    const env = connected({ width: 1440 });
+    const frame = env.frames()[0];
+    frame.style.pointerEvents = "auto";
+    addHandle(env).dispatch("pointerdown", { button: 0 });
+    expect(inert(frame)).toBe(true);
+    env.resize(1152); // split -> drawer: detachPanel, the iframe stays in the node
+    expect(env.frames()[0]).toBe(frame);
+    expect(frame.style.pointerEvents).toBe("auto");
+  });
+
+  test("dispose mid-press restores the iframe", () => {
+    const env = connected();
+    const frame = env.frames()[0];
+    frame.style.pointerEvents = "auto";
+    addHandle(env).dispatch("pointerdown", { button: 0 });
+    env.ctl.dispose();
+    expect(frame.style.pointerEvents).toBe("auto");
+    expect(env.logger.errors).toEqual([]);
+  });
+
+  test("after dispose a handle press does nothing (the listeners are gone)", () => {
+    const env = connected();
+    const frame = env.frames()[0];
+    env.ctl.dispose();
+    addHandle(env).dispatch("pointerdown", { button: 0 });
+    expect(frame.style.pointerEvents ?? "").toBe("");
+  });
+
+  test("the listeners: pointerdown, pointerup, pointercancel on the document in the capture phase and blur on the window, installed once, removed on dispose", () => {
+    const env = makeEnv({ mountIt: false });
+    const kinds = ["pointerdown", "pointerup", "pointercancel"];
+    const ours = () => env.doc._listeners.filter((l) => kinds.includes(l.type));
+    expect(ours().length).toBe(0);
+    expect(env.win.listenerCount("blur")).toBe(0);
+    env.remount();
+    expect(ours().map((l) => `${l.type}:${l.capture}`).sort()).toEqual(["pointercancel:true", "pointerdown:true", "pointerup:true"]);
+    expect(env.win.listenerCount("blur")).toBe(1);
+    const afterMount = env.doc._listeners.length;
+    const winAfterMount = ["blur", "resize", "praxis:dock-status"].map((t) => env.win.listenerCount(t));
+    for (let i = 0; i < 3; i += 1) {
+      env.announce(`v${i}`);
+      env.toggle(); // close
+      env.toggle(); // reopen
+      env.announce(`w${i}`);
+      addHandle(env).dispatch("pointerdown", { button: 0 });
+      releaseWith(env, "pointerup");
+    }
+    expect(env.doc._listeners.filter((l) => !(l.type === "pointerdown" && !l.capture)).length).toBeGreaterThanOrEqual(afterMount);
+    expect(ours().length).toBe(3); // no extra registration per open/close cycle
+    expect(["blur", "resize", "praxis:dock-status"].map((t) => env.win.listenerCount(t))).toEqual(winAfterMount);
+    env.ctl.dispose();
+    expect(ours().length).toBe(0);
+    expect(env.win.listenerCount("blur")).toBe(0);
+  });
+
+  test("the guard registers nothing on the iframe or the panel node, and sets no timer", () => {
+    const env = connected();
+    const timers = env.win.pendingTimers;
+    const frame = env.frames()[0];
+    const nodeListeners = env.node().listenerCount;
+    const frameListeners = frame.listenerCount; // dock.js's own `load` listener
+    addHandle(env).dispatch("pointerdown", { button: 0 });
+    expect(frame.listenerCount).toBe(frameListeners);
+    expect(env.node().listenerCount).toBe(nodeListeners);
+    expect(env.win.pendingTimers).toBe(timers);
+    releaseWith(env, "pointerup");
+    expect(env.win.pendingTimers).toBe(timers);
+  });
+
+  test("a press and a release change no size, limit or fit: sizing is not the guard's business", () => {
+    const env = connected({ width: 1440 });
+    const fits = env.dock.fitCalls;
+    const limits = [env.node().style.minWidth, env.node().style.maxWidth];
+    const width = env.dock.widthOf(env.deckWidget());
+    addHandle(env).dispatch("pointerdown", { button: 0 });
+    expect(env.dock.fitCalls).toBe(fits);
+    releaseWith(env, "pointerup");
+    expect(env.dock.fitCalls).toBe(fits);
+    expect([env.node().style.minWidth, env.node().style.maxWidth]).toEqual(limits);
+    expect(env.dock.widthOf(env.deckWidget())).toBe(width);
+    expect(env.logger.errors).toEqual([]);
+  });
+
+  test("the guard's source section names the events it listens to and uses no timer, global or event-stopping call", () => {
+    const source = readFileSync(join(HERE, "dock.js"), "utf8");
+    const start = source.indexOf("// -- the drag guard");
+    const end = source.indexOf("// -- end the drag guard");
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    const section = source.slice(start, end);
+    for (const token of ["pointerdown", "pointerup", "pointercancel", "blur", "lm-DockPanel-handle", "lm-SplitPanel-handle", "pointerEvents"]) {
+      expect(section.includes(token)).toBe(true);
+    }
+    expect(/preventDefault|stopPropagation|stopImmediatePropagation|setTimeout|setInterval|requestAnimationFrame|globalThis|window\./.test(section)).toBe(false);
+  });
+});
+
+describe("negative controls: a broken drag guard must fail its probe", () => {
+  function addHandle(env) {
+    const handle = env.doc.createElement("div");
+    handle.classList.add("lm-DockPanel-handle");
+    env.doc.body.appendChild(handle);
+    return handle;
+  }
+
+  /** press on a handle, release: the iframe must be inert in between and exactly as it was after (all three release paths). */
+  function probeRestores(mod) {
+    for (const how of ["pointerup", "pointercancel", "blur"]) {
+      const env = makeEnv({ mod });
+      env.announce("v1");
+      const frame = env.frames()[0];
+      addHandle(env).dispatch("pointerdown", { button: 0 });
+      expect(frame.style.pointerEvents).toBe("none");
+      if (how === "blur") env.win.dispatchEvent({ type: "blur" });
+      else env.doc.dispatch(how, {});
+      expect(frame.style.pointerEvents).toBe("");
+    }
+    const env = makeEnv({ mod });
+    env.announce("v1");
+    const frame = env.frames()[0];
+    addHandle(env).dispatch("pointerdown", { button: 0 });
+    env.toggle(); // teardown mid-press
+    expect(frame.style.pointerEvents).toBe("");
+  }
+
+  /** a press that is NOT on a handle leaves the iframe alone. */
+  function probeIgnoresNonHandles(mod) {
+    const env = makeEnv({ mod });
+    env.announce("v1");
+    const frame = env.frames()[0];
+    for (const target of [env.panels[0].node, env.find(".praxis-deck-panel__header"), env.doc.body, frame]) {
+      target.dispatch("pointerdown", { button: 0 });
+      expect(frame.style.pointerEvents ?? "").toBe("");
+    }
+  }
+
+  /** the previous inline value comes back, whatever it was. */
+  function probeRestoresThePreviousValue(mod) {
+    const env = makeEnv({ mod });
+    env.announce("v1");
+    const frame = env.frames()[0];
+    frame.style.pointerEvents = "auto";
+    addHandle(env).dispatch("pointerdown", { button: 0 });
+    env.doc.dispatch("pointerup", {});
+    expect(frame.style.pointerEvents).toBe("auto");
+  }
+
+  let counter = 0;
+  async function loadPatched(from, to) {
+    const source = readFileSync(join(HERE, "dock.js"), "utf8");
+    const first = source.indexOf(from);
+    expect(first).toBeGreaterThanOrEqual(0); // the anchor exists...
+    expect(source.indexOf(from, first + from.length)).toBe(-1); // ...exactly once
+    const patched = source
+      .replace(from, to)
+      .replace(/from "\.\/([\w-]+)\.js"/g, (_m, name) => `from "${pathToFileURL(join(HERE, `${name}.js`)).href}"`);
+    const dir = mkdtempSync(join(tmpdir(), "dock-guard-mutant-"));
+    counter += 1;
+    const file = join(dir, `dock_guard_${counter}.mjs`);
+    writeFileSync(file, patched);
+    return import(pathToFileURL(file).href);
+  }
+
+  const cases = [
+    {
+      name: "a guard that never restores",
+      probe: probeRestores,
+      from: "function thawFrames() {",
+      to: "function thawFrames() { return;",
+    },
+    {
+      name: "a guard that fires on a non-handle target",
+      probe: probeIgnoresNonHandles,
+      from: "function isDragHandle(target) {",
+      to: "function isDragHandle(target) { return true;",
+    },
+    {
+      name: "a guard that restores a blind empty string instead of the previous value",
+      probe: probeRestoresThePreviousValue,
+      from: "held.set(frame, frame.style.pointerEvents);",
+      to: 'held.set(frame, "");',
+    },
+  ];
+
+  for (const { name, probe, from, to } of cases) {
+    test(`positive control: the real dock.js passes the probe for ${name}`, () => {
+      probe(realDock);
+    });
+
+    test(`positive control: the patch loader with an identity patch passes it too (${name})`, async () => {
+      probe(await loadPatched(from, from));
+    });
+
+    test(`negative control: ${name} FAILS the probe`, async () => {
+      const mod = await loadPatched(from, to);
+      expect(() => probe(mod)).toThrow();
+    });
+  }
+});

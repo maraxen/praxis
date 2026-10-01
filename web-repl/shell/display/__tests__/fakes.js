@@ -573,12 +573,16 @@ export class FakeElement {
     this.focused = true;
   }
 
-  addEventListener(type, fn) {
-    if (!this._listeners.some((l) => l.type === type && l.fn === fn)) this._listeners.push({ type, fn });
+  addEventListener(type, fn, options) {
+    // Round 5: the capture flag (`true` or `{capture: true}`) is kept, so a capture listener is a different registration
+    // from a bubble listener of the same function and runs in the capture phase of `dispatch`.
+    const capture = options === true || Boolean(options && options.capture);
+    if (!this._listeners.some((l) => l.type === type && l.fn === fn && l.capture === capture)) this._listeners.push({ type, fn, capture });
   }
 
-  removeEventListener(type, fn) {
-    this._listeners = this._listeners.filter((l) => !(l.type === type && l.fn === fn));
+  removeEventListener(type, fn, options) {
+    const capture = options === true || Boolean(options && options.capture);
+    this._listeners = this._listeners.filter((l) => !(l.type === type && l.fn === fn && l.capture === capture));
   }
 
   get listenerCount() {
@@ -603,9 +607,19 @@ export class FakeElement {
       },
       ...props,
     };
-    for (let node = this; node && !event.propagationStopped; node = node.parentNode) {
+    // Round 5: the capture phase first (document down to the target), then the target and the bubble (up). A listener
+    // registered without `capture` behaves exactly as before.
+    const path = [];
+    for (let node = this; node; node = node.parentNode) path.push(node);
+    for (const node of path.slice().reverse()) {
+      if (event.propagationStopped) break;
       event.currentTarget = node;
-      for (const l of (node._listeners || []).slice()) if (l.type === type) l.fn(event);
+      for (const l of (node._listeners || []).slice()) if (l.type === type && l.capture) l.fn(event);
+    }
+    for (const node of path) {
+      if (event.propagationStopped) break;
+      event.currentTarget = node;
+      for (const l of (node._listeners || []).slice()) if (l.type === type && !l.capture) l.fn(event);
     }
     return event;
   }
