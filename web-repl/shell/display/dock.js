@@ -50,6 +50,14 @@
 // layout unreachable, `restore_layout_keeps_iframe` false, S1-L) are not built: S1 ruled
 // them out for this build.
 //
+// DRAG GUARD. While a Lumino dock or split handle is pressed, every iframe this dock owns gets `pointer-events: none` inline
+// (its previous inline value is remembered and put back on the release). Why: at 1280 px the iframe sits flush against the
+// splitter handle, so the first pointer moves of a drag land on the iframe, a cross-document target that then keeps the rest of
+// the drag and the release; the page sees the press and one move and Lumino's drag is never finished. A real run showed the iframe
+// receiving every move and the release, while the same drag with the iframe inert reached the page whole and clamped correctly.
+// The listeners are on the document in the CAPTURE phase (Lumino stops the press at the handle, so a bubble listener would never
+// hear it), are installed once for the dock's life and removed with it, set no timer, and never prevent or stop an event.
+//
 // NEVER THROWS INTO THE SHELL. Every entry point (channel message, window event, signal
 // slot, command, click, timer, public method) runs under its own try/catch and reports with
 // `logger.error`; a failed step leaves the state where it was. A dock that cannot mount
@@ -497,6 +505,7 @@ export function mountDock({ app, win, logger = console, controllers, baseUrl } =
   function removeFrames() {
     stopPresetPoll();
     for (const frame of framesIn()) {
+      thawFrame(frame);
       try {
         frame.remove();
       } catch (err) {
@@ -516,6 +525,69 @@ export function mountDock({ app, win, logger = console, controllers, baseUrl } =
       return null; // not same-origin yet, or the page is being replaced
     }
   }
+
+  // -- the drag guard -----------------------------------------------------------------------------------------------------
+  // A press on a Lumino handle makes the deck iframe inert until the release (see DRAG GUARD at the top). `held` maps each iframe
+  // made inert to its inline `pointer-events` before; `pressActive` is true from a handle press to its release, so a frame born in
+  // between (a viewer announcing mid-drag) is inert too and is put back with the others. Restoring is idempotent.
+
+  const HANDLE_CLASSES = ["lm-DockPanel-handle", "lm-SplitPanel-handle"]; // Lumino's createHandle() class names
+  const held = new Map();
+  let pressActive = false;
+
+  /** Is `target` a Lumino dock or split handle, or inside one (Lumino itself asks `handle.contains(target)`)? */
+  function isDragHandle(target) {
+    for (let node = target, depth = 0; node && node.nodeType === 1 && depth < 16; node = node.parentNode, depth += 1) {
+      const list = node.classList;
+      if (list && typeof list.contains === "function" && HANDLE_CLASSES.some((name) => list.contains(name))) return true;
+    }
+    return false;
+  }
+
+  function freezeFrame(frame) {
+    if (held.has(frame)) return;
+    held.set(frame, frame.style.pointerEvents);
+    frame.style.pointerEvents = "none";
+  }
+
+  /** Put back one iframe's previous inline value (a no-op for an iframe that is not held). */
+  function thawFrame(frame) {
+    if (!held.has(frame)) return;
+    const previous = held.get(frame);
+    held.delete(frame);
+    try {
+      frame.style.pointerEvents = previous ?? ""; // an element's inline value is always a string; never write `undefined` into it
+    } catch (err) {
+      report("restore the iframe's pointer events", err);
+    }
+  }
+
+  /** Put every held iframe back, leaving `pressActive` as it is (the panel is closing or moving, the press may go on). */
+  function thawHeld() {
+    for (const frame of Array.from(held.keys())) thawFrame(frame);
+  }
+
+  /** The release (or anything that ends a press): put every held iframe back and end the press. */
+  function thawFrames() {
+    thawHeld();
+    pressActive = false;
+  }
+
+  function onPointerDown(event) {
+    if (!event || (typeof event.button === "number" && event.button !== 0)) return; // Lumino only takes the primary button
+    if (!isDragHandle(event.target)) return;
+    pressActive = true;
+    for (const frame of framesIn()) freezeFrame(frame);
+  }
+
+  /** Once per dock life (`listen` removes them with the dock): the press and the three ways a press ends. */
+  function installDragGuard() {
+    listen(doc, "pointerdown", guarded("drag guard press", onPointerDown), true); // capture: Lumino stops the press at the handle
+    listen(doc, "pointerup", guarded("drag guard release", () => thawFrames()), true);
+    listen(doc, "pointercancel", guarded("drag guard cancel", () => thawFrames()), true);
+    listen(win, "blur", guarded("drag guard blur", () => thawFrames()));
+  }
+  // -- end the drag guard
 
   // -- D12: the preset, Follow, focus -------------------------------------------------------------------------------
 
@@ -820,6 +892,7 @@ export function mountDock({ app, win, logger = console, controllers, baseUrl } =
   function detachPanel() {
     selfClosing = true;
     try {
+      thawHeld();
       stopObserving();
       if (widget && home === "split" && (widget.parent || widget.isAttached)) widget.close();
       if (widget && widget.node.parentNode) widget.node.parentNode.removeChild(widget.node);
@@ -887,6 +960,7 @@ export function mountDock({ app, win, logger = console, controllers, baseUrl } =
     setTitle(deck);
     setState("open-connected");
     dom.body.appendChild(frame);
+    if (pressActive) freezeFrame(frame); // born during a handle press: inert until the release
     current = id;
     connected = null;
     setFocused(null);
@@ -1140,6 +1214,7 @@ export function mountDock({ app, win, logger = console, controllers, baseUrl } =
 
   listen(win, DOCK_STATUS_EVENT, guarded("dock status", onDockStatus));
   listen(win, "resize", guarded("window resize", evaluateTier));
+  installDragGuard();
 
   const shell = app ? app.shell : undefined;
   if (shell) {
@@ -1188,6 +1263,7 @@ export function mountDock({ app, win, logger = console, controllers, baseUrl } =
     dispose() {
       if (disposed) return;
       disposed = true;
+      thawFrames();
       stopPresetPoll();
       stopObserving();
       selfClosing = true;
