@@ -2054,7 +2054,7 @@ ERROR96_CONTROLS = [
     # both keys: the cell did nothing / is not a stamped error panel
     ("the cell never ran", lambda r: r["e96"].update(report=report(count=None, state="not-run"), panel=panel_obs(found=False, nodes=0)), {"error_panel_96", "residue_sentence_96"}),
     ("no panel in the DOM", lambda r: r["e96"].update(panel=panel_obs(found=False, nodes=0)), {"error_panel_96", "residue_sentence_96"}),
-    ("two panels in the DOM", lambda r: r["e96"]["panel"].update(nodes=2), {"error_panel_96", "residue_sentence_96"}),
+    ("two panels in the DOM", lambda r: r["e96"]["panel"].update(error_nodes=2), {"error_panel_96", "residue_sentence_96"}),
     ("no stamp", lambda r: r["e96"]["report"]["outputs"][0].update(stamp=None), {"error_panel_96", "residue_sentence_96"}),
     ("stamp of another kind", lambda r: r["e96"]["report"]["outputs"][0].update(stamp=stamp("plate", "assay")), {"error_panel_96", "residue_sentence_96"}),
     ("stamp names the source", lambda r: r["e96"]["report"]["outputs"][0].update(stamp=stamp("error", "source", rev=None)), {"error_panel_96", "residue_sentence_96"}),
@@ -3124,7 +3124,7 @@ class FakeWorld:
             wrong = f.get("wrong_plate96")
             heading = "Not enough liquid in source A4:H12." if wrong else E96_HEADING
             return report(count=n, state="error", titles=[heading], perr=1, outputs=[
-                out(otype="display_data", st=stamp("error", "source" if wrong else "assay", rev=None)),
+                out(otype="display_data", st=stamp("error", "assay", rev=None)),
                 out(otype="error", mimes=(), html_bytes=None, ename="TooLittleLiquidError", index=1),
             ])
         if cid in ERR_CELLS:
