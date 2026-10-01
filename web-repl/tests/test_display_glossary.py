@@ -178,8 +178,8 @@ def test_verbs_cover_exactly_the_actions(gl):
 @pytest.mark.parametrize("method", OPS_96)
 def test_96_verb_forms_follow_the_name_column(gl, method):
     """Section 3.5 says the 96 verb form is "the same". Read as the same construction as the name
-    column (base verb + " (96 head)"). 96 panels use the base verbs plus ``HEAD96_NOUN`` (#5659,
-    N5659-9); the ledger is the only user of the ``*96`` names."""
+    column (base verb + " (96 head)"). 96 panels fix with the base verbs plus ``HEAD96_NOUN`` and name the op
+    with the ``*96`` name (#5659, N5659-9); the ledger and those panels are the users of the ``*96`` names."""
     assert gl.VERBS[method] == gl.VERBS[method[:-2]] + SUFFIX_96
 
 

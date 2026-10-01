@@ -324,8 +324,8 @@ def _op96_inputs(inner, lh, head):
     list is not one the op's own checks would accept. ``channels`` are those of ``head`` that hold a
     committed tip (aspirate96 / dispense96 / drop_tips96) or whose rack spot does (pick_up_tips96)."""
     p = _plr()
-    name = inner.f_code.co_name
-    if name in ("aspirate96", "dispense96"):
+    role = glossary.role_of(inner.f_code.co_name)  # roles, not names: the glossary owns the action strings
+    if role in (glossary.ASPIRATE, glossary.DISPENSE):
         containers, volume = _seq(_local(inner, "containers")), _number(_local(inner, "volume"))
         if containers is None or volume is None:
             return None
@@ -335,16 +335,16 @@ def _op96_inputs(inner, lh, head):
         channels = _committed_channels(head)
         resources = tuple(containers[c] if mode == "per_channel" else containers[0] for c in channels)
         return resources, tuple(channels), (volume,) * len(channels), mode
-    rack = _local(inner, "tip_rack" if name == "pick_up_tips96" else "resource")
+    if role not in (glossary.PICK_UP, glossary.DROP):
+        return None
+    rack = _local(inner, "tip_rack" if role == glossary.PICK_UP else "resource")
     if not _isinstance(rack, p.TipRack) or rack.num_items != len(head):
         return None  # the trash (or anything else) has no positions to name
-    if name == "pick_up_tips96":
+    if role == glossary.PICK_UP:
         pairs = [(c, p.tip_spot_tracker(rack.get_item(c))) for c in sorted(head)]
         channels = _positions_with_committed_tip(pairs)
-    elif name == "drop_tips96":
-        channels = _committed_channels(head)
     else:
-        return None
+        channels = _committed_channels(head)
     return tuple(rack.get_item(c) for c in channels), tuple(channels), (), None
 
 

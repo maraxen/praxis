@@ -22,12 +22,13 @@ PLR method         name          verb form (fixes)
 =================  ============  ================
 
 and the six ``*96`` variants (``pick_up_tips96`` ... ``dispense96``) are the same name plus
-``" (96 head)"``. The ``*96`` names are used by the ledger only. Error panels for a 96-head op (#5659,
-N5659-9) use the BASE verbs plus ``HEAD96_NOUN`` ("on the 96 head"), never a ``*96`` name or verb:
-``HEAD96_NOUN`` is the one place the words "96 head" are spelled, ``SUFFIX_96`` is derived from it, and
-it is not one of the section 3.5 ``NOUNS`` (it names the head, not a thing in a sentence about wells).
-``VERBS`` follows the name column for the 96 variants (base verb plus the suffix): section 3.5 says
-only "the same".
+``" (96 head)"``. The ``*96`` names are used by the ledger and by the 96-head error panels (#5659,
+N5659-9): a panel names the op with the ``*96`` name ("Pick up tips (96 head) asked those channels ...")
+and writes its fix sentences with the BASE verbs ("aspirate from wells that hold more") plus
+``HEAD96_NOUN`` ("on the 96 head"). ``HEAD96_NOUN`` is the one place the words "96 head" are spelled,
+``SUFFIX_96`` is derived from it, and it is not one of the section 3.5 ``NOUNS`` (it names the head, not
+a thing in a sentence about wells). ``VERBS`` follows the name column for the 96 variants (base verb plus
+the suffix): section 3.5 says only "the same".
 
 Keys are the frame names D8's context resolver filters on and the methods ``RunLedger`` shadows, so
 they must be real ``LiquidHandler`` method names (a test checks that against the pin).
