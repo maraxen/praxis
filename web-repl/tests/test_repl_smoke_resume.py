@@ -8354,11 +8354,19 @@ def test_derive_k3_keys_a_resize_that_did_not_change_the_dock_by_160_fails_the_r
     assert rs.derive_k3_keys(raw)["reclaim_after_resize_up"] is False
 
 
-def test_derive_k3_keys_a_viewport_that_did_not_apply_fails_the_open_key_and_the_precondition_flag(rs):
-    raw = _k3_with(_k3_raw("fixed"), ("resize_down", "snap", "inner_width"), 1440)
+def test_derive_k3_keys_a_viewport_that_did_not_apply_fails_only_the_keys_of_its_own_step_and_the_precondition_flag(rs):
+    raw = _k3_with(_k3_raw("fixed"), ("resize_down", "snap", "inner_width"), 1440)  # the resize to 1280 never took effect
     keys = rs.derive_k3_keys(raw)
-    assert keys["k3_preconditions"]["viewports_applied"] is False and keys["reclaim_open_1440"] is False
+    assert keys["k3_preconditions"]["viewport_resize_down"] is False and keys["reclaim_after_resize_down"] is False
+    assert keys["reclaim_open_1440"] is True and keys["reclaim_open_1280"] is True, "the other steps are not blamed"
     assert keys["k3_preconditions_ok"] is False
+    for step, path, width in (
+        ("viewport_open_1440", ("open_1440", "snap", "inner_width"), 1280), ("viewport_open_1280", ("open_1280", "snap", "inner_width"), 1440),
+        ("viewport_tier_entry", ("tier_entry", "wide_snap", "inner_width"), 1440), ("viewport_resize_up", ("resize_up", "snap", "inner_width"), 1280),
+    ):
+        got = rs.derive_k3_keys(_k3_with(_k3_raw("fixed"), path, width))
+        assert got["k3_preconditions"][step] is False, step
+        assert [k for k in rs.K3_KEYS if got[k] is not True], step
 
 
 def test_derive_k3_keys_the_tier_entry_key_needs_the_1600_snapshot_to_have_no_deck_maximum(rs):
@@ -8417,3 +8425,419 @@ def test_derive_k3_keys_the_toggle_key_needs_both_the_collapsed_and_the_expanded
     only_expanded_bad["toggle_1440"]["expanded"] = _k3_step(_k3_lay(1122, 700.0, inner=1440), left_collapsed=False)
     keys = rs.derive_k3_keys(only_expanded_bad)
     assert keys["k3_preconditions"]["toggle_expanded_back"] is True and keys["reclaim_after_toggle_1440"] is False
+
+
+# =========================================================================== #
+# #5656, T5: the K3 harness -- drag_plan_half, settle_layout and run_k3 against a scripted page (no browser).
+# =========================================================================== #
+#
+# `FakeK3` is a `FakeDock` whose layout is the allocation model of `_k3_lay` (T1): the deck's HALF is the state, the deck node is
+# capped to 480 and centred in it, a window or file-browser change shares the width out proportionally and Lumino raises a half
+# below 420. `reclaim=True` is a build that re-clamps (spec N5656-3); `reclaim=False` is the build without the fix. `broken` names
+# faults of the PAGE or the harness's actions: `noop_drag`, `noop_toggle`, `viewport_ignored`, `never_settles`,
+# `reload_on_reclaim`, `steals_current`.
+
+
+def _k3_unit(rs, expected=None):
+    return rs.HarnessUnit("K3", rs.DOCK_CHECK, 600.0, expected or rs.k3_expected(rs.ASSERTED), acs=("AC-N5",), viewports=rs.K3_VIEWPORTS)
+
+
+class FakeK3(FakeDock):
+    def __init__(self, rs, nb, *, reclaim, broken=()):
+        super().__init__(rs, nb, broken=broken, start=(1440, 900))
+        self.reclaim = reclaim
+        self.half: float | None = None
+        self.settled_deck: float | None = None
+        self.reclaims = 0
+        self.reads = 0
+        self.sleeps: list[float] = []
+        self._t = 0.0
+
+    # -- the seams settle_layout reads --------------------------------------------------------------------------
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+
+    def clock(self) -> float:
+        self._t += 0.25
+        return self._t
+
+    # -- the model -------------------------------------------------------------------------------------------------
+    def _dock(self) -> float:
+        return float(self.w - (318 if self.left_open else 68))
+
+    def _avail(self) -> float:
+        return self._dock() - 15.0
+
+    def _medium(self) -> bool:
+        return self.tier == "medium"
+
+    def _event(self, kind: str, *, old_avail: float | None = None, width: float | None = None) -> None:
+        if self.state == "closed" or self.home != "split":
+            return
+        if self.half is None and kind != "open":
+            return
+        avail = self._avail()
+        lo = 420.0 if self._medium() else 0.0
+        if kind == "open":
+            if self._medium():
+                self.half = avail / 2
+            else:
+                dock = self._dock()
+                self.half = max(420.0, dock - 960.0 - 16.0) / dock * avail  # layoutSize
+            self.settled_deck = None
+        elif kind == "drag":
+            self.half = min(max(float(width), lo), avail)
+        else:  # resize, toggle, tier: Lumino keeps relative sizes and raises a half below the deck's minimum
+            self.half = max(self.half * avail / old_avail, lo) if old_avail else self.half
+            if not self._medium():
+                dock = self._dock()
+                self.half = max(420.0, dock - 960.0 - 16.0) / dock * avail
+        if not (self.reclaim and self._medium()):
+            return
+        before = self.half
+        if kind in ("open", "tier"):
+            target = 420.0
+        elif kind == "drag":
+            target = min(480.0, max(420.0, self.half))
+        else:
+            target = self.settled_deck if self.settled_deck is not None else 420.0
+        self.half = target
+        self.settled_deck = target
+        if abs(before - target) > 1.0:
+            self.reclaims += 1
+            if "reload_on_reclaim" in self.broken:
+                self.loads_n += 1
+
+    # -- the driver surface run_k3 uses ------------------------------------------------------------------------------
+    def run_cell(self, index: int) -> None:
+        was = self.state
+        super().run_cell(index)
+        if was == "closed" and self.state != "closed":
+            self._event("open")
+
+    def toggle_panel(self) -> None:
+        was = self.state
+        super().toggle_panel()
+        if was == "closed" and self.state != "closed":
+            self._event("open")
+        if self.state == "closed":
+            self.half = None
+
+    def set_viewport(self, w: int, h: int) -> None:
+        self._log("set_viewport", w, h)
+        if "viewport_ignored" in self.broken:
+            return
+        old_avail, was_medium = self._avail(), self._medium()
+        self.w, self.h = w, h
+        if self.state == "closed":
+            return
+        self._event("tier" if (not was_medium and self._medium()) else "resize", old_avail=old_avail)
+
+    def collapse_left(self) -> bool:
+        self._log("collapse_left")
+        if "noop_toggle" in self.broken:
+            return False
+        old_avail = self._avail()
+        self.left_open = False
+        self._event("toggle", old_avail=old_avail)
+        return True
+
+    def expand_left(self) -> bool:
+        self._log("expand_left")
+        if "noop_toggle" in self.broken:
+            return False
+        old_avail = self._avail()
+        self.left_open = True
+        self._event("toggle", old_avail=old_avail)
+        return True
+
+    def current_info(self) -> dict[str, Any]:
+        self._log("current_info")
+        steals = "steals_current" in self.broken and self.left_open and any(c == ("expand_left",) for c in self.calls)
+        return {"id": "praxis-deck-panel" if steals else "nb-1", "active_cell": 2}
+
+    def drag_splitter_half_to(self, width: float) -> float | None:
+        self._log("drag_splitter_half_to", width)
+        if self.state == "closed" or self.home != "split":
+            return None
+        if "raise_drag" in self.broken:
+            raise self.rs.DockCheckError("mouse lost")
+        if "noop_drag" not in self.broken:
+            self._event("drag", width=width)
+        return min(self.half or 0.0, 480.0)
+
+    def layout(self) -> dict[str, Any]:
+        self._log("layout")
+        self.reads += 1
+        if self.state == "closed" or self.half is None:
+            snap = _k3_lay(self._dock(), 0.0, inner=self.w)
+            snap["rects"]["deck_panel"], snap["styles"]["deck_panel"] = None, None
+            return self.rs.annotate_layout(snap)
+        half = self.half + (5.0 if "never_settles" in self.broken and self.reads % 2 else 0.0)
+        medium = self._medium()
+        snap = _k3_lay(self._dock(), half, inner=self.w, cap=480.0 if medium else None, deck_max="480px" if medium else "none")
+        snap["left_collapsed"] = not self.left_open
+        return self.rs.annotate_layout(snap)
+
+
+def _run(rs, nb, *, reclaim, broken=()):
+    d = FakeK3(rs, rs.build_dock_notebook(nb), reclaim=reclaim, broken=broken)
+    return d, rs.run_k3(d, nb)
+
+
+def _failing(rs, keys):
+    return [k for k in rs.K3_KEYS if keys[k] is not True]
+
+
+# -- drag_plan_half ----------------------------------------------------------------------------------------------------------------
+
+
+def _handle_geo(*, deck_left, deck_right, handle_left=843.5, dock=(285.0, 1407.0), inset=5.0):
+    """What `D.handleRect()` returns on the recorded 1440 geometry (handle 5 px wide, height 838), deck node as given."""
+    return {
+        "handle": {"left": handle_left, "right": handle_left + 5.0, "top": 33.0, "bottom": 871.0, "width": 5.0, "height": 838.0},
+        "widget": {"left": deck_left, "right": deck_right, "top": 59.0, "bottom": 871.0, "width": deck_right - deck_left, "height": 812.0},
+        "n_handles": 1, "dock": {"left": dock[0], "right": dock[1], "top": 28.0, "bottom": 876.0, "width": dock[1] - dock[0], "height": 848.0},
+        "inset": inset, "inner_right": dock[1] - inset,
+    }
+
+
+def test_drag_plan_half_aims_at_the_docks_inner_edge_so_the_deck_half_is_the_requested_width(rs):
+    geo = _handle_geo(deck_left=885.25, deck_right=1365.25)  # recorded: 1440 open on the build without the fix
+    for width in (300.0, 460.0, 700.0):
+        plan = rs.drag_plan_half(geo, width, inner_width=1440)
+        assert plan["x0"] == 846.0 and plan["y"] == 452.0
+        handle_right_after = plan["x1"] + geo["handle"]["width"] / 2
+        assert geo["inner_right"] - handle_right_after == pytest.approx(width), "the half the drag leaves"
+        assert plan["target_kind"] == "half" and plan["target_width"] == width and plan["steps"] == rs.DRAG_STEPS
+        assert plan["x1_in_window"] is True
+
+
+def test_drag_plan_half_and_drag_plan_agree_when_the_deck_fills_its_half_and_differ_by_the_empty_strip_when_it_does_not(rs):
+    flush = _handle_geo(deck_left=982.0, deck_right=1402.0, handle_left=977.0)  # recorded: fit_medium, deck 420 fills its half
+    assert rs.drag_plan_half(flush, 700)["x1"] == pytest.approx(rs.drag_plan(flush, 700)["x1"])
+    centred = _handle_geo(deck_left=885.25, deck_right=1365.25)  # recorded: 1440 open without the fix, 36.75 px empty each side
+    assert rs.drag_plan_half(centred, 460)["x1"] - rs.drag_plan(centred, 460)["x1"] == pytest.approx(36.75), (
+        "drag_plan leaves a half 36.75 px wider than asked on the build without the fix: 496.75, so a deck of 480, not the 460 asked for"
+    )
+
+
+def test_drag_plan_half_is_none_for_unusable_geometry_and_flags_a_target_outside_the_window(rs):
+    geo = _handle_geo(deck_left=982.0, deck_right=1402.0, handle_left=977.0)
+    assert rs.drag_plan_half(None, 460) is None and rs.drag_plan_half({}, 460) is None
+    no_inner = {k: v for k, v in geo.items() if k != "inner_right"}
+    assert rs.drag_plan_half(no_inner, 460) is None
+    bad_handle = dict(geo, handle={"left": 1.0})
+    assert rs.drag_plan_half(bad_handle, 460) is None
+    assert rs.drag_plan_half(geo, "460") is None and rs.drag_plan_half(dict(geo, inner_right="x"), 460) is None
+    assert rs.drag_plan_half(geo, 5000, inner_width=1440)["x1_in_window"] is False
+
+
+# -- settle_layout -----------------------------------------------------------------------------------------------------------------
+
+
+class _ScriptedLayout:
+    """A driver whose `layout()` answers from a script (then repeats the last), with a counting clock and a recording sleep."""
+
+    def __init__(self, rs, widths, *, step=0.25):
+        self.rs, self.widths, self.reads, self.sleeps, self._t, self.step = rs, list(widths), 0, [], 0.0, step
+
+    def layout(self):
+        i = min(self.reads, len(self.widths) - 1)
+        self.reads += 1
+        w = self.widths[i]
+        if w is None:
+            return self.rs.annotate_layout(None)
+        return self.rs.annotate_layout(_k3_lay(1122.0, w, inner=1440))
+
+    def sleep(self, s):
+        self.sleeps.append(s)
+
+    def clock(self):
+        self._t += self.step
+        return self._t
+
+
+def test_settle_layout_returns_the_second_of_two_agreeing_reads_without_waiting_the_whole_cap(rs):
+    d = _ScriptedLayout(rs, [420.0, 420.0])
+    snap, settled = rs.settle_layout(d)
+    assert settled is True and d.reads == 2 and d.sleeps == [0.25]
+    assert rs.layout_summary(snap)["deck_width"] == 420.0
+
+
+def test_settle_layout_waits_through_a_moving_layout_and_settles_when_it_stops(rs):
+    d = _ScriptedLayout(rs, [553.5, 480.0, 440.0, 420.0, 420.0])
+    snap, settled = rs.settle_layout(d)
+    assert settled is True and d.reads == 5
+    assert rs.layout_summary(snap)["deck_width"] == 420.0
+
+
+def test_settle_layout_agreement_is_within_half_a_pixel(rs):
+    assert rs.settle_layout(_ScriptedLayout(rs, [420.0, 420.4]))[1] is True
+    drifting = [420.0 + 0.6 * i for i in range(400)]  # 0.6 px between every two reads, for longer than the cap
+    assert rs.settle_layout(_ScriptedLayout(rs, drifting))[1] is False
+
+
+def test_settle_layout_gives_up_at_the_cap_and_says_so(rs):
+    d = _ScriptedLayout(rs, [400.0 + 6 * i for i in range(100)])
+    snap, settled = rs.settle_layout(d)
+    assert settled is False
+    assert d.reads <= 25, "5 s at 250 ms plus the first read"
+    assert snap is not None, "the last snapshot is still returned"
+
+
+def test_settle_layout_never_settles_on_an_unreadable_layout(rs):
+    d = _ScriptedLayout(rs, [None])
+    _, settled = rs.settle_layout(d)
+    assert settled is False
+    d2 = _ScriptedLayout(rs, [None, 420.0, 420.0])
+    assert rs.settle_layout(d2)[1] is True, "a layout that becomes readable can still settle"
+
+
+# -- run_k3 ------------------------------------------------------------------------------------------------------------------------
+
+
+def test_k3_scenario_positive_control_a_build_that_reclaims_holds_every_listed_key(rs, nb):
+    d, keys = _run(rs, nb, reclaim=True)
+    missing, failing = rs.evaluate_unit_result(_k3_unit(rs), dict(keys, pageerrors=[]))
+    assert (missing, failing) == ([], []), {k: keys[k] for k in rs.K3_KEYS}
+    assert keys["k3_preconditions_ok"] is True and keys["k3_all_settled"] is True
+    assert keys["evidence"]["step_errors"] == {}
+
+
+def test_k3_scenario_negative_control_a_build_without_the_fix_fails_the_six_predicted_keys_and_keeps_the_six_guards(rs, nb):
+    d, keys = _run(rs, nb, reclaim=False)
+    assert _failing(rs, keys) == [k for k in rs.K3_KEYS if k in rs.K3_RED_FALSE], _failing(rs, keys)
+    assert all(keys[k] is True for k in rs.K3_RED_GUARD)
+    assert keys["k3_preconditions_ok"] is True and keys["k3_all_settled"] is True, "RED is a verdict on the product, not on the harness"
+    assert d.reclaims == 0
+    measures = keys["k3_measures"]
+    assert measures["open_1440"]["dead_space"] == pytest.approx(73.5) and measures["high_1440"]["dead_space"] == pytest.approx(220.0)
+
+
+def test_k3_is_one_page_one_kernel_one_dock_and_follows_the_spec_sequence(rs, nb):
+    d, _ = _run(rs, nb, reclaim=True)
+    assert [c[1] for c in _calls(d, "run_cell") if c[1] == "dock"] == ["dock"], "one dock()"
+    assert len(_calls(d, "open_lab")) == 1 and len(_calls(d, "seed_and_open")) == 1 and len(_calls(d, "restart_kernel")) == 0
+    assert [(c[1], c[2]) for c in _calls(d, "set_viewport")] == [(1280, 800), (1440, 900), (1600, 900), (1440, 900), (1280, 800)], (
+        "the context starts at 1440x900 (K3_VIEWPORTS[0]); resize down, resize up, tier entry (1600 and back), then 1280"
+    )
+    assert [c[1] for c in _calls(d, "drag_splitter_half_to")] == [460.0, 300.0, 700.0, 300.0], "mid, low, high, then the drag at 1280"
+    assert _calls(d, "drag_splitter_to") == [] and _calls(d, "drag_splitter_by") == [], "the K2 drags are not used"
+    order = [c[0] for c in d.calls]
+    assert order.index("collapse_left") < order.index("expand_left"), "collapse, then expand"
+    assert len(_calls(d, "toggle_panel")) == 2, "close and reopen at 1280, nothing else"
+    flat = [(c[0], c[1:]) for c in d.calls if c[0] in ("run_cell", "drag_splitter_half_to", "collapse_left", "expand_left", "set_viewport", "toggle_panel")]
+    names = [n for n, _ in flat]
+    last_drag_700 = max(i for i, (n, a) in enumerate(flat) if n == "drag_splitter_half_to" and a == (700.0,))
+    assert names.index("collapse_left") > last_drag_700, "the toggle comes after the drag to 700"
+    last_viewport = max(i for i, (n, _a) in enumerate(flat) if n == "set_viewport")
+    assert min(i for i, n in enumerate(names) if n == "toggle_panel") > last_viewport, "close + reopen is the last step, at 1280"
+
+
+def test_k3_reads_the_current_widget_before_the_collapse_and_after_the_expand(rs, nb):
+    d, keys = _run(rs, nb, reclaim=True)
+    order = [c[0] for c in d.calls]
+    reads = [i for i, n in enumerate(order) if n == "current_info"]
+    assert len(reads) == 2 and reads[0] < order.index("collapse_left") and reads[1] > order.index("expand_left")
+    toggle = keys["evidence"]["toggle_1440"]
+    assert toggle["current_before"] == toggle["current_after"] == {"id": "nb-1", "active_cell": 2}
+
+
+def test_k3_counts_deck_iframe_loads_from_the_drag_to_460_through_the_tier_entry_and_not_the_reopen(rs, nb):
+    d, keys = _run(rs, nb, reclaim=True)
+    reloads = keys["evidence"]["reloads"]
+    assert reloads["to"] == reloads["from"], "no re-clamp reloaded the viewer"
+    assert d.loads_n == reloads["to"] + 1, "the reopen at 1280 is a fresh attach and loads once, outside the counted window"
+    assert keys["evidence"]["open_1440"]["loads_after"] - keys["evidence"]["open_1440"]["loads_before"] == 1
+    d2, keys2 = _run(rs, nb, reclaim=True, broken=("reload_on_reclaim",))
+    failing = _failing(rs, keys2)
+    assert "open_loads_once_1440" in failing and "iframe_reloads_during_reclaim" in failing, failing
+
+
+def test_k3_every_step_ends_with_a_settle_poll(rs, nb):
+    d, _ = _run(rs, nb, reclaim=True)
+    layouts = [i for i, c in enumerate(d.calls) if c[0] == "layout"]
+    assert len(layouts) >= 2 * 12, "two reads agree before a step ends: 12 settled snapshots (open, 3 drags, 2 toggle, down, 2 up, 2 tier, open_1280)"
+    assert d.sleeps, "polled with a pause between reads"
+    assert set(d.sleeps) == {0.25}
+
+
+def test_k3_a_drag_that_did_nothing_fails_its_key_and_the_precondition_flag_names_it(rs, nb):
+    d, keys = _run(rs, nb, reclaim=True, broken=("noop_drag",))
+    failing = _failing(rs, keys)
+    assert {"reclaim_keeps_mid_1440", "reclaim_low_moves_1440", "reclaim_after_high_1440"} <= set(failing), failing
+    assert keys["k3_preconditions"]["mid_drag_moved"] is False or keys["k3_preconditions"]["low_drag_moved"] is False
+    assert keys["k3_preconditions_ok"] is False
+
+
+def test_k3_a_file_browser_toggle_that_did_nothing_fails_the_toggle_and_current_widget_keys(rs, nb):
+    d, keys = _run(rs, nb, reclaim=True, broken=("noop_toggle",))
+    failing = _failing(rs, keys)
+    assert {"reclaim_after_toggle_1440", "reclaim_keeps_current_1440"} <= set(failing), failing
+    assert keys["k3_preconditions"]["toggle_collapsed_widened"] is False
+
+
+def test_k3_a_deck_that_steals_the_current_widget_fails_that_key_only(rs, nb):
+    d, keys = _run(rs, nb, reclaim=True, broken=("steals_current",))
+    assert _failing(rs, keys) == ["reclaim_keeps_current_1440"]
+
+
+def test_k3_a_viewport_change_that_never_applied_fails_the_resize_keys_and_the_precondition_flag(rs, nb):
+    d, keys = _run(rs, nb, reclaim=True, broken=("viewport_ignored",))
+    failing = _failing(rs, keys)
+    assert {"reclaim_after_resize_down", "reclaim_after_resize_up", "reclaim_after_tier_entry", "reclaim_open_1280"} <= set(failing), failing
+    assert keys["k3_preconditions"]["viewport_resize_down"] is False and keys["k3_preconditions"]["viewport_open_1280"] is False
+
+
+def test_k3_a_layout_that_never_settles_fails_every_key_that_needs_a_settled_step_and_says_so(rs, nb):
+    d, keys = _run(rs, nb, reclaim=True, broken=("never_settles",))
+    assert keys["k3_all_settled"] is False and not any(keys["k3_settled"].values()), keys["k3_settled"]
+    failing = _failing(rs, keys)
+    assert "reclaim_open_1440" in failing and "reclaim_after_high_1440" in failing and "reclaim_open_1280" in failing, failing
+
+
+def test_k3_a_step_that_raises_is_recorded_and_the_later_steps_still_run(rs, nb):
+    d = FakeK3(rs, rs.build_dock_notebook(nb), reclaim=True, broken=("raise_drag",))
+    keys = rs.run_k3(d, nb)
+    errs = keys["evidence"]["step_errors"]
+    assert set(errs) >= {"mid_1440", "low_1440", "high_1440", "resize_up"}, errs
+    assert "mouse lost" in " ".join(errs.values())
+    failing = _failing(rs, keys)
+    assert {"reclaim_keeps_mid_1440", "reclaim_low_moves_1440", "reclaim_after_high_1440", "reclaim_after_resize_up"} <= set(failing)
+    assert keys["reclaim_open_1440"] is True and keys["reclaim_open_1280"] is True, "the steps around the failure still ran and passed"
+
+
+def test_k3_records_every_step_snapshot_as_evidence_and_the_derived_measures(rs, nb):
+    d, keys = _run(rs, nb, reclaim=False)
+    ev = keys["evidence"]
+    for step in rs.K3_STEP_NAMES:
+        assert ev[step], step
+    assert ev["open_1440"]["snap"]["summary"]["deck_width"] == 480.0, "annotated snapshots (rects, summary, problems)"
+    assert set(keys["k3_measures"]) >= {"open_1440", "high_1440", "toggle_collapsed", "tier_wide", "open_1280"}
+    json.dumps(keys)
+
+
+def test_k3_expected_status_follows_the_recorded_case_and_recorded_only_gates_only_pageerrors(rs, nb):
+    record = {"css_limits_honoured": True, "layout_sizing_reachable": False, "css_limits_refit": False, "restore_layout_keeps_iframe": True}
+    d = FakeK3(rs, rs.build_dock_notebook(nb), reclaim=False)
+    keys = rs.run_k3(d, nb, record=record)
+    assert keys["reclaim_status"] == rs.RECORDED_ONLY and keys["sizing_record"] == record
+    unit = _k3_unit(rs, rs.k3_expected(rs.reclaim_status(record)))
+    assert rs.evaluate_unit_result(unit, dict(keys, pageerrors=[])) == ([], []), "measured and written, but nothing gates but pageerrors"
+    assert any(keys[k] is False for k in rs.K3_KEYS), "the keys are still computed"
+
+
+def test_the_k3_viewports_are_the_context_start_and_every_set_viewport_in_order(rs):
+    assert rs.K3_VIEWPORTS[0] == (1440, 900), "the context starts at 1440x900 (DisplaySession reads unit.viewports[0])"
+    assert rs.K3_VIEWPORTS == ((1440, 900), (1280, 800), (1440, 900), (1600, 900), (1440, 900), (1280, 800))
+    assert rs.K3_STEP_NAMES == ("open_1440", "mid_1440", "low_1440", "high_1440", "toggle_1440", "resize_down", "resize_up", "tier_entry", "open_1280")
+
+
+def test_dock_driver_has_the_k3_page_actions_and_the_dock_js_helpers(rs):
+    for name in ("expand_left", "current_info", "drag_splitter_half_to"):
+        assert callable(getattr(rs.DockDriver, name)), name
+    for fragment in ("D.expandLeft = ", "D.currentInfo = ", "inner_right: innerRight"):
+        assert fragment in rs.DOCK_CHECK_JS, fragment
+    assert "shell.expandLeft()" in rs.DOCK_CHECK_JS and "shell.leftCollapsed === true" in rs.DOCK_CHECK_JS, "expand only what is collapsed"
+    assert "D.notebookState()" in rs.DOCK_CHECK_JS.split("D.currentInfo = ")[1].split("};")[0], "no second reader of the current widget"
