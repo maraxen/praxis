@@ -7734,9 +7734,9 @@ def test_the_split_never_mutates_its_input_and_returns_fresh_lists(rs):
 def test_the_message_constant_is_the_exact_text_and_not_a_pattern(rs):
     assert rs.PAGEERROR_TOLERATED_MESSAGE == REMOVE_CHILD
     import inspect
-    src = inspect.getsource(rs.split_pageerrors)
-    assert "re.compile" not in src or "REMOVE" not in src
-    assert "== PAGEERROR_TOLERATED_MESSAGE" in src or "PAGEERROR_TOLERATED_MESSAGE ==" in src, "the message is compared for equality, never matched"
+    src = inspect.getsource(rs._is_tolerated_pageerror)
+    assert "lines[0] != PAGEERROR_TOLERATED_MESSAGE" in src, "the message is compared for equality, never matched"
+    assert "re.search" not in src and "re.match" not in src and ".startswith(" not in src and " in entry" not in src
 
 
 # -- through run_scenario: what a unit's result and key do ------------------------------------------------------------------------------
@@ -7822,8 +7822,8 @@ def test_the_split_is_used_in_exactly_one_place_and_no_other_check_uses_it(rs):
 
 
 def test_the_rule_and_its_reason_are_written_down_where_the_key_is_documented(rs):
-    doc = rs.split_pageerrors.__doc__ or ""
-    for needle in ("2026-10-01", "deliberate", "approved", "splash", "removeChild", "jlab_core", "tolerated_pageerrors", "two"):
+    doc = (rs.split_pageerrors.__doc__ or "").lower()
+    for needle in ("2026-10-01", "deliberate", "approved", "splash", "removechild", "jlab_core", "tolerated_pageerrors", "two"):
         assert needle in doc, needle
     source = REPL_SMOKE.read_text()
     block = source[source.index("#   pageerrors            the session's"):]

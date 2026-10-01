@@ -4815,12 +4815,16 @@ def run_scenario(
             "traceback_tail": _tail(traceback.format_exc()),
         }
 
+    # The `pageerrors` key holds only the BLOCKING entries; the one tolerated stock-JupyterLab signature stays visible beside it
+    # (see split_pageerrors: a deliberate loosening approved by the user on 2026-10-01).
+    pageerrors_blocking, pageerrors_tolerated = split_pageerrors(getattr(session, "pageerrors", None) or [])
     result: dict[str, Any] = dict(fields)
     result.update(
         {
             "unit": unit.id,
             "check": unit.check,
-            "pageerrors": list(getattr(session, "pageerrors", None) or []),
+            "pageerrors": pageerrors_blocking,
+            "tolerated_pageerrors": pageerrors_tolerated,
             "chrome_path": env.chrome_path,
             "chrome_version": env.chrome_version,
             "error": error,
@@ -4888,7 +4892,10 @@ def run_scenario(
 #   light_sheet           getComputedStyle(cell 0).backgroundColor (`.jp-CodeCell`)
 #   exec_count_on_rail    getComputedStyle(cell, '::after').content (quotes stripped) against
 #                         the model's execution count, for every cell
-#   pageerrors            the session's `pageerror` listener
+#   pageerrors            the session's `pageerror` listener, MINUS one tolerated stock-JupyterLab signature (the splash plugin's
+#                         unguarded removeChild timer, thrown by the core bundle when two theme loads fall within 200 ms; at most
+#                         two per unit). A DELIBERATE LOOSENING approved by the user on 2026-10-01; the tolerated entries are not
+#                         hidden: they are listed in the result's `tolerated_pageerrors`. Every other page error blocks the key.
 
 RAIL_RGB = {"ran": "rgb(47, 104, 130)", "running": "rgb(237, 122, 155)", "error": "rgb(179, 64, 42)"}
 STALE_RAIL_NEEDLES = ("repeating-linear-gradient", RAIL_RGB["ran"])
@@ -5154,6 +5161,77 @@ def format_pageerror(exc: Any) -> str:
     if not stack:
         return message
     return f"{message}\n{str(stack)[:DISPLAY_PAGEERROR_STACK_CHARS]}"
+
+
+#: The ONE page error that is tolerated: JupyterLab's splash plugin (``@jupyterlab/apputils-extension``) schedules an unguarded
+#: ``window.setTimeout(() => document.body.removeChild(splash), 200)`` every time its show/hide counter reaches zero, so two theme
+#: loads within 200 ms make the second timer throw. Stock, benign, intermittent; compared for EQUALITY, never matched.
+PAGEERROR_TOLERATED_MESSAGE = "Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node."
+PAGEERROR_TOLERATED_MAX = 2
+#: The location of the throwing frame: the stock core bundle, matched by file shape only (never by line or column).
+_CORE_BUNDLE_LOCATION = re.compile(r"https?://[^/\s()]+(?:/[^\s()?#:]*)?/build/jlab_core\.[0-9a-f]+\.js:\d+:\d+")
+_STACK_FRAME_LINE = re.compile(r"\s+at\s+(?P<rest>\S.*)")
+
+
+def _frame_location(line: str) -> str | None:
+    """The location part of a V8 stack frame line (``at url:l:c`` or ``at fn (url:l:c)``), or None if it is not a frame line."""
+    match = _STACK_FRAME_LINE.fullmatch(line)
+    if match is None:
+        return None
+    rest = match.group("rest")
+    if rest.endswith(")") and "(" in rest:
+        return rest[rest.rindex("(") + 1:-1]
+    return rest
+
+
+def _is_tolerated_pageerror(entry: Any) -> bool:
+    if not isinstance(entry, str):
+        return False
+    lines = entry.split("\n")
+    if len(lines) < 2 or lines[0] != PAGEERROR_TOLERATED_MESSAGE:
+        return False
+    index = 1
+    if _frame_location(lines[1]) is None:  # not already the first frame: the second line must be the NotFoundError line
+        if lines[1] != f"NotFoundError: {PAGEERROR_TOLERATED_MESSAGE}":
+            return False
+        index = 2
+    if index >= len(lines):
+        return False
+    location = _frame_location(lines[index])  # the FIRST frame only
+    return location is not None and _CORE_BUNDLE_LOCATION.fullmatch(location) is not None
+
+
+def split_pageerrors(entries: Any) -> tuple[list[Any], list[str]]:
+    """``(blocking, tolerated)`` of the collected ``pageerrors`` entries. A DELIBERATE LOOSENING approved by the user on
+    2026-10-01, for exactly one stock-JupyterLab page error; everything else stays blocking.
+
+    The reason. JupyterLab's splash plugin (``@jupyterlab/apputils-extension``: the ``splash`` plugin, which the themes plugin calls
+    on every theme load) shows one shared ``#jupyterlab-splash`` element behind a counter and, each time the counter reaches zero,
+    schedules ``document.body.removeChild(splash)`` 200 ms later with no check that the element is still there. Two theme loads
+    inside 200 ms (the boot load and a ``setTheme``/settings reload) make the second timer throw ``NotFoundError``. It is stock,
+    benign and intermittent (seen about once in a dozen K1a / K1b runs, with the readiness gate in place), and Praxis code never calls
+    the splash or sets the theme itself.
+
+    The rule. An entry is tolerated only if ALL of these hold:
+
+    * it is a string whose FIRST line equals ``PAGEERROR_TOLERATED_MESSAGE`` exactly (equality, no pattern), and its second line,
+      if it is not already a stack frame, equals ``"NotFoundError: "`` plus the same message;
+    * the line after those is a stack frame, and the FIRST frame's location is ``http(s)://<host>[/<path>]/build/jlab_core.<hex>.js``
+      followed by ``:<line>:<col>`` (the stock core bundle; the file is matched by that shape, never by line or column; a shell,
+      asset, ``visualizer3d``, inline, blob or eval frame is never accepted);
+    * fewer than ``PAGEERROR_TOLERATED_MAX`` (two) entries have been tolerated already in this list; a third is blocking.
+
+    ``blocking`` keeps every other entry (non-strings too) in order, and the unit's ``pageerrors`` key holds only those (a list that
+    is empty exactly when nothing blocks). ``tolerated`` is written to the result's ``tolerated_pageerrors`` so none is hidden. Pure.
+    """
+    blocking: list[Any] = []
+    tolerated: list[str] = []
+    for entry in entries or []:
+        if len(tolerated) < PAGEERROR_TOLERATED_MAX and _is_tolerated_pageerror(entry):
+            tolerated.append(entry)
+        else:
+            blocking.append(entry)
+    return blocking, tolerated
 
 
 class DisplaySession:
