@@ -1497,19 +1497,65 @@ def test_vocabulary_declares_no_transition_or_animation() -> None:
   assert _animation_violations(css) == []
 
 
-@pytest.mark.xfail(
-  strict=True,
-  reason=(
-    "The vendored Roboto Flex has no width axis: VENDOR_MANIFEST.json's source_css asks Google Fonts for "
-    "`opsz,wght` only (fvar axes measured: opsz 8-144, wght 100-1000), and the @font-face declares "
-    "`font-stretch: 100%`. `font-stretch: 25%` on resource names is therefore a no-op until the font is "
-    "re-vendored with `wdth` (scripts/vendor_fonts.py). Remove this marker when it is."
-  ),
-)
 def test_vendored_roboto_flex_has_the_width_axis_the_names_ask_for() -> None:
+  """Backlog #5671 (was an expected failure): the resource names ask for `font-stretch: 25%`, which is a no-op unless the
+  vendored Roboto Flex carries the `wdth` axis. The manifest records the exact request that produced the file."""
   manifest = (_THEME_DIR / "fonts" / "VENDOR_MANIFEST.json").read_text(encoding="utf-8")
   entry = next(e for e in __import__("json").loads(manifest)["entries"] if e["file"] == "RobotoFlex-Variable.woff2")
   assert "wdth" in entry["source_css"], entry["source_css"]
+  assert "opsz" in entry["source_css"] and "wght" in entry["source_css"], entry["source_css"]  # the other two axes stay
+
+
+def _font_face_stretch_range(css: str, family: str) -> tuple[float, float] | None:
+  """The `font-stretch` range (percent) a family's `@font-face` declares, or None when it declares none. A single value is a
+  degenerate range (lo == hi), which is what the browser treats it as."""
+  for block in re.findall(r"@font-face\s*\{([^{}]*)\}", _strip_comments(css)):
+    if not re.search(r"font-family:\s*['\"]?" + re.escape(family) + r"['\"]?\s*;", block):
+      continue
+    m = re.search(r"font-stretch:\s*([\d.]+)%(?:\s+([\d.]+)%)?\s*;", block)
+    if m is None:
+      return None
+    lo = float(m.group(1))
+    return lo, float(m.group(2)) if m.group(2) else lo
+  return None
+
+
+def _font_stretch_values_used(css: str) -> set[float]:
+  """Every `font-stretch: N%` a RULE (not an @font-face descriptor) asks for."""
+  stripped = _strip_comments(css)
+  without_faces = re.sub(r"@font-face\s*\{[^{}]*\}", "", stripped)
+  return {float(v) for v in re.findall(r"font-stretch:\s*([\d.]+)%", without_faces)}
+
+
+def _stretch_problems(css: str, family: str = "Roboto Flex") -> list[str]:
+  declared = _font_face_stretch_range(css, family)
+  used = _font_stretch_values_used(css)
+  if not used:
+    return ["no rule asks for a font-stretch, so there is nothing to check"]
+  if declared is None:
+    return [f"{family}: the @font-face declares no font-stretch range"]
+  lo, hi = declared
+  return [f"font-stretch: {v:g}% is outside {family}'s declared {lo:g}%-{hi:g}% (the browser clamps it)" for v in sorted(used) if not lo <= v <= hi]
+
+
+def test_font_face_stretch_range_covers_every_font_stretch_the_css_uses() -> None:
+  """#5671: the @font-face must declare the width range of the vendored font, or `font-stretch: 25%` is clamped to the declared
+  value and the condensed names silently render at normal width."""
+  css = _CSS.read_text(encoding="utf-8")
+  assert _font_stretch_values_used(css) >= {25.0, 80.0}  # the rules this protects really exist (names 25%, ledger/grid 80%)
+  assert _stretch_problems(css) == []
+
+
+def test_the_stretch_checker_fires_on_a_clamped_range() -> None:
+  face = "@font-face {{ font-family: 'Roboto Flex'; font-stretch: {r}; src: url(x.woff2); }}"
+  rule = ".praxis-name__title {{ font-stretch: 25%; }} .praxis-ledger__where {{ font-stretch: 80%; }}"
+  ok = face.format(r="25% 151%") + rule
+  assert _stretch_problems(ok) == []
+  assert _stretch_problems(face.format(r="100%") + rule) != []  # today's declaration: both values clamped
+  assert _stretch_problems(face.format(r="50% 151%") + rule) != []  # the 25% name rule falls outside
+  assert _stretch_problems(face.format(r="25% 70%") + rule) != []  # the 80% rule falls outside
+  assert _stretch_problems("@font-face { font-family: 'Roboto Flex'; src: url(x.woff2); }" + rule) != []  # no range at all
+  assert _stretch_problems(ok.replace("Roboto Flex", "Other")) != []  # a different family's face does not count
 
 
 # --- the D6 notebook cap (task C5b, backlog #5673) ----------------------------------
