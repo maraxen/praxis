@@ -8,7 +8,9 @@ rule "owner outside the committed offending set -> None", "What PLR's message om
 drawing", "Tracking"), section 3.3 (the templates only as far as the context feeds them; B6 builds
 the panel), the B5 task text and AC-15 (E1-E16, E4-off, E6-off and the four negatives). The 96-head
 ops (``E96-*``) resolve on their own path since #5659: ``261001_nd-next-5659-96head-errors.md``
-(N5659-1..4, AC-96-1..5, ``-k "dispatch96 or map96 or offend96 or discrim96 or none96"``).
+(N5659-1..4, AC-96-1..5, ``-k "dispatch96 or map96 or offend96 or discrim96 or none96"``). The RESIDUE
+layer (task 8, N5659-11, AC-96-R1..R4, ``-k residue96``) is ``praxis/display/residue.py``, the only display
+module that reads pending state; ``context.py``'s own scan below is unchanged.
 
 **Real PLR at the 1.0.0b1 pin.** Every case raises the REAL error, through the real
 ``LiquidHandler`` (non-shim home ``pylabrobot.legacy.liquid_handling``) and the chatterbox backend,
@@ -2740,3 +2742,482 @@ def test_pin_anchors_still_read_as_documented():
         body = lh_src[lh_src.index(f"  async def {op}(") :]
         body = body[: body.index("\n  async def ", 10)]
         assert re.search(r"error: Optional\[Exception\] = None\s+try:\s+for op in ", body), op
+
+
+# --------------------------------------------------------------------------- the residue layer (#5659 task 8)
+#
+# Spec: ``261001_nd-next-5659-96head-errors.md`` N5659-11, AC-96-R1..R4. ``-k residue96``.
+# PLR 1.0.0b1 queues the four 96 ops' tracker changes BEFORE their ``try`` (A10), so a refusal leaves
+# PENDING changes behind and the next success commits them (A11). ``residue.py`` is the one display
+# module that reads pending state; ``context.resolve`` stores what it finds in ``ErrorContext.residue``.
+#
+# The expectations below are the oracle: written from the PLR source (which loop queues what before it
+# raises) and cross-checked by ``_independent_world_scan``, a scan of every tracker of the scenario's
+# world straight off PLR, without any praxis code.
+
+KIND_CONTAINER, KIND_TIP, KIND_CHANNEL, KIND_SPOT = "container", "tip", "channel", "spot"
+
+_WELLS_0_9 = [f"{row}1" for row in "ABCDEFGH"] + ["A2", "B2"]  # assay indices 0-9, column-major
+
+#: case -> {kind: sorted targets}; wells and spots by identifier, tips and channels by channel index.
+RESIDUE96 = {
+    # B: A1-C1 queued (pending 30 against committed 80) and the tips on channels 0-2, then D1 raises.
+    "E96-rowD": {KIND_CONTAINER: ["A1", "B1", "C1"], KIND_TIP: [0, 1, 2]},
+    # E: all 96 tips queued first (dispense96's tip loop), then wells 0-9, then C2 (index 10) raises.
+    "E96-dispTLV": {KIND_CONTAINER: sorted(_WELLS_0_9), KIND_TIP: list(range(96))},
+    # H: spots 0-4 got a pending tip and head channels 0-4 a pending removal, then spot 5 (F1) raises.
+    "E96-hasTip-drop": {KIND_CHANNEL: [0, 1, 2, 3, 4], KIND_SPOT: ["A1", "B1", "C1", "D1", "E1"]},
+    # the same through PLR's own nested call (return_tips96 -> drop_tips96)
+    "E96-return": {KIND_CHANNEL: [0, 1, 2, 3, 4], KIND_SPOT: ["A1", "B1", "C1", "D1", "E1"]},
+    # F3: channels 0-2 got a pending tip and spots 0-2 a pending removal, then channel 3 raises.
+    "E96-hasTip-pickup": {KIND_CHANNEL: [0, 1, 2], KIND_SPOT: ["A1", "B1", "C1"]},
+    # D2: tips 0-6 queued their dispense before tip 7 raises.
+    "E96-tipTLL-D2": {KIND_TIP: [0, 1, 2, 3, 4, 5, 6]},
+    # C3: the second aspirate queued source A1 (pending 800 against committed 1,000), then tip 0 overflowed.
+    "E96-tipTLV": {KIND_CONTAINER: ["A1"]},
+    # K: H's leftovers (channels 0-4 pending removals) are still queued when the next op starts; it skips
+    # those channels, queues wells 5-9 and tips 5-9, and raises at well 10 (C2). Both generations count.
+    "E96-K": {KIND_CONTAINER: ["A2", "B2", "F1", "G1", "H1"], KIND_TIP: [5, 6, 7, 8, 9],
+              KIND_CHANNEL: [0, 1, 2, 3, 4]},
+    # N: all 96 tips queued their 30 uL dispense, then the one container overflowed (a context, no panel row)
+    "E96-N": {KIND_TIP: list(range(96))},
+    "E96-onewell-TLV": {KIND_TIP: list(range(96))},
+    # J2: one container for the head: each channel takes 30 uL out of it and puts it in its tip, so 66 tips
+    # (66 x 30 = 1,980 of 2,000) are queued and the container is pending 20 when the 67th raises
+    "E96-single": {KIND_CONTAINER: ["big"], KIND_TIP: list(range(66))},
+    # the same on a one-well Plate (1,000 uL: 33 channels fit), named by the plate's well, not by an identifier
+    "E96-onewell-plate": {KIND_CONTAINER: ["trough_plate_well_A1"], KIND_TIP: list(range(33))},
+    # nothing was queued before the first position raised
+    "E96-empty": {},
+    "E96-partial": {},
+    "E96-tipTLL": {},
+}
+
+#: pending changes the world holds that are NOT the failing op's labware (so not in its residue)
+OUTSIDE_THE_OP = {"E96-K": {KIND_SPOT: ["A1", "B1", "C1", "D1", "E1"]}}
+
+
+@pytest.fixture(scope="module")
+def rs():
+    """praxis/display/residue.py. A missing module is the RED reason."""
+    path = _DISPLAY_DIR / "residue.py"
+    if not path.is_file():
+        pytest.fail(f"praxis/display/residue.py does not exist yet: {path}")
+    _package()
+    return importlib.import_module(f"{_PKG}.residue")
+
+
+def _container_label(container):
+    """A well of a many-well plate by identifier, any other container (a one-well plate's well, a bare
+    container) by name."""
+    return container.get_identifier() if getattr(container.parent, "num_items", 1) > 1 else container.name
+
+
+def _residue_summary(ctx):
+    """``ErrorContext.residue`` as ``{kind: sorted targets}``: resources by label, indices as they are."""
+    out: dict = {}
+    for item in ctx.residue:
+        if item.kind == KIND_CONTAINER:
+            target = _container_label(item.target)
+        elif item.kind == KIND_SPOT:
+            target = item.target.get_identifier()
+        else:
+            target = item.target
+        out.setdefault(item.kind, []).append(target)
+    return {kind: sorted(targets) for kind, targets in out.items()}
+
+
+def _committed_tip_present(tracker):
+    try:
+        tracker.get_tip()
+    except NoTipError:
+        return False
+    return True
+
+
+def _independent_world_scan(r):
+    """Every tracker of the scenario's world whose PENDING state differs from its COMMITTED state, read
+    straight off PLR (no praxis code): wells, mounted tips' volume trackers, head channels, rack spots."""
+    out: dict = {}
+
+    def add(kind, target):
+        out.setdefault(kind, []).append(target)
+
+    for res in r.deck.get_all_children():
+        if isinstance(res, Container) and abs(res.tracker.pending_volume - res.tracker.volume) > 1e-6:
+            add(KIND_CONTAINER, _container_label(res))
+        if isinstance(res, TipSpot):
+            tracker = tip_spot_tracker(res)
+            if tracker.has_tip != _committed_tip_present(tracker):
+                add(KIND_SPOT, res.get_identifier())
+    for channel, tracker in r.lh.head96.items():
+        if tracker.has_tip != _committed_tip_present(tracker):
+            add(KIND_CHANNEL, channel)
+        if _committed_tip_present(tracker):
+            tip_tracker = tracker.get_tip().tracker
+            if abs(tip_tracker.pending_volume - tip_tracker.volume) > 1e-6:
+                add(KIND_TIP, channel)
+    return {kind: sorted(targets) for kind, targets in out.items()}
+
+
+def check_residue96(resolve, name):
+    r = case(name)
+    ctx = resolve(r.exc, r.tb)
+    assert ctx is not None and ctx.head96 is True, name
+    assert _residue_summary(ctx) == RESIDUE96[name], name
+
+
+# ---- AC-96-R1: contents
+
+
+def test_residue96_the_kind_names_are_the_ones_the_tests_pin(rs):
+    assert (rs.KIND_CONTAINER, rs.KIND_TIP, rs.KIND_CHANNEL, rs.KIND_SPOT) == (
+        KIND_CONTAINER, KIND_TIP, KIND_CHANNEL, KIND_SPOT)
+
+
+@pytest.mark.parametrize("name", sorted(RESIDUE96))
+def test_residue96_premise_the_expected_residue_is_what_the_world_holds(name):
+    """The oracle table against an independent scan of PLR's own state: the tests below do not rest on a
+    hand-derived table alone. (A premise, not a control: no mutant of the layer reaches this scan.)"""
+    assert _independent_world_scan(case(name)) == {**RESIDUE96[name], **OUTSIDE_THE_OP.get(name, {})}
+
+
+@pytest.mark.parametrize("name", sorted(RESIDUE96))
+def test_residue96_each_case_names_the_pending_changes_plr_left_behind(cx, rs, name):
+    check_residue96(cx.resolve, name)
+
+
+def test_residue96_the_contents_of_the_spec_cases(cx, rs):
+    """The AC-96-R1 cases, spelled out: rowD = wells A1-C1 + tips 0-2; E = 10 wells + 96 tips;
+    hasTip-drop = spots A1-E1 + channels 0-4; the first-position failure = ()."""
+    assert _residue_summary(cx.resolve(case("E96-rowD").exc)) == {"container": ["A1", "B1", "C1"], "tip": [0, 1, 2]}
+    e = _residue_summary(cx.resolve(case("E96-dispTLV").exc))
+    assert len(e["container"]) == 10 and e["tip"] == list(range(96))
+    assert _residue_summary(cx.resolve(case("E96-hasTip-drop").exc)) == {
+        "channel": [0, 1, 2, 3, 4], "spot": ["A1", "B1", "C1", "D1", "E1"]}
+    assert cx.resolve(case("E96-empty").exc).residue == ()
+
+
+def test_residue96_residue_is_a_tuple_of_records_with_a_kind_and_a_target(cx, rs):
+    ctx = cx.resolve(case("E96-rowD").exc)
+    assert isinstance(ctx.residue, tuple) and ctx.residue
+    assert all(isinstance(item, rs.Residue) for item in ctx.residue)
+    # containers in op order, then mounted tips, then channels, then spots
+    assert [item.kind for item in ctx.residue] == [KIND_CONTAINER] * 3 + [KIND_TIP] * 3
+    assert [item.target.get_identifier() for item in ctx.residue[:3]] == ["A1", "B1", "C1"]
+    assert [item.target for item in ctx.residue[3:]] == [0, 1, 2]
+
+
+def test_residue96_the_field_is_defaulted_and_last(cx):
+    fields = dataclasses.fields(cx.ErrorContext)
+    assert fields[-1].name == "residue" and fields[-1].default == ()
+    ctx = cx.ErrorContext(
+        error="x", action=None, op=None, rule="a", owner_kind=CONTAINER, owner=None, channel=None,
+        resources=(), channels=(), volumes=(), offending=(), requested=None, available=None)
+    assert ctx.residue == ()
+
+
+def test_residue96_the_one_channel_path_carries_no_residue(cx):
+    """The layer is the 96 path's: a 1-channel context keeps the default."""
+    for name in ("E1", "E2", "E4", "E10", "E14"):
+        ctx = cx.resolve(case(name).exc)
+        assert ctx is not None and ctx.head96 is False and ctx.residue == (), name
+
+
+def test_residue96_a_none_context_has_no_residue_to_carry(cx):
+    """E96-residue-TLL has residue (A1-C1 and tips 0-2 from the first refusal) and still resolves to
+    None: the layer never turns a refusal to guess into a context."""
+    r = case("E96-residue-TLL")
+    assert _independent_world_scan(r) != {}
+    assert cx.resolve(r.exc) is None
+
+
+def test_residue96_residue_is_reported_for_the_op_labware_only(cx, rs):
+    """Pending changes on a plate the op does not use are not that op's residue: ``source`` carries a
+    queued addition, the failing op aspirates from ``assay``."""
+    async def go():
+        deck, lh, tips, source, assay = await _world()
+        await lh.pick_up_tips96(tips)
+        source.get_item("H12").tracker.add_liquid(10)  # direct pending change, outside the op
+        exc = await _catch(lh.aspirate96(assay, volume=50.0))
+        return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay, source=source)
+
+    r = asyncio.run(go())
+    ctx = cx.resolve(r.exc)
+    assert ctx is not None and ctx.residue == ()
+    assert _independent_world_scan(r) == {KIND_CONTAINER: ["H12"]}  # it IS in the world, just not the op's
+
+
+# ---- AC-96-R1 controls: each broken detector must FAIL the checks built for it
+
+POSITIVE_RESIDUE = sorted(name for name, expected in RESIDUE96.items() if expected)
+NO_RESIDUE = sorted(name for name, expected in RESIDUE96.items() if not expected)
+
+
+def _fails(resolve, name):
+    try:
+        check_residue96(resolve, name)
+    except AssertionError:
+        return True
+    return False
+
+
+def _with_kind(kind):
+    return sorted(name for name, expected in RESIDUE96.items() if kind in expected)
+
+
+def test_residue96_control_a_committed_only_detector_fails_every_positive(cx, rs, monkeypatch):
+    for name in POSITIVE_RESIDUE + NO_RESIDUE:
+        check_residue96(cx.resolve, name)  # the real layer passes them all
+    monkeypatch.setattr(rs, "of", lambda lh, **kw: ())
+    assert [n for n in POSITIVE_RESIDUE if not _fails(cx.resolve, n)] == []
+    assert [n for n in NO_RESIDUE if _fails(cx.resolve, n)] == []  # and it is specific: () is right there
+
+
+def test_residue96_control_a_detector_that_ignores_tip_volume_trackers_fails_e_and_rowd(cx, rs, monkeypatch):
+    assert {"E96-dispTLV", "E96-rowD"} <= set(_with_kind(KIND_TIP))
+    monkeypatch.setattr(rs, "_mounted_tip_items", lambda head: ())
+    assert sorted(n for n in RESIDUE96 if _fails(cx.resolve, n)) == _with_kind(KIND_TIP)  # exactly those cases
+
+
+def test_residue96_control_a_detector_that_ignores_containers_fails_the_volume_cases(cx, rs, monkeypatch):
+    monkeypatch.setattr(rs, "_container_items", lambda containers: ())
+    assert sorted(n for n in RESIDUE96 if _fails(cx.resolve, n)) == _with_kind(KIND_CONTAINER)
+
+
+def test_residue96_control_a_detector_that_ignores_channels_or_spots_fails_the_tip_cases(cx, rs, monkeypatch):
+    with monkeypatch.context() as m:
+        m.setattr(rs, "_channel_items", lambda head: ())
+        assert sorted(n for n in RESIDUE96 if _fails(cx.resolve, n)) == _with_kind(KIND_CHANNEL)
+    with monkeypatch.context() as m:
+        m.setattr(rs, "_spot_items", lambda rack: ())
+        assert sorted(n for n in RESIDUE96 if _fails(cx.resolve, n)) == _with_kind(KIND_SPOT)
+
+
+def test_residue96_control_a_detector_that_reads_committed_as_pending_sees_nothing(cx, rs, monkeypatch):
+    monkeypatch.setattr(rs, "_pending_volume", lambda tracker: tracker.volume)
+    monkeypatch.setattr(rs, "_pending_tip", lambda tracker: _committed_tip_present(tracker))
+    assert [n for n in POSITIVE_RESIDUE if not _fails(cx.resolve, n)] == []
+
+
+def test_residue96_control_an_over_reporting_detector_fails_the_cases_with_no_residue(cx, rs, monkeypatch):
+    monkeypatch.setattr(rs, "_volume_differs", lambda tracker: True)
+    monkeypatch.setattr(rs, "_tip_differs", lambda tracker: True)
+    assert [n for n in NO_RESIDUE if not _fails(cx.resolve, n)] == []
+
+
+# ---- AC-96-R4: the layer is read-only
+
+
+def _check_read_only(cx, r):
+    before = _96_snapshot(r)
+    ctx = cx.resolve(r.exc, r.tb)
+    assert ctx is not None and ctx.residue, "the layer is off: nothing to be read-only about"
+    assert _96_snapshot(r) == before
+
+
+@pytest.mark.parametrize("name", POSITIVE_RESIDUE)
+def test_residue96_resolve_with_the_layer_on_changes_no_state(cx, name):
+    _check_read_only(cx, asyncio.run(SCENARIOS[name]()))  # a fresh world, not the cached one
+
+
+def test_residue96_control_a_detector_that_repairs_what_it_finds_fails_the_read_only_check(cx, rs, monkeypatch):
+    real_of = rs.of
+
+    def repairing_of(lh, **kw):
+        found = real_of(lh, **kw)
+        for item in found:  # "undo PLR's queued changes": the display layer must never do this (R2, rejected)
+            if item.kind == KIND_CONTAINER:
+                item.target.tracker.rollback()
+            elif item.kind == KIND_CHANNEL:
+                lh.head96[item.target].rollback()
+        return found
+
+    for name in ("E96-rowD", "E96-hasTip-drop"):
+        _check_read_only(cx, asyncio.run(SCENARIOS[name]()))  # the real layer passes
+    monkeypatch.setattr(rs, "of", repairing_of)
+    for name in ("E96-rowD", "E96-hasTip-drop"):
+        with pytest.raises(AssertionError):
+            _check_read_only(cx, asyncio.run(SCENARIOS[name]()))
+
+
+# ---- AC-96-R3: the module boundary
+
+_PENDING_ATTRS = {"pending_volume", "has_tip", "_pending_tip", "get_used_volume", "get_free_volume"}
+_PENDING_READERS = {"_pending_volume", "_pending_tip"}
+
+
+def scan_pending_reads(source: str, readers=frozenset()) -> list[str]:
+    """Reads of PENDING state, found by AST: an attribute among ``_PENDING_ATTRS`` anywhere but inside
+    a function named in ``readers`` (``has_tip`` and ``_pending_tip`` include pending operations,
+    ``pending_volume`` / ``get_used_volume`` / ``get_free_volume`` are the pending volume)."""
+    problems: list[str] = []
+
+    def visit(node, function):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            function = node.name
+        if isinstance(node, ast.Attribute) and node.attr in _PENDING_ATTRS and function not in readers:
+            problems.append(f"line {node.lineno}: .{node.attr} in {function or 'module scope'}")
+        for child in ast.iter_child_nodes(node):
+            visit(child, function)
+
+    visit(ast.parse(source), None)
+    return problems
+
+
+_CLEAN_RESIDUE = textwrap.dedent("""
+    def _pending_volume(tracker):
+        return tracker.pending_volume
+
+    def _pending_tip(tracker):
+        return tracker.has_tip
+
+    def of(lh):
+        return _pending_volume(lh) != lh.volume
+""")
+
+
+def test_residue96_scan_control_a_clean_source_is_clean():
+    assert scan_pending_reads(_CLEAN_RESIDUE, _PENDING_READERS) == []
+
+
+@pytest.mark.parametrize(("bad", "needle"), [
+    ("def of(t):\n    return t.pending_volume\n", ".pending_volume in of"),
+    ("def of(t):\n    return t.has_tip\n", ".has_tip in of"),
+    ("def of(spot):\n    return spot.has_tip()\n", ".has_tip in of"),
+    ("def of(t):\n    return t._pending_tip\n", "._pending_tip in of"),
+    ("def of(t):\n    return t.get_used_volume()\n", ".get_used_volume in of"),
+    ("def of(t):\n    return t.get_free_volume()\n", ".get_free_volume in of"),
+    ("x = tracker.pending_volume\n", "module scope"),
+    ("def f(t):\n    return [x.has_tip for x in t]\n", ".has_tip in f"),
+])
+def test_residue96_scan_control_each_pending_read_outside_a_reader_is_flagged(bad, needle):
+    problems = scan_pending_reads(bad, _PENDING_READERS)
+    assert problems and any(needle in p for p in problems), (bad, problems)
+
+
+def test_residue96_scan_control_the_readers_are_the_only_exemption():
+    """A reader name only exempts its own function; with no readers allowed even the clean source fails."""
+    assert scan_pending_reads(_CLEAN_RESIDUE, frozenset()) != []
+    assert scan_pending_reads(_CLEAN_RESIDUE, {"_pending_volume"}) != []  # _pending_tip's has_tip is flagged
+
+
+def test_residue96_residue_py_reads_pending_state_only_inside_the_two_readers(rs):
+    source = (_DISPLAY_DIR / "residue.py").read_text(encoding="utf-8")
+    assert scan_pending_reads(source, _PENDING_READERS) == []
+    # not vacuous: the readers exist and each reads what it is named for
+    tree = ast.parse(source)
+    readers = {n.name: n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name in _PENDING_READERS}
+    assert set(readers) == _PENDING_READERS
+    assert {a.attr for a in ast.walk(readers["_pending_volume"]) if isinstance(a, ast.Attribute)} >= {"pending_volume"}
+    assert {a.attr for a in ast.walk(readers["_pending_tip"]) if isinstance(a, ast.Attribute)} >= {"has_tip"}
+
+
+def test_residue96_scan_control_renaming_a_reader_in_the_real_source_is_flagged(rs):
+    source = (_DISPLAY_DIR / "residue.py").read_text(encoding="utf-8")
+    assert "def _pending_volume(" in source
+    mutated = source.replace("def _pending_volume(", "def _pv(")
+    assert scan_pending_reads(mutated, _PENDING_READERS) != []
+
+
+@pytest.mark.parametrize("name", ["context.py", "errors.py"])
+def test_residue96_no_other_display_module_reads_pending_state(name):
+    """context.py and errors.py have no exemption at all: pending state is read in residue.py only."""
+    source = (_DISPLAY_DIR / name).read_text(encoding="utf-8")
+    assert scan_pending_reads(source) == [], name
+
+
+def test_residue96_context_pys_own_scan_is_unchanged_and_still_forbids_has_tip():
+    assert _SPOT_HELPERS == {"_container_tracker", "_tip_tracker"}
+    assert any(".has_tip" in p for p in scan_forbidden("def f(t):\n    return t.has_tip\n"))
+    assert scan_forbidden(_CONTEXT_PATH.read_text(encoding="utf-8")) == []
+
+
+def _residue_import_problems(source: str) -> list[str]:
+    problems = []
+
+    def visit(node, function):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            function = node.name
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            names = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module or ""]
+            for mod in names:
+                if mod == "pylabrobot" or mod.startswith("pylabrobot."):
+                    if function is None:
+                        problems.append(f"line {node.lineno}: module-level import of {mod}")
+                    if mod not in ALLOWED_PLR_MODULES:
+                        problems.append(f"line {node.lineno}: import of {mod} (not an allowed non-shim home)")
+        for child in ast.iter_child_nodes(node):
+            visit(child, function)
+
+    visit(ast.parse(source), None)
+    return problems
+
+
+def test_residue96_residue_py_imports_plr_lazily_and_only_from_the_pins_homes_in_the_contract(rs):
+    import plr_contract
+
+    source = (_DISPLAY_DIR / "residue.py").read_text(encoding="utf-8")
+    assert _residue_import_problems(source) == []
+    mods = {
+        n.module for n in ast.walk(ast.parse(source))
+        if isinstance(n, ast.ImportFrom) and (n.module or "").startswith("pylabrobot")
+    }
+    contract = {path for path, _symbol in plr_contract.CONTRACT}
+    assert mods and mods <= contract, mods - contract
+    # controls: a module-level import and a shim home are both flagged
+    assert _residue_import_problems("import pylabrobot\n")
+    assert _residue_import_problems("def f():\n    from pylabrobot.resources.tip_tracker import TipTracker\n")
+
+
+def test_residue96_residue_py_imports_in_plain_cpython_with_no_plr_at_import_time():
+    path = _DISPLAY_DIR / "residue.py"
+    if not path.is_file():
+        pytest.fail(f"praxis/display/residue.py does not exist yet: {path}")
+    code = _LOAD + f"""
+import warnings
+warnings.simplefilter('error', DeprecationWarning)
+m = importlib.import_module({_PKG!r} + '.residue')
+bad = [k for k in sys.modules if k.split('.')[0] in ('pylabrobot', 'IPython', 'js')]
+assert not bad, bad
+assert callable(m.of)
+print('ok')
+"""
+    proc = _run_py(code)
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    assert proc.stdout.strip() == "ok"
+
+
+def test_residue96_context_imports_the_residue_module_as_a_sibling(cx, rs):
+    assert cx.residue is rs  # `from . import residue`: the module the bootstrap loads with the package
+
+
+# ---- how the new module reaches the kernel: build_manifest enumerates the tree, no per-file list
+
+
+def _build_manifest_module():
+    path = _WEB_REPL / "scripts" / "build_manifest.py"
+    spec = importlib.util.spec_from_file_location("_praxis_build_manifest_under_test", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["_praxis_build_manifest_under_test"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_residue96_the_manifest_walk_lists_every_display_module_including_the_new_one(tmp_path):
+    import hashlib
+
+    bm = _build_manifest_module()
+    entries = {e["path"]: e["sha256"] for e in bm.collect_sources(_WEB_REPL / "overlay")}
+    on_disk = {p.name for p in _DISPLAY_DIR.glob("*.py")}
+    assert "residue.py" in on_disk
+    for name in on_disk:
+        rel = f"assets/python/praxis/display/{name}"
+        assert rel in entries, f"{rel} would not reach the kernel"
+        assert entries[rel] == hashlib.sha256((_DISPLAY_DIR / name).read_bytes()).hexdigest()
+    # control: the walk reads the tree, it is not a list -- a brand-new module is picked up with no edit
+    fake = tmp_path / "overlay" / "assets" / "python" / "praxis" / "display"
+    fake.mkdir(parents=True)
+    (fake / "zz_brand_new.py").write_text("x = 1\n")
+    found = {e["path"] for e in bm.collect_sources(tmp_path / "overlay")}
+    assert "assets/python/praxis/display/zz_brand_new.py" in found
