@@ -1,0 +1,58 @@
+# Pre-registration sidecar for the SECOND Dark-token check (task 260929_notebook-display-design, backlog #5654).
+# Spec draft: .praxia/docs/specs/261001_nd-next-5654-dark-tokens.md. First run: bathos run
+# 07edfb7f-eb0e-4fc7-abc7-81b9a77d35f5 (scripts/spikes/261001_nd_dark_tokens_contrast.*), outcome
+# baseline_gaps_p2_feasible.
+#
+# THIS FILE AND scripts/spikes/261001_nd_dark_tokens_hybrid.py ARE COMMITTED BEFORE THE RUN. DISCLOSURE: the
+# hybrid's four hexes were typed into the script AFTER reading the first run's table (that is the point: the first
+# run showed P2's rose ink is 3.3 dE from rose and P2's brick is exactly on the dE 10 line, while P1's rose ink and
+# brick keep 13 to 14). The three NEW bars below (hover-vs-focus dE >= 10, hairline dE >= 5 on all three Dark
+# surfaces, brick-vs-rose margin dE >= 12) were chosen from the use-sites read in praxis-theme.css (the hover
+# outline at the deck-item rule; the hairline posture of B8's HAIRLINE_DE), and the margin of 12 from "two dE above
+# the AC-27 line", before this second run; none of them was tuned to make the hybrid pass.
+#
+#   bth run --project-slug praxis --output-paths outputs/spikes/261001_nd_dark_hybrid -- \
+#     uv run --no-sync python3 scripts/spikes/261001_nd_dark_tokens_hybrid.py \
+#       --out-dir outputs/spikes/261001_nd_dark_hybrid
+#
+# Pure arithmetic, milliseconds; nothing to chunk or resume.
+
+[experiment]
+hypothesis = "The hybrid Dark token set {moonstone ink #4393B8, rose ink #C05277, brick #D1523A, error-title token #D47687}, evaluated exactly as the first run evaluated its candidates (praxis-theme.css Dark block read from the file; surfaces --jp-layout-color0/1/2, worst governs; normal vision plus Machado 2009 protan/deutan/tritan; TEXT >= 4.5:1, MARKS >= 3.0:1, PAIRS CIEDE2000 >= 10 for rose-brick, moonstone-brick, ran-rail vs running/error/not-run rail), ALSO meets: hover-vs-focus (rose ink vs rose) dE >= 10 under all four visions; the Dark hairline (white at the --jp-border-color1 alpha over each surface) clears each of the three surfaces by dE >= 5 under all four visions; and rose-vs-brick dE >= 12 (a margin over AC-27's 10). Paired controls inside the script: four mutants of the hybrid must each FAIL the check they target (brick -> P3's #DB7865 fails the rose-brick pair and the extended verdict; rose ink -> P2's #CE7794 fails the hover bar; brick -> shipped #B3402A fails the marks bar; error-title -> shipped #CF6679 fails the text bar), and the instrument positive/negative pair must behave; if any control misbehaves the run is INVALID. The prior is that the hybrid passes; the prior is NOT a criterion."
+stage_name = "exploration"
+novel = true
+
+[outcomes.hybrid_meets_all]
+condition = "measurement_valid = true AND hybrid_all_ok = true"
+decision = "The hybrid Dark set meets every registered bar including the three new ones: the draft proposes it as the Option A values (hybrid_values), pinned by test_display_dark_tokens.py with the same mutants as negatives. Cite this run id."
+reasoning = "All text, mark, pair, hover, hairline and margin bars hold under four visions on the worst Dark surface, with the targeted mutants failing as required."
+is_residual = false
+
+[outcomes.hybrid_misses]
+condition = "measurement_valid = true AND hybrid_all_ok = false"
+decision = "The hybrid does NOT meet every bar (hybrid_failing names which). The draft must not propose these hexes: it states the miss, falls back to a registered candidate from the first run for the failing token(s) with its measured trade-off, and lists the choice as an open question to the user."
+reasoning = "A valid measurement in which the hybrid fails is a finding, not an instrument fault."
+is_residual = false
+
+[outcomes.invalid]
+condition = "measurement_valid = false"
+decision = "INVALID: an instrument or mutant control misbehaved. Fix the script, commit, re-run under this sidecar; cite no number from this run."
+reasoning = "A verdict that could be an instrument bug is never reported without a valid measurement (BATHOS.md)."
+is_residual = true
+
+[result_schema]
+instrument_ok = "bool"
+negative_controls_fail_as_required = "bool"
+measurement_valid = "bool"
+hybrid_values = "str"
+hybrid_text_ok = "bool"
+hybrid_marks_ok = "bool"
+hybrid_pairs_ok = "bool"
+hybrid_hover_ok = "bool"
+hybrid_hairline_ok = "bool"
+hybrid_brick_margin_ok = "bool"
+hybrid_all_ok = "bool"
+hybrid_failing = "str"
+
+[design]
+statement = "One unit, no browser, no network: loads scripts/spikes/261001_nd_dark_tokens_contrast.py by path (its CSS parser, measures and the verified colour instrument), evaluates the fixed hybrid hexes plus four mutants, writes <out-dir>/result.json and the flat fields to $BTH_RESULTS_PATH."
