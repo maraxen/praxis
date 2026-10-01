@@ -247,7 +247,7 @@ async def _main(display: types.ModuleType, cells: dict[str, str]) -> dict[str, A
     await w.run("p96-setup")
     ns = w.ns
     out["after_p96_setup"] = {
-        "rack_parent_is_carrier": ns["tips_96"].parent is ns["tip_car"],
+        "rack_on_carrier_site_1": ns["tip_car"].sites[1].resource is ns["tips_96"],
         "rack_spots_left": sum(1 for spot in ns["tips_96"].get_all_items() if spot.tip is not None),
         "head96_committed_tips": sum(1 for c in range(96) if ns["lh"].head96[c].has_tip),
         "assay_empty_wells": sorted(wl.get_identifier() for wl in ns["assay"].get_all_items() if wl.tracker.volume < 50),
@@ -434,7 +434,7 @@ def test_in_the_run_all_pair_e1_raises_and_the_marker_is_never_reached(replay):
 
 def test_the_96_setup_cell_puts_a_fresh_full_rack_on_the_carriers_second_site_and_mounts_it(replay):
     got = replay["after_p96_setup"]
-    assert got["rack_parent_is_carrier"] is True
+    assert got["rack_on_carrier_site_1"] is True
     assert got["rack_spots_left"] == 0, "pick_up_tips96 took all 96 tips from the new rack"
     assert got["head96_committed_tips"] == 96, "the 96 head holds a committed tip on every channel"
 
