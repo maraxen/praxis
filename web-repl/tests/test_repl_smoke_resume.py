@@ -1599,7 +1599,7 @@ NB_PATH = REPO_ROOT / "web-repl" / "tests" / "fixtures" / "notebooks" / "display
 D1_CELL_IDS = ["d1-never-run", "d1-ran", "d1-sleep", "d1-error", "d1-stale"]
 B10_CELL_IDS = [
     "boot", "assemble", "transfers", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck",
-    "aspirate", "e1", "e2", "e4", "e6", "value-error", "redraw", "marker",
+    "aspirate", "e1", "e2", "e4", "e6", "value-error", "p96-setup", "e96", "redraw", "marker",
 ]
 
 
@@ -1691,6 +1691,24 @@ def test_error_cells_raise_what_ac22_names_and_only_that(nb):
     assert cells["value-error"].strip().startswith("raise ValueError(")
     for cid in ("e1", "e2", "e4", "e6", "value-error"):
         assert "try:" not in cells[cid] and "except" not in cells[cid], f"{cid}: the error must reach the shell"
+
+
+def test_the_96_cells_mount_a_fresh_rack_then_ask_aspirate96_for_50_ul_from_the_assay(nb):
+    """#5659 browser coverage: the 96-head failure D2 renders. The second rack goes on the tip carrier's second site
+    (the fixture's first rack is spent), and the assay holds liquid only in columns 1-3 after the transfers."""
+    cells = {c["id"]: _src(c) for c in nb["cells"]}
+    setup = cells["p96-setup"]
+    assert 'tip_car[1] = tips_96 = hamilton_96_tiprack_300uL_filter(name="tips_96")' in setup
+    assert setup.strip().splitlines()[-1] == "await lh.pick_up_tips96(tips_96)"
+    assert cells["e96"].strip() == "await lh.aspirate96(assay, volume=50.0)"
+    for cid in ("p96-setup", "e96"):
+        assert "try:" not in cells[cid] and "except" not in cells[cid], f"{cid}: the error must reach the shell"
+
+
+def test_the_96_cells_come_after_the_one_channel_error_cells_and_before_the_restart_proof_cells(nb):
+    ids = [c["id"] for c in nb["cells"]]
+    assert ids.index("value-error") < ids.index("p96-setup") < ids.index("e96") < ids.index("redraw") < ids.index("marker")
+    assert ids.index("p96-setup") + 1 == ids.index("e96"), "the setup cell is immediately followed by the cell that fails"
 
 
 def test_the_redraw_cell_is_self_contained_because_a_restart_loses_the_deck(nb):
