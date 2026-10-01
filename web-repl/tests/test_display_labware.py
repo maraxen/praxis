@@ -1722,3 +1722,286 @@ def test_rendering_real_labware_raises_no_warning(lw, source, tips, assay):
 
 def test_labware_module_docstring_is_present_and_names_its_spec(lw):
     assert lw.__doc__ and "D2" in lw.__doc__
+
+
+# --------------------------------------------------------------------------- 15. committed tips and faulted figures (#5659)
+#
+# Spec: ``261001_nd-next-5659-96head-errors.md`` N5659-8 (the optional ``tip_of`` hook), AC-96-7 (b)(c)
+# (faulted-figure size and D5) and AC-96-11 (the default hook reads today's ``spot.tip``).
+
+# sha256 of today's outputs, taken at base 98a233ed BEFORE the hook existed: the default reading must
+# stay byte-identical for every non-error output (N5659-8). A change here is a change to a shipped
+# output, never a test fix.
+_PRE_HOOK_GOLDEN = {
+    "tips.html": "61240cea2459b38de49586383c0e94a487d84139ef6405577b3a6d1e5206ff3b",
+    "tips.html.l1": "749716a04aafd0664ab5aca00774bd8aee727a0764db190d00ffae6c4035fe39",
+    "tips.html.l2": "3cf46734c9db023e16d8f82e394fc325608c1a5dc217c191f2c714e56f9b6abc",
+    "tips.sentence": "8783800c7acbb5db79bf07a2d45fd838dbde8c65490bbc249cc8d174ae21dcf1",
+    "tips.figure_marked": "cf9054828d4922bc15e15f03058ebb6a8b1f2514c2860eae8a6bf0dc3eee1e13",
+    "tips.bundle": "90873572d2da7f4273be8719bee6f6fb9d2640f7cb12215acbc4ac47b2814f0e",
+    "full.html": "77b2cdde29e91274e44ca90b7cc0a81987161a86adf52943a695805f4a6b0977",
+    "full.html.l1": "1302bf82ec780ee3b20db5ac1d2feae1ef9deda1066970414a9eea96e1f8682a",
+    "full.html.l2": "7f5f19f1e70799f8690ab19e0e902a9819e6576046a4d0c855ae4b7f2fa38897",
+    "full.sentence": "75e5c81982e4259e2b6bb95a5dbdbb96707884fda3f4a9d32fb43419265a23d3",
+    "full.figure_marked": "5d529e59a278c32ef96d5ce0cb292dee559410bb68f662950b0367c07cc8a483",
+    "full.bundle": "0697d71e1182e5d35e4448f590990be47b4baea9611c94b546fb42fbd13aa78e",
+    "empty.html": "cc1c0b93d1cbfefe61ad0093e679fa96f02104d47cd07173df2f25c63a9c3f00",
+    "empty.html.l1": "9007a32a770757b33403b960ee90ba987fed774dc472536988f94934d527a164",
+    "empty.html.l2": "4741d81862593ba6345b20eabac8a90d8237a7b105fc677c04d35ebd2841f450",
+    "empty.sentence": "63a961acfd9432b963ab049f535082d1361f3605fe48b119d45ddf0fbae3482f",
+    "empty.figure_marked": "75c9745c9e321e6dd64bd3b38452d6abe2e85e447cc5afad4cad8bfac8e2207c",
+    "empty.bundle": "80efb7e2f0b4ad7de4f09a65826e0ee93882f9d51ea1b398c8bc3f086729c109",
+}
+
+
+def _sha(text: str) -> str:
+    import hashlib
+
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def _golden_outputs(lw, name, rack, **kw) -> dict:
+    out = {
+        f"{name}.html": _sha(lw.render_html(rack, **kw)),
+        f"{name}.html.l1": _sha(lw.render_html(rack, level=1, **kw)),
+        f"{name}.html.l2": _sha(lw.render_html(rack, level=2, **kw)),
+        f"{name}.sentence": _sha(lw.sentence(rack, **kw)),
+        f"{name}.figure_marked": _sha(lw.render_figure(rack, fault={"A1", "H12"}, changed={"B2"}, **kw)),
+    }
+    data, _meta = lw.render(rack, rev=1, session="s", exec_count=3, **kw)
+    out[f"{name}.bundle"] = _sha(data["text/html"] + "|" + data["text/plain"])
+    return out
+
+
+def _golden_racks(fx, tips):
+    full = fx.hamilton_96_tiprack_300uL_filter(name="full")
+    empty = _rack_with_used(fx, "empty", _all_ids(8, 12))
+    return {"tips": tips, "full": full, "empty": empty}
+
+
+def test_tip_of_default_reading_is_byte_equal_to_the_outputs_before_the_hook(lw, fx, tips):
+    """No hook: every rack output (levels 0, 1, 2, the sentence, a marked figure, the bundle) is
+    byte-identical to what the base commit produced. The goldens were taken before the change."""
+    got = {}
+    for name, rack in _golden_racks(fx, tips).items():
+        got.update(_golden_outputs(lw, name, rack))
+    assert got == _PRE_HOOK_GOLDEN
+
+
+def test_tip_of_the_explicit_default_hook_equals_no_hook(lw, fx, tips):
+    got = {}
+    for name, rack in _golden_racks(fx, tips).items():
+        got.update(_golden_outputs(lw, name, rack, tip_of=lambda spot: spot.tip))
+    assert got == _PRE_HOOK_GOLDEN
+
+
+def test_tip_of_golden_control_a_changed_output_is_seen(lw, fx, tips):
+    """Control for the goldens: a rack with one tip fewer must NOT hash the same."""
+    rack = _rack_with_used(fx, "full", ["A1"])
+    assert _golden_outputs(lw, "full", rack)["full.html"] != _PRE_HOOK_GOLDEN["full.html"]
+
+
+def _committed(spot):
+    from pylabrobot.legacy.tip_tracker import tip_spot_tracker
+    from pylabrobot.resources.errors import NoTipError
+
+    try:
+        return tip_spot_tracker(spot).get_tip()
+    except NoTipError:
+        return None
+
+
+def _rack_with_pending_removals(fx, ids):
+    """A full rack whose spots in *ids* have a PENDING removal (committed tip kept)."""
+    from pylabrobot.legacy.tip_tracker import tip_spot_tracker
+
+    rack = fx.hamilton_96_tiprack_300uL_filter(name="pend_rm")
+    for ident in ids:
+        tip_spot_tracker(rack.get_item(ident)).remove_tip()  # commit=False
+        assert rack.get_item(ident).tip is None and _committed(rack.get_item(ident)) is not None
+    return rack
+
+
+def _rack_with_a_pending_add(fx, ident):
+    """A rack whose spot *ident* has no committed tip but a pending one."""
+    from pylabrobot.legacy.tip_tracker import tip_spot_tracker
+
+    rack = fx.hamilton_96_tiprack_300uL_filter(name="pend_add")
+    spot = rack.get_item(ident)
+    tip_spot_tracker(spot).remove_tip(commit=True)
+    tip_spot_tracker(spot).add_tip(spot.make_tip(), commit=False)
+    assert spot.tip is not None and _committed(spot) is None
+    return rack
+
+
+def _tip_surfaces(doc: str):
+    """What a reader sees of the tips: drawn rings, the grid's hover values, the aria-label."""
+    root = _parse(doc)
+    paths = _paths(root)
+    rings = len(_subpaths(paths["sv-tip-ring"][0])) if "sv-tip-ring" in paths else 0
+    return rings, sum(_grid_of(root)["vals"]), _figure_group(root).attrs["aria-label"]
+
+
+_PENDING_RM = ("A1", "B1", "C1", "D1", "E1")
+
+
+def _check_committed_surfaces(doc, present, sentence):
+    rings, vals, aria = _tip_surfaces(doc)
+    assert (rings, vals, aria) == (present, present, sentence)
+
+
+def test_tip_of_hook_feeds_the_drawing_the_hover_values_and_the_sentence(lw, fx):
+    rack = _rack_with_pending_removals(fx, _PENDING_RM)
+    full = "96 of 96 tips left."
+    _check_committed_surfaces(lw.render_figure(rack, tip_of=_committed), 96, full)
+    # the pending reading (today's) sees 91 on all three surfaces
+    _check_committed_surfaces(lw.render_figure(rack), 91, "91 of 96 tips left. Column 1 used.")
+    assert lw.tiprack_sentence(rack, tip_of=_committed) == full
+    assert lw.sentence(rack, tip_of=_committed) == full
+    assert lw.tiprack_sentence(rack) == "91 of 96 tips left. Column 1 used."
+
+
+def test_tip_of_hook_reaches_every_ladder_level_and_the_bundle(lw, fx):
+    rack = _rack_with_pending_removals(fx, _PENDING_RM)
+    full = "96 of 96 tips left."
+    block = lw.render_figure(rack, level=1, tip_of=_committed)
+    assert _figure_group(_parse(block)).attrs["aria-label"] == full
+    omitted = lw.render_html(rack, level=2, tip_of=_committed)
+    assert full in omitted and "91 of 96" not in omitted
+    html = lw.render_html(rack, tip_of=_committed)
+    assert full in html and "91 of 96" not in html
+    data, _meta = lw.render(rack, rev=1, session="s", exec_count=1, tip_of=_committed)
+    assert data["text/plain"] == full and full in data["text/html"]
+
+
+def test_tip_of_a_pending_add_is_not_drawn_by_the_committed_reading(lw, fx):
+    rack = _rack_with_a_pending_add(fx, "H12")
+    _check_committed_surfaces(lw.render_figure(rack, tip_of=_committed), 95, "95 of 96 tips left. Column 12 used.")
+    _check_committed_surfaces(lw.render_figure(rack), 96, "96 of 96 tips left.")
+
+
+def test_tip_of_a_hook_returning_none_draws_the_spot_as_taken(lw, fx):
+    rack = fx.hamilton_96_tiprack_300uL_filter(name="all_there")
+    doc = lw.render_figure(rack, tip_of=lambda spot: None)
+    assert _tip_surfaces(doc) == (0, 0, "0 of 96 tips left. Columns 1–12 used.")
+    assert len(_subpaths(_paths(_parse(doc))["sv-tip-gone"][0])) == 96
+
+
+def test_tip_of_control_the_default_hook_fails_the_committed_check(lw, fx):
+    rack = _rack_with_pending_removals(fx, _PENDING_RM)
+    with pytest.raises(AssertionError):
+        _check_committed_surfaces(lw.render_figure(rack), 96, "96 of 96 tips left.")
+
+
+def test_tip_of_control_a_sentence_that_ignores_the_hook_disagrees_with_the_drawing(lw, fx, monkeypatch):
+    rack = _rack_with_pending_removals(fx, _PENDING_RM)
+    real = lw.tiprack_sentence
+    monkeypatch.setattr(lw, "tiprack_sentence", lambda r, tip_of=None: real(r))
+    with pytest.raises(AssertionError):
+        _check_committed_surfaces(lw.render_figure(rack, tip_of=_committed), 96, "96 of 96 tips left.")
+
+
+def test_tip_of_control_hover_values_that_ignore_the_hook_disagree_with_the_drawing(lw, fx, monkeypatch):
+    rack = _rack_with_pending_removals(fx, _PENDING_RM)
+    real = lw._grid_descriptor
+
+    def pending_vals(kind, res_name, items, values, flags, offset, dx, dy):
+        values = [1 if i.child.tip is not None else 0 for i in items] if kind == "tip" else values
+        return real(kind, res_name, items, values, flags, offset, dx, dy)
+
+    monkeypatch.setattr(lw, "_grid_descriptor", pending_vals)
+    with pytest.raises(AssertionError):
+        _check_committed_surfaces(lw.render_figure(rack, tip_of=_committed), 96, "96 of 96 tips left.")
+
+
+# ---- AC-96-7 (b)(c): faulted figures
+
+
+def _all_ids_of(res):
+    return {i.get_identifier() for i in res.get_all_items()}
+
+
+FAULTED_TARGET = 20 * 1024  # approved under D4:198 for a 96-fault plate figure and a 96-fault rack figure
+
+
+def test_faulted_96_plate_and_rack_figures_meet_the_approved_20_kib_target(lw, budget, fx, record_property):
+    plate = fx.cor_96_wellplate_360uL_Fb(name="empty_assay")  # the fixture's assay plate as assembled
+    rack = fx.hamilton_96_tiprack_300uL_filter(name="full_rack")
+    sizes = {
+        "plate": budget.html_bytes(lw.render_figure(plate, fault=_all_ids_of(plate))),
+        "rack": budget.html_bytes(lw.render_figure(rack, fault=_all_ids_of(rack))),
+    }
+    record_property("bytes_plate96_all_faulted", sizes["plate"])
+    record_property("bytes_tiprack_all_faulted", sizes["rack"])
+    for which, size in sizes.items():
+        assert size <= FAULTED_TARGET, f"the all-faulted {which} figure is {size} bytes"
+
+
+def test_faulted_figure_control_one_path_per_fault_exceeds_the_target(lw, budget, fx, monkeypatch):
+    plate = fx.cor_96_wellplate_360uL_Fb(name="empty_assay")
+    real_svg = importlib.import_module(f"{_PKG}.svg")
+
+    def path_per_fault(items, changed, fault, *, circle_of, s_n, ox, oy):
+        parts = []
+        for i in items:
+            if i.ident in fault:
+                parts.append(real_svg.path_el(
+                    lw._shape_path(i, circle=circle_of(i), grow=lw._FAULT_GROW_MM, ox=ox, oy=oy),
+                    cls="sv-fault", fill="none", stroke=lw.COLORS["brick"], stroke_width=1.0,
+                ))
+                parts.append(real_svg.path_el(
+                    real_svg.cross_path(i.cx + ox, i.cy + oy, lw._CROSS_RATIO * i.d / 2),
+                    cls="sv-fault-x", fill="none", stroke=lw.COLORS["brick"], stroke_width=1.0,
+                ))
+        return parts
+
+    assert budget.html_bytes(lw.render_figure(plate, fault=_all_ids_of(plate))) <= FAULTED_TARGET
+    monkeypatch.setattr(lw, "_mark_paths", path_per_fault)
+    assert budget.html_bytes(lw.render_figure(plate, fault=_all_ids_of(plate))) > FAULTED_TARGET
+
+
+def _d5_numbers(doc):
+    root = _parse(doc)
+    s = _svg_root(root)
+    # the test HTML parser lower-cases attribute names: viewBox is read as "viewbox"
+    return {k: s.attrs.get(k) for k in ("width", "viewbox", "style", "data-praxis-minw")}
+
+
+def _check_faulted_d5(lw, res):
+    plain, faulted = lw.render_figure(res), lw.render_figure(res, fault=_all_ids_of(res))
+    assert _d5_numbers(plain) == _d5_numbers(faulted)
+    assert all(v is not None for v in _d5_numbers(faulted).values())
+    assert faulted.count("<circle") == 0
+
+
+def test_faulted_figures_keep_the_d5_numbers_and_draw_no_circle_element(lw, fx):
+    _check_faulted_d5(lw, fx.cor_96_wellplate_360uL_Fb(name="p"))
+    _check_faulted_d5(lw, fx.hamilton_96_tiprack_300uL_filter(name="r"))
+
+
+def test_faulted_figure_control_a_circle_per_fault_is_refused(lw, fx, monkeypatch):
+    real_svg = importlib.import_module(f"{_PKG}.svg")
+    real = lw._mark_paths
+
+    def circles(items, changed, fault, *, circle_of, s_n, ox, oy):
+        return real(items, changed, fault, circle_of=circle_of, s_n=s_n, ox=ox, oy=oy) + [
+            real_svg.el("circle", "", cx=i.cx + ox, cy=i.cy + oy, r=i.d / 2) for i in items if i.ident in fault
+        ]
+
+    plate = fx.cor_96_wellplate_360uL_Fb(name="p")
+    _check_faulted_d5(lw, plate)
+    monkeypatch.setattr(lw, "_mark_paths", circles)
+    with pytest.raises(AssertionError):
+        _check_faulted_d5(lw, plate)
+
+
+def test_faulted_figure_control_a_d5_number_that_moves_with_the_faults_is_seen(lw, fx, monkeypatch):
+    plate = fx.cor_96_wellplate_360uL_Fb(name="p")
+    real = lw._svg_figure
+
+    def wider_when_faulted(inner, width_mm, height_mm, s_n, s_min_value):
+        return real(inner, width_mm + (1.0 if "sv-fault" in inner else 0.0), height_mm, s_n, s_min_value)
+
+    monkeypatch.setattr(lw, "_svg_figure", wider_when_faulted)
+    with pytest.raises(AssertionError):
+        _check_faulted_d5(lw, plate)
