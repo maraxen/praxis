@@ -80,6 +80,7 @@ import contextlib
 import dataclasses
 import json
 import logging
+import math
 import os
 import re
 import subprocess
@@ -7641,6 +7642,316 @@ def annotate_layout(snap: Any) -> dict[str, Any]:
     out = dict(snap) if isinstance(snap, dict) else {}
     out["problems"] = layout_snapshot_problems(snap)
     out["summary"] = layout_summary(snap)
+    return out
+
+
+# -- K3 and N-g (#5656): the real dead space, the re-clamp predicates and K3's key derivation ------------------------------
+#
+# Spec .praxia/docs/specs/261001_nd-next-5656-deck-layout.md (AC-N1, AC-N5, AC-N6). The MVP deck panel is a split whose
+# deck is held to 420-480 px by CSS limits, but Lumino's allocation honours only a minimum, so the deck's half can be wider
+# than the deck and the deck sits centred in it: the surplus is empty on both sides ("dead space"). `slack` (layout_summary)
+# also counts the fixed 5 + 5 px dock inset, which is not dead space, so the real dead space is
+# ``slack - 2 x (notebook_panel.left - dock_panel.left)``. Everything here is pure; no browser is launched.
+
+#: Q1 (user ruling 2026-10-01): the width the deck opens at in 1280-1599 px. dock.js exports the same number as
+#: ``OPEN_WIDTH_MEDIUM`` (a bun test pins the pair).
+OPEN_WIDTH_MEDIUM_PX = 420.0
+#: ``reclaim_ok``: real dead space at most this many px and the deck within ``RECLAIM_WIDTH_TOL_PX`` of the wanted width.
+RECLAIM_DEAD_TOL_PX = 2.0
+RECLAIM_WIDTH_TOL_PX = 2.0
+#: A drag (measured on the notebook panel, which tracks the splitter) must have moved at least this far, or its key fails
+#: instead of passing on a drag that did nothing (N5656-8).
+RECLAIM_MOVE_MIN_PX = 20.0
+#: Collapsing the file browser must widen the dock by at least this much (AC-N5 `reclaim_after_toggle_1440`).
+RECLAIM_TOGGLE_MIN_PX = 200.0
+#: A viewport change between 1440 and 1280 px moves the dock by this much (the 318 px sidebars are fixed) +- 2.
+RECLAIM_RESIZE_DOCK_PX = 160.0
+RECLAIM_DOCK_TOL_PX = 2.0
+#: The measured left inset must lie in [0, this]; a larger one is not the dock's 5 px padding.
+RECLAIM_INSET_MAX_PX = 20.0
+#: dock.js ``WIDGET_ID``: the shell's current widget must never be the deck in K3's `reclaim_keeps_current_1440`.
+K3_DECK_WIDGET_ID = "praxis-deck-panel"
+K3_MID_PX = 460.0
+K3_LOW_PX = 300.0
+K3_HIGH_PX = 700.0
+K3_HIGH_CLAMP_PX = PANEL_MAX_PX
+
+
+def _finite(value: Any) -> bool:
+    return _num(value) and math.isfinite(value)
+
+
+def _rect_of(snap: Any, name: str) -> dict[str, Any] | None:
+    rect = _dict(_dict(snap).get("rects")).get(name)
+    return rect if isinstance(rect, dict) else None
+
+
+def left_inset(snap: Any) -> float | None:
+    """``notebook_panel.left - dock_panel.left`` of a layout snapshot (the dock's padding), or ``None`` when a rect or a
+    number is missing or the inset is outside [0, ``RECLAIM_INSET_MAX_PX``] (then it is not the dock's own padding)."""
+    dock, nb = _rect_of(snap, "dock_panel"), _rect_of(snap, "notebook_panel")
+    if dock is None or nb is None or not (_finite(dock.get("left")) and _finite(nb.get("left"))):
+        return None
+    inset = float(nb["left"]) - float(dock["left"])
+    return inset if 0.0 <= inset <= RECLAIM_INSET_MAX_PX else None
+
+
+def real_dead_space(snap: Any) -> float | None:
+    """The room that neither the notebook, the deck, the splitter handle nor the dock's own padding takes:
+    ``layout_summary(snap)["slack"] - 2 x (notebook_panel.left - dock_panel.left)``. The right inset is taken to equal the
+    left one (one symmetric padding rule); the wide snapshots check it. ``None`` when an input is missing or non-numeric."""
+    inset = left_inset(snap)
+    slack = layout_summary(snap)["slack"]
+    if inset is None or not _finite(slack):
+        return None
+    return float(slack) - 2.0 * inset
+
+
+def available_width(snap: Any) -> float | None:
+    """``A``: the width the notebook and the deck share, ``dock - 2 x inset - handles`` (947 / 1107 at 962 / 1122 px)."""
+    inset, summary = left_inset(snap), layout_summary(snap)
+    if inset is None or not _finite(summary["dock_width"]) or not _finite(summary["handles_width"]):
+        return None
+    return float(summary["dock_width"]) - 2.0 * inset - float(summary["handles_width"])
+
+
+def reclaim_ok(snap: Any, want_deck: Any) -> bool:
+    """The deck is ``want_deck`` +- 2 px wide and the real dead space is at most 2 px. An unreadable snapshot is False."""
+    if not _finite(want_deck):
+        return False
+    dead, deck = real_dead_space(snap), layout_summary(snap)["deck_width"]
+    if dead is None or not _finite(deck):
+        return False
+    return dead <= RECLAIM_DEAD_TOL_PX and abs(float(deck) - float(want_deck)) <= RECLAIM_WIDTH_TOL_PX
+
+
+def moved(before: Any, after: Any, min_px: Any) -> bool:
+    """``|after - before| >= min_px`` for finite numbers; anything else is False (an action that cannot be shown to have
+    happened did not happen)."""
+    if not (_finite(before) and _finite(after) and _finite(min_px)):
+        return False
+    return abs(float(after) - float(before)) >= float(min_px)
+
+
+def reclaim_status(record: Any) -> str:
+    """K3's family status under an AC-1 record: ``asserted`` iff the CSS limits are honoured AND the layout is reachable
+    (the re-clamp needs both), else ``recorded-only``. It does not touch ``width_key_status`` or ``WIDTH_CATEGORIES``."""
+    r = _dict(record)
+    return ASSERTED if (r.get("css_limits_honoured") is True and r.get("layout_sizing_reachable") is True) else RECORDED_ONLY
+
+
+#: K3's listed keys in step order, then `pageerrors` (added by the unit, as for every unit).
+K3_KEYS: tuple[str, ...] = (
+    "open_loads_once_1440",
+    "reclaim_open_1440",
+    "reclaim_keeps_mid_1440",
+    "reclaim_low_moves_1440",
+    "reclaim_after_high_1440",
+    "reclaim_after_toggle_1440",
+    "reclaim_keeps_current_1440",
+    "reclaim_after_resize_down",
+    "reclaim_after_resize_up",
+    "reclaim_after_tier_entry",
+    "iframe_reloads_during_reclaim",
+    "reclaim_open_1280",
+)
+#: Pre-registered prediction for the build WITHOUT the fix (AC-N5): these keys are FALSE there ...
+K3_RED_FALSE: tuple[str, ...] = (
+    "reclaim_open_1440",
+    "reclaim_after_high_1440",
+    "reclaim_after_toggle_1440",
+    "reclaim_after_resize_down",
+    "reclaim_after_resize_up",
+    "reclaim_open_1280",
+)
+#: ... and these GUARD keys are TRUE there (they pass today by design; their negatives are stated in the spec).
+K3_RED_GUARD: tuple[str, ...] = (
+    "open_loads_once_1440",
+    "reclaim_keeps_mid_1440",
+    "reclaim_low_moves_1440",
+    "reclaim_keeps_current_1440",
+    "reclaim_after_tier_entry",
+    "iframe_reloads_during_reclaim",
+)
+#: The steps of K3 in order, each with its raw-evidence name. ONE page, ONE kernel, ONE `dock()`, file browser open.
+K3_STEP_NAMES: tuple[str, ...] = (
+    "open_1440", "mid_1440", "low_1440", "high_1440", "toggle_1440", "resize_down", "resize_up", "tier_entry", "open_1280",
+)
+#: The viewport of the context, then of every `setViewportSize` K3 makes, in order (hashed into K3's ``args`` input):
+#: 1440x900 start; 1280x800 (resize_down, then the drag to 300 there); 1440x900 (resize_up); 1600x900 and 1440x900
+#: (tier_entry); 1280x800 (open_1280).
+K3_VIEWPORTS: tuple[tuple[int, int], ...] = ((1440, 900), (1280, 800), (1440, 900), (1600, 900), (1440, 900), (1280, 800))
+
+
+def k3_expected(status: str) -> tuple[tuple[str, Any], ...]:
+    """K3's listed keys under a family ``status`` (``reclaim_status``): every key where asserted; where recorded-only
+    the re-clamp keys are still measured and written, but only `pageerrors` gates."""
+    keys: tuple[tuple[str, Any], ...] = tuple((k, True) for k in K3_KEYS) if status == ASSERTED else ()
+    return (*keys, ("pageerrors", []))
+
+
+def _snap_of(step: Any, name: str = "snap") -> Any:
+    return _dict(step).get(name)
+
+
+def _measure(snap: Any) -> dict[str, Any]:
+    s = layout_summary(snap)
+    return {
+        "dead_space": real_dead_space(snap), "available": available_width(snap), "dock": s["dock_width"],
+        "deck": s["deck_width"], "notebook_panel": s["notebook_panel_width"], "deck_max_width": s["deck_max_width"],
+        "inner_width": _dict(snap).get("inner_width"),
+    }
+
+
+def derive_k3_keys(raw: Any, *, record: dict[str, bool] | None = None) -> dict[str, Any]:
+    """K3's keys from the raw page evidence of its steps (pure; a control per key in the tests).
+
+    EVERY key is a conjunction of a PREDICATE (the width/dead-space/reload claim), the PRECONDITIONS that show the
+    action happened (a drag moved the notebook >= 20 px, a toggle widened the dock >= 200 px, a resize moved it
+    160 +- 2 px, the viewport applied, a reopen was a fresh attach, the counters were readable) and that the step
+    SETTLED (two reads 250 ms apart agree). A swallowed drag, a toggle that did nothing or a step that never settled
+    therefore fails its key; it can never pass vacuously. The predicates alone, the preconditions and the settled flags are
+    written beside the keys, so the pre-registered RED run can tell "the fix is absent" (a predicate false) from "the
+    instrument failed" (a precondition or a settle false).
+
+    ``raw`` (a missing step or field only fails the keys that need it)::
+
+        open_1440  {snap, settled, state, home, iframes, loads_before, loads_after}   dock() and its settle at 1440x900
+        mid_1440 / low_1440 / high_1440  {snap, settled}                               splitter drags to 460 / 300 / 700
+        toggle_1440  {collapsed: {snap, settled, left_collapsed}, expanded: {...}, current_before: {id, active_cell},
+                      current_after: {...}}                                            file browser collapse, then expand
+        resize_down  {snap, settled}                                                   viewport 1280x800
+        resize_up    {low_snap, low_settled, snap, settled}                            drag to 300 at 1280, viewport 1440x900
+        tier_entry   {wide_snap, wide_settled, snap, settled}                          1600x900, then 1440x900
+        open_1280    {before, closed, reopen: {state, home, iframes}, snap, settled}   viewport 1280x800, close + reopen
+        reloads      {from, to}                                                        deck iframe loads over the re-clamps
+    """
+    rec = dict(SIZING_RECORD if record is None else record)
+    r = _dict(raw)
+    st = {name: _dict(r.get(name)) for name in K3_STEP_NAMES}
+    reloads = _dict(r.get("reloads"))
+    open_ = st["open_1440"]
+    tg = st["toggle_1440"]
+    col, exp = _dict(tg.get("collapsed")), _dict(tg.get("expanded"))
+    ru, tier, o1280 = st["resize_up"], st["tier_entry"], st["open_1280"]
+    s_open, s_mid, s_low, s_high = (_snap_of(st[n]) for n in ("open_1440", "mid_1440", "low_1440", "high_1440"))
+    s_col, s_exp = _snap_of(col), _snap_of(exp)
+    s_down = _snap_of(st["resize_down"])
+    s_ru_low, s_ru, s_wide, s_tier, s_1280 = (
+        _snap_of(ru, "low_snap"), _snap_of(ru), _snap_of(tier, "wide_snap"), _snap_of(tier), _snap_of(o1280)
+    )
+
+    def nb(snap: Any) -> Any:
+        return layout_summary(snap)["notebook_panel_width"]
+
+    def dock(snap: Any) -> Any:
+        return layout_summary(snap)["dock_width"]
+
+    def inner(snap: Any, width: int) -> bool:
+        return _dict(snap).get("inner_width") == width
+
+    settled = {
+        "open_1440": open_.get("settled") is True, "mid_1440": st["mid_1440"].get("settled") is True,
+        "low_1440": st["low_1440"].get("settled") is True, "high_1440": st["high_1440"].get("settled") is True,
+        "toggle_collapsed": col.get("settled") is True, "toggle_expanded": exp.get("settled") is True,
+        "resize_down": st["resize_down"].get("settled") is True,
+        "resize_up_low": ru.get("low_settled") is True, "resize_up": ru.get("settled") is True,
+        "tier_wide": tier.get("wide_settled") is True, "tier_entry": tier.get("settled") is True,
+        "open_1280": o1280.get("settled") is True,
+    }
+    loads = [open_.get("loads_before"), open_.get("loads_after"), reloads.get("from"), reloads.get("to")]
+    cur_b, cur_a = _dict(tg.get("current_before")), _dict(tg.get("current_after"))
+    pre = {
+        "open_split_present": _state_is(open_, "open-connected", 1, "split") and _finite(layout_summary(s_open)["deck_width"]),
+        "loads_readable": all(_is_int(v) for v in loads),
+        "viewports_applied": (
+            inner(s_open, 1440) and inner(s_mid, 1440) and inner(s_low, 1440) and inner(s_high, 1440) and inner(s_col, 1440)
+            and inner(s_exp, 1440) and inner(s_down, 1280) and inner(s_ru_low, 1280) and inner(s_ru, 1440)
+            and inner(s_wide, 1600) and inner(s_tier, 1440) and inner(s_1280, 1280)
+        ),
+        "mid_drag_moved": moved(nb(s_open), nb(s_mid), RECLAIM_MOVE_MIN_PX),
+        "low_drag_moved": moved(nb(s_mid), nb(s_low), RECLAIM_MOVE_MIN_PX),
+        "high_drag_moved": moved(nb(s_low), nb(s_high), RECLAIM_MOVE_MIN_PX),
+        "toggle_collapsed_widened": (
+            col.get("left_collapsed") is True and _finite(dock(s_col)) and _finite(dock(s_high))
+            and dock(s_col) - dock(s_high) >= RECLAIM_TOGGLE_MIN_PX
+        ),
+        "toggle_expanded_back": (
+            exp.get("left_collapsed") is False and _finite(dock(s_exp)) and _finite(dock(s_high))
+            and abs(dock(s_exp) - dock(s_high)) <= RECLAIM_DOCK_TOL_PX
+        ),
+        "current_readable": _is_str(cur_b.get("id")) and _is_str(cur_a.get("id")) and _is_int(cur_b.get("active_cell"))
+        and _is_int(cur_a.get("active_cell")),
+        "resize_down_dock_160": (
+            _finite(dock(s_exp)) and _finite(dock(s_down))
+            and abs((dock(s_exp) - dock(s_down)) - RECLAIM_RESIZE_DOCK_PX) <= RECLAIM_DOCK_TOL_PX
+        ),
+        "resize_up_drag_moved": moved(nb(s_down), nb(s_ru_low), RECLAIM_MOVE_MIN_PX),
+        "resize_up_dock_160": (
+            _finite(dock(s_ru)) and _finite(dock(s_ru_low))
+            and abs((dock(s_ru) - dock(s_ru_low)) - RECLAIM_RESIZE_DOCK_PX) <= RECLAIM_DOCK_TOL_PX
+        ),
+        "tier_wide_entered": layout_summary(s_wide)["deck_max_width"] == "none",
+        "open_1280_fresh_attach": (
+            _state_is(o1280.get("before"), "open-connected", 1, "split") and _state_is(o1280.get("closed"), "closed", 0)
+            and _state_is(o1280.get("reopen"), "open-connected", 1, "split")
+        ),
+    }
+    avail_high = available_width(s_high)
+    pred = {
+        "open_loads_once_1440": (
+            all(_is_int(v) for v in loads[:2]) and loads[1] - loads[0] == 1  # type: ignore[operator]
+        ),
+        "reclaim_open_1440": reclaim_ok(s_open, OPEN_WIDTH_MEDIUM_PX),
+        "reclaim_keeps_mid_1440": reclaim_ok(s_mid, K3_MID_PX),
+        "reclaim_low_moves_1440": reclaim_ok(s_low, OPEN_WIDTH_MEDIUM_PX),
+        "reclaim_after_high_1440": bool(
+            reclaim_ok(s_high, K3_HIGH_CLAMP_PX) and avail_high is not None and _finite(nb(s_high))
+            and abs(nb(s_high) - (avail_high - K3_HIGH_CLAMP_PX)) <= RECLAIM_WIDTH_TOL_PX
+        ),
+        "reclaim_after_toggle_1440": reclaim_ok(s_col, K3_HIGH_CLAMP_PX) and reclaim_ok(s_exp, K3_HIGH_CLAMP_PX),
+        "reclaim_keeps_current_1440": bool(
+            _is_str(cur_b.get("id")) and cur_b.get("id") == cur_a.get("id") and cur_a.get("id") != K3_DECK_WIDGET_ID
+            and _is_int(cur_b.get("active_cell")) and cur_b.get("active_cell") == cur_a.get("active_cell")
+        ),
+        "reclaim_after_resize_down": reclaim_ok(s_down, K3_HIGH_CLAMP_PX),
+        "reclaim_after_resize_up": reclaim_ok(s_ru, OPEN_WIDTH_MEDIUM_PX),
+        "reclaim_after_tier_entry": reclaim_ok(s_tier, OPEN_WIDTH_MEDIUM_PX),
+        "iframe_reloads_during_reclaim": bool(_is_int(reloads.get("from")) and _is_int(reloads.get("to")) and reloads["to"] == reloads["from"]),
+        "reclaim_open_1280": reclaim_ok(s_1280, OPEN_WIDTH_MEDIUM_PX),
+    }
+    needs = {
+        "open_loads_once_1440": (("loads_readable",), ("open_1440",)),
+        "reclaim_open_1440": (("open_split_present", "viewports_applied"), ("open_1440",)),
+        "reclaim_keeps_mid_1440": (("mid_drag_moved",), ("mid_1440",)),
+        "reclaim_low_moves_1440": (("low_drag_moved",), ("low_1440",)),
+        "reclaim_after_high_1440": (("high_drag_moved",), ("high_1440",)),
+        "reclaim_after_toggle_1440": (("toggle_collapsed_widened", "toggle_expanded_back"), ("toggle_collapsed", "toggle_expanded")),
+        "reclaim_keeps_current_1440": (("current_readable", "toggle_collapsed_widened", "toggle_expanded_back"), ()),
+        "reclaim_after_resize_down": (("resize_down_dock_160",), ("resize_down",)),
+        "reclaim_after_resize_up": (("resize_up_drag_moved", "resize_up_dock_160"), ("resize_up_low", "resize_up")),
+        "reclaim_after_tier_entry": (("tier_wide_entered",), ("tier_wide", "tier_entry")),
+        "iframe_reloads_during_reclaim": (("loads_readable",), ()),
+        "reclaim_open_1280": (("open_1280_fresh_attach",), ("open_1280",)),
+    }
+    out: dict[str, Any] = {}
+    for key in K3_KEYS:
+        pres, steps = needs[key]
+        out[key] = bool(pred[key] and all(pre[p] for p in pres) and all(settled[s] for s in steps))
+    out["k3_predicates"] = {k: bool(pred[k]) for k in K3_KEYS}
+    out["k3_preconditions"] = {k: bool(v) for k, v in pre.items()}
+    out["k3_settled"] = settled
+    out["k3_preconditions_ok"] = all(pre.values())
+    out["k3_all_settled"] = all(settled.values())
+    out["k3_measures"] = {
+        name: _measure(snap) for name, snap in (
+            ("open_1440", s_open), ("mid_1440", s_mid), ("low_1440", s_low), ("high_1440", s_high), ("toggle_collapsed", s_col),
+            ("toggle_expanded", s_exp), ("resize_down", s_down), ("resize_up_low", s_ru_low), ("resize_up", s_ru),
+            ("tier_wide", s_wide), ("tier_entry", s_tier), ("open_1280", s_1280),
+        )
+    }
+    out["reclaim_status"] = reclaim_status(rec)
+    out["sizing_record"] = rec
     return out
 
 

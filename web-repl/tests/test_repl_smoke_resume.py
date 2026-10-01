@@ -7944,3 +7944,476 @@ def test_the_existing_three_conditions_are_still_in_the_gate_and_the_wait_call_i
     assert "hasCommand('apputils:change-theme')" in rs.THEME_READY_JS and "__praxisRestored === true" in rs.THEME_READY_JS
     assert "!document.getElementById('jupyterlab-splash')" in rs.THEME_READY_JS
     assert "jpThemeName" in rs.THEME_READY_JS and "performance.now()" in rs.THEME_READY_JS
+
+
+# =========================================================================== #
+# #5656 (deck-panel layout), T1: the real dead space, the re-clamp predicates and K3's key derivation (AC-N1, AC-N5).
+# =========================================================================== #
+#
+# Spec .praxia/docs/specs/261001_nd-next-5656-deck-layout.md. Everything here is pure: no browser. The positive controls
+# are LITERAL COPIES of rectangles recorded by the K2 run `outputs/repl_smoke/dock-check/result.K2.json`
+# (result_sha256 e0176c978f22f9ca9908ce1213308e5ca11e951b611f64b25ff89e05e178b1e2, dist ba43b338): only the rectangles
+# `layout_summary` reads (dock_panel, notebook_panel, deck_panel, handles) and the deck's computed CSS limits are kept.
+
+
+def _k3_rec(dock, nbk, deck, *, inner, deck_max="480px", handles=((5, True), (0, False))):
+    """One recorded K2 layout snapshot: three rectangles as {left, right, width}, the handles, the viewport."""
+
+    def box(left, right, width):
+        return {"left": left, "right": right, "width": width}
+
+    return {
+        "inner_width": inner,
+        "rects": {"dock_panel": box(*dock), "notebook_panel": box(*nbk), "deck_panel": box(*deck)},
+        "handles": [{"rect": {"width": w}, "classes": ["lm-DockPanel-handle"], "visible": v} for w, v in handles],
+        "styles": {"deck_panel": {"max_width": deck_max, "min_width": "420px"}},
+    }
+
+
+#: evidence.medium["1280"].geo_before: open at 1280x800 (deck 473.5 fills its half: no dead space).
+REC_OPEN_1280 = _k3_rec((285, 1247, 962), (290, 763.5, 473.5), (768.5, 1242, 473.5), inner=1280)
+#: evidence.medium["1440"].geo_before: open at 1440x900 (deck 480 centred in a 553.5 half: 36.75 + 36.75 px empty).
+REC_OPEN_1440 = _k3_rec((285, 1407, 1122), (290, 843.5, 553.5), (885.25, 1365.25, 480), inner=1440)
+#: evidence.medium[w].geo_after_high: after the drag to 700 (deck 480 in a 700 half: 110 + 110 px empty).
+REC_HIGH_1280 = _k3_rec((285, 1247, 962), (290, 537, 247), (652, 1132, 480), inner=1280)
+REC_HIGH_1440 = _k3_rec((285, 1407, 1122), (290, 697, 407), (812, 1292, 480), inner=1440)
+#: evidence.medium["1440"].geo_after_low: after the drag to 300 (clamped to 420, no empty strip).
+REC_LOW_1440 = _k3_rec((285, 1407, 1122), (290, 977, 687), (982, 1402, 420), inner=1440)
+#: evidence.geo.fit_medium: back at 1440 after 1600 (420 / 687, no empty strip).
+REC_FIT_MEDIUM = _k3_rec((285, 1407, 1122), (290, 977, 687), (982, 1402, 420), inner=1440)
+#: evidence.geo.fit_wide / wide_1920: the wide path (no CSS limits), whose real dead space is a hair above zero.
+REC_FIT_WIDE = _k3_rec(
+    (285, 1567, 1282), (290, 1141.90625, 851.90625), (1146.90625, 1561.984375, 415.078125), inner=1600, deck_max="none"
+)
+REC_WIDE_1920 = _k3_rec(
+    (33, 1887, 1854), (38, 990.21875, 952.21875), (995.21875, 1881.984375, 886.765625), inner=1920, deck_max="none"
+)
+
+
+@pytest.mark.parametrize(
+    "snap,want",
+    [(REC_OPEN_1280, 0.0), (REC_FIT_MEDIUM, 0.0), (REC_LOW_1440, 0.0), (REC_WIDE_1920, 0.015625), (REC_FIT_WIDE, 0.015625)],
+)
+def test_real_dead_space_positive_controls_on_recorded_snapshots_read_zero(rs, snap, want):
+    assert rs.real_dead_space(snap) == pytest.approx(want, abs=0.01)
+
+
+@pytest.mark.parametrize("snap,want", [(REC_OPEN_1440, 73.5), (REC_HIGH_1280, 220.0), (REC_HIGH_1440, 220.0)])
+def test_real_dead_space_negative_controls_on_recorded_snapshots_read_the_empty_strip(rs, snap, want):
+    assert rs.real_dead_space(snap) == pytest.approx(want, abs=0.01)
+
+
+def test_real_dead_space_is_the_slack_minus_the_two_fixed_insets_not_the_slack(rs):
+    """The first-round error: `slack` is 10 at 1280 open although nothing is empty. Dropping the inset term is wrong."""
+    assert rs.layout_summary(REC_OPEN_1280)["slack"] == 10.0, "the raw slack counts the 5 + 5 px dock padding"
+    assert rs.real_dead_space(REC_OPEN_1280) == pytest.approx(0.0, abs=0.01)
+    assert rs.real_dead_space(REC_HIGH_1440) == pytest.approx(rs.layout_summary(REC_HIGH_1440)["slack"] - 10.0)
+
+
+def test_real_dead_space_is_none_when_a_rect_is_missing_or_non_numeric(rs):
+    import copy
+
+    for name in ("dock_panel", "notebook_panel", "deck_panel"):
+        broken = copy.deepcopy(REC_OPEN_1440)
+        del broken["rects"][name]
+        assert rs.real_dead_space(broken) is None, name
+    for name, field in (("dock_panel", "left"), ("notebook_panel", "left"), ("deck_panel", "width"), ("dock_panel", "width")):
+        broken = copy.deepcopy(REC_OPEN_1440)
+        broken["rects"][name][field] = "290"
+        assert rs.real_dead_space(broken) is None, (name, field)
+        broken["rects"][name][field] = float("nan")
+        assert rs.real_dead_space(broken) is None, (name, field, "nan")
+    assert rs.real_dead_space(None) is None and rs.real_dead_space("x") is None and rs.real_dead_space({}) is None
+
+
+def test_real_dead_space_is_none_when_the_measured_left_inset_is_not_the_docks_padding(rs):
+    import copy
+
+    for left in (320, 280):  # inset 35 (not the padding), inset -5 (the notebook left of the dock)
+        broken = copy.deepcopy(REC_OPEN_1440)
+        broken["rects"]["notebook_panel"]["left"] = left
+        assert rs.real_dead_space(broken) is None, left
+        assert rs.reclaim_ok(broken, 480) is False
+    edge = copy.deepcopy(REC_OPEN_1440)
+    edge["rects"]["notebook_panel"]["left"] = 305  # exactly 20: the boundary is inside
+    assert rs.real_dead_space(edge) is not None
+
+
+def test_reclaim_ok_positive_controls_hold_on_a_snapshot_with_no_empty_strip(rs):
+    assert rs.reclaim_ok(REC_OPEN_1280, 473.5) is True and rs.reclaim_ok(REC_OPEN_1280, 472) is True
+    assert rs.reclaim_ok(REC_FIT_MEDIUM, 420) is True and rs.reclaim_ok(REC_LOW_1440, 420) is True
+    assert rs.reclaim_ok(REC_WIDE_1920, 886.765625) is True
+
+
+def test_reclaim_ok_negative_controls_fail_on_the_recorded_empty_strips(rs):
+    assert rs.reclaim_ok(REC_OPEN_1440, 480) is False, "deck 480 is right, but 73.5 px are empty"
+    assert rs.reclaim_ok(REC_OPEN_1440, 420) is False
+    assert rs.reclaim_ok(REC_HIGH_1280, 480) is False and rs.reclaim_ok(REC_HIGH_1440, 480) is False
+
+
+def test_reclaim_ok_needs_both_halves_of_its_definition(rs):
+    """No empty strip but the wrong deck width fails; the right deck width with an empty strip fails (above)."""
+    assert rs.reclaim_ok(REC_FIT_MEDIUM, 480) is False
+    assert rs.reclaim_ok(REC_FIT_MEDIUM, 417.9) is False and rs.reclaim_ok(REC_FIT_MEDIUM, 422.0) is True
+    assert rs.reclaim_ok(REC_FIT_MEDIUM, 422.1) is False
+
+
+def test_reclaim_ok_is_false_for_an_unreadable_snapshot_or_wanted_width(rs):
+    import copy
+
+    broken = copy.deepcopy(REC_OPEN_1280)
+    del broken["rects"]["notebook_panel"]
+    assert rs.reclaim_ok(broken, 473.5) is False
+    for want in (None, "480", float("nan"), True):
+        assert rs.reclaim_ok(REC_FIT_MEDIUM, want) is False, want
+    assert rs.reclaim_ok(None, 420) is False
+
+
+def test_reclaim_ok_tolerance_edge_is_two_px_of_dead_space(rs):
+    import copy
+
+    edge = copy.deepcopy(REC_FIT_MEDIUM)
+    edge["rects"]["notebook_panel"]["width"] -= 2.0  # 2 px empty
+    assert rs.real_dead_space(edge) == pytest.approx(2.0) and rs.reclaim_ok(edge, 420) is True
+    edge["rects"]["notebook_panel"]["width"] -= 0.5
+    assert rs.reclaim_ok(edge, 420) is False
+
+
+@pytest.mark.parametrize(
+    "before,after,min_px,want",
+    [
+        (420, 420, 20, False), (420, 439.9, 20, False), (420, 440, 20, True), (460, 420, 20, True), (687, 647, 20, True),
+        (0, -20, 20, True), (500, 500.0, 0, True),
+    ],
+)
+def test_moved_px_is_the_absolute_difference_at_least_the_minimum(rs, before, after, min_px, want):
+    assert rs.moved(before, after, min_px) is want
+
+
+@pytest.mark.parametrize("bad", [None, "420", True, float("nan"), float("inf"), [420]])
+def test_moved_px_is_false_for_anything_that_is_not_a_finite_number(rs, bad):
+    assert rs.moved(bad, 500, 20) is False and rs.moved(500, bad, 20) is False and rs.moved(400, 500, bad) is False
+
+
+def test_the_open_width_is_the_q1_ruling_420_and_the_k3_widths_are_the_spec_ones(rs):
+    assert rs.OPEN_WIDTH_MEDIUM_PX == 420.0 == rs.PANEL_MIN_PX
+    assert (rs.K3_MID_PX, rs.K3_LOW_PX, rs.K3_HIGH_PX, rs.K3_HIGH_CLAMP_PX) == (460.0, 300.0, 700.0, 480.0)
+    assert (rs.RECLAIM_DEAD_TOL_PX, rs.RECLAIM_WIDTH_TOL_PX, rs.RECLAIM_MOVE_MIN_PX) == (2.0, 2.0, 20.0)
+    assert rs.RECLAIM_WIDTH_TOL_PX == rs.CLAMP_TOL_PX
+
+
+def test_available_width_is_the_dock_less_both_insets_and_the_handle(rs):
+    assert rs.available_width(REC_OPEN_1280) == 947.0 and rs.available_width(REC_OPEN_1440) == 1107.0
+    assert rs.available_width({}) is None
+
+
+def test_reclaim_status_is_asserted_only_when_both_the_css_limits_and_the_layout_path_are_there(rs):
+    for hon in (True, False):
+        for reach in (True, False):
+            want = rs.ASSERTED if (hon and reach) else rs.RECORDED_ONLY
+            assert rs.reclaim_status({"css_limits_honoured": hon, "layout_sizing_reachable": reach}) == want
+    assert rs.reclaim_status(rs.SIZING_RECORD) == rs.ASSERTED
+    for bad in (None, {}, {"css_limits_honoured": 1, "layout_sizing_reachable": 1}):
+        assert rs.reclaim_status(bad) == rs.RECORDED_ONLY, bad
+    assert tuple(rs.WIDTH_CATEGORIES) == MEDIUM_CATS + WIDE_CATS, "the six D6 families are untouched"
+
+
+def test_k3_keys_split_into_the_six_predicted_false_and_the_six_guards(rs):
+    assert len(rs.K3_KEYS) == 12 and len(set(rs.K3_KEYS)) == 12
+    assert set(rs.K3_RED_FALSE) | set(rs.K3_RED_GUARD) == set(rs.K3_KEYS)
+    assert not set(rs.K3_RED_FALSE) & set(rs.K3_RED_GUARD)
+    assert len(rs.K3_RED_FALSE) == 6 and len(rs.K3_RED_GUARD) == 6
+
+
+def test_k3_expected_lists_the_twelve_keys_and_pageerrors_where_asserted_else_only_pageerrors(rs):
+    full = rs.k3_expected(rs.ASSERTED)
+    assert [k for k, _ in full] == [*rs.K3_KEYS, "pageerrors"] and len(full) == 13, "AC-N5: 13 keys"
+    assert all(v is True for k, v in full if k != "pageerrors") and dict(full)["pageerrors"] == []
+    assert rs.k3_expected(rs.RECORDED_ONLY) == (("pageerrors", []),)
+    assert rs.k3_expected(rs.reclaim_status(rs.SIZING_RECORD)) == full
+
+
+# -- derive_k3_keys: a small model of Lumino's allocation generates the snapshots -------------------------------------------
+
+
+def _k3_lay(dock, half, *, inner, cap=480.0, deck_max="480px", inset=5.0, handle=5.0):
+    """A snapshot of the stock allocation: the deck's half is ``half`` px of the available width, the deck node is capped
+    to ``cap`` and centred in it (Lumino honours a minimum but not a maximum). ``cap=None`` is no limit (wide)."""
+    avail = dock - 2 * inset - handle
+    nbk = avail - half
+    deck = half if cap is None else min(half, cap)
+    left = 285.0
+    nb_left = left + inset
+    nb_right = nb_left + nbk
+    deck_left = nb_right + handle + (half - deck) / 2
+    return {
+        "inner_width": inner,
+        "rects": {
+            "dock_panel": {"left": left, "right": left + dock, "width": dock},
+            "notebook_panel": {"left": nb_left, "right": nb_right, "width": nbk},
+            "deck_panel": {"left": deck_left, "right": deck_left + deck, "width": deck},
+        },
+        "handles": [{"rect": {"width": handle}, "classes": ["lm-DockPanel-handle"], "visible": True}],
+        "styles": {"deck_panel": {"max_width": deck_max, "min_width": "420px"}},
+    }
+
+
+def test_the_allocation_model_reproduces_the_recorded_numbers(rs):
+    """Calibration of the test model itself (it generates every synthetic snapshot below)."""
+    for rec, built in (
+        (REC_OPEN_1280, _k3_lay(962, 473.5, inner=1280)), (REC_OPEN_1440, _k3_lay(1122, 553.5, inner=1440)),
+        (REC_HIGH_1280, _k3_lay(962, 700, inner=1280)), (REC_HIGH_1440, _k3_lay(1122, 700, inner=1440)),
+        (REC_LOW_1440, _k3_lay(1122, 420, inner=1440)),
+    ):
+        assert rs.real_dead_space(built) == pytest.approx(rs.real_dead_space(rec), abs=0.01)
+        assert rs.layout_summary(built)["deck_width"] == pytest.approx(rs.layout_summary(rec)["deck_width"], abs=0.01)
+        assert rs.layout_summary(built)["notebook_panel_width"] == pytest.approx(
+            rs.layout_summary(rec)["notebook_panel_width"], abs=0.01
+        )
+
+
+def _k3_step(snap, **extra):
+    return {"snap": snap, "settled": True, **extra}
+
+
+def _k3_raw(build="fixed"):
+    """Raw K3 evidence for a build that re-clamps (``fixed``) or leaves the allocation to Lumino (``stock``), derived from
+    the allocation model with the spec's sequence: 1440 open, drags to 460 / 300 / 700, a file-browser collapse and
+    expand, 1280, a drag to 300 and 1440, a 1600 round trip, a close and reopen at 1280."""
+    fixed = build == "fixed"
+    avail = {1122: 1107.0, 962: 947.0, 1372: 1357.0, 1282: 1267.0}
+
+    def half_after_resize(half, old_dock, new_dock):  # proportional: Lumino keeps relative sizes
+        return half * avail[new_dock] / avail[old_dock]
+
+    s_open = _k3_lay(1122, 420.0 if fixed else 553.5, inner=1440)
+    s_mid = _k3_lay(1122, 460.0, inner=1440)
+    s_low = _k3_lay(1122, 420.0, inner=1440)
+    s_high = _k3_lay(1122, 480.0 if fixed else 700.0, inner=1440)
+    col_half = 480.0 if fixed else half_after_resize(700.0, 1122, 1372)
+    s_col = _k3_lay(1372, col_half, inner=1440)
+    s_exp = _k3_lay(1122, 480.0 if fixed else half_after_resize(col_half, 1372, 1122), inner=1440)
+    s_down = _k3_lay(962, 480.0 if fixed else half_after_resize(700.0, 1122, 962), inner=1280)
+    s_ru_low = _k3_lay(962, 420.0, inner=1280)
+    s_ru = _k3_lay(1122, 420.0 if fixed else half_after_resize(420.0, 962, 1122), inner=1440)
+    s_wide = _k3_lay(1282, 420.0, inner=1600, cap=None, deck_max="none")
+    s_tier = _k3_lay(1122, 420.0, inner=1440)
+    s_1280 = _k3_lay(962, 420.0 if fixed else 473.5, inner=1280)
+    view = {"state": "open-connected", "home": "split", "iframes": 1}
+    return {
+        "open_1440": _k3_step(s_open, **view, loads_before=3, loads_after=4),
+        "mid_1440": _k3_step(s_mid), "low_1440": _k3_step(s_low), "high_1440": _k3_step(s_high),
+        "toggle_1440": {
+            "collapsed": _k3_step(s_col, left_collapsed=True), "expanded": _k3_step(s_exp, left_collapsed=False),
+            "current_before": {"id": "nb-1", "active_cell": 2}, "current_after": {"id": "nb-1", "active_cell": 2},
+        },
+        "resize_down": _k3_step(s_down),
+        "resize_up": {"low_snap": s_ru_low, "low_settled": True, "snap": s_ru, "settled": True},
+        "tier_entry": {"wide_snap": s_wide, "wide_settled": True, "snap": s_tier, "settled": True},
+        "open_1280": {
+            "before": dict(view), "closed": {"state": "closed", "home": None, "iframes": 0}, "reopen": dict(view),
+            "snap": s_1280, "settled": True,
+        },
+        "reloads": {"from": 5, "to": 5},
+    }
+
+
+def _k3_with(raw, path, value):
+    import copy
+
+    out = copy.deepcopy(raw)
+    node = out
+    for part in path[:-1]:
+        node = node[part]
+    node[path[-1]] = value
+    return out
+
+
+def test_derive_k3_keys_positive_control_a_build_that_reclaims_passes_every_key(rs):
+    keys = rs.derive_k3_keys(_k3_raw("fixed"))
+    assert {k: keys[k] for k in rs.K3_KEYS} == {k: True for k in rs.K3_KEYS}, keys["k3_predicates"]
+    assert keys["k3_preconditions_ok"] is True and keys["k3_all_settled"] is True, (keys["k3_preconditions"], keys["k3_settled"])
+
+
+def test_derive_k3_keys_negative_control_the_stock_allocation_fails_exactly_the_six_predicted_keys(rs):
+    """The spec's pre-registered prediction for the build without the fix, from the allocation model (the toggle and
+    resize numbers are the spec's own estimates; the real RED run measures them)."""
+    keys = rs.derive_k3_keys(_k3_raw("stock"))
+    failing = [k for k in rs.K3_KEYS if keys[k] is not True]
+    assert failing == [k for k in rs.K3_KEYS if k in rs.K3_RED_FALSE], failing
+    assert all(keys[k] is True for k in rs.K3_RED_GUARD)
+    assert keys["k3_preconditions_ok"] is True and keys["k3_all_settled"] is True, "the red keys fail on their PREDICATES"
+    assert all(keys["k3_predicates"][k] is False for k in rs.K3_RED_FALSE)
+    measures = keys["k3_measures"]
+    assert measures["open_1440"]["dead_space"] == pytest.approx(73.5)
+    assert measures["high_1440"]["dead_space"] == pytest.approx(220.0)
+
+
+def test_derive_k3_keys_an_empty_raw_fails_every_key_without_raising(rs):
+    for raw in (None, {}, "x", {"open_1440": "x", "toggle_1440": None}):
+        keys = rs.derive_k3_keys(raw)
+        assert all(keys[k] is False for k in rs.K3_KEYS), raw
+        assert keys["k3_preconditions_ok"] is False and keys["k3_all_settled"] is False
+
+
+@pytest.mark.parametrize(
+    "step,wanted",
+    [
+        ("open_1440", ("open_loads_once_1440", "reclaim_open_1440")), ("mid_1440", ("reclaim_keeps_mid_1440",)),
+        ("low_1440", ("reclaim_low_moves_1440",)), ("high_1440", ("reclaim_after_high_1440",)),
+    ],
+)
+def test_derive_k3_keys_a_step_that_did_not_settle_fails_its_keys_and_only_those(rs, step, wanted):
+    got = rs.derive_k3_keys(_k3_with(_k3_raw(), (step, "settled"), False))
+    failing = [k for k in rs.K3_KEYS if got[k] is not True]
+    assert failing == [k for k in rs.K3_KEYS if k in wanted], failing
+    assert got["k3_all_settled"] is False
+
+
+@pytest.mark.parametrize(
+    "path,key",
+    [
+        (("toggle_1440", "collapsed", "settled"), "reclaim_after_toggle_1440"),
+        (("toggle_1440", "expanded", "settled"), "reclaim_after_toggle_1440"),
+        (("resize_down", "settled"), "reclaim_after_resize_down"), (("resize_up", "low_settled"), "reclaim_after_resize_up"),
+        (("resize_up", "settled"), "reclaim_after_resize_up"), (("tier_entry", "wide_settled"), "reclaim_after_tier_entry"),
+        (("tier_entry", "settled"), "reclaim_after_tier_entry"), (("open_1280", "settled"), "reclaim_open_1280"),
+    ],
+)
+def test_derive_k3_keys_the_other_unsettled_steps_fail_their_key(rs, path, key):
+    got = rs.derive_k3_keys(_k3_with(_k3_raw(), path, False))
+    assert got[key] is False and got["k3_all_settled"] is False
+
+
+def test_derive_k3_keys_a_drag_that_did_nothing_fails_even_when_the_width_is_already_the_wanted_one(rs):
+    """The movement precondition: the splitter was never moved, but the deck is already where the key looks."""
+    raw = _k3_raw("fixed")
+    raw["open_1440"]["snap"] = _k3_lay(1122, 460.0, inner=1440)  # the deck already at 460
+    raw["mid_1440"]["snap"] = _k3_lay(1122, 460.0, inner=1440)  # a drag to 460 that moved nothing
+    keys = rs.derive_k3_keys(raw)
+    assert keys["k3_predicates"]["reclaim_keeps_mid_1440"] is True
+    assert keys["k3_preconditions"]["mid_drag_moved"] is False and keys["reclaim_keeps_mid_1440"] is False
+
+    raw = _k3_raw("fixed")
+    raw["mid_1440"]["snap"] = _k3_lay(1122, 420.0, inner=1440)  # the drag to 460 did nothing; then the drag to 300 "lands" on 420
+    keys = rs.derive_k3_keys(raw)
+    assert keys["k3_predicates"]["reclaim_low_moves_1440"] is True
+    assert keys["k3_preconditions"]["low_drag_moved"] is False and keys["reclaim_low_moves_1440"] is False
+
+    raw = _k3_raw("fixed")
+    raw["low_1440"]["snap"] = _k3_lay(1122, 480.0, inner=1440)  # the drag to 300 did nothing and the deck is already 480
+    keys = rs.derive_k3_keys(raw)
+    assert keys["k3_predicates"]["reclaim_after_high_1440"] is True
+    assert keys["k3_preconditions"]["high_drag_moved"] is False and keys["reclaim_after_high_1440"] is False
+
+
+def test_derive_k3_keys_a_file_browser_toggle_that_did_nothing_fails_the_toggle_and_the_current_widget_keys(rs):
+    raw = _k3_raw("fixed")
+    raw["toggle_1440"]["collapsed"] = _k3_step(_k3_lay(1122, 480.0, inner=1440), left_collapsed=True)  # the dock did not widen
+    keys = rs.derive_k3_keys(raw)
+    assert keys["k3_predicates"]["reclaim_after_toggle_1440"] is True
+    assert keys["k3_preconditions"]["toggle_collapsed_widened"] is False
+    assert keys["reclaim_after_toggle_1440"] is False and keys["reclaim_keeps_current_1440"] is False, "no vacuous pass"
+
+    raw = _k3_raw("fixed")
+    raw["toggle_1440"]["expanded"] = _k3_step(_k3_lay(1372, 480.0, inner=1440), left_collapsed=True)  # never expanded again
+    keys = rs.derive_k3_keys(raw)
+    assert keys["reclaim_after_toggle_1440"] is False and keys["k3_preconditions"]["toggle_expanded_back"] is False
+
+
+@pytest.mark.parametrize(
+    "edits",
+    [
+        {("toggle_1440", "current_after", "id"): "nb-2"},
+        {("toggle_1440", "current_after", "active_cell"): 3},
+        {("toggle_1440", "current_before", "id"): "praxis-deck-panel", ("toggle_1440", "current_after", "id"): "praxis-deck-panel"},
+        {("toggle_1440", "current_before", "id"): None},
+        {("toggle_1440", "current_after", "active_cell"): None},
+    ],
+)
+def test_derive_k3_keys_the_current_widget_key_fails_on_a_changed_widget_cell_the_deck_or_a_missing_read(rs, edits):
+    raw = _k3_raw("fixed")
+    for path, value in edits.items():
+        raw = _k3_with(raw, path, value)
+    assert rs.derive_k3_keys(raw)["reclaim_keeps_current_1440"] is False
+
+
+def test_derive_k3_keys_a_resize_that_did_not_change_the_dock_by_160_fails_the_resize_keys(rs):
+    raw = _k3_raw("fixed")
+    raw["resize_down"]["snap"] = _k3_lay(1122, 480.0, inner=1280)  # the viewport changed but the dock did not follow
+    keys = rs.derive_k3_keys(raw)
+    assert keys["k3_predicates"]["reclaim_after_resize_down"] is True and keys["reclaim_after_resize_down"] is False
+
+    raw = _k3_raw("fixed")
+    raw["resize_up"]["snap"] = _k3_lay(1042, 420.0, inner=1440)  # +80 only
+    assert rs.derive_k3_keys(raw)["reclaim_after_resize_up"] is False
+
+    raw = _k3_raw("fixed")
+    raw["resize_up"]["low_snap"] = _k3_lay(962, 480.0, inner=1280)  # the drag to 300 at 1280 did nothing
+    raw["resize_down"]["snap"] = _k3_lay(962, 480.0, inner=1280)
+    assert rs.derive_k3_keys(raw)["reclaim_after_resize_up"] is False
+
+
+def test_derive_k3_keys_a_viewport_that_did_not_apply_fails_the_open_key_and_the_precondition_flag(rs):
+    raw = _k3_with(_k3_raw("fixed"), ("resize_down", "snap", "inner_width"), 1440)
+    keys = rs.derive_k3_keys(raw)
+    assert keys["k3_preconditions"]["viewports_applied"] is False and keys["reclaim_open_1440"] is False
+    assert keys["k3_preconditions_ok"] is False
+
+
+def test_derive_k3_keys_the_tier_entry_key_needs_the_1600_snapshot_to_have_no_deck_maximum(rs):
+    raw = _k3_raw("fixed")
+    raw["tier_entry"]["wide_snap"] = _k3_lay(1282, 420.0, inner=1600, deck_max="480px")  # the wide tier was never entered
+    keys = rs.derive_k3_keys(raw)
+    assert keys["k3_predicates"]["reclaim_after_tier_entry"] is True and keys["reclaim_after_tier_entry"] is False
+
+
+def test_derive_k3_keys_a_close_reopen_that_never_closed_is_not_a_fresh_attach(rs):
+    raw = _k3_raw("fixed")
+    raw["open_1280"]["closed"] = {"state": "open-connected", "home": "split", "iframes": 1}
+    keys = rs.derive_k3_keys(raw)
+    assert keys["k3_predicates"]["reclaim_open_1280"] is True and keys["reclaim_open_1280"] is False
+
+    raw = _k3_raw("fixed")
+    raw["open_1280"]["reopen"] = {"state": "open-waiting", "home": "split", "iframes": 0}
+    assert rs.derive_k3_keys(raw)["reclaim_open_1280"] is False
+
+
+def test_derive_k3_keys_the_load_counters_must_be_readable_and_count_one_open_load_and_zero_reclaim_reloads(rs):
+    twice = rs.derive_k3_keys(_k3_with(_k3_raw(), ("open_1440", "loads_after"), 5))
+    assert twice["open_loads_once_1440"] is False, "two loads over the open: a second load from the re-clamp"
+    none = rs.derive_k3_keys(_k3_with(_k3_raw(), ("open_1440", "loads_after"), 3))
+    assert none["open_loads_once_1440"] is False, "no load at all"
+    reloaded = rs.derive_k3_keys(_k3_with(_k3_raw(), ("reloads", "to"), 6))
+    assert reloaded["iframe_reloads_during_reclaim"] is False and reloaded["open_loads_once_1440"] is True
+    for path in (("open_1440", "loads_before"), ("open_1440", "loads_after"), ("reloads", "from"), ("reloads", "to")):
+        got = rs.derive_k3_keys(_k3_with(_k3_raw(), path, None))
+        assert got["k3_preconditions"]["loads_readable"] is False, path
+        assert got["open_loads_once_1440"] is False and got["iframe_reloads_during_reclaim"] is False, path
+
+
+def test_derive_k3_keys_after_high_also_needs_the_notebook_to_have_taken_the_rest(rs):
+    raw = _k3_raw("fixed")
+    snap = _k3_lay(1122, 480.0, inner=1440)
+    snap["rects"]["notebook_panel"]["width"] -= 30  # same deck, but the notebook did not get the space back
+    raw["high_1440"]["snap"] = snap
+    assert rs.derive_k3_keys(raw)["reclaim_after_high_1440"] is False
+
+
+def test_derive_k3_keys_survives_json_and_records_the_measures(rs):
+    keys = rs.derive_k3_keys(_k3_raw("stock"))
+    again = json.loads(json.dumps(keys))
+    assert again["k3_measures"]["open_1440"]["deck"] == 480.0 and again["reclaim_status"] == "asserted"
+    assert set(again["k3_measures"]) >= {"open_1440", "high_1440", "toggle_collapsed", "open_1280"}
+
+
+def test_derive_k3_keys_the_toggle_key_needs_both_the_collapsed_and_the_expanded_snapshot_clean(rs):
+    """Either snapshot with an empty strip fails the key (a check of the expanded one alone would miss the collapse)."""
+    only_collapsed_bad = _k3_raw("fixed")
+    only_collapsed_bad["toggle_1440"]["collapsed"] = _k3_step(_k3_lay(1372, 700.0, inner=1440), left_collapsed=True)
+    keys = rs.derive_k3_keys(only_collapsed_bad)
+    assert keys["k3_preconditions"]["toggle_collapsed_widened"] is True and keys["reclaim_after_toggle_1440"] is False
+    only_expanded_bad = _k3_raw("fixed")
+    only_expanded_bad["toggle_1440"]["expanded"] = _k3_step(_k3_lay(1122, 700.0, inner=1440), left_collapsed=False)
+    keys = rs.derive_k3_keys(only_expanded_bad)
+    assert keys["k3_preconditions"]["toggle_expanded_back"] is True and keys["reclaim_after_toggle_1440"] is False
