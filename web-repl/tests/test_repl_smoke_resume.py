@@ -3589,8 +3589,8 @@ def test_clamp_high_ok_means_a_drag_to_700_ends_at_480(rs, width, ok):
 # Sprint C (C7): the dock units in the D16 table -- K1a, K1b, K2, N-d (AC-42 "the driver's unit table equals D16's")
 # =========================================================================== #
 
-DOCK_IDS = ["K1a", "K1b", "K2", "K3", "N-d"]  # #5656 adds K3 (the medium-tier re-clamp), between K2 and the negative-only N-d
-DOCK_BUDGET_MIN = [10, 14, 15, 10, 6]
+DOCK_IDS = ["K1a", "K1b", "K2", "K3", "N-d", "N-g"]  # #5656 adds K3 (the medium-tier re-clamp) and the negative-only N-g
+DOCK_BUDGET_MIN = [10, 14, 15, 10, 6, 6]
 K1A_KEYS = (
     "panel_is_split_right", "viewer_resources", "hello_backend", "canvas_nonblank", "embed_hidden", "pageerrors",  # AC-34
     "click_focuses", "follow_focuses", "follow_off_holds", "follow_skips_null", "preset_directions",
@@ -3633,8 +3633,8 @@ def test_unit_table_is_d16_with_the_dock_units_appended_in_table_order(rs):
     assert [u.id for u in rs.UNIT_TABLE if u.check == "display-check"] == ALL_IDS
     dock = [rs.UNIT_BY_ID[i] for i in DOCK_IDS]
     assert rs.DOCK_CHECK == "dock-check" and all(u.check == "dock-check" for u in dock)
-    assert [u.budget_s for u in dock] == [m * 60 for m in DOCK_BUDGET_MIN], "10, 14, 15, 10 (K3, #5656) and 6 min (D16)"
-    assert [u.acs for u in dock] == [("AC-34", "AC-35", "AC-37"), ("AC-38",), ("AC-36",), ("AC-N5",), ("AC-39",)]
+    assert [u.budget_s for u in dock] == [m * 60 for m in DOCK_BUDGET_MIN], "10, 14, 15, 10 (K3, #5656), 6 and 6 (N-g, #5656) min (D16)"
+    assert [u.acs for u in dock] == [("AC-34", "AC-35", "AC-37"), ("AC-38",), ("AC-36",), ("AC-N5",), ("AC-39",), ("AC-N6",)]
 
 
 def test_n_d_is_negative_only_and_never_part_of_the_aggregate(rs):
@@ -8848,7 +8848,7 @@ def test_dock_driver_has_the_k3_page_actions_and_the_dock_js_helpers(rs):
 
 def test_k3_is_a_dock_unit_after_k2_that_the_aggregate_counts_and_its_keys_are_the_twelve_plus_pageerrors(rs):
     k3 = rs.UNIT_BY_ID["K3"]
-    assert [u.id for u in rs.DOCK_UNITS] == ["K1a", "K1b", "K2", "K3", "N-d"]
+    assert [u.id for u in rs.DOCK_UNITS] == ["K1a", "K1b", "K2", "K3", "N-d", "N-g"]
     assert k3.check == "dock-check" and k3.budget_s == 600.0 and k3.acs == ("AC-N5",) and k3.in_aggregate is True
     assert k3.viewports == rs.K3_VIEWPORTS and k3.viewports[0] == (1440, 900)
     assert tuple(k3.keys) == (*rs.K3_KEYS, "pageerrors") and len(k3.keys) == 13

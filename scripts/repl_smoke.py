@@ -7077,6 +7077,10 @@ def reclaim_status(record: Any) -> str:
     return ASSERTED if (r.get("css_limits_honoured") is True and r.get("layout_sizing_reachable") is True) else RECORDED_ONLY
 
 
+#: N-g's one listed key (it must FAIL on the stock split, by design) and the deck width its predicate asks for.
+NG_KEY = "reclaim_ok_stock_capped_1440"
+NG_WANT_PX = 480.0
+
 #: K3's listed keys in step order, then `pageerrors` (added by the unit, as for every unit).
 K3_KEYS: tuple[str, ...] = (
     "open_loads_once_1440",
@@ -7140,6 +7144,10 @@ DOCK_UNITS: tuple[HarnessUnit, ...] = (
     ),
     HarnessUnit(
         "N-d", DOCK_CHECK, 6 * 60.0, nd_expected(SIZING_STATUS), acs=("AC-39",), viewports=((1600, 900),), in_aggregate=False
+    ),
+    # #5656 N-g (negative only, like N-d): K3's predicate on a stock split that carries the deck's limits must report failure.
+    HarnessUnit(
+        "N-g", DOCK_CHECK, 6 * 60.0, ((NG_KEY, True),), acs=("AC-N6",), viewports=((1440, 900),), in_aggregate=False
     ),
 )
 #: The dock units join the one D16 table (ids, check, budget, listed keys); ``run_dock_check`` judges the
@@ -8003,6 +8011,72 @@ def derive_k3_keys(raw: Any, *, record: dict[str, bool] | None = None) -> dict[s
     out["reclaim_status"] = reclaim_status(rec)
     out["sizing_record"] = rec
     return out
+
+
+# -- N-g (#5656, AC-N6): the negative of K3's predicate on a STOCK split that carries the deck's CSS limits ---------------------------
+
+#: N-g's tolerance for "the stock split is even" (the layout config's two sizes are 0.5 / 0.5).
+NG_EVEN_TOL = 0.01
+
+
+def _first_horizontal_sizes(snap: Any) -> list[float] | None:
+    """The sizes of the first horizontal split in a layout snapshot's ``split_sizes``, or ``None``."""
+    for entry in _dict(snap).get("split_sizes") or []:
+        if isinstance(entry, dict) and entry.get("orientation") == "horizontal":
+            sizes = entry.get("sizes")
+            if isinstance(sizes, list) and all(_finite(s) for s in sizes):
+                return [float(s) for s in sizes]
+    return None
+
+
+def ng_measurement_problem(raw: Any) -> str | None:
+    """Why an N-g measurement cannot be trusted, or ``None``. Validity comes from the INPUTS of the measurement, never from the
+    dead-space result it is about (a validity rule that reads the output it validates can only agree with it):
+
+    * every rect the predicate reads is present and numeric, in BOTH snapshots (``stock`` and ``sized_control``);
+    * the stock node's computed ``min-width`` / ``max-width`` are ``420px`` / ``480px`` (it carries the deck's limits);
+    * the stock layout config holds two sizes of 0.5 +- 0.01 (the arrangement Lumino makes of a fresh ``split-right``);
+    * the SAME widget, sized by the harness itself so its half is 480 / A, passes ``reclaim_ok(.., 480)``: the predicate CAN pass."""
+    r = _dict(raw)
+    if r.get("ok") is False:
+        return f"the page could not build the stock split: {r.get('error')!r}"
+    for label in ("stock", "sized_control"):
+        snap = r.get(label)
+        for name in ("dock_panel", "notebook_panel", "deck_panel"):
+            rect = _rect_of(snap, name)
+            if rect is None or not all(_finite(rect.get(k)) for k in ("left", "right", "width")):
+                return f"{label}: rects.{name} is missing or not numeric"
+        if left_inset(snap) is None:
+            return f"{label}: the measured left inset is not the dock's padding"
+    computed = _dict(r.get("computed"))
+    if computed.get("min_width") != "420px" or computed.get("max_width") != "480px":
+        return f"the stock node does not carry the deck's limits: min {computed.get('min_width')!r}, max {computed.get('max_width')!r}"
+    sizes = _first_horizontal_sizes(r.get("stock"))
+    if sizes is None or len(sizes) != 2 or any(abs(s - 0.5) > NG_EVEN_TOL + 1e-9 for s in sizes):
+        return f"the stock layout is not an even two-way split: sizes {sizes}"
+    if not reclaim_ok(r.get("sized_control"), NG_WANT_PX):
+        return f"the control (the same widget sized by the harness) does not pass reclaim_ok(.., {NG_WANT_PX:g})"
+    return None
+
+
+def derive_ng_keys(raw: Any) -> dict[str, Any]:
+    """N-g's unit result: ``NG_KEY`` is ``reclaim_ok(stock, 480)`` (the predicate of K3's `reclaim_open_1440`, on a stock split with
+    the deck's limits and no dock.js sizing), which must be FALSE there; ``ng_detected`` says so. A measurement that cannot be trusted
+    raises ``DockCheckError`` (an ``error`` finding: never a detection)."""
+    problem = ng_measurement_problem(raw)
+    if problem is not None:
+        raise DockCheckError(f"N-g measurement invalid: {problem}")
+    r = _dict(raw)
+    stock_ok = reclaim_ok(r["stock"], NG_WANT_PX)
+    return {
+        NG_KEY: stock_ok,
+        "ng_detected": not stock_ok,
+        "control_sized_passes": reclaim_ok(r["sized_control"], NG_WANT_PX),
+        "stock_measures": _measure(r["stock"]),
+        "sized_control_measures": _measure(r["sized_control"]),
+        "stock_sizes": _first_horizontal_sizes(r["stock"]),
+        "computed": _dict(r.get("computed")),
+    }
 
 
 def drag_plan(geo: Any, width: float, *, inner_width: Any = None) -> dict[str, Any] | None:
@@ -9136,6 +9210,66 @@ __NOTEBOOK_HELPER__
       padding: nbStyle ? (parseFloat(nbStyle.paddingLeft) || 0) + (parseFloat(nbStyle.paddingRight) || 0) : null,
     };
   };
+
+  // -- #5656 N-g: a STOCK split-right widget of the harness's own that carries the deck's CSS limits (inline min-width 420 px and
+  //    max-width 480 px, set before it is added, then `parent.fit()` as dock.js does) and NO dock.js sizing. `stock` is the layout as
+  //    Lumino leaves it (the arrangement the fix removes); `sized_control` is the SAME widget after the harness itself sizes the split so
+  //    its half is 480 / A (saveLayout -> edit sizes -> restoreLayout: the path the fix uses), the control that must pass the predicate.
+  //    No viewer page is loaded: the arrangement does not depend on the iframe.
+  D.stockSplitCapped = async () => {
+    const shell = app().shell;
+    const ref = window.__praxisDisplayCheckNotebook();
+    let Root = null;
+    let proto = ref ? Object.getPrototypeOf(ref) : null;
+    for (let depth = 0; proto && depth < 64; depth++, proto = Object.getPrototypeOf(proto)) {
+      if (Object.prototype.hasOwnProperty.call(proto, "processMessage") && Object.prototype.hasOwnProperty.call(proto, "onAfterAttach")
+          && Object.getPrototypeOf(proto) === Object.prototype && typeof proto.constructor === "function") { Root = proto.constructor; break; }
+    }
+    if (!Root) return { ok: false, error: "no root Lumino Widget constructor reachable from the current widget" };
+    const node = document.createElement("div");
+    node.className = "praxis-nd-stock";
+    node.style.minWidth = "420px";
+    node.style.maxWidth = "480px";
+    const widget = new Root({ node });
+    widget.id = "praxis-nd-stock-split-capped";
+    widget.title.label = "stock (capped)";
+    shell.add(widget, "main", { mode: "split-right", ref: ref.id, activate: false });
+    try { shell._dockPanel.fit(); } catch (e) { /* the snapshot will say what Lumino did */ }
+    await wait(1500);
+    const stock = D.layout();
+    const cs = getComputedStyle(node);
+    const computed = { min_width: cs.minWidth, max_width: cs.maxWidth };
+    let sized = null;
+    let sizedError = null;
+    try {
+      const dock = shell._dockPanel;
+      const config = dock.saveLayout();
+      let hit = null;
+      const walk = (a) => {
+        if (!a || hit) return;
+        if (a.type === "split-area") {
+          const i = (a.children || []).findIndex((c) => c && c.type === "tab-area" && (c.widgets || []).includes(widget));
+          if (i >= 0 && a.orientation === "horizontal") { hit = { node: a, index: i }; return; }
+          (a.children || []).forEach(walk);
+        }
+      };
+      walk(config.main);
+      if (!hit) throw new Error("the stock widget is not in a horizontal split");
+      const r = stock.rects;
+      const inset = r.notebook_panel.left - r.dock_panel.left;
+      const handles = stock.handles.filter((h) => h.visible).reduce((sum, h) => sum + h.rect.width, 0);
+      const avail = r.dock_panel.width - 2 * inset - handles;
+      const f = 480 / avail;
+      const sizes = Array.from(hit.node.sizes);
+      const total = sizes.reduce((x, y) => x + y, 0) || 1;
+      const others = total - sizes[hit.index];
+      hit.node.sizes = sizes.map((s, i) => (i === hit.index ? f : (others > 0 ? (s / others) * (1 - f) : (1 - f) / (sizes.length - 1))));
+      dock.restoreLayout(config);
+      await wait(1500);
+      sized = D.layout();
+    } catch (e) { sizedError = String(e); }
+    return { ok: true, stock, computed, sized_control: sized, sized_error: sizedError };
+  };
 })()
 """.replace("__NOTEBOOK_HELPER__", NOTEBOOK_HELPER_JS)
 
@@ -9526,6 +9660,14 @@ class DockDriver(DisplayDriver):
         if not (added or {}).get("ok"):
             raise DockCheckError(f"could not add the stock split-right widget: {(added or {}).get('error')!r}")
         return self._dk("stockRects()")
+
+    def stock_split_capped(self) -> dict[str, Any]:
+        """N-g (#5656): add a STOCK split-right widget that carries the deck's CSS limits (no dock.js sizing), measure the layout Lumino
+        leaves (``stock``), size that same widget so its half is 480 / A and measure again (``sized_control``)."""
+        got = self._dk("stockSplitCapped(a)", {})
+        if not (got or {}).get("ok"):
+            raise DockCheckError(f"could not add the capped stock split-right widget: {(got or {}).get('error')!r}")
+        return got
 
 
 # -- the scenario bodies ---------------------------------------------------------------------------------------------
@@ -10246,6 +10388,17 @@ def run_nd(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | No
     return derive_nd_keys(measured, record=rec)
 
 
+def run_ng(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
+    """N-g (#5656, AC-N6, negative only): at 1440x900 add a STOCK split-right widget carrying the deck's CSS limits (harness code, no
+    dock.js sizing), measure the layout Lumino leaves, then size the SAME widget so its half is 480 / A and measure again. K3's predicate
+    ``reclaim_ok(.., 480)`` must report failure on the first and success on the second. Nothing is booted or docked: no kernel, no
+    ``dock()``. A measurement that cannot be trusted raises (``derive_ng_keys``): an ``error`` finding, never a detection."""
+    nb = build_dock_notebook(fixture)
+    driver.open_lab()
+    driver.seed_and_open(DOCK_NOTEBOOK_NAME, nb)
+    return derive_ng_keys(driver.stock_split_capped())
+
+
 def run_dock_scenario(session: Any, unit: HarnessUnit, env: Any, *, notebook: dict | None = None) -> dict[str, Any]:
     """The scenario body of one ``--dock-check`` unit: K1a, K1b, K2, K3 or N-d. One unit, one process, one browser; the
     session is closed by ``run_scenario``'s bounded teardown."""
@@ -10261,6 +10414,8 @@ def run_dock_scenario(session: Any, unit: HarnessUnit, env: Any, *, notebook: di
         return run_k2(driver, fixture)
     if unit.id == "K3":
         return run_k3(driver, fixture)
+    if unit.id == "N-g":
+        return run_ng(driver, fixture)
     return run_nd(driver, fixture)
 
 
@@ -10630,7 +10785,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help=(
             "Visualizer3D deck-panel gates (epic 260929_notebook-display-design, D16, task C7). With "
-            "--scenario <id> runs exactly ONE unit (K1a, K1b, K2, K3, or the negative-only N-d) in this process, "
+            "--scenario <id> runs exactly ONE unit (K1a, K1b, K2, K3, or the negative-only N-d or N-g) in this process, "
             "bounded by its own watchdog, in a FULL Chromium with SwiftShader WebGL (never headless_shell); with "
             "no --scenario it is the driver over K1a, K1b, K2 and K3 (N-d is never part of the aggregate). Same "
             "stamps, resume, --aggregate-only and --out-dir rules as --display-check. Needs a fresh web-repl/dist."
