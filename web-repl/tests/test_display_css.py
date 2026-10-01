@@ -1576,9 +1576,12 @@ _DOCK_JS = _WEB_REPL_ROOT / "shell" / "display" / "dock.js"
 # later edit of an earlier rule has to move this pin deliberately. Moved once, from 38960 bytes / sha256
 # 6ce2ee5b...f28f (b1faa747), when the light sheet selector was raised above JupyterLab's command-mode
 # transparent cell: only the comment above the ground rule and the second sheet selector changed, both at
-# offset 18108 onward, +264 bytes.
-_PRE_CAP_BYTES = 39224
-_PRE_CAP_SHA256 = "c71b26909d598857e19399b6e8bd6c4d60f623f6c3440add00e875f2f11f9942"
+# offset 18108 onward, +264 bytes. Moved a second time (39224 bytes / sha256 c71b2690...f9942 -> 39245 bytes) by backlog #5671
+# (Roboto Flex re-vendored with the wdth axis): only the Roboto Flex @font-face `font-stretch: 100%` -> `25% 151%` (line 45) and the
+# NOTE (width axis) comment above the output roots changed, +21 bytes; the 1235 bytes after the old prefix (the cap block) are
+# byte-identical.
+_PRE_CAP_BYTES = 39245
+_PRE_CAP_SHA256 = "d7810aaf29ce5c67892e72c333f1a6f8ffe6b808f30aeb1cab7bc64ea1d2f2c6"
 
 
 def _media_blocks(css: str) -> list[tuple[str, list[_Rule]]]:

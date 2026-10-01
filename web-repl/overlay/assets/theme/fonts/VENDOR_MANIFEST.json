@@ -48,10 +48,10 @@
       "style": "normal",
       "weight": "100 1000",
       "unicode_range": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
-      "source_url": "https://fonts.gstatic.com/s/robotoflex/v30/NaNNepOXO_NexZs0b5QrzlOHb8wCikXpYqmZsWI-__OGbt8jZktqc2V3Zs0KvDLdBP8SBZtOs2IifRuUZQMsPJtUsR4DEK6cULNeUx9XgTnH37Ha_FIAp4Fm0PP1hw45DntW2x0wZGzhPmr1YNMYKYn9_1IQXGwJAiUJVUMdN5YUW4O8HtSoXjC79QRyaLshNDUf3e0O-gn5rrZCu20YNau4OPE.woff2",
-      "source_css": "https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,100..1000&display=swap",
-      "sha256": "e97ca92cebcf4df3539f6514cd652a84a827939e6d5eaf5edece6d83c8229138",
-      "size_bytes": 84304,
+      "source_url": "https://fonts.gstatic.com/s/robotoflex/v30/NaNeepOXO_NexZs0b5QrzlOHb8wCikXpYqmZsWI-__OGbt8jZktqc2V3Zs0KvDLdBP8SBZtOs2IifRuUZQMsPJtUsR4DEK6cULNeUx9XgTnH37Ha_FIAp4Fm0PP1hw45DntW2x0wZGzhPmr1YNMYKYn9_1IQXGwJAiUJVUMdN5YUW4O8HtSoXjC79QRyaLshNDUf9-EmFw.woff2",
+      "source_css": "https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap",
+      "sha256": "6b32e1d2e75e08df10340727bd7b921f38d729687b1cef3939d70e40bd1ba001",
+      "size_bytes": 195288,
       "license_file": "OFL-RobotoFlex.txt"
     }
   ]
