@@ -8773,7 +8773,11 @@ __NOTEBOOK_HELPER__
   //    document; `handles` lists every `.lm-DockPanel-handle` of the main dock with its class list and whether it is
   //    visible (not `lm-mod-hidden`, and non-empty); `split_sizes` is the dock's own saved layout (saveLayout reads,
   //    it changes nothing), one entry per horizontal/vertical split area.
-  D.layout = () => {
+  //    `opts.deckNode` (OPTIONAL, N-g): the node to report as `rects.deck_panel` / `styles.deck_panel`. Without it the deck panel is looked
+  //    up by its class, which only exists once dock.js has docked the deck; N-g's widget is the harness's own `.praxis-nd-stock` node, for
+  //    which that lookup finds nothing (bathos run 4c6d7e29: "stock: rects.deck_panel is missing or not numeric"). Every other caller
+  //    passes no argument and reads what it always read.
+  D.layout = (opts) => {
     const at = (el) => (el ? box(el) : null);
     const style = (el) => {
       if (!el) return null;
@@ -8785,7 +8789,7 @@ __NOTEBOOK_HELPER__
     try { const w = app().shell.currentWidget; nbPanel = w && w.node && w.node.classList && w.node.classList.contains("jp-NotebookPanel") ? w.node : null; } catch (e) { nbPanel = null; }
     nbPanel = nbPanel || notebookPanel();
     const nb = notebookNode();
-    const deck = panelNode();
+    const deck = (opts && typeof opts === "object" && opts.deckNode) || panelNode();
     const dockNode = dockPanelNode();
     const byId = (id) => document.getElementById(id) || null;
     let leftCollapsed = null, rightCollapsed = null;
@@ -9236,7 +9240,7 @@ __NOTEBOOK_HELPER__
     shell.add(widget, "main", { mode: "split-right", ref: ref.id, activate: false });
     try { shell._dockPanel.fit(); } catch (e) { /* the snapshot will say what Lumino did */ }
     await wait(1500);
-    const stock = D.layout();
+    const stock = D.layout({ deckNode: node });
     const cs = getComputedStyle(node);
     const computed = { min_width: cs.minWidth, max_width: cs.maxWidth };
     let sized = null;
@@ -9266,7 +9270,7 @@ __NOTEBOOK_HELPER__
       hit.node.sizes = sizes.map((s, i) => (i === hit.index ? f : (others > 0 ? (s / others) * (1 - f) : (1 - f) / (sizes.length - 1))));
       dock.restoreLayout(config);
       await wait(1500);
-      sized = D.layout();
+      sized = D.layout({ deckNode: node });
     } catch (e) { sizedError = String(e); }
     return { ok: true, stock, computed, sized_control: sized, sized_error: sizedError };
   };
