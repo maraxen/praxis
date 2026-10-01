@@ -47,7 +47,11 @@ Public API: ``kind_of``, ``compress_wells``, ``where_label``, ``plate_sentence``
 ``tiprack_sentence``, ``container_sentence``, ``sentence``, ``name_line``, ``render_figure``,
 ``render_html``, ``stamp`` and ``render``. ``volume_of(container) -> float`` (default
 ``container.tracker.get_used_volume()``, which includes pending state) lets a caller draw
-another volume, for example the committed ``tracker.volume`` an error panel draws (D8).
+another volume, for example the committed ``tracker.volume`` an error panel draws (D8). In the
+same way ``tip_of(spot) -> Tip | None`` (default ``spot.tip``, the resource tree, which includes
+pending operations) lets a caller say which tip a rack spot HOLDS: an error panel passes the
+committed tip (#5659, N5659-8). The one hook feeds the drawn rings, the grid's hover values and the
+sentence, so the three always agree.
 """
 
 from __future__ import annotations
@@ -270,14 +274,22 @@ def plate_sentence(plate, volume_of=None) -> str:
     return f"{count}, {span}. {_amount(sum(held))} µL in the plate."
 
 
-def tiprack_sentence(rack) -> str:
+def _spot_tip(spot):
+    """The default ``tip_of``: the tip the spot holds in the resource tree (D7), pending included."""
+    return spot.tip
+
+
+def tiprack_sentence(rack, tip_of=None) -> str:
     """Section 3.2: "72 of 96 tips left. Columns 1–3 used." A column is used when any of its
-    spots has lost its tip; presence is the tip the spot holds in the resource tree (D7)."""
+    spots has lost its tip; presence is ``tip_of(spot)`` (default: the tip the spot holds in the
+    resource tree, D7)."""
+    tip_of = tip_of or _spot_tip
     spots = rack.get_all_items()
     ids = _identifiers(rack)
-    left = sum(1 for s in spots if s.tip is not None)
+    present = [tip_of(s) is not None for s in spots]
+    left = sum(present)
     text = f"{_amount(left)} of {_amount(len(spots))} tips left."
-    used = sorted({_split_id(i)[1] for i, s in zip(ids, spots, strict=True) if s.tip is None})
+    used = sorted({_split_id(i)[1] for i, here in zip(ids, present, strict=True) if not here})
     if used:
         word = "Column" if len(used) == 1 else "Columns"
         text += f" {word} {_runs(used)} used."
@@ -303,13 +315,13 @@ def container_sentence(container, volume_of=None) -> str:
     return f"{label} holds {held} µL."
 
 
-def sentence(resource, volume_of=None) -> str:
+def sentence(resource, volume_of=None, tip_of=None) -> str:
     """The summary sentence of *resource*: its ``text/plain`` and its drawing's ``aria-label``."""
     kind = kind_of(resource)
     if kind == "plate":
         return plate_sentence(resource, volume_of)
     if kind == "tiprack":
-        return tiprack_sentence(resource)
+        return tiprack_sentence(resource, tip_of)
     return container_sentence(resource, volume_of)
 
 
@@ -615,9 +627,10 @@ def _plate_figure(plate, level, volume_of, changed, fault) -> str:
     return _labelled_figure(plate, items, layers, grid, text, s_n, s_min_value, _label_step(items, len(items), s_min_value))
 
 
-def _tiprack_figure(rack, level, changed, fault) -> str:
+def _tiprack_figure(rack, level, changed, fault, tip_of=None) -> str:
+    tip_of = tip_of or _spot_tip
     s_n = floor.nominal_scale("labware")
-    text = tiprack_sentence(rack)
+    text = tiprack_sentence(rack, tip_of)
     if level >= budget.LEVEL_BLOCKS:
         return _block(rack, text, s_n)
     items = _items(rack)
@@ -627,8 +640,9 @@ def _tiprack_figure(rack, level, changed, fault) -> str:
     ox, oy = pad["l"], pad["t"]
     d_min = min((i.d for i in items), default=None)
     s_min_value = floor.s_min_labware(s_n, d_min) if d_min else floor.TEXT_FLOOR_RATIO * s_n
-    present = [i for i in items if i.child.tip is not None]
-    taken = [i for i in items if i.child.tip is None]
+    held = [tip_of(i.child) is not None for i in items]
+    present = [i for i, here in zip(items, held, strict=True) if here]
+    taken = [i for i, here in zip(items, held, strict=True) if not here]
     layers: list[str] = []
     if present:
         layers.append(svg.path_el(
@@ -654,7 +668,7 @@ def _tiprack_figure(rack, level, changed, fault) -> str:
     grid = None
     if items:
         dx, dy = _pitches(items)
-        vals = [1 if i.child.tip is not None else 0 for i in items]
+        vals = [1 if here else 0 for here in held]
         grid = _grid_descriptor("tip", rack.name, items, vals, _flags(items, changed, fault), (ox, oy), dx, dy)
     return _labelled_figure(rack, items, layers, grid, text, s_n, s_min_value, _label_step(items, len(items), s_min_value))
 
@@ -700,12 +714,13 @@ def _check_level(level) -> int:
     return level
 
 
-def render_figure(resource, *, level=budget.LEVEL_FULL, volume_of=None, changed=(), fault=()) -> str:
+def render_figure(resource, *, level=budget.LEVEL_FULL, volume_of=None, changed=(), fault=(), tip_of=None) -> str:
     """The drawing of *resource* inside its ``overflow-x:auto`` wrapper; ``""`` for a container
     that is not a ``Well`` (those get no drawing, D2), and at ladder level 2 (drawing omitted).
 
     ``changed`` and ``fault`` are well (or tip spot) ids to mark in rose and in brick with a
-    cross; an id the resource does not have is a ``ValueError``.
+    cross; an id the resource does not have is a ``ValueError``. ``tip_of(spot)`` says which tip a
+    tip-rack spot holds (default ``spot.tip``); a plate ignores it.
     """
     _check_level(level)
     kind = kind_of(resource)
@@ -714,7 +729,7 @@ def render_figure(resource, *, level=budget.LEVEL_FULL, volume_of=None, changed=
     if kind == "plate":
         return _plate_figure(resource, level, volume_of, changed, fault)
     if kind == "tiprack":
-        return _tiprack_figure(resource, level, changed, fault)
+        return _tiprack_figure(resource, level, changed, fault, tip_of)
     if _is_well(resource):
         return _well_figure(resource, volume_of, changed, fault)
     return ""
@@ -732,16 +747,18 @@ def name_line(resource) -> str:
     return svg.el("p", "  ".join(parts), cls="praxis-name")
 
 
-def render_html(resource, *, level=budget.LEVEL_FULL, volume_of=None, changed=(), fault=()) -> str:
+def render_html(resource, *, level=budget.LEVEL_FULL, volume_of=None, changed=(), fault=(), tip_of=None) -> str:
     """The whole ``text/html`` of one output at one ladder level: name line, drawing (levels 0
     and 1), the sentence, and at level 2 the omission sentence."""
     _check_level(level)
     kind = kind_of(resource)
-    text = sentence(resource, volume_of)
+    text = sentence(resource, volume_of, tip_of)
     drawn = _is_drawable(resource)
     parts = [name_line(resource)]
     if drawn and level < budget.LEVEL_OMITTED:
-        parts.append(render_figure(resource, level=level, volume_of=volume_of, changed=changed, fault=fault))
+        parts.append(render_figure(
+            resource, level=level, volume_of=volume_of, changed=changed, fault=fault, tip_of=tip_of
+        ))
         parts.append(svg.text_line("p", "praxis-summary", text))
     else:
         parts.append(svg.text_line("p", "praxis-summary", text))
@@ -762,7 +779,7 @@ def stamp(kind: str, resource_name, rev, session, exec_count) -> dict:
     }
 
 
-def render(resource, *, rev, session, exec_count, volume_of=None, changed=(), fault=()):
+def render(resource, *, rev, session, exec_count, volume_of=None, changed=(), fault=(), tip_of=None):
     """One mimebundle ``(data, metadata)`` for a Plate, TipRack or Container (D2).
 
     ``rev``, ``session`` and ``exec_count`` are injected (the display session id and the revision
@@ -774,9 +791,11 @@ def render(resource, *, rev, session, exec_count, volume_of=None, changed=(), fa
     kind = kind_of(resource)
     levels = budget.LEVELS if _is_drawable(resource) else (budget.LEVEL_FULL,)
     doc, _level = budget.enforce(
-        lambda lv: render_html(resource, level=lv, volume_of=volume_of, changed=changed, fault=fault), levels
+        lambda lv: render_html(
+            resource, level=lv, volume_of=volume_of, changed=changed, fault=fault, tip_of=tip_of
+        ), levels
     )
-    data = {"text/html": doc, "text/plain": sentence(resource, volume_of)}
+    data = {"text/html": doc, "text/plain": sentence(resource, volume_of, tip_of)}
     metadata = {"praxis": stamp(kind, resource.name, rev, session, exec_count)}
     svg.check_bundle(data, metadata)
     return data, metadata
