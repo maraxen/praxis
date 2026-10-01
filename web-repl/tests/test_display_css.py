@@ -1971,7 +1971,8 @@ def test_the_persistence_stylesheet_exists_and_has_rules_for_each_part() -> None
   assert any(_pmatches(s, _PERSIST_CHAINS["panel"]) for s in selectors), "no rule reaches the panel"
   assert any(_pmatches(s, _PERSIST_CHAINS["dialog"]) for s in selectors), "no rule reaches the first-save dialog"
   assert any(_pmatches(s, _PERSIST_CHAINS["dialog button"]) for s in selectors), "no rule reaches the dialog buttons"
-  assert "@media" not in _persist_css_text() and "@import" not in _persist_css_text()
+  code = _strip_comments(_persist_css_text())
+  assert "@media" not in code and "@import" not in code
 
 
 def test_persistence_styles_use_the_tokens_not_literals_and_stay_out_of_the_way() -> None:

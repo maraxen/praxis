@@ -23,6 +23,15 @@
 //
 // The smoke harness's forced-prompt test switch is a page-level test-only
 // global; this file must never reference it (B-11).
+//
+// Styling (backlog #5653): colour, type and shape live in panel.css, which
+// `mount` links from this file's own directory and which reads the epic's
+// tokens (--jp-*, --praxis-*). Only LAYOUT stays inline below -- position,
+// stacking, the size cap, the flex column -- because inline styles outrank
+// any stylesheet and the real-browser gate's geometry was measured against
+// them. Nothing in the DOM this file builds changed for the restyle except
+// one additive hook, the chip's `data-praxis-warn` ("1" when its label is in
+// warning style), which panel.css keys the warning rail on.
 
 import { createPersistence } from "./core.js";
 
@@ -30,6 +39,7 @@ const DB_NAME = "praxis-repl-persistence";
 const DB_STORE = "handles";
 const SAVE_COMMAND_IDS = new Set(["docmanager:save", "docmanager:save-as", "docmanager:save-all"]);
 const REASON_DIFFERS_ON_DISK = "differs on disk";
+const STYLE_LINK_ID = "praxis-persistence-style";
 
 // -- Real adapter: raw IndexedDB handle store --------------------------------
 //
@@ -120,6 +130,7 @@ function waitForJupyterApp(win) {
 //   [data-praxis-action=protect|choose-folder|reconnect|restore|keep-browser-only|toggle-panel]
 //   [data-praxis-action=replace-disk-copy][data-praxis-path="<path>"]
 //   dialog#praxis-persistence-first-save
+// Additive, read only by panel.css: the chip's [data-praxis-warn=0|1].
 
 function el(doc, tag, props) {
   const node = doc.createElement(tag);
@@ -144,29 +155,17 @@ function buildChrome(doc) {
     display: "inline-flex",
     flexDirection: "column",
     alignItems: "flex-end",
-    fontFamily: "system-ui, sans-serif",
-    fontSize: "12px",
     maxWidth: "320px",
   });
 
   const chip = el(doc, "button", { type: "button" });
   chip.setAttribute("data-praxis-action", "toggle-panel");
-  Object.assign(chip.style, {
-    border: "1px solid #888",
-    borderRadius: "4px",
-    padding: "4px 8px",
-    background: "#fff",
-    cursor: "pointer",
-  });
+  chip.setAttribute("data-praxis-warn", "0");
 
   const panel = el(doc, "div");
   panel.hidden = true;
   Object.assign(panel.style, {
     marginTop: "4px",
-    border: "1px solid #888",
-    borderRadius: "4px",
-    padding: "8px",
-    background: "#fff",
     maxWidth: "320px",
   });
 
@@ -178,6 +177,20 @@ function buildChrome(doc) {
   dialog.tabIndex = -1; // focus() fallback target if the dialog ever has no focusable child
 
   return { root, chip, panel, dialog };
+}
+
+// Link panel.css (colour, type, shape) from this module's own directory.
+// Idempotent. A stylesheet that fails to load leaves the UI fully working
+// with the browser's default controls: nothing here waits on it.
+function ensureStylesheet(doc) {
+  if (doc.getElementById(STYLE_LINK_ID)) return;
+  doc.head.appendChild(
+    el(doc, "link", {
+      id: STYLE_LINK_ID,
+      rel: "stylesheet",
+      href: new URL("panel.css", import.meta.url).href,
+    }),
+  );
 }
 
 function textEl(doc, tag, text) {
@@ -238,6 +251,7 @@ export async function mount(win) {
   await app.restored;
 
   const ui = buildChrome(doc);
+  ensureStylesheet(doc);
   doc.body.appendChild(ui.root);
   doc.body.appendChild(ui.dialog);
 
@@ -456,8 +470,7 @@ export async function mount(win) {
     ui.root.setAttribute("data-praxis-excluded", String(state.excludedCount));
     const { text, warn } = tierLabel(state);
     ui.chip.textContent = text;
-    ui.chip.style.color = warn ? "#b45309" : "";
-    ui.chip.style.fontWeight = warn ? "600" : "400";
+    ui.chip.setAttribute("data-praxis-warn", warn ? "1" : "0");
     renderPanelBody(state);
     syncModal(state);
   }
