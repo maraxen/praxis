@@ -20,6 +20,8 @@ import hashlib
 import importlib.util
 import json
 import re
+import shutil
+import subprocess
 import sys
 import tomllib
 import uuid
@@ -284,6 +286,183 @@ def test_the_page_helper_sets_the_decks_limits_before_it_adds_the_widget_and_nev
     assert "iframe" not in body, "the arrangement does not depend on a viewer page"
     assert "controllers" not in body and "dockCtl" not in body, "no dock.js controller is touched: the stock widget is the harness's own"
     assert "sized_control" in body and "computed" in body
+
+
+# --------------------------------------------------------------------------- #
+# The page JS itself: D.stockSplitCapped and D.layout executed under bun against a fake Lumino shell
+# --------------------------------------------------------------------------- #
+#
+# Why this section exists (260930, bathos run 4c6d7e29, outcome `invalid`): every test above feeds the derivation READY-MADE rects, so none
+# of them ran `D.stockSplitCapped`. The first real browser run raised "stock: rects.deck_panel is missing or not numeric": `D.layout` read
+# `rects.deck_panel` from `document.querySelector(".praxis-deck-panel")`, a node that only exists once dock.js has docked the deck, and N-g
+# never docks it (its widget is the harness's own `.praxis-nd-stock`). These tests run the real page code, end to end, and hand ITS output
+# to the Python derivation. The fake is a model of Lumino's dock built from the shipped source (jlab_core map, @lumino/widgets): a split-right
+# add makes an even two-way split (`_insertSplit` with a ref node: sizers 1 and 1), the sizers are fractions of `dock - 2 x padding - handles`
+# (`SplitLayoutNode.update`: `space = width - (n - 1) x spacing`), the node is capped by its CSS max-width and centred in its half (there is no
+# max in the sizers: `SplitLayoutNode.fit` sets `minSize` only), `saveLayout().main` is a split-area whose tab-areas hold the WIDGET OBJECTS,
+# `restoreLayout` takes the sizes back. What only a browser can settle is listed in the report of the fix, not tested here.
+
+_BUN = shutil.which("bun") or str(Path.home() / ".bun" / "bin" / "bun")
+needs_bun = pytest.mark.skipif(not Path(_BUN).exists(), reason="bun not installed: the in-page code is exercised locally only")
+
+_NG_WORLD_JS = r"""
+globalThis.window = globalThis;
+const realSetTimeout = globalThis.setTimeout;
+globalThis.setTimeout = (fn, _ms, ...rest) => realSetTimeout(fn, 0, ...rest);      // wait(1500) costs nothing here
+window.innerWidth = 1440; window.innerHeight = 900;
+globalThis.location = { href: "http://x/lab/index.html" };
+const DOCK = { left: 285, top: 60, width: 1122, height: 800 }, PAD = 5, HANDLE = 5;
+const world = { split: false, sizes: [1], addCalls: [], restores: 0, fits: 0, stockWidget: null, stockNode: null };
+const rect = (left, width, top = DOCK.top, height = DOCK.height) => ({ left, right: left + width, top, bottom: top + height, width, height });
+const avail = () => DOCK.width - 2 * PAD - (world.split ? HANDLE : 0);
+const stockRectFor = (sizes) => {                                                  // capped at 480 by CSS, centred in its half
+  const half = sizes[1] * (DOCK.width - 2 * PAD - HANDLE), w = Math.min(480, Math.max(420, half));
+  return rect(DOCK.left + PAD + sizes[0] * (DOCK.width - 2 * PAD - HANDLE) + HANDLE + (half - w) / 2, w);
+};
+const nbRect = () => rect(DOCK.left + PAD, world.sizes[0] * avail());
+const classList = (get) => ({ contains: (c) => get().includes(c), [Symbol.iterator]: function* () { yield* get(); } });
+const el = (rectFn, cls = [], computed = null) => ({ getBoundingClientRect: rectFn, classList: classList(() => cls), className: cls.join(" "),
+  __computed: computed, scrollWidth: 0, clientWidth: 0, style: {}, appendChild() {}, setAttribute() {} });
+const nbNode = el(nbRect, ["jp-NotebookPanel"], () => ({ minWidth: "240px", maxWidth: "none", flex: "0 1 auto", width: nbRect().width + "px" }));
+const notebookNode = el(nbRect, ["jp-Notebook"]);
+const handleEls = () => (world.split ? [
+  el(() => rect(DOCK.left + PAD + world.sizes[0] * avail(), HANDLE), ["lm-DockPanel-handle", "lm-mod-horizontal"]),
+  el(() => rect(0, 0), ["lm-DockPanel-handle", "lm-mod-hidden"])] : []);
+const dockNode = el(() => rect(DOCK.left, DOCK.width));
+dockNode.querySelectorAll = (sel) => (sel === ".lm-DockPanel-handle" ? handleEls() : []);
+const named = { "jp-main-dock-panel": dockNode, "jp-main-content-panel": el(() => rect(DOCK.left, DOCK.width)),
+  "jp-main-split-panel": el(() => rect(0, 1440)), "jp-left-stack": el(() => rect(0, 285)) };
+globalThis.__deckPanel = null;                                       // a real deck panel is only in the page once dock.js docked it
+globalThis.getComputedStyle = (e) => (e.__computed ? e.__computed() : { position: "static", display: "block", paddingLeft: "0px", paddingRight: "0px" });
+globalThis.document = {
+  documentElement: { scrollWidth: 1440, clientWidth: 1440 },
+  createElement: (tag) => {
+    const n = el(() => stockRectFor(world.sizes));
+    n.tag = tag; n.classList = classList(() => n.className.split(" "));
+    n.__computed = () => ({ minWidth: n.style.minWidth || "0px", maxWidth: n.style.maxWidth || "none", flex: "0 1 auto", width: stockRectFor(world.sizes).width + "px" });
+    world.stockNode = n;
+    return n;
+  },
+  querySelector: (sel) => (sel === ".praxis-deck-panel" ? globalThis.__deckPanel
+    : sel === ".praxis-nd-stock" ? (world.split ? world.stockNode : null)
+    : sel === ".jp-NotebookPanel" ? nbNode : sel === ".jp-NotebookPanel .jp-Notebook" ? notebookNode : null),
+  querySelectorAll: () => [],
+  getElementById: (id) => named[id] || null,
+};
+// Lumino: the root Widget (own processMessage + onAfterAttach, prototype parent Object.prototype), JupyterLab's classes below it.
+class Widget { constructor(o) { this.node = (o && o.node) || document.createElement("div"); this.id = ""; this.title = { label: "" }; }
+  processMessage() {} onAfterAttach() {} }
+class MainAreaWidget extends Widget { onActivateRequest() {} }
+class NotebookPanel extends MainAreaWidget { constructor() { super({ node: nbNode }); this.id = "notebook-1"; this.content = { widgets: [] }; } }
+const nbWidget = new NotebookPanel();
+const dockPanel = {
+  fit() { world.fits += 1; },
+  saveLayout() {
+    return { main: { type: "split-area", orientation: "horizontal", sizes: world.sizes.slice(), children: [
+      { type: "tab-area", widgets: [nbWidget], currentIndex: 0 }, { type: "tab-area", widgets: [world.stockWidget], currentIndex: 0 }] } };
+  },
+  restoreLayout(config) { world.restores += 1; const s = config.main.sizes, sum = s.reduce((a, b) => a + b, 0); world.sizes = s.map((x) => x / sum); },
+};
+window.jupyterapp = { shell: { leftCollapsed: false, rightCollapsed: true, currentWidget: nbWidget, _dockPanel: dockPanel,
+  widgets: (area) => (area === "main" ? [nbWidget, ...(world.stockWidget ? [world.stockWidget] : [])] : []),
+  add(widget, area, opts) {                       // JupyterLab's _addToMainArea resolves `ref` as a widget ID among the dock's widgets
+    world.addCalls.push({ id: widget.id, area, opts, ref_found: [nbWidget].some((w) => w.id === opts.ref) });
+    world.stockWidget = widget; world.split = true; world.sizes = [0.5, 0.5];
+  } } };
+"""
+
+
+def _run_ng_page(rs, tmp_path, body: str, *, dock_js: str | None = None) -> Any:
+    """DOCK_CHECK_JS (or ``dock_js``) loaded in bun over the fake Lumino world; ``body`` is async JS returning the value to print."""
+    js = f"""{_NG_WORLD_JS}
+{dock_js if dock_js is not None else rs.DOCK_CHECK_JS};
+const D = window.__praxisDockCheck;
+const result = await (async () => {{ {body} }})();
+process.stdout.write(JSON.stringify(result) + "\\n");
+"""
+    script = tmp_path / "ng_page.mjs"
+    script.write_text(js)
+    done = subprocess.run([_BUN, str(script)], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr[-1500:]
+    return json.loads(done.stdout.strip().splitlines()[-1])
+
+
+_STOCK_SPLIT_BODY = """
+const got = await D.stockSplitCapped();
+return { got, truth: { stock: stockRectFor([0.5, 0.5]), sized: stockRectFor(world.sizes) }, sizes: world.sizes,
+         add: world.addCalls, restores: world.restores, fits: world.fits };
+"""
+
+
+def _numeric_rect(rect):
+    return isinstance(rect, dict) and all(isinstance(rect.get(k), (int, float)) and not isinstance(rect.get(k), bool) for k in ("left", "right", "width"))
+
+
+@needs_bun
+def test_the_page_js_reports_the_stock_node_as_deck_panel_in_both_layouts_and_the_derivation_accepts_it(rs, tmp_path):
+    """The test that would have caught run 4c6d7e29: run `D.stockSplitCapped` (and the `D.layout` it calls) and check what the PYTHON side
+    reads: ``rects.deck_panel`` of BOTH snapshots is numeric and IS the stock node's rectangle."""
+    out = _run_ng_page(rs, tmp_path, _STOCK_SPLIT_BODY)
+    got = out["got"]
+    assert got["ok"] is True and got["sized_error"] is None, got
+    for label, want in (("stock", out["truth"]["stock"]), ("sized_control", out["truth"]["sized"])):
+        deck = got[label]["rects"]["deck_panel"]
+        assert _numeric_rect(deck), (label, deck)
+        assert deck == pytest.approx(want), (label, "deck_panel is the stock widget's node, not a lookup by the deck's class")
+        assert got[label]["styles"]["deck_panel"]["min_width"] == "420px" and got[label]["styles"]["deck_panel"]["max_width"] == "480px", label
+    assert got["stock"]["rects"]["deck_panel"]["width"] == 480 and got["stock"]["rects"]["deck_panel"]["left"] > got["stock"]["rects"]["notebook_panel"]["right"]
+    # the harness drove the split the way dock.js does, and sized it by the layout path
+    assert out["add"] == [{"id": "praxis-nd-stock-split-capped", "area": "main", "ref_found": True,
+                           "opts": {"mode": "split-right", "ref": "notebook-1", "activate": False}}]
+    assert out["fits"] >= 1 and out["restores"] == 1
+    # the derivation takes the page's own output: valid, the stock layout is detected, the sized control passes the predicate
+    assert rs.ng_measurement_problem(got) is None, rs.ng_measurement_problem(got)
+    keys = rs.derive_ng_keys(got)
+    assert keys[rs.NG_KEY] is False and keys["ng_detected"] is True and keys["control_sized_passes"] is True
+    assert keys["stock_sizes"] == pytest.approx([0.5, 0.5])
+    assert keys["stock_measures"]["deck"] == 480 and keys["stock_measures"]["dead_space"] == pytest.approx(73.5)
+    assert keys["sized_control_measures"]["dead_space"] == pytest.approx(0.0, abs=1e-6)
+    assert out["sizes"][1] == pytest.approx(480 / 1107), "f = 480 / A with A = dock - 2 x inset - visible handles = 1122 - 10 - 5"
+    json.dumps(keys)
+
+
+@needs_bun
+def test_negative_control_the_old_deck_lookup_leaves_deck_panel_null_and_the_derivation_refuses_the_measurement(rs, tmp_path):
+    """The same page JS and fake world with `D.layout` reading the deck panel by its class (the code of run 4c6d7e29): the probe must FAIL."""
+    old = re.sub(r"(D\.layout = [^\n]*\n(?:(?!\n  D\.).)*?const deck = )[^;\n]*;", r"\1panelNode();", rs.DOCK_CHECK_JS, count=1, flags=re.S)
+    out = _run_ng_page(rs, tmp_path, _STOCK_SPLIT_BODY, dock_js=old)
+    got = out["got"]
+    assert got["ok"] is True
+    assert got["stock"]["rects"]["deck_panel"] is None and got["sized_control"]["rects"]["deck_panel"] is None
+    assert rs.ng_measurement_problem(got) == "stock: rects.deck_panel is missing or not numeric"
+    with pytest.raises(rs.DockCheckError, match=r"N-g measurement invalid: stock: rects\.deck_panel is missing or not numeric"):
+        rs.derive_ng_keys(got)
+    assert old != rs.DOCK_CHECK_JS, "the control is a copy with the old lookup, not the shipped page JS"
+
+
+@needs_bun
+def test_layout_reads_the_deck_panel_by_class_unless_it_is_given_a_deck_node(rs, tmp_path):
+    """K2/K3/N-d call `D.layout()` with no argument and must read exactly what they always read; only an explicit `deckNode` changes the
+    deck rectangle and its style, never any other field."""
+    out = _run_ng_page(rs, tmp_path, """
+const deck = el(() => rect(804, 473.5), ["praxis-deck-panel"], () => ({ minWidth: "420px", maxWidth: "480px", flex: "0 1 auto", width: "473.5px" }));
+const other = el(() => rect(900, 300), ["praxis-nd-stock"], () => ({ minWidth: "1px", maxWidth: "2px", flex: "none", width: "300px" }));
+window.__deckPanel = deck;
+const plain = D.layout();
+const variants = [D.layout({}), D.layout(undefined), D.layout(null), D.layout({ deckNode: null }), D.layout(0), D.layout(3)];
+const given = D.layout({ deckNode: other });
+window.__deckPanel = null;
+return { plain, same: variants.map((v) => JSON.stringify(v) === JSON.stringify(plain)), given, none: D.layout() };
+""")
+    assert out["plain"]["rects"]["deck_panel"]["width"] == 473.5 and out["plain"]["styles"]["deck_panel"]["max_width"] == "480px"
+    assert out["same"] == [True] * 6, "no argument, an empty option bag, null and a stray number all leave the default lookup"
+    assert out["given"]["rects"]["deck_panel"]["width"] == 300 and out["given"]["styles"]["deck_panel"] == {
+        "min_width": "1px", "max_width": "2px", "flex": "none", "width": "300px"}
+    for key in out["plain"]["rects"]:
+        if key != "deck_panel":
+            assert out["given"]["rects"][key] == out["plain"]["rects"][key], key
+    assert {k: v for k, v in out["given"].items() if k not in ("rects", "styles")} == {k: v for k, v in out["plain"].items() if k not in ("rects", "styles")}
+    assert out["none"]["rects"]["deck_panel"] is None and out["none"]["styles"]["deck_panel"] is None, "no deck panel in the page: null, as before"
 
 
 # --------------------------------------------------------------------------- #
