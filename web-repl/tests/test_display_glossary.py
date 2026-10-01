@@ -178,7 +178,8 @@ def test_verbs_cover_exactly_the_actions(gl):
 @pytest.mark.parametrize("method", OPS_96)
 def test_96_verb_forms_follow_the_name_column(gl, method):
     """Section 3.5 says the 96 verb form is "the same". Read as the same construction as the name
-    column (base verb + " (96 head)"). No error template uses a 96 verb (D8 step 2)."""
+    column (base verb + " (96 head)"). 96 panels use the base verbs plus ``HEAD96_NOUN`` (#5659,
+    N5659-9); the ledger is the only user of the ``*96`` names."""
     assert gl.VERBS[method] == gl.VERBS[method[:-2]] + SUFFIX_96
 
 
@@ -380,7 +381,8 @@ def literals_from_the_table(source: str, table_strings: set[str]) -> list[str]:
 
 
 def _table_strings(gl) -> set[str]:
-    return set(gl.ACTIONS) | set(gl.ACTIONS.values()) | set(gl.VERBS.values())
+    # HEAD96_NOUN joins the table (#5659, AC-96-10): a 96 panel builds "on the 96 head" from it.
+    return set(gl.ACTIONS) | set(gl.ACTIONS.values()) | set(gl.VERBS.values()) | {gl.HEAD96_NOUN}
 
 
 def test_the_scan_flags_a_literal_action_name(gl):
@@ -447,3 +449,123 @@ def test_the_glossary_itself_does_carry_the_table_literals(gl):
     table = _table_strings(gl)
     hits = set(literals_from_the_table(_GLOSSARY_PATH.read_text(), table))
     assert {"Aspirate", "pick_up_tips", "discard tips"} <= hits
+
+
+# --------------------------------------------------------------------------- the 96-head noun
+# #5659, AC-96-10 (spec N5659-9). The 96 panels say "on the 96 head"; the words come from here.
+
+
+def _noun_derivation_holds(source: str) -> bool:
+    """True when *source* (a glossary module) builds SUFFIX_96 from HEAD96_NOUN and nothing else:
+    the module, executed with a different noun, yields that noun in every 96 name and verb."""
+    namespace: dict = {"__name__": "_glossary_noun_probe"}
+    exec(compile(source.replace('HEAD96_NOUN = "96 head"', 'HEAD96_NOUN = "96 PROBE"'), "<probe>", "exec"), namespace)
+    suffix = namespace["SUFFIX_96"]
+    actions, verbs = namespace["ACTIONS"], namespace["VERBS"]
+    return (
+        namespace["HEAD96_NOUN"] == "96 PROBE"
+        and suffix == " (96 PROBE)"
+        and all(actions[m].endswith(suffix) and verbs[m].endswith(suffix) for m in OPS_96)
+        and not any("96 head" in text for text in (*actions.values(), *verbs.values()))
+    )
+
+
+def test_head96_noun_is_the_96_head(gl):
+    assert gl.HEAD96_NOUN == "96 head"
+    assert "HEAD96_NOUN" in gl.__all__
+
+
+def test_head96_noun_is_outside_the_noun_list(gl):
+    """It names the head, not a thing in a sentence about wells: NOUNS stays the section 3.5 list."""
+    assert gl.HEAD96_NOUN not in gl.NOUNS
+    assert tuple(gl.NOUNS) == ("channel", "well", "tip", "tip rack", "deck panel")
+
+
+def test_suffix_96_is_derived_from_the_noun(gl):
+    assert gl.SUFFIX_96 == f" ({gl.HEAD96_NOUN})" == SUFFIX_96
+
+
+def test_every_96_name_and_verb_is_derived_from_the_noun_not_spelled(gl):
+    """Control built in: the same probe must reject a glossary that spells the suffix out."""
+    real = _GLOSSARY_PATH.read_text()
+    assert _noun_derivation_holds(real)
+    hard_coded = real.replace('SUFFIX_96 = f" ({HEAD96_NOUN})"', 'SUFFIX_96 = " (96 head)"')
+    assert hard_coded != real, "the mutant did not apply: SUFFIX_96 is not spelled as the spec says"
+    assert not _noun_derivation_holds(hard_coded)
+
+
+def test_actions_and_verbs_keep_their_thirteen_entries(gl):
+    """ACTIONS / VERBS are exactly the section 3.5 table plus the suffix, as before (N5659-9)."""
+    assert len(gl.ACTIONS) == 13 and len(gl.VERBS) == 13
+
+
+def test_the_scan_table_covers_the_96_head_noun(gl):
+    assert gl.HEAD96_NOUN in _table_strings(gl)
+
+
+def test_the_scan_flags_a_module_that_spells_the_96_head_noun(gl):
+    """Control: a synthetic display module that spells the noun is flagged; its comment, its
+    docstring and a longer sentence are not (the longer sentence is built from the constant)."""
+    table = _table_strings(gl)
+    for src in (
+        'label = "96 head"\n',
+        'x = ("Not enough liquid", "96 head")\n',
+    ):
+        assert literals_from_the_table(src, table), f"the scan missed: {src!r}"
+    for src in (
+        '# on the 96 head\nx = 1\n',
+        '"""Errors on the 96 head."""\nx = 1\n',
+        'import glossary\nx = f"on the {glossary.HEAD96_NOUN}"\n',
+    ):
+        assert literals_from_the_table(src, table) == [], f"the scan flagged: {src!r}"
+
+
+def literals_containing(source: str, text: str) -> list[str]:
+    """The whole-literal AC-28 scan only sees a constant that EQUALS a table string, so a panel
+    that spelled "on the 96 head" would pass it. This one flags any non-docstring string constant
+    (f-string constant parts included) that CONTAINS *text*."""
+    tree = ast.parse(source)
+    skip = _docstring_nodes(tree)
+    return [
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
+        and id(node) not in skip
+        and text in node.value
+    ]
+
+
+def test_the_containment_scan_flags_a_sentence_that_spells_the_noun(gl):
+    """Control: the equality scan misses these, the containment scan must not."""
+    table = _table_strings(gl)
+    for src in (
+        'x = "on the 96 head"\n',
+        'def f(n):\n    return f"{n} tips on the " "96 head"\n',
+        'def f(n):\n    return f"{n} tips on the 96 head."\n',
+    ):
+        assert literals_from_the_table(src, table) == [], f"premise: the equality scan flags {src!r}"
+        assert literals_containing(src, gl.HEAD96_NOUN), f"the containment scan missed: {src!r}"
+    for src in (
+        '# on the 96 head\nx = 1\n',
+        '"""Errors on the 96 head."""\nx = 1\n',
+        'import glossary\nx = f"{n} tips on the {glossary.HEAD96_NOUN}."\n',
+    ):
+        assert literals_containing(src, gl.HEAD96_NOUN) == [], f"the containment scan flagged: {src!r}"
+
+
+def test_no_display_module_but_the_glossary_spells_the_96_head_noun(gl):
+    """N5659-9: the glossary is the one place the words are spelled, in a literal of any length."""
+    offenders = {
+        path.name: sorted(set(hits))
+        for path in _other_display_sources()
+        if (hits := literals_containing(path.read_text(), gl.HEAD96_NOUN))
+    }
+    assert offenders == {}, f"the 96 head noun is spelled outside glossary.py: {offenders}"
+
+
+def test_the_glossary_itself_spells_the_noun_once(gl):
+    """Control for the display-wide scan: pointed at the glossary it finds the noun."""
+    table = _table_strings(gl)
+    hits = literals_from_the_table(_GLOSSARY_PATH.read_text(), table)
+    assert hits.count("96 head") == 1
