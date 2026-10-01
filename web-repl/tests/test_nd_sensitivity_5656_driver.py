@@ -267,6 +267,26 @@ def test_run_ng_raises_on_a_measurement_it_cannot_trust_so_the_unit_records_an_e
         rs.run_ng(FakeNg(rs.DockCheckError("could not add the capped stock split-right widget: 'x'")), display_nb)
 
 
+def test_run_ng_error_keeps_the_raw_page_evidence_so_an_invalid_measurement_can_be_diagnosed(rs, display_nb):
+    """Run 4c6d7e29 recorded only the message: the snapshots the page returned were thrown away, so which of the two layouts (or which
+    other rect) was bad could not be read back. The message now ends with the page's raw output (bounded)."""
+    raw = _raw()
+    raw["sized_control"]["rects"]["notebook_panel"] = None
+    with pytest.raises(rs.DockCheckError) as info:
+        rs.run_ng(FakeNg(raw), display_nb)
+    msg = str(info.value)
+    assert msg.startswith("N-g measurement invalid: sized_control: rects.notebook_panel is missing or not numeric"), msg
+    assert "; raw page evidence: " in msg
+    evidence = json.loads(msg.split("; raw page evidence: ", 1)[1])
+    assert evidence["sized_control"]["rects"]["notebook_panel"] is None and evidence["stock"]["rects"]["deck_panel"]["width"] == 480
+    assert len(msg) < 20_000
+    raw["pad"] = "x" * 100_000
+    with pytest.raises(rs.DockCheckError) as info:
+        rs.run_ng(FakeNg(raw), display_nb)
+    assert len(str(info.value)) < 20_000 and str(info.value).endswith("...[truncated]"), "bounded however much the page returned"
+    assert "raw page evidence" not in str(rs.derive_ng_keys(_raw())), "a trusted measurement carries no error text"
+
+
 def test_run_dock_scenario_dispatches_n_g_to_run_ng(rs, monkeypatch, display_nb):
     calls = []
     monkeypatch.setattr(rs, "DockDriver", lambda session, **k: object())

@@ -7080,6 +7080,8 @@ def reclaim_status(record: Any) -> str:
 #: N-g's one listed key (it must FAIL on the stock split, by design) and the deck width its predicate asks for.
 NG_KEY = "reclaim_ok_stock_capped_1440"
 NG_WANT_PX = 480.0
+#: ``run_ng`` appends at most this many characters of the page's raw output to an untrusted-measurement error.
+NG_EVIDENCE_MAX_CHARS = 8000
 
 #: K3's listed keys in step order, then `pageerrors` (added by the unit, as for every unit).
 K3_KEYS: tuple[str, ...] = (
@@ -10400,7 +10402,16 @@ def run_ng(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
     nb = build_dock_notebook(fixture)
     driver.open_lab()
     driver.seed_and_open(DOCK_NOTEBOOK_NAME, nb)
-    return derive_ng_keys(driver.stock_split_capped())
+    raw = driver.stock_split_capped()
+    try:
+        return derive_ng_keys(raw)
+    except DockCheckError as err:
+        # An untrusted measurement is an error finding, and the unit result keeps only the message: carry the page's raw output (bounded)
+        # in it, or an invalid run cannot be read back (run 4c6d7e29 threw the snapshots away).
+        text = json.dumps(raw, default=str, sort_keys=True)
+        if len(text) > NG_EVIDENCE_MAX_CHARS:
+            text = text[:NG_EVIDENCE_MAX_CHARS] + " ...[truncated]"
+        raise DockCheckError(f"{err}; raw page evidence: {text}") from err
 
 
 def run_dock_scenario(session: Any, unit: HarnessUnit, env: Any, *, notebook: dict | None = None) -> dict[str, Any]:
