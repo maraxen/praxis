@@ -1,0 +1,8 @@
+# 261001_plr_96head_pending_residue_repro.bth.55627ffd-a15b-4e4f-a08d-11feb433f5e0.bth.lock.toml — written at run time, never modified
+[manifest]
+written_at = "2026-10-01T19:28:14.956800+00:00"
+sidecar_sha256 = "cbfad2e93b495374606a54acab3b4c8f728f6738be0c55719c64f9e5713a126b"
+sidecar_path = "/tmp/praxis-nd-b/scripts/spikes/261001_plr_96head_pending_residue_repro.bth.toml"
+git_sha = "61b02db9234ff5e065c54755fcfe43f0bdf2b2bb"
+script_sha256 = "8a267ebd6bf646d9fc28dd4b79d1778c240d776ef8a654c449e763c232665774"
+run_id = "55627ffd-a15b-4e4f-a08d-11feb433f5e0"
