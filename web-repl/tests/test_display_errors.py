@@ -2701,8 +2701,9 @@ def test_residue96_the_clause_needs_a_drawing_that_is_actually_there(errors, ctx
 
 
 def test_residue96_the_whole_panel_with_the_sentence_stays_under_the_cap_for_the_worst_residue(errors, svg, ctxmod):
-    """The widest sentence the layer can write (all 96 tips, 10 wells, 5 channels and 5 spots) still fits."""
-    exc = _hostile_exc(TooLittleLiquidError, "\n".join('"' * 100 for _ in range(400)))
+    """The plate row with the longest sentence in this file (96 tips and 10 wells, drawn) and a 40 KB hostile
+    traceback that escapes 6x still fits the 64 KiB cap, and keeps the sentence."""
+    exc = _hostile_exc(TooLittleVolumeError, "\n".join('"' * 100 for _ in range(400)))
     ctx = ctxmod.resolve(case("E96-dispTLV").exc)
     data, meta = errors.render(exc, session=SESSION, exec_count=EXEC, resolver=lambda *a, **k: ctx)
     assert len(data["text/html"].encode("utf-8")) <= CAP
