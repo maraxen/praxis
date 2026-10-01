@@ -1,0 +1,80 @@
+# Pre-registration sidecar for the Dark-token contrast computation (task 260929_notebook-display-design,
+# backlog #5654, umbrella #5648). Spec draft: .praxia/docs/specs/261001_nd-next-5654-dark-tokens.md.
+#
+# THIS FILE AND scripts/spikes/261001_nd_dark_tokens_contrast.py ARE COMMITTED BEFORE THE RUN. DISCLOSURE OF
+# WHAT HAPPENED FIRST: before this file was written I ran four throwaway inline exploration scripts (not kept,
+# not cited) that measured the SHIPPED Dark colours against the Dark ground and tried lightening rules, to
+# decide which candidate sets were worth registering. They showed, on the numbers I then saw, that a single
+# 4.5:1 bar applied to brick collapses its distance from rose under tritanopia, which is why P3 below exists
+# as a pre-registered NEGATIVE for "one 4.5:1 bar for every token". The outcome criteria below were fixed
+# AFTER that exploration; the thresholds themselves are not exploration-derived (WCAG 1.4.3 text 4.5, WCAG
+# 1.4.11 non-text 3.0, AC-27's CIEDE2000 >= 10), and no number from the exploration appears in the draft:
+# every number the draft cites comes from the run recorded under this sidecar.
+#
+# Run with `bth`, never `uv run bth` (which silently skips sidecar enforcement). `bth run` has NO --out option;
+# the script hands its flat result to bathos through $BTH_RESULTS_PATH and writes the full table to --out-dir:
+#
+#   bth run --project-slug praxis --output-paths outputs/spikes/261001_nd_dark_tokens -- \
+#     uv run --no-sync python3 scripts/spikes/261001_nd_dark_tokens_contrast.py \
+#       --out-dir outputs/spikes/261001_nd_dark_tokens
+#
+# Verify by the RECORD (`bth compact` first if it is not visible yet):
+#   bth sql "SELECT id, status, outcome, exit_code, command FROM runs WHERE id LIKE '<prefix>%'"
+#
+# Preemption safety (global rule): the whole computation is pure CPU arithmetic over a few thousand colours and
+# takes milliseconds, so there is nothing to chunk or resume; the unit of work is the run.
+
+[experiment]
+hypothesis = "Reading the SHIPPED Dark palette from praxis-theme.css (the dark (default) block and the display constants) and evaluating it against the Dark surfaces an output or the deck panel can sit on (--jp-layout-color0/1/2, worst surface governs), under normal vision and the Machado 2009 protan/deutan/tritan simulations (the instrument of test_display_colorblind.py, loaded by path): (H1) the shipped Dark set, P0, has at least one gap against the bars TEXT >= 4.5:1 (ink, ink soft, the error-title token, the link token), MARKS >= 3.0:1 (moonstone, rose, brick, moonstone ink, rose ink) and PAIRS CIEDE2000 >= 10 under all four visions (rose-brick, moonstone-brick, ran-rail vs running-rail, ran-rail vs error-rail, ran-rail vs not-run-rail); (H2) a Dark set P2, derived by Rule R (keep HLS hue and saturation, raise lightness in 0.5 % steps until the worst-case contrast reaches the bar: moonstone ink and rose ink to 4.5, brick to 3.5, the error-title token to 4.5), meets ALL of those bars; (H3, a NEGATIVE for 'one 4.5:1 bar for every token'): P3, the same derivation with brick also taken to 4.5, FAILS the rose-brick pair under at least one vision. Also computed, not in the outcomes: P1 (every ink-class token to 3.0, the error title to 4.5), P2g (P2 with brick from a constrained hue 0-20 degrees / saturation 60-100 % search at 3.5), and the vendored Visualizer3D constants (renderer.js BACKGROUND, constants.js FLAT_EDGE, SELECT, STRUCTURE_LIGHT, STRUCTURE_DARK, tip) against a Dark ground, raw and after filter: invert(1) hue-rotate(180deg) modelled numerically. Instrument controls run inside the script (positive: black on white = 21:1 and dE >= 10 under all visions, light ink on white = 14.8:1 as DESIGN.md states; negative: #ED7A9B vs #E8789A stays < 10 under all visions, grey on grey < 3:1, a red/green pair collapses under protan); if any control misbehaves the run is INVALID and no verdict is cited. The prior is that H1 and H2 hold and H3 holds; the prior is NOT a criterion: each of the outcomes below is pre-registered."
+stage_name = "exploration"
+novel = true
+
+[outcomes.baseline_gaps_p2_feasible]
+condition = "measurement_valid = true AND p0_all_ok = false AND p2_all_ok = true"
+decision = "The shipped Dark set has gaps (p0_failing names them) and Rule R at the stated bars closes every one of them: the draft's Option A takes P2's values (p2_values) as the Dark overrides of --praxis-moonstone-ink, --praxis-rose-ink, --praxis-brick and the error-title token. Cite this run id in the draft."
+reasoning = "p0 fails at least one registered bar and p2 meets all of them, so a Dark token set exists that keeps the text bar at 4.5:1 for text roles and the 3:1 mark bar with margin for brick, with rose and brick still distinct under every vision."
+is_residual = false
+
+[outcomes.baseline_gaps_p2_infeasible]
+condition = "measurement_valid = true AND p0_all_ok = false AND p2_all_ok = false"
+decision = "The shipped Dark set has gaps and Rule R at the stated bars does NOT close them all (p2 failing list is in result.json). The draft must say so: the recommendation cannot be 'adopt P2'. If p2g_all_ok is true the draft takes P2g's brick (p2g_values); if not, the tokens cannot be fixed by lightening alone and the draft escalates the brick/rose relationship as an open question to the user instead of recommending values."
+reasoning = "A valid measurement in which the derivation fails is a finding about the colour space, not an instrument fault."
+is_residual = false
+
+[outcomes.baseline_clean]
+condition = "measurement_valid = true AND p0_all_ok = true"
+decision = "The shipped Dark set already meets every registered bar: the draft drops Option A's token overrides and the item reduces to the deck-panel body (the light viewer in a dark panel) and to gating what is already true."
+reasoning = "No gap against the bars in the shipped Dark colours, so a token set would change nothing the bars can see."
+is_residual = false
+
+[outcomes.invalid]
+condition = "measurement_valid = false"
+decision = "INVALID: an instrument control misbehaved. Fix the script, commit, and re-run under this sidecar; cite no number from this run."
+reasoning = "A verdict that could be an instrument bug is never reported without a valid measurement (BATHOS.md)."
+is_residual = true
+
+[result_schema]
+instrument_ok = "bool"
+css_parsed = "bool"
+measurement_valid = "bool"
+ground = "str"
+surfaces = "str"
+p0_text_ok = "bool"
+p0_marks_ok = "bool"
+p0_pairs_ok = "bool"
+p0_all_ok = "bool"
+p0_failing = "str"
+p1_all_ok = "bool"
+p2_all_ok = "bool"
+p3_all_ok = "bool"
+p3_rose_vs_brick_ok = "bool"
+p2g_all_ok = "bool"
+p1_values = "str"
+p2_values = "str"
+p3_values = "str"
+p2g_values = "str"
+
+[design]
+statement = "One unit: the script reads praxis-theme.css, test_display_colorblind.py (as the instrument), web-repl/overlay/assets/visualizer3d/renderer.js and constants.js, computes every table, runs its instrument controls, writes <out-dir>/result.json (the full tables) and the flat fields above to $BTH_RESULTS_PATH. No browser, no network, no process other than the interpreter. The run is deterministic: re-running on the same tree gives byte-identical flat fields."
+reads = "The CSS values are parsed from the file (never typed into the script); the viewer constants are parsed from the vendored JS files; CIEDE2000 and the Machado matrices come from the verified instrument."
+controls = "Inside the script: positive (black/white 21:1 and dE >= 10 in all visions; light ink on white 14.8 +/- 0.06), negative (near-identical rose pair < 10 in all visions; grey on grey < 3:1; red/green collapse under protan). Plus P3 as a designed negative for the single-4.5-bar rule."
