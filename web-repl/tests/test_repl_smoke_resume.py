@@ -4038,7 +4038,7 @@ def _mutk1b(rs, fn):
     return rs.evaluate_unit_result(rs.UNIT_BY_ID["K1b"], rs.derive_k1b_keys(raw))[1]
 
 
-def _events(path, fn):
+def _edit_events(path, fn):
     """Apply ``fn`` to the event list at ``raw[path[0]]['events']``."""
     def apply(raw):
         raw[path]["events"] = fn(raw[path]["events"])
@@ -4086,16 +4086,16 @@ def _append(*more):
         ("redock_live", _set(("redock_live", "v2"), None)),
         ("redock_live", _set(("redock_live", "iframes_final"), [{"src_viewer": "v-2"}, {"src_viewer": "v-2"}])),
         ("redock_live", _set(("redock_live", "iframes_final"), [{"src_viewer": "v-1"}])),
-        ("redock_live", _events("redock_live", _drop(2))),  # no close for v1 at all
-        ("redock_live", _events("redock_live", _edit(2, viewer="v-0"))),  # a close for another viewer
-        ("redock_live", _events("redock_live", _edit(2, seq=5))),  # the close arrives AFTER the announce
-        ("redock_live", _events("redock_live", _drop(3))),  # the v1 iframe was never removed
-        ("redock_live", _events("redock_live", _edit(3, src_viewer="v-x"))),
-        ("redock_live", _events("redock_live", _drop(5))),  # no iframe inserted after the announce
-        ("redock_live", _events("redock_live", _edit(5, src_viewer="v-1"))),  # inserted pointing at the old viewer
-        ("redock_live", _events("redock_live", _edit(5, src_viewer=None))),
-        ("redock_live", _events("redock_live", _append(ev(7, "iframe_inserted", src_viewer="v-2")))),  # two inserts
-        ("redock_live", _events("redock_live", _drop(4))),  # no announce
+        ("redock_live", _edit_events("redock_live", _drop(2))),  # no close for v1 at all
+        ("redock_live", _edit_events("redock_live", _edit(2, viewer="v-0"))),  # a close for another viewer
+        ("redock_live", _edit_events("redock_live", _edit(2, seq=5))),  # the close arrives AFTER the announce
+        ("redock_live", _edit_events("redock_live", _drop(3))),  # the v1 iframe was never removed
+        ("redock_live", _edit_events("redock_live", _edit(3, src_viewer="v-x"))),
+        ("redock_live", _edit_events("redock_live", _drop(5))),  # no iframe inserted after the announce
+        ("redock_live", _edit_events("redock_live", _edit(5, src_viewer="v-1"))),  # inserted pointing at the old viewer
+        ("redock_live", _edit_events("redock_live", _edit(5, src_viewer=None))),
+        ("redock_live", _edit_events("redock_live", _append(ev(7, "iframe_inserted", src_viewer="v-2")))),  # two inserts
+        ("redock_live", _edit_events("redock_live", _drop(4))),  # no announce
         # stop_placeholder (T12)
         ("stop_placeholder", _set(("stop", "text"), "The deck view lost its connection. Close and reopen the deck panel.")),
         ("stop_placeholder", _set(("stop", "text"), "No deck viewer is running. The deck view lost its connection.")),
@@ -4116,14 +4116,14 @@ def _append(*more):
         ("late_iframe", _set(("late_iframe", "after_tab_close"), {"state": "closed", "iframes": 1})),
         ("late_iframe", _set(("late_iframe", "after_dock_closed"), {"state": "open-connected", "iframes": 1})),
         ("late_iframe", _set(("late_iframe", "after_dock_closed"), {"state": "closed", "iframes": 1})),
-        ("late_iframe", _events("late_iframe", _drop(11))),  # no query posted after the reopen (AC-39(e)'s mutation)
-        ("late_iframe", _events("late_iframe", _edit(11, kind="accept"))),
-        ("late_iframe", _events("late_iframe", _drop(12))),  # no announce
-        ("late_iframe", _events("late_iframe", _edit(11, seq=12.5))),  # the query comes AFTER the announce
-        ("late_iframe", _events("late_iframe", _edit(13, seq=11.5))),  # an iframe inserted before the announce
-        ("late_iframe", _events("late_iframe", _edit(13, src_viewer=None))),  # src not yet carrying the viewer id
-        ("late_iframe", _events("late_iframe", _edit(13, src_viewer="v-0"))),
-        ("late_iframe", _events("late_iframe", _drop(13))),
+        ("late_iframe", _edit_events("late_iframe", _drop(11))),  # no query posted after the reopen (AC-39(e)'s mutation)
+        ("late_iframe", _edit_events("late_iframe", _edit(11, kind="accept"))),
+        ("late_iframe", _edit_events("late_iframe", _drop(12))),  # no announce
+        ("late_iframe", _edit_events("late_iframe", _edit(11, seq=12.5))),  # the query comes AFTER the announce
+        ("late_iframe", _edit_events("late_iframe", _edit(13, seq=11.5))),  # an iframe inserted before the announce
+        ("late_iframe", _edit_events("late_iframe", _edit(13, src_viewer=None))),  # src not yet carrying the viewer id
+        ("late_iframe", _edit_events("late_iframe", _edit(13, src_viewer="v-0"))),
+        ("late_iframe", _edit_events("late_iframe", _drop(13))),
         ("late_iframe", _set(("late_iframe", "final"), {"state": "open-connected", "iframes": []})),
         ("late_iframe", _set(("late_iframe", "final"), {"state": "open-connected", "iframes": [{"src_viewer": "v-9"}] * 2})),
         ("late_iframe", _set(("late_iframe", "final"), {"state": "open-waiting", "iframes": [{"src_viewer": "v-9"}]})),
