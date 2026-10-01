@@ -32,6 +32,12 @@ C7a SHIPPED THE TESTS BEFORE THE WORKFLOW EDIT (the agent may not edit ``.github
 wiring is pending; once the diff is applied they run, and that xfail turns into a hard failure (strict) if any
 requirement is unmet, so a half-applied diff cannot pass. ``PRAXIS_REPL_WORKFLOW`` points the file at another
 workflow (used to check the diff before it is applied).
+
+#5656 (deck-panel layout) adds the unit K3 (budget 10 min, step timeout 12, after K2 and before the dock aggregate; dock steps
+12 + 16 + 17 + 12 = 57 minutes, backstop 45 + 47 + 57 = 149) and the negative-only N-g (no CI step, like N-d). The fixer may not edit
+``.github/`` either, so the same two-state rule applies: while ``repl.yml`` has no ``--scenario K3`` step every K3 expectation is
+absent, the earlier numbers (45 and 137) are still required, and one strict ``xfail`` says the wiring is pending; once the step is
+there the numbers are the spec's and nothing weaker passes (a half-applied diff, say the step without the 149, fails).
 """
 
 from __future__ import annotations
@@ -53,13 +59,19 @@ pending_ci = pytest.mark.skipif(
     not DOCK_APPLIED, reason="C7 CI steps not applied to repl.yml yet (apply the diff from the C7a report); see test_dock_check_ci_steps_are_applied"
 )
 
-#: D16 unit budgets in minutes, sprints A and B. CI step timeout = budget + 2.
-BUDGET_MIN = {"D1": 6, "D1-dark": 5, "D2": 12, "D3": 8, "D4": 6, "K1a": 10, "K1b": 14, "K2": 15}
-#: check flag -> ordered unit ids that belong to it (N-d is never a CI step: the AC-39 sensitivity driver runs it)
+#: Has the #5656 K3 CI wiring been applied to the workflow under test? (the fixer may not edit .github/; the diff is in its report)
+K3_APPLIED = "--scenario K3" in WORKFLOW.read_text()
+pending_k3 = pytest.mark.skipif(
+    not K3_APPLIED, reason="#5656 K3 CI step not applied to repl.yml yet (apply the diff from the T8 report); see test_k3_ci_step_is_applied"
+)
+
+#: D16 unit budgets in minutes, sprints A and B (and K3, #5656). CI step timeout = budget + 2.
+BUDGET_MIN = {"D1": 6, "D1-dark": 5, "D2": 12, "D3": 8, "D4": 6, "K1a": 10, "K1b": 14, "K2": 15, "K3": 10}
+#: check flag -> ordered unit ids that belong to it (N-d and N-g are never CI steps: the AC-39 sensitivity driver and the #5656 one run them)
 CHECKS = {"--display-check": ["D1", "D1-dark", "D2", "D3", "D4"]}
 OUT_DIRS = {"--display-check": "outputs/repl_smoke/display-check", "--dock-check": "outputs/repl_smoke/dock-check"}
 if DOCK_APPLIED:
-    CHECKS["--dock-check"] = ["K1a", "K1b", "K2"]
+    CHECKS["--dock-check"] = ["K1a", "K1b", "K2", *(["K3"] if K3_APPLIED else [])]
 HASHED_ARGS = ("--base-path", "--serve-dir", "--out-dir", "--neg")
 REQUIRED_PATHS = (
     "scripts/repl_smoke.py",
@@ -156,7 +168,8 @@ def test_step_timeout_is_the_budget_plus_two_minutes(steps, check):
     if check == "--display-check":
         assert {u: BUDGET_MIN[u] + 2 for u in CHECKS[check]} == {"D1": 8, "D1-dark": 7, "D2": 14, "D3": 10, "D4": 8}
     if check == "--dock-check":
-        assert {u: BUDGET_MIN[u] + 2 for u in CHECKS[check]} == {"K1a": 12, "K1b": 16, "K2": 17}
+        want = {"K1a": 12, "K1b": 16, "K2": 17, **({"K3": 12} if K3_APPLIED else {})}
+        assert {u: BUDGET_MIN[u] + 2 for u in CHECKS[check]} == want
 
 
 @pytest.mark.parametrize("check", sorted(CHECKS))
@@ -274,6 +287,10 @@ def test_job_backstop_is_the_d16_number_for_the_sprints_applied(wf, steps):
         assert wf["jobs"]["repl"]["timeout-minutes"] == 92 == 45 + display, "sprint B: the 45-minute allowance plus 47"
         return
     dock = sum(s["timeout-minutes"] for s in _scenario_steps(steps, "--dock-check").values())
+    if K3_APPLIED:
+        assert dock == 57, "12 + 16 + 17 + 12 scenario minutes (K3 adds 12, #5656)"
+        assert wf["jobs"]["repl"]["timeout-minutes"] == 149 == 45 + display + dock
+        return
     assert dock == 45, "12 + 16 + 17 scenario minutes"
     assert wf["jobs"]["repl"]["timeout-minutes"] == 137 == 45 + display + dock
 
@@ -377,8 +394,8 @@ test_dock_check_ci_steps_are_applied = pytest.mark.xfail(
 @pending_ci
 def test_dock_steps_exist_one_per_unit_with_their_own_names_commands_and_timeouts(steps):
     found = _scenario_steps(steps, "--dock-check")
-    assert sorted(found) == ["K1a", "K1b", "K2"], "exactly one scenario step per dock unit that counts"
-    for uid, timeout in (("K1a", 12), ("K1b", 16), ("K2", 17)):
+    assert sorted(found) == sorted(["K1a", "K1b", "K2", *(["K3"] if K3_APPLIED else [])]), "exactly one scenario step per dock unit that counts"
+    for uid, timeout in (("K1a", 12), ("K1b", 16), ("K2", 17), *((("K3", 12),) if K3_APPLIED else ())):
         step = found[uid]
         assert step["timeout-minutes"] == timeout and step["if"] == "${{ !cancelled() }}"
         assert _smoke_args(step) == ["--dock-check", "--scenario", uid, "--base-path", "/praxis/"]
@@ -392,14 +409,16 @@ def test_n_d_has_no_ci_step_anywhere(steps):
     for step in steps:
         argv = _smoke_args(step) or []
         assert "N-d" not in argv, "AC-39(d) is negative-only: the sensitivity driver runs it, never the workflow"
+        assert "N-g" not in argv, "#5656 N-g is negative-only: its sensitivity driver runs it, never the workflow"
         assert "--neg" not in argv, "no workflow step carries a harness-only negative flag"
 
 
 @pending_ci
 def test_the_dock_units_run_in_table_order_right_before_the_dock_aggregate_after_the_display_one(steps):
     found = _scenario_steps(steps, "--dock-check")
-    order = [_index(steps, found[u]) for u in ("K1a", "K1b", "K2")]
-    assert order == list(range(order[0], order[0] + 3)), "adjacent, in order"
+    units = ["K1a", "K1b", "K2", *(["K3"] if K3_APPLIED else [])]
+    order = [_index(steps, found[u]) for u in units]
+    assert order == list(range(order[0], order[0] + len(units))), "adjacent, in order"
     agg = _index(steps, _aggregate_steps(steps, "--dock-check")[0])
     assert agg == order[-1] + 1, "the gating dock aggregate is the very next step"
     assert order[0] > _index(steps, _aggregate_steps(steps, "--display-check")[0]), "after the display aggregate"
@@ -431,3 +450,48 @@ def test_the_vendoring_check_runs_against_the_submodule_the_job_already_initiali
 @pending_ci
 def test_the_dock_check_flag_is_wired_once_at_least(wf):
     assert WORKFLOW.read_text().count("--dock-check") >= 1  # AC-40, sprint C
+
+
+# --------------------------------------------------------------------------- #
+# #5656 (deck-panel layout): K3 is wired one step, after K2 and before the dock aggregate; N-g has none
+# --------------------------------------------------------------------------- #
+
+
+def test_k3_ci_step_is_applied():
+    """The #5656 K3 wiring is pending until the diff in the T8 report is applied to repl.yml. Strict xfail: pending while it is absent, a
+    hard requirement (the assertion must hold) the moment it is there."""
+    assert K3_APPLIED, "repl.yml has no `--dock-check --scenario K3` step yet (the fixer could not edit .github/)"
+
+
+test_k3_ci_step_is_applied = pytest.mark.xfail(
+    not K3_APPLIED, strict=True, reason="#5656 K3 CI wiring pending: the fixer may not edit .github/workflows/repl.yml"
+)(test_k3_ci_step_is_applied)
+
+
+@pending_k3
+def test_k3_step_is_named_has_the_d16_command_the_budget_plus_two_and_does_not_hide_its_neighbours(steps):
+    (step,) = [s for s in steps if (_smoke_args(s) or [])[-5:] == ["--dock-check", "--scenario", "K3", "--base-path", "/praxis/"]]
+    assert step["timeout-minutes"] == 12 == BUDGET_MIN["K3"] + 2 and step["if"] == "${{ !cancelled() }}"
+    assert "K3" in step["name"] and any(line.startswith("uv run python scripts/repl_smoke.py") for line in _command_lines(step))
+    assert len({s.get("name") for s in steps if s.get("name")}) == len([s for s in steps if s.get("name")]), "step names are unique"
+
+
+@pending_k3
+def test_k3_runs_after_k2_and_the_dock_aggregate_follows_it_directly(steps):
+    found = _scenario_steps(steps, "--dock-check")
+    assert _index(steps, found["K3"]) == _index(steps, found["K2"]) + 1, "K3 is the unit right after K2"
+    assert _index(steps, _aggregate_steps(steps, "--dock-check")[0]) == _index(steps, found["K3"]) + 1
+
+
+@pending_k3
+def test_k3_and_the_dock_aggregate_hash_the_same_arguments(steps):
+    (agg,) = _aggregate_steps(steps, "--dock-check")
+    found = _scenario_steps(steps, "--dock-check")
+    assert _hashed(_smoke_args(found["K3"])) == _hashed(_smoke_args(agg)), "without --base-path /praxis/ every stamp's args hash mismatches"
+
+
+@pending_k3
+def test_the_two_new_pytest_files_of_5656_are_wired_in_the_tests_step(steps):
+    tests = "\n".join(_command_lines(_by_name(steps, "Tests")))
+    for name in ("test_nd_sensitivity_5656_driver.py", "test_reclaim_k3_runner.py"):
+        assert f"uv run python -m pytest web-repl/tests/{name} -q" in tests, name
