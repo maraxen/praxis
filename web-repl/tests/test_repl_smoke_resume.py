@@ -3589,8 +3589,8 @@ def test_clamp_high_ok_means_a_drag_to_700_ends_at_480(rs, width, ok):
 # Sprint C (C7): the dock units in the D16 table -- K1a, K1b, K2, N-d (AC-42 "the driver's unit table equals D16's")
 # =========================================================================== #
 
-DOCK_IDS = ["K1a", "K1b", "K2", "N-d"]
-DOCK_BUDGET_MIN = [10, 14, 15, 6]
+DOCK_IDS = ["K1a", "K1b", "K2", "K3", "N-d"]  # #5656 adds K3 (the medium-tier re-clamp), between K2 and the negative-only N-d
+DOCK_BUDGET_MIN = [10, 14, 15, 10, 6]
 K1A_KEYS = (
     "panel_is_split_right", "viewer_resources", "hello_backend", "canvas_nonblank", "embed_hidden", "pageerrors",  # AC-34
     "click_focuses", "follow_focuses", "follow_off_holds", "follow_skips_null", "preset_directions",
@@ -3633,14 +3633,14 @@ def test_unit_table_is_d16_with_the_dock_units_appended_in_table_order(rs):
     assert [u.id for u in rs.UNIT_TABLE if u.check == "display-check"] == ALL_IDS
     dock = [rs.UNIT_BY_ID[i] for i in DOCK_IDS]
     assert rs.DOCK_CHECK == "dock-check" and all(u.check == "dock-check" for u in dock)
-    assert [u.budget_s for u in dock] == [m * 60 for m in DOCK_BUDGET_MIN], "10, 14, 15 and 6 min (D16)"
-    assert [u.acs for u in dock] == [("AC-34", "AC-35", "AC-37"), ("AC-38",), ("AC-36",), ("AC-39",)]
+    assert [u.budget_s for u in dock] == [m * 60 for m in DOCK_BUDGET_MIN], "10, 14, 15, 10 (K3, #5656) and 6 min (D16)"
+    assert [u.acs for u in dock] == [("AC-34", "AC-35", "AC-37"), ("AC-38",), ("AC-36",), ("AC-N5",), ("AC-39",)]
 
 
 def test_n_d_is_negative_only_and_never_part_of_the_aggregate(rs):
-    assert [u.id for u in rs.DOCK_AGGREGATE_UNITS] == ["K1a", "K1b", "K2"]
+    assert [u.id for u in rs.DOCK_AGGREGATE_UNITS] == ["K1a", "K1b", "K2", "K3"]
     assert rs.UNIT_BY_ID["N-d"].in_aggregate is False
-    assert all(rs.UNIT_BY_ID[i].in_aggregate for i in ("D1", "D4", "K1a", "K1b", "K2"))
+    assert all(rs.UNIT_BY_ID[i].in_aggregate for i in ("D1", "D4", "K1a", "K1b", "K2", "K3"))
 
 
 def test_k1a_lists_the_ac34_ac35_ac37_keys(rs):
@@ -5595,14 +5595,14 @@ def test_the_dock_driver_runs_k1a_k1b_k2_as_one_run_unit_each_and_never_n_d(rs, 
     runner = InProcessRunner(rs, ur, wds, out, env)
     args = rs.parse_args(["--dock-check", "--out-dir", str(out), "--base-path", "/praxis/", "--serve-dir", str(tmp_path)])
     assert rs.run_dock_check(args, runner=runner, hash_env=env, unit_argv_prefix=["py", "smoke.py"]) == 0
-    assert runner.ids() == ["K1a", "K1b", "K2"], "table order; N-d is never part of the aggregate"
-    assert [t for _, t, _ in runner.calls] == [m * 60 + 60 for m in (10, 14, 15)], "budget + 60 s each, no whole-run timeout"
+    assert runner.ids() == ["K1a", "K1b", "K2", "K3"], "table order; N-d is never part of the aggregate"
+    assert [t for _, t, _ in runner.calls] == [m * 60 + 60 for m in (10, 14, 15, 10)], "budget + 60 s each, no whole-run timeout"
     for argv, _, _ in runner.calls:
         assert argv[:2] == ["py", "smoke.py"] and "--dock-check" in argv and "--display-check" not in argv
         assert argv[argv.index("--base-path") + 1] == "/praxis/" and argv[argv.index("--out-dir") + 1] == str(out)
         assert argv[argv.index("--serve-dir") + 1] == str(tmp_path) and "--chrome-path" in argv
     agg = json.loads((out / "result.json").read_text())
-    assert agg["check"] == "dock-check" and set(agg["scenarios"]) == {"K1a", "K1b", "K2"} and agg["passed"] is True
+    assert agg["check"] == "dock-check" and set(agg["scenarios"]) == {"K1a", "K1b", "K2", "K3"} and agg["passed"] is True
     assert "N-d" not in agg["scenarios"] and agg["sizing_case"] == "honoured_reachable"
 
 
@@ -5611,7 +5611,7 @@ def test_the_dock_aggregate_fails_while_any_unit_is_missing_and_n_d_never_rescue
     out = tmp_path / "out"
     runner = InProcessRunner(rs, ur, wds, out, env, skip_stamp={"K1b"})
     agg, code = drive_dock(rs, out, env, runner)
-    assert code == 1 and agg["missing"] == ["K1b"] and agg["recomputed"] == ["K1a", "K2"]
+    assert code == 1 and agg["missing"] == ["K1b"] and agg["recomputed"] == ["K1a", "K2", "K3"]
     # an N-d result on disk (it fails its own listed key BY DESIGN) does not touch the verdict
     scenario_in_process(rs, ur, wds, "N-d", out, env, fields={"panel_width_wide_1600": False})
     agg2, code2 = drive_dock(rs, out, env, InProcessRunner(rs, ur, wds, out, env), )
@@ -8841,3 +8841,75 @@ def test_dock_driver_has_the_k3_page_actions_and_the_dock_js_helpers(rs):
         assert fragment in rs.DOCK_CHECK_JS, fragment
     assert "shell.expandLeft()" in rs.DOCK_CHECK_JS and "shell.leftCollapsed === true" in rs.DOCK_CHECK_JS, "expand only what is collapsed"
     assert "D.notebookState()" in rs.DOCK_CHECK_JS.split("D.currentInfo = ")[1].split("};")[0], "no second reader of the current widget"
+
+
+# -- #5656, T5b: K3 in the unit table (the aggregate counts it; K2 is untouched) --------------------------------------------------
+
+
+def test_k3_is_a_dock_unit_after_k2_that_the_aggregate_counts_and_its_keys_are_the_twelve_plus_pageerrors(rs):
+    k3 = rs.UNIT_BY_ID["K3"]
+    assert [u.id for u in rs.DOCK_UNITS] == ["K1a", "K1b", "K2", "K3", "N-d"]
+    assert k3.check == "dock-check" and k3.budget_s == 600.0 and k3.acs == ("AC-N5",) and k3.in_aggregate is True
+    assert k3.viewports == rs.K3_VIEWPORTS and k3.viewports[0] == (1440, 900)
+    assert tuple(k3.keys) == (*rs.K3_KEYS, "pageerrors") and len(k3.keys) == 13
+    assert k3.expected == rs.k3_expected(rs.reclaim_status(rs.SIZING_RECORD))
+    assert all(v is True for k, v in k3.expected if k != "pageerrors") and dict(k3.expected)["pageerrors"] == []
+
+
+def test_k3_leaves_k2_exactly_as_it_was(rs):
+    k2 = rs.UNIT_BY_ID["K2"]
+    assert k2.expected == rs.k2_expected(rs.SIZING_STATUS) and len(k2.keys) == 20 and k2.budget_s == 900.0 and k2.acs == ("AC-36",)
+    assert k2.viewports == tuple(v for _, v in rs.K2_STEPS) and len(rs.K2_STEPS) == 9
+    assert [s for s, _ in rs.K2_STEPS] == [
+        "drawer", "dismiss_reopen", "tier_up", "medium_1440", "fit", "medium_1280", "wide_1600", "resize_within_wide", "wide_1920"
+    ]
+    assert set(k2.keys).isdisjoint(rs.K3_KEYS), "K3's keys are new names; no K2 key was extended"
+    assert rs.UNIT_BY_ID["K1a"].budget_s == 600.0 and rs.UNIT_BY_ID["K1b"].budget_s == 840.0
+
+
+def test_k3_inputs_hash_its_own_viewports_so_a_changed_step_recomputes_it(rs):
+    env = make_env(rs)
+    k3 = rs.UNIT_BY_ID["K3"]
+    same = rs.unit_inputs(k3, env)
+    assert sorted(same) == sorted(["dist", "notebook", "harness", "runner", "chrome", "args", "driver"])
+    other = dataclasses.replace(k3, viewports=((1440, 900), (1280, 800)))
+    assert rs.unit_inputs(other, env)["args"] != same["args"]
+    assert rs.unit_inputs(rs.UNIT_BY_ID["K2"], env)["args"] != same["args"]
+
+
+def test_run_dock_scenario_runs_k3_through_run_k3_and_only_k3(rs, monkeypatch, nb):
+    calls: list[str] = []
+    monkeypatch.setattr(rs, "DockDriver", lambda session, **k: object())
+    for name in ("run_k1a", "run_k1b", "run_k2", "run_k3", "run_nd"):
+        monkeypatch.setattr(rs, name, lambda d, f, _n=name, **kw: calls.append(_n) or {"body": _n})
+    assert rs.run_dock_scenario(FakeSession(), rs.UNIT_BY_ID["K3"], make_env(rs), notebook=nb) == {"body": "run_k3"}
+    assert calls == ["run_k3"]
+
+
+def test_scenario_k3_is_accepted_by_dock_check_and_an_unknown_unit_is_still_refused(rs, tmp_path):
+    seen: list[str] = []
+    args = rs.parse_args(["--dock-check", "--scenario", "K3", "--out-dir", str(tmp_path / "o")])
+    rc = rs.run_dock_check(args, runner=SpyRunner(), hash_env=make_env(rs), scenario_entry=lambda uid, **kw: seen.append(uid) or 0)
+    assert rc == 0 and seen == ["K3"]
+    bad = rs.parse_args(["--dock-check", "--scenario", "K4", "--out-dir", str(tmp_path / "o")])
+    assert rs.run_dock_check(bad, runner=SpyRunner(), hash_env=make_env(rs)) == 2
+
+
+def test_k3_through_the_unit_runner_a_fixed_build_stamps_exit_0_and_a_build_without_the_fix_stamps_exit_1_naming_the_six_keys(rs, ur, wds, nb, tmp_path):
+    """The pre-registered RED/GREEN verdicts as the HARNESS records them: result.K3.json lists failing_keys, the stamp's exit follows."""
+    for reclaim, want_exit, want_failing in ((True, 0, []), (False, 1, [k for k in rs.K3_KEYS if k in rs.K3_RED_FALSE])):
+        out = tmp_path / ("fixed" if reclaim else "stock")
+        log: list[Any] = []
+        code = rs.run_scenario(
+            "K3", out_dir=out, env_fn=lambda: make_env(rs), session_factory=lambda u, e: FakeSession(),
+            scenario_fn=lambda s, u, e: rs.run_k3(FakeK3(rs, rs.build_dock_notebook(nb), reclaim=reclaim), nb),
+            ensure_token_fn=lambda: "t", watchdog_factory=wds(log), kill_tree_fn=lambda *a, **k: [], exit_fn=lambda c: c,
+        )
+        paths = rs.unit_paths(out, "K3")
+        result = json.loads(paths["result"].read_text())
+        stamp = json.loads(paths["stamp"].read_text())
+        assert code == want_exit == stamp["exit"], (reclaim, result["failing_keys"])
+        assert result["failing_keys"] == want_failing and result["missing_keys"] == []
+        assert result["unit"] == "K3" and result["k3_preconditions_ok"] is True and result["k3_all_settled"] is True
+        state = rs.inspect_unit(out, rs.UNIT_BY_ID["K3"], stamp["inputs"])
+        assert state["valid"] is True and state["reusable"] is reclaim, "a red verdict is a valid unit, never a reusable pass"

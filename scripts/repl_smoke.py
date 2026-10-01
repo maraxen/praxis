@@ -7133,6 +7133,11 @@ DOCK_UNITS: tuple[HarnessUnit, ...] = (
     HarnessUnit(
         "K2", DOCK_CHECK, 15 * 60.0, k2_expected(SIZING_STATUS), acs=("AC-36",), viewports=tuple(v for _, v in K2_STEPS)
     ),
+    # #5656 (deck-panel layout): K3 re-measures the empty strip beside the deck at 1280-1599 px after an open, a drag, a file-browser
+    # toggle, a window resize, a tier entry and a reopen. Its budget is the spec's 10 min (an estimate of ~150 s, unmeasured).
+    HarnessUnit(
+        "K3", DOCK_CHECK, 10 * 60.0, k3_expected(reclaim_status(SIZING_RECORD)), acs=("AC-N5",), viewports=K3_VIEWPORTS
+    ),
     HarnessUnit(
         "N-d", DOCK_CHECK, 6 * 60.0, nd_expected(SIZING_STATUS), acs=("AC-39",), viewports=((1600, 900),), in_aggregate=False
     ),
@@ -10254,6 +10259,8 @@ def run_dock_scenario(session: Any, unit: HarnessUnit, env: Any, *, notebook: di
         return run_k1b(driver, fixture, neg=tuple(getattr(session, "_neg", ()) or ()))
     if unit.id == "K2":
         return run_k2(driver, fixture)
+    if unit.id == "K3":
+        return run_k3(driver, fixture)
     return run_nd(driver, fixture)
 
 
