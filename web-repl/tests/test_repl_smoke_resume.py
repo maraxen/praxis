@@ -622,6 +622,9 @@ _THEME_CONDITIONS = {
     "command registered": r"hasCommand\(\s*['\"]apputils:change-theme['\"]\s*\)",
     "app restored": r"__praxisRestored\s*===\s*true",
     "splash gone": r"!\s*document\.getElementById\(\s*['\"]jupyterlab-splash['\"]\s*\)",
+    # round 6 (a cheap precaution, not a fix): the first theme load has finished, and the splash has been absent for >= 300 ms
+    "first theme load finished": r"themeName\s*!==\s*['\"]['\"]",
+    "splash quiet for 300 ms": r"quietMs\s*>=\s*300",
 }
 
 
@@ -683,14 +686,17 @@ def test_theme_ready_js_behaves_in_a_stub_page(rs):
         let resolveRestored; const restored = new Promise(r => { resolveRestored = r; });
         const cmds = new Set(); let splash = true;
         globalThis.window = {jupyterapp: {commands: {hasCommand: n => cmds.has(n)}, restored}};
-        globalThis.document = {getElementById: id => (id === 'jupyterlab-splash' && splash ? {} : null)};
+        let clock = 0; globalThis.performance = {now: () => (clock += 1000)};  // every call is 1000 ms later: the quiet period is past on the next poll
+        globalThis.document = {getElementById: id => (id === 'jupyterlab-splash' && splash ? {} : null),
+                               body: {dataset: {jpThemeName: 'JupyterLab Dark'}}};  // the first theme load has finished
         pred();  // the page polls; the first call arms the restored flag
         const out = [];
         for (const ev of ORDER) {
           if (ev === 'command') cmds.add('apputils:change-theme');
           if (ev === 'restored') { resolveRestored(); await restored; await new Promise(r => setTimeout(r, 0)); }
           if (ev === 'splash') splash = false;
-          out.push(!!pred());
+          pred();  // a poll that first sees the splash gone starts the quiet period...
+          out.push(!!pred());  // ...and this one is 1000 ms later
         }
         console.log(JSON.stringify(out));
         """
@@ -707,7 +713,9 @@ def test_theme_ready_js_behaves_in_a_stub_page(rs):
     orders = [list(o) for o in itertools.permutations(["command", "restored", "splash"])]
     for order in orders:
         assert steps(rs.THEME_READY_JS, order) == [False, False, True], order
-    for condition, last in (("command registered", "command"), ("app restored", "restored"), ("splash gone", "splash")):
+    # "splash gone" has no behavioural control here any more: the 300 ms quiet period (round 6) already implies the splash is absent,
+    # so a copy without that term behaves the same; its presence is pinned by the pattern test above.
+    for condition, last in (("command registered", "command"), ("app restored", "restored")):
         broken = _without(rs.THEME_READY_JS, condition)
         order = [e for e in ("command", "restored", "splash") if e != last] + [last]
         assert steps(broken, order) != [False, False, True], f"negative control passed: {condition}"
@@ -7829,3 +7837,110 @@ def test_the_rule_and_its_reason_are_written_down_where_the_key_is_documented(rs
     block = source[source.index("#   pageerrors            the session's"):]
     block = block[:block.index("RAIL_RGB")]
     assert "tolerated_pageerrors" in block and "2026-10-01" in block and "splash" in block
+
+
+
+# --- round 6: the theme-change gate also waits for the first theme load and a quiet splash (a cheap precaution, NOT a claimed fix) ---
+
+_QUIET_DRIVER = textwrap.dedent(
+    """
+    const JS = __JS__;
+    const SCENARIOS = __SCENARIOS__;
+    const run = async (js, ops) => {
+      let t = 0, splash = true, themed = false, resolveRestored;
+      const restored = new Promise(r => { resolveRestored = r; });
+      const cmds = new Set();
+      const body = {dataset: {}};
+      globalThis.window = {jupyterapp: {commands: {hasCommand: n => cmds.has(n)}, restored}};
+      globalThis.document = {getElementById: id => (id === 'jupyterlab-splash' && splash ? {} : null), body};
+      globalThis.performance = {now: () => t};
+      const pred = (0, eval)('(' + js + ')');
+      pred();
+      const out = [];
+      for (const op of ops) {
+        if (op === 'command') cmds.add('apputils:change-theme');
+        else if (op === 'restored') { resolveRestored(); await restored; await new Promise(r => setTimeout(r, 0)); }
+        else if (op === 'splash_gone') splash = false;
+        else if (op === 'splash_back') splash = true;
+        else if (op === 'theme') body.dataset.jpThemeName = 'JupyterLab Dark';
+        else if (typeof op === 'number') t += op;
+        out.push(!!pred());
+      }
+      return out;
+    };
+    const result = {};
+    for (const [name, ops, js] of SCENARIOS) result[name] = await run(js === null ? JS : js, ops);
+    console.log(JSON.stringify(result));
+    """
+)
+
+
+def _run_quiet_scenarios(rs, scenarios):
+    bun = shutil.which("bun")
+    if not bun:
+        pytest.skip("bun not installed")
+    script = _QUIET_DRIVER.replace("__JS__", json.dumps(rs.THEME_READY_JS)).replace("__SCENARIOS__", json.dumps(scenarios))
+    done = subprocess.run([bun, "--eval", script], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr
+    return json.loads(done.stdout.strip().splitlines()[-1])
+
+
+def test_the_gate_needs_the_first_theme_load_and_300_ms_of_no_splash_in_every_order_of_the_four_events(rs):
+    import itertools
+
+    scenarios = [[",".join(order), [*order, 299, 1], None] for order in itertools.permutations(["command", "restored", "splash_gone", "theme"])]
+    got = _run_quiet_scenarios(rs, scenarios)
+    assert len(got) == 24
+    for order, steps in got.items():
+        assert steps == [False, False, False, False, False, True], (order, "not ready until 300 ms after the splash was first seen gone")
+
+
+def test_without_the_theme_attribute_or_without_the_quiet_period_the_gate_stays_closed(rs):
+    ready = ["command", "restored", "splash_gone", "theme"]
+    got = _run_quiet_scenarios(rs, [
+        ["no theme load", [*ready[:3], 5000, 5000], None],
+        ["no time passes", [*ready, 0, 0, 0], None],
+        ["299 ms is not enough", [*ready, 299], None],
+        ["300 ms is", [*ready, 300], None],
+        ["splash never gone", ["command", "restored", "theme", 5000], None],
+    ])
+    assert got["no theme load"][-1] is False
+    assert got["no time passes"] == [False] * 7
+    assert got["299 ms is not enough"][-1] is False
+    assert got["300 ms is"][-1] is True
+    assert got["splash never gone"][-1] is False
+
+
+def test_a_splash_that_comes_back_restarts_the_quiet_period(rs):
+    ready = ["command", "restored", "splash_gone", "theme"]
+    got = _run_quiet_scenarios(rs, [["second theme load", [*ready, 300, "splash_back", "splash_gone", 299, 1], None]])
+    steps = got["second theme load"]
+    assert steps[4] is True, "ready after the first quiet period"
+    assert steps[5:] == [False, False, False, True], "back: closed; gone again: closed; 299 ms: closed; 300 ms: open"
+
+
+def test_negative_controls_each_new_condition_removed_opens_the_gate_too_early(rs):
+    ready = ["command", "restored", "splash_gone", "theme"]
+    no_theme = _without(rs.THEME_READY_JS, "first theme load finished")
+    no_quiet = _without(rs.THEME_READY_JS, "splash quiet for 300 ms")
+    never_resets = rs.THEME_READY_JS.replace("window.__praxisSplashGoneAt = null;", "void 0;")
+    assert never_resets != rs.THEME_READY_JS, "the mutant must change something"
+    got = _run_quiet_scenarios(rs, [
+        ["real: no theme", ["command", "restored", "splash_gone", 5000], None],
+        ["broken: no theme", ["command", "restored", "splash_gone", 5000], no_theme],
+        ["real: no time", [*ready, 0], None],
+        ["broken: no time", [*ready, 0], no_quiet],
+        ["real: splash back", [*ready, 300, "splash_back", "splash_gone"], None],
+        ["broken: tracker never resets", [*ready, 300, "splash_back", "splash_gone"], never_resets],
+    ])
+    assert got["real: no theme"][-1] is False and got["broken: no theme"][-1] is True
+    assert got["real: no time"][-1] is False and got["broken: no time"][-1] is True
+    assert got["real: splash back"][-1] is False and got["broken: tracker never resets"][-1] is True
+
+
+def test_the_existing_three_conditions_are_still_in_the_gate_and_the_wait_call_is_unchanged(rs):
+    for name in ("command registered", "app restored", "splash gone"):
+        assert _missing_theme_conditions(rs.THEME_READY_JS) == [], name
+    assert "hasCommand('apputils:change-theme')" in rs.THEME_READY_JS and "__praxisRestored === true" in rs.THEME_READY_JS
+    assert "!document.getElementById('jupyterlab-splash')" in rs.THEME_READY_JS
+    assert "jpThemeName" in rs.THEME_READY_JS and "performance.now()" in rs.THEME_READY_JS
