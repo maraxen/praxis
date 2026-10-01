@@ -1,0 +1,9 @@
+# 260929_nd_sensitivity_sprint_c.bth.bcccce5a-f013-42e9-9294-211d462f387a.bth.lock.toml — written at run time, never modified
+[manifest]
+written_at = "2026-10-01T16:57:24.780341+00:00"
+sidecar_sha256 = "1cb84182f66ab107bdc6c2ef0f783ea063a7fe6b9450c24b1604aed00da66437"
+sidecar_path = "/tmp/praxis-nd-b/scripts/spikes/260929_nd_sensitivity_sprint_c.bth.toml"
+git_sha = "9e184e6b7144ef4f6ddef7bcdf37975998590c62"
+script_sha256 = "a3e91c857d1508258044b66438ae670efc78d92a4dcbcbbb9fead211686fb0f7"
+run_id = "bcccce5a-f013-42e9-9294-211d462f387a"
+agent_id = null
