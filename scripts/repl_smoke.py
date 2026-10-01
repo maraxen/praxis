@@ -5113,14 +5113,27 @@ _DC_THEME_JS = """async (theme) => {
     } catch (e) { return {ok: false, error: String(e)}; }
 }"""
 
-# Ready to change theme: all three must hold. `window.jupyterapp` appears before JupyterLab's
+# Ready to change theme: all five must hold. `window.jupyterapp` appears before JupyterLab's
 # plugins have activated, so the command may not be registered yet; `restored` (JupyterFrontEnd's
 # promise, resolved after layout restoration) is read through a flag armed on the first poll,
 # because the predicate is polled synchronously; and the splash plugin removes
 # `#jupyterlab-splash` 200 ms after the first theme load, so a theme change made before that
-# overlaps the initial load and double-removes the splash.
+# overlaps the initial load and double-removes the splash. Round 6 adds two cheap precautions (NOT a
+# claimed fix for that error): the first theme load has finished (the themes plugin sets
+# `document.body.dataset.jpThemeName` when it applies a theme), and no splash element has been in the
+# document for 300 ms, measured in the page from the first poll that saw it absent (a splash that comes
+# back restarts the period). The quiet period implies the splash is absent now; the plain absence term
+# stays because it was a listed condition first.
 THEME_READY_JS = """() => {
     const app = window.jupyterapp;
+    const now = performance.now();
+    if (document.getElementById('jupyterlab-splash') !== null) {
+        window.__praxisSplashGoneAt = null;
+    } else if (typeof window.__praxisSplashGoneAt !== 'number') {
+        window.__praxisSplashGoneAt = now;
+    }
+    const quietMs = typeof window.__praxisSplashGoneAt === 'number' ? now - window.__praxisSplashGoneAt : -1;
+    const themeName = document.body && document.body.dataset ? (document.body.dataset.jpThemeName || '') : '';
     if (!app || !app.commands || !app.restored) return false;
     if (window.__praxisRestored === undefined) {
         window.__praxisRestored = false;
@@ -5128,7 +5141,9 @@ THEME_READY_JS = """() => {
     }
     return app.commands.hasCommand('apputils:change-theme')
         && window.__praxisRestored === true
-        && !document.getElementById('jupyterlab-splash');
+        && !document.getElementById('jupyterlab-splash')
+        && themeName !== ''
+        && quietMs >= 300;
 }"""
 
 
