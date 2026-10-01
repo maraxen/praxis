@@ -41,6 +41,11 @@ checks). Owners are matched against ``lh.head96`` and never ``lh.head``; a NoTip
 always gives ``None`` (it arises only where a pending check passes and a committed read fails, which
 committed state cannot explain). ``ErrorContext.head96`` and ``container_mode`` carry the path.
 
+**Residue** (#5659 task 8; N5659-11). PLR's 96 ops queue tracker changes before their ``try``, so a refused
+op leaves PENDING changes behind. On the 96 path ``ErrorContext.residue`` carries them, found by
+``residue.of`` -- the only display module that reads pending state. This module reads none: the
+``residue`` import is the whole of its involvement, which is why the scan below stays as it was.
+
 **Deck source for rule (d).** With no op frame there is no ``lh.deck``. The roots searched are those
 the frames reach (a local that is a ``LiquidHandler`` gives its deck, a local that is a resource gives
 its root: in a notebook the cell's frame IS the user's namespace) plus any passed in ``decks``. A name
@@ -61,7 +66,7 @@ import functools
 import types
 from typing import Any
 
-from . import glossary
+from . import glossary, residue
 
 __all__ = [
     "OWNER_CONTAINER", "OWNER_TIP_SPOT", "OWNER_CHANNEL", "OWNER_TIP",
@@ -118,6 +123,9 @@ class ErrorContext:
     - ``container_mode``: on the 96 path of ``aspirate96`` / ``dispense96``, ``"per_channel"`` (96
       wells of one plate, channel c pairs with well c) or ``"single"`` (one container for the whole
       head, which may be the only well of a Plate); ``None`` otherwise.
+    - ``residue``: on the 96 path, the ``residue.Residue`` records for the changes PLR queued on the op's
+      trackers and never confirmed (containers, mounted tips, head channels, rack spots); ``()`` when there
+      are none and always on the 1-channel path.
     """
 
     error: str
@@ -135,6 +143,7 @@ class ErrorContext:
     available: float | None
     head96: bool = False
     container_mode: str | None = None
+    residue: tuple = ()
 
     @property
     def targets(self) -> tuple:
@@ -346,6 +355,19 @@ def _op96_inputs(inner, lh, head):
     else:
         channels = _committed_channels(head)
     return tuple(rack.get_item(c) for c in channels), tuple(channels), (), None
+
+
+def _op96_labware(inner):
+    """The labware the innermost 96 op frame would commit on success, for the residue layer: ``(containers,
+    rack)``. ``containers`` is the ``containers`` local of ``aspirate96`` / ``dispense96`` WHOLE (the op
+    commits every one of them, not only those under a mounted tip); ``rack`` is the ``tip_rack`` /
+    ``resource`` of a pick-up / drop. The other is ``()`` / ``None``. Locals are only named here; their
+    state is read by ``residue.of``."""
+    role = glossary.role_of(inner.f_code.co_name)
+    if role in (glossary.ASPIRATE, glossary.DISPENSE):
+        return _seq(_local(inner, "containers")) or (), None
+    rack = _local(inner, "tip_rack" if role == glossary.PICK_UP else "resource")
+    return (), rack if _isinstance(rack, _plr().TipRack) else None
 
 
 # --------------------------------------------------------------------------- owners
@@ -625,11 +647,17 @@ def resolve(exc, tb=None, *, decks=()):
     if own is None:  # pending residue (or nothing committed explains the raise): never guess
         return None
 
+    # the residue of the 96 path (N5659-11): read by residue.py, the only module that reads pending state
+    queued = ()
+    if is96:
+        containers, rack = _op96_labware(inner)
+        queued = residue.of(lh, containers=containers, rack=rack)
+
     # step 5
     return ErrorContext(
         error=type(exc).__name__, action=action, op=inner_name, rule=owner.rule,
         owner_kind=owner.kind, owner=owner.obj, channel=owner.channel,
         resources=resources or (), channels=channels or (), volumes=volumes or (),
         offending=tuple(offenders), requested=own.requested, available=own.available,
-        head96=is96, container_mode=container_mode,
+        head96=is96, container_mode=container_mode, residue=queued,
     )

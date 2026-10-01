@@ -2919,7 +2919,7 @@ def test_residue96_the_field_is_defaulted_and_last(cx):
 
 def test_residue96_the_one_channel_path_carries_no_residue(cx):
     """The layer is the 96 path's: a 1-channel context keeps the default."""
-    for name in ("E1", "E2", "E4", "E10", "E14"):
+    for name in ("E1", "E2", "E3", "E4", "E10"):
         ctx = cx.resolve(case(name).exc)
         assert ctx is not None and ctx.head96 is False and ctx.residue == (), name
 
