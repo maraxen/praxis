@@ -4958,6 +4958,29 @@ _DC_THEME_JS = """async (theme) => {
     } catch (e) { return {ok: false, error: String(e)}; }
 }"""
 
+# Ready to change theme: all three must hold. `window.jupyterapp` appears before JupyterLab's
+# plugins have activated, so the command may not be registered yet; `restored` (JupyterFrontEnd's
+# promise, resolved after layout restoration) is read through a flag armed on the first poll,
+# because the predicate is polled synchronously; and the splash plugin removes
+# `#jupyterlab-splash` 200 ms after the first theme load, so a theme change made before that
+# overlaps the initial load and double-removes the splash.
+THEME_READY_JS = """() => {
+    const app = window.jupyterapp;
+    if (!app || !app.commands || !app.restored) return false;
+    if (window.__praxisRestored === undefined) {
+        window.__praxisRestored = false;
+        app.restored.then(() => { window.__praxisRestored = true; });
+    }
+    return app.commands.hasCommand('apputils:change-theme')
+        && window.__praxisRestored === true
+        && !document.getElementById('jupyterlab-splash');
+}"""
+
+
+def wait_for_theme_ready(page: Any, timeout_ms: int = DISPLAY_NAV_TIMEOUT_MS) -> None:
+    """Block until ``apputils:change-theme`` can be executed safely (see ``THEME_READY_JS``)."""
+    page.wait_for_function(THEME_READY_JS, timeout=timeout_ms)
+
 
 class DisplayCheckError(RuntimeError):
     """A display-check scenario could not reach the state it needs to measure."""
@@ -4966,6 +4989,22 @@ class DisplayCheckError(RuntimeError):
 def display_context_init_scripts(neg: Any = ()) -> list[str]:
     """The init scripts every display-check context carries: the persistence ack (D16)."""
     return [PERSISTENCE_ACK_INIT_SCRIPT]
+
+
+DISPLAY_PAGEERROR_STACK_CHARS = 600
+
+
+def format_pageerror(exc: Any) -> str:
+    """One ``pageerrors`` entry: the message, then the JavaScript stack cut to 600 characters.
+
+    Still a single string, so the key stays a list of strings and is empty exactly when there
+    were no page errors. ``stack`` is absent on a plain exception and None when the page gave none.
+    """
+    message = str(exc)
+    stack = getattr(exc, "stack", None)
+    if not stack:
+        return message
+    return f"{message}\n{str(stack)[:DISPLAY_PAGEERROR_STACK_CHARS]}"
 
 
 class DisplaySession:
@@ -4999,7 +5038,7 @@ class DisplaySession:
             for script in display_context_init_scripts(neg=tuple(getattr(args, "neg", ()) or ())):
                 context.add_init_script(script)
             self.page = context.new_page()
-            self.page.on("pageerror", lambda exc: self.pageerrors.append(str(exc)))
+            self.page.on("pageerror", lambda exc: self.pageerrors.append(format_pageerror(exc)))
         except BaseException:
             self.close()
             raise
@@ -5046,6 +5085,7 @@ def run_display_scenario(session: Any, unit: HarnessUnit, env: Any, *, notebook:
     )
     page.evaluate(DISPLAY_CHECK_JS)
     if light:
+        wait_for_theme_ready(page)
         changed = page.evaluate(_DC_THEME_JS, THEME_NAMES[True])
         if not changed.get("ok"):
             raise DisplayCheckError(f"apputils:change-theme failed: {changed.get('error')!r}")

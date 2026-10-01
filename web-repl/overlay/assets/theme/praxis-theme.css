@@ -446,14 +446,17 @@ body[data-jp-theme-name='JupyterLab Light'] {
   --jp-mirror-editor-bracket-color: #56636F;
 }
 
-/* Ground and sheet. The second selector out-ranks JupyterLab's own transparent
-   background for the active, selected cell (specificity 0,4,0). */
+/* Ground and sheet. In command mode JupyterLab makes the active, selected cell
+   transparent with
+     .jp-Notebook.jp-mod-commandMode .jp-Cell.jp-mod-active.jp-mod-selected:not(.jp-mod-multiSelected)
+   (specificity 0,6,0), so the second selector repeats that state at 0,7,1. It
+   excludes multi-selected cells, which keep JupyterLab's own highlight (0,4,0). */
 body[data-jp-theme-name='JupyterLab Light'] .jp-Notebook {
   background: var(--jp-layout-color1);
 }
 
 body[data-jp-theme-name='JupyterLab Light'] .jp-Notebook .jp-CodeCell,
-body[data-jp-theme-name='JupyterLab Light'] .jp-Notebook .jp-CodeCell.jp-mod-active.jp-mod-selected {
+body[data-jp-theme-name='JupyterLab Light'] .jp-Notebook.jp-mod-commandMode .jp-CodeCell.jp-mod-active.jp-mod-selected:not(.jp-mod-multiSelected) {
   background: var(--jp-layout-color0);
   border-radius: var(--jp-border-radius);
 }
