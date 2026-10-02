@@ -30,7 +30,7 @@ jobs:
     steps:
       # submodules: recursive is load-bearing -- build_wheels.py builds the
       # pylabrobot wheel via `git archive <sha>` against external/pylabrobot.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
