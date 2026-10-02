@@ -1090,11 +1090,30 @@ _REQUIRED_PERSISTENCE_MODULES = (
     "panel.js",
 )
 
-# Required under dist/shell/display/. Later tasks append one line each (B9:
-# stale.js, interact.js; C6: dock.js).
+# Required under dist/shell/display/. Later tasks append one line each.
 _REQUIRED_DISPLAY_MODULES = (
     "index.js",
     "chrome.js",
+    "stale.js",
+    "interact.js",
+    "dock.js",
+)
+
+# C6: the 3D viewer's static page and what it cannot boot offline without, the C4 page-side
+# augmentations, and the kernel-side viewer. Under dist/; `stage_overlay` copies overlay/assets/
+# wholesale, so these are assertions, not staging. No vendored PLR Python is listed: the viewer
+# imports the pin's pylabrobot.visualizer3D from the PLR wheel. (Keep the vendored package's old
+# name out of this directory: a GATE X test greps web-repl/scripts/ for it.)
+_REQUIRED_VIEWER3D_PATHS = (
+    "assets/visualizer3d/index.html",
+    "assets/visualizer3d/boot.js",
+    "assets/visualizer3d/vendor/three.webgpu.min.js",
+    # three.webgpu.min.js imports this statically; without it the viewer is blank offline.
+    "assets/visualizer3d/vendor/three.core.min.js",
+    "assets/visualizer3d-augmentations/socket.js",
+    "assets/visualizer3d-augmentations/embed.js",
+    "assets/visualizer3d-augmentations/embed.css",
+    "assets/python/praxis/viz/viewer3d.py",
 )
 
 
@@ -1225,6 +1244,9 @@ def assert_dist_complete(out_dir: Path, *, with_coxswain: bool = False) -> None:
         out_dir / "assets" / "python" / "web_bridge.py",
         out_dir / "assets" / "python" / "praxis" / "__init__.py",
         out_dir / "assets" / "python" / "praxis" / "interactive.py",
+        # B8: the kernel-side display package the bootstrap's D13 stage imports. Without it the
+        # failure would surface only at runtime, as a praxis:display-error.
+        out_dir / "assets" / "python" / "praxis" / "display" / "__init__.py",
         out_dir / "assets" / "visualizer" / "lib.js",
         out_dir / "assets" / "visualizer" / "index.html",
         out_dir / "assets" / "visualizer-augmentations" / "index.js",
@@ -1239,6 +1261,7 @@ def assert_dist_complete(out_dir: Path, *, with_coxswain: bool = False) -> None:
         out_dir / "shell" / "praxis-shell.js",
         *(out_dir / "shell" / "persistence" / name for name in _REQUIRED_PERSISTENCE_MODULES),
         *(out_dir / "shell" / "display" / name for name in _REQUIRED_DISPLAY_MODULES),
+        *(out_dir / rel for rel in _REQUIRED_VIEWER3D_PATHS),
         out_dir / "lab" / "index.html",
         out_dir / "repl" / "index.html",
         # The welcome notebook, and the contents index that makes it VISIBLE. Both,

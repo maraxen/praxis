@@ -209,6 +209,8 @@ def test_assert_dist_complete_passes_with_all_persistence_modules(tmp_path: Path
     (dist / "assets" / "python" / "web_bridge.py").write_text("# bridge\n")
     (dist / "assets" / "python" / "praxis" / "__init__.py").write_text("")
     (dist / "assets" / "python" / "praxis" / "interactive.py").write_text("# interactive\n")
+    (dist / "assets" / "python" / "praxis" / "display").mkdir(parents=True)  # B8: required too
+    (dist / "assets" / "python" / "praxis" / "display" / "__init__.py").write_text("# display\n")
     (dist / "assets" / "visualizer").mkdir(parents=True)
     (dist / "assets" / "visualizer" / "lib.js").write_text("// lib\n")
     (dist / "assets" / "visualizer" / "index.html").write_text("<html></html>")
@@ -240,10 +242,15 @@ def test_assert_dist_complete_passes_with_all_persistence_modules(tmp_path: Path
     (dist / "shell" / "persistence" / "core.js").write_text("// core\n")
     (dist / "shell" / "persistence" / "panel.js").write_text("// panel\n")
 
-    # A6: assert_dist_complete also requires the display modules.
+    # A6, B9: assert_dist_complete also requires the display modules.
     (dist / "shell" / "display").mkdir(parents=True)
-    (dist / "shell" / "display" / "index.js").write_text("// display index\n")
-    (dist / "shell" / "display" / "chrome.js").write_text("// display chrome\n")
+    for name in ("index.js", "chrome.js", "stale.js", "interact.js", "dock.js"):
+        (dist / "shell" / "display" / name).write_text(f"// display {name}\n")
+
+    # C6: and the 3D viewer's page, vendored three.js, augmentations and kernel-side module.
+    for rel in build_repl._REQUIRED_VIEWER3D_PATHS:
+        (dist / rel).parent.mkdir(parents=True, exist_ok=True)
+        (dist / rel).write_text(f"// {rel}\n")
 
     # assert_dist_complete should not raise
     build_repl.assert_dist_complete(dist, with_coxswain=False)  # must not raise

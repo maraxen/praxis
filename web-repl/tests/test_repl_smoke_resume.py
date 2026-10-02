@@ -29,6 +29,7 @@ import importlib.util
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -130,8 +131,15 @@ def wds(ur):
         w.disarm_all()
 
 
+#: The unit table through sprint B (D16 order): B10 appends D2, D3 and D4.
+ALL_IDS = ["D1", "D1-dark", "D2", "D3", "D4"]
+#: The D16 budgets in minutes, in table order.
+BUDGET_MIN = [6, 5, 12, 8, 6]
+
+
 def passing_fields(unit: Any) -> dict[str, Any]:
-    return dict(unit.expected)
+    """A result that holds every listed key (a predicate such as ``AtMost`` gives its ``example()``)."""
+    return {k: (v.example() if hasattr(v, "example") else v) for k, v in unit.expected}
 
 
 def scenario_in_process(rs: Any, ur: Any, wds: Any, unit_id: str, out_dir: Path, env: Any, *,
@@ -206,7 +214,7 @@ class SpyRunner:
 
 def drive(rs: Any, out_dir: Path, env: Any, runner: Any, **kw: Any) -> tuple[dict[str, Any], int]:
     return rs.run_units_driver(
-        table=rs.UNIT_TABLE, out_dir=out_dir,
+        table=[u for u in rs.UNIT_TABLE if u.check == rs.DISPLAY_CHECK], out_dir=out_dir,
         inputs_for=lambda u: rs.unit_inputs(u, env),
         argv_for=lambda u: ["fake-unit", "--scenario", u.id], runner=runner, cwd="/repo", **kw,
     )
@@ -232,8 +240,8 @@ D1_DARK_KEYS = (
 )
 
 
-def test_unit_table_is_d16_for_sprint_a(rs):
-    assert [u.id for u in rs.UNIT_TABLE] == ["D1", "D1-dark"]
+def test_unit_table_is_d16_through_sprint_b_for_the_chrome_units(rs):
+    assert [u.id for u in rs.UNIT_TABLE if u.check == "display-check"] == ALL_IDS
     d1, dark = rs.UNIT_BY_ID["D1"], rs.UNIT_BY_ID["D1-dark"]
     assert (d1.check, d1.budget_s) == ("display-check", 6 * 60)
     assert (dark.check, dark.budget_s) == ("display-check", 5 * 60)
@@ -447,7 +455,7 @@ def test_persistence_ack_init_script_sets_the_existing_key_to_browser_only(rs):
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.parametrize("unit_id", ["D1", "D1-dark"])
+@pytest.mark.parametrize("unit_id", ALL_IDS)
 def test_watchdog_armed_once_with_the_table_budget_before_deletion_and_browser(rs, ur, wds, tmp_path, unit_id):
     """C9-4: ensure_token, then the Watchdog at the unit's D16 budget as the FIRST act, before the
     first file deletion and before the fake browser launch."""
@@ -614,6 +622,9 @@ _THEME_CONDITIONS = {
     "command registered": r"hasCommand\(\s*['\"]apputils:change-theme['\"]\s*\)",
     "app restored": r"__praxisRestored\s*===\s*true",
     "splash gone": r"!\s*document\.getElementById\(\s*['\"]jupyterlab-splash['\"]\s*\)",
+    # round 6 (a cheap precaution, not a fix): the first theme load has finished, and the splash has been absent for >= 300 ms
+    "first theme load finished": r"themeName\s*!==\s*['\"]['\"]",
+    "splash quiet for 300 ms": r"quietMs\s*>=\s*300",
 }
 
 
@@ -675,14 +686,17 @@ def test_theme_ready_js_behaves_in_a_stub_page(rs):
         let resolveRestored; const restored = new Promise(r => { resolveRestored = r; });
         const cmds = new Set(); let splash = true;
         globalThis.window = {jupyterapp: {commands: {hasCommand: n => cmds.has(n)}, restored}};
-        globalThis.document = {getElementById: id => (id === 'jupyterlab-splash' && splash ? {} : null)};
+        let clock = 0; globalThis.performance = {now: () => (clock += 1000)};  // every call is 1000 ms later: the quiet period is past on the next poll
+        globalThis.document = {getElementById: id => (id === 'jupyterlab-splash' && splash ? {} : null),
+                               body: {dataset: {jpThemeName: 'JupyterLab Dark'}}};  // the first theme load has finished
         pred();  // the page polls; the first call arms the restored flag
         const out = [];
         for (const ev of ORDER) {
           if (ev === 'command') cmds.add('apputils:change-theme');
           if (ev === 'restored') { resolveRestored(); await restored; await new Promise(r => setTimeout(r, 0)); }
           if (ev === 'splash') splash = false;
-          out.push(!!pred());
+          pred();  // a poll that first sees the splash gone starts the quiet period...
+          out.push(!!pred());  // ...and this one is 1000 ms later
         }
         console.log(JSON.stringify(out));
         """
@@ -699,7 +713,9 @@ def test_theme_ready_js_behaves_in_a_stub_page(rs):
     orders = [list(o) for o in itertools.permutations(["command", "restored", "splash"])]
     for order in orders:
         assert steps(rs.THEME_READY_JS, order) == [False, False, True], order
-    for condition, last in (("command registered", "command"), ("app restored", "restored"), ("splash gone", "splash")):
+    # "splash gone" has no behavioural control here any more: the 300 ms quiet period (round 6) already implies the splash is absent,
+    # so a copy without that term behaves the same; its presence is pinned by the pattern test above.
+    for condition, last in (("command registered", "command"), ("app restored", "restored")):
         broken = _without(rs.THEME_READY_JS, condition)
         order = [e for e in ("command", "restored", "splash") if e != last] + [last]
         assert steps(broken, order) != [False, False, True], f"negative control passed: {condition}"
@@ -724,9 +740,11 @@ def test_wait_for_theme_ready_waits_on_the_js_with_the_navigation_timeout(rs):
 
 
 def test_every_theme_change_call_is_preceded_by_the_readiness_gate(rs):
-    assert _unguarded_theme_calls(REPL_SMOKE.read_text(encoding="utf-8")) == []
-    # the real file has at least one call site, or the check above proves nothing
-    assert "_DC_THEME_JS" in REPL_SMOKE.read_text(encoding="utf-8").split("def run_display_scenario")[1]
+    source = REPL_SMOKE.read_text(encoding="utf-8")
+    assert _unguarded_theme_calls(source) == []
+    # the real file has at least one call site, or the check above proves nothing (anywhere in the
+    # file: the sites are the D1 scenario and, from sprint B, the dock-check session's set_theme)
+    assert source.count("evaluate(_DC_THEME_JS") >= 1
 
 
 def test_the_call_site_checker_fires_on_a_synthetic_unguarded_call():
@@ -767,10 +785,10 @@ def test_driver_starts_each_unit_as_its_own_run_unit_with_budget_plus_60(rs, ur,
     runner = InProcessRunner(rs, ur, wds, tmp_path, env)
     agg, code = drive(rs, tmp_path, env, runner)
     assert code == 0 and agg["passed"] is True
-    assert runner.ids() == ["D1", "D1-dark"], "table order, exactly one process per unit"
-    assert [t for _, t, _ in runner.calls] == [6 * 60 + 60, 5 * 60 + 60]
+    assert runner.ids() == ALL_IDS, "table order, exactly one process per unit"
+    assert [t for _, t, _ in runner.calls] == [m * 60 + 60 for m in BUDGET_MIN]
     assert all(c == "/repo" for _, _, c in runner.calls)
-    assert len(runner.calls) == len(rs.UNIT_TABLE), "no whole-run call"
+    assert len(runner.calls) == len([u for u in rs.UNIT_TABLE if u.check == rs.DISPLAY_CHECK]), "no whole-run call"
 
 
 def test_aggregate_shape_and_d1_dark_subobject(rs, ur, wds, tmp_path):
@@ -779,12 +797,12 @@ def test_aggregate_shape_and_d1_dark_subobject(rs, ur, wds, tmp_path):
     assert code == 0
     for key in ("scenarios", "reused", "recomputed", "timed_out", "missing", "stale"):
         assert key in agg, key
-    assert agg["recomputed"] == ["D1", "D1-dark"] and agg["reused"] == []
+    assert agg["recomputed"] == ALL_IDS and agg["reused"] == []
     assert agg["timed_out"] == [] and agg["missing"] == [] and agg["stale"] == []
-    assert set(agg["scenarios"]) == {"D1", "D1-dark"}
+    assert set(agg["scenarios"]) == set(ALL_IDS)
     assert agg["d1_dark"] == agg["scenarios"]["D1-dark"] and "rail_colors_match_dark" in agg["d1_dark"]
     written = json.loads((tmp_path / "result.json").read_text())
-    assert written["passed"] is True and written["recomputed"] == ["D1", "D1-dark"]
+    assert written["passed"] is True and written["recomputed"] == ALL_IDS
 
 
 def test_resume_reuses_verified_units_and_records_source_and_hashes(rs, ur, wds, tmp_path):
@@ -793,7 +811,7 @@ def test_resume_reuses_verified_units_and_records_source_and_hashes(rs, ur, wds,
     spy = SpyRunner()
     agg, code = drive(rs, tmp_path, env, spy)
     assert code == 0 and spy.calls == [] and agg["recomputed"] == []
-    assert [r["id"] for r in agg["reused"]] == ["D1", "D1-dark"]
+    assert [r["id"] for r in agg["reused"]] == ALL_IDS
     for rec in agg["reused"]:
         files = rs.unit_paths(tmp_path, rec["id"])
         assert rec["source"] == str(files["result"])
@@ -806,8 +824,8 @@ def test_fresh_ignores_every_stamp(rs, ur, wds, tmp_path):
     drive(rs, tmp_path, env, InProcessRunner(rs, ur, wds, tmp_path, env))
     runner = InProcessRunner(rs, ur, wds, tmp_path, env)
     agg, code = drive(rs, tmp_path, env, runner, fresh=True)
-    assert code == 0 and runner.ids() == ["D1", "D1-dark"]
-    assert agg["reused"] == [] and agg["recomputed"] == ["D1", "D1-dark"]
+    assert code == 0 and runner.ids() == ALL_IDS
+    assert agg["reused"] == [] and agg["recomputed"] == ALL_IDS
 
 
 @pytest.mark.parametrize("field", ["dist", "notebook", "harness", "runner", "chrome", "driver"])
@@ -817,7 +835,7 @@ def test_a_changed_input_recomputes_the_unit(rs, ur, wds, tmp_path, field):
     env2 = make_env(rs, **{field: "0" * 64})
     runner = InProcessRunner(rs, ur, wds, tmp_path, env2)
     agg, code = drive(rs, tmp_path, env2, runner)
-    assert code == 0 and runner.ids() == ["D1", "D1-dark"] and agg["reused"] == []
+    assert code == 0 and runner.ids() == ALL_IDS and agg["reused"] == []
 
 
 def test_a_changed_base_path_recomputes_via_the_args_input(rs, ur, wds, tmp_path):
@@ -826,7 +844,7 @@ def test_a_changed_base_path_recomputes_via_the_args_input(rs, ur, wds, tmp_path
     env2 = make_env(rs, base_path="/")
     runner = InProcessRunner(rs, ur, wds, tmp_path, env2)
     drive(rs, tmp_path, env2, runner)
-    assert runner.ids() == ["D1", "D1-dark"]
+    assert runner.ids() == ALL_IDS
 
 
 def test_playwright_version_and_lockfile_changes_recompute_every_unit(rs, ur, wds, tmp_path):
@@ -836,7 +854,7 @@ def test_playwright_version_and_lockfile_changes_recompute_every_unit(rs, ur, wd
         env2 = make_env(rs, driver=ur.driver_input(playwright_version=pv, uv_lock_bytes=lock))
         runner = InProcessRunner(rs, ur, wds, tmp_path, env2)
         agg, _ = drive(rs, tmp_path, env2, runner)
-        assert runner.ids() == ["D1", "D1-dark"], (pv, lock)
+        assert runner.ids() == ALL_IDS, (pv, lock)
         assert agg["reused"] == []
         # put the original stamps back for the next case
         drive(rs, tmp_path, base, InProcessRunner(rs, ur, wds, tmp_path, base))
@@ -852,7 +870,7 @@ def test_a_tampered_result_recomputes(rs, ur, wds, tmp_path):
     path.write_text(json.dumps(data))
     runner = InProcessRunner(rs, ur, wds, tmp_path, env)
     agg, code = drive(rs, tmp_path, env, runner)
-    assert runner.ids() == ["D1"] and [r["id"] for r in agg["reused"]] == ["D1-dark"] and code == 0
+    assert runner.ids() == ["D1"] and [r["id"] for r in agg["reused"]] == ALL_IDS[1:] and code == 0
 
 
 def test_a_failing_key_is_recorded_and_never_reused(rs, ur, wds, tmp_path):
@@ -864,7 +882,7 @@ def test_a_failing_key_is_recorded_and_never_reused(rs, ur, wds, tmp_path):
     # a flaky failure is always retried
     runner = InProcessRunner(rs, ur, wds, tmp_path, env)
     agg2, code2 = drive(rs, tmp_path, env, runner)
-    assert runner.ids() == ["D1"] and code2 == 0 and [r["id"] for r in agg2["reused"]] == ["D1-dark"]
+    assert runner.ids() == ["D1"] and code2 == 0 and [r["id"] for r in agg2["reused"]] == ALL_IDS[1:]
 
 
 def test_a_missing_listed_key_is_never_reused(rs, ur, wds, tmp_path):
@@ -896,7 +914,7 @@ def test_runner_killed_between_result_and_stamp_leaves_no_stamp_and_is_recompute
     agg, code = drive(rs, tmp_path, env, runner)
     files = rs.unit_paths(tmp_path, "D1")
     assert files["result"].exists() and not files["stamp"].exists()
-    assert code == 1 and agg["missing"] == ["D1"] and agg["recomputed"] == ["D1-dark"]
+    assert code == 1 and agg["missing"] == ["D1"] and agg["recomputed"] == ALL_IDS[1:]
     again = InProcessRunner(rs, ur, wds, tmp_path, env)
     agg2, code2 = drive(rs, tmp_path, env, again)
     assert again.ids() == ["D1"] and code2 == 0 and agg2["missing"] == []
@@ -923,7 +941,7 @@ def test_timeout_marker_without_stamp_is_a_timed_out_unit(rs, tmp_path):
     (tmp_path).mkdir(exist_ok=True)
     rs.unit_paths(tmp_path, "D1")["timeout"].write_text(json.dumps({"unit": "D1"}))
     agg, code = drive(rs, tmp_path, env, SpyRunner(), aggregate_only=True)
-    assert code == 1 and agg["timed_out"] == ["D1"] and agg["missing"] == ["D1-dark"]
+    assert code == 1 and agg["timed_out"] == ["D1"] and agg["missing"] == ALL_IDS[1:]
 
 
 def test_run_unit_timeout_over_a_valid_stamp_defers_to_the_stamp_and_warns(rs, ur, wds, tmp_path, caplog):
@@ -931,7 +949,7 @@ def test_run_unit_timeout_over_a_valid_stamp_defers_to_the_stamp_and_warns(rs, u
     runner = InProcessRunner(rs, ur, wds, tmp_path, env, timed_out={"D1"})
     with caplog.at_level(logging.WARNING):
         agg, code = drive(rs, tmp_path, env, runner)
-    assert code == 0 and agg["timed_out"] == [] and agg["recomputed"] == ["D1", "D1-dark"]
+    assert code == 0 and agg["timed_out"] == [] and agg["recomputed"] == ALL_IDS
     messages = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
     assert any("D1" in m and "timed out" in m.lower() for m in messages), messages
 
@@ -959,7 +977,7 @@ def test_aggregate_only_over_matching_stamps_reuses_them_and_starts_nothing(rs, 
     spy = SpyRunner()
     agg, code = drive(rs, tmp_path, env, spy, aggregate_only=True)
     assert code == 0 and spy.calls == [] and agg["passed"] is True
-    assert [r["id"] for r in agg["reused"]] == ["D1", "D1-dark"] and agg["recomputed"] == []
+    assert [r["id"] for r in agg["reused"]] == ALL_IDS and agg["recomputed"] == []
 
 
 def test_aggregate_only_counts_a_missing_unit_as_failed(rs, ur, wds, tmp_path):
@@ -982,7 +1000,7 @@ def test_aggregate_only_with_a_stale_stamp_lists_it_and_deletes_nothing(rs, ur, 
     stale_env = make_env(rs, dist="1" * 64)
     agg, code = drive(rs, tmp_path, stale_env, SpyRunner(), aggregate_only=True)
     assert code == 1
-    assert [(s["id"], s["mismatched"]) for s in agg["stale"]] == [("D1", ["dist"]), ("D1-dark", ["dist"])]
+    assert [(s["id"], s["mismatched"]) for s in agg["stale"]] == [(i, ["dist"]) for i in ALL_IDS]
     after = snapshot_files(tmp_path)
     for name, data in before.items():
         if name != "result.json":
@@ -993,9 +1011,9 @@ def test_aggregate_only_with_a_different_base_path_makes_every_unit_stale_on_arg
     env = make_env(rs, base_path="/praxis/")
     drive(rs, tmp_path, env, InProcessRunner(rs, ur, wds, tmp_path, env))
     agg, code = drive(rs, tmp_path, make_env(rs, base_path="/"), SpyRunner(), aggregate_only=True)
-    assert code == 1 and [(s["id"], s["mismatched"]) for s in agg["stale"]] == [("D1", ["args"]), ("D1-dark", ["args"])]
+    assert code == 1 and [(s["id"], s["mismatched"]) for s in agg["stale"]] == [(i, ["args"]) for i in ALL_IDS]
     same, code_same = drive(rs, tmp_path, make_env(rs, base_path="/praxis/"), SpyRunner(), aggregate_only=True)
-    assert code_same == 0 and len(same["reused"]) == 2
+    assert code_same == 0 and len(same["reused"]) == len(ALL_IDS)
 
 
 def test_run_display_check_aggregate_only_starts_no_unit_and_keeps_files(rs, ur, wds, tmp_path):
@@ -1023,7 +1041,7 @@ def test_run_display_check_driver_forwards_the_hashed_arguments(rs, ur, wds, tmp
         assert argv[argv.index("--base-path") + 1] == "/praxis/"
         assert argv[argv.index("--out-dir") + 1] == str(out)
         assert argv[argv.index("--serve-dir") + 1] == str(tmp_path)
-        assert "--chrome-path" in argv and timeout in (420, 360)
+        assert "--chrome-path" in argv and timeout in {m * 60 + 60 for m in BUDGET_MIN}
 
 
 # --------------------------------------------------------------------------- #
@@ -1126,7 +1144,7 @@ def test_timed_out_rerun_clears_the_prior_stamp_and_the_next_resume_recomputes(r
     assert not old["result"].exists() and not old["stamp"].exists()
     runner = InProcessRunner(rs, ur, wds, out, env)
     agg, _ = drive(rs, out, env, runner)
-    assert runner.ids() == ["D1"] and [r["id"] for r in agg["reused"]] == ["D1-dark"]
+    assert runner.ids() == ["D1"] and [r["id"] for r in agg["reused"]] == ALL_IDS[1:]
 
 
 def test_nothing_runs_after_the_stamp_but_exit(rs, ur, tmp_path):
@@ -1443,3 +1461,6486 @@ def test_display_check_js_is_read_only(rs):
     assert "data-praxis-test" not in js and "__praxis_test" not in js
     for forbidden in ("setSource", "sharedModel.set", "innerHTML", "removeAttribute('data-praxis"):
         assert forbidden not in js, forbidden
+
+
+# =========================================================================== #
+# SPRINT B (B10): the --display-check units D2, D3 and D4 (AC-21 .. AC-26)
+#
+# Tests first. The scenario BODIES cannot run without a browser and a dist built at the PLR 1.0
+# pin (that is B10b, in CI or by the user), so what is proved here is everything that does not
+# need one: the unit table with its listed keys, the pure key derivations (each with a positive
+# control that can pass AND negative controls that must fail), the fixture notebook's structure,
+# the in-page helpers under a JS engine against a fake DOM, and the scenarios' ORDERING against
+# a scripted fake driver. The live-browser facts are listed in the B10 report as untested.
+# =========================================================================== #
+
+D2_KEYS = (
+    # AC-21 (reprs live)
+    "repr_cells_ok", "svg_in_dom", "html_bytes_max", "text_plain_matches", "pageerrors",
+    # AC-22 (error panels live)
+    "error_panels", "error_status", "runall_stops", "other_errors_plain",
+    # AC-23 (staleness live)
+    "stale_marked", "stale_not_persisted", "unchanged_not_marked", "mark_survives_scroll",
+    "earlier_session_marked", "rerun_not_marked", "persistence_gate_never_open",
+    # AC-25 (keyboard and text alternative)
+    "svg_role_img", "aria_label_equals_summary", "tab_focuses_figure", "arrow_moves", "escape_leaves",
+)
+D3_KEYS = (
+    "no_script_in_bundles", "reopened_branch", "persistence_gate_never_open",
+    "svg_in_dom", "liquid_fill_computed",
+)
+D4_KEYS = ("hc_text_color", "hc_sheet_fill", "hc_palette_untouched")
+
+MOONSTONE_LIVE = "rgb(115, 169, 194)"  # #73A9C2, the liquid fill (brand constant, D3)
+ASSAY_PLAIN = "24 of 96 wells hold liquid, 50–150 µL. 2,400 µL in the plate."
+HC_THEME = "JupyterLab Dark High Contrast"
+
+
+def test_unit_table_lists_d2_d3_d4_with_the_d16_budgets_checks_and_listed_keys(rs):
+    by = rs.UNIT_BY_ID
+    assert [(by[i].check, by[i].budget_s) for i in ("D2", "D3", "D4")] == [
+        ("display-check", 12 * 60), ("display-check", 8 * 60), ("display-check", 6 * 60),
+    ]
+    assert tuple(by["D2"].keys) == D2_KEYS
+    assert tuple(by["D3"].keys) == D3_KEYS
+    assert tuple(by["D4"].keys) == D4_KEYS
+    assert len(set(by["D2"].keys)) == len(by["D2"].keys), "no key listed twice"
+
+
+def test_unit_table_names_the_acs_each_unit_carries(rs):
+    by = rs.UNIT_BY_ID
+    assert tuple(by["D2"].acs) == ("AC-21", "AC-22", "AC-23", "AC-25")
+    assert tuple(by["D3"].acs) == ("AC-24",) and tuple(by["D4"].acs) == ("AC-26",)
+
+
+def test_listed_values_follow_ac21_to_ac26(rs):
+    d2 = dict(rs.UNIT_BY_ID["D2"].expected)
+    for key in D2_KEYS:
+        if key not in ("html_bytes_max", "pageerrors"):
+            assert d2[key] is True, key
+    assert d2["pageerrors"] == [] and d2["html_bytes_max"].example() <= 65_536
+    d3 = dict(rs.UNIT_BY_ID["D3"].expected)
+    assert d3["reopened_branch"] == "S2-T", "AC-2 recorded s2_b_exec_t: the executed path reopens TRUSTED and live"
+    assert d3["liquid_fill_computed"] == MOONSTONE_LIVE
+    assert (d3["no_script_in_bundles"], d3["persistence_gate_never_open"], d3["svg_in_dom"]) == (True, True, True)
+    assert dict(rs.UNIT_BY_ID["D4"].expected) == {k: True for k in D4_KEYS}
+
+
+def test_the_recorded_executed_reopen_branch_is_one_named_constant(rs):
+    assert rs.EXECUTED_REOPEN_BRANCH == "S2-T"
+    assert dict(rs.UNIT_BY_ID["D3"].expected)["reopened_branch"] == rs.EXECUTED_REOPEN_BRANCH
+
+
+def test_html_bytes_max_is_a_bound_not_an_equality(rs):
+    unit = rs.UNIT_BY_ID["D2"]
+    ok = passing_fields(unit)
+    assert rs.evaluate_unit_result(unit, ok) == ([], [])
+    for good in (0, 1, 36_142, 65_536, 65_536.0):
+        assert rs.evaluate_unit_result(unit, dict(ok, html_bytes_max=good)) == ([], []), good
+    for bad in (65_537, 70_000, None, True, "9000", [9000], float("nan")):
+        assert rs.evaluate_unit_result(unit, dict(ok, html_bytes_max=bad)) == ([], ["html_bytes_max"]), bad
+    without = dict(ok)
+    del without["html_bytes_max"]
+    assert rs.evaluate_unit_result(unit, without) == (["html_bytes_max"], [])
+
+
+def test_a_bound_predicate_gives_a_passing_example_and_survives_json(rs):
+    at_most = dict(rs.UNIT_BY_ID["D2"].expected)["html_bytes_max"]
+    assert at_most.holds(at_most.example()) and not at_most.holds(at_most.limit + 1)
+    assert json.loads(json.dumps(passing_fields(rs.UNIT_BY_ID["D2"])))["html_bytes_max"] == at_most.example()
+
+
+@pytest.mark.parametrize("unit_id", ["D2", "D3", "D4"])
+def test_every_new_key_is_strict_about_its_type(rs, unit_id):
+    unit = rs.UNIT_BY_ID[unit_id]
+    ok = passing_fields(unit)
+    assert rs.evaluate_unit_result(unit, ok) == ([], [])
+    for key, want in unit.expected:
+        if want is True:  # 1 and "true" are not True
+            assert rs.evaluate_unit_result(unit, dict(ok, **{key: 1}))[1] == [key], key
+            assert rs.evaluate_unit_result(unit, dict(ok, **{key: "true"}))[1] == [key], key
+            assert rs.evaluate_unit_result(unit, dict(ok, **{key: False}))[1] == [key], key
+            assert rs.evaluate_unit_result(unit, dict(ok, **{key: None}))[1] == [key], key
+
+
+def test_new_units_inputs_are_the_seven_d16_inputs_and_hash_the_unit_id(rs):
+    env = make_env(rs)
+    seen = set()
+    for uid in ("D2", "D3", "D4"):
+        inputs = rs.unit_inputs(rs.UNIT_BY_ID[uid], env)
+        assert set(inputs) == INPUT_NAMES
+        seen.add(inputs["args"])
+    assert len(seen) == 3 and rs.unit_inputs(rs.UNIT_BY_ID["D1"], env)["args"] not in seen
+
+
+def test_the_unit_files_of_the_new_units_live_beside_the_others(rs, tmp_path):
+    for uid in ("D2", "D3", "D4"):
+        p = rs.unit_paths(tmp_path, uid)
+        assert p["result"] == tmp_path / f"result.{uid}.json"
+        assert p["stamp"] == tmp_path / f"result.{uid}.stamp.json"
+
+
+@pytest.mark.parametrize("unit_id", ["D2", "D3", "D4"])
+def test_scenario_flag_runs_exactly_a_new_unit(rs, tmp_path, unit_id):
+    seen: list[Any] = []
+    args = rs.parse_args(["--display-check", "--scenario", unit_id, "--out-dir", str(tmp_path / "o")])
+    rc = rs.run_display_check(
+        args, runner=SpyRunner(), hash_env=make_env(rs),
+        scenario_entry=lambda uid, **kw: seen.append(uid) or 0,
+    )
+    assert rc == 0 and seen == [unit_id]
+
+
+# --------------------------------------------------------------------------- #
+# The fixture notebook: D1's five cells untouched, then the B10 cells
+# --------------------------------------------------------------------------- #
+
+NB_PATH = REPO_ROOT / "web-repl" / "tests" / "fixtures" / "notebooks" / "display_check.ipynb"
+D1_CELL_IDS = ["d1-never-run", "d1-ran", "d1-sleep", "d1-error", "d1-stale"]
+B10_CELL_IDS = [
+    "boot", "assemble", "transfers", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck",
+    "aspirate", "e1", "e2", "e4", "e6", "value-error", "redraw", "marker",
+]
+
+
+@pytest.fixture(scope="module")
+def nb() -> dict[str, Any]:
+    return json.loads(NB_PATH.read_text())
+
+
+def _src(cell: dict[str, Any]) -> str:
+    return "".join(cell["source"])
+
+
+def test_fixture_keeps_the_d1_cells_first_and_unchanged_then_the_b10_cells(nb):
+    ids = [c["id"] for c in nb["cells"]]
+    assert ids == D1_CELL_IDS + B10_CELL_IDS, "D1 addresses cells 0-4 by index: they must not move"
+    d1 = {c["id"]: _src(c) for c in nb["cells"][:5]}
+    assert d1["d1-ran"] == 'print("d1-ran")' and d1["d1-sleep"] == "import asyncio\nawait asyncio.sleep(3)"
+    assert d1["d1-error"] == 'raise ValueError("d1-error")' and d1["d1-stale"] == 'print("d1-stale", 1)'
+
+
+def test_fixture_cells_are_never_executed_and_carry_no_outputs(nb):
+    for cell in nb["cells"]:
+        assert cell["cell_type"] == "code" and cell["execution_count"] is None and cell["outputs"] == [], cell["id"]
+        assert cell["metadata"] == {}
+
+
+def test_fixture_cell_ids_are_the_harness_names(rs, nb):
+    assert rs.FIXTURE_CELLS == {
+        "boot": "boot", "assemble": "assemble", "transfers": "transfers", "pickup": "pickup",
+        "draw_source": "draw-source", "draw_assay": "draw-assay", "draw_tips": "draw-tips",
+        "draw_deck": "draw-deck", "aspirate": "aspirate", "e1": "e1", "e2": "e2", "e4": "e4", "e6": "e6",
+        "value_error": "value-error", "redraw": "redraw", "marker": "marker",
+    }
+    idx = rs.cell_indices(nb)
+    assert idx["d1-never-run"] == 0 and idx["d1-stale"] == 4 and idx["boot"] == 5 and idx["marker"] == len(nb["cells"]) - 1
+    assert [idx[i] for i in B10_CELL_IDS] == list(range(5, 5 + len(B10_CELL_IDS)))
+
+
+def test_cell_indices_refuses_a_duplicated_id_and_require_cells_a_missing_one(rs, nb):
+    broken = json.loads(json.dumps(nb))
+    broken["cells"][7]["id"] = "boot"
+    with pytest.raises(ValueError):
+        rs.cell_indices(broken)
+    short = {"cells": nb["cells"][:5]}
+    assert set(rs.cell_indices(short)) == set(D1_CELL_IDS)
+    with pytest.raises(KeyError):
+        rs.require_cells(short, "boot")
+
+
+def test_boot_cell_runs_the_real_kernel_path_and_installs_the_display_idempotently(nb):
+    src = _src(next(c for c in nb["cells"] if c["id"] == "boot"))
+    assert "import praxis_boot" in src and "await praxis_boot.setup()" in src, "the bootstrap's own once-guarded path"
+    assert "praxis.display" in src and ".install()" in src, "install() is idempotent per shell and returns the handle"
+
+
+def test_setup_cells_build_the_make_fixture_world_at_the_pin(nb):
+    cells = {c["id"]: _src(c) for c in nb["cells"]}
+    a = cells["assemble"]
+    for needle in (
+        "from pylabrobot.legacy.liquid_handling import LiquidHandler", "LiquidHandlerChatterboxBackend(num_channels=8)",
+        "STARLetDeck()", 'hamilton_96_tiprack_300uL_filter(name="tips_300")', "track=3", "track=9",
+        'cor_96_wellplate_360uL_Fb(name="source")', 'cor_96_wellplate_360uL_Fb(name="assay")',
+        "set_tip_tracking(True)", "set_volume_tracking(True)", "set_volume(200.0)", "await lh.setup()",
+    ):
+        assert needle in a, needle
+    assert "rails=" not in a, "rails= is the 0.2.2 spelling; the pin says track="
+    t = cells["transfers"]
+    assert "(1, 50.0), (2, 100.0), (3, 150.0)" in t and "await lh.discard_tips()" in t
+    assert cells["pickup"].strip() == 'await lh.pick_up_tips(tips["A4:H4"])'
+
+
+def test_drawing_cells_display_exactly_one_object_each(nb):
+    cells = {c["id"]: _src(c).strip() for c in nb["cells"]}
+    assert cells["draw-source"] == "source" and cells["draw-assay"] == "assay"
+    assert cells["draw-tips"] == "tips" and cells["draw-deck"] == "deck"
+
+
+def test_the_aspirate_cell_is_aspirate_only(nb):
+    src = _src(next(c for c in nb["cells"] if c["id"] == "aspirate"))
+    assert "lh.aspirate(" in src and "lh.dispense(" not in src and "pick_up_tips" not in src and "discard_tips" not in src
+
+
+def test_error_cells_raise_what_ac22_names_and_only_that(nb):
+    cells = {c["id"]: _src(c) for c in nb["cells"]}
+    assert 'lh.aspirate(assay["A1:H1"], vols=[80.0] * 8)' in cells["e1"]
+    assert "set_volume(400)" in cells["e2"] and "lh.dispense(" in cells["e2"] and 'assay.get_item("A2")' in cells["e2"]
+    assert 'lh.pick_up_tips(tips["A5:H5"])' in cells["e4"]
+    assert "await lh.discard_tips()" in cells["e6"] and "use_channels=[0]" in cells["e6"] and "lh.aspirate(" in cells["e6"]
+    assert cells["value-error"].strip().startswith("raise ValueError(")
+    for cid in ("e1", "e2", "e4", "e6", "value-error"):
+        assert "try:" not in cells[cid] and "except" not in cells[cid], f"{cid}: the error must reach the shell"
+
+
+def test_the_redraw_cell_is_self_contained_because_a_restart_loses_the_deck(nb):
+    src = _src(next(c for c in nb["cells"] if c["id"] == "redraw"))
+    assert 'cor_96_wellplate_360uL_Fb(name="redraw")' in src and src.strip().splitlines()[-1] == "redraw"
+    assert "deck" not in src and "lh." not in src, "must not need a name the restart lost"
+
+
+def test_the_marker_cell_is_a_plain_statement_after_the_error(nb):
+    ids = [c["id"] for c in nb["cells"]]
+    assert ids.index("marker") > ids.index("e1")
+    assert "raise" not in _src(nb["cells"][ids.index("marker")])
+
+
+def test_fixture_cells_parse_with_top_level_await(nb):
+    import ast as _ast
+
+    for cell in nb["cells"]:
+        compile(_src(cell), cell["id"], "exec", flags=_ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
+
+
+def test_no_cell_writes_a_script_or_touches_the_ack_key(nb):
+    text = "\n".join(_src(c) for c in nb["cells"])
+    assert "<script" not in text.lower() and "praxis-repl-persistence-ack" not in text
+
+
+def test_runall_notebook_is_the_pair_derived_from_the_fixture(rs, nb):
+    pair = rs.build_runall_notebook(nb)
+    assert [c["id"] for c in pair["cells"]] == ["assemble", "transfers", "pickup", "e1", "marker"]
+    assert tuple(rs.RUNALL_CELL_IDS) == ("assemble", "transfers", "pickup", "e1", "marker")
+    src = {c["id"]: _src(c) for c in nb["cells"]}
+    for cell in pair["cells"]:
+        assert _src(cell) == src[cell["id"]], "cloned from the fixture, so the notebook hash covers it"
+        assert cell["execution_count"] is None and cell["outputs"] == []
+    assert pair["metadata"] == nb["metadata"] and pair["nbformat"] == nb["nbformat"]
+    assert nb["cells"][0]["id"] == "d1-never-run", "the fixture itself is not mutated"
+    assert rs.RUNALL_NOTEBOOK_NAME != rs.DISPLAY_NOTEBOOK_NAME and rs.RUNALL_NOTEBOOK_NAME.endswith(".ipynb")
+
+
+# --------------------------------------------------------------------------- #
+# Synthetic ground truth for the key derivations: a positive control AND negative controls
+# (a derivation that can only pass is not a check; BATHOS.md)
+# --------------------------------------------------------------------------- #
+
+
+def stamp(kind: str, resource: Any, *, session: str = "sess-1", rev: Any = 3, exec_: Any = 8) -> dict[str, Any]:
+    return {"v": 1, "kind": kind, "resource": resource, "rev": rev, "session": session, "exec": exec_}
+
+
+def out(*, otype: str = "execute_result", mimes: tuple[str, ...] = ("text/html", "text/plain"),
+        html_bytes: int | None = 9_000, plain: str | None = "", st: Any = None, ename: Any = None,
+        evalue: Any = None, index: int = 0) -> dict[str, Any]:
+    return {"index": index, "output_type": otype, "mimes": list(mimes), "html_bytes": html_bytes,
+            "plain": plain, "stamp": st, "ename": ename, "evalue": evalue}
+
+
+def res(*, found: bool = True, svg: int = 1, changed: int = 0, earlier: int = 0) -> dict[str, Any]:
+    return {"found": found, "svg_count": svg, "changed_notices": changed, "earlier_notices": earlier, "text_length": 200}
+
+
+def report(*, count: Any = 1, state: Any = "ran", outputs: Any = None, res_: Any = None,
+           titles: Any = (), perr: int = 0) -> dict[str, Any]:
+    return {
+        "index": 0, "found": True, "in_document": True, "state": state, "execution_count": count,
+        "execution_state": "idle", "outputs": list(outputs or []), "res": res_,
+        "error": {"titles": list(titles), "praxis_error_nodes": perr},
+    }
+
+
+def draw_reports(session: str = "sess-1") -> dict[str, dict[str, Any]]:
+    def one(kind: str, name: str, plain: str, size: int) -> dict[str, Any]:
+        return report(outputs=[out(html_bytes=size, plain=plain, st=stamp(kind, name, session=session))], res_=res())
+
+    return {
+        "draw_source": one("plate", "source", "All 96 wells hold liquid, 50–200 µL. 16,800 µL in the plate.", 9_100),
+        "draw_assay": one("plate", "assay", ASSAY_PLAIN, 9_300),
+        "draw_tips": one("tiprack", "tips_300", "64 of 96 tips left. Columns 1–4 used.", 9_800),
+        "draw_deck": one("deck", "deck", "Tip carrier on rail 3, plate carrier on rail 9. 3 pieces of labware.", 36_142),
+    }
+
+
+def test_repr_keys_positive_control_all_hold_and_the_size_is_the_largest_output(rs):
+    keys = rs.derive_repr_keys(draw_reports())
+    assert keys == {"repr_cells_ok": True, "svg_in_dom": True, "html_bytes_max": 36_142, "text_plain_matches": True}
+    unit = rs.UNIT_BY_ID["D2"]
+    assert rs.evaluate_unit_result(unit, dict(passing_fields(unit), **keys))[1] == []
+
+
+def test_repr_negative_control_no_display_installed_means_no_stamp_no_bundle_no_svg(rs):
+    """AC-39's mechanism on synthetic ground truth: the formatter was never registered."""
+    plain_only = {k: report(outputs=[out(mimes=("text/plain",), html_bytes=None, plain="<PLR object>")], res_=res(svg=0))
+                  for k in draw_reports()}
+    keys = rs.derive_repr_keys(plain_only)
+    assert keys["repr_cells_ok"] is False and keys["svg_in_dom"] is False
+    assert keys["text_plain_matches"] is False and keys["html_bytes_max"] is None
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda r: r["draw_deck"]["outputs"][0].update(mimes=["text/html"]),  # no text/plain
+        lambda r: r["draw_assay"]["outputs"][0].update(mimes=["text/plain"]),  # no text/html
+        lambda r: r["draw_tips"]["outputs"][0].update(stamp=None),  # no stamp
+        lambda r: r["draw_tips"]["outputs"][0].update(stamp=stamp("plate", "tips_300")),  # wrong kind
+        lambda r: r["draw_assay"]["outputs"][0].update(stamp=stamp("plate", "source")),  # wrong resource
+        lambda r: r["draw_source"]["outputs"][0].update(stamp=stamp("plate", "source", rev=None)),  # a plate has a rev
+        lambda r: r["draw_source"]["outputs"][0].update(stamp=stamp("plate", "source", session="")),
+        lambda r: r["draw_deck"]["outputs"][0].update(stamp={"kind": "deck"}),  # not the D2 stamp
+        lambda r: r["draw_deck"].update(outputs=[]),
+    ],
+)
+def test_repr_cells_ok_needs_html_plain_and_the_right_stamp_on_every_cell(rs, mutate):
+    reports = draw_reports()
+    mutate(reports)
+    assert rs.derive_repr_keys(reports)["repr_cells_ok"] is False
+
+
+def test_svg_in_dom_needs_an_svg_under_every_drawn_output(rs):
+    for name in ("draw_source", "draw_assay", "draw_tips", "draw_deck"):
+        reports = draw_reports()
+        reports[name]["res"] = res(svg=0)
+        assert rs.derive_repr_keys(reports)["svg_in_dom"] is False, name
+        reports[name]["res"] = res(found=False, svg=0)
+        assert rs.derive_repr_keys(reports)["svg_in_dom"] is False, name
+        reports[name]["res"] = None
+        assert rs.derive_repr_keys(reports)["svg_in_dom"] is False, name
+
+
+def test_text_plain_matches_is_the_ac9_string_exactly(rs):
+    assert rs.ASSAY_TEXT_PLAIN == ASSAY_PLAIN
+    for wrong in (ASSAY_PLAIN.replace("–", "-"), ASSAY_PLAIN.replace("µ", "u"), ASSAY_PLAIN + " ", ""):
+        reports = draw_reports()
+        reports["draw_assay"]["outputs"][0]["plain"] = wrong
+        assert rs.derive_repr_keys(reports)["text_plain_matches"] is False, repr(wrong)
+
+
+def test_html_bytes_max_reports_the_largest_and_is_none_when_any_drawing_is_missing(rs):
+    reports = draw_reports()
+    reports["draw_assay"]["outputs"][0]["html_bytes"] = 70_000
+    assert rs.derive_repr_keys(reports)["html_bytes_max"] == 70_000
+    reports = draw_reports()
+    reports["draw_tips"]["outputs"] = []
+    assert rs.derive_repr_keys(reports)["html_bytes_max"] is None
+
+
+# -- AC-22 ---------------------------------------------------------------------------------------
+
+HEADINGS = {
+    "e1": "Not enough liquid in assay A1:H1.",
+    "e2": "Not enough room in assay A2.",
+    "e4": "Channel 0 already holds a tip.",
+    "e6": "Channel 0 has no tip.",
+}
+
+
+def error_reports() -> dict[str, dict[str, Any]]:
+    return {
+        cid: report(count=10 + i, state="error", titles=[h], perr=1, outputs=[
+            out(otype="display_data", st=stamp("error", None, rev=None)),
+            out(otype="error", mimes=(), html_bytes=None, plain=None, ename="TooLittleLiquidError", evalue="x", index=1),
+        ])
+        for i, (cid, h) in enumerate(HEADINGS.items())
+    }
+
+
+def value_error_report() -> dict[str, Any]:
+    return report(count=20, state="error", perr=0, outputs=[
+        out(otype="error", mimes=(), html_bytes=None, plain=None, ename="ValueError", evalue="plain")
+    ])
+
+
+def runall_reports() -> dict[str, dict[str, Any]]:
+    good = {c: report(count=i + 1) for i, c in enumerate(("assemble", "transfers", "pickup"))}
+    good["e1"] = report(count=4, state="error", outputs=[out(otype="error", mimes=(), html_bytes=None, ename="TooLittleLiquidError")])
+    good["marker"] = report(count=None, state="not-run")
+    return good
+
+
+def test_error_keys_positive_control(rs):
+    assert rs.ERROR_HEADINGS == HEADINGS
+    keys = rs.derive_error_keys(error_reports(), value_error_report(), runall_reports())
+    assert keys == {"error_panels": True, "error_status": True, "runall_stops": True, "other_errors_plain": True}
+
+
+@pytest.mark.parametrize("cid", list(HEADINGS))
+def test_error_panels_needs_each_heading_verbatim(rs, cid):
+    reports = error_reports()
+    reports[cid]["error"]["titles"] = [HEADINGS[cid] + " "]
+    assert rs.derive_error_keys(reports, value_error_report(), runall_reports())["error_panels"] is False
+    reports[cid]["error"]["titles"] = []  # no panel at all: the default traceback only
+    assert rs.derive_error_keys(reports, value_error_report(), runall_reports())["error_panels"] is False
+    reports[cid]["error"]["titles"] = ["Some other heading", HEADINGS[cid]]  # the heading is the FIRST title
+    assert rs.derive_error_keys(reports, value_error_report(), runall_reports())["error_panels"] is False
+
+
+@pytest.mark.parametrize("cid", list(HEADINGS))
+def test_error_status_needs_an_error_output_last_and_the_error_rail(rs, cid):
+    reports = error_reports()
+    reports[cid]["state"] = "ran"
+    assert rs.derive_error_keys(reports, value_error_report(), runall_reports())["error_status"] is False
+    reports = error_reports()
+    reports[cid]["outputs"] = reports[cid]["outputs"][:1]  # the panel but no error output: Run All would not stop
+    assert rs.derive_error_keys(reports, value_error_report(), runall_reports())["error_status"] is False
+    reports = error_reports()
+    reports[cid]["outputs"].reverse()  # the error output must be the LAST one
+    assert rs.derive_error_keys(reports, value_error_report(), runall_reports())["error_status"] is False
+
+
+def test_runall_stops_needs_the_marker_unrun_and_a_real_run_before_it(rs):
+    good = runall_reports()
+    assert rs.derive_error_keys(error_reports(), value_error_report(), good)["runall_stops"] is True
+    ran_through = runall_reports()
+    ran_through["marker"] = report(count=5)  # Run All did NOT stop
+    assert rs.derive_error_keys(error_reports(), value_error_report(), ran_through)["runall_stops"] is False
+    vacuous = runall_reports()  # nothing ran at all: the marker is null for a trivial reason
+    for name in ("assemble", "transfers", "pickup", "e1"):
+        vacuous[name] = report(count=None, state="not-run")
+    assert rs.derive_error_keys(error_reports(), value_error_report(), vacuous)["runall_stops"] is False
+    no_error = runall_reports()
+    no_error["e1"] = report(count=4)  # e1 never raised: it proves nothing about stopping
+    assert rs.derive_error_keys(error_reports(), value_error_report(), no_error)["runall_stops"] is False
+
+
+def test_other_errors_plain_needs_the_default_traceback_and_no_praxis_panel(rs):
+    keys = rs.derive_error_keys(error_reports(), value_error_report(), runall_reports())
+    assert keys["other_errors_plain"] is True
+    panelled = value_error_report()
+    panelled["error"]["praxis_error_nodes"] = 1
+    assert rs.derive_error_keys(error_reports(), panelled, runall_reports())["other_errors_plain"] is False
+    silent = report(count=20, state="ran")  # the cell never raised: no default traceback to speak of
+    assert rs.derive_error_keys(error_reports(), silent, runall_reports())["other_errors_plain"] is False
+    wrong = value_error_report()
+    wrong["outputs"][0]["ename"] = "TooLittleLiquidError"
+    assert rs.derive_error_keys(error_reports(), wrong, runall_reports())["other_errors_plain"] is False
+
+
+# -- AC-23 ---------------------------------------------------------------------------------------
+
+
+def stale_raw() -> dict[str, Any]:
+    return {
+        "source": res(changed=1), "tips": res(changed=0),
+        "persisted": {"file_read_ok": True, "has_outputs": True, "contains_changed": False, "mark_present_before_save": True},
+        "after_scroll": res(changed=1), "after_rerender": res(changed=1), "rerender_ok": True,
+    }
+
+
+def test_stale_keys_positive_control(rs):
+    assert rs.derive_stale_keys(stale_raw()) == {
+        "stale_marked": True, "stale_not_persisted": True, "unchanged_not_marked": True, "mark_survives_scroll": True,
+    }
+
+
+def test_stale_marked_needs_the_notice_in_the_source_output(rs):
+    raw = stale_raw()
+    raw["source"] = res(changed=0)
+    keys = rs.derive_stale_keys(raw)
+    assert keys["stale_marked"] is False
+    assert keys["unchanged_not_marked"] is False, "with no mark anywhere the machinery is dead: 'unmarked' proves nothing"
+    raw["source"] = res(found=False, svg=0, changed=1)
+    assert rs.derive_stale_keys(raw)["stale_marked"] is False
+
+
+def test_unchanged_not_marked_fails_when_the_tip_rack_is_marked(rs):
+    raw = stale_raw()
+    raw["tips"] = res(changed=1)
+    assert rs.derive_stale_keys(raw)["unchanged_not_marked"] is False
+    raw["tips"] = res(found=False, svg=0, changed=0)  # a tip rack output that was not found proves nothing
+    assert rs.derive_stale_keys(raw)["unchanged_not_marked"] is False
+
+
+def test_stale_not_persisted_fails_on_a_persisted_mark_and_on_a_vacuous_save(rs):
+    raw = stale_raw()
+    raw["persisted"]["contains_changed"] = True
+    assert rs.derive_stale_keys(raw)["stale_not_persisted"] is False
+    for gap in ("file_read_ok", "has_outputs", "mark_present_before_save"):
+        raw = stale_raw()
+        raw["persisted"][gap] = False  # nothing was saved, or there was no mark to persist: vacuous
+        assert rs.derive_stale_keys(raw)["stale_not_persisted"] is False, gap
+
+
+@pytest.mark.parametrize("field,value", [("after_scroll", res(changed=0)), ("after_scroll", res(changed=2)),
+                                          ("after_rerender", res(changed=0)), ("after_rerender", res(changed=2))])
+def test_mark_survives_scroll_needs_exactly_one_notice_after_each_disturbance(rs, field, value):
+    raw = stale_raw()
+    raw[field] = value
+    assert rs.derive_stale_keys(raw)["mark_survives_scroll"] is False
+
+
+def test_mark_survives_scroll_fails_when_the_rerender_never_happened(rs):
+    raw = stale_raw()
+    raw["rerender_ok"] = False
+    assert rs.derive_stale_keys(raw)["mark_survives_scroll"] is False
+
+
+def session_raw() -> dict[str, Any]:
+    return {
+        "pre": {"session": "sess-1", "res": res(earlier=1)},
+        "rerun": {"session": "sess-2", "res": res(earlier=0)},
+    }
+
+
+def test_session_keys_positive_control(rs):
+    assert rs.derive_session_keys(session_raw()) == {"earlier_session_marked": True, "rerun_not_marked": True}
+
+
+def test_earlier_session_marked_fails_without_the_notice_or_without_a_new_session(rs):
+    raw = session_raw()
+    raw["pre"]["res"] = res(earlier=0)
+    assert rs.derive_session_keys(raw)["earlier_session_marked"] is False
+    raw = session_raw()
+    raw["rerun"]["session"] = "sess-1"  # the kernel did not really start a new session
+    keys = rs.derive_session_keys(raw)
+    assert keys["earlier_session_marked"] is False and keys["rerun_not_marked"] is False
+    raw = session_raw()
+    raw["pre"]["session"] = ""
+    assert rs.derive_session_keys(raw)["earlier_session_marked"] is False
+
+
+def test_rerun_not_marked_is_the_negative_control_and_fails_when_the_new_output_is_marked(rs):
+    raw = session_raw()
+    raw["rerun"]["res"] = res(earlier=1)
+    keys = rs.derive_session_keys(raw)
+    assert keys["rerun_not_marked"] is False and keys["earlier_session_marked"] is True
+    raw = session_raw()
+    raw["rerun"]["res"] = res(found=False, svg=0)  # no re-run output to look at
+    assert rs.derive_session_keys(raw)["rerun_not_marked"] is False
+
+
+# -- the persistence gate ---------------------------------------------------------------------------
+
+
+def test_persistence_gate_never_open_needs_a_live_monitor_and_no_sighting(rs):
+    live = {"monitor": True, "seen": False}
+    assert rs.persistence_gate_never_open([live, live]) is True
+    assert rs.persistence_gate_never_open([live, {"monitor": True, "seen": True}]) is False
+    assert rs.persistence_gate_never_open([{"monitor": False, "seen": False}]) is False, "a dead monitor sees nothing"
+    assert rs.persistence_gate_never_open([]) is False, "no reading at all is no evidence"
+    assert rs.persistence_gate_never_open([None]) is False
+
+
+# -- AC-25 -----------------------------------------------------------------------------------------
+
+
+def keyboard_raw() -> dict[str, Any]:
+    return {
+        "figure": {"found": True, "role": "img", "in_svg": True, "aria_label": ASSAY_PLAIN, "tabindex": "0"},
+        "plain": ASSAY_PLAIN,
+        "focus_probe": {"ok": True, "next_is_figure": True},
+        "tab": {"is_figure": True},
+        "live_tab": "assay A1: 50 µL",
+        "live_arrow": "assay A2: 100 µL",
+        "escape": {"is_figure": True, "rings": 0},
+    }
+
+
+def test_keyboard_keys_positive_control(rs):
+    assert rs.derive_keyboard_keys(keyboard_raw()) == {
+        "svg_role_img": True, "aria_label_equals_summary": True, "tab_focuses_figure": True,
+        "arrow_moves": True, "escape_leaves": True,
+    }
+
+
+def test_the_arrow_expectation_is_read_from_the_fixture_not_from_the_specs_50(rs):
+    """AC-25 says ArrowRight reads "assay A2: 50 µL", but the fixture the same D2 unit asserts against
+    AC-9 (24 wells, 50-150 µL, 2,400 µL) has column 2 at 100 µL; the key is derived from the fixture."""
+    assert rs.ARROW_RIGHT_LIVE_TEXT == "assay A2: 100 µL"
+    raw = keyboard_raw()
+    raw["live_arrow"] = "assay A2: 50 µL"
+    assert rs.derive_keyboard_keys(raw)["arrow_moves"] is False
+
+
+@pytest.mark.parametrize("field,value,key", [
+    ("figure", {"found": False}, "svg_role_img"),
+    ("figure", {"found": True, "role": "figure", "in_svg": True, "aria_label": ASSAY_PLAIN}, "svg_role_img"),
+    ("figure", {"found": True, "role": "img", "in_svg": False, "aria_label": ASSAY_PLAIN}, "svg_role_img"),
+    ("figure", {"found": True, "role": "img", "in_svg": True, "aria_label": ""}, "aria_label_equals_summary"),
+    ("figure", {"found": True, "role": "img", "in_svg": True, "aria_label": "24 of 96 wells"}, "aria_label_equals_summary"),
+    ("plain", "", "aria_label_equals_summary"),
+    ("focus_probe", {"ok": False}, "tab_focuses_figure"),
+    ("tab", {"is_figure": False}, "tab_focuses_figure"),
+    ("live_arrow", "assay A1: 50 µL", "arrow_moves"),
+    ("live_arrow", None, "arrow_moves"),
+    ("escape", {"is_figure": False, "rings": 0}, "escape_leaves"),
+    ("escape", {"is_figure": True, "rings": 1}, "escape_leaves"),
+])
+def test_each_keyboard_key_has_a_negative_control(rs, field, value, key):
+    raw = keyboard_raw()
+    raw[field] = value
+    assert rs.derive_keyboard_keys(raw)[key] is False
+
+
+def test_arrow_moves_needs_the_live_region_to_have_changed(rs):
+    raw = keyboard_raw()
+    raw["live_tab"] = raw["live_arrow"]  # ArrowRight changed nothing
+    assert rs.derive_keyboard_keys(raw)["arrow_moves"] is False
+
+
+# -- AC-24 -----------------------------------------------------------------------------------------
+
+
+def trust_obs(**over: Any) -> dict[str, Any]:
+    base = {
+        "rendered": True, "output_model_trusted": True, "cell_model_trusted": True, "notebook_model_trusted": True,
+        "chosen_mime": "text/html", "svg_count": 1, "live_res_count": 1, "tabindex_count": 1,
+        "svg_class_kept": True, "svg_style_kept": True, "summary_visible": True, "plain_visible": False,
+    }
+    base.update(over)
+    return base
+
+
+@pytest.mark.parametrize("obs,branch", [
+    (trust_obs(), "S2-T"),  # trusted, live: the recorded executed-saved-reopened path
+    (trust_obs(output_model_trusted=False, cell_model_trusted=False), "S2-A"),  # untrusted, svg keeps class and style
+    (trust_obs(output_model_trusted=False, cell_model_trusted=False, svg_style_kept=False), "S2-A'"),
+    (trust_obs(output_model_trusted=False, cell_model_trusted=False, svg_class_kept=False, svg_style_kept=False), "S2-A'"),
+    (trust_obs(output_model_trusted=False, cell_model_trusted=False, svg_count=0, live_res_count=0, tabindex_count=0,
+               svg_class_kept=False, svg_style_kept=False), "S2-B"),
+    (trust_obs(output_model_trusted=False, cell_model_trusted=False, chosen_mime="text/plain", svg_count=0,
+               live_res_count=0, tabindex_count=0, plain_visible=True), "S2-C"),
+])
+def test_classify_reopened_branch_names_the_d1_s2_branches(rs, obs, branch):
+    assert rs.classify_reopened_branch(obs) == branch
+
+
+@pytest.mark.parametrize("obs", [
+    None, {}, trust_obs(rendered=False),
+    trust_obs(output_model_trusted=None), trust_obs(output_model_trusted="yes"),
+    trust_obs(cell_model_trusted=False),  # the reads disagree: never guessed
+    trust_obs(svg_count=0),  # says trusted but did not render live: not S2-T
+    trust_obs(live_res_count=0), trust_obs(tabindex_count=0),
+    trust_obs(output_model_trusted=False, cell_model_trusted=False, chosen_mime="text/plain", plain_visible=False),
+    trust_obs(output_model_trusted=False, cell_model_trusted=False, chosen_mime="image/png"),
+    trust_obs(output_model_trusted=False, cell_model_trusted=False, svg_count=0, summary_visible=False),
+])
+def test_classify_reopened_branch_never_guesses(rs, obs):
+    got = rs.classify_reopened_branch(obs)
+    assert got == "unclassified" or (got in ("unrendered",)), got
+    assert got not in ("S2-T", "S2-A", "S2-A'", "S2-B", "S2-C")
+
+
+def d3_raw() -> dict[str, Any]:
+    reports = draw_reports()
+    return {
+        "saved": {"file_read_ok": True, "has_outputs": True, "script_count": 0},
+        "reports": reports, "trust": trust_obs(),
+        "paints": {"liquid_fill": MOONSTONE_LIVE, "liquid_count": 3, "liquid_attr": "#73A9C2"},
+        "gate": [{"monitor": True, "seen": False}, {"monitor": True, "seen": False}],
+    }
+
+
+def test_d3_keys_positive_control_hold_for_the_recorded_branch(rs):
+    keys = rs.derive_d3_keys(d3_raw())
+    assert keys == {
+        "no_script_in_bundles": True, "reopened_branch": "S2-T", "persistence_gate_never_open": True,
+        "svg_in_dom": True, "liquid_fill_computed": MOONSTONE_LIVE,
+    }
+    unit = rs.UNIT_BY_ID["D3"]
+    assert rs.evaluate_unit_result(unit, keys) == ([], [])
+
+
+def test_d3_key_negative_controls(rs):
+    raw = d3_raw()
+    raw["saved"]["script_count"] = 1
+    assert rs.derive_d3_keys(raw)["no_script_in_bundles"] is False
+    for gap in ("file_read_ok", "has_outputs"):
+        raw = d3_raw()
+        raw["saved"][gap] = False  # nothing saved to inspect: never a pass
+        assert rs.derive_d3_keys(raw)["no_script_in_bundles"] is False, gap
+    raw = d3_raw()
+    raw["trust"] = trust_obs(output_model_trusted=False, cell_model_trusted=False, svg_count=0, live_res_count=0,
+                             tabindex_count=0, svg_class_kept=False, svg_style_kept=False)
+    keys = rs.derive_d3_keys(raw)
+    assert keys["reopened_branch"] == "S2-B"
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["D3"], keys)[1] == ["reopened_branch"]
+    raw = d3_raw()
+    raw["reports"]["draw_assay"]["res"] = res(svg=0)
+    assert rs.derive_d3_keys(raw)["svg_in_dom"] is False
+    raw = d3_raw()
+    raw["paints"] = {"liquid_fill": "rgb(0, 0, 0)", "liquid_count": 3}
+    assert rs.derive_d3_keys(raw)["liquid_fill_computed"] == "rgb(0, 0, 0)"
+    assert "liquid_fill_computed" in rs.evaluate_unit_result(rs.UNIT_BY_ID["D3"], rs.derive_d3_keys(raw))[1]
+    raw = d3_raw()
+    raw["paints"] = {"liquid_fill": None, "liquid_count": 0}
+    assert "liquid_fill_computed" in rs.evaluate_unit_result(rs.UNIT_BY_ID["D3"], rs.derive_d3_keys(raw))[1]
+    raw = d3_raw()
+    raw["gate"] = [{"monitor": True, "seen": True}]
+    assert rs.derive_d3_keys(raw)["persistence_gate_never_open"] is False
+
+
+def test_count_scripts_in_outputs_reads_every_mime_of_every_output_case_insensitively(rs):
+    def notebook(*datas: Any) -> dict[str, Any]:
+        return {"cells": [{"cell_type": "code", "outputs": [{"output_type": "display_data", "data": d, "metadata": {}}
+                                                             for d in datas]}]}
+
+    assert rs.count_scripts_in_outputs(notebook({"text/html": "<p>x</p>", "text/plain": "x"})) == 0
+    assert rs.count_scripts_in_outputs(notebook({"text/html": ["<p>", "<script>alert(1)</script>"]})) == 1
+    assert rs.count_scripts_in_outputs(notebook({"text/html": "<SCRIPT src=x></SCRIPT>"}, {"text/plain": "<script"})) == 2
+    assert rs.count_scripts_in_outputs({"cells": [{"cell_type": "code", "source": "<script", "outputs": []}]}) == 0, (
+        "a script in SOURCE is not in a bundle"
+    )
+    assert rs.count_scripts_in_outputs({}) == 0 and rs.count_scripts_in_outputs(None) == 0
+
+
+def test_saved_notebook_has_outputs_needs_an_html_bundle_not_just_a_file(rs):
+    ok = {"cells": [{"cell_type": "code", "outputs": [{"output_type": "display_data", "data": {"text/html": "<svg/>"}}]}]}
+    assert rs.saved_notebook_has_outputs(ok) is True
+    assert rs.saved_notebook_has_outputs({"cells": [{"cell_type": "code", "outputs": []}]}) is False
+    assert rs.saved_notebook_has_outputs({"cells": []}) is False and rs.saved_notebook_has_outputs(None) is False
+    only_stream = {"cells": [{"cell_type": "code", "outputs": [{"output_type": "stream", "text": "x"}]}]}
+    assert rs.saved_notebook_has_outputs(only_stream) is False
+
+
+# -- AC-26 -----------------------------------------------------------------------------------------
+
+
+def hc_raw() -> tuple[dict[str, Any], dict[str, Any]]:
+    a = {
+        "theme": HC_THEME, "summary_found": True, "summary_color": "rgb(255, 255, 255)", "font_token": "rgb(255, 255, 255)",
+        "sheet_found": True, "sheet_fill": "rgb(0, 0, 0)", "layout_token": "rgb(0, 0, 0)", "inline_fill": "#FFFFFF",
+        "praxis_css": "#73A9C2",
+    }
+    b = {"theme": HC_THEME, "layout_token": "rgb(0, 0, 0)", "praxis_css": "", "blocked": 1}
+    return a, b
+
+
+def test_hc_keys_positive_control(rs):
+    assert rs.derive_hc_keys(*hc_raw()) == {"hc_text_color": True, "hc_sheet_fill": True, "hc_palette_untouched": True}
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["D4"], rs.derive_hc_keys(*hc_raw())) == ([], [])
+
+
+def test_hc_text_color_negative_controls(rs):
+    a, b = hc_raw()
+    a["summary_color"] = "rgb(29, 41, 53)"  # the design's light-palette ink leaked into High Contrast
+    assert rs.derive_hc_keys(a, b)["hc_text_color"] is False
+    a, b = hc_raw()
+    a["summary_found"] = False
+    assert rs.derive_hc_keys(a, b)["hc_text_color"] is False
+    a, b = hc_raw()
+    a["font_token"] = ""
+    assert rs.derive_hc_keys(a, b)["hc_text_color"] is False
+    a, b = hc_raw()
+    a["theme"] = "JupyterLab Dark"  # not the High Contrast theme
+    assert rs.derive_hc_keys(a, b)["hc_text_color"] is False
+
+
+def test_hc_sheet_fill_negative_controls(rs):
+    a, b = hc_raw()
+    a["sheet_fill"] = "rgb(255, 255, 255)"  # the inline light sheet, unmapped
+    assert rs.derive_hc_keys(a, b)["hc_sheet_fill"] is False
+    a, b = hc_raw()
+    a["sheet_found"] = False
+    assert rs.derive_hc_keys(a, b)["hc_sheet_fill"] is False
+    a, b = hc_raw()
+    a["layout_token"] = a["sheet_fill"] = "rgb(255, 255, 255)"  # a match that the inline palette alone explains
+    assert rs.derive_hc_keys(a, b)["hc_sheet_fill"] is False
+
+
+def test_hc_palette_untouched_needs_a_real_block_and_equal_tokens(rs):
+    a, b = hc_raw()
+    b["layout_token"] = "rgb(1, 1, 1)"  # Praxis CSS changed the theme's own token
+    assert rs.derive_hc_keys(a, b)["hc_palette_untouched"] is False
+    a, b = hc_raw()
+    b["praxis_css"] = "#73A9C2"  # the stylesheet was NOT blocked: the comparison would be vacuous
+    assert rs.derive_hc_keys(a, b)["hc_palette_untouched"] is False
+    a, b = hc_raw()
+    b["blocked"] = 0  # the route never fired
+    assert rs.derive_hc_keys(a, b)["hc_palette_untouched"] is False
+    a, b = hc_raw()
+    a["praxis_css"] = ""  # Praxis CSS never loaded in the measured context
+    assert rs.derive_hc_keys(a, b)["hc_palette_untouched"] is False
+    a, b = hc_raw()
+    b["theme"] = "JupyterLab Dark"
+    assert rs.derive_hc_keys(a, b)["hc_palette_untouched"] is False
+    a, b = hc_raw()
+    a["layout_token"] = b["layout_token"] = ""
+    assert rs.derive_hc_keys(a, b)["hc_palette_untouched"] is False
+
+
+def test_hex_to_rgb_converts_the_inline_palette_attribute(rs):
+    assert rs.hex_to_rgb("#FFFFFF") == "rgb(255, 255, 255)" and rs.hex_to_rgb("#73a9c2") == MOONSTONE_LIVE
+    assert rs.hex_to_rgb("none") is None and rs.hex_to_rgb(None) is None and rs.hex_to_rgb("#FFF") is None
+
+
+# --------------------------------------------------------------------------- #
+# The small pure helpers: bounded polling, the restart status vocabulary, the blocking route
+# --------------------------------------------------------------------------- #
+
+
+def test_poll_until_returns_the_first_reading_that_holds_and_never_sleeps_past_the_deadline(rs):
+    now = [0.0]
+    slept: list[float] = []
+
+    def sleep(s: float) -> None:
+        slept.append(s)
+        now[0] += s
+
+    reads = iter([1, 2, 3, 4])
+    value, ok = rs.poll_until(lambda: next(reads), lambda v: v == 3, timeout_s=5.0, interval_s=0.5,
+                              clock=lambda: now[0], sleep=sleep)
+    assert (value, ok) == (3, True) and slept == [0.5, 0.5]
+    now[0] = 0.0
+    slept.clear()
+    value, ok = rs.poll_until(lambda: "never", lambda v: False, timeout_s=2.0, interval_s=0.5,
+                              clock=lambda: now[0], sleep=sleep)
+    assert (value, ok) == ("never", False), "the LAST reading comes back with False"
+    assert sum(slept) <= 2.0 + 0.5, "bounded by the deadline"
+
+
+def test_poll_until_reads_once_even_with_a_zero_timeout(rs):
+    seen: list[int] = []
+    value, ok = rs.poll_until(lambda: seen.append(1) or 7, lambda v: v == 7, timeout_s=0.0, clock=lambda: 0.0,
+                              sleep=lambda s: None)
+    assert (value, ok) == (7, True) and seen == [1]
+
+
+@pytest.mark.parametrize("statuses,done", [
+    (["restarting", "starting", "idle"], True),
+    (["restarting", "busy", "idle"], True),
+    (["autorestarting", "idle"], True),
+    (["starting", "idle"], True),
+    (["idle"], False),  # never restarted: idle before the restart began proves nothing
+    (["restarting", "starting"], False),
+    (["restarting", "idle", "busy"], False),  # not idle at the end
+    ([], False),
+])
+def test_restart_finished_needs_a_restart_status_then_idle(rs, statuses, done):
+    assert rs.restart_finished(statuses) is done
+
+
+def test_restart_status_vocabulary_is_the_one_the_shell_listens_for(rs):
+    assert set(rs.RESTART_STATUSES) == {"starting", "restarting", "autorestarting"}
+
+
+def test_the_block_handler_records_and_aborts_the_request(rs):
+    blocked: list[str] = []
+
+    class Req:
+        url = "http://127.0.0.1:1/praxis/assets/theme/praxis-theme.css"
+
+    class Route:
+        request = Req()
+        aborted = False
+
+        def abort(self) -> None:
+            self.aborted = True
+
+    route = Route()
+    rs.make_block_handler(blocked)(route)
+    assert blocked == [Req.url] and route.aborted is True
+    assert rs.THEME_CSS_GLOB.endswith("praxis-theme.css*") and "assets/theme" in rs.THEME_CSS_GLOB
+
+
+# --------------------------------------------------------------------------- #
+# The B10 in-page helpers (DISPLAY_CHECK_OUTPUT_JS), under a JS engine with a fake DOM
+# --------------------------------------------------------------------------- #
+
+FAKE_DOM_JS = textwrap.dedent(
+    r"""
+    globalThis.window = globalThis;
+    const attrRe = /\[([\w-]+)(?:="([^"]*)")?\]/g;
+    function parseCompound(s) {
+      const m = /^([a-zA-Z][\w-]*)?((?:\.[\w-]+|\[[^\]]+\])*)$/.exec(s);
+      if (!m) throw new Error("unsupported selector: " + s);
+      const classes = [...(m[2].matchAll(/\.([\w-]+)/g))].map((x) => x[1]);
+      const attrs = [...(m[2].matchAll(attrRe))].map((x) => [x[1], x[2]]);
+      return { tag: m[1] ? m[1].toLowerCase() : null, classes, attrs };
+    }
+    class El {
+      constructor(tag, attrs = {}, kids = [], text = "") {
+        this.localName = tag.toLowerCase();
+        this.tagName = tag.toUpperCase();
+        this.attrs = { ...attrs };
+        this.children = [];
+        this.parentNode = null;
+        this._text = text;
+        this._style = {};
+        this._vars = {};
+        this.style = {};
+        this.focusable = true;
+        this.visible = true;
+        this.scrolled = [];
+        for (const k of kids) this.append(k);
+      }
+      append(k) { k.parentNode = this; this.children.push(k); return k; }
+      appendChild(k) { return this.append(k); }
+      insertBefore(k, ref) {
+        const at = this.children.indexOf(ref);
+        k.parentNode = this;
+        this.children.splice(at < 0 ? this.children.length : at, 0, k);
+        return k;
+      }
+      getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
+      hasAttribute(k) { return k in this.attrs; }
+      setAttribute(k, v) { this.attrs[k] = String(v); }
+      get classList() { const set = new Set((this.attrs.class || "").split(/\s+/).filter(Boolean)); return { contains: (c) => set.has(c) }; }
+      get dataset() {
+        const d = {};
+        for (const [k, v] of Object.entries(this.attrs)) if (k.startsWith("data-")) d[k.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = v;
+        return d;
+      }
+      get textContent() { return this._text + this.children.map((c) => c.textContent).join(""); }
+      matches(sel) {
+        return sel.split(",").some((part) => {
+          const c = parseCompound(part.trim());
+          if (c.tag && this.localName !== c.tag) return false;
+          if (!c.classes.every((k) => this.classList.contains(k))) return false;
+          return c.attrs.every(([k, v]) => this.hasAttribute(k) && (v === undefined || this.getAttribute(k) === v));
+        });
+      }
+      walk() { const out = []; for (const c of this.children) { out.push(c, ...c.walk()); } return out; }
+      querySelectorAll(sel) { return this.walk().filter((e) => e.matches(sel)); }
+      querySelector(sel) { return this.querySelectorAll(sel)[0] ?? null; }
+      closest(sel) { let e = this; while (e) { if (e.matches(sel)) return e; e = e.parentNode; } return null; }
+      contains(other) { let e = other; while (e) { if (e === this) return true; e = e.parentNode; } return false; }
+      focus() { if (this.focusable && !globalThis.__refuseFocus) globalThis.document.activeElement = this; }
+      getClientRects() { return this.visible ? [{}] : []; }
+      scrollIntoView(o) { this.scrolled.push(o); }
+      remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter((c) => c !== this); }
+    }
+    const body = new El("body");
+    const root = new El("html", {}, [body]);
+    globalThis.document = {
+      activeElement: null, body, documentElement: root,
+      querySelectorAll: (s) => body.querySelectorAll(s),
+      querySelector: (s) => body.querySelector(s),
+      createElement: (t) => new El(t),
+      contains: (n) => body.contains(n),
+    };
+    const TOKENS = {};
+    globalThis.getComputedStyle = (el) => {
+      const out = { ...el._style, getPropertyValue: (n) => el._vars[n] ?? "" };
+      for (const [prop, val] of Object.entries(el.style)) {
+        const m = /^var\((--[\w-]+)\)$/.exec(val);
+        if (m) out[prop] = TOKENS[m[1]] ?? "";
+      }
+      return out;
+    };
+    const ex = (tag, attrs, kids, text) => new El(tag, attrs, kids, text);
+    // an indirect eval keeps its const/class declarations local: publish what the driver uses
+    Object.assign(globalThis, { ex, El, body, root, TOKENS });
+    """
+)
+
+OUTPUT_JS_DRIVER = textwrap.dedent(
+    r"""
+    const fs = require("fs");
+    const src = fs.readFileSync(process.env.DC_OUTPUT_JS, "utf8");
+    const HEADER = fs.readFileSync(process.env.DC_FAKE_DOM, "utf8");
+    (0, eval)(HEADER);
+    const CHANGED = "Changed since, see deck panel.";
+    const HOSTILE = '<b>&"\'x';
+    const stampA = { v: 1, kind: "plate", resource: "assay", rev: 3, session: "sess-1", exec: 8 };
+    const stampB = { v: 1, kind: "tiprack", resource: HOSTILE, rev: 1, session: "sess-1", exec: 9 };
+    const jsonOf = (o) => o;
+    const mkOutputs = (jsons, sets) => ({
+      length: jsons.length,
+      get: (j) => ({ toJSON: () => jsons[j], trusted: jsons[j].__trusted ?? true }),
+      set: (j, v) => { sets.push([j, v]); },
+    });
+    const sets = [];
+    const svgFor = (name, extra = [], tab = "0") => ex("svg", { viewBox: "0 0 1 1", style: "min-width:400px" }, [
+      ex("g", { "data-praxis-res": name, role: "img", tabindex: tab, "aria-label": "SENTENCE" }, [
+        ex("rect", { class: "sv-plate", fill: "#FFFFFF" }),
+        ex("path", { class: "sv-liquid", fill: "#73A9C2" }),
+        ...extra,
+      ]),
+    ]);
+    const outputNode = (kids) => ex("div", { class: "jp-OutputArea-child" }, [
+      ex("div", { class: "jp-OutputArea-output", "data-mime-type": "text/html" }, kids),
+    ]);
+    const mkCell = ({ count, state, outputs, kids, source }) => {
+      const node = ex("div", { class: "jp-CodeCell", "data-praxis-cell-state": state }, [ex("div", { class: "jp-OutputArea" }, kids)]);
+      const jsons = outputs;
+      return {
+        node,
+        model: { executionCount: count, executionState: "idle", outputs: mkOutputs(jsons, sets), trusted: true,
+                 sharedModel: { getSource: () => source || "" } },
+        outputArea: { widgets: kids.map((k) => ({ node: k })) },
+      };
+    };
+    const html1 = "<p>µ</p>";   // 8 UTF-16 units, 9 UTF-8 bytes
+    const notice = (t) => ex("div", { class: "praxis-stale", "data-praxis-stale": "changed" }, [], t);
+    const summary = ex("p", { class: "praxis-summary" }, [], "24 of 96 wells hold liquid");
+    const assayFig = svgFor("assay");
+    const cells = [
+      // 0: a drawing cell (S3-A carrier), marked once
+      mkCell({ count: 5, state: "ran", outputs: [
+        { output_type: "execute_result", data: { "text/html": html1, "text/plain": "SENTENCE" }, metadata: { praxis: stampA } }],
+        kids: [outputNode([ex("div", { class: "praxis-out" }, [assayFig, summary]), notice(CHANGED)])] }),
+      // 1: an error cell: panel then the error output
+      mkCell({ count: 6, state: "error", outputs: [
+        { output_type: "display_data", data: { "text/html": "<div/>", "text/plain": "panel" }, metadata: { "text/html": { praxis: { v: 1, kind: "error", resource: null, rev: null, session: "sess-1", exec: 6 } } } },
+        { output_type: "error", ename: "TooLittleLiquidError", evalue: "x", traceback: [] }],
+        kids: [outputNode([ex("div", { class: "praxis-out praxis-error" }, [
+          ex("p", { class: "praxis-error__title" }, [], "Not enough liquid in assay A1:H1."),
+          ex("p", { class: "praxis-error__title" }, [], "PyLabRobot raised X")])]), ex("div", { class: "jp-OutputArea-child" }, [])] }),
+      // 2: a plain ValueError (no panel)
+      mkCell({ count: 7, state: "error", outputs: [{ output_type: "error", ename: "ValueError", evalue: "plain", traceback: [] }],
+        kids: [ex("div", { class: "jp-OutputArea-child" }, [ex("pre", {}, [], "ValueError: plain")])] }),
+      // 3: never run
+      mkCell({ count: null, state: "not-run", outputs: [], kids: [] }),
+      // 4: a tip rack with a hostile resource name, two notices (a duplicated mark) and the S3-B carrier
+      mkCell({ count: 8, state: "ran", outputs: [
+        { output_type: "display_data", data: { "text/html": "<i/>", "text/plain": "T" }, metadata: { "text/html": { praxis: stampB } } }],
+        kids: [outputNode([ex("div", { class: "praxis-out" }, [svgFor(HOSTILE)]), notice(CHANGED), notice(CHANGED)])] }),
+      // 5: an untrusted, sanitized reopen: no svg, no data-*, chosen mime text/html, the summary survives
+      mkCell({ count: null, state: "ran", outputs: [
+        { output_type: "display_data", data: { "text/html": "<p/>", "text/plain": "SENTENCE" }, metadata: { praxis: stampA }, __trusted: false }],
+        kids: [outputNode([ex("p", { class: "praxis-summary" }, [], "SENTENCE")])] }),
+    ];
+    cells[5].model.trusted = false;
+    cells.push(mkCell({ count: 1, state: "ran", outputs: [], kids: [outputNode([svgFor("notab", [], "-1")])] }));
+    const listeners = [];
+    const panel = {
+      content: { widgets: cells, model: { cells: { length: cells.length, get: (i) => cells[i].model }, trusted: true }, node: ex("div") },
+      sessionContext: { statusChanged: { connect: (fn) => listeners.push(fn) }, session: { kernel: { status: "idle" } } },
+      context: { model: { dirty: false } },
+    };
+    body.append(panel.content.node);
+    for (const c of cells) body.append(c.node);
+    const known = new Set(["kernelmenu:restart"]);
+    window.jupyterapp = { shell: { currentWidget: panel }, commands: { hasCommand: (id) => known.has(id) } };
+    (0, eval)(src);
+    const dc = window.__praxisDisplayCheck;
+    const out = {};
+    out.stamp_a = dc.stampOf({ metadata: { praxis: stampA } });
+    out.stamp_b = dc.stampOf({ metadata: { "text/html": { praxis: stampB } } });
+    out.stamp_none = dc.stampOf({ metadata: {} }) ?? null;
+    out.stamp_null_first = dc.stampOf({ metadata: { praxis: null, "text/html": { praxis: stampA } } });
+    out.r0 = dc.report({ i: 0, res: "assay" });
+    out.r1 = dc.report({ i: 1, res: null });
+    out.r2 = dc.report({ i: 2, res: null });
+    out.r3 = dc.report({ i: 3, res: null });
+    out.r4 = dc.report({ i: 4, res: HOSTILE });
+    out.r4_miss = dc.report({ i: 4, res: "assay" });
+    out.fig = dc.figure({ i: 0, res: "assay" });
+    out.fig_miss = dc.figure({ i: 0, res: "nope" });
+    out.paints_before = dc.paints({ i: 0, res: "assay" });
+    // paints: seed computed styles
+    const plate = cells[0].node.querySelector(".sv-plate"), liquid = cells[0].node.querySelector('path[fill="#73A9C2"]');
+    plate._style.fill = "rgb(0, 0, 0)";
+    liquid._style.fill = "rgb(115, 169, 194)";
+    summary._style.color = "rgb(255, 255, 255)";
+    out.paints = dc.paints({ i: 0, res: "assay" });
+    TOKENS["--jp-layout-color0"] = "rgb(0, 0, 0)";
+    TOKENS["--jp-content-font-color0"] = "rgb(255, 255, 255)";
+    out.tok_bg = dc.probeColor({ prop: "backgroundColor", token: "--jp-layout-color0" });
+    out.tok_color = dc.probeColor({ prop: "color", token: "--jp-content-font-color0" });
+    out.tok_unknown = dc.probeColor({ prop: "color", token: "--nope" });
+    out.css_before = dc.praxisCss();
+    root._vars["--praxis-moonstone"] = " #73A9C2 ";
+    out.css_after = dc.praxisCss();
+    // the keyboard helpers: a throwaway probe is inserted right before the figure's svg and focused
+    const figG = assayFig.children[0];
+    out.probe = dc.focusProbe({ i: 0, res: "assay" });
+    const probeEl = document.activeElement;
+    out.active_is_probe = probeEl && probeEl.hasAttribute("data-dcheck-probe");
+    out.probe_precedes_svg = probeEl.parentNode.children.indexOf(probeEl) + 1 === probeEl.parentNode.children.indexOf(assayFig);
+    out.is_on_probe = dc.activeIs({ i: 0, res: "assay" });
+    figG.focus();
+    out.is_after_tab = dc.activeIs({ i: 0, res: "assay" });
+    out.removed = dc.removeProbe();
+    out.removed_again = dc.removeProbe();
+    out.probe_gone = document.querySelectorAll("[data-dcheck-probe]").length;
+    out.probe_miss = dc.focusProbe({ i: 0, res: "nope" });
+    out.probe_miss_left_nothing = document.querySelectorAll("[data-dcheck-probe]").length;
+    // a figure whose own tabindex is -1 is not what Tab reaches next
+    out.probe_notab = dc.focusProbe({ i: 6, res: "notab" });
+    dc.removeProbe();
+    // an element that refuses focus: ok is false, whatever else is true
+    globalThis.__refuseFocus = true;
+    out.probe_stuck = dc.focusProbe({ i: 0, res: "assay" });
+    globalThis.__refuseFocus = false;
+    dc.removeProbe();
+    out.live_none = dc.liveText();
+    const live = ex("div", { "aria-live": "polite", "data-praxis-live": "" }, [], "assay A1: 50 \u00b5L");
+    body.append(live);
+    out.live = dc.liveText();
+    figG.append(ex("rect", { class: "praxis-focus-ring" }));
+    out.rings = dc.ringCount({ i: 0, res: "assay" });
+    // scroll, rerender
+    out.scroll = dc.scrollTo({ i: 0, block: "center" });
+    out.scrolled = cells[0].node.scrolled;
+    out.rerender = dc.rerender({ i: 0, j: 0 });
+    out.rerender_bad = dc.rerender({ i: 3, j: 0 });
+    out.sets = sets.map(([j, v]) => [j, v.output_type]);
+    // trust reads
+    out.trust0 = dc.trust({ i: 0 });
+    out.trust5 = dc.trust({ i: 5 });
+    out.trust3 = dc.trust({ i: 3 });
+    // status log, gate, dialog, commands, dirty
+    dc.startStatusLog();
+    for (const s of ["restarting", "starting", "idle"]) listeners.forEach((fn) => fn(null, s));
+    out.statuses = dc.statusLog();
+    out.has_restart = dc.hasCommand("kernelmenu:restart");
+    out.has_nope = dc.hasCommand("nope:nope");
+    out.dirty = dc.dirty();
+    out.dialog = dc.dialogOpen();
+    body.append(ex("div", { class: "jp-Dialog" }));
+    out.dialog_open = dc.dialogOpen();
+    globalThis.sessionStorage = { getItem: (k) => (k === process.env.GATE_KEY ? "1" : null) };
+    window.__praxisFirstSaveMonitor = true;
+    out.gate_seen_by_storage = dc.gate();
+    globalThis.sessionStorage = { getItem: () => null };
+    out.gate_quiet = dc.gate();
+    delete window.__praxisFirstSaveMonitor;
+    out.gate_dead = dc.gate();
+    console.log(JSON.stringify(out));
+    """
+)
+
+
+def _run_output_js(rs: Any, tmp_path: Path) -> dict[str, Any]:
+    (tmp_path / "out.js").write_text(rs.DISPLAY_CHECK_OUTPUT_JS)
+    (tmp_path / "fake_dom.js").write_text(FAKE_DOM_JS)
+    (tmp_path / "driver.js").write_text(OUTPUT_JS_DRIVER)
+    proc = subprocess.run(
+        [JS_ENGINE, str(tmp_path / "driver.js")],
+        env={**os.environ, "DC_OUTPUT_JS": str(tmp_path / "out.js"), "DC_FAKE_DOM": str(tmp_path / "fake_dom.js"),
+             "GATE_KEY": rs.PERSISTENCE_GATE_SEEN_KEY},
+        capture_output=True, text=True, timeout=60,
+    )
+    assert proc.returncode == 0, (proc.stderr or proc.stdout)[-3000:]
+    return json.loads(proc.stdout.strip().splitlines()[-1])
+
+
+@pytest.fixture(scope="module")
+def js_out(rs, tmp_path_factory):
+    if JS_ENGINE is None:
+        pytest.skip("no node or bun on PATH")
+    return _run_output_js(rs, tmp_path_factory.mktemp("output_js"))
+
+
+def test_stamp_of_is_the_d2_expression_and_reads_both_carriers(js_out):
+    assert js_out["stamp_a"]["kind"] == "plate", "S3-A: metadata.praxis"
+    assert js_out["stamp_b"]["kind"] == "tiprack", 'S3-B: metadata["text/html"].praxis'
+    assert js_out["stamp_none"] is None
+    assert js_out["stamp_null_first"]["kind"] == "plate", "?? falls through on null exactly like the shell's stampOf"
+
+
+def test_the_harness_evaluates_the_shells_stamp_expression_verbatim(rs):
+    assert 'output.metadata?.praxis ?? output.metadata?.["text/html"]?.praxis' in rs.DISPLAY_CHECK_OUTPUT_JS
+
+
+def test_report_reads_the_model_outputs_and_the_drawing_node(js_out):
+    r0 = js_out["r0"]
+    assert (r0["state"], r0["execution_count"], r0["found"]) == ("ran", 5, True)
+    (o,) = r0["outputs"]
+    assert o["output_type"] == "execute_result" and sorted(o["mimes"]) == ["text/html", "text/plain"]
+    assert o["html_bytes"] == 9, "UTF-8 BYTES of the text/html (the cap is bytes, not characters)"
+    assert o["plain"] == "SENTENCE" and o["stamp"]["resource"] == "assay" and o["index"] == 0
+    assert r0["res"] == {"found": True, "svg_count": 1, "changed_notices": 1, "earlier_notices": 0,
+                         "text_length": r0["res"]["text_length"]}
+    assert r0["res"]["text_length"] > 0
+
+
+def test_report_counts_a_duplicated_mark_and_matches_a_hostile_name_without_a_selector(js_out):
+    r4 = js_out["r4"]
+    assert r4["res"]["found"] is True and r4["res"]["changed_notices"] == 2, "exactly-once needs the COUNT"
+    assert r4["outputs"][0]["stamp"]["kind"] == "tiprack", "the S3-B carrier is read through stampOf"
+    assert js_out["r4_miss"]["res"]["found"] is False, "another resource's name finds nothing"
+
+
+def test_report_reads_the_error_panel_title_and_the_absence_of_one(js_out):
+    r1, r2 = js_out["r1"], js_out["r2"]
+    assert r1["error"] == {"titles": ["Not enough liquid in assay A1:H1.", "PyLabRobot raised X"], "praxis_error_nodes": 1}
+    assert [o["output_type"] for o in r1["outputs"]] == ["display_data", "error"]
+    assert r1["outputs"][1]["ename"] == "TooLittleLiquidError" and r1["state"] == "error"
+    assert r2["error"] == {"titles": [], "praxis_error_nodes": 0}
+    assert r2["outputs"][0]["ename"] == "ValueError"
+    assert r1["res"] is None, "no resource name asked for: no drawing lookup"
+
+
+def test_report_of_a_never_run_cell_has_no_count_and_no_outputs(js_out):
+    r3 = js_out["r3"]
+    assert r3["execution_count"] is None and r3["outputs"] == [] and r3["state"] == "not-run"
+
+
+def test_figure_reads_role_tabindex_aria_label_and_svg_ancestry(js_out):
+    assert js_out["fig"] == {"found": True, "tag": "g", "role": "img", "tabindex": "0", "aria_label": "SENTENCE", "in_svg": True}
+    assert js_out["fig_miss"]["found"] is False
+
+
+def test_paints_read_computed_fill_and_colour_of_the_sheet_liquid_and_summary(js_out):
+    before = js_out["paints_before"]
+    assert before["sheet_found"] is True and before["liquid_count"] == 1 and before["summary_found"] is True
+    assert before["sheet_fill"] is None or before["sheet_fill"] == "", "nothing computed yet: never invented"
+    p = js_out["paints"]
+    assert p["sheet_fill"] == "rgb(0, 0, 0)" and p["inline_fill"] == "#FFFFFF"
+    assert p["liquid_fill"] == "rgb(115, 169, 194)" and p["liquid_attr"] == "#73A9C2" and p["liquid_count"] == 1
+    assert p["summary_color"] == "rgb(255, 255, 255)" and p["svg_count"] == 1
+
+
+def test_probe_color_resolves_a_theme_token_through_a_throwaway_element(js_out):
+    assert js_out["tok_bg"] == "rgb(0, 0, 0)" and js_out["tok_color"] == "rgb(255, 255, 255)"
+    assert js_out["tok_unknown"] in ("", None)
+
+
+def test_praxis_css_is_read_from_the_root_custom_property(js_out):
+    assert js_out["css_before"] == "" and js_out["css_after"] == "#73A9C2"
+
+
+def test_focus_probe_puts_a_throwaway_focusable_right_before_the_figure_and_predicts_tabs_next_stop(js_out):
+    p = js_out["probe"]
+    assert p["ok"] is True and p["next_is_figure"] is True and p["next_tag"] == "g"
+    assert js_out["active_is_probe"] is True and js_out["probe_precedes_svg"] is True
+    assert js_out["is_on_probe"]["is_figure"] is False and js_out["is_on_probe"]["active_res"] is None
+    assert js_out["is_after_tab"]["is_figure"] is True and js_out["is_after_tab"]["active_res"] == "assay"
+
+
+def test_the_probe_is_removed_and_leaves_nothing_behind(js_out):
+    assert js_out["removed"] == 1 and js_out["removed_again"] == 0 and js_out["probe_gone"] == 0
+    assert js_out["probe_miss"]["ok"] is False and js_out["probe_miss_left_nothing"] == 0, "no figure: no probe inserted"
+
+
+def test_focus_probe_reports_a_figure_tab_would_not_reach_and_a_probe_that_refuses_focus(js_out):
+    assert js_out["probe_notab"]["ok"] is True and js_out["probe_notab"]["next_is_figure"] is False, (
+        "a figure with tabindex -1 is not the next tab stop: the prediction says so"
+    )
+    assert js_out["probe_stuck"]["ok"] is False, "an element that refuses focus leaves the focus elsewhere"
+
+
+def test_live_text_and_ring_count(js_out):
+    assert js_out["live_none"] is None and js_out["live"] == "assay A1: 50 µL" and js_out["rings"] == 1
+
+
+def test_scroll_and_rerender_are_the_only_things_that_touch_the_page_or_model(js_out):
+    assert js_out["scroll"] == {"ok": True} and js_out["scrolled"] == [{"block": "center"}]
+    assert js_out["rerender"] == {"ok": True} and js_out["rerender_bad"]["ok"] is False
+    assert js_out["sets"] == [[0, "execute_result"]], "the SAME output re-set: an async re-render, no new content"
+
+
+def test_trust_reads_carry_what_the_branch_classifier_needs(js_out, rs):
+    t0, t5, t3 = js_out["trust0"], js_out["trust5"], js_out["trust3"]
+    assert (t0["rendered"], t0["output_model_trusted"], t0["cell_model_trusted"], t0["chosen_mime"]) == (True, True, True, "text/html")
+    assert (t0["svg_count"], t0["live_res_count"], t0["tabindex_count"]) == (1, 1, 1)
+    assert (t5["output_model_trusted"], t5["cell_model_trusted"], t5["svg_count"], t5["live_res_count"]) == (False, False, 0, 0)
+    assert t5["summary_visible"] is True and t5["chosen_mime"] == "text/html"
+    assert t3["rendered"] is False
+    assert rs.classify_reopened_branch(t0) == "S2-T" and rs.classify_reopened_branch(t5) == "S2-B"
+    assert rs.classify_reopened_branch(t3) == "unrendered"
+
+
+def test_status_log_gate_dialog_commands_and_dirty(js_out):
+    assert js_out["statuses"] == ["restarting", "starting", "idle"]
+    assert js_out["has_restart"] is True and js_out["has_nope"] is False and js_out["dirty"] is False
+    assert js_out["dialog"] is False and js_out["dialog_open"] is True
+    assert js_out["gate_seen_by_storage"] == {"monitor": True, "seen": True}, "seen survives a reload via sessionStorage"
+    assert js_out["gate_quiet"] == {"monitor": True, "seen": False}
+    assert js_out["gate_dead"]["monitor"] is False
+
+
+def test_output_js_reads_state_and_writes_only_two_things(rs):
+    """Nothing here assigns to the product's DOM or fires a product command. The only writes: focus
+    (``focusBefore``), a scroll, one same-value ``outputs.set`` (the sanctioned async re-render), the
+    status subscription and a throwaway probe element."""
+    js = rs.DISPLAY_CHECK_OUTPUT_JS
+    assert "commands.execute" not in js, "commands are issued from Python, one named place"
+    assert js.count(".outputs.set(") == 1 or js.count("outs.set(") == 1
+    for forbidden in ("setSource", "sharedModel.set", "innerHTML", "removeAttribute", "dispatchEvent",
+                      "data-praxis-test", "__praxis_test"):
+        assert forbidden not in js, forbidden
+    assert rs.PERSISTENCE_GATE_SEEN_KEY in js
+
+
+# -- the context init scripts: the persistence ack AND the first-save monitor -------------------------
+
+GATE_DRIVER = textwrap.dedent(
+    r"""
+    const fs = require("fs");
+    globalThis.window = globalThis;
+    const store = {};
+    globalThis.sessionStorage = { setItem: (k, v) => { store[k] = v; }, getItem: (k) => store[k] ?? null };
+    let dialog = { open: false, hasAttribute: (n) => n === "open" && dialog.open };
+    globalThis.document = { querySelector: (s) => (s === "dialog#praxis-persistence-first-save" ? dialog : null) };
+    const ticks = [];
+    globalThis.setInterval = (fn, ms) => { ticks.push(fn); return ticks.length; };
+    (0, eval)(fs.readFileSync(process.env.MONITOR_JS, "utf8"));
+    const out = { monitor: window.__praxisFirstSaveMonitor === true, registered: ticks.length >= 1 };
+    ticks.forEach((t) => t());
+    out.seen_closed = !!window.__praxisFirstSaveSeen || store[process.env.GATE_KEY] === "1";
+    dialog.open = true;
+    ticks.forEach((t) => t());
+    out.seen_open = !!window.__praxisFirstSaveSeen;
+    out.stored = store[process.env.GATE_KEY];
+    dialog = null;
+    ticks.forEach((t) => t());  // an absent dialog must not throw
+    console.log(JSON.stringify(out));
+    """
+)
+
+
+@pytest.mark.skipif(JS_ENGINE is None, reason="no node or bun on PATH")
+def test_first_save_monitor_sees_an_open_dialog_and_survives_its_absence(rs, tmp_path):
+    (tmp_path / "monitor.js").write_text(rs.PERSISTENCE_GATE_MONITOR_INIT_SCRIPT)
+    (tmp_path / "driver.js").write_text(GATE_DRIVER)
+    proc = subprocess.run(
+        [JS_ENGINE, str(tmp_path / "driver.js")],
+        env={**os.environ, "MONITOR_JS": str(tmp_path / "monitor.js"), "GATE_KEY": rs.PERSISTENCE_GATE_SEEN_KEY},
+        capture_output=True, text=True, timeout=60,
+    )
+    assert proc.returncode == 0, (proc.stderr or proc.stdout)[-2000:]
+    out = json.loads(proc.stdout.strip().splitlines()[-1])
+    assert out == {"monitor": True, "registered": True, "seen_closed": False, "seen_open": True, "stored": "1"}
+
+
+def test_every_display_context_carries_the_ack_and_the_monitor_and_neither_adds_a_product_key(rs):
+    scripts = rs.display_context_init_scripts()
+    assert rs.PERSISTENCE_ACK_INIT_SCRIPT in scripts and rs.PERSISTENCE_GATE_MONITOR_INIT_SCRIPT in scripts
+    assert rs.PERSISTENCE_ACK_INIT_SCRIPT in rs.display_context_init_scripts(neg=("drop-query",))
+    assert "localStorage" not in rs.PERSISTENCE_GATE_MONITOR_INIT_SCRIPT, "the monitor writes no product key"
+    assert rs.PERSISTENCE_GATE_SEEN_KEY.startswith("__") and "praxis-repl" not in rs.PERSISTENCE_GATE_SEEN_KEY
+
+
+# --------------------------------------------------------------------------- #
+# The scenarios' ORDER and key plumbing, against a scripted fake driver (no browser)
+#
+# ``FakeWorld`` is a stand-in for the harness's ``DisplayDriver`` (one Playwright page): a "good"
+# browser by default, with one switch per fault. It lets the REAL scenario functions run end to
+# end, so what is proved is the sequencing (setup before drawing, the aspirate after the keyboard
+# reads, the restart before the re-run drawing cell, no cell run after the reload, the Run All in
+# its own notebook and last) and that every listed key is produced and can flip. What the page
+# actually shows is NOT proved here: that is B10b.
+# --------------------------------------------------------------------------- #
+
+DRAW_RES = {"draw-source": "source", "draw-assay": "assay", "draw-tips": "tips_300", "draw-deck": "deck", "redraw": "redraw"}
+DRAW_KIND = {"draw-source": "plate", "draw-assay": "plate", "draw-tips": "tiprack", "draw-deck": "deck", "redraw": "plate"}
+ERR_CELLS = {"e1", "e2", "e4", "e6"}
+
+
+class FakeWorld:
+    def __init__(self, rs: Any, notebook: dict[str, Any], **faults: Any) -> None:
+        self.rs, self.faults = rs, faults
+        self.log: list[Any] = []
+        self.counts: dict[str, int] = {}
+        self.cell_session: dict[str, str] = {}
+        self.session = "sess-1"
+        self.aspirated = self.redrawn = self.rerendered = self.scrolled = False
+        self.next_count = 1
+        self.focus = None
+        self.live = ""
+        self.ring = 0
+        self.after_reload = False
+        self.blocked: list[str] = []
+        self.name = None
+        self._open(notebook)
+
+    def _open(self, notebook: dict[str, Any]) -> None:
+        self.nb = notebook
+        self.ids = [c["id"] for c in notebook["cells"]]
+
+    # -- session ---------------------------------------------------------------------------------
+    def open_lab(self) -> None:
+        self.log.append("open_lab")
+
+    def set_theme(self, name: str) -> None:
+        self.log.append(("theme", name))
+        self.theme = name
+
+    def theme_name(self) -> str:
+        return getattr(self, "theme", "JupyterLab Dark")
+
+    def seed_and_open(self, name: str, notebook: dict[str, Any]) -> None:
+        self.log.append(("open", name))
+        self.name = name
+        self._open(notebook)
+        self.counts, self.cell_session = {}, {}  # a notebook has its own kernel
+
+    def wait_kernel_idle(self) -> None:
+        self.log.append("idle")
+
+    # -- cells -------------------------------------------------------------------------------------
+    def run_cell(self, index: int) -> None:
+        cid = self.ids[index]
+        self.log.append(("run", cid))
+        if self.faults.get("never_runs") == cid:
+            return
+        self.counts[cid] = self.next_count
+        self.next_count += 1
+        self.cell_session[cid] = self.session
+        if cid == "aspirate":
+            self.aspirated = True
+        if cid == "redraw":
+            self.redrawn = True
+
+    def _res(self, cid: str) -> dict[str, Any]:
+        f = self.faults
+        changed = 1 if (self.aspirated and cid in ("draw-source", "draw-deck") and not f.get("no_mark")) else 0
+        if cid == "draw-source" and self.rerendered and f.get("mark_lost_on_rerender"):
+            changed = 0
+        if cid == "draw-source" and self.scrolled and f.get("double_mark_after_scroll"):
+            changed = 2
+        if cid == "draw-tips" and f.get("tips_marked") and self.aspirated:
+            changed = 1
+        earlier = 0
+        if self.redrawn and self.cell_session.get(cid) != self.session and not f.get("no_earlier"):
+            earlier = 1
+        if cid == "redraw" and f.get("rerun_marked"):
+            earlier = 1
+        if self.after_reload:
+            changed = earlier = 0
+        svg = 0 if (f.get("sanitized") and self.after_reload) else 1
+        return res(svg=svg, changed=changed, earlier=earlier)
+
+    def report(self, index: int, res_name: Any = None) -> dict[str, Any]:
+        cid = self.ids[index]
+        n = self.counts.get(cid)
+        if n is None:
+            return report(count=None, state="not-run")
+        if self.faults.get("setup_error") == cid:
+            return report(count=n, state="error", outputs=[out(otype="error", mimes=(), html_bytes=None, ename="ImportError", evalue="boom")])
+        if cid in DRAW_RES:
+            plain = ASSAY_PLAIN if cid == "draw-assay" else "sentence"
+            st = stamp(DRAW_KIND[cid], DRAW_RES[cid], session=self.cell_session[cid])
+            size = 36_142 if cid == "draw-deck" else 9_000
+            return report(count=n, outputs=[out(html_bytes=size, plain=plain, st=st)], res_=self._res(cid))
+        if cid in ERR_CELLS:
+            titles = [HEADINGS[cid]] if not self.faults.get("no_panel") else []
+            return report(count=n, state="error", titles=titles, perr=len(titles), outputs=[
+                out(otype="display_data", st=stamp("error", None, rev=None)),
+                out(otype="error", mimes=(), html_bytes=None, ename="TooLittleLiquidError", index=1),
+            ])
+        if cid == "value-error":
+            return report(count=n, state="error", perr=0, outputs=[out(otype="error", mimes=(), html_bytes=None, ename="ValueError")])
+        if cid == "marker":
+            return report(count=n)
+        return report(count=n, outputs=[out(otype="stream", mimes=(), html_bytes=None, plain="ok")])
+
+    def poll(self, read: Any, ok: Any, timeout_s: float) -> Any:
+        value = read()
+        return value, bool(ok(value))
+
+    # -- keyboard --------------------------------------------------------------------------------------
+    def figure(self, index: int, res_name: str) -> dict[str, Any]:
+        return {"found": True, "role": "img", "in_svg": True, "aria_label": ASSAY_PLAIN, "tabindex": "0"}
+
+    def focus_probe(self, index: int, res_name: str) -> dict[str, Any]:
+        self.log.append("focus_probe")
+        ok = not self.faults.get("no_predecessor")
+        return {"ok": ok, "next_is_figure": ok, "next_tag": "g" if ok else None}
+
+    def remove_probe(self) -> int:
+        self.log.append("remove_probe")
+        return 1
+
+    def windowing(self) -> Any:
+        return "contentVisibility"
+
+    def press(self, key: str) -> None:
+        self.log.append(("press", key))
+        f = self.faults
+        if key == "Tab" and not f.get("no_predecessor"):
+            self.focus, self.live, self.ring = "figure", "assay A1: 50 µL", 1
+        elif key == "ArrowRight" and self.focus == "figure" and not f.get("arrow_dead"):
+            self.live = "assay A2: 100 µL"
+        elif key == "Escape":
+            self.ring = 1 if f.get("ring_stays") else 0
+            if f.get("escape_blurs"):
+                self.focus = None
+
+    def settle(self, ms: float) -> None:
+        self.log.append(("settle", ms))
+
+    def live_text(self) -> Any:
+        return self.live or None
+
+    def active_is_figure(self, index: int, res_name: str) -> bool:
+        return self.focus == "figure"
+
+    def ring_count(self, index: int, res_name: str) -> int:
+        return self.ring
+
+    # -- staleness ---------------------------------------------------------------------------------------
+    def scroll_to(self, index: int, block: str = "center") -> None:
+        self.log.append(("scroll", self.ids[index], block))
+        self.scrolled = True
+
+    def rerender(self, index: int, j: int) -> bool:
+        self.log.append(("rerender", self.ids[index], j))
+        self.rerendered = True
+        return not self.faults.get("rerender_fails")
+
+    def save_and_read(self, name: str) -> dict[str, Any]:
+        self.log.append(("save", name))
+        if self.faults.get("save_fails"):
+            return {"ok": False, "content": None}
+        html = "<svg></svg>" + ("Changed since, see deck panel." if self.faults.get("persist_mark") else "")
+        if self.faults.get("script_in_bundle"):
+            html += "<script>1</script>"
+        cell = {"cell_type": "code", "outputs": [{"output_type": "display_data", "data": {"text/html": html}}]}
+        return {"ok": True, "content": {"cells": [cell]}}
+
+    def restart_kernel(self) -> dict[str, Any]:
+        self.log.append("restart")
+        if self.faults.get("restart_fails"):
+            raise self.rs.DisplayCheckError("the kernel never came back")
+        self.session = "sess-1" if self.faults.get("same_session") else "sess-2"
+        return {"via": "kernelmenu:restart", "dialog_seen": True, "statuses": ["restarting", "starting", "idle"]}
+
+    def run_all(self) -> None:
+        self.log.append("run_all")
+        for cid in ("assemble", "transfers", "pickup", "e1") + (("marker",) if self.faults.get("runall_continues") else ()):
+            self.counts[cid] = self.next_count
+            self.next_count += 1
+
+    # -- trust, paints, gate, reload ----------------------------------------------------------------------
+    def trust(self, index: int) -> dict[str, Any]:
+        if self.faults.get("sanitized"):
+            return trust_obs(output_model_trusted=False, cell_model_trusted=False, svg_count=0, live_res_count=0,
+                             tabindex_count=0, svg_class_kept=False, svg_style_kept=False)
+        return trust_obs()
+
+    def paints(self, index: int, res_name: str) -> dict[str, Any]:
+        hc = self.theme_name() == HC_THEME
+        blocked = bool(self.blocked_context)
+        return {
+            "summary_found": True, "summary_color": "rgb(255, 255, 255)", "sheet_found": True,
+            "sheet_fill": "rgb(0, 0, 0)" if hc else "rgb(255, 255, 255)", "inline_fill": "#FFFFFF",
+            "liquid_count": 3, "liquid_fill": self.faults.get("liquid_fill", MOONSTONE_LIVE), "liquid_attr": "#73A9C2",
+            "svg_count": 1, "blocked": blocked,
+        }
+
+    blocked_context = False
+
+    def probe_color(self, prop: str, token: str) -> str:
+        if token == "--jp-content-font-color0":
+            return "rgb(255, 255, 255)"
+        return self.faults.get("layout_token_blocked", "rgb(0, 0, 0)") if self.blocked_context else "rgb(0, 0, 0)"
+
+    def praxis_css(self) -> str:
+        return "" if self.blocked_context else "#73A9C2"
+
+    def gate(self) -> dict[str, Any]:
+        return {"monitor": not self.faults.get("no_monitor"), "seen": bool(self.faults.get("gate_seen"))}
+
+    def close_panel(self, name: str) -> None:
+        self.log.append(("close", name))
+
+    def reload_and_open(self, name: str, notebook: dict[str, Any]) -> None:
+        self.log.append("reload")
+        self.after_reload = True
+        self._open(notebook)
+        self.name = name
+
+    def blocked_count(self) -> int:
+        return 0 if self.faults.get("route_never_fires") else 1
+
+
+def _events(world: FakeWorld) -> list[Any]:
+    return world.log
+
+
+def _pos(log: list[Any], item: Any) -> int:
+    return log.index(item)
+
+
+def _first(log: list[Any], pred: Any) -> int:
+    return next(i for i, e in enumerate(log) if pred(e))
+
+
+def _run_d2(rs: Any, nb: dict[str, Any], **faults: Any) -> tuple[dict[str, Any], FakeWorld]:
+    world = FakeWorld(rs, nb, **faults)
+    keys = rs.run_d2(world, nb)
+    return keys, world
+
+
+def test_d2_positive_control_a_good_browser_holds_every_listed_key(rs, nb):
+    keys, world = _run_d2(rs, nb)
+    listed = [k for k in D2_KEYS if k != "pageerrors"]
+    assert all(k in keys for k in listed), [k for k in listed if k not in keys]
+    unit = rs.UNIT_BY_ID["D2"]
+    assert rs.evaluate_unit_result(unit, dict(keys, pageerrors=[])) == ([], []), keys
+
+
+def test_d2_runs_setup_then_draws_then_the_keyboard_then_the_aspirate_then_the_errors(rs, nb):
+    _, w = _run_d2(rs, nb)
+    runs = [e[1] for e in w.log if isinstance(e, tuple) and e[0] == "run"]
+    main = runs[: runs.index("marker")] if "marker" in runs else runs
+    order = ["boot", "assemble", "transfers", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck",
+             "aspirate", "e1", "e2", "e4", "e6", "value-error"]
+    idx = [main.index(c) for c in order]
+    assert idx == sorted(idx), main
+    tab = _first(w.log, lambda e: e == ("press", "Tab"))
+    aspirate = _first(w.log, lambda e: e == ("run", "aspirate"))
+    assert tab < aspirate, "the keyboard reads use the drawn assay before anything changes"
+    assert _pos(w.log, ("press", "Tab")) < _pos(w.log, ("press", "ArrowRight")) < _pos(w.log, ("press", "Escape"))
+    assert _pos(w.log, "focus_probe") < _pos(w.log, ("press", "Tab")) < _pos(w.log, "remove_probe")
+    assert _pos(w.log, ("press", "Escape")) < _pos(w.log, "remove_probe"), "the probe stays until the keys are read"
+
+
+def test_d2_never_runs_run_all_on_the_main_notebook_and_does_it_last_in_its_own_notebook(rs, nb):
+    keys, w = _run_d2(rs, nb)
+    opens = [e for e in w.log if isinstance(e, tuple) and e[0] == "open"]
+    assert opens[0] == ("open", rs.DISPLAY_NOTEBOOK_NAME) and opens[-1] == ("open", rs.RUNALL_NOTEBOOK_NAME)
+    assert w.log.count("run_all") == 1
+    run_all = _pos(w.log, "run_all")
+    assert _pos(w.log, opens[-1]) < run_all and run_all == max(i for i, e in enumerate(w.log) if e == "run_all")
+    after_pair_open = w.log[_pos(w.log, opens[-1]):]
+    assert not [e for e in after_pair_open if isinstance(e, tuple) and e[0] == "run"], (
+        "cells of the pair are run by Run All, never one at a time"
+    )
+    before_pair = w.log[: _pos(w.log, opens[-1])]
+    assert "run_all" not in before_pair, "Run All never touches the main notebook's error cells"
+
+
+def test_d2_restarts_the_kernel_reruns_boot_then_a_self_contained_drawing_cell(rs, nb):
+    _, w = _run_d2(rs, nb)
+    r = _pos(w.log, "restart")
+    later = [e[1] for e in w.log[r:] if isinstance(e, tuple) and e[0] == "run"]
+    assert later[:2] == ["boot", "redraw"], later
+    earlier_runs = [e[1] for e in w.log[:r] if isinstance(e, tuple) and e[0] == "run"]
+    assert "redraw" not in earlier_runs and "value-error" in earlier_runs
+    assert _pos(w.log, ("save", rs.DISPLAY_NOTEBOOK_NAME)) < r, "the persisted-mark check happens before the restart"
+
+
+def test_d2_saves_first_then_scrolls_away_and_back_and_forces_a_rerender(rs, nb):
+    """The persisted-mark check runs while the mark is known to be in the DOM, before any disturbance,
+    so a lost mark cannot also read as 'not persisted'."""
+    _, w = _run_d2(rs, nb)
+    away = _first(w.log, lambda e: isinstance(e, tuple) and e[0] == "scroll" and e[1] == "marker")
+    back = max(i for i, e in enumerate(w.log) if isinstance(e, tuple) and e[0] == "scroll" and e[1] == "draw-source")
+    rerender = _first(w.log, lambda e: isinstance(e, tuple) and e[0] == "rerender" and e[1] == "draw-source")
+    save = _pos(w.log, ("save", rs.DISPLAY_NOTEBOOK_NAME))
+    assert _pos(w.log, ("run", "aspirate")) < save < away < back < rerender < _pos(w.log, "restart")
+
+
+def test_d2_a_failing_setup_cell_is_an_error_finding_not_a_misleading_key(rs, nb):
+    for cid in ("boot", "assemble", "transfers", "pickup"):
+        with pytest.raises(rs.DisplayCheckError) as exc:
+            _run_d2(rs, nb, setup_error=cid)
+        assert cid in str(exc.value) and "ImportError" in str(exc.value)
+
+
+def test_d2_a_restart_that_fails_raises_instead_of_passing_the_session_keys(rs, nb):
+    with pytest.raises(rs.DisplayCheckError):
+        _run_d2(rs, nb, restart_fails=True)
+
+
+@pytest.mark.parametrize("fault,failing", [
+    ({"no_mark": True}, {"stale_marked", "stale_not_persisted", "unchanged_not_marked", "mark_survives_scroll"}),
+    ({"tips_marked": True}, {"unchanged_not_marked"}),
+    ({"double_mark_after_scroll": True}, {"mark_survives_scroll"}),
+    ({"mark_lost_on_rerender": True}, {"mark_survives_scroll"}),
+    ({"rerender_fails": True}, {"mark_survives_scroll"}),
+    ({"persist_mark": True}, {"stale_not_persisted"}),
+    ({"save_fails": True}, {"stale_not_persisted"}),
+    ({"no_earlier": True}, {"earlier_session_marked"}),
+    ({"same_session": True}, {"earlier_session_marked", "rerun_not_marked"}),
+    ({"rerun_marked": True}, {"rerun_not_marked"}),
+    ({"gate_seen": True}, {"persistence_gate_never_open"}),
+    ({"no_monitor": True}, {"persistence_gate_never_open"}),
+    ({"runall_continues": True}, {"runall_stops"}),
+    ({"no_panel": True}, {"error_panels"}),
+    ({"no_predecessor": True}, {"tab_focuses_figure", "arrow_moves", "escape_leaves"}),
+    ({"arrow_dead": True}, {"arrow_moves"}),
+    ({"escape_blurs": True}, {"escape_leaves"}),
+    ({"ring_stays": True}, {"escape_leaves"}),
+])
+def test_d2_each_fault_fails_exactly_its_own_keys(rs, nb, fault, failing):
+    keys, _ = _run_d2(rs, nb, **fault)
+    _missing, failed = rs.evaluate_unit_result(rs.UNIT_BY_ID["D2"], dict(keys, pageerrors=[]))
+    assert set(failed) == failing, (fault, failed)
+
+
+# -- D3 ----------------------------------------------------------------------------------------------------
+
+
+def _run_d3(rs: Any, nb: dict[str, Any], **faults: Any) -> tuple[dict[str, Any], FakeWorld]:
+    world = FakeWorld(rs, nb, **faults)
+    return rs.run_d3(world, nb), world
+
+
+def test_d3_positive_control_holds_every_listed_key(rs, nb):
+    keys, _ = _run_d3(rs, nb)
+    assert all(k in keys for k in D3_KEYS)
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["D3"], keys) == ([], []), keys
+    assert keys["reopened_branch"] == "S2-T"
+
+
+def test_d3_executes_its_own_drawing_cells_then_saves_closes_reloads_and_reopens(rs, nb):
+    _, w = _run_d3(rs, nb)
+    runs = [e[1] for e in w.log if isinstance(e, tuple) and e[0] == "run"]
+    assert runs == ["boot", "assemble", "transfers", "draw-source", "draw-assay", "draw-tips", "draw-deck"]
+    order = [("save", rs.DISPLAY_NOTEBOOK_NAME), ("close", rs.DISPLAY_NOTEBOOK_NAME), "reload"]
+    idx = [_pos(w.log, e) for e in order]
+    assert idx == sorted(idx) and idx[0] > _pos(w.log, ("run", "draw-deck"))
+    assert not [e for e in w.log[idx[-1]:] if isinstance(e, tuple) and e[0] == "run"], (
+        "nothing may be re-run after the reload: the reopened outputs must be the SAVED ones"
+    )
+
+
+def test_d3_scenario_negative_controls(rs, nb):
+    for fault, key in (
+        ({"script_in_bundle": True}, "no_script_in_bundles"), ({"save_fails": True}, "no_script_in_bundles"),
+        ({"sanitized": True}, "reopened_branch"), ({"sanitized": True}, "svg_in_dom"),
+        ({"gate_seen": True}, "persistence_gate_never_open"), ({"no_monitor": True}, "persistence_gate_never_open"),
+        ({"liquid_fill": "rgb(0, 0, 0)"}, "liquid_fill_computed"),
+    ):
+        keys, _ = _run_d3(rs, nb, **fault)
+        assert key in rs.evaluate_unit_result(rs.UNIT_BY_ID["D3"], keys)[1], (fault, keys)
+
+
+def test_d3_records_the_other_branches_evidence_without_listing_it(rs, nb):
+    keys, _ = _run_d3(rs, nb)
+    assert "branch_evidence" in keys and set(keys["branch_evidence"]) >= {"summary_text_visible", "text_plain_visible", "liquid_fill_attr"}
+    assert "branch_evidence" not in dict(rs.UNIT_BY_ID["D3"].expected)
+
+
+# -- D4 ----------------------------------------------------------------------------------------------------
+
+
+def _run_d4(rs: Any, nb: dict[str, Any], **faults: Any) -> tuple[dict[str, Any], FakeWorld, list[FakeWorld]]:
+    a = FakeWorld(rs, nb, **faults)
+    made: list[FakeWorld] = []
+
+    def factory() -> FakeWorld:
+        b = FakeWorld(rs, nb, **faults)
+        b.blocked_context = True
+        made.append(b)
+        return b
+
+    return rs.run_d4(a, nb, blocked_driver_factory=factory), a, made
+
+
+def test_d4_positive_control_holds_every_listed_key(rs, nb):
+    keys, _, _ = _run_d4(rs, nb)
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["D4"], keys) == ([], []), keys
+
+
+def test_d4_uses_two_contexts_and_sets_high_contrast_in_both(rs, nb):
+    _, a, made = _run_d4(rs, nb)
+    assert len(made) == 1, "exactly one second (blocked) context"
+    assert ("theme", HC_THEME) in a.log and ("theme", HC_THEME) in made[0].log
+    runs = [e[1] for e in a.log if isinstance(e, tuple) and e[0] == "run"]
+    assert runs == ["boot", "assemble", "transfers", "draw-assay"], "the plate the two colour keys read"
+    assert not [e for e in made[0].log if isinstance(e, tuple) and e[0] in ("run", "open")], (
+        "the blocked context only measures the theme's own token"
+    )
+    assert _pos(a.log, ("theme", HC_THEME)) < _pos(a.log, ("run", "draw-assay"))
+
+
+def test_d4_negative_controls(rs, nb):
+    keys, _, _ = _run_d4(rs, nb, route_never_fires=True)
+    assert keys["hc_palette_untouched"] is False, "a block that never happened proves nothing"
+    keys, _, _ = _run_d4(rs, nb, layout_token_blocked="rgb(9, 9, 9)")
+    assert keys["hc_palette_untouched"] is False
+
+
+# -- dispatch ----------------------------------------------------------------------------------------------
+
+
+def test_run_display_scenario_dispatches_each_unit_to_its_own_body(rs, monkeypatch, nb):
+    calls: list[tuple[str, Any]] = []
+
+    class Drv:
+        def __init__(self, session: Any, *a: Any, **k: Any) -> None:
+            calls.append(("driver", session))
+
+    monkeypatch.setattr(rs, "DisplayDriver", Drv)
+    monkeypatch.setattr(rs, "run_chrome_scenario", lambda s, u, e, notebook=None: calls.append(("chrome", u.id)) or {"c": 1})
+    monkeypatch.setattr(rs, "run_d2", lambda d, f: calls.append(("d2", type(d).__name__)) or {"k": 2})
+    monkeypatch.setattr(rs, "run_d3", lambda d, f: calls.append(("d3", type(d).__name__)) or {"k": 3})
+    monkeypatch.setattr(rs, "run_d4", lambda d, f, blocked_driver_factory: calls.append(("d4", callable(blocked_driver_factory))) or {"k": 4})
+    session = FakeSession()
+    for uid, expect in (("D1", {"c": 1}), ("D1-dark", {"c": 1}), ("D2", {"k": 2}), ("D3", {"k": 3}), ("D4", {"k": 4})):
+        assert rs.run_display_scenario(session, rs.UNIT_BY_ID[uid], make_env(rs), notebook=nb) == expect
+    kinds = [c[0] for c in calls if c[0] != "driver"]
+    assert kinds == ["chrome", "chrome", "d2", "d3", "d4"]
+    assert ("d4", True) in calls
+
+
+def test_run_display_scenario_refuses_a_unit_it_has_no_body_for(rs):
+    unit = rs.HarnessUnit("K9", rs.DISPLAY_CHECK, 1.0, ())
+    with pytest.raises(rs.DisplayCheckError):
+        rs.run_display_scenario(FakeSession(), unit, make_env(rs))
+
+
+def test_d2_evidence_keeps_the_raw_reports_behind_the_error_keys(rs):
+    """A failing `other_errors_plain` (or `error_panels`, `runall_stops`) has to be diagnosable from the result
+    file alone: D2's evidence carries the raw plain-error, PLR-error and Run All reports."""
+    import inspect
+
+    def missing(source: str) -> list[str]:
+        call = source.split("evidence.update(", 1)[1].split('keys["evidence"]', 1)[0]
+        return [n for n in ("error_reports", "value_error", "runall") if f"{n}={n}" not in call]
+
+    assert missing(inspect.getsource(rs.run_d2)) == []
+    # negative controls: a source without one of them, or without any, is rejected by the same checker
+    stripped = inspect.getsource(rs.run_d2).replace("value_error=value_error", "")
+    assert missing(stripped) == ["value_error"]
+    assert missing('evidence.update(restart=restart)\n keys["evidence"] = evidence') == [
+        "error_reports", "value_error", "runall",
+    ]
+
+
+# =========================================================================== #
+# Sprint C (C7): the static greps the dock gate closes -- AC-39(c), R19 (AC-41), the extended R21 (AC-31)
+# =========================================================================== #
+#
+# Pure functions over a source tree (no browser). Each has a POSITIVE control on the real tree (it must pass
+# now) and a NEGATIVE control on a synthetic tree (a forbidden token planted in it must be found).
+
+R21_SIX = (
+    "web-repl/overlay/assets/python/praxis/viz/",
+    "web-repl/overlay/assets/visualizer/",
+    "web-repl/overlay/assets/visualizer-augmentations/",
+    "web-repl/overlay/assets/visualizer3d/",
+    "web-repl/overlay/assets/visualizer3d-augmentations/",
+    "web-repl/shell/display/dock.js",
+)
+R21_BASH = (
+    """grep -rn "praxis_repl" {paths} | sed 's/``praxis_repl``//g' | grep "praxis_repl"; s=("${{PIPESTATUS[@]}}")\n"""
+    """echo "${{s[@]}}"\n"""
+)
+
+
+def _bash_r21(paths: list[str], cwd: Path) -> list[int]:
+    out = subprocess.run(
+        ["bash", "-c", R21_BASH.format(paths=" ".join(paths))], capture_output=True, text=True, cwd=str(cwd), timeout=120
+    )
+    return [int(x) for x in out.stdout.strip().splitlines()[-1].split()]
+
+
+def _mini_tree(root: Path, files: dict[str, str]) -> Path:
+    for rel, text in files.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text)
+    return root
+
+
+def test_grep_tree_is_grep_rn_with_include_and_exclude_dir(rs, tmp_path):
+    root = _mini_tree(tmp_path, {
+        "a/one.js": "x\nfoo bar\n", "a/two.txt": "foo\n", "a/__tests__/t.js": "foo\n", "a/sub/three.js": "no\nfoo\n",
+    })
+    hits = rs.grep_tree(root, ["a"], r"foo", include=("*.js",), exclude_dirs=("__tests__",))
+    assert hits == [("a/one.js", 2, "foo bar"), ("a/sub/three.js", 2, "foo")], "the .txt and the __tests__ file are skipped"
+    assert rs.grep_tree(root, ["a"], r"foo") != hits, "without include/exclude the other two files are found too"
+    assert rs.grep_tree(root, ["a"], r"absent-token") == []
+    with pytest.raises(FileNotFoundError):  # grep exits 2 on an unreadable path; never read as "no hit"
+        rs.grep_tree(root, ["nope"], r"foo")
+
+
+def test_ac39c_no_test_hooks_in_the_product_js_on_the_real_tree(rs):
+    """AC-39(c) verbatim: grep -rnE '__praxis_test|data-praxis-test' shell/display + visualizer3d-augmentations
+    --include='*.js' --exclude-dir=__tests__ finds nothing. (It used to find dock.test.js's own regex literal.)"""
+    assert rs.ac39c_hits(rs.REPO_ROOT) == []
+
+
+@pytest.mark.parametrize("rel", [
+    "web-repl/shell/display/x.js", "web-repl/overlay/assets/visualizer3d-augmentations/y.js", "web-repl/shell/display/x.test.js",
+])
+@pytest.mark.parametrize("token", ["__praxis_test", "data-praxis-test"])
+def test_ac39c_control_finds_a_planted_hook_in_both_trees_and_in_a_test_file(rs, tmp_path, rel, token):
+    root = _mini_tree(tmp_path, {
+        "web-repl/shell/display/ok.js": "1\n", "web-repl/overlay/assets/visualizer3d-augmentations/ok.js": "1\n",
+        rel: f"const a = 1;\nwindow.{token} = 1;\n",
+    })
+    assert [h[0] for h in rs.ac39c_hits(root)] == [rel]
+
+
+def test_ac39c_ignores_the_one_exclusion_the_spec_states(rs, tmp_path):
+    quiet = _mini_tree(tmp_path, {
+        "web-repl/shell/display/ok.js": "1\n", "web-repl/overlay/assets/visualizer3d-augmentations/ok.js": "1\n",
+        "web-repl/shell/display/__tests__/t.js": "__praxis_test\n",
+    })
+    assert rs.ac39c_hits(quiet) == []
+
+
+def test_r19_requestdevice_and_requestport_are_absent_on_the_real_tree(rs):
+    """AC-41 R19: the grep exits 1 EXACTLY -- it finds nothing, and every path exists (2 would be an error)."""
+    assert rs.r19_check(rs.REPO_ROOT) == (True, [])
+
+
+R19_DIRS = (
+    "web-repl/overlay/assets/visualizer-augmentations", "web-repl/overlay/assets/visualizer3d-augmentations",
+    "web-repl/shell/display",
+)
+
+
+@pytest.mark.parametrize("token", ["requestDevice", "requestPort"])
+def test_r19_control_fires_on_either_token(rs, tmp_path, token):
+    base = {f"{d}/ok.js": "1\n" for d in R19_DIRS}
+    bad = _mini_tree(tmp_path / "bad", {**base, f"{R19_DIRS[1]}/serial.js": f"navigator.serial.{token}();\n"})
+    ok, hits = rs.r19_check(bad)
+    assert ok is False and [h[0] for h in hits] == [f"{R19_DIRS[1]}/serial.js"]
+    assert rs.r19_check(_mini_tree(tmp_path / "clean", base)) == (True, [])
+
+
+def test_r19_control_a_missing_path_is_not_a_pass(rs, tmp_path):
+    ok, _hits = rs.r19_check(tmp_path / "empty")  # grep exits 2 on a missing path
+    assert ok is False
+
+
+def test_r21_extended_passes_on_the_real_tree_and_is_not_vacuous(rs):
+    res = rs.r21_extended_check(rs.REPO_ROOT)
+    assert res["ok"] is True and res["residual"] == [] and res["paths_exist"] is True
+    assert res["first_grep_status"] == 0, "the documentation mentions ARE found (transport.py and viewer3d.py)"
+    assert len(res["hits"]) >= 3
+    assert {h[0] for h in res["hits"]} <= {
+        "web-repl/overlay/assets/python/praxis/viz/transport.py", "web-repl/overlay/assets/python/praxis/viz/viewer3d.py",
+    }, "only RST documentation mentions remain after the strip; no code use anywhere on the six paths"
+
+
+def test_r21_extended_python_form_agrees_with_the_bash_gate_on_the_real_tree(rs):
+    assert _bash_r21(list(R21_SIX), rs.REPO_ROOT) == [0, 0, 1]
+    assert list(rs.R21_EXTENDED_PATHS) == list(R21_SIX), "the six paths: five directories and dock.js"
+
+
+def _r21_base_files() -> dict[str, str]:
+    return {
+        "web-repl/overlay/assets/python/praxis/viz/ok.py": "x = 1\n", "web-repl/overlay/assets/visualizer/ok.js": "1\n",
+        "web-repl/overlay/assets/visualizer-augmentations/ok.js": "1\n", "web-repl/overlay/assets/visualizer3d/ok.js": "1\n",
+        "web-repl/overlay/assets/visualizer3d-augmentations/ok.js": "1\n", "web-repl/shell/display/dock.js": "1\n",
+    }
+
+
+@pytest.mark.parametrize(
+    "rel,text",
+    [
+        ("web-repl/overlay/assets/visualizer3d/app.js", 'const c = new BroadcastChannel("praxis_repl");\n'),
+        ("web-repl/overlay/assets/visualizer3d-augmentations/socket.js", "const c = new BroadcastChannel(`praxis_repl`);\n"),
+        ("web-repl/shell/display/dock.js", "const CH = 'praxis_repl';\n"),
+        ("web-repl/overlay/assets/python/praxis/viz/viewer3d.py", 'see ``praxis_repl`` and post to "praxis_repl"\n'),
+    ],
+)
+def test_r21_extended_control_fires_on_a_code_use_on_each_new_path_and_the_bash_gate_agrees(rs, tmp_path, rel, text):
+    files = _r21_base_files()
+    files[rel] = files.get(rel, "") + text
+    root = _mini_tree(tmp_path, files)
+    res = rs.r21_extended_check(root)
+    assert res["ok"] is False and res["residual"], res
+    assert _bash_r21(list(R21_SIX), root)[2] == 0, "the spec's bash gate finds the same residual code use"
+
+
+def test_r21_extended_control_ignores_the_documentation_form(rs, tmp_path):
+    files = _r21_base_files()
+    files["web-repl/overlay/assets/python/praxis/viz/doc.py"] = '"""NOT ``praxis_repl``."""\n'
+    res = rs.r21_extended_check(_mini_tree(tmp_path, files))
+    assert res["ok"] is True and res["first_grep_status"] == 0 and res["residual"] == []
+
+
+def test_r21_extended_control_a_missing_directory_or_dock_js_is_an_error_not_a_pass(rs, tmp_path):
+    files = _r21_base_files()
+    del files["web-repl/overlay/assets/visualizer3d-augmentations/ok.js"]
+    res = rs.r21_extended_check(_mini_tree(tmp_path / "nodir", files))
+    assert res["ok"] is False and res["paths_exist"] is False
+    files = _r21_base_files()
+    del files["web-repl/shell/display/dock.js"]
+    res = rs.r21_extended_check(_mini_tree(tmp_path / "nodock", files))
+    assert res["ok"] is False and res["paths_exist"] is False
+
+
+# =========================================================================== #
+# Sprint C (C7): the D6 sizing table as a pure function (AC-36 "keyed by the D6 sizing case", AC-39(d) skip rule)
+# =========================================================================== #
+
+ASSERTED, RECORDED = "asserted", "recorded-only"
+MEDIUM_CATS = ("open_width_1280_1599", "drag_clamp_1280_1599", "fit_after_tier_change_1280_1599")
+WIDE_CATS = ("open_width_ge_1600", "fit_after_tier_change_ge_1600", "resize_within_wide")
+
+
+def _status(rs, hon, reach, refit, keeps=True):
+    return rs.width_key_status(
+        css_limits_honoured=hon, layout_sizing_reachable=reach, css_limits_refit=refit, restore_layout_keeps_iframe=keeps
+    )
+
+
+def test_sizing_case_names_follow_the_d6_table(rs):
+    assert rs.sizing_case(True, True) == "honoured_reachable"
+    assert rs.sizing_case(False, True) == "ignored_reachable"
+    assert rs.sizing_case(True, False) == "honoured_unreachable"
+    assert rs.sizing_case(False, False) == "ignored_unreachable", "S1-L"
+    assert rs.SIZING_CASES == ("honoured_reachable", "ignored_reachable", "honoured_unreachable", "ignored_unreachable")
+
+
+def test_the_width_categories_are_the_six_the_s1_record_names(rs):
+    assert tuple(rs.WIDTH_CATEGORIES) == MEDIUM_CATS + WIDE_CATS
+
+
+@pytest.mark.parametrize("refit", [True, False])
+def test_case_honoured_reachable_asserts_every_width_key(rs, refit):
+    s = _status(rs, True, True, refit)
+    assert s == {c: ASSERTED for c in MEDIUM_CATS + WIDE_CATS}
+
+
+@pytest.mark.parametrize("refit", [True, False])
+def test_case_ignored_reachable_asserts_every_width_key(rs, refit):
+    s = _status(rs, False, True, refit)
+    assert s == {c: ASSERTED for c in MEDIUM_CATS + WIDE_CATS}
+
+
+def test_case_honoured_unreachable_with_refit_asserts_every_width_key(rs):
+    assert _status(rs, True, False, True) == {c: ASSERTED for c in MEDIUM_CATS + WIDE_CATS}
+
+
+def test_case_honoured_unreachable_without_refit_asserts_1280_1599_and_records_the_wide_keys_only(rs):
+    s = _status(rs, True, False, False)
+    assert {c: s[c] for c in MEDIUM_CATS} == {c: ASSERTED for c in MEDIUM_CATS}
+    assert {c: s[c] for c in WIDE_CATS} == {c: RECORDED for c in WIDE_CATS}
+
+
+@pytest.mark.parametrize("refit", [True, False])
+def test_case_s1_l_records_every_width_key(rs, refit):
+    assert _status(rs, False, False, refit) == {c: RECORDED for c in MEDIUM_CATS + WIDE_CATS}
+
+
+def test_restore_layout_not_keeping_the_iframe_moves_drag_and_resize_to_the_unreachable_row(rs):
+    """Spec AC-36: open-time keys and fit_after_tier_change keep their case status; the drag-clamp keys and
+    resize_within_wide take the status of the `unreachable` row for the same CSS column."""
+    # CSS ignored -> recorded-only for both
+    s = _status(rs, False, True, True, keeps=False)
+    assert s["drag_clamp_1280_1599"] == RECORDED and s["resize_within_wide"] == RECORDED
+    assert s["open_width_1280_1599"] == ASSERTED and s["open_width_ge_1600"] == ASSERTED
+    assert s["fit_after_tier_change_1280_1599"] == ASSERTED and s["fit_after_tier_change_ge_1600"] == ASSERTED
+    # CSS honoured -> the 1280-1599 drag is CSS (asserted); resize_within_wide is inline px, asserted iff css_limits_refit
+    s = _status(rs, True, True, True, keeps=False)
+    assert s["drag_clamp_1280_1599"] == ASSERTED and s["resize_within_wide"] == ASSERTED
+    s = _status(rs, True, True, False, keeps=False)
+    assert s["drag_clamp_1280_1599"] == ASSERTED and s["resize_within_wide"] == RECORDED
+    assert s["open_width_ge_1600"] == ASSERTED, "the open-time keys keep their case status (honoured/reachable: asserted)"
+
+
+def test_keeps_iframe_true_changes_nothing_relative_to_the_default(rs):
+    for hon in (True, False):
+        for reach in (True, False):
+            for refit in (True, False):
+                assert _status(rs, hon, reach, refit, True) == rs.width_key_status(
+                    css_limits_honoured=hon, layout_sizing_reachable=reach, css_limits_refit=refit
+                )
+
+
+def test_ac39d_runs_only_where_the_ge_1600_key_is_asserted(rs):
+    """D6: AC-39(d) is skipped, and recorded as skipped, wherever the >= 1600 key is recorded-only."""
+    assert rs.ac39d_status(_status(rs, True, True, True)) == "run"
+    assert rs.ac39d_status(_status(rs, False, True, False)) == "run"
+    assert rs.ac39d_status(_status(rs, True, False, True)) == "run"
+    assert rs.ac39d_status(_status(rs, True, False, False)) == "skipped", "honoured/unreachable without css_limits_refit"
+    assert rs.ac39d_status(_status(rs, False, False, True)) == "skipped", "S1-L"
+
+
+def test_the_recorded_s1_case_is_honoured_reachable_keeping_the_iframe_and_asserts_everything(rs):
+    """AC-1 (S1 run 1e0cab6d): css_limits_honoured, dock_layout_sizing_reachable, css_limits_refit and
+    restore_layout_keeps_iframe are all true."""
+    assert rs.SIZING_RECORD == {
+        "css_limits_honoured": True, "layout_sizing_reachable": True, "css_limits_refit": True,
+        "restore_layout_keeps_iframe": True,
+    }
+    assert rs.sizing_case(rs.SIZING_RECORD["css_limits_honoured"], rs.SIZING_RECORD["layout_sizing_reachable"]) == "honoured_reachable"
+    assert rs.SIZING_STATUS == {c: ASSERTED for c in MEDIUM_CATS + WIDE_CATS}
+    assert rs.ac39d_status(rs.SIZING_STATUS) == "run"
+
+
+# -- the wide-tier width formula and the clamp predicates (D6, AC-36) ------------------------------------------
+
+
+def test_wide_panel_width_expected_is_the_d6_formula(rs):
+    assert rs.wide_panel_width_expected(1571.0, 0.0) == 611.0, "main - 960 - padding"
+    assert rs.wide_panel_width_expected(1571.0, 20.0) == 591.0
+    assert rs.wide_panel_width_expected(1300.0, 0.0) == 420.0, "max(420, ...)"
+    assert rs.wide_panel_width_expected(1891.0, 0.0) == 931.0
+
+
+@pytest.mark.parametrize(
+    "panel,ok",
+    [(611.0, True), (603.0, True), (619.0, True), (602.9, False), (619.1, False), (785.0, False), (420.0, False), (None, False), ("611", False)],
+)
+def test_wide_width_ok_is_plus_minus_eight_px_around_the_formula(rs, panel, ok):
+    assert rs.wide_width_ok(panel, 1571.0, 0.0) is ok
+
+
+def test_wide_width_ok_needs_its_measurements(rs):
+    assert rs.wide_width_ok(611.0, None, 0.0) is False
+    assert rs.wide_width_ok(611.0, 1571.0, None) is False
+
+
+@pytest.mark.parametrize(
+    "width,ok", [(420.0, True), (450.0, True), (480.0, True), (419.0, True), (481.5, True), (417.9, False), (482.1, False), (300.0, False), (None, False)]
+)
+def test_open_width_ok_is_420_to_480_with_a_subpixel_allowance(rs, width, ok):
+    assert rs.open_width_ok(width) is ok
+
+
+@pytest.mark.parametrize("width,ok", [(420.0, True), (421.9, True), (418.1, True), (300.0, False), (450.0, False), (None, False)])
+def test_clamp_low_ok_means_a_drag_to_300_ends_at_420(rs, width, ok):
+    assert rs.clamp_low_ok(width) is ok
+
+
+@pytest.mark.parametrize("width,ok", [(480.0, True), (478.1, True), (481.9, True), (700.0, False), (450.0, False), (None, False)])
+def test_clamp_high_ok_means_a_drag_to_700_ends_at_480(rs, width, ok):
+    assert rs.clamp_high_ok(width) is ok
+
+
+# =========================================================================== #
+# Sprint C (C7): the dock units in the D16 table -- K1a, K1b, K2, N-d (AC-42 "the driver's unit table equals D16's")
+# =========================================================================== #
+
+DOCK_IDS = ["K1a", "K1b", "K2", "N-d"]
+DOCK_BUDGET_MIN = [10, 14, 15, 6]
+K1A_KEYS = (
+    "panel_is_split_right", "viewer_resources", "hello_backend", "canvas_nonblank", "embed_hidden", "pageerrors",  # AC-34
+    "click_focuses", "follow_focuses", "follow_off_holds", "follow_skips_null", "preset_directions",
+    "follow_keeps_preset",  # AC-35
+    "state_updates", "stale_and_panel",  # AC-37
+)
+#: AC-38's fixed execution order (Revision 6, C6-2; Revision 7): the listed keys run in exactly this order.
+K1B_KEYS = (
+    "reconnect_after_reload", "preset_survives_reload", "drawer_reconnect", "redock_live", "stop_placeholder",
+    "redock_reloads", "late_iframe", "many_reloads", "restart_placeholder",
+)
+#: AC-36 keys asserted in every D6 sizing case (the drawer keys, the height keys, the notebook cap, the reload count).
+K2_ALWAYS = (
+    "drawer_overlays", "drawer_no_reflow", "drawer_dismiss_reopen", "tier_up_rehomes", "viewer_height",
+    "motion_slot_height", "nb_content_width_1600", "nb_content_width_1920", "iframe_reloads_during_resize",
+)
+#: The width keys, in K2's step order, each with its D6 family.
+K2_WIDTH = (
+    ("open_width_1440", "open_width_1280_1599"),
+    ("drag_clamp_low_1440", "drag_clamp_1280_1599"),
+    ("drag_clamp_high_1440", "drag_clamp_1280_1599"),
+    ("fit_after_tier_change_wide", "fit_after_tier_change_ge_1600"),
+    ("fit_after_tier_change_medium", "fit_after_tier_change_1280_1599"),
+    ("open_width_1280", "open_width_1280_1599"),
+    ("drag_clamp_low_1280", "drag_clamp_1280_1599"),
+    ("drag_clamp_high_1280", "drag_clamp_1280_1599"),
+    ("panel_width_wide_1600", "open_width_ge_1600"),
+    ("resize_within_wide", "resize_within_wide"),
+    ("panel_width_wide_1920", "open_width_ge_1600"),
+)
+K2_ALL_KEYS = frozenset(K2_ALWAYS) | {k for k, _ in K2_WIDTH}
+
+
+def _expected_k2(statuses: dict[str, str]) -> set[str]:
+    return set(K2_ALWAYS) | {k for k, cat in K2_WIDTH if statuses[cat] == "asserted"}
+
+
+def test_unit_table_is_d16_with_the_dock_units_appended_in_table_order(rs):
+    assert [u.id for u in rs.UNIT_TABLE] == ALL_IDS + DOCK_IDS
+    assert [u.id for u in rs.UNIT_TABLE if u.check == "display-check"] == ALL_IDS
+    dock = [rs.UNIT_BY_ID[i] for i in DOCK_IDS]
+    assert rs.DOCK_CHECK == "dock-check" and all(u.check == "dock-check" for u in dock)
+    assert [u.budget_s for u in dock] == [m * 60 for m in DOCK_BUDGET_MIN], "10, 14, 15 and 6 min (D16)"
+    assert [u.acs for u in dock] == [("AC-34", "AC-35", "AC-37"), ("AC-38",), ("AC-36",), ("AC-39",)]
+
+
+def test_n_d_is_negative_only_and_never_part_of_the_aggregate(rs):
+    assert [u.id for u in rs.DOCK_AGGREGATE_UNITS] == ["K1a", "K1b", "K2"]
+    assert rs.UNIT_BY_ID["N-d"].in_aggregate is False
+    assert all(rs.UNIT_BY_ID[i].in_aggregate for i in ("D1", "D4", "K1a", "K1b", "K2"))
+
+
+def test_k1a_lists_the_ac34_ac35_ac37_keys(rs):
+    assert tuple(rs.UNIT_BY_ID["K1a"].keys) == K1A_KEYS
+    exp = dict(rs.UNIT_BY_ID["K1a"].expected)
+    assert exp["pageerrors"] == [] and all(exp[k] is True for k in K1A_KEYS if k not in ("pageerrors", "hello_backend"))
+    assert rs.UNIT_BY_ID["K1a"].viewports == ((1440, 900),)
+
+
+def test_hello_backend_holds_for_webgl2_or_webgpu_only(rs):
+    want = dict(rs.UNIT_BY_ID["K1a"].expected)["hello_backend"]
+    assert rs._holds("WebGL2", want) and rs._holds("WebGPU", want)
+    for bad in ("WebGL", "webgl2", "", None, ["WebGL2"], True, 2):
+        assert not rs._holds(bad, want), bad
+    assert rs._holds(want.example(), want), "the passing example a test builds a result from"
+
+
+def test_k1b_lists_the_ac38_keys_in_the_fixed_execution_order(rs):
+    k1b = rs.UNIT_BY_ID["K1b"]
+    assert tuple(k1b.keys) == K1B_KEYS, "AC-38 execution order is the listed-key order"
+    assert all(v is True for _, v in k1b.expected) and k1b.viewports == ((1440, 900),)
+    assert "pageerrors" not in k1b.keys, "AC-38 names no pageerrors key (the kernel restart ends the run)"
+
+
+def test_k2_steps_are_the_nine_ordered_steps_starting_at_1152_by_800(rs):
+    names = [n for n, _ in rs.K2_STEPS]
+    assert names == [
+        "drawer", "dismiss_reopen", "tier_up", "medium_1440", "fit", "medium_1280", "wide_1600",
+        "resize_within_wide", "wide_1920",
+    ]
+    assert [v for _, v in rs.K2_STEPS] == [
+        (1152, 800), (1152, 800), (1440, 900), (1440, 900), (1600, 900), (1280, 800), (1600, 900), (1920, 900), (1920, 1080),
+    ]
+    k2 = rs.UNIT_BY_ID["K2"]
+    assert k2.viewports == tuple(v for _, v in rs.K2_STEPS) and k2.viewports[0] == (1152, 800)
+
+
+def test_k2_family_map_covers_every_width_key_and_only_those(rs):
+    assert dict(rs.K2_WIDTH_KEYS) == dict(K2_WIDTH)
+    assert set(dict(K2_WIDTH).values()) == set(rs.WIDTH_CATEGORIES), "every D6 family has at least one key"
+
+
+def test_k2_listed_keys_under_the_recorded_case_are_all_asserted(rs):
+    k2 = rs.UNIT_BY_ID["K2"]
+    assert set(k2.keys) == K2_ALL_KEYS and len(k2.keys) == len(K2_ALL_KEYS), "no duplicates"
+    assert rs.k2_expected(rs.SIZING_STATUS) == k2.expected, "the table is built from the recorded AC-1 case"
+    exp = dict(k2.expected)
+    assert exp["iframe_reloads_during_resize"] == 0 and type(exp["iframe_reloads_during_resize"]) is int
+    assert exp["drawer_overlays"] is True and exp["panel_width_wide_1920"] is True
+    assert isinstance(exp["viewer_height"], rs.AtLeast) and exp["viewer_height"].limit == 300.0
+    assert isinstance(exp["motion_slot_height"], rs.AtMost) and exp["motion_slot_height"].limit == 36.0
+    assert isinstance(exp["nb_content_width_1600"], rs.AtMost) and exp["nb_content_width_1600"].limit == 960.0
+
+
+@pytest.mark.parametrize(
+    "hon,reach,refit,keeps",
+    [(h, r, f, k) for h in (True, False) for r in (True, False) for f in (True, False) for k in (True, False)],
+)
+def test_k2_listed_keys_follow_the_d6_sizing_case_asserted_versus_recorded_only(rs, hon, reach, refit, keeps):
+    statuses = rs.width_key_status(
+        css_limits_honoured=hon, layout_sizing_reachable=reach, css_limits_refit=refit, restore_layout_keeps_iframe=keeps
+    )
+    listed = {k for k, _ in rs.k2_expected(statuses)}
+    assert listed == _expected_k2(statuses)
+    # drawer, height, notebook cap and reload keys are asserted in every case (AC-36)
+    assert set(K2_ALWAYS) <= listed
+
+
+def test_k2_under_s1_l_lists_only_the_always_asserted_keys(rs):
+    statuses = rs.width_key_status(css_limits_honoured=False, layout_sizing_reachable=False, css_limits_refit=False)
+    assert {k for k, _ in rs.k2_expected(statuses)} == set(K2_ALWAYS)
+
+
+def test_n_d_lists_the_wide_width_key_which_must_fail_or_a_skip(rs):
+    n_d = rs.UNIT_BY_ID["N-d"]
+    assert n_d.expected == (("panel_width_wide_1600", True),) and n_d.viewports == ((1600, 900),)
+    assert rs.nd_expected(rs.SIZING_STATUS) == n_d.expected
+    skipped = rs.width_key_status(css_limits_honoured=True, layout_sizing_reachable=False, css_limits_refit=False)
+    assert rs.nd_expected(skipped) == (("skipped", True),), "recorded-only >= 1600: AC-39(d) is skipped and says so"
+
+
+def test_at_least_is_a_lower_bound_that_survives_json_and_rejects_non_numbers(rs):
+    bound = rs.AtLeast(300.0)
+    assert bound.holds(300.0) and bound.holds(812) and not bound.holds(299.99)
+    for bad in (True, False, None, "400", float("nan"), [400]):
+        assert not bound.holds(bad), bad
+    assert rs._holds(bound.example(), bound) and json.loads(json.dumps(bound.example())) == bound.example()
+
+
+def test_dock_unit_results_survive_the_unit_runner_path(rs, ur, wds, tmp_path):
+    for uid in DOCK_IDS:
+        out = tmp_path / uid
+        code = scenario_in_process(rs, ur, wds, uid, out, make_env(rs))
+        assert code == 0, uid
+        stamp = json.loads(rs.unit_paths(out, uid)["stamp"].read_text())
+        assert stamp["unit"] == uid and stamp["exit"] == 0 and stamp["budget_s"] == rs.UNIT_BY_ID[uid].budget_s
+
+
+def test_dock_unit_inputs_are_the_seven_d16_inputs_and_hash_the_viewports_and_neg(rs):
+    env = make_env(rs)
+    for uid in DOCK_IDS:
+        inputs = rs.unit_inputs(rs.UNIT_BY_ID[uid], env)
+        assert sorted(inputs) == sorted(["dist", "notebook", "harness", "runner", "chrome", "args", "driver"])
+    k1b = rs.UNIT_BY_ID["K1b"]
+    assert rs.unit_inputs(k1b, env, ())["args"] != rs.unit_inputs(k1b, env, ("drop-query",))["args"], "AC-39(e): --neg is hashed"
+    other = dataclasses.replace(rs.UNIT_BY_ID["K2"], viewports=((1152, 800),))
+    assert rs.unit_inputs(rs.UNIT_BY_ID["K2"], env)["args"] != rs.unit_inputs(other, env)["args"]
+
+
+# =========================================================================== #
+# Sprint C (C7): K1a -- AC-34, AC-35, AC-37. The pure key derivation over raw page evidence.
+# =========================================================================== #
+#
+# `derive_k1a_keys(raw)` is pure: it maps what the page reported to the listed keys. Each key has a POSITIVE control
+# (synthetic raw evidence that must pass) and NEGATIVE controls (evidence violating, or missing, that one thing must
+# fail exactly that key). A precondition that would make a key pass vacuously is itself a negative control.
+
+import copy  # noqa: E402
+import math  # noqa: E402
+
+
+def _dir(v):
+    n = math.sqrt(sum(c * c for c in v))
+    return [c / n for c in v]
+
+
+def cam_for(rs, name, at=(100.0, 200.0, 0.0), dist=500.0):
+    """A camera ``{from, at}`` looking along exactly the preset's direction."""
+    d = _dir(rs.VIEWS[name])
+    return {"from": [a + dist * c for a, c in zip(at, d)], "at": list(at)}
+
+
+def good_k1a(rs):
+    return {
+        "panel": {"state": "open-connected", "home": "split", "panel_left": 1002.0, "notebook_right": 1000.0},
+        "resources": ["deck", "tip_carrier", "tips_300", "plate_carrier", "source", "assay"],
+        "hello": {"backend": "WebGL2", "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device))"},
+        "canvas": {"diff_pixels": 54000, "total_pixels": 360000, "control_blank": 0.0, "control_marked": 0.05},
+        "embed": {".navbar": "none", "#toolbar-left": "none", "#stats-panel": "none", "#sidepanel": "none", "#toolbar": "none"},
+        "click": {"footer_before": "No resource focused.", "footer_after": "source",
+                  "at_before": [0.0, 0.0, 0.0], "at_after": [120.0, 80.0, 10.0]},
+        "follow_on": {"enabled": True, "focused": "assay", "footer": "assay",
+                      "at_before": [120.0, 80.0, 10.0], "at_after": [120.0, 160.0, 10.0]},
+        "follow_off": {"enabled": False, "footer_before": "assay", "footer_after": "assay",
+                       "at_before": [120.0, 160.0, 10.0], "at_after": [120.0, 160.0, 10.0]},
+        "follow_null": {"enabled": True, "ledger_resources": [None], "footer_before": "assay", "footer_after": "assay",
+                        "at_before": [120.0, 160.0, 10.0], "at_after": [120.0, 160.0, 10.0]},
+        "presets": {"top": cam_for(rs, "top"), "front": cam_for(rs, "front"), "iso": cam_for(rs, "iso")},
+        "follow_keeps": {"pressed": "top", "camera": cam_for(rs, "top", at=(300.0, 40.0, 5.0)), "footer_before": "assay",
+                         "footer_after": "tips_300"},
+        "state": {"well": "source_well_0", "before": '{"volume": 200}', "after": '{"volume": 190}'},
+        "stale": {"changed_notices": 1, "notice_text": rs.CHANGED_NOTICE, "panel_state": "open-connected"},
+    }
+
+
+K1A_DERIVED = (
+    "panel_is_split_right", "viewer_resources", "hello_backend", "canvas_nonblank", "embed_hidden", "click_focuses",
+    "follow_focuses", "follow_off_holds", "follow_skips_null", "preset_directions", "follow_keeps_preset", "state_updates",
+    "stale_and_panel",
+)
+
+
+def test_views_are_the_renderer_js_vectors_copied_into_the_harness(rs):
+    """AC-35: `VIEWS` is copied from renderer.js:117-121; read the real file so the copy cannot drift."""
+    src = (rs.REPO_ROOT / "web-repl/overlay/assets/visualizer3d/renderer.js").read_text()
+    block = src.split("export const VIEWS = {", 1)[1].split("};", 1)[0]
+    found = {}
+    for line in block.strip().splitlines():
+        m = re.match(r"\s*(\w+): new THREE\.Vector3\(([^)]*)\)", line)
+        assert m, line
+        found[m.group(1)] = tuple(float(x) for x in m.group(2).split(","))
+    assert found == {k: tuple(v) for k, v in rs.VIEWS.items()} and set(found) == {"iso", "top", "front"}
+
+
+@pytest.mark.parametrize("name", ["iso", "top", "front"])
+def test_preset_ok_is_the_normalised_direction_dot_above_0_99(rs, name):
+    assert rs.preset_ok(cam_for(rs, name), name) is True
+    assert rs.preset_ok(cam_for(rs, name, dist=10.0), name) is True, "a length-independent test"
+    for other in {"iso", "top", "front"} - {name}:
+        assert rs.preset_ok(cam_for(rs, other), name) is False, (name, other)
+
+
+def test_preset_ok_rejects_degenerate_and_garbage_cameras(rs):
+    assert rs.preset_ok({"from": [1, 1, 1], "at": [1, 1, 1]}, "top") is False, "no direction at all"
+    for bad in (None, {}, {"from": [1, 2], "at": [0, 0, 0]}, {"from": ["a", 1, 1], "at": [0, 0, 0]}, {"from": [0, 0, 1]}):
+        assert rs.preset_ok(bad, "top") is False, bad
+    assert rs.preset_ok(cam_for(rs, "top"), "nope") is False
+
+
+def test_preset_ok_threshold_is_strict_at_0_99(rs):
+    top = _dir(rs.VIEWS["top"])
+    def tilted(deg):
+        t = math.radians(deg)
+        v = [top[0], top[1] * math.cos(t) - top[2] * math.sin(t), top[1] * math.sin(t) + top[2] * math.cos(t)]
+        return {"from": v, "at": [0.0, 0.0, 0.0]}
+    assert rs.preset_ok(tilted(5.0), "top") is True  # cos 5 deg = 0.9962
+    assert rs.preset_ok(tilted(9.0), "top") is False  # cos 9 deg = 0.9877
+
+
+def test_k1a_positive_control_every_listed_key_holds(rs):
+    keys = rs.derive_k1a_keys(good_k1a(rs))
+    assert set(K1A_DERIVED) <= set(keys)
+    unit = rs.UNIT_BY_ID["K1a"]
+    assert rs.evaluate_unit_result(unit, dict(keys, pageerrors=[])) == ([], []), keys
+    assert keys["hello_backend"] == "WebGL2", "the page's own string, read from the kernel, not a boolean"
+
+
+def test_k1a_derive_never_raises_on_empty_or_garbage_evidence_and_fails_every_key(rs):
+    for raw in ({}, None, {"panel": None, "canvas": "x", "presets": 3}):
+        keys = rs.derive_k1a_keys(raw)
+        unit = rs.UNIT_BY_ID["K1a"]
+        missing, failing = rs.evaluate_unit_result(unit, dict(keys, pageerrors=[]))
+        assert missing == [] and set(failing) == set(K1A_DERIVED), (raw, failing)
+
+
+def _mut(rs, fn):
+    raw = copy.deepcopy(good_k1a(rs))
+    fn(raw)
+    keys = rs.derive_k1a_keys(raw)
+    return rs.evaluate_unit_result(rs.UNIT_BY_ID["K1a"], dict(keys, pageerrors=[]))[1], keys
+
+
+def _set(path, value):
+    def apply(raw):
+        d = raw
+        for p in path[:-1]:
+            d = d[p]
+        d[path[-1]] = value
+    return apply
+
+
+@pytest.mark.parametrize(
+    "key,fn",
+    [
+        ("panel_is_split_right", _set(("panel", "home"), "drawer")),
+        ("panel_is_split_right", _set(("panel", "panel_left"), 700.0)),
+        ("panel_is_split_right", _set(("panel", "state"), "open-waiting")),
+        ("panel_is_split_right", _set(("panel", "panel_left"), None)),
+        ("viewer_resources", _set(("resources",), ["deck", "assay", "source"])),
+        ("viewer_resources", _set(("resources",), ["deck", "assay", "tips_300"])),
+        ("viewer_resources", _set(("resources",), None)),
+        ("viewer_resources", _set(("resources",), [])),
+        ("hello_backend", _set(("hello", "backend"), "WebGL")),
+        ("hello_backend", _set(("hello", "backend"), None)),
+        ("hello_backend", _set(("hello",), None)),
+        ("canvas_nonblank", _set(("canvas", "diff_pixels"), 0)),
+        ("canvas_nonblank", _set(("canvas", "diff_pixels"), 3600)),  # exactly 1%: "> 1%" is strict
+        ("canvas_nonblank", _set(("canvas", "total_pixels"), 0)),
+        ("canvas_nonblank", _set(("canvas", "control_blank"), 0.5)),  # the measurement reads a blank image as drawn
+        ("canvas_nonblank", _set(("canvas", "control_marked"), 0.0)),  # ... or cannot see a marked image at all
+        ("canvas_nonblank", _set(("canvas",), None)),
+        ("embed_hidden", _set(("embed", ".navbar"), "flex")),
+        ("embed_hidden", _set(("embed", "#toolbar-left"), "block")),
+        ("embed_hidden", _set(("embed", "#stats-panel"), "block")),
+        ("embed_hidden", _set(("embed", "#sidepanel"), "block")),
+        ("embed_hidden", _set(("embed", "#toolbar"), "block")),
+        ("embed_hidden", _set(("embed", "#toolbar"), None)),  # the element was not found: nothing was verified hidden
+        ("click_focuses", _set(("click", "at_after"), [0.0, 0.0, 0.0])),
+        ("click_focuses", _set(("click", "footer_after"), "assay")),
+        ("click_focuses", _set(("click", "footer_before"), "source")),  # already focused: the click proves nothing
+        ("click_focuses", _set(("click", "at_before"), None)),
+        ("follow_focuses", _set(("follow_on", "footer"), "source")),
+        ("follow_focuses", _set(("follow_on", "focused"), "source")),
+        ("follow_focuses", _set(("follow_on", "at_after"), [120.0, 80.0, 10.0])),
+        ("follow_focuses", _set(("follow_on", "enabled"), False)),
+        ("follow_off_holds", _set(("follow_off", "at_after"), [0.0, 0.0, 0.0])),
+        ("follow_off_holds", _set(("follow_off", "footer_after"), "tips_300")),
+        ("follow_off_holds", _set(("follow_off", "enabled"), True)),  # Follow was never off: vacuous
+        ("follow_skips_null", _set(("follow_null", "at_after"), [0.0, 0.0, 0.0])),
+        ("follow_skips_null", _set(("follow_null", "footer_after"), "source")),
+        ("follow_skips_null", _set(("follow_null", "enabled"), False)),
+        ("follow_skips_null", _set(("follow_null", "ledger_resources"), ["assay"])),  # the cell names a resource: not a null cell
+        ("follow_skips_null", _set(("follow_null", "ledger_resources"), [None, "assay"])),
+        ("follow_skips_null", _set(("follow_null", "ledger_resources"), [])),  # no output at all: vacuous
+        ("preset_directions", _set(("presets", "top"), None)),
+        ("follow_keeps_preset", _set(("follow_keeps", "camera"), None)),
+        ("follow_keeps_preset", _set(("follow_keeps", "footer_after"), "assay")),  # Follow never focused anything new
+        ("follow_keeps_preset", _set(("follow_keeps", "pressed"), "front")),
+        ("state_updates", _set(("state", "after"), '{"volume": 200}')),
+        ("state_updates", _set(("state", "before"), None)),
+        ("state_updates", _set(("state", "after"), None)),
+        ("state_updates", _set(("state", "well"), "")),
+        ("stale_and_panel", _set(("stale", "changed_notices"), 0)),
+        ("stale_and_panel", _set(("stale", "notice_text"), "Changed since.")),
+        ("stale_and_panel", _set(("stale", "panel_state"), "closed")),
+    ],
+)
+def test_k1a_negative_controls_each_violation_fails_exactly_its_key(rs, key, fn):
+    failing, _ = _mut(rs, fn)
+    assert failing == [key], failing
+
+
+@pytest.mark.parametrize("name,other", [("top", "front"), ("front", "iso"), ("iso", "top")])
+def test_k1a_preset_directions_fails_when_any_one_preset_points_the_wrong_way(rs, name, other):
+    failing, _ = _mut(rs, lambda raw: raw["presets"].__setitem__(name, cam_for(rs, other)))
+    assert failing == ["preset_directions"]
+
+
+def test_k1a_follow_keeps_preset_needs_the_top_direction_not_another_preset(rs):
+    failing, _ = _mut(rs, lambda raw: raw["follow_keeps"].__setitem__("camera", cam_for(rs, "iso")))
+    assert failing == ["follow_keeps_preset"]
+
+
+def test_canvas_nonblank_fraction_is_strictly_above_one_percent(rs):
+    assert rs.canvas_nonblank({"diff_pixels": 3601, "total_pixels": 360000, "control_blank": 0.0, "control_marked": 0.05}) is True
+    assert rs.canvas_nonblank({"diff_pixels": 3600, "total_pixels": 360000, "control_blank": 0.0, "control_marked": 0.05}) is False
+    assert rs.canvas_fraction({"diff_pixels": 1, "total_pixels": 4}) == 0.25
+    assert rs.canvas_fraction({"diff_pixels": 1, "total_pixels": 0}) is None
+    assert rs.canvas_fraction(None) is None
+
+
+# =========================================================================== #
+# Sprint C (C7): K1b -- AC-38. The pure key derivation over the page evidence and the ordered event log.
+# =========================================================================== #
+#
+# The event log is what the harness's in-page monitor saw, in ONE sequence: `bc` (a praxis_viz3d message: kind,
+# viewer), `iframe_inserted` / `iframe_removed` / `iframe_load` (deck iframes, with the `viewer` parameter of their
+# `src`) and `mark` (a named point the harness drew). Ordering claims are read off `seq`, never off timestamps.
+
+
+def cam_for_name(name):
+    """A camera pointing along a preset direction (no fixture: pure constants)."""
+    v = {"iso": (-0.7, -1.0, 0.85), "top": (0.0, -0.001, 1.0), "front": (0.0, -1.0, 0.12)}[name]
+    return {"from": [10.0 * c for c in v], "at": [0.0, 0.0, 0.0]}
+
+
+def ev(seq, type_, **kw):
+    return {"seq": seq, "type": type_, **kw}
+
+
+def redock_events():
+    return [
+        ev(1, "mark", name="redock_live"),
+        ev(2, "bc", kind="close", viewer="v-1"),
+        ev(3, "iframe_removed", src_viewer="v-1"),
+        ev(4, "bc", kind="announce", viewer="v-2"),
+        ev(5, "iframe_inserted", src_viewer="v-2"),
+        ev(6, "iframe_load", src_viewer="v-2"),
+    ]
+
+
+def late_events():
+    return [
+        ev(10, "mark", name="late_iframe_reopen"),
+        ev(11, "bc", kind="query", viewer=None),
+        ev(12, "bc", kind="announce", viewer="v-9"),
+        ev(13, "iframe_inserted", src_viewer="v-9"),
+        ev(14, "iframe_load", src_viewer="v-9"),
+    ]
+
+
+def good_k1b(rs):
+    return {
+        "reconnect": {"iframes_before": 1, "iframes_after": 1, "load_delta": 1, "resources_ok": True},
+        "preset": {"pressed": "front", "camera": cam_for(rs, "front"), "iframes": 1, "load_delta": 1, "resources_ok": True},
+        "drawer_reconnect": {
+            "drawer": {"home": "drawer", "iframes": 1, "load_delta": 1, "resources_ok": True},
+            "split": {"home": "split", "iframes": 1, "load_delta": 1, "resources_ok": True},
+        },
+        "redock_live": {"v1": "v-1", "v2": "v-2", "events": redock_events(), "iframes_final": [{"src_viewer": "v-2"}],
+                        "resources_ok": True},
+        "stop": {"text": "No deck viewer is running. Run `viewer = await praxis.viz.viewer3d.dock(deck)` in a cell.",
+                 "iframes": 0, "state": "open-waiting"},
+        "redock_reloads": {"iframes": [{"src_viewer": "v-3"}], "kernel_viewer": "v-3", "resources_ok": True,
+                           "state": "open-connected"},
+        "late_iframe": {
+            "after_tab_close": {"state": "closed", "iframes": 0},
+            "after_dock_closed": {"state": "closed", "iframes": 0},
+            "events": late_events(), "final": {"state": "open-connected", "iframes": [{"src_viewer": "v-9"}]},
+            "resources_ok": True,
+        },
+        "many_reloads": {"rounds": [{"resources_ok": True, "iframes": 1, "load_delta": 1} for _ in range(6)]},
+        "restart": {"text": "No deck viewer is running. Run `viewer = ...` in a cell.", "iframes": 0, "state": "open-waiting",
+                    "closes_posted": 0},
+    }
+
+
+def test_k1b_positive_control_every_listed_key_holds_in_the_listed_order(rs):
+    keys = rs.derive_k1b_keys(good_k1b(rs))
+    unit = rs.UNIT_BY_ID["K1b"]
+    assert rs.evaluate_unit_result(unit, keys) == ([], []), keys
+    assert list(keys)[: len(K1B_KEYS)] == list(K1B_KEYS), "derived in the AC-38 execution order"
+
+
+def test_k1b_empty_or_garbage_evidence_fails_every_key_without_raising(rs):
+    for raw in ({}, None, {"reconnect": 3, "redock_live": None, "late_iframe": "x"}):
+        keys = rs.derive_k1b_keys(raw)
+        missing, failing = rs.evaluate_unit_result(rs.UNIT_BY_ID["K1b"], keys)
+        assert missing == [] and set(failing) == set(K1B_KEYS), (raw, failing)
+
+
+def _mutk1b(rs, fn):
+    raw = copy.deepcopy(good_k1b(rs))
+    fn(raw)
+    return rs.evaluate_unit_result(rs.UNIT_BY_ID["K1b"], rs.derive_k1b_keys(raw))[1]
+
+
+def _edit_events(path, fn):
+    """Apply ``fn`` to the event list at ``raw[path[0]]['events']``."""
+    def apply(raw):
+        raw[path]["events"] = fn(raw[path]["events"])
+    return apply
+
+
+def _drop(seq):
+    return lambda events: [e for e in events if e["seq"] != seq]
+
+
+def _edit(target, **changes):
+    return lambda events: [dict(e, **changes) if e["seq"] == target else e for e in events]
+
+
+def _append(*more):
+    return lambda events: events + list(more)
+
+
+@pytest.mark.parametrize(
+    "key,fn",
+    [
+        # reconnect_after_reload (T16)
+        ("reconnect_after_reload", _set(("reconnect", "resources_ok"), False)),
+        ("reconnect_after_reload", _set(("reconnect", "iframes_after"), 2)),  # I1: exactly one iframe in the panel DOM
+        ("reconnect_after_reload", _set(("reconnect", "iframes_after"), 0)),
+        ("reconnect_after_reload", _set(("reconnect", "load_delta"), 0)),  # nothing reloaded: the key would be vacuous
+        ("reconnect_after_reload", _set(("reconnect", "iframes_before"), 0)),
+        # preset_survives_reload (T16, D12)
+        ("preset_survives_reload", _set(("preset", "camera"), None)),
+        ("preset_survives_reload", _set(("preset", "camera"), cam_for_name("iso"))),
+        ("preset_survives_reload", _set(("preset", "resources_ok"), False)),
+        ("preset_survives_reload", _set(("preset", "pressed"), "top")),  # the harness must have pressed Front
+        ("preset_survives_reload", _set(("preset", "load_delta"), 0)),
+        ("preset_survives_reload", _set(("preset", "iframes"), 2)),
+        # drawer_reconnect (T15, twice)
+        ("drawer_reconnect", _set(("drawer_reconnect", "drawer", "resources_ok"), False)),
+        ("drawer_reconnect", _set(("drawer_reconnect", "split", "resources_ok"), False)),
+        ("drawer_reconnect", _set(("drawer_reconnect", "drawer", "home"), "split")),
+        ("drawer_reconnect", _set(("drawer_reconnect", "split", "home"), "drawer")),
+        ("drawer_reconnect", _set(("drawer_reconnect", "split", "iframes"), 0)),
+        ("drawer_reconnect", _set(("drawer_reconnect", "drawer", "load_delta"), 0)),
+        # redock_live (T12 -> T6)
+        ("redock_live", _set(("redock_live", "resources_ok"), False)),
+        ("redock_live", _set(("redock_live", "v2"), "v-1")),  # the new viewer has the old id: nothing was re-docked
+        ("redock_live", _set(("redock_live", "v2"), None)),
+        ("redock_live", _set(("redock_live", "iframes_final"), [{"src_viewer": "v-2"}, {"src_viewer": "v-2"}])),
+        ("redock_live", _set(("redock_live", "iframes_final"), [{"src_viewer": "v-1"}])),
+        ("redock_live", _edit_events("redock_live", _drop(2))),  # no close for v1 at all
+        ("redock_live", _edit_events("redock_live", _edit(2, viewer="v-0"))),  # a close for another viewer
+        ("redock_live", _edit_events("redock_live", _edit(2, seq=5))),  # the close arrives AFTER the announce
+        ("redock_live", _edit_events("redock_live", _drop(3))),  # the v1 iframe was never removed
+        ("redock_live", _edit_events("redock_live", _edit(3, src_viewer="v-x"))),
+        ("redock_live", _edit_events("redock_live", _drop(5))),  # no iframe inserted after the announce
+        ("redock_live", _edit_events("redock_live", _edit(5, src_viewer="v-1"))),  # inserted pointing at the old viewer
+        ("redock_live", _edit_events("redock_live", _edit(5, src_viewer=None))),
+        ("redock_live", _edit_events("redock_live", _append(ev(7, "iframe_inserted", src_viewer="v-2")))),  # two inserts
+        ("redock_live", _edit_events("redock_live", _drop(4))),  # no announce
+        # stop_placeholder (T12)
+        ("stop_placeholder", _set(("stop", "text"), "The deck view lost its connection. Close and reopen the deck panel.")),
+        ("stop_placeholder", _set(("stop", "text"), "No deck viewer is running. The deck view lost its connection.")),
+        ("stop_placeholder", _set(("stop", "iframes"), 1)),
+        ("stop_placeholder", _set(("stop", "text"), "")),
+        ("stop_placeholder", _set(("stop", "text"), None)),
+        ("stop_placeholder", _set(("stop", "state"), "open-lost")),
+        # redock_reloads (T6)
+        ("redock_reloads", _set(("redock_reloads", "iframes"), [])),
+        ("redock_reloads", _set(("redock_reloads", "iframes"), [{"src_viewer": "v-3"}, {"src_viewer": "v-3"}])),
+        ("redock_reloads", _set(("redock_reloads", "kernel_viewer"), "v-4")),  # src names another viewer than the kernel's
+        ("redock_reloads", _set(("redock_reloads", "kernel_viewer"), None)),
+        ("redock_reloads", _set(("redock_reloads", "resources_ok"), False)),
+        ("redock_reloads", _set(("redock_reloads", "state"), "open-waiting")),
+        # late_iframe (T17, T3, T4, T6)
+        ("late_iframe", _set(("late_iframe", "resources_ok"), False)),
+        ("late_iframe", _set(("late_iframe", "after_tab_close"), {"state": "open-connected", "iframes": 0})),
+        ("late_iframe", _set(("late_iframe", "after_tab_close"), {"state": "closed", "iframes": 1})),
+        ("late_iframe", _set(("late_iframe", "after_dock_closed"), {"state": "open-connected", "iframes": 1})),
+        ("late_iframe", _set(("late_iframe", "after_dock_closed"), {"state": "closed", "iframes": 1})),
+        ("late_iframe", _edit_events("late_iframe", _drop(11))),  # no query posted after the reopen (AC-39(e)'s mutation)
+        ("late_iframe", _edit_events("late_iframe", _edit(11, kind="accept"))),
+        ("late_iframe", _edit_events("late_iframe", _drop(12))),  # no announce
+        ("late_iframe", _edit_events("late_iframe", _edit(11, seq=12.5))),  # the query comes AFTER the announce
+        ("late_iframe", _edit_events("late_iframe", _edit(13, seq=11.5))),  # an iframe inserted before the announce
+        ("late_iframe", _edit_events("late_iframe", _edit(13, src_viewer=None))),  # src not yet carrying the viewer id
+        ("late_iframe", _edit_events("late_iframe", _edit(13, src_viewer="v-0"))),
+        ("late_iframe", _edit_events("late_iframe", _drop(13))),
+        ("late_iframe", _set(("late_iframe", "final"), {"state": "open-connected", "iframes": []})),
+        ("late_iframe", _set(("late_iframe", "final"), {"state": "open-connected", "iframes": [{"src_viewer": "v-9"}] * 2})),
+        ("late_iframe", _set(("late_iframe", "final"), {"state": "open-waiting", "iframes": [{"src_viewer": "v-9"}]})),
+        # many_reloads (T16)
+        ("many_reloads", _set(("many_reloads", "rounds"), [{"resources_ok": True, "iframes": 1, "load_delta": 1}] * 5)),
+        ("many_reloads", _set(("many_reloads", "rounds"), [{"resources_ok": True, "iframes": 1, "load_delta": 1}] * 7)),
+        ("many_reloads", _set(("many_reloads", "rounds"), [])),
+        ("many_reloads", _set(("many_reloads", "rounds"), [{"resources_ok": True, "iframes": 1, "load_delta": 1}] * 5
+                                                          + [{"resources_ok": False, "iframes": 1, "load_delta": 1}])),
+        ("many_reloads", _set(("many_reloads", "rounds"), [{"resources_ok": True, "iframes": 1, "load_delta": 1}] * 5
+                                                          + [{"resources_ok": True, "iframes": 2, "load_delta": 1}])),
+        ("many_reloads", _set(("many_reloads", "rounds"), [{"resources_ok": True, "iframes": 1, "load_delta": 0}] * 6)),
+        # restart_placeholder (T25)
+        ("restart_placeholder", _set(("restart", "text"), "The deck view lost its connection.")),
+        ("restart_placeholder", _set(("restart", "iframes"), 1)),
+        ("restart_placeholder", _set(("restart", "closes_posted"), 1)),  # a close drove it: not the restart
+        ("restart_placeholder", _set(("restart", "closes_posted"), None)),
+        ("restart_placeholder", _set(("restart", "text"), None)),
+    ],
+)
+def test_k1b_negative_controls_each_violation_fails_exactly_its_key(rs, key, fn):
+    assert _mutk1b(rs, fn) == [key]
+
+
+def test_the_ordering_helpers_read_seq_not_list_position(rs):
+    """A log whose LIST order is shuffled but whose `seq` is right must give the same verdict."""
+    raw = good_k1b(rs)
+    raw["redock_live"]["events"] = list(reversed(raw["redock_live"]["events"]))
+    raw["late_iframe"]["events"] = list(reversed(raw["late_iframe"]["events"]))
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K1b"], rs.derive_k1b_keys(raw)) == ([], [])
+
+
+def test_redock_live_ok_requires_the_inserted_iframe_to_be_the_only_one_after_the_announce(rs):
+    ok = rs.redock_live_ok(good_k1b(rs)["redock_live"])
+    assert ok is True
+    raw = good_k1b(rs)["redock_live"]
+    raw["events"] = redock_events() + [ev(7, "iframe_removed", src_viewer="v-2"), ev(8, "iframe_inserted", src_viewer="v-2")]
+    assert rs.redock_live_ok(raw) is False, "a replaced element after the announce is a second insertion"
+
+
+# =========================================================================== #
+# Sprint C (C7): K2 (AC-36) and N-d (AC-39(d)) -- the pure key derivations over the page evidence.
+# =========================================================================== #
+
+
+def good_k2():
+    wide = lambda main, panel, nb=960.0: {"nb": nb, "panel": panel, "main": main, "padding": 0.0}  # noqa: E731
+    return {
+        "drawer": {"nb_before": 1000.0, "nb_open": 1000.0, "position": "fixed", "home": "drawer", "state": "open-connected"},
+        "dismiss": {
+            "first_open": {"state": "open-connected", "home": "drawer", "iframes": 1},
+            "after_close_button": {"state": "closed", "iframes": 0},
+            "after_toggle": {"state": "open-connected", "iframes": 1},
+            "after_escape": {"state": "closed", "iframes": 0},
+            "after_reopen": {"state": "open-connected", "iframes": 1},
+        },
+        "tier_up": {
+            "before": {"home": "drawer", "state": "open-connected", "iframes": 1, "src": "S"},
+            "after_up": {"home": "split", "state": "open-connected", "iframes": 1, "src": "S", "split_right": True,
+                         "resources_ok": True},
+            "back_down": {"home": "drawer", "state": "open-connected", "iframes": 1},
+            "after_button_close": {"state": "closed", "iframes": 0},
+            "after_up_closed": {"state": "closed", "iframes": 0},
+            "reopen": {"home": "split", "state": "open-connected", "iframes": 1},
+        },
+        "medium": {
+            "1440": {"open": 450.0, "drag_low": 420.0, "drag_high": 480.0},
+            "1280": {"open": 430.0, "drag_low": 420.0, "drag_high": 480.0},
+        },
+        "fit": {"wide": {"panel": 611.0, "main": 1571.0, "padding": 0.0}, "medium": {"panel": 450.0}},
+        "wide": {"1600": wide(1571.0, 611.0), "1920": wide(1891.0, 931.0)},
+        "resize": {"panel": 931.0, "main": 1891.0, "padding": 0.0},
+        "reloads": {"drag_1440": 0, "drag_1280": 0, "resize_within_wide": 0},
+        "heights": {"viewer": 420.0, "motion": 24.0},
+    }
+
+
+def _k2(rs, raw, record=None):
+    return rs.derive_k2_keys(raw, record=record or rs.SIZING_RECORD)
+
+
+def test_k2_positive_control_every_listed_key_holds(rs):
+    keys = _k2(rs, good_k2())
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], []), keys
+    assert set(K2_ALL_KEYS) <= set(keys)
+
+
+def test_k2_names_the_sizing_case_and_lists_each_width_key_as_asserted_or_recorded_only(rs):
+    keys = _k2(rs, good_k2())
+    assert keys["sizing_case"] == "honoured_reachable"
+    assert keys["sizing_record"] == rs.SIZING_RECORD
+    status = keys["width_key_status"]
+    assert set(status) == {k for k, _ in K2_WIDTH} and set(status.values()) == {"asserted"}
+    assert keys["ac39d"] == "run"
+
+
+def test_k2_recorded_only_keys_are_still_measured_and_reported_but_marked(rs):
+    record = {"css_limits_honoured": True, "layout_sizing_reachable": False, "css_limits_refit": False,
+              "restore_layout_keeps_iframe": True}
+    keys = _k2(rs, good_k2(), record)
+    assert keys["sizing_case"] == "honoured_unreachable"
+    status = keys["width_key_status"]
+    for k in ("panel_width_wide_1600", "panel_width_wide_1920", "resize_within_wide", "fit_after_tier_change_wide"):
+        assert status[k] == "recorded-only" and keys[k] is True, k
+    for k in ("open_width_1440", "drag_clamp_low_1280", "fit_after_tier_change_medium"):
+        assert status[k] == "asserted", k
+    assert keys["ac39d"] == "skipped"
+    # a recorded-only key can be WRONG without any listed key failing (that is what recorded-only means) ...
+    raw = good_k2()
+    raw["wide"]["1600"]["panel"] = 800.0
+    k2 = rs.UNIT_BY_ID["K2"]
+    assert rs.derive_k2_keys(raw, record=record)["panel_width_wide_1600"] is False
+    # ... while the listed keys the table was built for under THAT case ignore it
+    listed = dict(rs.k2_expected(rs.width_key_status(**record)))
+    assert "panel_width_wide_1600" not in listed and k2 is not None
+
+
+def _mutk2(rs, fn):
+    raw = good_k2()
+    fn(raw)
+    return rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], _k2(rs, raw))[1]
+
+
+def _k2set(path, value):
+    def apply(raw):
+        d = raw
+        for p in path[:-1]:
+            d = d[p]
+        d[path[-1]] = value
+    return apply
+
+
+@pytest.mark.parametrize(
+    "key,fn",
+    [
+        # step 1: drawer_overlays, drawer_no_reflow
+        ("drawer_overlays", _k2set(("drawer", "position"), "static")),
+        ("drawer_overlays", _k2set(("drawer", "position"), "absolute")),
+        ("drawer_overlays", _k2set(("drawer", "home"), "split")),
+        ("drawer_overlays", _k2set(("drawer", "state"), "closed")),
+        ("drawer_no_reflow", _k2set(("drawer", "nb_open"), 700.0)),
+        ("drawer_no_reflow", _k2set(("drawer", "nb_open"), 1001.0)),
+        ("drawer_no_reflow", _k2set(("drawer", "nb_before"), None)),
+        # step 2: drawer_dismiss_reopen (close button T17, toggle T4 -> T6, Escape T17, then reopen)
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "first_open"), {"state": "closed", "home": "drawer", "iframes": 0})),
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "after_close_button"), {"state": "closed", "iframes": 1})),
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "after_close_button"), {"state": "open-connected", "iframes": 0})),
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "after_toggle"), {"state": "open-waiting", "iframes": 0})),
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "after_toggle"), {"state": "open-connected", "iframes": 2})),
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "after_escape"), {"state": "open-connected", "iframes": 1})),
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "after_escape"), {"state": "closed", "iframes": 1})),
+        ("drawer_dismiss_reopen", _k2set(("dismiss", "after_reopen"), {"state": "closed", "iframes": 0})),
+        # step 3: tier_up_rehomes (T15, T15, T17, T5, T4 -> T6)
+        ("tier_up_rehomes", _k2set(("tier_up", "after_up", "home"), "drawer")),
+        ("tier_up_rehomes", _k2set(("tier_up", "after_up", "split_right"), False)),
+        ("tier_up_rehomes", _k2set(("tier_up", "after_up", "src"), "OTHER")),  # the iframe did not keep its src
+        ("tier_up_rehomes", _k2set(("tier_up", "after_up", "iframes"), 2)),
+        ("tier_up_rehomes", _k2set(("tier_up", "after_up", "resources_ok"), False)),
+        ("tier_up_rehomes", _k2set(("tier_up", "before", "home"), "split")),
+        ("tier_up_rehomes", _k2set(("tier_up", "back_down", "home"), "split")),
+        ("tier_up_rehomes", _k2set(("tier_up", "after_button_close"), {"state": "open-connected", "iframes": 1})),
+        ("tier_up_rehomes", _k2set(("tier_up", "after_up_closed"), {"state": "open-connected", "iframes": 1})),  # T5: stays closed
+        ("tier_up_rehomes", _k2set(("tier_up", "after_up_closed"), {"state": "closed", "iframes": 1})),
+        ("tier_up_rehomes", _k2set(("tier_up", "reopen"), {"home": "split", "state": "open-waiting", "iframes": 0})),
+        ("tier_up_rehomes", _k2set(("tier_up", "reopen"), {"home": "drawer", "state": "open-connected", "iframes": 1})),
+        # step 4 and 6: the 1280-1599 keys
+        ("open_width_1440", _k2set(("medium", "1440", "open"), 600.0)),
+        ("open_width_1440", _k2set(("medium", "1440", "open"), 300.0)),
+        ("open_width_1440", _k2set(("medium", "1440", "open"), None)),
+        ("drag_clamp_low_1440", _k2set(("medium", "1440", "drag_low"), 300.0)),  # not clamped: the drag went through
+        ("drag_clamp_low_1440", _k2set(("medium", "1440", "drag_low"), 450.0)),
+        ("drag_clamp_high_1440", _k2set(("medium", "1440", "drag_high"), 700.0)),
+        ("drag_clamp_high_1440", _k2set(("medium", "1440", "drag_high"), 450.0)),
+        ("open_width_1280", _k2set(("medium", "1280", "open"), 700.0)),
+        ("drag_clamp_low_1280", _k2set(("medium", "1280", "drag_low"), 300.0)),
+        ("drag_clamp_high_1280", _k2set(("medium", "1280", "drag_high"), 700.0)),
+        # step 5: fit_after_tier_change (both tiers)
+        ("fit_after_tier_change_wide", _k2set(("fit", "wide", "panel"), 480.0)),  # still the 1440 clamp at 1600
+        ("fit_after_tier_change_wide", _k2set(("fit", "wide", "main"), None)),
+        ("fit_after_tier_change_medium", _k2set(("fit", "medium", "panel"), 611.0)),  # still the 1600 width at 1440
+        ("fit_after_tier_change_medium", _k2set(("fit", "medium", "panel"), None)),
+        # step 6: heights
+        ("viewer_height", _k2set(("heights", "viewer"), 299.0)),
+        ("viewer_height", _k2set(("heights", "viewer"), None)),
+        ("motion_slot_height", _k2set(("heights", "motion"), 37.0)),
+        ("motion_slot_height", _k2set(("heights", "motion"), None)),
+        # step 7 and 9: the >= 1600 keys
+        ("nb_content_width_1600", _k2set(("wide", "1600", "nb"), 961.0)),
+        ("nb_content_width_1600", _k2set(("wide", "1600", "nb"), None)),
+        ("panel_width_wide_1600", _k2set(("wide", "1600", "panel"), 785.0)),  # the stock 50/50 split
+        ("panel_width_wide_1600", _k2set(("wide", "1600", "panel"), 420.0)),
+        ("panel_width_wide_1600", _k2set(("wide", "1600", "padding"), 40.0)),  # the formula moves with the padding
+        ("nb_content_width_1920", _k2set(("wide", "1920", "nb"), 1200.0)),
+        ("panel_width_wide_1920", _k2set(("wide", "1920", "panel"), 611.0)),  # the 1600 width carried over to 1920
+        ("panel_width_wide_1920", _k2set(("wide", "1920", "panel"), None)),
+        # step 8: resize_within_wide and the reload count
+        ("resize_within_wide", _k2set(("resize", "panel"), 611.0)),  # not recomputed after the window grew
+        ("resize_within_wide", _k2set(("resize", "main"), None)),
+        ("iframe_reloads_during_resize", _k2set(("reloads", "resize_within_wide"), 1)),
+        ("iframe_reloads_during_resize", _k2set(("reloads", "drag_1440"), 2)),
+        ("iframe_reloads_during_resize", _k2set(("reloads", "drag_1280"), 1)),
+        ("iframe_reloads_during_resize", _k2set(("reloads", "drag_1280"), None)),  # a window nobody counted
+    ],
+)
+def test_k2_negative_controls_each_violation_fails_exactly_its_key(rs, key, fn):
+    assert _mutk2(rs, fn) == [key]
+
+
+def test_k2_empty_evidence_fails_every_listed_key_without_raising(rs):
+    for raw in ({}, None, {"drawer": 3, "wide": None}):
+        keys = _k2(rs, raw)
+        missing, failing = rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys)
+        assert missing == [] and set(failing) == K2_ALL_KEYS, (raw, sorted(set(failing) ^ K2_ALL_KEYS))
+
+
+def test_k2_iframe_reload_count_is_the_sum_over_the_drags_and_the_resize_and_must_be_int_zero(rs):
+    keys = _k2(rs, good_k2())
+    assert keys["iframe_reloads_during_resize"] == 0 and type(keys["iframe_reloads_during_resize"]) is int
+    raw = good_k2()
+    raw["reloads"] = {"drag_1440": 1, "drag_1280": 2, "resize_within_wide": 3}
+    assert _k2(rs, raw)["iframe_reloads_during_resize"] == 6
+    raw["reloads"] = {"drag_1440": 0.0, "drag_1280": 0, "resize_within_wide": 0}
+    assert _k2(rs, raw)["iframe_reloads_during_resize"] is None, "a float or bool count is not a count"
+
+
+def test_k2_drawer_no_reflow_is_zero_px_with_a_half_pixel_allowance(rs):
+    raw = good_k2()
+    raw["drawer"]["nb_open"] = 1000.4
+    assert _k2(rs, raw)["drawer_no_reflow"] is True
+    raw["drawer"]["nb_open"] = 1000.6
+    assert _k2(rs, raw)["drawer_no_reflow"] is False
+
+
+def test_the_resize_windows_are_recorded_even_when_a_width_key_is_recorded_only(rs):
+    """AC-36: iframe_reloads_during_resize is asserted in EVERY sizing case, so every case still lists it."""
+    for hon in (True, False):
+        for reach in (True, False):
+            status = rs.width_key_status(css_limits_honoured=hon, layout_sizing_reachable=reach, css_limits_refit=False)
+            assert "iframe_reloads_during_resize" in {k for k, _ in rs.k2_expected(status)}
+
+
+# -- N-d -----------------------------------------------------------------------------------------------------
+
+
+def good_nd():
+    return {"panel": 785.0, "notebook": 786.0, "main": 1571.0, "padding": 0.0}
+
+
+def test_n_d_stock_even_split_makes_the_wide_width_predicate_report_failure(rs):
+    keys = rs.derive_nd_keys(good_nd(), record=rs.SIZING_RECORD)
+    assert keys["panel_width_wide_1600"] is False, "a 50/50 split is not max(420, main - 960 - padding)"
+    assert keys["skipped"] is False and keys["control_formula_passes"] is True
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["N-d"], keys) == ([], ["panel_width_wide_1600"]), "it FAILS, by design"
+
+
+def test_n_d_positive_control_the_predicate_passes_on_the_width_the_formula_gives(rs):
+    """Without this the negative could pass because the predicate can never pass."""
+    raw = dict(good_nd(), panel=rs.wide_panel_width_expected(1571.0, 0.0))
+    # not an even split any more, so this is a control of the PREDICATE only
+    assert rs.wide_width_ok(raw["panel"], raw["main"], raw["padding"]) is True
+    assert rs.derive_nd_keys(good_nd(), record=rs.SIZING_RECORD)["control_formula_passes"] is True
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda r: r.update(panel=None),
+        lambda r: r.update(panel=0.0),
+        lambda r: r.update(main=None),
+        lambda r: r.update(main=0.0),
+        lambda r: r.update(padding=None),
+        lambda r: r.update(notebook=None),
+        lambda r: r.update(panel=300.0, notebook=1271.0),  # not an even split: the widget was not split 50/50
+        lambda r: r.update(panel=1571.0),
+    ],
+)
+def test_n_d_an_invalid_measurement_is_an_error_never_a_detected_negative(rs, mutate):
+    """A None or absurd measurement would make the predicate 'fail' for the wrong reason: the sensitivity run would
+    pass vacuously. The unit raises instead (an `error` finding, which never passes a negative's outcome)."""
+    raw = good_nd()
+    mutate(raw)
+    with pytest.raises(rs.DockCheckError):
+        rs.derive_nd_keys(raw, record=rs.SIZING_RECORD)
+
+
+def test_n_d_is_skipped_and_says_so_where_the_ge_1600_key_is_recorded_only(rs):
+    record = {"css_limits_honoured": True, "layout_sizing_reachable": False, "css_limits_refit": False,
+              "restore_layout_keeps_iframe": True}
+    keys = rs.derive_nd_keys({}, record=record)  # nothing is measured when skipped
+    assert keys["skipped"] is True and "panel_width_wide_1600" not in keys and keys["skipped_reason"]
+    unit = dataclasses.replace(rs.UNIT_BY_ID["N-d"], expected=rs.nd_expected(rs.width_key_status(**record)))
+    assert rs.evaluate_unit_result(unit, keys) == ([], [])
+
+
+# =========================================================================== #
+# Sprint C (C7): the dock scenario bodies, the notebook they drive, the session, the in-page helpers, the CLI
+# =========================================================================== #
+#
+# The scenarios take a `driver` so their ORDER and key plumbing are tested against a scripted fake: `FakeDock` is a
+# small simulator of the deck panel's state machine (D11) and of the page the iframe holds. A real browser run
+# exercises `DockSession`, `DockDriver` and the in-page helpers; none of it runs here.
+
+import ast as _ast  # noqa: E402
+
+DOCK_CELLS = ("boot", "assemble", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck", "aspirate",
+              "dock", "hello", "viewer-id", "well-name", "ledger", "stop")
+
+
+@pytest.fixture(scope="module")
+def dnb(rs, nb):
+    return rs.build_dock_notebook(nb)
+
+
+def test_dock_notebook_is_the_fixture_cells_then_the_dock_cells_never_executed(rs, nb, dnb):
+    assert [c["id"] for c in dnb["cells"]] == list(DOCK_CELLS)
+    assert rs.DOCK_CELL_IDS == DOCK_CELLS and rs.DOCK_NOTEBOOK_NAME == "dock_check.ipynb"
+    for cell in dnb["cells"]:
+        assert cell["cell_type"] == "code" and cell["outputs"] == [] and cell["execution_count"] is None
+    src = {c["id"]: c["source"] for c in nb["cells"]}
+    for cid in DOCK_CELLS[:8]:  # cloned from the fixture, so its hash covers them
+        assert dnb["cells"][DOCK_CELLS.index(cid)]["source"] == src[cid], cid
+    assert {k: v for k, v in dnb.items() if k != "cells"} == {k: v for k, v in nb.items() if k != "cells"}
+
+
+def test_dock_notebook_does_not_mutate_the_fixture_it_was_built_from(rs, nb):
+    before = json.dumps(nb, sort_keys=True)
+    rs.build_dock_notebook(nb)
+    assert json.dumps(nb, sort_keys=True) == before
+
+
+def test_dock_notebook_refuses_a_fixture_lacking_a_cell_it_clones(rs, nb):
+    broken = {**nb, "cells": [c for c in nb["cells"] if c["id"] != "pickup"]}
+    with pytest.raises(KeyError):
+        rs.build_dock_notebook(broken)
+
+
+def _dsrc(dnb, cid):
+    return "".join(next(c for c in dnb["cells"] if c["id"] == cid)["source"])
+
+
+def test_dock_cells_parse_with_top_level_await(dnb):
+    for cell in dnb["cells"]:
+        compile("".join(cell["source"]), cell["id"], "exec", flags=_ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
+
+
+def test_dock_cells_say_what_ac34_ac35_ac37_and_ac38_need(dnb):
+    assert _dsrc(dnb, "dock") == "from praxis.viz.viewer3d import dock\nviewer = await dock(deck)"
+    assert _dsrc(dnb, "stop") == "await viewer.stop()"
+    assert _dsrc(dnb, "hello") == "viewer.clients_seen[-1]", "D11: evaluated in a cell, read from the output model"
+    assert _dsrc(dnb, "viewer-id") == "viewer.viewer_id"
+    assert _dsrc(dnb, "well-name") == 'source.get_well("A1").name', "AC-37: the well name is read from the kernel"
+    ledger = _dsrc(dnb, "ledger")
+    assert "RunLedger(lh)" in ledger and "with " in ledger and "await lh.aspirate" in ledger
+    assert ledger.count("display(") == 0, "the ledger is the cell's ONLY Praxis output (resource null)"
+
+
+def test_dock_cells_carry_no_test_hook_no_serial_prompt_and_no_repl_channel(dnb):
+    blob = json.dumps(dnb)
+    for token in ("__praxis" + "_test", "data-praxis" + "-test", "requestDevice", "requestPort", "praxis_repl"):
+        assert token not in blob, token
+
+
+def test_parse_py_repr_reads_what_a_cell_evaluates_to(rs):
+    assert rs.parse_py_repr("'v-abc123'") == "v-abc123"
+    assert rs.parse_py_repr("{'backend': 'WebGL2', 'renderer': 'ANGLE (SwiftShader)'}") == {
+        "backend": "WebGL2", "renderer": "ANGLE (SwiftShader)"}
+    assert rs.parse_py_repr('"source_well_0"\n') == "source_well_0"
+    for bad in (None, "", "Traceback (most recent call last):\n IndexError", "{'a':", "<object at 0x1>"):
+        assert rs.parse_py_repr(bad) is None, bad
+
+
+# -- the simulator -------------------------------------------------------------------------------------------
+
+
+POS = {"deck": (0.0, 0.0, 0.0), "tips_300": (10.0, 0.0, 0.0), "source": (20.0, 5.0, 0.0), "assay": (30.0, 5.0, 0.0)}
+
+
+class FakeDock:
+    """A scripted ``DockDriver``: every call is recorded in ``calls``; the state machine is D11's, in miniature.
+
+    ``broken`` names behaviours to break (each one makes a real product fail a real key): ``no_resources`` (the viewer
+    page never gets a scene, as with socket.js removed), ``drop_query`` (the harness's ``--neg drop-query``),
+    ``no_handle`` (no splitter handle can be found), ``lost_clamp`` (a drag is not clamped), ``reload_on_resize``."""
+
+    def __init__(self, rs: Any, nb: dict[str, Any], *, broken: tuple[str, ...] = (), start=(1440, 900),
+                 old_reader: bool = True) -> None:
+        #: ``old_reader``: the harness reads the notebook through ``shell.currentWidget`` (the pre-fix behaviour, which
+        #: ``deck_steals_current`` breaks); False is the fixed reader (main-area widget list), which finds the cell anyway.
+        self.old_reader = old_reader
+        self.rs, self.broken = rs, set(broken)
+        self.ids = {i: c["id"] for i, c in enumerate(nb["cells"])}
+        self.calls: list[tuple[Any, ...]] = []
+        self.w, self.h = start
+        self.left_open = True
+        self.state, self.home, self.seen = "closed", None, False
+        self.frames: list[dict[str, Any]] = []
+        self.current: str | None = None
+        self.kernel_viewer: str | None = None
+        self.serial = 0
+        self.stopped = False
+        self.follow, self.preset, self.footer, self.cam_dir = True, "top", None, "top"
+        self.at = (0.0, 0.0, 0.0)
+        self.seq, self.events, self.loads_n, self.dropped = 0, [], 0, 0
+        self.text = ""
+        self.drag_w: float | None = None
+        self.stamps = {"draw-source": ["source"], "draw-assay": ["assay"], "draw-tips": ["tips_300"],
+                       "draw-deck": ["deck"], "ledger": [None]}
+        self.source_changed, self.aspirated = 0, False
+        self.cell_text: dict[str, str] = {}
+        self.restarted = False
+        self.closes_by_restart = 0
+        self.tab_closed = 0
+        self.active: int | None = None  # the notebook's active cell index
+        self.nb_current = True  # is the notebook the shell's current widget? (`deck_steals_current` breaks it)
+
+    # -- plumbing -----------------------------------------------------------------------------------------
+    def _log(self, *call: Any) -> None:
+        self.calls.append(call)
+
+    def _ev(self, type_: str, **kw: Any) -> int:
+        self.seq += 1
+        self.events.append({"seq": self.seq, "type": type_, **kw})
+        return self.seq
+
+    @property
+    def tier(self) -> str:
+        return "wide" if self.w >= 1600 else "medium" if self.w >= 1280 else "drawer"
+
+    def _home_for_tier(self) -> str:
+        return "drawer" if self.tier == "drawer" else "split"
+
+    # -- session/driver surface the scenarios use ------------------------------------------------------------
+    def open_lab(self) -> None:
+        self._log("open_lab")
+
+    def set_theme(self, name: str) -> None:
+        self._log("set_theme", name)
+
+    def theme_name(self) -> str:
+        return "JupyterLab Light"
+
+    def seed_and_open(self, name: str, nb: dict[str, Any]) -> None:
+        self._log("seed_and_open", name)
+
+    def wait_kernel_idle(self) -> None:
+        self._log("wait_kernel_idle")
+
+    def settle(self, ms: float) -> None:
+        pass
+
+    def poll(self, read: Any, ok: Any, timeout_s: float) -> tuple[Any, bool]:
+        value = read()
+        for _ in range(3):
+            if ok(value):
+                return value, True
+            value = read()
+        return value, bool(ok(value))
+
+    def restart_kernel(self, after_accept: Any = None) -> dict[str, Any]:
+        self._log("restart_kernel")
+        self.restarted = True
+        if self.state in ("open-connected", "open-lost"):  # T25: the viewer's kernel went away
+            self._remove_frames()
+            self.current, self.state, self.text = None, "open-waiting", NO_VIEWER_TEXT
+        out: dict[str, Any] = {"via": "kernelmenu:restart"}
+        if after_accept is not None:
+            out["watch"] = after_accept()
+        return out
+
+    def report(self, index: int, res: str | None = None) -> dict[str, Any]:
+        cid = self.ids[index]
+        changed = self.source_changed if (cid == "draw-source" and res == "source") else 0
+        return {"index": index, "execution_count": 1, "outputs": [],
+                "res": {"found": True, "changed_notices": changed, "svg_count": 1}}
+
+    # -- world ----------------------------------------------------------------------------------------------
+    def _remove_frames(self) -> None:
+        for f in self.frames:
+            self._ev("iframe_removed", src_viewer=f["src_viewer"])
+        self.frames = []
+
+    def _insert_frame(self, viewer: str) -> None:
+        self.frames = [{"src_viewer": viewer, "src": f"x?viewer={viewer}"}]
+        self._ev("iframe_inserted", src_viewer=viewer)
+        self._ev("iframe_load", src_viewer=viewer)
+        self.loads_n += 1
+
+    def _connect(self, viewer: str) -> None:
+        self.state, self.text = "open-connected", ""
+        self.current = viewer
+        self._insert_frame(viewer)
+
+    def _announce(self) -> None:
+        if self.kernel_viewer is None or self.stopped:
+            return
+        self._ev("bc", kind="announce", viewer=self.kernel_viewer)
+        if self.state == "closed":
+            if not self.seen:
+                self.home = self._home_for_tier()
+                self._connect(self.kernel_viewer)
+        elif self.state in ("open-waiting", "open-lost"):
+            self._connect(self.kernel_viewer)
+        elif self.current != self.kernel_viewer:
+            self._remove_frames()
+            self._insert_frame(self.kernel_viewer)
+            self.current = self.kernel_viewer
+        self.seen = True
+
+    def run_cell(self, index: int) -> None:
+        cid = self.ids[index]
+        self._log("run_cell", cid)
+        self.active = index
+        if cid == "dock":
+            if self.kernel_viewer is not None and not self.stopped:  # dock() stops the previous viewer first
+                self._ev("bc", kind="close", viewer=self.kernel_viewer)
+                if self.state in ("open-connected", "open-lost") and self.current == self.kernel_viewer:
+                    self._remove_frames()
+                    self.state, self.current, self.text = "open-waiting", None, NO_VIEWER_TEXT
+            self.serial += 1
+            self.kernel_viewer, self.stopped = f"v-{self.serial}", False
+            self._announce()
+        elif cid == "stop":
+            if self.kernel_viewer is not None and not self.stopped:
+                self.stopped = True
+                self._ev("bc", kind="close", viewer=self.kernel_viewer)
+                if self.state in ("open-connected", "open-lost") and self.current == self.kernel_viewer:
+                    self._remove_frames()
+                    self.state, self.current, self.text = "open-waiting", None, NO_VIEWER_TEXT
+        elif cid == "aspirate":
+            self.aspirated = True
+            self.source_changed = 1
+        elif cid in ("hello", "viewer-id", "well-name"):
+            pass
+        if cid == "ledger":
+            self.aspirated = True
+
+    def kernel_text(self, index: int) -> str | None:
+        cid = self.ids[index]
+        self._log("kernel_text", cid)
+        if cid == "hello":
+            if "no_resources" in self.broken or self.kernel_viewer is None:
+                return None
+            return repr({"backend": "WebGL2", "renderer": "ANGLE (SwiftShader)"})
+        if cid == "viewer-id":
+            return repr(self.kernel_viewer)
+        if cid == "well-name":
+            return repr("source_well_0")
+        return None
+
+    def set_viewport(self, w: int, h: int) -> None:
+        self._log("set_viewport", w, h)
+        old_home = self.home
+        self.w, self.h = w, h
+        if self.state != "closed":
+            new_home = self._home_for_tier()
+            if old_home != new_home:  # T10 / T15 / T21: re-homed; a DOM move reloads the iframe
+                self.home = new_home
+                if self.frames:
+                    viewer = self.frames[0]["src_viewer"]
+                    self._remove_frames()
+                    self._insert_frame(viewer)
+            elif "reload_on_resize" in self.broken and self.tier == "wide" and self.frames:
+                self.loads_n += 1
+                self._ev("iframe_load", src_viewer=self.frames[0]["src_viewer"])
+        self.drag_w = None
+
+    def snap(self) -> dict[str, Any]:
+        return {"state": self.state, "home": self.home, "tier": self.tier, "follow": self.follow, "focused": self.footer,
+                "current": self.current, "preset": self.preset, "seen": self.seen}
+
+    def _main(self) -> float:
+        return float(self.w - 29 - (280 if self.left_open else 0))
+
+    def _panel_width(self) -> float | None:
+        if self.state == "closed":
+            return None
+        if self.home == "drawer":
+            return 480.0
+        if self.tier == "medium":
+            return self.drag_w if self.drag_w is not None else 450.0
+        return max(420.0, self._main() - 960.0) if self.drag_w is None else self.drag_w
+
+    def facts(self) -> dict[str, Any]:
+        pw = self._panel_width()
+        main = self._main()
+        nb_w = main if self.home != "split" or self.state == "closed" else main - (pw or 0)
+        if self.w >= 1600:
+            nb_w = min(nb_w, 960.0)
+        left = main - (pw or 0) if self.home == "split" else self.w - 480.0
+        nb_right = main - (pw or 0) if self.home == "split" else main
+        return {
+            "present": self.state != "closed", "state": self.state, "position": "fixed" if self.home == "drawer" else "static",
+            "panel_rect": None if pw is None else {"left": left, "right": left + pw, "width": pw, "height": 600.0},
+            "notebook_panel_rect": {"left": 0.0, "right": nb_right, "width": nb_right, "height": 700.0},
+            "nb_content_width": nb_w, "nb_h_padding": 0.0, "main_width": main,
+            "frames": [dict(f, height=420.0) for f in self.frames],
+            "text": self.text, "footer": self.footer if self.footer else "No resource focused.",
+            "follow_checked": self.follow, "pressed": [self.preset], "motion_height": 24.0,
+            "left_collapsed": not self.left_open, "inner_width": self.w,
+        }
+
+    def resources(self) -> list[str] | None:
+        if not self.frames or "no_resources" in self.broken:
+            return None if not self.frames else []
+        return ["deck", "tip_carrier", "tips_300", "plate_carrier", "source", "assay"]
+
+    def camera(self) -> dict[str, Any] | None:
+        if not self.frames or "no_resources" in self.broken:
+            return None
+        d = _dir(self.rs.VIEWS[self.cam_dir])
+        return {"from": [a + 500.0 * c for a, c in zip(self.at, d)], "at": list(self.at)}
+
+    def state_of(self, name: str) -> str | None:
+        if not self.frames or "no_resources" in self.broken:
+            return None
+        return json.dumps({"volume": 190 if self.aspirated else 200})
+
+    def wait_connected(self, timeout_s: float = 10.0) -> bool:
+        self._log("wait_connected")
+        return self.state == "open-connected" and len(self.frames) == 1 and "no_resources" not in self.broken
+
+    def wait_resources(self, timeout_s: float = 10.0) -> bool:
+        self._log("wait_resources")
+        return len(self.frames) == 1 and "no_resources" not in self.broken
+
+    def wait_load(self, since: Any, timeout_s: float = 15.0) -> bool:
+        self._log("wait_load")
+        return isinstance(since, int) and self.loads_n > since
+
+    def _focus(self, name: str) -> None:
+        self.footer, self.at, self.cam_dir = name, POS[name], self.preset
+
+    def click_resource(self, index: int, name: str) -> bool:
+        self._log("click_resource", self.ids[index], name)
+        if self.state != "open-connected" or "no_resources" in self.broken:
+            return True
+        self._focus(name)
+        return True
+
+    def click_cell_input(self, index: int) -> bool:
+        cid = self.ids[index]
+        self._log("click_cell_input", cid)
+        if "deck_steals_current" in self.broken and not self.nb_current and self.old_reader:
+            return False  # cellAt reads shell.currentWidget, which is the deck panel: no rect, no click
+        changed = index != self.active  # Lumino emits activeCellChanged only on a CHANGE
+        self.active = index
+        self.nb_current = True  # a real click in a cell makes the notebook the current widget again
+        if changed and self.follow and self.state == "open-connected" and "no_resources" not in self.broken:
+            res = next((r for r in self.stamps.get(cid, []) if r), None)
+            if res:
+                self._focus(res)
+        return True
+
+    def click_follow(self) -> None:
+        self._log("click_follow")
+        self.follow = not self.follow
+        if "deck_steals_current" in self.broken:
+            self.nb_current = False
+
+    def observe(self) -> dict[str, Any]:
+        cam = self.camera()
+        return {
+            "active_cell_index": self.active, "current_widget_id": "nb-1" if self.nb_current else "praxis-deck-panel",
+            "current_widget_is_notebook": self.nb_current, "notebook_widget_id": "nb-1", "n_cells": len(self.ids),
+            "follow_checked": self.follow, "deck_state": self.state, "footer": self.footer if self.footer else "No resource focused.",
+            "camera_at": (cam or {}).get("at"),
+        }
+
+    def cell_probe(self, index: int) -> dict[str, Any]:
+        cid = self.ids[index]
+        outs = []
+        for j, res in enumerate(self.stamps.get(cid, [])):
+            kind = "ledger" if cid == "ledger" else "plate"
+            outs.append({"index": j, "output_type": "display_data", "mimes": ["text/html", "text/plain"],
+                         "stamp": {"v": 1, "kind": kind, "resource": res, "rev": None if res is None else 1, "session": "s", "exec": 1},
+                         "ename": None, "evalue": None})
+        real = [o["stamp"]["resource"] for o in outs]
+        steals = "deck_steals_current" in self.broken and not self.nb_current and self.old_reader
+        return self.rs.annotate_probe({
+            "found": True, "index": index, "in_document": True, "rect": {"left": 0, "right": 900, "width": 900, "top": 0, "bottom": 100, "height": 100},
+            "content_visibility": "visible", "execution_count": 1, "execution_state": "idle", "outputs": outs,
+            "output_dom": {"count": len(outs), "res_names": [r for r in real if r]},
+            "stamp_resources_notebook": real, "stamp_resources_current": [] if steals else real,
+        })
+
+    def click_preset(self, name: str) -> None:
+        self._log("click_preset", name)
+        if "deck_steals_current" in self.broken:
+            self.nb_current = False
+        self.preset = name
+        if self.state == "open-connected" and "no_resources" not in self.broken:
+            self.cam_dir = name
+
+    def click_drawer_close(self) -> None:
+        self._log("click_drawer_close")
+        if self.home == "drawer" and self.state != "closed":
+            self._close()
+
+    def press_escape(self) -> None:
+        self._log("press_escape")
+        if self.home == "drawer" and self.state != "closed":
+            self._close()
+
+    def _close(self) -> None:
+        self._remove_frames()
+        self.state, self.current, self.footer, self.text = "closed", None, None, ""
+
+    def toggle_panel(self) -> None:
+        self._log("toggle_panel")
+        if self.state != "closed":
+            self._close()
+            return
+        self.home = self._home_for_tier()
+        self.state, self.text = "open-waiting", NO_VIEWER_TEXT
+        if "drop_query" in self.broken:
+            self.dropped += 1
+            return
+        self._ev("bc", kind="query", viewer=None)
+        self._announce()
+
+    def close_deck_tab(self) -> None:
+        self._log("close_deck_tab")
+        self.tab_closed += 1
+        if self.state != "closed" and self.home == "split":
+            self._close()
+
+    last_drag: dict[str, Any] | None = None
+
+    def drag_splitter_by(self, dx: float) -> float | None:
+        self._log("drag_splitter_by", dx)
+        self.last_drag = None
+        if "no_handle" in self.broken or self.state == "closed" or self.home != "split":
+            return None
+        cur = self._panel_width() or 0.0
+        width = cur - dx  # the handle moves right by dx: the panel (to its right) narrows by dx
+        if self.tier == "medium" and "lost_clamp" not in self.broken:
+            width = min(480.0, max(420.0, width))
+        self.drag_w = width
+        self.last_drag = {"x0": 766.0, "y": 300.0, "x1": 766.0 + dx, "dx": dx, "target_width": None, "handle": {"left": 763.0, "width": 6.0},
+                          "widget": {"right": 1200.0}, "n_handles": 1, "steps": 15, "sent": [["move", 766.0, 300.0], ["down"], ["up"]], "trace": []}
+        return width
+
+    IFRAME_INFO = {"present": True, "sandbox": None, "src_kind": "src", "same_origin_src": True, "content_document_readable": True}
+
+    def iframe_info(self) -> dict[str, Any]:
+        self._log("iframe_info")
+        return dict(self.IFRAME_INFO)
+
+    def layout(self) -> dict[str, Any]:
+        """The annotated layout snapshot of the world (the real driver's ``layout()`` returns the same shape)."""
+        self._log("layout")
+        pw = self._panel_width()
+        left_w = 309.0 if self.left_open else 29.0  # FakeDock._main() = width - 29 - (280 if the file browser is open)
+        snap = good_layout(panel_w=pw or 0.0, inner=self.w, left_w=left_w, handle_w=0.0)
+        snap["left_collapsed"] = not self.left_open
+        if pw is None:
+            snap["rects"]["deck_panel"], snap["styles"]["deck_panel"] = None, None
+        return self.rs.annotate_layout(snap)
+
+    def drag_splitter_to(self, width: float) -> float | None:
+        self._log("drag_splitter_to", width)
+        self.last_drag = None
+        if "no_handle" in self.broken or self.state == "closed" or self.home != "split":
+            return None
+        self.last_drag = {
+            "x0": 703.0, "y": 300.0, "x1": 900.0 - width, "handle": {"left": 700.0, "width": 6.0}, "widget": {"right": 1200.0},
+            "n_handles": 1, "steps": 15, "target_width": width,
+            "sent": [["move", 703.0, 300.0], ["down"], ["move", 900.0 - width, 300.0, 15], ["up"]], "trace": [],
+        }
+        if self.tier == "medium" and "lost_clamp" not in self.broken:
+            width = min(480.0, max(420.0, width))
+        self.drag_w = width
+        return width
+
+    def collapse_left(self) -> bool:
+        self._log("collapse_left")
+        self.left_open = False
+        return True
+
+    def reload_frame(self) -> bool:
+        self._log("reload_frame")
+        if len(self.frames) != 1:
+            return False
+        self.loads_n += 1
+        self._ev("iframe_src", src_viewer=self.frames[0]["src_viewer"])
+        self._ev("iframe_load", src_viewer=self.frames[0]["src_viewer"])
+        return True
+
+    def loads(self) -> int:
+        return self.loads_n
+
+    def mark(self, name: str) -> int:
+        self._log("mark", name)
+        return self._ev("mark", name=name)
+
+    def events_since(self, seq: int) -> list[dict[str, Any]]:
+        return [e for e in self.events if e["seq"] >= seq]
+
+    def embed_hidden(self) -> dict[str, Any]:
+        return {sel: "none" for sel in ROOT_SELECTORS}
+
+    def canvas_measure(self) -> dict[str, Any]:
+        if "no_resources" in self.broken:
+            return {"diff_pixels": 0, "total_pixels": 360000, "control_blank": 0.0, "control_marked": 0.05}
+        return {"diff_pixels": 54000, "total_pixels": 360000, "control_blank": 0.0, "control_marked": 0.05}
+
+    def stamp_resources(self, index: int) -> list[Any]:
+        if "deck_steals_current" in self.broken and not self.nb_current and self.old_reader:
+            return []  # D.stampResources -> cellAt -> shell.currentWidget.content: the deck panel has none
+        return list(self.stamps.get(self.ids[index], []))
+
+    def notice_text(self, index: int, res: str) -> str | None:
+        return "Changed since, see deck panel." if self.source_changed and self.ids[index] == "draw-source" else None
+
+    def stock_split(self) -> dict[str, Any]:
+        self._log("stock_split")
+        return {"panel": 785.0, "notebook": 786.0, "main": 1571.0, "padding": 0.0}
+
+    def neg_dropped(self) -> int:
+        return self.dropped
+
+
+ROOT_SELECTORS = (".navbar", "#toolbar-left", "#stats-panel", "#sidepanel", "#toolbar")
+NO_VIEWER_TEXT = "No deck viewer is running. Run `viewer = await praxis.viz.viewer3d.dock(deck)` in a cell."
+
+
+@pytest.fixture()
+def dnbf(rs, nb):
+    return rs.build_dock_notebook(nb)
+
+
+def _calls(d: FakeDock, name: str) -> list[tuple[Any, ...]]:
+    return [c for c in d.calls if c[0] == name]
+
+
+def _evaluate(rs, unit_id, result):
+    return rs.evaluate_unit_result(rs.UNIT_BY_ID[unit_id], dict(result, pageerrors=[]))
+
+
+def test_k1a_scenario_positive_control_every_listed_key_holds(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    keys = rs.run_k1a(d, nb)
+    assert _evaluate(rs, "K1a", keys) == ([], []), {k: keys.get(k) for k in K1A_DERIVED}
+    assert keys["evidence"]["hello"]["backend"] == "WebGL2"
+    assert d.calls[:4] == [("open_lab",), ("set_theme", "JupyterLab Light"), ("seed_and_open", "dock_check.ipynb"),
+                           ("wait_kernel_idle",)], "AC-34: Light theme, boots and draws and runs dock() itself"
+
+
+def test_k1a_runs_the_setup_then_the_draws_then_dock_and_reads_the_kernel_not_the_printed_hello(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    rs.run_k1a(d, nb)
+    runs = [c[1] for c in _calls(d, "run_cell")]
+    assert runs[:8] == ["boot", "assemble", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck", "dock"]
+    assert runs.index("hello") > runs.index("dock") and runs.index("well-name") > runs.index("dock")
+    assert runs.index("aspirate") > runs.index("dock"), "AC-37: the aspirate runs AFTER the viewer is live"
+    assert runs.index("ledger") < [c[1] for c in d.calls if c[0] == "click_cell_input"].index("draw-tips") + len(runs), "sanity"
+    assert ("kernel_text", "hello") in d.calls and ("kernel_text", "well-name") in d.calls
+
+
+def test_k1a_the_ledger_cell_is_activated_by_a_click_after_it_already_has_its_output(rs, nb, dnbf):
+    """`activeCellChanged` fires as the cell is activated. If the ledger were only ever activated by the run that
+    produces its output, the output would not exist at that moment and follow_skips_null would pass vacuously."""
+    d = FakeDock(rs, dnbf)
+    rs.run_k1a(d, nb)
+    names = [c[:2] for c in d.calls if c[0] in ("run_cell", "click_cell_input") and c[1] in ("ledger",)]
+    assert names[0] == ("run_cell", "ledger") and ("click_cell_input", "ledger") in names
+    assert names.index(("click_cell_input", "ledger")) > names.index(("run_cell", "ledger"))
+    before_click = [c for c in d.calls[: d.calls.index(("click_cell_input", "ledger"))] if c[0] == "click_cell_input"]
+    assert before_click[-1][1] == "draw-tips", "Follow had moved the focus to another resource first"
+
+
+def test_k1a_follow_off_is_a_real_click_on_the_switch_and_follow_is_turned_back_on(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    rs.run_k1a(d, nb)
+    assert len(_calls(d, "click_follow")) == 2 and d.follow is True, "off for follow_off_holds, on again for the rest"
+
+
+def test_k1a_presets_are_pressed_top_front_iso_with_real_clicks(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    rs.run_k1a(d, nb)
+    assert [c[1] for c in _calls(d, "click_preset")][:3] == ["top", "front", "iso"]
+    assert [c[1] for c in _calls(d, "click_preset")][3] == "top", "follow_keeps_preset presses Top again first"
+
+
+def test_k1a_without_a_scene_the_viewer_resources_key_fails_and_the_scenario_still_finishes(rs, nb, dnbf):
+    """AC-39(b): socket.js removed -> the page never gets a scene. The unit must NAME `viewer_resources`, not
+    raise (an error finding names no key and could never pass the negative's outcome)."""
+    d = FakeDock(rs, dnbf, broken=("no_resources",))
+    keys = rs.run_k1a(d, nb)
+    missing, failing = _evaluate(rs, "K1a", keys)
+    assert missing == [] and "viewer_resources" in failing, failing
+    assert "canvas_nonblank" in failing and "hello_backend" in failing
+
+
+def test_k1a_a_step_that_raises_is_recorded_and_the_other_keys_are_still_produced(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    d.embed_hidden = lambda: (_ for _ in ()).throw(rs.DockCheckError("no iframe document"))
+    keys = rs.run_k1a(d, nb)
+    missing, failing = _evaluate(rs, "K1a", keys)
+    assert missing == [] and failing == ["embed_hidden"]
+    assert "DockCheckError" in keys["evidence"]["step_errors"]["embed_hidden"]
+
+
+def test_k1b_scenario_positive_control_every_key_holds_in_the_listed_order(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    keys = rs.run_k1b(d, nb)
+    assert _evaluate(rs, "K1b", keys) == ([], []), {k: keys.get(k) for k in K1B_KEYS}
+    marks = [c[1] for c in _calls(d, "mark") if c[1].startswith("key:")]
+    assert marks == ["key:" + k for k in K1B_KEYS], "AC-38 execution order"
+    assert keys["evidence"]["recoveries"] == [], "nothing needed recovering"
+
+
+def test_k1b_action_sequence_follows_the_ac38_execution_order(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    rs.run_k1b(d, nb)
+    acts = [c for c in d.calls if c[0] in ("run_cell", "reload_frame", "set_viewport", "click_preset", "close_deck_tab",
+                                           "toggle_panel", "restart_kernel")]
+    flat = [c[1] if c[0] == "run_cell" else c[0] + (":" + str(c[1]) if len(c) > 1 else "") for c in acts]
+    setup = ["boot", "assemble", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck", "dock", "viewer-id"]
+    assert flat[:9] == setup, "the first viewer's id is read once, right after the first dock()"
+    tail = flat[9:]
+    # reconnect_after_reload: a reload; preset_survives_reload: Front then a reload; drawer_reconnect: 1152 then back to 1440
+    assert tail[:4] == ["reload_frame", "click_preset:front", "reload_frame", "set_viewport:1152"]
+    assert tail[4] == "set_viewport:1440"
+    # redock_live re-runs dock with a LIVE viewer; then the viewer id; stop_placeholder stops; redock_reloads re-docks
+    rest = tail[5:]
+    assert rest[:2] == ["dock", "viewer-id"]
+    assert "stop" in rest and rest.index("stop") > rest.index("dock")
+    after_stop = rest[rest.index("stop") + 1:]
+    assert after_stop[0] == "dock", "stop_placeholder runs immediately before redock_reloads' dock"
+    # late_iframe: tab closed, dock re-run while closed, reopened with the toggle AFTER dock returned
+    i_tab = after_stop.index("close_deck_tab")
+    assert after_stop[i_tab + 1] == "dock" and after_stop[i_tab + 2] == "toggle_panel"
+    # many_reloads: six reloads; restart_placeholder last
+    assert after_stop.count("reload_frame") == 6
+    assert after_stop[-1] == "restart_kernel" and flat.count("restart_kernel") == 1
+
+
+def test_k1b_reads_every_iframe_through_the_panel_dom_at_the_moment_of_the_read(rs, nb, dnbf):
+    """AC-38 DOM reads: the scenario holds no element between steps; every iframe fact comes from `facts()`."""
+    import inspect
+    src = inspect.getsource(rs.run_k1b)
+    assert "frames" in src and "facts()" in src
+    for forbidden in ("query_selector", "locator(", "element_handle", "ElementHandle"):
+        assert forbidden not in src, forbidden
+
+
+def test_k1b_drop_query_negative_fails_late_iframe_and_names_it_with_the_mutation_proven_to_have_fired(rs, nb, dnbf):
+    """AC-39(e): with every `query` dropped, reopening gets no announce. late_iframe must fail, and the harness
+    records how many queries were actually dropped (a mutation that never fired proves nothing)."""
+    d = FakeDock(rs, dnbf, broken=("drop_query",))
+    keys = rs.run_k1b(d, nb, neg=("drop-query",))
+    missing, failing = _evaluate(rs, "K1b", keys)
+    assert missing == [] and failing == ["late_iframe"], failing
+    assert keys["neg_dropped_queries"] >= 1
+    assert keys["evidence"]["recoveries"] == ["late_iframe"], "later keys still ran, after a recorded re-dock"
+
+
+def test_k1b_without_the_neg_flag_no_dropped_queries_are_reported(rs, nb, dnbf):
+    keys = rs.run_k1b(FakeDock(rs, dnbf), nb)
+    assert keys["neg_dropped_queries"] == 0
+
+
+def test_k1b_a_reload_that_never_repopulates_fails_its_keys_and_does_not_abort(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    d.wait_resources = lambda timeout_s=10.0: False
+    keys = rs.run_k1b(d, nb)
+    missing, failing = _evaluate(rs, "K1b", keys)
+    assert missing == [] and {"reconnect_after_reload", "preset_survives_reload", "many_reloads"} <= set(failing)
+
+
+# -- K2 ---------------------------------------------------------------------------------------------------------
+
+
+def test_k2_scenario_positive_control_under_the_recorded_case_every_key_holds(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800))
+    keys = rs.run_k2(d, nb)
+    assert _evaluate(rs, "K2", keys) == ([], []), {k: keys.get(k) for k in K2_ALL_KEYS}
+    assert keys["sizing_case"] == "honoured_reachable" and set(keys["width_key_status"].values()) == {"asserted"}
+
+
+def test_k2_uses_one_page_one_kernel_and_one_dock_and_the_nine_ordered_steps(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800))
+    rs.run_k2(d, nb)
+    assert len(_calls(d, "open_lab")) == 1 and len(_calls(d, "seed_and_open")) == 1, "one page"
+    assert len(_calls(d, "restart_kernel")) == 0
+    assert [c[1] for c in _calls(d, "run_cell")].count("dock") == 1, "one kernel, one dock()"
+    sizes = [(c[1], c[2]) for c in _calls(d, "set_viewport")]
+    assert sizes == [
+        (1440, 900), (1152, 800), (1440, 900),  # step 3: tier_up_rehomes
+        (1600, 900), (1440, 900),  # step 5: fit_after_tier_change 1440 -> 1600 -> 1440
+        (1280, 800),  # step 6
+        (1600, 900),  # step 7
+        (1920, 900),  # step 8: resize_within_wide
+        (1920, 1080),  # step 9
+    ]
+    assert len(_calls(d, "collapse_left")) == 1
+    order = [c[0] for c in d.calls]
+    assert order.index("collapse_left") > max(i for i, c in enumerate(d.calls) if c == ("set_viewport", 1280, 800)), "step 7"
+    assert order.index("collapse_left") < order.index("set_viewport", order.index("collapse_left")), "closed before 1600"
+
+
+def test_k2_reopens_are_through_the_toggle_command_never_a_second_dock(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800))
+    rs.run_k2(d, nb)
+    assert len(_calls(d, "toggle_panel")) >= 8
+    assert len(_calls(d, "click_drawer_close")) == 2 and len(_calls(d, "press_escape")) == 1
+
+
+def test_k2_splitter_drags_go_to_300_and_700_at_1440_and_1280_only(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800))
+    rs.run_k2(d, nb)
+    assert [c[1] for c in _calls(d, "drag_splitter_to")] == [300, 700, 300, 700, 300], "the last is the evidence-only retry at 1280"
+
+
+def test_k2_counts_iframe_loads_over_the_drags_and_the_wide_resize_only(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800), broken=("reload_on_resize",))
+    keys = rs.run_k2(d, nb)
+    _, failing = _evaluate(rs, "K2", keys)
+    assert failing == ["iframe_reloads_during_resize"], failing
+    assert keys["evidence"]["reloads"]["resize_within_wide"] >= 1
+
+
+def test_k2_a_splitter_that_cannot_be_found_fails_the_drag_keys_and_nothing_else(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800), broken=("no_handle",))
+    keys = rs.run_k2(d, nb)
+    _, failing = _evaluate(rs, "K2", keys)
+    assert set(failing) == {"drag_clamp_low_1440", "drag_clamp_high_1440", "drag_clamp_low_1280", "drag_clamp_high_1280"}
+
+
+def test_k2_an_unclamped_drag_fails_the_clamp_keys(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800), broken=("lost_clamp",))
+    _, failing = _evaluate(rs, "K2", rs.run_k2(d, nb))
+    assert set(failing) == {"drag_clamp_low_1440", "drag_clamp_high_1440", "drag_clamp_low_1280", "drag_clamp_high_1280"}
+
+
+def test_k2_a_failing_step_is_recorded_and_the_later_steps_still_run(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1152, 800))
+    real = d.drag_splitter_to
+
+    def boom(width):
+        if width == 300 and d.w == 1440:
+            raise rs.DockCheckError("mouse lost")
+        return real(width)
+
+    d.drag_splitter_to = boom
+    keys = rs.run_k2(d, nb)
+    missing, failing = _evaluate(rs, "K2", keys)
+    assert missing == [] and "drag_clamp_low_1440" in failing and "panel_width_wide_1920" not in failing
+    assert "mouse lost" in " ".join(keys["evidence"]["step_errors"].values())
+
+
+def test_k2_recorded_only_keys_do_not_gate_under_another_case_but_are_still_reported(rs, nb, dnbf, monkeypatch):
+    record = {"css_limits_honoured": True, "layout_sizing_reachable": False, "css_limits_refit": False,
+              "restore_layout_keeps_iframe": True}
+    d = FakeDock(rs, dnbf, start=(1152, 800))
+    keys = rs.run_k2(d, nb, record=record)
+    assert keys["sizing_case"] == "honoured_unreachable" and keys["width_key_status"]["panel_width_wide_1600"] == "recorded-only"
+    unit = dataclasses.replace(rs.UNIT_BY_ID["K2"], expected=rs.k2_expected(rs.width_key_status(**record)))
+    assert rs.evaluate_unit_result(unit, dict(keys, pageerrors=[])) == ([], [])
+
+
+# -- N-d ---------------------------------------------------------------------------------------------------------
+
+
+def test_n_d_scenario_the_stock_split_makes_the_wide_key_fail_and_it_is_the_only_failing_key(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1600, 900))
+    keys = rs.run_nd(d, nb)
+    assert _evaluate(rs, "N-d", keys) == ([], ["panel_width_wide_1600"])
+    assert [c[0] for c in d.calls][:3] == ["open_lab", "seed_and_open", "stock_split"], "no kernel, no dock(), no dock.js sizing"
+    assert ("run_cell", "dock") not in d.calls
+
+
+def test_n_d_scenario_is_skipped_without_touching_the_browser_where_the_key_is_recorded_only(rs, nb, dnbf):
+    record = {"css_limits_honoured": False, "layout_sizing_reachable": False, "css_limits_refit": False,
+              "restore_layout_keeps_iframe": True}
+    d = FakeDock(rs, dnbf, start=(1600, 900))
+    keys = rs.run_nd(d, nb, record=record)
+    assert keys["skipped"] is True and _calls(d, "stock_split") == [] and _calls(d, "open_lab") == []
+
+
+def test_n_d_scenario_an_untrustworthy_measurement_raises_so_the_unit_records_an_error(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, start=(1600, 900))
+    d.stock_split = lambda: {"panel": None, "notebook": 786.0, "main": 1571.0, "padding": 0.0}
+    with pytest.raises(rs.DockCheckError):
+        rs.run_nd(d, nb)
+
+
+# -- dispatch and the session ------------------------------------------------------------------------------------
+
+
+def test_run_dock_scenario_dispatches_each_unit_to_its_own_body(rs, monkeypatch, nb):
+    calls: list[tuple[str, Any]] = []
+
+    class Drv:
+        def __init__(self, session: Any, *a: Any, **k: Any) -> None:
+            calls.append(("driver", session))
+
+    monkeypatch.setattr(rs, "DockDriver", Drv)
+    for name in ("run_k1a", "run_k1b", "run_k2", "run_nd"):
+        monkeypatch.setattr(rs, name, lambda d, f, _n=name, **kw: calls.append((_n, kw)) or {"body": _n})
+    session = FakeSession()
+    for uid, body in (("K1a", "run_k1a"), ("K1b", "run_k1b"), ("K2", "run_k2"), ("N-d", "run_nd")):
+        assert rs.run_dock_scenario(session, rs.UNIT_BY_ID[uid], make_env(rs), notebook=nb) == {"body": body}
+    assert [c[0] for c in calls if c[0] != "driver"] == ["run_k1a", "run_k1b", "run_k2", "run_nd"]
+
+
+def test_run_dock_scenario_passes_the_neg_flags_to_k1b_only(rs, monkeypatch, nb):
+    seen: list[Any] = []
+    monkeypatch.setattr(rs, "DockDriver", lambda session, **k: object())
+    monkeypatch.setattr(rs, "run_k1b", lambda d, f, neg=(): seen.append(neg) or {})
+    session = FakeSession()
+    session._neg = ("drop-query",)
+    rs.run_dock_scenario(session, rs.UNIT_BY_ID["K1b"], make_env(rs), notebook=nb)
+    assert seen == [("drop-query",)]
+
+
+def test_run_dock_scenario_refuses_a_unit_it_has_no_body_for(rs):
+    with pytest.raises(rs.DockCheckError):
+        rs.run_dock_scenario(FakeSession(), rs.HarnessUnit("Kx", rs.DOCK_CHECK, 1.0, ()), make_env(rs))
+
+
+@pytest.mark.parametrize(
+    "path,full",
+    [
+        ("/home/u/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome", True),
+        ("/home/u/.cache/ms-playwright/chromium-1228/chrome-linux/chrome", True),
+        ("/home/u/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell", False),
+        ("/x/chromium_headless_shell-1234/chrome-linux/headless_shell", False),
+        ("/x/headless_shell", False),
+        ("", False),
+    ],
+)
+def test_is_full_chromium_rejects_the_headless_shell_which_has_no_webgl2(rs, path, full):
+    assert rs.is_full_chromium(path) is full
+
+
+def test_dock_launch_args_add_swiftshader_to_the_base_args(rs):
+    args = rs.dock_launch_args()
+    assert args[: len(rs.BASE_CHROMIUM_ARGS)] == rs.BASE_CHROMIUM_ARGS
+    assert args[len(rs.BASE_CHROMIUM_ARGS):] == ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
+
+
+def test_dock_context_init_scripts_always_carry_the_ack_and_the_monitor_and_drop_query_only_on_request(rs):
+    base = rs.dock_context_init_scripts(())
+    assert rs.PERSISTENCE_ACK_INIT_SCRIPT in base and rs.PERSISTENCE_GATE_MONITOR_INIT_SCRIPT in base
+    assert rs.DOCK_MONITOR_INIT_SCRIPT in base and rs.DROP_QUERY_INIT_SCRIPT not in base
+    neg = rs.dock_context_init_scripts(("drop-query",))
+    assert rs.DROP_QUERY_INIT_SCRIPT in neg and neg[: len(base)] == base
+
+
+def _fake_playwright(monkeypatch, launched, contexts):
+    import types
+
+    class Page:
+        def __init__(self):
+            self.handlers = {}
+
+        def on(self, name, fn):
+            self.handlers[name] = fn
+
+    class Context:
+        def __init__(self, kw):
+            self.kw, self.scripts, self.page = kw, [], Page()
+
+        def add_init_script(self, script):
+            self.scripts.append(script)
+
+        def new_page(self):
+            return self.page
+
+    class Browser:
+        def new_context(self, **kw):
+            ctx = Context(kw)
+            contexts.append(ctx)
+            return ctx
+
+        def close(self):
+            launched.append("close")
+
+    class Chromium:
+        def launch(self, **kw):
+            launched.append(kw)
+            return Browser()
+
+    class PW:
+        chromium = Chromium()
+
+        def stop(self):
+            launched.append("stop")
+
+    class Starter:
+        def start(self):
+            return PW()
+
+    mod = types.ModuleType("playwright.sync_api")
+    mod.sync_playwright = lambda: Starter()
+    mod.TimeoutError = TimeoutError
+    pkg = types.ModuleType("playwright")
+    pkg.sync_api = mod
+    monkeypatch.setitem(sys.modules, "playwright", pkg)
+    monkeypatch.setitem(sys.modules, "playwright.sync_api", mod)
+
+
+def test_dock_session_launches_full_chromium_with_swiftshader_and_the_dock_init_scripts(rs, monkeypatch, tmp_path):
+    launched: list[Any] = []
+    contexts: list[Any] = []
+    _fake_playwright(monkeypatch, launched, contexts)
+    serve = tmp_path / "dist"
+    serve.mkdir()
+    args = rs.parse_args(["--dock-check", "--serve-dir", str(serve), "--out-dir", str(tmp_path / "o"), "--neg", "drop-query",
+                          "--scenario", "K1b"])
+    env = make_env(rs, chrome_path="/pw/chromium-1243/chrome-linux64/chrome")
+    session = rs.DockSession(rs.UNIT_BY_ID["K1b"], args, env)
+    try:
+        kw = launched[0]
+        assert kw["executable_path"] == "/pw/chromium-1243/chrome-linux64/chrome"
+        assert kw["args"] == rs.dock_launch_args() and "--use-angle=swiftshader" in kw["args"]
+        assert contexts[0].kw == {"viewport": {"width": 1440, "height": 900}}
+        assert contexts[0].scripts == rs.dock_context_init_scripts(("drop-query",))
+        assert "pageerror" in contexts[0].page.handlers
+        assert session.lab_url.endswith("/praxis/lab/index.html") or session.lab_url.endswith("/lab/index.html")
+    finally:
+        session.close()
+    assert launched[-2:] == ["close", "stop"]
+
+
+def test_dock_session_k2_starts_at_the_first_k2_viewport(rs, monkeypatch, tmp_path):
+    launched: list[Any] = []
+    contexts: list[Any] = []
+    _fake_playwright(monkeypatch, launched, contexts)
+    serve = tmp_path / "dist"
+    serve.mkdir()
+    args = rs.parse_args(["--dock-check", "--serve-dir", str(serve), "--out-dir", str(tmp_path / "o")])
+    session = rs.DockSession(rs.UNIT_BY_ID["K2"], args, make_env(rs, chrome_path="/pw/chromium-1243/chrome-linux64/chrome"))
+    try:
+        assert contexts[0].kw == {"viewport": {"width": 1152, "height": 800}}
+    finally:
+        session.close()
+
+
+def test_dock_session_refuses_the_headless_shell_before_it_launches_anything(rs, monkeypatch, tmp_path):
+    launched: list[Any] = []
+    _fake_playwright(monkeypatch, launched, [])
+    args = rs.parse_args(["--dock-check", "--out-dir", str(tmp_path / "o")])
+    env = make_env(rs, chrome_path="/pw/chromium_headless_shell-1234/chrome-linux/headless_shell")
+    with pytest.raises(rs.DockCheckError):
+        rs.DockSession(rs.UNIT_BY_ID["K1a"], args, env)
+    assert launched == []
+
+
+def test_display_session_still_uses_the_stock_launch_args_and_scripts(rs, monkeypatch, tmp_path):
+    launched: list[Any] = []
+    contexts: list[Any] = []
+    _fake_playwright(monkeypatch, launched, contexts)
+    serve = tmp_path / "dist"
+    serve.mkdir()
+    args = rs.parse_args(["--display-check", "--serve-dir", str(serve), "--out-dir", str(tmp_path / "o")])
+    session = rs.DisplaySession(rs.UNIT_BY_ID["D1"], args, make_env(rs, chrome_path="/pw/chromium-1243/chrome-linux64/chrome"))
+    try:
+        assert launched[0]["args"] == rs.chromium_launch_args(offline=False)
+        assert contexts[0].scripts == rs.display_context_init_scripts(())
+    finally:
+        session.close()
+
+
+# -- the in-page helpers ---------------------------------------------------------------------------------------------
+
+
+def _js_names(source: str, prefix: str) -> set[str]:
+    return set(re.findall(prefix + r"\.(\w+)\s*=", source))
+
+
+def test_every_page_helper_the_driver_calls_is_defined_in_the_dock_check_js(rs):
+    import inspect
+    src = inspect.getsource(rs.DockDriver)
+    called = set(re.findall(r'_dk\(\s*self\.page,\s*"(\w+)\(', src)) | set(re.findall(r'self\._dk\(\s*"(\w+)\(', src))
+    defined = _js_names(rs.DOCK_CHECK_JS, "D")
+    assert called, "the driver does call page helpers"
+    assert called <= defined, sorted(called - defined)
+
+
+def test_the_dock_check_js_defines_no_helper_the_driver_never_calls(rs):
+    import inspect
+    src = inspect.getsource(rs.DockDriver)
+    called = set(re.findall(r'_dk\(\s*self\.page,\s*"(\w+)\(', src)) | set(re.findall(r'self\._dk\(\s*"(\w+)\(', src))
+    assert _js_names(rs.DOCK_CHECK_JS, "D") <= called, sorted(_js_names(rs.DOCK_CHECK_JS, "D") - called)
+
+
+def test_harness_page_code_has_no_test_switch_no_serial_prompt_and_no_repl_channel(rs):
+    for name in ("DOCK_CHECK_JS", "DOCK_MONITOR_INIT_SCRIPT", "DROP_QUERY_INIT_SCRIPT"):
+        text = getattr(rs, name)
+        for token in ("__praxis" + "_test", "data-praxis" + "-test", "requestDevice", "requestPort", "praxis_repl"):
+            assert token not in text, (name, token)
+
+
+def test_the_dock_check_js_reads_the_real_selectors_the_product_defines(rs):
+    """Every product selector the helpers use is one dock.js (or the vendored page) really defines."""
+    dock = (rs.REPO_ROOT / "web-repl/shell/display/dock.js").read_text()
+    for token in ("praxis-deck-panel", "praxis-deck-panel__body", "praxis-deck-panel__footer", "praxis-deck-panel__follow",
+                  "praxis-deck-panel__views", "praxis-deck-panel__motion", "praxis-deck-panel__close", "praxis-deck-panel__frame",
+                  "data-praxis-deck-state", "data-praxis-deck-focus", "aria-checked", "aria-pressed", "praxis:toggle-deck-panel"):
+        assert token in dock, token
+        assert token in rs.DOCK_CHECK_JS or token in rs.DOCK_MONITOR_INIT_SCRIPT or token in _dock_driver_source(rs), token
+    assert 'w.title.label = "Deck"' in dock, "the tab label the close-icon lookup matches"
+    assert "__praxisDisplay" in (rs.REPO_ROOT / "web-repl/shell/display/index.js").read_text()
+    assert "window.__praxisDisplay" in rs.DOCK_CHECK_JS
+
+
+def _dock_driver_source(rs) -> str:
+    import inspect
+    return inspect.getsource(rs.DockDriver) + inspect.getsource(rs.run_k1a) + inspect.getsource(rs.run_k1b)
+
+
+_BUN = shutil.which("bun") or str(Path.home() / ".bun" / "bin" / "bun")
+needs_bun = pytest.mark.skipif(not Path(_BUN).exists(), reason="bun not installed: the in-page code is exercised locally only")
+
+
+@needs_bun
+@pytest.mark.parametrize("name", ["DOCK_CHECK_JS", "DOCK_MONITOR_INIT_SCRIPT", "DROP_QUERY_INIT_SCRIPT"])
+def test_in_page_code_parses_as_javascript(rs, tmp_path, name):
+    text = getattr(rs, name)
+    script = tmp_path / "p.js"
+    script.write_text(f"const src = {json.dumps(text)};\ntry {{ new Function(src); }} catch (e) {{\n"
+                      f"  try {{ new Function('return (' + src + ')'); }} catch (e2) {{ console.error(String(e2)); process.exit(3); }}\n}}\n")
+    done = subprocess.run([_BUN, str(script)], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr
+
+
+_JS_PRELUDE = r"""
+const posted = [];
+class FakeMO { constructor(cb) { globalThis.__mo = cb; } observe() {} }
+globalThis.MutationObserver = FakeMO;
+globalThis.window = globalThis; window.top = window;
+globalThis.document = { addEventListener() {}, querySelectorAll() { return []; } };
+globalThis.location = { href: "http://x/lab/index.html" };
+"""
+
+
+@needs_bun
+def test_monitor_init_script_logs_bc_messages_in_one_ordered_sequence(rs, tmp_path):
+    js = _JS_PRELUDE + f"""
+{rs.DOCK_MONITOR_INIT_SCRIPT}
+const other = new BroadcastChannel("praxis_viz3d");
+other.postMessage(JSON.stringify({{kind: "announce", viewer: "v-1", deck: "d"}}));
+other.postMessage("not json");
+other.postMessage(JSON.stringify({{kind: "query"}}));
+await new Promise((r) => setTimeout(r, 200));
+const log = window.__praxisDockLog;
+process.stdout.write(JSON.stringify(log.events.map((e) => [e.seq, e.type, e.kind, e.viewer])) + "\\n");
+log.push({{type: "mark", name: "m"}});
+process.stdout.write(log.events.at(-1).seq + " " + log.loads + "\\n");
+window.__praxisDockChannel.close(); other.close();
+"""
+    script = tmp_path / "m.mjs"
+    script.write_text(js)
+    done = subprocess.run([_BUN, str(script)], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr
+    first, second = done.stdout.strip().splitlines()[-2:]
+    assert json.loads(first) == [[1, "bc", "announce", "v-1"], [2, "bc", "query", None]], "junk is not an event; seq is 1, 2, ..."
+    assert second.split() == ["3", "0"]
+
+
+@needs_bun
+def test_drop_query_init_script_drops_query_only_and_counts_what_it_dropped(rs, tmp_path):
+    js = _JS_PRELUDE + f"""
+{rs.DROP_QUERY_INIT_SCRIPT}
+const a = new BroadcastChannel("t1"), b = new BroadcastChannel("t1");
+const got = []; b.onmessage = (e) => got.push(e.data);
+a.postMessage(JSON.stringify({{kind: "query"}}));
+a.postMessage(JSON.stringify({{kind: "announce", viewer: "v"}}));
+a.postMessage("plain string");
+a.postMessage({{kind: "query"}});
+await new Promise((r) => setTimeout(r, 200));
+process.stdout.write(JSON.stringify(got) + " " + window.__praxisDropQuery.dropped + "\\n");
+a.close(); b.close();
+"""
+    script = tmp_path / "d.mjs"
+    script.write_text(js)
+    done = subprocess.run([_BUN, str(script)], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr
+    got, dropped = done.stdout.strip().splitlines()[-1].rsplit(" ", 1)
+    assert json.loads(got) == [json.dumps({"kind": "announce", "viewer": "v"}, separators=(",", ":")), "plain string"]
+    assert dropped == "2", "both the JSON-string query and the object query were dropped"
+
+
+@needs_bun
+def test_init_scripts_do_nothing_in_a_child_frame(rs, tmp_path):
+    js = _JS_PRELUDE.replace("window.top = window;", "window.top = {};") + f"""
+{rs.DOCK_MONITOR_INIT_SCRIPT}
+{rs.DROP_QUERY_INIT_SCRIPT}
+process.stdout.write(String(window.__praxisDockLog) + " " + String(window.__praxisDropQuery) + "\\n");
+"""
+    script = tmp_path / "f.mjs"
+    script.write_text(js)
+    done = subprocess.run([_BUN, str(script)], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip().splitlines()[-1] == "undefined undefined", "AC-39(e): the PARENT page only"
+
+
+# -- the CLI ------------------------------------------------------------------------------------------------------
+
+
+def test_dock_check_flag_exists_and_main_routes_to_run_dock_check(rs, monkeypatch):
+    args = rs.parse_args(["--dock-check"])
+    assert args.dock_check is True and args.display_check is False
+    calls: list[Any] = []
+    monkeypatch.setattr(rs, "run_dock_check", lambda a, **kw: calls.append(a) or 9)
+    assert rs.main(["--dock-check"]) == 9 and len(calls) == 1
+    assert rs.main([]) == 2
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [["--serve-dir", "{tmp}"], ["--neg", "drop-query", "--scenario", "K1b"], ["--serve-dir", "{tmp}", "--scenario", "K1a"]],
+)
+def test_run_dock_check_exits_2_before_launching_anything_without_out_dir(rs, tmp_path, argv):
+    spy = SpyRunner()
+    args = rs.parse_args(["--dock-check", *[a.format(tmp=tmp_path) for a in argv]])
+    assert rs.run_dock_check(args, runner=spy, hash_env=make_env(rs)) == 2
+    assert spy.calls == []
+
+
+def test_run_dock_check_conflicting_flags_and_unknown_scenarios_exit_2(rs, tmp_path):
+    out = ["--out-dir", str(tmp_path / "o")]
+    for extra in (["--aggregate-only", "--fresh"], ["--aggregate-only", "--scenario", "K1a"], ["--scenario", "D1"],
+                  ["--scenario", "K9"]):
+        args = rs.parse_args(["--dock-check", *out, *extra])
+        assert rs.run_dock_check(args, runner=SpyRunner(), hash_env=make_env(rs)) == 2, extra
+
+
+def test_the_drop_query_negative_belongs_to_k1b_alone(rs, tmp_path):
+    """AC-39(e): `--dock-check --scenario K1b --neg drop-query`. Any other unit, and the driver, refuse it."""
+    out = ["--out-dir", str(tmp_path / "o"), "--neg", "drop-query"]
+    for extra in (["--scenario", "K1a"], ["--scenario", "K2"], ["--scenario", "N-d"], []):
+        args = rs.parse_args(["--dock-check", *out, *extra])
+        assert rs.run_dock_check(args, runner=SpyRunner(), hash_env=make_env(rs)) == 2, extra
+    seen: list[Any] = []
+    args = rs.parse_args(["--dock-check", *out, "--scenario", "K1b"])
+    rc = rs.run_dock_check(args, runner=SpyRunner(), hash_env=make_env(rs),
+                           scenario_entry=lambda uid, **kw: seen.append((uid, kw["neg"])) or 0)
+    assert rc == 0 and seen == [("K1b", ("drop-query",))]
+
+
+@pytest.mark.parametrize("uid", DOCK_IDS)
+def test_scenario_flag_runs_exactly_that_dock_unit_including_n_d(rs, tmp_path, uid):
+    seen: list[Any] = []
+    args = rs.parse_args(["--dock-check", "--scenario", uid, "--out-dir", str(tmp_path / "o")])
+    rc = rs.run_dock_check(args, runner=SpyRunner(), hash_env=make_env(rs),
+                           scenario_entry=lambda unit_id, **kw: seen.append((unit_id, kw["out_dir"], kw["scenario_fn"])) or 0)
+    assert rc == 0 and [s[0] for s in seen] == [uid]
+    assert seen[0][1] == (tmp_path / "o").resolve() and seen[0][2] is rs.run_dock_scenario
+
+
+def test_the_default_dock_out_dir_is_gitignored_outputs(rs):
+    assert rs.default_out_dir(rs.DOCK_CHECK) == rs.REPO_ROOT / "outputs" / "repl_smoke" / "dock-check"
+
+
+def drive_dock(rs, out_dir, env, runner, **kw):
+    return rs.run_units_driver(
+        table=list(rs.DOCK_AGGREGATE_UNITS), out_dir=out_dir, inputs_for=lambda u: rs.unit_inputs(u, env),
+        argv_for=lambda u: ["fake-unit", "--scenario", u.id], runner=runner, cwd="/repo", check=rs.DOCK_CHECK, **kw,
+    )
+
+
+def test_the_dock_driver_runs_k1a_k1b_k2_as_one_run_unit_each_and_never_n_d(rs, ur, wds, tmp_path):
+    env = make_env(rs)
+    out = tmp_path / "out"
+    runner = InProcessRunner(rs, ur, wds, out, env)
+    args = rs.parse_args(["--dock-check", "--out-dir", str(out), "--base-path", "/praxis/", "--serve-dir", str(tmp_path)])
+    assert rs.run_dock_check(args, runner=runner, hash_env=env, unit_argv_prefix=["py", "smoke.py"]) == 0
+    assert runner.ids() == ["K1a", "K1b", "K2"], "table order; N-d is never part of the aggregate"
+    assert [t for _, t, _ in runner.calls] == [m * 60 + 60 for m in (10, 14, 15)], "budget + 60 s each, no whole-run timeout"
+    for argv, _, _ in runner.calls:
+        assert argv[:2] == ["py", "smoke.py"] and "--dock-check" in argv and "--display-check" not in argv
+        assert argv[argv.index("--base-path") + 1] == "/praxis/" and argv[argv.index("--out-dir") + 1] == str(out)
+        assert argv[argv.index("--serve-dir") + 1] == str(tmp_path) and "--chrome-path" in argv
+    agg = json.loads((out / "result.json").read_text())
+    assert agg["check"] == "dock-check" and set(agg["scenarios"]) == {"K1a", "K1b", "K2"} and agg["passed"] is True
+    assert "N-d" not in agg["scenarios"] and agg["sizing_case"] == "honoured_reachable"
+
+
+def test_the_dock_aggregate_fails_while_any_unit_is_missing_and_n_d_never_rescues_or_fails_it(rs, ur, wds, tmp_path):
+    env = make_env(rs)
+    out = tmp_path / "out"
+    runner = InProcessRunner(rs, ur, wds, out, env, skip_stamp={"K1b"})
+    agg, code = drive_dock(rs, out, env, runner)
+    assert code == 1 and agg["missing"] == ["K1b"] and agg["recomputed"] == ["K1a", "K2"]
+    # an N-d result on disk (it fails its own listed key BY DESIGN) does not touch the verdict
+    scenario_in_process(rs, ur, wds, "N-d", out, env, fields={"panel_width_wide_1600": False})
+    agg2, code2 = drive_dock(rs, out, env, InProcessRunner(rs, ur, wds, out, env), )
+    assert code2 == 0 and agg2["passed"] is True and "N-d" not in agg2["scenarios"]
+
+
+def test_the_dock_aggregate_only_path_starts_no_unit_and_deletes_nothing(rs, ur, wds, tmp_path):
+    env = make_env(rs)
+    out = tmp_path / "out"
+    drive_dock(rs, out, env, InProcessRunner(rs, ur, wds, out, env))
+    before = snapshot_files(out)
+    spy = SpyRunner()
+    args = rs.parse_args(["--dock-check", "--aggregate-only", "--out-dir", str(out), "--base-path", "/praxis/"])
+    assert rs.run_dock_check(args, runner=spy, hash_env=env) == 0 and spy.calls == []
+    stale = rs.parse_args(["--dock-check", "--aggregate-only", "--out-dir", str(out), "--base-path", "/other/"])
+    assert rs.run_dock_check(stale, runner=spy, hash_env=make_env(rs, base_path="/other/")) == 1
+    after = snapshot_files(out)
+    assert all(after[k] == v for k, v in before.items() if k != "result.json")
+
+
+def test_every_dock_unit_arms_its_watchdog_once_with_its_d16_budget_before_any_deletion(rs, ur, tmp_path):
+    """The K-unit watchdog is the table's budget (AC-42: armed once, before the first deletion and the browser)."""
+    for uid, minutes in zip(DOCK_IDS, DOCK_BUDGET_MIN):
+        armed: list[tuple[float, bool]] = []
+
+        class Spy:
+            def __init__(self, budget_s, on_expire):
+                armed.append((budget_s, (tmp_path / "x").exists()))
+                self.wd = ur.Watchdog(budget_s, on_expire, token="t", exit_fn=lambda c: None, kill_fn=lambda *a, **k: [])
+
+            def __getattr__(self, name):
+                return getattr(self.wd, name)
+
+        out = tmp_path / uid
+        files = rs.unit_paths(out, uid)
+        assert rs.run_scenario(
+            uid, out_dir=out, env_fn=lambda: make_env(rs), session_factory=lambda u, e: FakeSession(),
+            scenario_fn=lambda s, u, e: passing_fields(u), ensure_token_fn=lambda: "t", watchdog_factory=Spy,
+            kill_tree_fn=lambda *a, **k: [], exit_fn=lambda c: c,
+        ) == 0
+        assert armed == [(minutes * 60.0, False)], (uid, armed)
+        assert files["stamp"].exists()
+
+
+# -- the in-page helpers against a minimal fake DOM (bun; the real DOM is only in a browser run) -----------------------
+
+
+def _run_dock_js(rs, tmp_path, body: str) -> Any:
+    """Load DOCK_CHECK_JS into bun with a tiny fake `document`/`window`, run ``body`` (async JS that returns a value) and
+    return the JSON it printed."""
+    js = f"""
+const nodes = {{}};
+globalThis.window = globalThis;
+window.innerWidth = 1440;
+window.__praxisDisplay = {{ controllers: {{ dock: {{ snapshot: () => ({{ state: "closed", home: null }}) }} }} }};
+window.jupyterapp = {{ shell: {{ leftCollapsed: false, collapseLeft() {{ this.leftCollapsed = true; }}, currentWidget: null }} }};
+globalThis.location = {{ href: "http://x/lab/index.html" }};
+globalThis.getComputedStyle = (el) => el.__style || {{ position: "static", display: "block", paddingLeft: "0px", paddingRight: "0px" }};
+globalThis.document = {{
+  querySelector: (sel) => nodes[sel] || null,
+  querySelectorAll: (sel) => nodes[sel + "*"] || [],
+  getElementById: (id) => nodes["#" + id] || null,
+  contains: (n) => !!n && n.__attached !== false,
+}};
+const box = (w, h = 10, left = 0) => ({{ left, right: left + w, top: 0, bottom: h, width: w, height: h }});
+{rs.DOCK_CHECK_JS}
+const D = window.__praxisDockCheck;
+const out = await (async () => {{ {body} }})();
+process.stdout.write(JSON.stringify(out) + "\\n");
+"""
+    script = tmp_path / "dock_js.mjs"
+    script.write_text(js)
+    done = subprocess.run([_BUN, str(script)], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr
+    return json.loads(done.stdout.strip().splitlines()[-1])
+
+
+@needs_bun
+def test_facts_of_a_closed_panel_reads_closed_from_the_controller_because_the_node_is_not_in_the_document(rs, tmp_path):
+    """When the panel is closed its node is detached, so a DOM-only read would give state null and every
+    `state == 'closed'` key would fail for the wrong reason."""
+    got = _run_dock_js(rs, tmp_path, "return D.facts();")
+    assert got["present"] is False and got["state"] == "closed" and got["frames"] == [] and got["text"] == ""
+    assert got["left_collapsed"] is False and got["inner_width"] == 1440
+
+
+@needs_bun
+def test_facts_of_an_open_panel_reads_the_dom_the_iframes_and_the_pressed_preset(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, """
+const frame = { getAttribute: (k) => "http://x/assets/visualizer3d/index.html?embed=1&view=top&viewer=v-7",
+                getBoundingClientRect: () => box(400, 420) };
+const follow = { getAttribute: () => "true" };
+const pressed = [{ getAttribute: (k) => "false", textContent: "Iso" }, { getAttribute: (k) => "true", textContent: " Front " }];
+const panel = {
+  getAttribute: (k) => "open-connected",
+  querySelector: (sel) => ({
+    ".praxis-deck-panel__body": { textContent: "body text" },
+    ".praxis-deck-panel__footer [data-praxis-deck-focus]": { textContent: "source" },
+    ".praxis-deck-panel__follow": follow,
+    ".praxis-deck-panel__motion": { getBoundingClientRect: () => box(400, 24) },
+  }[sel] || null),
+  querySelectorAll: (sel) => (sel === "iframe" ? [frame] : sel === ".praxis-deck-panel__views button" ? pressed : []),
+  getBoundingClientRect: () => box(450, 600, 990),
+  __style: { position: "fixed" },
+};
+nodes[".praxis-deck-panel"] = panel;
+nodes[".jp-NotebookPanel"] = { getBoundingClientRect: () => box(990, 700) };
+nodes[".jp-NotebookPanel .jp-Notebook"] = { getBoundingClientRect: () => box(960, 700), __style: { paddingLeft: "4px", paddingRight: "6px" } };
+nodes["#jp-main-dock-panel"] = { getBoundingClientRect: () => box(1440, 700) };
+return D.facts();
+""")
+    assert got["state"] == "open-connected" and got["position"] == "fixed" and got["text"] == "body text"
+    assert got["frames"] == [{"src": "http://x/assets/visualizer3d/index.html?embed=1&view=top&viewer=v-7",
+                              "src_viewer": "v-7", "height": 420}]
+    assert got["footer"] == "source" and got["follow_checked"] is True and got["pressed"] == ["front"]
+    assert got["panel_rect"]["width"] == 450 and got["notebook_panel_rect"]["right"] == 990
+    assert got["nb_content_width"] == 960 and got["nb_h_padding"] == 10 and got["main_width"] == 1440
+    assert got["motion_height"] == 24
+
+
+@needs_bun
+def test_the_viewer_reads_go_through_the_iframe_in_the_panel_and_fail_soft_without_one(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, """
+const none = [await D.resources(), await D.camera(), await D.stateOf({ name: "x" })];
+const viewer = { resources: () => ["deck", "source"], camera: () => ({ from: [1, 2, 3], at: [0, 0, 0], distance: 3, zoom: 1 }),
+                 stateOf: (n) => (n === "source" ? { volume: 190 } : undefined) };
+const frame = { getAttribute: () => "x", getBoundingClientRect: () => box(1), contentWindow: { plrViewer: viewer } };
+nodes[".praxis-deck-panel"] = { getAttribute: () => "open-connected", querySelector: () => null,
+  querySelectorAll: (sel) => (sel === "iframe" ? [frame] : []), getBoundingClientRect: () => box(1) };
+return { none, resources: D.resources(), camera: D.camera(), source: D.stateOf({ name: "source" }), nothing: D.stateOf({ name: "nope" }) };
+""")
+    assert got["none"] == [None, None, None]
+    assert got["resources"] == ["deck", "source"] and got["camera"] == {"from": [1, 2, 3], "at": [0, 0, 0]}
+    assert got["source"] == '{"volume":190}' and got["nothing"] is None
+
+
+@needs_bun
+def test_canvas_controls_read_a_blank_image_as_zero_and_a_five_percent_marked_one_as_five_percent(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, "return D.canvasControls({ ground: [238, 241, 244], tol: 6 });")
+    assert got["blank"] == {"diff": 0, "total": 10000}
+    assert got["marked"]["total"] == 10000 and got["marked"]["diff"] == 500
+
+
+@needs_bun
+def test_cell_helpers_read_the_output_model_text_and_the_stamp_resources(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, """
+const out = (o) => ({ toJSON: () => o });
+const cells = [
+  { model: { outputs: { length: 2, get: (j) => out([{ output_type: "stream", text: ["hi ", "there"] },
+        { output_type: "execute_result", data: { "text/plain": "'v-abc'" } }][j]) } } },
+  { model: { outputs: { length: 2, get: (j) => out([
+        { output_type: "display_data", data: {}, metadata: { praxis: { resource: null, kind: "ledger" } } },
+        { output_type: "display_data", data: {}, metadata: { "text/html": { praxis: { resource: "assay" } } } }][j]) } } },
+  { model: { outputs: { length: 1, get: (j) => out({ output_type: "stream", text: "only a stream" }) } } },
+];
+window.jupyterapp.shell.currentWidget = { content: { widgets: cells } };
+return { plain: D.cellText({ i: 0 }), stream: D.cellText({ i: 2 }), stamps: D.stampResources({ i: 1 }), missing: D.cellText({ i: 9 }) };
+""")
+    assert got == {"plain": "'v-abc'", "stream": "only a stream", "stamps": [None, "assay"], "missing": None}
+
+
+@needs_bun
+def test_marks_and_events_share_one_sequence_and_collapse_left_reports_the_shell_state(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, """
+const log = { seq: 0, events: [], loads: 4, push(e) { this.seq += 1; e.seq = this.seq; this.events.push(e); return e.seq; } };
+window.__praxisDockLog = log;
+log.push({ type: "bc", kind: "query" });
+const seq = D.mark({ name: "m" });
+log.push({ type: "iframe_inserted", src_viewer: "v" });
+return { seq, since: D.eventsSince({ seq }).map((e) => e.type), loads: D.loads(), collapsed: D.collapseLeft(), again: D.collapseLeft() };
+""")
+    assert got == {"seq": 2, "since": ["mark", "iframe_inserted"], "loads": 4, "collapsed": True, "again": True}
+
+
+@needs_bun
+def test_the_helpers_that_need_the_monitor_say_so_when_it_is_absent(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, "return { mark: D.mark({ name: 'x' }), since: D.eventsSince({ seq: 0 }), loads: D.loads(), neg: D.neg() };")
+    assert got == {"mark": None, "since": [], "loads": None, "neg": {"dropped": 0}}
+
+
+def test_other_errors_plain_reads_the_stock_kernels_ename_form_exactly(rs):
+    """The stock pyodide_kernel (0.8.2, interpreter.py `_showtraceback`) sends ``ename`` as ``str(etype)``, i.e.
+    ``"<class 'ValueError'>"``; the first real D2 run (2026-09-30) measured exactly that. Both that form and the
+    bare class name name ValueError; nothing that merely CONTAINS the name does."""
+
+    def plain(ename: str) -> bool:
+        report_ = value_error_report()
+        report_["outputs"][0]["ename"] = ename
+        return rs.derive_error_keys(error_reports(), report_, runall_reports())["other_errors_plain"]
+
+    assert plain("<class 'ValueError'>") is True  # what the real kernel sends
+    assert plain("ValueError") is True  # the bare form stays accepted
+    for wrong in (
+        "<class 'TypeError'>", "TypeError", "", "<class 'NotAValueError'>", "NotAValueError", "ValueErrorX",
+        "<class 'ValueError'> extra", " <class 'ValueError'>", "<class 'builtins.ValueError'>x", None,
+    ):
+        assert plain(wrong) is False, wrong
+
+
+# =========================================================================== #
+# C7a follow-up: DIAGNOSTIC EVIDENCE for K2's 1280 drag_clamp_low failure (evidence only; no rule changed)
+# =========================================================================== #
+#
+# First real K2 run: at 1280 the panel opened at 473.5, a drag to 300 left it there (expected 420 +-2) and a drag to 700
+# moved it to 480. The evidence below decides whether that is the product, the harness's drag, or Lumino's semantics:
+# one layout snapshot per instant, the drag geometry the harness used, and what the page actually received.
+
+LAYOUT_RECTS = ("dock_panel", "main_content_panel", "main_split_panel", "left_stack", "right_stack", "notebook_panel",
+                "notebook", "deck_panel")
+
+
+def _rect(left, width, top=0.0, height=600.0):
+    return {"left": left, "right": left + width, "width": width, "top": top, "bottom": top + height, "height": height}
+
+
+def good_layout(panel_w=473.5, *, inner=1280, left_w=318.0, handle_w=6.0):
+    """A plausible snapshot: a left area, then the main dock holding the notebook, one handle and the deck panel."""
+    main = inner - left_w
+    nb_w = main - panel_w - handle_w
+    return {
+        "inner_width": inner, "inner_height": 800, "scroll_width": inner, "client_width": inner,
+        "left_collapsed": False, "right_collapsed": True,
+        "rects": {
+            "dock_panel": _rect(left_w, main), "main_content_panel": _rect(left_w, main), "main_split_panel": _rect(0.0, inner),
+            "left_stack": _rect(29.0, left_w - 29.0), "right_stack": None,
+            "notebook_panel": _rect(left_w, nb_w), "notebook": _rect(left_w, nb_w),
+            "deck_panel": _rect(left_w + nb_w + handle_w, panel_w),
+        },
+        "sidebars": [{"rect": _rect(0.0, 29.0), "classes": ["lm-TabBar", "jp-SideBar", "jp-mod-left"]}],
+        "handles": [{"rect": _rect(left_w + nb_w, handle_w), "classes": ["lm-DockPanel-handle", "lm-mod-horizontal"], "visible": True}],
+        "styles": {
+            "notebook_panel": {"min_width": "240px", "max_width": "none", "flex": "0 1 auto", "width": f"{nb_w}px"},
+            "notebook": {"min_width": "0px", "max_width": "none", "flex": "0 1 auto", "width": f"{nb_w}px"},
+            "deck_panel": {"min_width": "420px", "max_width": "480px", "flex": "0 1 auto", "width": f"{panel_w}px"},
+        },
+        "notebook_scroll_width": nb_w, "notebook_client_width": nb_w,
+        "split_sizes": [{"orientation": "horizontal", "sizes": [0.5, 0.5]}],
+    }
+
+
+def test_layout_snapshot_positive_control_is_well_formed(rs):
+    assert rs.layout_snapshot_problems(good_layout()) == []
+
+
+@pytest.mark.parametrize(
+    "mutate,fragment",
+    [
+        (lambda s: s.pop("inner_width"), "inner_width"),
+        (lambda s: s.update(scroll_width="wide"), "scroll_width"),
+        (lambda s: s["rects"].pop("dock_panel"), "dock_panel"),
+        (lambda s: s["rects"].update(deck_panel={"left": 1}), "deck_panel"),
+        (lambda s: s["rects"].update(notebook_panel="x"), "notebook_panel"),
+        (lambda s: s.update(handles="none"), "handles"),
+        (lambda s: s.update(handles=[{"rect": _rect(0, 5)}]), "handles"),
+        (lambda s: s.update(styles=None), "styles"),
+        (lambda s: s["styles"].pop("deck_panel"), "deck_panel"),
+        (lambda s: s.pop("rects"), "rects"),
+    ],
+)
+def test_layout_snapshot_negative_controls_name_what_is_malformed(rs, mutate, fragment):
+    snap = good_layout()
+    mutate(snap)
+    problems = rs.layout_snapshot_problems(snap)
+    assert problems and any(fragment in p for p in problems), problems
+
+
+def test_layout_snapshot_problems_never_raise_on_garbage(rs):
+    for bad in (None, 3, "x", [], {}):
+        assert rs.layout_snapshot_problems(bad), bad
+
+
+def test_an_absent_node_is_a_none_rect_not_a_problem(rs):
+    snap = good_layout()
+    snap["rects"]["deck_panel"] = None  # the panel is closed
+    snap["styles"]["deck_panel"] = None
+    assert rs.layout_snapshot_problems(snap) == []
+
+
+def test_layout_summary_computes_the_slack_between_the_dock_and_what_fills_it(rs):
+    s = rs.layout_summary(good_layout())
+    assert s["dock_width"] == 962.0 and s["deck_width"] == 473.5 and s["handles_width"] == 6.0
+    assert s["notebook_panel_width"] == pytest.approx(482.5)
+    assert s["slack"] == pytest.approx(0.0), "dock = notebook + handle + deck: nothing else takes room"
+    assert s["left_area_width"] == 318.0 and s["overflow_x"] == 0 and s["deck_min_width"] == "420px"
+    assert s["notebook_panel_min_width"] == "240px" and s["deck_max_width"] == "480px"
+    over = good_layout()
+    over["scroll_width"] = 1400
+    assert rs.layout_summary(over)["overflow_x"] == 120, "the page is wider than the window"
+
+
+def test_layout_summary_uses_only_visible_handles_and_tolerates_absent_nodes(rs):
+    snap = good_layout()
+    snap["handles"].append({"rect": _rect(10, 50), "classes": ["lm-DockPanel-handle"], "visible": False})
+    assert rs.layout_summary(snap)["handles_width"] == 6.0
+    snap["rects"]["deck_panel"] = None
+    s = rs.layout_summary(snap)
+    assert s["deck_width"] is None and s["slack"] is None
+    assert rs.layout_summary(None)["dock_width"] is None
+
+
+def test_annotate_layout_keeps_the_raw_snapshot_and_adds_a_summary_and_its_problems(rs):
+    snap = good_layout()
+    out = rs.annotate_layout(snap)
+    assert {k: out[k] for k in snap} == snap and out["problems"] == [] and out["summary"]["dock_width"] == 962.0
+    bad = rs.annotate_layout({"inner_width": 1})
+    assert bad["problems"] and bad["summary"]["dock_width"] is None
+    assert rs.annotate_layout(None) == {"problems": ["no snapshot"], "summary": rs.layout_summary(None)}
+
+
+# -- the drag geometry (a pure plan, the same numbers the old inline code used) ------------------------------------------
+
+
+def test_drag_plan_is_the_spike_s1_geometry(rs):
+    geo = {"handle": _rect(700.0, 6.0, top=100.0, height=400.0), "widget": _rect(706.0, 474.0, top=50.0), "n_handles": 1}
+    plan = rs.drag_plan(geo, 300, inner_width=1280)
+    assert (plan["x0"], plan["y"], plan["x1"]) == (703.0, 300.0, 1180.0 - 300 - 3.0)
+    assert plan["target_width"] == 300 and plan["n_handles"] == 1 and plan["handle"] == geo["handle"] and plan["widget"] == geo["widget"]
+    assert plan["x1_in_window"] is True and plan["steps"] == 15
+
+
+def test_drag_plan_flags_a_target_outside_the_window_and_refuses_missing_geometry(rs):
+    geo = {"handle": _rect(700.0, 6.0, top=100.0, height=400.0), "widget": _rect(706.0, 474.0), "n_handles": 2}
+    assert rs.drag_plan(geo, 1500, inner_width=1280)["x1_in_window"] is False, "x1 is negative: off the left of the window"
+    assert rs.drag_plan(geo, 300)["x1_in_window"] is None, "no window width given: unknown"
+    for bad in (None, {}, {"handle": None, "widget": _rect(0, 1)}, {"handle": _rect(0, 1), "widget": {"right": "x"}}):
+        assert rs.drag_plan(bad, 300) is None, bad
+
+
+# -- the in-page reader against a fake DOM (bun) ---------------------------------------------------------------------------
+
+
+_LAYOUT_NODES = r"""
+const R = (left, width, top = 0, height = 500) => ({ left, right: left + width, top, bottom: top + height, width, height });
+const el = (rect, style = {}, cls = []) => ({ getBoundingClientRect: () => rect, __style: style,
+  classList: { contains: (c) => cls.includes(c), [Symbol.iterator]: function* () { yield* cls; } }, className: cls.join(" "),
+  scrollWidth: rect.width + 7, clientWidth: rect.width });
+window.innerWidth = 1280; window.innerHeight = 800;
+document.documentElement = { scrollWidth: 1290, clientWidth: 1280 };
+const nbPanel = el(R(318, 480), { minWidth: "240px", maxWidth: "none", flex: "0 1 auto", width: "480px" }, ["jp-NotebookPanel"]);
+const notebook = el(R(318, 480), { minWidth: "0px", maxWidth: "none", flex: "0 1 auto", width: "480px" }, ["jp-Notebook"]);
+const deck = el(R(804, 473.5), { minWidth: "420px", maxWidth: "480px", flex: "0 1 auto", width: "473.5px" }, ["praxis-deck-panel"]);
+const handle = el(R(798, 6), {}, ["lm-DockPanel-handle", "lm-mod-horizontal"]);
+const hidden = el(R(0, 0), {}, ["lm-DockPanel-handle", "lm-mod-hidden"]);
+const dockPanel = el(R(318, 962), {}, []);
+dockPanel.querySelectorAll = (sel) => (sel === ".lm-DockPanel-handle" ? [handle, hidden] : []);
+nodes["#jp-main-dock-panel"] = dockPanel;
+nodes["#jp-main-content-panel"] = el(R(318, 962));
+nodes["#jp-main-split-panel"] = el(R(0, 1280));
+nodes["#jp-left-stack"] = el(R(29, 289));
+nodes["#jp-right-stack"] = null;
+nodes[".jp-NotebookPanel"] = nbPanel;
+nodes[".jp-NotebookPanel .jp-Notebook"] = notebook;
+nodes[".praxis-deck-panel"] = deck;
+nodes[".jp-SideBar*"] = [el(R(0, 29), {}, ["lm-TabBar", "jp-SideBar", "jp-mod-left"])];
+window.jupyterapp = { shell: { leftCollapsed: false, rightCollapsed: true, currentWidget: nbPanel,
+  _dockPanel: { saveLayout: () => ({ main: { type: "split-area", orientation: "horizontal", sizes: [0.5, 0.5],
+    children: [{ type: "tab-area", widgets: [] }, { type: "tab-area", widgets: [] }] } }) } } };
+"""
+
+
+@needs_bun
+def test_layout_reader_returns_every_rect_handle_style_and_the_window_against_a_fake_dom(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _LAYOUT_NODES + "return D.layout();")
+    assert rs.layout_snapshot_problems(got) == [], rs.layout_snapshot_problems(got)
+    assert (got["inner_width"], got["inner_height"], got["scroll_width"], got["client_width"]) == (1280, 800, 1290, 1280)
+    assert got["left_collapsed"] is False and got["right_collapsed"] is True
+    r = got["rects"]
+    assert r["dock_panel"]["width"] == 962 and r["deck_panel"]["width"] == 473.5 and r["notebook_panel"]["left"] == 318
+    assert r["left_stack"]["width"] == 289 and r["right_stack"] is None and r["notebook"]["width"] == 480
+    assert [(h["rect"]["left"], h["visible"]) for h in got["handles"]] == [(798, True), (0, False)]
+    assert got["handles"][0]["classes"] == ["lm-DockPanel-handle", "lm-mod-horizontal"]
+    assert got["styles"]["deck_panel"] == {"min_width": "420px", "max_width": "480px", "flex": "0 1 auto", "width": "473.5px"}
+    assert got["styles"]["notebook_panel"]["min_width"] == "240px" and got["styles"]["notebook"]["min_width"] == "0px"
+    assert got["sidebars"][0]["classes"] == ["lm-TabBar", "jp-SideBar", "jp-mod-left"]
+    assert got["notebook_scroll_width"] == 487 and got["notebook_client_width"] == 480
+    assert got["split_sizes"] == [{"orientation": "horizontal", "sizes": [0.5, 0.5]}]
+
+
+@needs_bun
+def test_layout_reader_on_an_empty_page_is_well_formed_with_none_rects_and_never_throws(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, "window.innerHeight = 800; document.documentElement = { scrollWidth: 1, clientWidth: 1 };"
+                                     " return D.layout();")
+    assert rs.layout_snapshot_problems(got) == [], rs.layout_snapshot_problems(got)
+    assert all(got["rects"][k] is None for k in LAYOUT_RECTS) and got["handles"] == [] and got["split_sizes"] is None
+
+
+# -- the scenario records the layout around every drag and at the wide steps; the old keys are untouched ------------------
+
+
+def _layout_fake(rs, dnbf, **kw):
+    d = FakeDock(rs, dnbf, start=(1152, 800), **kw)
+    return d
+
+
+def test_medium_keeps_its_old_keys_and_adds_the_layout_before_and_after_each_drag(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+    keys = rs.run_k2(d, nb)
+    for label in ("1440", "1280"):
+        m = keys["evidence"]["medium"][label]
+        assert {"open", "drag_low", "drag_high"} <= set(m), "the keys derive_k2_keys reads are unchanged"
+        assert {"geo_before", "geo_after_low", "geo_after_high", "drag_low_xy", "drag_high_xy"} <= set(m)
+        for g in ("geo_before", "geo_after_low", "geo_after_high"):
+            assert m[g]["problems"] == [] and m[g]["summary"]["dock_width"] is not None, (label, g)
+        assert m["drag_low_xy"]["target_width"] == 300 and m["drag_high_xy"]["target_width"] == 700
+        assert m["geo_before"]["summary"]["deck_width"] == m["open"]
+        assert m["geo_after_low"]["summary"]["deck_width"] == m["drag_low"]
+        assert m["geo_after_high"]["summary"]["deck_width"] == m["drag_high"]
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], []), "no rule changed: every key still holds"
+
+
+def test_the_layout_is_read_before_the_first_drag_and_after_each_drag_in_that_order(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+    rs.run_k2(d, nb)
+    names = [c[0] for c in d.calls]
+    drags = [i for i, c in enumerate(d.calls) if c[0] == "drag_splitter_to"]
+    assert len(drags) == 5, "1440: low, high; 1280: low, high, and the evidence-only retry"
+    for first in (drags[0], drags[2]):  # 1440's pair, then 1280's pair
+        second = first + 2  # layout, drag, layout, drag, layout
+        assert names[first - 1] == "layout" and names[first + 1] == "layout" and names[second] == "drag_splitter_to"
+        assert names[second + 1] == "layout"
+
+
+def test_the_drag_geometry_and_the_mouse_trace_are_stored_under_the_new_keys(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+    m = rs.run_k2(d, nb)["evidence"]["medium"]["1280"]
+    xy = m["drag_low_xy"]
+    assert {"x0", "y", "x1", "handle", "widget", "n_handles", "steps", "target_width", "sent", "trace"} <= set(xy)
+    assert xy["sent"][0][0] == "move" and xy["sent"][1][0] == "down" and xy["sent"][-1][0] == "up"
+    assert m["drag_high_xy"]["target_width"] == 700 and m["drag_high_xy"] is not xy
+
+
+def test_the_wide_steps_record_their_layout_under_evidence_geo_and_the_fit_measures_keep_their_shape(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+    keys = rs.run_k2(d, nb)
+    ev = keys["evidence"]
+    assert set(ev["geo"]) == {"fit_wide", "fit_medium", "wide_1600", "resize_wide", "wide_1920"}
+    for name, snap in ev["geo"].items():
+        assert snap["problems"] == [] and snap["summary"]["dock_width"] is not None, name
+    assert set(ev["fit"]["wide"]) == {"panel", "main", "padding"} and set(ev["fit"]["medium"]) == {"panel"}
+    assert ev["geo"]["fit_wide"]["summary"]["dock_width"] == ev["fit"]["wide"]["main"], "the snapshot explains the measured main"
+    assert ev["geo"]["fit_wide"]["left_collapsed"] is False, "step 5 runs with the file browser open (it is closed in step 7)"
+    assert ev["geo"]["wide_1600"]["left_collapsed"] is True and ev["geo"]["wide_1920"]["left_collapsed"] is True
+
+
+def test_a_layout_reader_that_fails_is_recorded_and_changes_no_key(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+
+    def boom():
+        raise rs.DockCheckError("no dock panel node")
+
+    d.layout = boom
+    keys = rs.run_k2(d, nb)
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], [])
+    assert any(k.startswith("layout_") for k in keys["evidence"]["step_errors"])
+    assert keys["evidence"]["medium"]["1280"]["geo_before"] is None
+
+
+def test_an_old_driver_without_the_new_methods_still_runs_k2(rs, nb, dnbf):
+    class Old(FakeDock):
+        layout = property(lambda self: (_ for _ in ()).throw(AttributeError("layout")))  # no such method
+
+        def drag_splitter_to(self, width):
+            out = super().drag_splitter_to(width)
+            self.__dict__.pop("last_drag", None)  # and no trace of the drag either
+            return out
+
+    del FakeDock.last_drag  # the class default too: `getattr(driver, "last_drag", None)` must cope
+    try:
+        keys = rs.run_k2(Old(rs, dnbf, start=(1152, 800)), nb)
+    finally:
+        FakeDock.last_drag = None
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], [])
+    assert keys["evidence"]["medium"]["1280"]["drag_low_xy"] is None
+
+
+def test_the_real_driver_builds_its_drag_from_drag_plan_and_records_last_drag_and_the_page_trace(rs):
+    import inspect
+    src = inspect.getsource(rs.DockDriver.drag_splitter_to)
+    assert "drag_plan(" in src and "_perform_drag(" in src
+    perform = inspect.getsource(rs.DockDriver._perform_drag)
+    assert "self.last_drag" in perform and "mouseTrace" in perform
+    assert "self.page.mouse.move(" in perform and "self.page.mouse.down()" in perform and "self.page.mouse.up()" in perform
+    layout_src = inspect.getsource(rs.DockDriver.layout)
+    assert "annotate_layout(" in layout_src and 'self._dk("layout()")' in layout_src
+    assert rs.DockDriver.drag_splitter_to.__annotations__["return"] == "float | None", "the return shape is unchanged"
+
+
+# =========================================================================== #
+# C7a follow-up: DIAGNOSTIC EVIDENCE for K1a's follow_skips_null / follow_keeps_preset failures (evidence only)
+# =========================================================================== #
+#
+# First real K1a run: two Follow keys failed and in both the footer never moved after `click_cell_input`. Static reading:
+# dock.js follows `panel.content.activeCellChanged` (an active-cell CHANGE; re-clicking the active cell emits nothing), and
+# the harness's `cellAt` / `_DC_RUN_JS` read the notebook through `shell.currentWidget`, which is the deck widget once its
+# Follow button has been clicked. The evidence below decides which it was, without changing any key.
+
+
+def _obs(**over):
+    base = {"active_cell_index": 6, "current_widget_id": "nb-1", "current_widget_is_notebook": True, "notebook_widget_id": "nb-1",
+            "n_cells": 14, "follow_checked": True, "deck_state": "open-connected", "footer": "assay",
+            "camera_at": [1.0, 2.0, 3.0]}
+    base.update(over)
+    return base
+
+
+def _step(**over):
+    base = dict(
+        step="follow_null", cell_index=4, cell_id="draw-tips",
+        actions=[{"name": "click_follow", "returned": None}, {"name": "click_cell_input", "cell": 4, "returned": True}],
+        polls=[{"name": "footer == tips_300", "timed_out": False}],
+        before=_obs(active_cell_index=6), mid=_obs(active_cell_index=6, follow_checked=True),
+        after=_obs(active_cell_index=4, footer="tips_300", camera_at=[9.0, 2.0, 3.0]),
+        snap_before={"state": "open-connected", "follow": True, "focused": "assay"},
+        snap_after={"state": "open-connected", "follow": True, "focused": "tips_300"},
+        events=[{"seq": 7, "type": "mark", "name": "k1a:follow_null"}],
+    )
+    base.update(over)
+    return base
+
+
+def test_observation_positive_control_and_negative_controls(rs):
+    assert rs.observation_problems(_obs()) == []
+    assert rs.observation_problems(_obs(active_cell_index=None, footer=None, camera_at=None, deck_state=None, follow_checked=None)) == []
+    for over, fragment in (
+        ({"active_cell_index": "4"}, "active_cell_index"), ({"active_cell_index": True}, "active_cell_index"),
+        ({"current_widget_is_notebook": "yes"}, "current_widget_is_notebook"), ({"follow_checked": 1}, "follow_checked"),
+        ({"footer": 3}, "footer"), ({"deck_state": []}, "deck_state"), ({"camera_at": [1, 2]}, "camera_at"),
+    ):
+        problems = rs.observation_problems(_obs(**over))
+        assert problems and any(fragment in p for p in problems), (over, problems)
+    missing = _obs()
+    del missing["footer"]
+    assert any("footer" in p for p in rs.observation_problems(missing))
+    for bad in (None, 3, []):
+        assert rs.observation_problems(bad), bad
+
+
+def test_click_trace_positive_control_a_click_that_made_the_cell_active_and_moved_the_focus(rs):
+    t = rs.assemble_click_trace(**_step())
+    assert t["problems"] == [] and t["step"] == "follow_null" and t["cell_index"] == 4 and t["cell_id"] == "draw-tips"
+    s = t["summary"]
+    assert s["clicked_ok"] is True and s["clicked_cell_became_active"] is True and s["active_changed"] is True
+    assert s["footer_changed"] is True and s["camera_moved"] is True and s["any_poll_timed_out"] is False
+    assert s["current_widget_was_notebook_before"] is True and s["current_widget_was_notebook_after"] is True
+    assert s["current_widget_left_notebook"] is False and s["follow_before"] is True and s["follow_after"] is True
+    assert t["before"] == _obs(active_cell_index=6) and t["snap_after"]["focused"] == "tips_300" and t["events"]
+    assert t["actions"][1]["returned"] is True and t["polls"][0]["timed_out"] is False
+
+
+def test_click_trace_marks_a_click_the_harness_never_delivered(rs):
+    """The suspected harness failure: `click_cell_input` returned False (no rect: the notebook is not the current widget),
+    so the active cell never changed and Follow was never triggered."""
+    t = rs.assemble_click_trace(**_step(
+        actions=[{"name": "click_cell_input", "cell": 4, "returned": False}],
+        polls=[{"name": "footer == tips_300", "timed_out": True}],
+        mid=_obs(active_cell_index=6, current_widget_id="praxis-deck-panel", current_widget_is_notebook=False),
+        after=_obs(active_cell_index=6, current_widget_id="praxis-deck-panel", current_widget_is_notebook=False),
+    ))
+    s = t["summary"]
+    assert s["clicked_ok"] is False and s["clicked_cell_became_active"] is False and s["active_changed"] is False
+    assert s["footer_changed"] is False and s["camera_moved"] is False and s["any_poll_timed_out"] is True
+    assert s["current_widget_was_notebook_before"] is False and s["current_widget_left_notebook"] is False, (
+        "it was never the notebook in this window; `left_notebook` is about a change"
+    )
+    assert t["problems"] == []
+
+
+def test_click_trace_marks_the_current_widget_leaving_the_notebook_during_the_step(rs):
+    t = rs.assemble_click_trace(**_step(after=_obs(current_widget_id="praxis-deck-panel", current_widget_is_notebook=False)))
+    assert t["summary"]["current_widget_left_notebook"] is True
+
+
+def test_click_trace_for_the_case_the_cell_was_already_active_says_no_change_event_was_possible(rs):
+    """Lumino emits activeCellChanged only on a CHANGE: clicking the active cell again is not a Follow trigger."""
+    t = rs.assemble_click_trace(**_step(before=_obs(active_cell_index=4), mid=_obs(active_cell_index=4),
+                                        after=_obs(active_cell_index=4)))
+    s = t["summary"]
+    assert s["active_changed"] is False and s["clicked_cell_was_already_active"] is True and s["clicked_cell_became_active"] is True
+    assert s["footer_changed"] is False
+
+
+def test_click_trace_uses_the_observation_after_the_follow_toggle_as_the_click_baseline_and_tolerates_none(rs):
+    t = rs.assemble_click_trace(**_step(before=_obs(follow_checked=False), mid=_obs(follow_checked=True)))
+    assert t["summary"]["follow_before"] is False and t["summary"]["follow_click_baseline"] is True
+    t = rs.assemble_click_trace(**_step(mid=None))
+    assert t["summary"]["follow_click_baseline"] is True, "without a mid observation the baseline is `before`"
+
+
+@pytest.mark.parametrize(
+    "over,fragment",
+    [({"before": None}, "before"), ({"after": None}, "after"), ({"before": _obs(active_cell_index="x")}, "before"),
+     ({"actions": "none"}, "actions"), ({"polls": [{"name": "p"}]}, "polls"), ({"events": "x"}, "events"),
+     ({"cell_index": "4"}, "cell_index")],
+)
+def test_click_trace_negative_controls_name_what_is_missing_or_malformed(rs, over, fragment):
+    t = rs.assemble_click_trace(**_step(**over))
+    assert t["problems"] and any(fragment in p for p in t["problems"]), t["problems"]
+    assert isinstance(t["summary"], dict), "a malformed step still yields a summary (all None), never raises"
+
+
+def test_first_resource_of_is_the_dock_js_replica(rs):
+    """dock.js firstResource: the first output whose stamp has a NON-EMPTY STRING resource."""
+    st = lambda res: {"stamp": {"resource": res}}  # noqa: E731
+    assert rs.first_resource_of([st(None)]) is None, "a ledger stamp (resource null)"
+    assert rs.first_resource_of([st(None), st("assay"), st("source")]) == "assay"
+    assert rs.first_resource_of([{"stamp": None}, st("")]) is None
+    assert rs.first_resource_of([st(7)]) is None and rs.first_resource_of([]) is None and rs.first_resource_of(None) is None
+    assert rs.first_resource_of([{"stamp": {"kind": "ledger"}}]) is None, "no resource key at all"
+
+
+def _probe(**over):
+    base = {
+        "found": True, "index": 12, "in_document": True, "rect": {"left": 0, "right": 900, "width": 900, "top": 10, "bottom": 300, "height": 290},
+        "content_visibility": "visible", "execution_count": 5, "execution_state": "idle",
+        "outputs": [{"index": 0, "output_type": "display_data", "mimes": ["text/html", "text/plain"],
+                     "stamp": {"v": 1, "kind": "ledger", "resource": None, "rev": None, "session": "s", "exec": 5},
+                     "ename": None, "evalue": None}],
+        "output_dom": {"count": 1, "res_names": []},
+        "stamp_resources_notebook": [None], "stamp_resources_current": [None],
+    }
+    base.update(over)
+    return base
+
+
+def test_cell_probe_positive_control_and_the_dock_replica_reads_the_ledger_as_no_resource(rs):
+    out = rs.annotate_probe(_probe())
+    assert out["problems"] == [] and out["first_resource"] is None and out["outputs"][0]["stamp"]["kind"] == "ledger"
+    assert out["summary"] == {"n_outputs": 1, "n_stamped": 1, "has_error_output": False,
+                              "stamp_resources_agree": True, "output_dom_count": 1}
+
+
+def test_cell_probe_flags_the_two_reads_disagreeing_and_an_error_output(rs):
+    out = rs.annotate_probe(_probe(stamp_resources_current=[]))
+    assert out["summary"]["stamp_resources_agree"] is False, "the currentWidget-based read saw nothing the notebook read saw"
+    err = rs.annotate_probe(_probe(outputs=[{"index": 0, "output_type": "error", "mimes": [], "stamp": None,
+                                             "ename": "NoTipError", "evalue": "Channel 0 has no tip."}],
+                                   stamp_resources_notebook=[], stamp_resources_current=[]))
+    assert err["summary"]["has_error_output"] is True and err["summary"]["n_stamped"] == 0 and err["first_resource"] is None
+
+
+def test_cell_probe_of_a_stamped_resource_cell_yields_its_first_resource(rs):
+    out = rs.annotate_probe(_probe(outputs=[{"index": 0, "output_type": "display_data", "mimes": ["text/html"],
+                                             "stamp": {"kind": "plate", "resource": "assay", "rev": 3}, "ename": None, "evalue": None}],
+                                   stamp_resources_notebook=["assay"], stamp_resources_current=["assay"]))
+    assert out["first_resource"] == "assay" and out["summary"]["stamp_resources_agree"] is True
+
+
+@pytest.mark.parametrize(
+    "over,fragment",
+    [({"found": "yes"}, "found"), ({"outputs": "none"}, "outputs"), ({"outputs": [{"mimes": []}]}, "outputs"),
+     ({"outputs": [{"output_type": "display_data", "mimes": "x"}]}, "outputs"), ({"in_document": 1}, "in_document"),
+     ({"stamp_resources_notebook": "x"}, "stamp_resources_notebook")],
+)
+def test_cell_probe_negative_controls_name_what_is_malformed(rs, over, fragment):
+    problems = rs.annotate_probe(_probe(**over))["problems"]
+    assert problems and any(fragment in p for p in problems), problems
+
+
+def test_a_cell_that_is_not_found_is_a_probe_not_an_error(rs):
+    out = rs.annotate_probe({"found": False, "index": 9, "in_document": False, "outputs": [], "output_dom": {"count": 0, "res_names": []},
+                             "stamp_resources_notebook": [], "stamp_resources_current": []})
+    assert out["problems"] == [] and out["first_resource"] is None
+    assert rs.annotate_probe(None)["problems"] == ["no probe"]
+
+
+# -- the in-page readers against a fake DOM (bun) ---------------------------------------------------------------------------
+
+_NB_FAKE = r"""
+const cls = (list) => ({ contains: (c) => list.includes(c), [Symbol.iterator]: function* () { yield* list; } });
+const out = (o) => ({ toJSON: () => o });
+const mk = (outputs, inDoc = true) => ({
+  model: { executionCount: 5, executionState: "idle", outputs: { length: outputs.length, get: (j) => out(outputs[j]) } },
+  node: { classList: cls(["jp-Cell"]), __attached: inDoc, __style: { contentVisibility: "auto" },
+    getBoundingClientRect: () => ({ left: 0, right: 900, top: 10, bottom: 300, width: 900, height: 290 }),
+    querySelectorAll: (sel) => (sel === ".jp-OutputArea-output" ? outputs.map(() => ({})) : sel === "[data-praxis-res]" ? [{ dataset: { praxisRes: "assay" } }] : []) },
+});
+const ledger = { output_type: "display_data", data: { "text/html": "x", "text/plain": "y" },
+                 metadata: { praxis: { v: 1, kind: "ledger", resource: null, rev: null, session: "s", exec: 5 } } };
+const plate = { output_type: "display_data", data: { "text/html": "x" }, metadata: { "text/html": { praxis: { kind: "plate", resource: "assay", rev: 3 } } } };
+const err = { output_type: "error", ename: "NoTipError", evalue: "Channel 0 has no tip.", traceback: [] };
+const cells = [mk([plate]), mk([ledger]), mk([err]), mk([])];
+const notebook = { id: "nb-1", content: { activeCellIndex: 3, widgets: cells }, node: { classList: cls(["jp-NotebookPanel"]) } };
+const deck = { id: "praxis-deck-panel", node: { classList: cls(["praxis-deck-panel"]) } };
+window.jupyterapp = { shell: { currentWidget: deck, widgets: (area) => (area === "main" ? [deck, notebook] : []) } };
+"""
+
+
+@needs_bun
+def test_notebook_state_reads_the_notebook_even_when_the_current_widget_is_the_deck_panel(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _NB_FAKE + "return D.notebookState();")
+    assert got == {"current_widget_id": "praxis-deck-panel", "current_widget_is_notebook": False, "notebook_widget_id": "nb-1",
+                   "active_cell_index": 3, "n_cells": 4}
+
+
+@needs_bun
+def test_notebook_state_with_no_notebook_is_all_none_and_never_throws(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, "window.jupyterapp = { shell: { currentWidget: null, widgets: () => [] } }; return D.notebookState();")
+    assert got == {"current_widget_id": None, "current_widget_is_notebook": False, "notebook_widget_id": None,
+                   "active_cell_index": None, "n_cells": None}
+
+
+@needs_bun
+def test_cell_probe_reads_outputs_stamps_verbatim_and_shows_the_two_stamp_reads_diverge_when_the_deck_is_current(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _NB_FAKE + "return { ledger: D.cellProbe({ i: 1 }), plate: D.cellProbe({ i: 0 }), err: D.cellProbe({ i: 2 }), none: D.cellProbe({ i: 9 }) };")
+    ledger = got["ledger"]
+    assert rs.annotate_probe(ledger)["problems"] == []
+    assert ledger["found"] is True and ledger["in_document"] is True and ledger["content_visibility"] == "auto"
+    assert ledger["outputs"] == [{"index": 0, "output_type": "display_data", "mimes": ["text/html", "text/plain"],
+                                  "stamp": {"v": 1, "kind": "ledger", "resource": None, "rev": None, "session": "s", "exec": 5},
+                                  "ename": None, "evalue": None}], "stampOf, verbatim (kind/rev/resource/session/exec)"
+    assert ledger["stamp_resources_notebook"] == [None], "the notebook read sees the ledger stamp, resource null"
+    assert ledger["stamp_resources_current"] == [None], "the helper-based read (D.stampResources) now finds the notebook even while the deck is current"
+    assert ledger["output_dom"] == {"count": 1, "res_names": ["assay"]} and ledger["execution_count"] == 5
+    assert got["plate"]["outputs"][0]["stamp"] == {"kind": "plate", "resource": "assay", "rev": 3}, "the S3-B carrier is read too"
+    assert got["err"]["outputs"][0]["output_type"] == "error" and got["err"]["outputs"][0]["ename"] == "NoTipError"
+    assert got["err"]["stamp_resources_notebook"] == []
+    assert got["none"]["found"] is False and got["none"]["outputs"] == []
+
+
+# -- run_k1a records the traces; every old key, shape and derive result is unchanged ----------------------------------------
+
+K1A_OLD_EVIDENCE = ("step_errors", "connected", "panel", "resources", "hello", "canvas", "embed", "state", "stale", "click",
+                    "follow_on", "follow_off", "follow_null", "presets", "follow_keeps")
+TRACE_STEPS = ("follow_focus", "follow_off", "follow_null", "follow_keeps")
+
+
+def test_k1a_keeps_every_old_evidence_key_and_adds_the_follow_trace_and_the_cell_probes(rs, nb, dnbf):
+    keys = rs.run_k1a(FakeDock(rs, dnbf), nb)
+    ev = keys["evidence"]
+    assert set(K1A_OLD_EVIDENCE) <= set(ev)
+    assert set(ev["follow_trace"]) == set(TRACE_STEPS)
+    assert set(ev["cell_probes_before"]) == set(ev["cell_probes_after"]) == {"ledger", "draw-source", "draw-tips", "draw-assay", "draw-deck"}
+    assert _evaluate(rs, "K1a", keys) == ([], []), "no rule changed: the old fixture still passes every key"
+    assert ev["follow_null"]["ledger_resources"] == [None] and ev["follow_keeps"]["pressed"] == "top", "old shapes untouched"
+
+
+def test_each_follow_step_records_before_after_actions_polls_snapshots_and_events(rs, nb, dnbf):
+    ev = rs.run_k1a(FakeDock(rs, dnbf), nb)["evidence"]["follow_trace"]
+    for name, t in ev.items():
+        assert t["problems"] == [], (name, t["problems"])
+        assert t["before"] is not None and t["after"] is not None and t["snap_before"] and t["snap_after"], name
+        assert t["events"] and t["events"][0]["type"] == "mark", "the harness monitor's events since the step began"
+        assert t["cell_id"] in ("draw-assay", "draw-tips", "draw-source", "ledger"), name
+        assert all(set(p) == {"name", "timed_out"} for p in t["polls"])
+    assert ev["follow_focus"]["cell_id"] == "draw-assay" and ev["follow_off"]["cell_id"] == "draw-tips"
+    assert ev["follow_null"]["cell_id"] == "ledger" and ev["follow_keeps"]["cell_id"] == "draw-source"
+    # follow_null has two clicks: the cell first (tips, which moves the focus), then the ledger cell: both are recorded
+    actions = [(a["name"], a.get("cell")) for a in ev["follow_null"]["actions"]]
+    assert actions == [("click_follow", None), ("click_cell_input", "draw-tips"), ("click_cell_input", "ledger")]
+
+
+def test_the_ledger_click_is_the_subject_of_follow_null_and_the_tips_click_is_its_setup(rs, nb, dnbf):
+    t = rs.run_k1a(FakeDock(rs, dnbf), nb)["evidence"]["follow_trace"]["follow_null"]
+    assert t["cell_id"] == "ledger" and t["summary"]["clicked_ok"] is True
+    assert t["summary"]["clicked_cell_became_active"] is True and t["summary"]["footer_changed"] is False, "Follow skipped the null cell"
+
+
+def test_the_trace_shows_a_harness_click_that_did_nothing_because_the_deck_took_over_as_current_widget(rs, nb, dnbf):
+    """Simulates the suspected harness fault: after a click inside the deck panel, the notebook is no longer the current
+    widget, so every `click_cell_input` is a silent no-op. The keys fail (as in the real run) and the evidence says why."""
+    d = FakeDock(rs, dnbf, broken=("deck_steals_current",))
+    keys = rs.run_k1a(d, nb)
+    missing, failing = _evaluate(rs, "K1a", keys)
+    assert missing == [] and {"follow_skips_null", "follow_keeps_preset"} <= set(failing)
+    ev = keys["evidence"]
+    tr = ev["follow_trace"]
+    assert tr["follow_focus"]["summary"]["clicked_ok"] is True and tr["follow_focus"]["summary"]["footer_changed"] is True
+    for step in ("follow_off", "follow_null", "follow_keeps"):
+        s = tr[step]["summary"]
+        assert s["clicked_ok"] is False and s["clicked_cell_became_active"] is False, step
+        assert s["current_widget_was_notebook_before"] is False, step
+    assert tr["follow_keeps"]["polls"] == [], "the step now stops at the click that found no target (it used to go on and time out)"
+    after = ev["cell_probes_after"]["ledger"]
+    assert after["stamp_resources_notebook"] == [None] and after["stamp_resources_current"] == []
+    assert after["summary"]["stamp_resources_agree"] is False
+
+
+def test_a_driver_without_the_new_readers_still_runs_k1a_and_records_why(rs, nb, dnbf):
+    class Old(FakeDock):
+        observe = property(lambda self: (_ for _ in ()).throw(AttributeError("observe")))
+        cell_probe = property(lambda self: (_ for _ in ()).throw(AttributeError("cell_probe")))
+
+    keys = rs.run_k1a(Old(rs, dnbf), nb)
+    assert _evaluate(rs, "K1a", keys) == ([], [])
+    ev = keys["evidence"]
+    assert any(k.startswith("trace_") or k.startswith("probe_") for k in ev["step_errors"])
+    assert set(ev["follow_trace"]) == set(TRACE_STEPS), "a trace is still assembled from what could be read"
+    assert ev["follow_trace"]["follow_null"]["before"] is None and ev["follow_trace"]["follow_null"]["problems"]
+
+
+def test_the_real_driver_reads_the_notebook_through_the_shell_widget_list_not_the_current_widget(rs):
+    import inspect
+    src = inspect.getsource(rs.DockDriver.observe)
+    assert 'self._dk("notebookState()")' in src and "self.facts()" in src and "self.camera()" in src
+    assert 'self._dk("cellProbe(a)"' in inspect.getsource(rs.DockDriver.cell_probe)
+    assert "annotate_probe(" in inspect.getsource(rs.DockDriver.cell_probe)
+    assert 'widgets("main")' in rs.DOCK_CHECK_JS, "the notebook is found among the main-area widgets"
+
+
+# =========================================================================== #
+# C7a follow-up 2, request 1: the harness reads the notebook through the MAIN-AREA widget list, never only through
+# `shell.currentWidget` (which is the deck panel once something inside it has had focus)
+# =========================================================================== #
+
+_READER_FAKE = r"""
+const cls = (list) => ({ contains: (c) => list.includes(c), [Symbol.iterator]: function* () { yield* list; } });
+const out = (o) => ({ toJSON: () => o });
+const mkCell = (outputs, editor) => ({
+  model: { executionCount: 3, executionState: "idle", sharedModel: { getSource: () => "src" },
+           outputs: { length: outputs.length, get: (j) => out(outputs[j]) } },
+  node: { classList: cls(["jp-Cell"]), scrollIntoView() {}, getBoundingClientRect: () => ({ left: 0, right: 900, top: 0, bottom: 100, width: 900, height: 100 }),
+          querySelector: (sel) => (sel === ".jp-InputArea-editor" ? editor : null), querySelectorAll: () => [] },
+});
+const editor = { scrollIntoView() {}, getBoundingClientRect: () => ({ left: 50, right: 850, top: 20, bottom: 60, width: 800, height: 40 }) };
+const ledger = { output_type: "display_data", data: { "text/plain": "x" }, metadata: { praxis: { kind: "ledger", resource: null } } };
+const mkNotebook = (id, cells) => ({ id, node: { classList: cls(["jp-NotebookPanel"]) },
+  content: { activeCellIndex: 0, widgets: cells, model: { cells: { length: cells.length, get: (i) => cells[i].model } } },
+  sessionContext: { session: { kernel: { status: "idle" } } } });
+const notebook = mkNotebook("nb-1", [mkCell([], editor), mkCell([ledger], editor)]);
+const other = mkNotebook("nb-2", [mkCell([], editor)]);
+const deck = { id: "praxis-deck-panel", node: { classList: cls(["praxis-deck-panel"]) } };  // no `content`
+const executed = [];
+const setShell = (current, main) => {
+  window.jupyterapp = { shell: { currentWidget: current, widgets: main === null ? undefined : (area) => (area === "main" ? main : []) },
+                        commands: { execute: (id) => { executed.push(id); return Promise.resolve(); } } };
+};
+"""
+
+
+def _run_reader_js(rs, tmp_path, body: str, *, dock_js: str | None = None) -> Any:
+    """DISPLAY_CHECK_JS, DISPLAY_CHECK_OUTPUT_JS and DOCK_CHECK_JS loaded in bun over a fake shell; ``body`` is async JS."""
+    js = f"""
+const nodes = {{}};
+globalThis.window = globalThis;
+window.innerWidth = 1440;
+window.__praxisDisplay = {{ controllers: {{ dock: {{ snapshot: () => ({{ state: "open-connected" }}) }} }} }};
+globalThis.location = {{ href: "http://x/lab/index.html" }};
+globalThis.getComputedStyle = (el) => el.__style || {{ position: "static", display: "block", paddingLeft: "0px", paddingRight: "0px" }};
+globalThis.document = {{ querySelector: (s) => nodes[s] || null, querySelectorAll: (s) => nodes[s + "*"] || [],
+  getElementById: (id) => nodes["#" + id] || null, contains: () => true, body: {{ getAttribute: () => null }} }};
+const box = (w, h = 10, left = 0) => ({{ left, right: left + w, top: 0, bottom: h, width: w, height: h }});
+{_READER_FAKE}
+{rs.DISPLAY_CHECK_JS};
+{rs.DISPLAY_CHECK_OUTPUT_JS};
+{dock_js if dock_js is not None else rs.DOCK_CHECK_JS};
+const dc = window.__praxisDisplayCheck, D = window.__praxisDockCheck, RUN = (0, eval)("(" + {json.dumps(rs._DC_RUN_JS)} + ")");
+const result = await (async () => {{ {body} }})();
+process.stdout.write(JSON.stringify(result) + "\\n");
+"""
+    script = tmp_path / "reader.mjs"
+    script.write_text(js)
+    done = subprocess.run([_BUN, str(script)], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr[-1500:]
+    return json.loads(done.stdout.strip().splitlines()[-1])
+
+
+@needs_bun
+def test_the_notebook_helper_prefers_a_current_notebook_then_the_main_area_list_then_the_current_widget(rs, tmp_path):
+    got = _run_reader_js(rs, tmp_path, """
+const pick = () => { const w = window.__praxisDisplayCheckNotebook(); return w ? w.id : null; };
+setShell(deck, [deck, notebook]); const deck_current = pick();
+setShell(other, [deck, notebook, other]); const second_notebook_current = pick();   // D2's Run All notebook: the CURRENT one wins
+setShell(notebook, [deck, notebook, other]); const first_current = pick();
+setShell(deck, [deck, other, notebook]); const first_in_list = pick();
+setShell(notebook, null); const no_list = pick();                                    // a shell with no widget list: old behaviour
+setShell(deck, []); const nothing_else = pick();                                     // no notebook anywhere: the current widget, as before
+setShell(null, []); const none = pick();
+return { deck_current, second_notebook_current, first_current, first_in_list, no_list, nothing_else, none };
+""")
+    assert got == {"deck_current": "nb-1", "second_notebook_current": "nb-2", "first_current": "nb-1", "first_in_list": "nb-2",
+                   "no_list": "nb-1", "nothing_else": "praxis-deck-panel", "none": None}
+
+
+@needs_bun
+def test_with_the_deck_as_the_current_widget_every_reader_the_dock_units_use_still_finds_the_notebook(rs, tmp_path):
+    got = _run_reader_js(rs, tmp_path, """
+setShell(deck, [deck, notebook]);
+const before = notebook.content.activeCellIndex;
+const run = await RUN({ i: 1, timeout_ms: 500 });
+return {
+  ready: dc.cellsReady(2), kernel: dc.kernelStatus(), done: dc.modelDone(1),
+  rect: D.cellInputRect({ i: 1 }), stamps: D.stampResources({ i: 1 }), text: D.cellText({ i: 1 }),
+  run, active_before: before, active_after: notebook.content.activeCellIndex, executed,
+  probe: D.cellProbe({ i: 1 }).stamp_resources_current,
+};
+""")
+    assert got["ready"] is True and got["kernel"] == "idle" and got["done"] is True
+    assert got["rect"]["left"] == 50 and got["rect"]["width"] == 800, "click_cell_input's rect lookup finds the cell editor"
+    assert got["stamps"] == [None], "the ledger stamp (resource null) is read even with the deck current"
+    assert got["run"] == {"ok": True, "error": None} and got["executed"] == ["notebook:run-cell"]
+    assert (got["active_before"], got["active_after"]) == (0, 1), "_DC_RUN_JS set the NOTEBOOK's active cell"
+    assert got["probe"] == [None], "cellProbe's currentWidget-named field now reads through the same fixed reader"
+
+
+@needs_bun
+def test_negative_control_the_old_current_widget_reader_finds_nothing_while_the_deck_is_current(rs, tmp_path):
+    """The same fake, with `cellAt` and `panel` reading `shell.currentWidget` as before the fix: every read comes back empty."""
+    assert "window.__praxisDisplayCheckNotebook()" in rs.DOCK_CHECK_JS
+    old_dock = rs.DOCK_CHECK_JS.replace("window.__praxisDisplayCheckNotebook()", "app().shell.currentWidget")
+    assert old_dock != rs.DOCK_CHECK_JS
+    got = _run_reader_js(rs, tmp_path, """
+setShell(deck, [deck, notebook]);
+return { rect: D.cellInputRect({ i: 1 }), stamps: D.stampResources({ i: 1 }), text: D.cellText({ i: 1 }) };
+""", dock_js=old_dock)
+    assert got == {"rect": None, "stamps": [], "text": None}
+
+
+def test_no_reader_the_dock_units_use_goes_through_current_widget_except_the_helpers_own_fallback(rs):
+    # each script carries the ONE shared helper (installed if the page lacks it), whose `const cur = shell.currentWidget` is the only mention
+    assert rs.DISPLAY_CHECK_OUTPUT_JS.count("currentWidget") == 1, "report/figure/paints/trust/... read the notebook via the helper"
+    assert rs.DISPLAY_CHECK_JS.count("currentWidget") == 1, "only the helper looks at the current widget (first choice, and the last fallback)"
+    assert rs.NOTEBOOK_HELPER_JS in rs.DISPLAY_CHECK_JS and rs.NOTEBOOK_HELPER_JS in rs.DISPLAY_CHECK_OUTPUT_JS and rs.NOTEBOOK_HELPER_JS in rs.DOCK_CHECK_JS
+    assert rs._DC_RUN_JS.count("currentWidget") == 1 and "__praxisDisplayCheckNotebook" in rs._DC_RUN_JS
+    assert "panel = () => window.__praxisDisplayCheckNotebook()" in rs.DISPLAY_CHECK_JS
+    assert "panel = () => window.__praxisDisplayCheckNotebook()" in rs.DISPLAY_CHECK_OUTPUT_JS
+    assert "cellAt = (i) => { try { return window.__praxisDisplayCheckNotebook()" in rs.DOCK_CHECK_JS
+    # D.layout (a nodes-first preference with a fallback) and D.notebookState (which REPORTS the current widget) are the two others
+    code = [ln for ln in rs.DOCK_CHECK_JS.splitlines() if "currentWidget" in ln and not ln.strip().startswith("//")]
+    assert len(code) == 3, code  # the helper, D.layout and D.notebookState
+
+
+# -- run_k1a: a fixed reader finds the cell after a deck click; a click that finds no target can never pass a key --------------
+
+
+def test_k1a_with_the_fixed_reader_every_key_holds_even_though_the_deck_becomes_the_current_widget(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf, broken=("deck_steals_current",), old_reader=False)
+    keys = rs.run_k1a(d, nb)
+    assert _evaluate(rs, "K1a", keys) == ([], []), {k: keys[k] for k in K1A_DERIVED}
+    tr = keys["evidence"]["follow_trace"]
+    for step in ("follow_off", "follow_null", "follow_keeps"):
+        s = tr[step]["summary"]
+        assert s["clicked_ok"] is True and s["clicked_cell_became_active"] is True, step
+    assert tr["follow_off"]["summary"]["current_widget_was_notebook_before"] is False, "the deck really was current when the cell was clicked"
+    assert tr["follow_off"]["summary"]["current_widget_was_notebook_after"] is True, "and the click made the notebook current again"
+    assert keys["evidence"]["follow_null"]["ledger_resources"] == [None]
+    assert keys["evidence"]["step_errors"] == {}
+
+
+def test_k1a_with_the_old_reader_a_click_that_found_no_target_now_fails_its_key_loudly(rs, nb, dnbf):
+    """Negative control (the old `currentWidget` reader): `click_cell_input` returns False. Before, follow_off_holds PASSED
+    vacuously (nothing was clicked, so nothing moved). Now every such click records a step error and fails its key."""
+    d = FakeDock(rs, dnbf, broken=("deck_steals_current",))
+    keys = rs.run_k1a(d, nb)
+    missing, failing = _evaluate(rs, "K1a", keys)
+    assert missing == [] and {"follow_off_holds", "follow_skips_null", "follow_keeps_preset"} <= set(failing), failing
+    errs = keys["evidence"]["step_errors"]
+    for key in ("follow_off_holds", "follow_skips_null", "follow_keeps_preset"):
+        assert "click_cell_input" in errs[key] and "DockCheckError" in errs[key], (key, errs.get(key))
+    assert "follow_focuses" not in errs and "follow_focuses" not in failing, "it ran before any deck-button click"
+    assert keys["evidence"]["follow_trace"]["follow_off"]["actions"][-1]["returned"] is False, "the trace still says what happened"
+
+
+def test_a_single_failed_click_in_an_otherwise_healthy_world_fails_exactly_its_key(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    real = d.click_cell_input
+
+    def flaky(index):
+        if d.ids[index] == "draw-assay":
+            d._log("click_cell_input", "draw-assay")
+            return False
+        return real(index)
+
+    d.click_cell_input = flaky
+    keys = rs.run_k1a(d, nb)
+    missing, failing = _evaluate(rs, "K1a", keys)
+    assert missing == [] and "follow_focuses" in failing and set(failing) <= {"follow_focuses", "follow_keeps_preset"}, failing
+    assert "draw-assay" in keys["evidence"]["step_errors"]["follow_focuses"]
+
+
+def test_a_click_that_found_no_target_in_click_focuses_also_fails_its_key(rs, nb, dnbf):
+    d = FakeDock(rs, dnbf)
+    real = d.click_cell_input
+
+    def flaky(index):
+        if d.ids[index] == "draw-deck":
+            d._log("click_cell_input", "draw-deck")
+            return False
+        return real(index)
+
+    d.click_cell_input = flaky
+    keys = rs.run_k1a(d, nb)
+    assert _evaluate(rs, "K1a", keys)[1] == ["click_focuses"]
+    assert "step_errors" in keys["evidence"] and "click_focuses" in keys["evidence"]["step_errors"]
+
+
+# =========================================================================== #
+# C7a follow-up 2, request 2: a TRUSTWORTHY drag trace, what sat under the pointer, Lumino's own state, and two evidence-only
+# repeats at 1280 (no pass/fail change)
+# =========================================================================== #
+#
+# Why the old trace lied: Lumino (and JupyterLab's dock subclass) drive a handle drag with POINTER events and call
+# preventDefault on `pointerdown`; Chromium then suppresses the compatibility MOUSE events (mousedown/mousemove/mouseup) for the
+# rest of the press. The old trace listened to mouse events only, so a drag Lumino DID handle showed one stray mousemove (1440),
+# while a press Lumino did not take still produced every mouse event (1280 drag_high, 18). The new trace listens to both
+# families, on window capture, document capture and window bubble, and records each target and `defaultPrevented`.
+
+
+def _good_element(tag="DIV", **over):
+    base = {"tag": tag, "id": None, "classes": ["lm-DockPanel-handle"], "inside_iframe": False, "inside_deck": False,
+            "inside_handle": True, "is_handle": True}
+    base.update(over)
+    return base
+
+
+def _good_probe_points(n=5):
+    return {"points": [{"x": 700.0 + i * 40, "y": 300.0, "element": _good_element()} for i in range(n)],
+            "active_element": _good_element("BODY", classes=[], inside_handle=False, is_handle=False)}
+
+
+def _good_dock_probe(**over):
+    base = {"sizes": [{"orientation": "horizontal", "sizes": [0.5, 0.5]}],
+            "sizers": [{"orientation": "horizontal", "sizers": [{"size": 480.0, "size_hint": 0, "min_size": 2, "max_size": 1e9, "stretch": 1},
+                                                               {"size": 473.5, "size_hint": 0, "min_size": 420, "max_size": 480, "stretch": 1}],
+                        "handles_hidden": [False]}],
+            "optimize_resize": True, "resize_drag_active": False, "frozen_groups": 0,
+            "inline": {"notebook_panel": {"width": "", "max_width": "", "min_width": "", "height": "", "max_height": ""},
+                       "deck_panel": {"width": "", "max_width": "480px", "min_width": "420px", "height": "", "max_height": ""},
+                       "notebook": None, "notebook_children": []}}
+    base.update(over)
+    return base
+
+
+GEO = {"handle": _rect(763.0, 6.0, top=100.0, height=400.0), "widget": _rect(769.0, 473.5, top=50.0), "n_handles": 1}
+
+
+def test_drag_plan_by_is_a_short_drag_from_the_handle_centre(rs):
+    plan = rs.drag_plan_by(GEO, 30, inner_width=1280)
+    assert (plan["x0"], plan["y"], plan["x1"]) == (766.0, 300.0, 796.0)
+    assert plan["dx"] == 30 and plan["target_width"] is None and plan["steps"] == 15 and plan["x1_in_window"] is True
+    assert rs.drag_plan_by(GEO, -5000, inner_width=1280)["x1_in_window"] is False
+    assert rs.drag_plan_by(GEO, 30)["x1_in_window"] is None
+    for bad in (None, {}, {"handle": None}, {"handle": _rect(0, 1), "widget": {"right": "x"}}):
+        assert rs.drag_plan_by(bad, 30) is None, bad
+    assert rs.drag_plan_by(GEO, 30)["handle"] == GEO["handle"], "the same geometry fields as drag_plan"
+
+
+def test_path_points_are_the_press_point_and_four_points_along_the_path(rs):
+    plan = rs.drag_plan(GEO, 300, inner_width=1280)
+    pts = rs.path_points(plan)
+    assert len(pts) == 5 and pts[0] == [plan["x0"], plan["y"]]
+    xs = [p[0] for p in pts]
+    step = (plan["x1"] - plan["x0"]) / 5
+    assert xs == pytest.approx([plan["x0"] + k * step for k in range(5)]) and {p[1] for p in pts} == {plan["y"]}
+    assert rs.path_points(None) == [] and rs.path_points({}) == []
+
+
+def _ev2(type_, phase, **kw):
+    return {"type": type_, "phase": phase, "x": 1.0, "y": 2.0, "buttons": 1, "target": None, "prevented": False, **kw}
+
+
+def test_summarize_trace_counts_each_type_at_each_phase_and_keeps_the_ends_of_the_move_runs(rs):
+    events = [_ev2("pointerdown", "window:capture"), _ev2("pointerdown", "window:bubble")]
+    events += [_ev2("pointermove", "window:capture", x=float(i)) for i in range(10)]
+    events += [_ev2("pointerup", "window:capture")]
+    out = rs.summarize_trace(events, keep=3)
+    assert out["n"] == 13
+    assert out["counts"] == {"pointerdown@window:capture": 1, "pointerdown@window:bubble": 1, "pointermove@window:capture": 10,
+                             "pointerup@window:capture": 1}
+    kept = [e for e in out["events"] if e["type"] == "pointermove"]
+    assert [e["x"] for e in kept] == [0.0, 1.0, 2.0, 7.0, 8.0, 9.0], "first three and last three"
+    assert [e["type"] for e in out["events"] if e["type"] != "pointermove"] == ["pointerdown", "pointerdown", "pointerup"]
+    assert out["events"].index(kept[0]) > 1, "original order is preserved"
+    short = rs.summarize_trace(events[:4], keep=3)
+    assert len(short["events"]) == 4, "a short run is kept whole"
+
+
+def test_summarize_trace_negative_controls(rs):
+    empty = {"n": 0, "counts": {}, "events": []}
+    assert rs.summarize_trace(None) == empty and rs.summarize_trace("x") == empty and rs.summarize_trace([]) == empty
+    assert rs.summarize_trace([1, None, {"type": "mousemove"}])["n"] == 1, "junk entries are not events"
+
+
+def test_element_probe_positive_control_and_negative_controls(rs):
+    assert rs.element_probe_problems(_good_probe_points(), 5) == []
+    none_elem = _good_probe_points()
+    none_elem["points"][2]["element"] = None  # nothing at that point (outside the window): recorded, not malformed
+    none_elem["active_element"] = None
+    assert rs.element_probe_problems(none_elem, 5) == []
+    for mutate, fragment in (
+        (lambda p: p["points"].pop(), "points"), (lambda p: p.update(points="x"), "points"),
+        (lambda p: p["points"][0]["element"].pop("tag"), "tag"), (lambda p: p["points"][1]["element"].update(classes="a b"), "classes"),
+        (lambda p: p["points"][3].pop("x"), "x"), (lambda p: p.pop("active_element"), "active_element"),
+        (lambda p: p["points"][0]["element"].update(inside_iframe="no"), "inside_iframe"),
+    ):
+        probe = _good_probe_points()
+        mutate(probe)
+        problems = rs.element_probe_problems(probe, 5)
+        assert problems and any(fragment in p for p in problems), (fragment, problems)
+    assert rs.element_probe_problems(None, 5)
+
+
+def test_dock_probe_positive_control_and_negative_controls(rs):
+    assert rs.dock_probe_problems(_good_dock_probe()) == []
+    assert rs.dock_probe_problems(_good_dock_probe(sizes=None, sizers=None, optimize_resize=None, resize_drag_active=None,
+                                                   frozen_groups=None)) == [], "unreadable private state is None, not a problem"
+    for over, fragment in (({"sizes": "x"}, "sizes"), ({"sizers": [1]}, "sizers"), ({"frozen_groups": "0"}, "frozen_groups"),
+                           ({"optimize_resize": 1}, "optimize_resize"), ({"inline": None}, "inline"), ({"resize_drag_active": "no"}, "resize_drag_active")):
+        problems = rs.dock_probe_problems(_good_dock_probe(**over))
+        assert problems and any(fragment in p for p in problems), (over, problems)
+    assert rs.dock_probe_problems(None)
+
+
+def test_assemble_drag_evidence_keeps_the_plan_and_adds_what_was_sent_seen_and_read(rs):
+    plan = rs.drag_plan(GEO, 300, inner_width=1280)
+    sent = [["move", plan["x0"], plan["y"]], ["down"], ["move", plan["x1"], plan["y"], 15], ["up"]]
+    trace = [_ev2("pointerdown", "window:capture", probe=_good_dock_probe(), probe_after=_good_dock_probe()),
+             _ev2("pointermove", "window:capture")]
+    out = rs.assemble_drag_evidence(plan, sent, trace, _good_probe_points(), _good_dock_probe(), _good_dock_probe())
+    assert {k: out[k] for k in plan} == plan and out["sent"] == sent
+    assert out["trace_n"] == 2 and out["trace_counts"] == {"pointerdown@window:capture": 1, "pointermove@window:capture": 1}
+    assert out["elements"] == _good_probe_points() and out["dock_probe_before"] == _good_dock_probe()
+    assert out["dock_probe_after_up"] == _good_dock_probe() and out["problems"] == []
+    assert out["trace"][0]["probe"]["sizes"] == [{"orientation": "horizontal", "sizes": [0.5, 0.5]}], "sizes at mousedown"
+
+
+def test_assemble_drag_evidence_reports_malformed_parts_without_raising(rs):
+    plan = rs.drag_plan(GEO, 300)
+    out = rs.assemble_drag_evidence(plan, [], None, {"points": []}, "x", None)
+    assert out["trace"] == [] and out["trace_n"] == 0
+    assert any(p.startswith("elements:") for p in out["problems"])
+    assert any(p.startswith("dock_probe_before:") for p in out["problems"])
+    assert any(p.startswith("dock_probe_after_up:") for p in out["problems"])
+
+
+# -- the in-page readers (bun, fake DOM) ---------------------------------------------------------------------------------------
+
+_EL = r"""
+const cls = (list) => ({ contains: (c) => list.includes(c), [Symbol.iterator]: function* () { yield* list; } });
+const mkEl = (tag, id, classes, extra = {}) => {
+  const { closest: map = {}, ...rest } = extra;
+  return { tagName: tag, id, classList: cls(classes), closest: (sel) => map[sel] || null, ...rest };
+};
+"""
+
+
+@needs_bun
+def test_points_at_describes_the_element_under_each_point_and_the_active_element(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + r"""
+const handle = mkEl("DIV", "", ["lm-DockPanel-handle", "lm-mod-horizontal"], { closest: { ".lm-DockPanel-handle": true } });
+const iframe = mkEl("IFRAME", "", ["praxis-deck-panel__frame"], { closest: { ".praxis-deck-panel": true } });
+document.elementFromPoint = (x, y) => (x < 100 ? handle : x < 200 ? iframe : null);
+document.activeElement = mkEl("BUTTON", "follow", ["praxis-deck-panel__follow"], { closest: { ".praxis-deck-panel": true } });
+return D.pointsAt({ points: [[50, 10], [150, 10], [900, 10]] });
+""")
+    assert rs.element_probe_problems(got, 3) == []
+    p = got["points"]
+    assert p[0]["element"] == {"tag": "DIV", "id": None, "classes": ["lm-DockPanel-handle", "lm-mod-horizontal"], "inside_iframe": False,
+                               "inside_deck": False, "inside_handle": True, "is_handle": True}
+    assert p[1]["element"]["tag"] == "IFRAME" and p[1]["element"]["inside_iframe"] is True and p[1]["element"]["inside_deck"] is True
+    assert p[2]["element"] is None, "nothing there (outside the window)"
+    assert (p[0]["x"], p[0]["y"]) == (50, 10)
+    assert got["active_element"]["tag"] == "BUTTON" and got["active_element"]["id"] == "follow" and got["active_element"]["inside_deck"] is True
+
+
+_DOCK_FAKE = r"""
+const sizer = (size, min, max) => ({ size, sizeHint: 0, minSize: min, maxSize: max, stretch: 1 });
+const root = { type: "split-area", orientation: "horizontal", sizers: [sizer(480, 2, 1e9), sizer(473.5, 420, 480)],
+               handles: [{ classList: cls(["lm-DockPanel-handle"]) }],
+               children: [{ type: "tab-area" }, { type: "tab-area" }] };
+window.jupyterapp = { shell: { _dockPanel: { optimizeResize: true, _isResizeDragActive: true, _frozenGroups: [[{}, {}], [{}]],
+  saveLayout: () => ({ main: { type: "split-area", orientation: "horizontal", sizes: [0.5, 0.5], children: [] } }), layout: { _root: root } } } };
+const style = (o) => ({ width: "", maxWidth: "", minWidth: "", height: "", maxHeight: "", ...o });
+nodes[".jp-NotebookPanel"] = { style: style({ width: "473px", maxWidth: "473px" }),
+  children: [{ tagName: "DIV", className: "jp-Toolbar", style: style({ width: "473px", maxWidth: "473px" }) }] };
+nodes[".praxis-deck-panel"] = { style: style({ minWidth: "420px", maxWidth: "480px" }) };
+"""
+
+
+@needs_bun
+def test_dock_probe_reads_sizes_sizers_the_freeze_state_and_the_inline_styles_lumino_and_jupyterlab_write(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + _DOCK_FAKE + "return D.dockProbe();")
+    assert rs.dock_probe_problems(got) == []
+    assert got["sizes"] == [{"orientation": "horizontal", "sizes": [0.5, 0.5]}]
+    assert got["sizers"] == [{"orientation": "horizontal", "handles_hidden": [False], "sizers": [
+        {"size": 480, "size_hint": 0, "min_size": 2, "max_size": 1e9, "stretch": 1},
+        {"size": 473.5, "size_hint": 0, "min_size": 420, "max_size": 480, "stretch": 1}]}]
+    assert got["optimize_resize"] is True and got["resize_drag_active"] is True and got["frozen_groups"] == 2
+    assert got["inline"]["notebook_panel"] == {"width": "473px", "max_width": "473px", "min_width": "", "height": "", "max_height": ""}
+    assert got["inline"]["deck_panel"]["max_width"] == "480px" and got["inline"]["notebook"] is None
+    assert got["inline"]["notebook_children"] == [{"tag": "DIV", "classes": "jp-Toolbar", "width": "473px", "max_width": "473px", "max_height": ""}]
+
+
+@needs_bun
+def test_dock_probe_with_no_readable_dock_is_all_none_and_never_throws(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, "window.jupyterapp = { shell: {} }; return D.dockProbe();")
+    assert rs.dock_probe_problems(got) == []
+    assert got["sizes"] is None and got["sizers"] is None and got["optimize_resize"] is None and got["frozen_groups"] is None
+    assert got["inline"]["notebook_panel"] is None and got["inline"]["notebook_children"] == []
+
+
+_TRACE_FAKE = r"""
+const cls2 = (list) => ({ contains: (c) => list.includes(c), [Symbol.iterator]: function* () { yield* list; } });
+const listeners = [];   // {target, type, fn, capture}
+const reg = (name) => ({
+  addEventListener: (type, fn, capture) => listeners.push({ name, type, fn, capture: !!capture }),
+  removeEventListener: (type, fn, capture) => { const i = listeners.findIndex((l) => l.name === name && l.type === type && l.fn === fn && l.capture === !!capture); if (i >= 0) listeners.splice(i, 1); },
+});
+Object.assign(window, reg("window")); Object.assign(document, reg("document"));
+const handleEl = { tagName: "DIV", id: "", classList: cls2(["lm-DockPanel-handle"]), closest: (s) => (s === ".lm-DockPanel-handle" ? true : null) };
+// phases in the order a real dispatch visits them: window capture, document capture, [target], window bubble
+const fire = (type, x, y, opts = {}) => {
+  const e = { type, clientX: x, clientY: y, buttons: opts.buttons ?? 1, target: opts.target ?? handleEl, pointerId: 1, isTrusted: true, defaultPrevented: false };
+  const run = (name, capture) => listeners.filter((l) => l.name === name && l.type === type && l.capture === capture).forEach((l) => l.fn(e));
+  run("window", true); run("document", true);
+  if (opts.prevent) e.defaultPrevented = true;   // Lumino's handler, on the target, calls preventDefault
+  if (!opts.stop) run("window", false);          // stopPropagation: the bubble listener on window never hears it
+};
+window.jupyterapp = { shell: { _dockPanel: { optimizeResize: true, _isResizeDragActive: false, _frozenGroups: [], saveLayout: () => ({ main: { type: "split-area", orientation: "horizontal", sizes: [0.5, 0.5] } }) } } };
+"""
+
+
+@needs_bun
+def test_the_mouse_trace_listens_to_pointer_and_mouse_events_at_three_phases_and_records_targets_and_defaultprevented(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + _TRACE_FAKE + r"""
+D.mouseTrace({ op: "start" });
+fire("pointerdown", 766, 300, { prevent: true, stop: true });      // Lumino takes the press: prevented, propagation stopped
+fire("pointermove", 700, 300);
+fire("pointermove", 600, 300);
+fire("mouseup", 600, 300, { buttons: 0 });
+fire("pointerup", 600, 300, { buttons: 0 });
+const stopped = D.mouseTrace({ op: "stop" });
+const left = listeners.length;
+fire("pointermove", 1, 1);
+await new Promise((r) => setTimeout(r, 30));
+return { stopped: stopped.map((e) => [e.type, e.phase, e.x, e.prevented]), after_stop: D.mouseTrace({ op: "read" }).length, left,
+         down: D.mouseTrace({ op: "read" }).find((e) => e.type === "pointerdown" && e.phase === "window:capture") };
+""")
+    assert got["left"] == 0, "every listener (window capture, document capture, window bubble) is removed on stop"
+    seen = {(t, ph) for t, ph, _, _ in got["stopped"]}
+    assert ("pointerdown", "window:capture") in seen and ("pointerdown", "document:capture") in seen
+    assert ("pointerdown", "window:bubble") not in seen, "propagation was stopped: only the capture phases heard it"
+    assert ("pointermove", "window:bubble") in seen and ("mouseup", "window:capture") in seen and ("pointerup", "window:capture") in seen
+    assert got["after_stop"] == len(got["stopped"]), "nothing after stop is recorded"
+    down = got["down"]
+    assert down["target"]["tag"] == "DIV" and down["target"]["is_handle"] is True and down["target"]["inside_handle"] is True
+    assert down["pointer_id"] == 1 and down["trusted"] is True and down["prevented"] is False, "at window capture nothing has prevented it yet"
+    assert down["probe"]["sizes"] == [{"orientation": "horizontal", "sizes": [0.5, 0.5]}], "split sizes at pointerdown (before Lumino acts)"
+    assert down["probe_after"]["optimize_resize"] is True, "and again once the handlers have run"
+    assert rs.dock_probe_problems(down["probe"]) == [] and rs.dock_probe_problems(down["probe_after"]) == []
+
+
+@needs_bun
+def test_the_mouse_trace_bubble_phase_shows_a_prevented_default_so_suppressed_mouse_events_are_explained(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + _TRACE_FAKE + r"""
+D.mouseTrace({ op: "start" });
+fire("pointerdown", 766, 300, { prevent: true });
+const ev = D.mouseTrace({ op: "stop" });
+return ev.filter((e) => e.type === "pointerdown").map((e) => [e.phase, e.prevented]);
+""")
+    assert got == [["window:capture", False], ["document:capture", False], ["window:bubble", True]]
+
+
+def test_the_old_window_capture_only_trace_is_gone(rs):
+    assert rs.DOCK_CHECK_JS.count('addEventListener(ty, handler, capture)') >= 1 or "target.addEventListener" in rs.DOCK_CHECK_JS
+    for ty in ("pointerdown", "pointermove", "pointerup", "pointercancel", "mousedown", "mousemove", "mouseup"):
+        assert f'"{ty}"' in rs.DOCK_CHECK_JS, ty
+    for phase in ("window:capture", "document:capture", "window:bubble"):
+        assert phase in rs.DOCK_CHECK_JS, phase
+
+
+# -- the scenario: new keys under evidence.medium['1280'] only; the drag drivers ----------------------------------------------
+
+
+def test_the_1280_step_adds_a_short_right_drag_and_a_retry_after_drag_high_and_the_keys_do_not_move(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+    keys = rs.run_k2(d, nb)
+    m = keys["evidence"]["medium"]
+    new = {"drag_small_right", "drag_small_right_xy", "geo_after_small_right", "drag_low_retry", "drag_low_retry_xy", "geo_after_low_retry"}
+    assert new <= set(m["1280"]) and not (new & set(m["1440"])), "only the 1280 step carries them"
+    assert {"open", "drag_low", "drag_high", "geo_before", "geo_after_low", "geo_after_high"} <= set(m["1280"])
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], []), "no rule changed"
+    assert m["1280"]["drag_small_right_xy"]["dx"] == 30 and m["1280"]["drag_low_retry_xy"]["target_width"] == 300
+    # order at 1280: low, high, THEN the short right drag, THEN the retry (all after the existing pair)
+    drags = [c for c in d.calls if c[0] in ("drag_splitter_to", "drag_splitter_by")]
+    assert [(c[0], c[1]) for c in drags] == [("drag_splitter_to", 300), ("drag_splitter_to", 700), ("drag_splitter_to", 300),
+                                             ("drag_splitter_to", 700), ("drag_splitter_by", 30), ("drag_splitter_to", 300)]
+    assert keys["evidence"]["reloads"]["drag_1280"] == 0, "loads are counted over the original two drags only"
+
+
+def test_the_extra_1280_drags_are_evidence_only_even_when_they_fail_or_the_driver_lacks_them(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+
+    def boom(dx):
+        raise rs.DockCheckError("mouse lost")
+
+    d.drag_splitter_by = boom
+    keys = rs.run_k2(d, nb)
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], [])
+    assert "drag_small_right_1280" in keys["evidence"]["step_errors"]
+    class Old(FakeDock):
+        drag_splitter_by = property(lambda self: (_ for _ in ()).throw(AttributeError("drag_splitter_by")))
+    keys = rs.run_k2(Old(rs, dnbf, start=(1152, 800)), nb)
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], [])
+    assert keys["evidence"]["medium"]["1280"]["drag_small_right"] is None
+
+
+def test_the_real_driver_probes_before_the_press_and_after_the_release_and_shares_one_drag_routine(rs):
+    import inspect
+    perform = inspect.getsource(rs.DockDriver._perform_drag)
+    for needle in ('self._dk("pointsAt(a)"', 'self._dk("dockProbe()")', 'self._dk("mouseTrace(a)", {"op": "start"})', "path_points(plan)",
+                   "self.page.mouse.move(", "self.page.mouse.down()", "self.page.mouse.up()", "assemble_drag_evidence(", "self.last_drag"):
+        assert needle in perform, needle
+    assert perform.index('"op": "start"') < perform.index("self.page.mouse.move("), "the trace is armed BEFORE the move to x0"
+    assert perform.index('self._dk("pointsAt(a)"') < perform.index("self.page.mouse.down()"), "elements are read before the press"
+    assert perform.index("self.page.mouse.up()") < perform.index('self._dk("dockProbe()")', perform.index("self.page.mouse.up()")), "and Lumino's state right after the release"
+    assert "_perform_drag(" in inspect.getsource(rs.DockDriver.drag_splitter_to)
+    assert "_perform_drag(" in inspect.getsource(rs.DockDriver.drag_splitter_by) and "drag_plan_by(" in inspect.getsource(rs.DockDriver.drag_splitter_by)
+    assert rs.DockDriver.drag_splitter_to.__annotations__["return"] == "float | None"
+
+
+# =========================================================================== #
+# C7a round 3: PACED drags (a fix to HOW the real drag is sent; nothing asserted changes)
+# =========================================================================== #
+#
+# Hypothesis H (unverified; only the next real run decides): Playwright sends down / move / up in a burst faster than the page
+# renders a frame. The backdrop Lumino adds on press is not yet hit-testable, so the first moves (and the release) go to the
+# iframe under the pointer and the drag is left unfinished. A human mouse has a frame between events. The fake page below models
+# EXACTLY that, so these tests prove the pacing is what the code sends and that, IF H holds, the burst loses the release.
+
+DRAG_W_MIN, DRAG_W_MAX = 420.0, 480.0
+
+PRESS_LABELS = (("microtask", 0), ("+0 ms", 0), ("+50 ms", 50), ("+250 ms", 250), ("+750 ms", 750))
+
+
+def _good_sample(label="+0 ms", at_ms=0, *, backdrop=True, iframe_under_pointer=False, **over):
+    """One press sample as ``D.pressSamples`` returns it (the shape ``press_samples_problems`` accepts)."""
+    bd = ({"rect": {"left": 0.0, "top": 0.0, "width": 1280.0, "height": 800.0}, "position": "fixed", "z_index": "auto",
+           "pointer_events": "auto", "display": "block"} if backdrop else None)
+    el = (_good_element("IFRAME", classes=["praxis-deck-panel__frame"], inside_iframe=True, inside_deck=True, inside_handle=False, is_handle=False)
+          if iframe_under_pointer else _good_element("DIV", classes=["lm-cursor-backdrop"], inside_handle=False, is_handle=False))
+    out = {"label": label, "at_ms": at_ms, "t": 1000.0 + at_ms, "since_down_ms": float(at_ms), "backdrop_count": 1 if backdrop else 0, "backdrop": bd,
+           "body_override_cursor": bool(backdrop),
+           "first_move": {"x": 775.0, "y": 300.0, "element": el, "is_backdrop": bool(backdrop) and not iframe_under_pointer},
+           "handle_centre": {"x": 766.0, "y": 300.0, "element": _good_element(), "is_backdrop": False},
+           "deck_iframe_rect": {"left": 769.0, "top": 50.0, "width": 473.0, "height": 700.0},
+           "backdrop_covers_iframe": True if backdrop else None}
+    out.update(over)
+    return out
+
+
+class PacedFakePage:
+    """A Playwright-page stand-in that records every mouse call, wait and page helper IN ORDER (``log``) and models the suspected
+    race: after ``mouse.down()`` nothing is delivered to Lumino until a frame has passed (a ``paceFrames`` evaluate, or a
+    ``wait_for_timeout`` of at least one frame); events sent before that go to the iframe and are lost, including the release."""
+
+    def __init__(self, panel: float = 473.5, *, frame_ms: float = 16.0) -> None:
+        self.panel, self.frame_ms = panel, frame_ms
+        self.widget_right = 1242.5
+        self._x = 0.0
+        self.log: list[tuple[Any, ...]] = []
+        self.pressed = self.ready = False
+        self.delivered: list[float] = []
+        self.lost: list[tuple[str, float | None]] = []
+        self.release_lost = False
+        self.press_arm: dict[str, Any] | None = None
+        self.press_reads = 0
+        self.press_samples: list[dict[str, Any]] = [_good_sample(label, at) for label, at in PRESS_LABELS]
+        self.frames_reply: Callable[[dict[str, Any]], Any] | None = None
+        self.iframe_reply: Callable[[dict[str, Any]], Any] = lambda arg: (
+            {"armed": True, "reason": None} if arg["op"] == "arm"
+            else {"counts": {"pointermove": 0, "pointerup": 0, "mousemove": 0, "mouseup": 0}, "first": {}, "last": {}, "reason": None})
+        self.mouse = self  # `page.mouse.move(...)`: the page is its own mouse
+
+    # -- geometry --------------------------------------------------------------------------------
+    def _handle_left(self) -> float:
+        return self.widget_right - self.panel - 6.0
+
+    # -- page.mouse ------------------------------------------------------------------------------
+    def move(self, x: float, y: float, steps: int | None = None) -> None:
+        points = [x] if not steps else [self._x + (x - self._x) * k / steps for k in range(1, steps + 1)]
+        self.log.append(("move", x, y) if not steps else ("move", x, y, steps))
+        for px in points:
+            self._move_one(px)
+        self._x = x
+
+    def _move_one(self, x: float) -> None:
+        if not self.pressed:
+            return
+        if self.ready:
+            self.delivered.append(x)
+        else:
+            self.lost.append(("move", x))  # over the iframe: the backdrop is not hit-testable yet
+
+    def down(self) -> None:
+        self.log.append(("down",))
+        self.pressed, self.ready, self.delivered, self.lost, self.release_lost = True, False, [], [], False
+
+    def up(self) -> None:
+        self.log.append(("up",))
+        if not self.pressed:
+            return
+        if self.ready:
+            if self.delivered:  # Lumino completes the drag: the handle follows the last delivered pointer position
+                self.panel = min(DRAG_W_MAX, max(DRAG_W_MIN, self.widget_right - self.delivered[-1] - 3.0))
+        else:
+            self.release_lost = True  # the release went to the iframe: Lumino's drag is left open
+        self.pressed = False
+
+    # -- page ------------------------------------------------------------------------------------
+    def wait_for_timeout(self, ms: float) -> None:
+        self.log.append(("wait", ms))
+        if self.pressed and ms >= self.frame_ms:
+            self.ready = True
+
+    def evaluate(self, expr: str, arg: Any = None) -> Any:
+        if "paceFrames(" in expr:
+            self.log.append(("frames", arg["n"]))
+            if self.pressed and arg["n"] >= 1:
+                self.ready = True
+            if self.frames_reply is not None:
+                return self.frames_reply(arg)
+            return {"frames": arg["n"], "capped": False, "ms": self.frame_ms * arg["n"]}
+        if "handleRect(" in expr:
+            left = self._handle_left()
+            return {"handle": _rect(left, 6.0, top=100.0, height=400.0), "widget": _rect(left + 6.0, self.panel, top=50.0), "n_handles": 1}
+        if "pointsAt(" in expr:
+            return {"points": [{"x": x, "y": y, "element": _good_element()} for x, y in arg["points"]],
+                    "active_element": _good_element("BODY", classes=[], inside_handle=False, is_handle=False)}
+        if "dockProbe(" in expr:
+            return _good_dock_probe()
+        if "mouseTrace(" in expr:
+            return [] if arg["op"] != "start" else True
+        if "pressSamples(" in expr:  # round 4: the press samples (read-only page-side timers); `pending` drains over two reads
+            self.log.append(("press_samples", arg["op"]))
+            if arg["op"] == "arm":
+                self.press_arm = arg
+                return True
+            self.press_reads += 1
+            return {"samples": list(self.press_samples), "pending": 2 if self.press_reads == 1 else 0}
+        if "iframeEvents(" in expr:  # round 4: what the deck iframe's own document received
+            self.log.append(("iframe_events", arg["op"]))
+            return self.iframe_reply(arg)
+        if "facts(" in expr:
+            return {"panel_rect": _rect(self._handle_left() + 6.0, self.panel), "inner_width": 1280}
+        raise AssertionError(f"unexpected page call: {expr}")
+
+
+def _paced_driver(rs, page=None, **kw):
+    page = page or PacedFakePage(**kw)
+    return rs.DockDriver(None, page=page), page
+
+
+def _kinds(log):
+    return [e[0] for e in log]
+
+
+def test_the_drag_waits_frames_after_the_press_between_every_move_and_before_the_release(rs):
+    driver, page = _paced_driver(rs)
+    driver.drag_splitter_to(300)
+    log = [e for e in page.log if e[0] in ("move", "down", "frames", "up")]
+    i_down = _kinds(log).index("down")
+    after_down = log[i_down + 1:]
+    assert after_down[0] == ("frames", 2), "two animation frames after the press, BEFORE the first move"
+    moves_after = [i for i, e in enumerate(after_down) if e[0] == "move"]
+    assert len(moves_after) == 15, "the same 15 steps, each its own mouse.move (no `steps=` burst)"
+    assert all(len(after_down[i]) == 3 for i in moves_after), "single-event moves"
+    for i in moves_after:
+        assert after_down[i + 1] == ("frames", 1), "one frame after EVERY move (between moves, and before the release)"
+    assert after_down[-1] == ("up",) and after_down[-2] == ("frames", 1), "a frame right before mouse.up()"
+    assert _kinds(log[:i_down + 1])[-2:] == ["move", "down"], "the press position is moved to first, as before"
+
+
+def test_the_paced_drag_reaches_its_target_where_the_fake_loses_a_burst(rs):
+    driver, page = _paced_driver(rs)
+    width = driver.drag_splitter_to(300)
+    assert width == 420.0 and rs.clamp_low_ok(width) is True and page.release_lost is False and page.lost == []
+    assert len(page.delivered) == 15
+
+
+def _burst_drag(page, plan):
+    """The pre-round-3 sequence, replayed on the same fake: press, then 15 steps and the release with no frame between."""
+    page.mouse.move(plan["x0"], plan["y"])
+    page.mouse.down()
+    page.mouse.move(plan["x1"], plan["y"], steps=plan["steps"])
+    page.mouse.up()
+
+
+def test_negative_control_a_burst_loses_the_release_and_the_low_clamp_key_would_fail(rs):
+    """The simulation is not vacuous: sent as a burst (no frame after the press) the drag is left unfinished, the panel
+    stays where it was, and the keyed predicate for `drag_clamp_low` reports failure. Paced, the same fake passes it."""
+    page = PacedFakePage()
+    plan = rs.drag_plan({"handle": _rect(page._handle_left(), 6.0, top=100.0, height=400.0), "widget": _rect(769.0, 473.5), "n_handles": 1}, 300)
+    _burst_drag(page, plan)
+    assert page.release_lost is True and len(page.lost) == 15 and page.delivered == []
+    assert page.panel == 473.5 and rs.clamp_low_ok(page.panel) is False, "the key would fail: 473.5 is not 420 +- 2"
+    paced_driver, paced_page = _paced_driver(rs)
+    assert rs.clamp_low_ok(paced_driver.drag_splitter_to(300)) is True and paced_page.release_lost is False
+
+
+def test_a_press_with_only_a_fixed_frame_length_wait_also_counts_as_a_frame_in_the_fake(rs):
+    """Sanity of the model itself: a wait of a frame or more after the press makes later events deliverable (and a shorter one does not)."""
+    page = PacedFakePage()
+    page.down()
+    page.wait_for_timeout(5)
+    assert page.ready is False
+    page.wait_for_timeout(16)
+    assert page.ready is True
+
+
+def test_the_short_right_drag_is_paced_too_and_moves_the_panel_only_when_paced(rs):
+    driver, page = _paced_driver(rs)
+    width = driver.drag_splitter_by(30)
+    assert width == pytest.approx(443.5) and page.release_lost is False
+    log = [e for e in page.log if e[0] in ("move", "down", "frames", "up")]
+    assert log[_kinds(log).index("down") + 1] == ("frames", 2) and log[-2] == ("frames", 1) and log[-1] == ("up",)
+
+
+def test_each_drag_records_its_pacing_beside_the_rest_of_its_evidence(rs):
+    driver, page = _paced_driver(rs)
+    driver.drag_splitter_to(300)
+    d = driver.last_drag
+    assert d["pacing"]["down_settle_frames"] == 2 and d["pacing"]["up_settle_frames"] == 1
+    assert "animation frame" in d["pacing"]["step_wait"] and d["pacing"]["frame_cap_ms"] == rs.DRAG_FRAME_CAP_MS
+    assert d["pacing"]["drag_cap_s"] == rs.DRAG_MAX_S and d["pacing"]["frames_waited"] == 17 and d["pacing"]["cap_hit"] is False
+    assert {"x0", "y", "x1", "handle", "widget", "n_handles", "steps", "sent", "trace", "elements", "dock_probe_before",
+            "dock_probe_after_up", "problems"} <= set(d), "everything that was recorded before is still recorded"
+    assert d["steps"] == 15 and d["sent"][0][0] == "move" and d["sent"][-1] == ["up"]
+    assert d["problems"] == []
+
+
+def test_a_drag_that_runs_past_its_wall_time_cap_stops_waiting_but_still_completes_and_says_so(rs):
+    driver, page = _paced_driver(rs)
+    ticks = iter([0.0] + [100.0] * 100)  # the clock jumps past the cap right after the drag starts
+    driver.clock = lambda: next(ticks)
+    width = driver.drag_splitter_to(300)
+    frames = [e for e in page.log if e[0] == "frames"]
+    assert len(frames) < 17, "waits after the cap are skipped"
+    moves = [e for e in page.log if e[0] == "move" and len(e) == 3]
+    assert len(moves) == 16 and ("up",) in page.log, "every move and the release are still sent"
+    assert driver.last_drag["pacing"]["cap_hit"] is True and driver.last_drag["pacing"]["frames_waited"] == len(frames)
+    assert width is not None
+
+
+def test_no_drag_is_sent_when_there_is_no_handle_and_nothing_is_recorded(rs):
+    class NoHandle(PacedFakePage):
+        def evaluate(self, expr, arg=None):
+            return None if "handleRect(" in expr else super().evaluate(expr, arg)
+
+    driver, page = _paced_driver(rs, NoHandle())
+    assert driver.drag_splitter_to(300) is None and driver.last_drag is None
+    assert not [e for e in page.log if e[0] in ("move", "down", "up", "frames")]
+
+
+def test_every_keyed_and_evidence_drag_goes_through_the_one_paced_routine(rs):
+    import inspect
+    src = inspect.getsource(rs.DockDriver)
+    assert src.count("mouse.down()") == 1 and src.count("mouse.up()") == 1, "the only place a drag is sent is _perform_drag"
+    perform = inspect.getsource(rs.DockDriver._perform_drag)
+    assert 'self._dk("paceFrames(a)"' in perform and "step_points(plan)" in perform and "steps=" not in perform
+    assert perform.index("self.page.mouse.down()") < perform.index("paceFrames") < perform.index("self.page.mouse.move(", perform.index("paceFrames"))
+
+
+def test_step_points_are_the_same_fifteen_steps_the_old_steps_argument_made(rs):
+    plan = rs.drag_plan(GEO, 300)
+    pts = rs.step_points(plan)
+    assert len(pts) == plan["steps"] == 15 and pts[-1] == [plan["x1"], plan["y"]]
+    step = (plan["x1"] - plan["x0"]) / 15
+    assert [p[0] for p in pts] == pytest.approx([plan["x0"] + k * step for k in range(1, 16)]) and {p[1] for p in pts} == {plan["y"]}
+    assert rs.step_points(None) == [] and rs.step_points({}) == []
+
+
+def test_assemble_drag_evidence_carries_pacing_and_old_callers_still_work(rs):
+    plan = rs.drag_plan(GEO, 300)
+    out = rs.assemble_drag_evidence(plan, [], [], _good_probe_points(), _good_dock_probe(), _good_dock_probe(), pacing={"down_settle_frames": 2})
+    assert out["pacing"] == {"down_settle_frames": 2}
+    assert rs.assemble_drag_evidence(plan, [], [], _good_probe_points(), _good_dock_probe(), _good_dock_probe())["pacing"] is None
+
+
+def test_the_added_worst_case_time_fits_the_k2_budget_with_room(rs):
+    """Six drags per K2 run (1440: low, high; 1280: low, high, short, retry), each at most 2 + 15 frame waits, each wait capped."""
+    per_drag_s = min(rs.DRAG_MAX_S, (2 + 15) * rs.DRAG_FRAME_CAP_MS / 1000.0)
+    k2_added_s = 6 * per_drag_s
+    assert per_drag_s == pytest.approx(4.25) and k2_added_s == pytest.approx(25.5)
+    measured_k2_s = 167.1  # the first real K2 run (result.K2.json started -> finished)
+    budget_s = rs.UNIT_BY_ID["K2"].budget_s
+    assert budget_s == 900.0 and (measured_k2_s + k2_added_s) * 1.5 < budget_s, "D16: a budget stays at least 1.5x the measured time"
+    assert budget_s + 120 == 17 * 60, "the CI step timeout (17 min) is budget + 2 min"
+
+
+@needs_bun
+def test_pace_frames_resolves_after_n_frames_and_gives_up_at_its_cap(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, r"""
+window.requestAnimationFrame = (f) => setTimeout(f, 4);
+const two = await D.paceFrames({ n: 2, cap_ms: 500 });
+window.requestAnimationFrame = () => 0;   // a throttled page: frames never come
+const capped = await D.paceFrames({ n: 1, cap_ms: 30 });
+return { two, capped };
+""")
+    assert got["two"]["frames"] == 2 and got["two"]["capped"] is False
+    assert got["capped"]["frames"] == 0 and got["capped"]["capped"] is True and got["capped"]["ms"] >= 25
+
+
+# =========================================================================== #
+# C7a round 4: PRESS EVIDENCE (evidence only; no key, tolerance, sizing or assertion changes)
+# =========================================================================== #
+#
+# Round 3's real run: pacing did NOT fix the 1280 first drag (pointerdown on the real handle, exactly one pointermove, no pointerup;
+# the next press already finds Lumino's backdrop). Open question: after the press, where do the moves go? (1) the backdrop was not
+# installed yet; (2) it exists but input routing is stale; (3) it exists but does not cover the iframe. These tests pin the evidence
+# that tells them apart: press samples (page-side, read-only), the per-wait frame timing, the deck iframe's own description and what
+# the iframe received, and a `sequence` hook so a disposable spike can send variants of the drag through the SAME evidence bracket.
+
+
+def _sent_kinds(page):
+    return [e[0] for e in page.log]
+
+
+def _plan_for(page, rs, width=300):
+    return rs.drag_plan({"handle": _rect(page._handle_left(), 6.0, top=100.0, height=400.0), "widget": _rect(769.0, 473.5), "n_handles": 1}, width)
+
+
+def test_the_press_samples_are_armed_before_the_press_with_the_first_move_target_and_the_handle_centre(rs):
+    driver, page = _paced_driver(rs)
+    plan = _plan_for(page, rs)  # before the drag: the drag moves the panel and with it the handle
+    driver.drag_splitter_to(300)
+    kinds = _sent_kinds(page)
+    assert kinds.index("press_samples") < kinds.index("down"), "armed BEFORE the press (the page-side listener sits at window capture)"
+    arm = page.press_arm
+    assert arm["op"] == "arm" and arm["delays_ms"] == [0, 50, 250, 750] == list(rs.PRESS_SAMPLE_DELAYS_MS)
+    assert arm["first_move"] == pytest.approx(rs.step_points(plan)[0]), "elementFromPoint is asked at the FIRST move target"
+    assert arm["handle_centre"] == pytest.approx([plan["x0"], plan["y"]])
+
+
+def test_the_press_samples_are_read_after_the_release_and_waited_for_until_none_is_pending(rs):
+    driver, page = _paced_driver(rs)
+    driver.drag_splitter_to(300)
+    reads = [e for e in page.log if e == ("press_samples", "read")]
+    assert len(reads) == 2, "the first read had two samples pending; it waits and reads again until none is"
+    assert page.log.index(("up",)) < page.log.index(("press_samples", "read"))
+    d = driver.last_drag
+    assert [s["label"] for s in d["press_samples"]] == [label for label, _ in PRESS_LABELS]
+    assert d["press_samples"][0]["label"] == "microtask", "the +0 microtask sample is the state BEFORE Lumino's own handler ran"
+    assert d["problems"] == [] and d.get("press_samples_reason") is None and d["press_samples_pending"] == 0
+
+
+def test_a_press_sample_reader_that_never_drains_is_bounded_and_the_partial_samples_are_kept(rs):
+    driver, page = _paced_driver(rs)
+    real = page.evaluate
+
+    def stuck(expr, arg=None):
+        if "pressSamples(" in expr and arg["op"] == "read":
+            page.log.append(("press_samples", "read"))
+            return {"samples": page.press_samples[:2], "pending": 3}
+        return real(expr, arg)
+
+    page.evaluate = stuck
+    driver.drag_splitter_to(300)
+    assert len([e for e in page.log if e == ("press_samples", "read")]) <= rs.PRESS_SAMPLES_POLLS + 1, "bounded"
+    assert len(driver.last_drag["press_samples"]) == 2 and driver.last_drag["press_samples_pending"] == 3
+
+
+def test_a_failing_evidence_probe_never_breaks_the_drag_and_is_named_in_the_evidence(rs):
+    driver, page = _paced_driver(rs)
+    real = page.evaluate
+
+    def broken(expr, arg=None):
+        if "pressSamples(" in expr or "iframeEvents(" in expr:
+            raise RuntimeError("Execution context was destroyed")
+        return real(expr, arg)
+
+    page.evaluate = broken
+    width = driver.drag_splitter_to(300)
+    d = driver.last_drag
+    assert width == 420.0 and page.release_lost is False, "the drag itself still completed"
+    assert d["press_samples"] is None and "Execution context was destroyed" in d["press_samples_reason"]
+    assert d["iframe_events"] is None and "Execution context was destroyed" in d["iframe_events_reason"]
+
+
+def test_each_frame_wait_is_recorded_with_its_measured_ms_and_whether_it_ended_on_the_cap(rs):
+    driver, page = _paced_driver(rs, frame_ms=30.0)
+    page.frames_reply = lambda arg: ({"frames": 0, "capped": True, "ms": float(arg["cap_ms"])} if arg["n"] == 2
+                                     else {"frames": 1, "capped": False, "ms": 31.5})
+    driver.drag_splitter_to(300)
+    waits = driver.last_drag["pacing"]["waits"]
+    assert len(waits) == 16 and waits[0] == {"n": 2, "frames": 0, "ms": 500.0, "capped": True}, "the wait after the press ended on its cap"
+    assert all(w == {"n": 1, "frames": 1, "ms": 31.5, "capped": False} for w in waits[1:])
+    assert driver.last_drag["pacing"]["waits_dropped"] == 0
+
+
+def test_the_recorded_waits_are_bounded_and_say_how_many_were_dropped(rs, monkeypatch):
+    monkeypatch.setattr(rs, "DRAG_WAITS_MAX", 5)
+    driver, page = _paced_driver(rs)
+    driver.drag_splitter_to(300)
+    p = driver.last_drag["pacing"]
+    assert len(p["waits"]) == 5 and p["waits_dropped"] == 11 and p["frames_waited"] == 17, "the counters still cover every wait"
+
+
+def test_a_wait_skipped_by_the_wall_cap_is_recorded_as_skipped(rs):
+    driver, page = _paced_driver(rs)
+    ticks = iter([0.0] + [100.0] * 200)
+    driver.clock = lambda: next(ticks)
+    driver.drag_splitter_to(300)
+    waits = driver.last_drag["pacing"]["waits"]
+    assert waits and all(w.get("skipped") is True and w["n"] in (1, 2) for w in waits) and "ms" not in waits[0]
+
+
+def test_the_drag_records_its_total_wall_time_and_the_press_to_release_time(rs):
+    driver, page = _paced_driver(rs)
+    t = [0.0]
+
+    def clock():
+        t[0] += 0.05
+        return t[0]
+
+    driver.clock = clock
+    driver.drag_splitter_to(300)
+    p = driver.last_drag["pacing"]
+    assert p["press_to_release_s"] > 0 and p["wall_s"] > p["press_to_release_s"], "the whole routine includes the probes and the post-release wait"
+    assert isinstance(p["wall_s"], float) and p["cap_hit"] is False
+
+
+def test_the_iframe_counters_are_armed_before_the_press_and_read_after_the_release(rs):
+    driver, page = _paced_driver(rs)
+    page.iframe_reply = lambda arg: ({"armed": True, "reason": None} if arg["op"] == "arm" else
+                                     {"counts": {"pointermove": 1, "pointerup": 0, "mousemove": 1, "mouseup": 0}, "first": {"pointermove": {"x": 2.0, "y": 3.0}},
+                                      "last": {"pointermove": {"x": 2.0, "y": 3.0}}, "reason": None})
+    driver.drag_splitter_to(300)
+    kinds = [e for e in page.log if e[0] == "iframe_events"]
+    assert kinds == [("iframe_events", "arm"), ("iframe_events", "read")]
+    assert page.log.index(("iframe_events", "arm")) < page.log.index(("down",)) < page.log.index(("up",)) < page.log.index(("iframe_events", "read"))
+    ev = driver.last_drag["iframe_events"]
+    assert ev["counts"]["pointermove"] == 1 and ev["last"]["pointermove"] == {"x": 2.0, "y": 3.0}
+    assert driver.last_drag["iframe_events_reason"] is None
+
+
+def test_an_unreadable_iframe_is_reported_as_none_with_the_reason(rs):
+    driver, page = _paced_driver(rs)
+    page.iframe_reply = lambda arg: ({"armed": False, "reason": "contentWindow.document is not readable: SecurityError"} if arg["op"] == "arm"
+                                     else {"counts": None, "first": None, "last": None, "reason": "not armed"})
+    driver.drag_splitter_to(300)
+    d = driver.last_drag
+    assert d["iframe_events"] is None and "SecurityError" in d["iframe_events_reason"]
+
+
+def test_the_drag_routine_takes_a_sequence_hook_and_default_behaviour_is_unchanged(rs):
+    import inspect
+    assert "sequence" in inspect.signature(rs.DockDriver._perform_drag).parameters
+    driver, page = _paced_driver(rs)
+    plan = _plan_for(page, rs)
+    seen = []
+
+    def sequence(drv, pl, settle):
+        seen.append((drv, pl))
+        drv.page.mouse.down()
+        settle(3)
+        drv.page.mouse.move(pl["x0"] + 5, pl["y"])
+        drv.page.mouse.up()
+        return [["down"], ["wait", 3], ["move", pl["x0"] + 5, pl["y"]], ["up"]]
+
+    driver._perform_drag(plan, sequence=sequence)
+    assert seen == [(driver, plan)]
+    assert len([e for e in page.log if e[0] == "move"]) == 2, "x0, then the sequence's own single move: the paced 15 moves did not run"
+    d = driver.last_drag
+    assert d["sent"] == [["down"], ["wait", 3], ["move", plan["x0"] + 5, plan["y"]], ["up"]], "what the sequence says it sent replaces the planned burst"
+    assert d["pacing"]["waits"][0]["n"] == 3 and len(d["press_samples"]) == 5 and d["iframe_events"] is not None, "same evidence bracket"
+    assert page.log.index(("press_samples", "arm")) < page.log.index(("down",))
+
+
+def test_assemble_drag_evidence_carries_the_press_samples_the_iframe_events_and_their_reasons(rs):
+    plan = rs.drag_plan(GEO, 300)
+    samples = [_good_sample(l, a) for l, a in PRESS_LABELS]
+    out = rs.assemble_drag_evidence(plan, [], [], _good_probe_points(), _good_dock_probe(), _good_dock_probe(),
+                                    press_samples=samples, iframe_events={"counts": {}}, iframe_events_reason=None, press_samples_reason=None)
+    assert out["press_samples"] == samples and out["iframe_events"] == {"counts": {}} and out["problems"] == []
+    old = rs.assemble_drag_evidence(plan, [], [], _good_probe_points(), _good_dock_probe(), _good_dock_probe())
+    assert old["press_samples"] is None and old["iframe_events"] is None and old["problems"] == [], "old callers: nothing collected is not a problem"
+
+
+def test_press_samples_problems_names_what_is_malformed(rs):
+    good = [_good_sample(l, a) for l, a in PRESS_LABELS]
+    assert rs.press_samples_problems(good) == []
+    assert rs.press_samples_problems([]) and "no press" in rs.press_samples_problems([])[0]
+    bad = [dict(good[0], backdrop_count="1"), {k: v for k, v in good[1].items() if k != "first_move"}, "x"]
+    text = " ".join(rs.press_samples_problems(bad))
+    assert "backdrop_count" in text and "first_move" in text and "not an object" in text
+    assert rs.press_samples_problems(good[:1] + [dict(good[1], backdrop={"rect": {}})])
+
+
+def test_a_malformed_press_sample_list_shows_up_in_the_drag_problems(rs):
+    plan = rs.drag_plan(GEO, 300)
+    out = rs.assemble_drag_evidence(plan, [], [], _good_probe_points(), _good_dock_probe(), _good_dock_probe(), press_samples=[{"label": "x"}])
+    assert any(p.startswith("press_samples:") for p in out["problems"])
+
+
+def test_the_driver_reads_the_iframe_description_through_one_page_call(rs):
+    driver, page = _paced_driver(rs)
+    seen = []
+    page.evaluate = lambda expr, arg=None: (seen.append(expr) or {"present": True})
+    assert driver.iframe_info() == {"present": True} and "iframeInfo()" in seen[0]
+
+
+def test_k2_records_the_deck_iframe_description_once_in_its_evidence(rs, nb, dnbf):
+    d = _layout_fake(rs, dnbf)
+    keys = rs.run_k2(d, nb)
+    info = keys["evidence"]["deck_iframe"]
+    assert info == FakeDock.IFRAME_INFO, "the description comes from the driver"
+    assert [c for c in d.calls if c[0] == "iframe_info"] == [("iframe_info",)], "read ONCE, not per drag or per viewport"
+    assert "deck_iframe" not in keys["evidence"]["medium"]["1280"] and "deck_iframe" not in keys["evidence"]["medium"]["1440"]
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], []), "no key moved"
+
+
+def test_a_driver_without_iframe_info_or_one_that_raises_does_not_touch_the_keys(rs, nb, dnbf):
+    class Old(FakeDock):
+        iframe_info = property(lambda self: (_ for _ in ()).throw(AttributeError("iframe_info")))
+    keys = rs.run_k2(Old(rs, dnbf, start=(1152, 800)), nb)
+    assert keys["evidence"]["deck_iframe"] is None and "deck_iframe" not in keys["evidence"]["step_errors"]
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], [])
+
+    class Boom(FakeDock):
+        def iframe_info(self):
+            raise rs.DockCheckError("frame detached")
+    keys = rs.run_k2(Boom(rs, dnbf, start=(1152, 800)), nb)
+    assert "deck_iframe" in keys["evidence"]["step_errors"] and keys["evidence"]["deck_iframe"] is None
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["K2"], keys) == ([], [])
+
+
+def test_the_real_drag_routine_arms_both_probes_before_the_press_and_keeps_its_old_shape(rs):
+    import inspect
+    perform = inspect.getsource(rs.DockDriver._perform_drag)
+    assert perform.index('"pressSamples(a)"') < perform.index("self.page.mouse.down()")
+    assert perform.index('"iframeEvents(a)"') < perform.index("self.page.mouse.down()")
+    assert 'self._dk("mouseTrace(a)", {"op": "start"})' in perform and perform.count("self.page.mouse.down()") == 1
+    assert rs.DockDriver.drag_splitter_to.__annotations__["return"] == "float | None"
+
+
+# -- round 4: the in-page readers (bun, fake DOM) --------------------------------------------------------------------------------
+
+_PRESS_FAKE = r"""
+const iframe = mkEl("IFRAME", "", ["praxis-deck-panel__frame"], { closest: { ".praxis-deck-panel": true }, getBoundingClientRect: () => box(473, 700, 769) });
+nodes["iframe.praxis-deck-panel__frame"] = iframe;
+const backdrop = mkEl("DIV", "", ["lm-cursor-backdrop"], { getBoundingClientRect: () => box(1280, 800),
+  __style: { position: "fixed", zIndex: "auto", pointerEvents: "auto", display: "block" } });
+let lumino = false;   // Lumino has handled the press: its backdrop is in the document and hit-testable
+document.body = { classList: cls([]) };
+document.elementFromPoint = (x, y) => (lumino ? backdrop : x >= 769 ? iframe : handleEl);
+const luminoActs = (n = 1) => { lumino = true; nodes[".lm-cursor-backdrop*"] = Array.from({ length: n }, () => backdrop);
+  document.body.classList = cls(["lm-mod-override-cursor"]); };
+"""
+
+
+@needs_bun
+def test_press_samples_show_the_state_before_and_after_lumino_handles_the_press_at_each_delay(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + _TRACE_FAKE + _PRESS_FAKE + r"""
+D.pressSamples({ op: "arm", first_move: [775, 300], handle_centre: [766, 300], delays_ms: [0, 30, 60] });
+const before = D.pressSamples({ op: "read" });
+fire("pointerdown", 766, 300);
+await Promise.resolve();            // the microtask sample runs here: Lumino's own handler has NOT run yet
+luminoActs();
+const pending_now = D.pressSamples({ op: "read" }).pending;
+fire("pointerdown", 766, 300);      // a second press is not sampled again
+await new Promise((r) => setTimeout(r, 150));
+const done = D.pressSamples({ op: "read" });
+D.pressSamples({ op: "disarm" });
+return { before, pending_now, done, left: listeners.length };
+""")
+    assert got["before"] == {"samples": [], "pending": 0} and got["pending_now"] == 3
+    s = got["done"]["samples"]
+    assert got["done"]["pending"] == 0 and [x["label"] for x in s] == ["microtask", "+0 ms", "+30 ms", "+60 ms"]
+    assert rs.press_samples_problems(s) == []
+    first = s[0]
+    assert first["backdrop_count"] == 0 and first["backdrop"] is None and first["body_override_cursor"] is False
+    assert first["first_move"]["element"]["inside_iframe"] is True and first["first_move"]["is_backdrop"] is False
+    assert first["handle_centre"]["element"]["is_handle"] is True and first["deck_iframe_rect"]["width"] == 473
+    assert first["backdrop_covers_iframe"] is None
+    for later in s[1:]:
+        assert later["backdrop_count"] == 1 and later["body_override_cursor"] is True
+        assert later["backdrop"] == {"rect": {"left": 0, "top": 0, "width": 1280, "height": 800}, "position": "fixed", "z_index": "auto",
+                                     "pointer_events": "auto", "display": "block"}
+        assert later["first_move"]["is_backdrop"] is True and later["first_move"]["element"]["classes"] == ["lm-cursor-backdrop"]
+        assert later["backdrop_covers_iframe"] is True
+    assert all(a["t"] <= b["t"] and a["since_down_ms"] <= b["since_down_ms"] for a, b in zip(s, s[1:])), "a readable timeline"
+    assert s[0]["since_down_ms"] >= 0 and s[3]["since_down_ms"] >= 55, "the +60 ms sample was taken about 60 ms after the press"
+    assert got["left"] == 0, "disarm removes the listener"
+
+
+@needs_bun
+def test_a_backdrop_that_does_not_cover_the_iframe_is_reported_as_such_case_three(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + _TRACE_FAKE + _PRESS_FAKE + r"""
+backdrop.getBoundingClientRect = () => box(700, 800);   // ends at x=700: the iframe (769..1242) is NOT under it
+luminoActs(2);
+document.elementFromPoint = (x, y) => (x >= 769 ? iframe : backdrop);
+D.pressSamples({ op: "arm", first_move: [775, 300], handle_centre: [766, 300], delays_ms: [0] });
+fire("pointerdown", 766, 300);
+await new Promise((r) => setTimeout(r, 40));
+return D.pressSamples({ op: "read" }).samples[1];
+""")
+    assert got["backdrop_count"] == 2 and got["backdrop_covers_iframe"] is False
+    assert got["first_move"]["is_backdrop"] is False and got["first_move"]["element"]["inside_iframe"] is True
+
+
+@needs_bun
+def test_press_samples_default_to_the_zero_fifty_two_fifty_seven_fifty_timeline_and_survive_a_throwing_hit_test(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + _TRACE_FAKE + _PRESS_FAKE + r"""
+document.elementFromPoint = () => { throw new Error("hit test unavailable"); };
+D.pressSamples({ op: "arm", first_move: [775, 300], handle_centre: [766, 300] });
+fire("pointerdown", 766, 300);
+await new Promise((r) => setTimeout(r, 900));
+return D.pressSamples({ op: "read" });
+""")
+    assert got["pending"] == 0 and [x["label"] for x in got["samples"]] == ["microtask", "+0 ms", "+50 ms", "+250 ms", "+750 ms"]
+    assert all(x["first_move"]["element"] is None and x["first_move"]["is_backdrop"] is False for x in got["samples"])
+
+
+@needs_bun
+def test_sample_now_is_the_same_reading_without_the_schedule(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + _TRACE_FAKE + _PRESS_FAKE + r"""
+luminoActs();
+return D.sampleNow({ first_move: [775, 300], handle_centre: [766, 300] });
+""")
+    assert got["backdrop_count"] == 1 and got["first_move"]["is_backdrop"] is True and got["body_override_cursor"] is True
+    assert "label" not in got and got["t"] > 0
+
+
+def _section(src: str, start: str, end: str) -> str:
+    i = src.index(start)
+    return src[i:src.index(end, i)]
+
+
+def test_the_press_sampler_and_the_iframe_probe_change_no_state(rs):
+    """Read-only by construction: neither section of the page code writes a style, class, attribute or node, dispatches an event,
+    moves focus or calls preventDefault (the iframe probe installs and removes LISTENERS, which is all it may do)."""
+    banned = re.compile(r"setAttribute|removeAttribute|classList\.(add|remove|toggle)|dispatchEvent|appendChild|removeChild|insertBefore|"
+                        r"\.focus\(|\.click\(|preventDefault|stopPropagation|\.style\.\w+\s*=[^=]|\.style\.setProperty|\.remove\(\)|\.textContent\s*=|\.innerHTML\s*=|"
+                        r"document\.body\.class")
+    for name, (a, b) in {"press samples": ("// -- press samples (read-only)", "// -- end press samples"),
+                         "iframe probe": ("// -- deck iframe probe (read-only)", "// -- end deck iframe probe")}.items():
+        text = _section(rs.DOCK_CHECK_JS, a, b)
+        assert not banned.search(text), (name, banned.search(text).group(0))
+
+
+@needs_bun
+def test_iframe_info_describes_sandbox_src_origin_and_whether_the_document_is_readable(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + r"""
+const mkFrame = (attrs, win) => ({ tagName: "IFRAME", classList: cls(["praxis-deck-panel__frame"]),
+  getAttribute: (k) => (k in attrs ? attrs[k] : null), hasAttribute: (k) => k in attrs, getBoundingClientRect: () => box(473, 700, 769),
+  __style: { pointerEvents: "auto" }, style: { pointerEvents: "" }, get contentWindow() { return win; } });
+const key = "iframe.praxis-deck-panel__frame";
+const SRC = "http://x/assets/visualizer3d/index.html?embed=1&view=top&viewer=v-7";
+const out = {};
+nodes[key] = mkFrame({ src: SRC, title: "Deck viewer" }, { document: { documentElement: {} }, location: { href: SRC } });
+out.same = D.iframeInfo();
+nodes[key] = mkFrame({ src: SRC, sandbox: "allow-scripts" }, { get document() { throw Object.assign(new Error("Blocked a frame"), { name: "SecurityError" }); } });
+out.sandboxed = D.iframeInfo();
+nodes[key] = mkFrame({ src: SRC, sandbox: "" }, null);
+out.empty_sandbox = D.iframeInfo();
+nodes[key] = mkFrame({ srcdoc: "<p>x</p>" }, { document: { documentElement: {} }, location: { href: "about:srcdoc" } });
+out.srcdoc = D.iframeInfo();
+nodes[key] = mkFrame({ src: "https://elsewhere.test/x" }, { get document() { throw Object.assign(new Error("cross"), { name: "SecurityError" }); } });
+out.cross = D.iframeInfo();
+delete nodes[key];
+out.none = D.iframeInfo();
+return out;
+""")
+    s = got["same"]
+    assert s["present"] is True and s["sandbox"] is None and s["src_kind"] == "src" and s["src"].startswith("http://x/assets/visualizer3d/index.html")
+    assert s["src_origin"] == "http://x" and s["page_origin"] == "http://x" and s["same_origin_src"] is True
+    assert s["content_document_readable"] is True and s["content_document_error"] is None and s["content_href"].startswith("http://x/assets")
+    assert s["rect"]["width"] == 473 and s["pointer_events"] == "auto" and s["inline_pointer_events"] == ""
+    assert got["sandboxed"]["sandbox"] == "allow-scripts" and got["sandboxed"]["content_document_readable"] is False
+    assert got["sandboxed"]["content_document_error"] == "SecurityError" and got["sandboxed"]["content_href"] is None
+    assert got["empty_sandbox"]["sandbox"] == "" and got["empty_sandbox"]["content_document_readable"] is False, "a bare sandbox attribute is not absent"
+    assert got["srcdoc"]["src_kind"] == "srcdoc" and got["srcdoc"]["src"] is None and got["srcdoc"]["same_origin_src"] is None
+    assert got["cross"]["same_origin_src"] is False and got["cross"]["src_origin"] == "https://elsewhere.test"
+    assert got["none"] == {"present": False}
+
+
+_IFRAME_FAKE = r"""
+const listeners2 = [];
+const frameWin = { document: { documentElement: {} },
+  addEventListener: (t, f, c) => listeners2.push({ t, f, c: !!c }),
+  removeEventListener: (t, f, c) => { const i = listeners2.findIndex((l) => l.t === t && l.f === f && l.c === !!c); if (i >= 0) listeners2.splice(i, 1); } };
+const frameEl = { tagName: "IFRAME", classList: cls(["praxis-deck-panel__frame"]), contentWindow: frameWin };
+nodes["iframe.praxis-deck-panel__frame"] = frameEl;
+const fireIn = (type, x, y, tag = "CANVAS") => listeners2.filter((l) => l.t === type && l.c).forEach((l) => l.f({ type, clientX: x, clientY: y, target: { tagName: tag } }));
+"""
+
+
+@needs_bun
+def test_iframe_events_count_what_the_iframe_document_received_between_arm_and_read_and_clean_up(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + _IFRAME_FAKE + r"""
+const armed = D.iframeEvents({ op: "arm" });
+fireIn("pointermove", 10, 20); fireIn("pointermove", 12, 22); fireIn("mouseup", 12, 22);
+const read = D.iframeEvents({ op: "read" });
+const left = listeners2.length;
+fireIn("pointermove", 99, 99);
+return { armed, read, left, again: D.iframeEvents({ op: "read" }) };
+""")
+    assert got["armed"] == {"armed": True, "reason": None}
+    c = got["read"]["counts"]
+    assert c["pointermove"] == 2 and c["mouseup"] == 1 and c["pointerup"] == 0 and c["mousemove"] == 0
+    assert {"pointerdown", "mousedown", "pointercancel"} <= set(c)
+    assert got["read"]["first"]["pointermove"] == {"x": 10, "y": 20, "target": "CANVAS"}
+    assert got["read"]["last"]["pointermove"] == {"x": 12, "y": 22, "target": "CANVAS"}
+    assert got["read"]["reason"] is None and got["read"]["window_replaced"] is False
+    assert got["left"] == 0, "read removes every listener it installed in the iframe"
+    assert got["again"]["counts"] is None and got["again"]["reason"] == "not armed"
+
+
+@needs_bun
+def test_iframe_events_say_when_the_iframe_cannot_be_read_or_was_replaced_during_the_drag(rs, tmp_path):
+    got = _run_dock_js(rs, tmp_path, _EL + _IFRAME_FAKE + r"""
+const out = {};
+const good = frameEl.contentWindow;
+Object.defineProperty(frameEl, "contentWindow", { configurable: true, get() { throw Object.assign(new Error("Blocked"), { name: "SecurityError" }); } });
+out.blocked = D.iframeEvents({ op: "arm" });
+Object.defineProperty(frameEl, "contentWindow", { configurable: true, value: good, writable: true });
+D.iframeEvents({ op: "arm" });
+fireIn("pointermove", 1, 2);
+frameEl.contentWindow = { document: {}, addEventListener() {}, removeEventListener() {} };   // the iframe reloaded mid-drag
+out.replaced = D.iframeEvents({ op: "read" });
+delete nodes["iframe.praxis-deck-panel__frame"];
+out.none = D.iframeEvents({ op: "arm" });
+return out;
+""")
+    assert got["blocked"]["armed"] is False and "SecurityError" in got["blocked"]["reason"]
+    assert got["replaced"]["window_replaced"] is True and got["replaced"]["counts"]["pointermove"] == 1
+    assert got["none"] == {"armed": False, "reason": "no deck iframe"}
+
+
+# =========================================================================== #
+# C7a round 6: the narrow, user-approved tolerance for ONE stock-JupyterLab page error
+# =========================================================================== #
+#
+# DELIBERATE LOOSENING (approved by the user on 2026-10-01). JupyterLab's splash plugin schedules an unguarded 200 ms
+# `document.body.removeChild(splash)` every time its counter reaches zero, so two theme loads inside 200 ms make the second
+# throw. It is stock, benign and intermittent. `split_pageerrors` tolerates exactly that signature and nothing else; the
+# tolerated entries stay visible in `tolerated_pageerrors`; every other page error still blocks the `pageerrors` key.
+
+REMOVE_CHILD = "Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node."
+CORE_FRAME = "    at http://127.0.0.1:36775/praxis/build/jlab_core.c0153ee.js:19:720"
+REAL_ENTRY = f"{REMOVE_CHILD}\nNotFoundError: {REMOVE_CHILD}\n{CORE_FRAME}"
+
+
+def _entry(first=REMOVE_CHILD, second=f"NotFoundError: {REMOVE_CHILD}", frame=CORE_FRAME, *more):
+    return "\n".join(x for x in (first, second, frame, *more) if x is not None)
+
+
+def test_the_real_removechild_entry_is_tolerated_and_kept_visible(rs):
+    blocking, tolerated = rs.split_pageerrors([REAL_ENTRY])
+    assert blocking == [] and tolerated == [REAL_ENTRY]
+    assert all(isinstance(x, str) for x in tolerated)
+
+
+@pytest.mark.parametrize("frame", [
+    "    at http://127.0.0.1:36775/praxis/build/jlab_core.c0153ee.js:19:720",
+    "    at Object.hide (http://127.0.0.1:36775/praxis/build/jlab_core.c0153ee.js:19:720)",
+    "    at http://localhost:8000/build/jlab_core.0123abcdef.js:437:331634",
+    "\tat https://example.test/a/b/build/jlab_core.deadbeef.js:1:2",
+])
+def test_other_shapes_of_the_same_core_frame_are_tolerated(rs, frame):
+    assert rs.split_pageerrors([_entry(frame=frame)]) == ([], [_entry(frame=frame)])
+
+
+def test_a_stack_without_the_notfounderror_line_is_tolerated_when_the_frame_follows_the_message(rs):
+    entry = _entry(second=None)
+    assert rs.split_pageerrors([entry]) == ([], [entry])
+
+
+# -- the negative controls: each of these MUST stay blocking ------------------------------------------------------------------------
+
+NEGATIVE_ENTRIES = {
+    "the same message from a non-core file (shell)": _entry(frame="    at http://127.0.0.1:1/praxis/shell/display/dock.js:19:720"),
+    "the same message from an asset": _entry(frame="    at http://127.0.0.1:1/praxis/assets/visualizer3d/index.js:19:720"),
+    "the same message from visualizer3d": _entry(frame="    at http://127.0.0.1:1/praxis/build/visualizer3d.c0153ee.js:19:720"),
+    "the same message from an inline frame": _entry(frame="    at <anonymous>:1:1"),
+    "the same message from a blob frame": _entry(frame="    at blob:http://127.0.0.1:1/8d1f-aa:1:1"),
+    "the same message from an eval frame": _entry(frame="    at eval (eval at <anonymous> (http://127.0.0.1:1/praxis/build/jlab_core.c0153ee.js:1:1), <anonymous>:1:1)"),
+    "a bundle name that merely ends the same way": _entry(frame="    at http://h/praxis/build/xjlab_core.c0153ee.js:19:720"),
+    "a core file outside /build/": _entry(frame="    at http://h/praxis/jlab_core.c0153ee.js:19:720"),
+    "a core file with a non-hex hash": _entry(frame="    at http://h/praxis/build/jlab_core.nothex.js:19:720"),
+    "a source map": _entry(frame="    at http://h/praxis/build/jlab_core.c0153ee.js.map:19:720"),
+    "a core file name with a suffix": _entry(frame="    at http://h/praxis/build/jlab_core.c0153ee.js.evil:19:720"),
+    "a core file with no line and column": _entry(frame="    at http://h/praxis/build/jlab_core.c0153ee.js"),
+    "a core file with a query string": _entry(frame="    at http://h/praxis/build/jlab_core.c0153ee.js?x=1:19:720"),
+    "a first frame from the shell and a later one from core": _entry(
+        frame="    at http://h/praxis/shell/display/dock.js:5:5", *("    at http://h/praxis/build/jlab_core.c0153ee.js:19:720",)),
+    "a core frame that is not the first line after the message": _entry(
+        frame="Some other line", *(CORE_FRAME,)),
+    "the same core frame but a different first line": _entry(first="Failed to execute 'removeChild' on 'Node': something else",
+                                                              second="NotFoundError: Failed to execute 'removeChild' on 'Node': something else"),
+    "an Uncaught prefix on the message": _entry(first=f"Uncaught {REMOVE_CHILD}", second=f"NotFoundError: {REMOVE_CHILD}"),
+    "a message that merely contains the target text": _entry(first=f"Wrapped: {REMOVE_CHILD} (while doing x)"),
+    "the target text plus a suffix": _entry(first=f"{REMOVE_CHILD} Extra."),
+    "the target text in different case": _entry(first=REMOVE_CHILD.lower()),
+    "a wildcard-ish variant of the message": _entry(first="Failed to execute 'removeChild' on 'Element': The node to be removed is not a child of this node."),
+    "a wrong second line": _entry(second=f"Error: {REMOVE_CHILD}"),
+    "a second line with a different error text": _entry(second="NotFoundError: something else"),
+    "a different error from the core bundle (TypeError)": _entry(
+        first="Cannot read properties of undefined (reading 'x')", second="TypeError: Cannot read properties of undefined (reading 'x')"),
+    "an error from praxis shell code": _entry(first="boom", second="Error: boom", frame="    at mount (http://127.0.0.1:1/praxis/shell/display/index.js:10:5)"),
+    "an entry with no stack": REMOVE_CHILD,
+    "an entry with the message and the second line but no frame": f"{REMOVE_CHILD}\nNotFoundError: {REMOVE_CHILD}",
+    "an empty string": "",
+    "a plain unrelated error": "Uncaught boom",
+}
+
+
+@pytest.mark.parametrize("name", list(NEGATIVE_ENTRIES))
+def test_negative_control_stays_blocking(rs, name):
+    entry = NEGATIVE_ENTRIES[name]
+    assert rs.split_pageerrors([entry]) == ([entry], []), name
+
+
+def test_non_string_entries_are_never_tolerated(rs):
+    odd = [None, 5, {"message": REMOVE_CHILD}, [REAL_ENTRY]]
+    blocking, tolerated = rs.split_pageerrors(odd)
+    assert blocking == odd and tolerated == []
+
+
+def test_at_most_two_are_tolerated_a_third_is_blocking_and_the_order_is_kept(rs):
+    three = [REAL_ENTRY, REAL_ENTRY, REAL_ENTRY]
+    blocking, tolerated = rs.split_pageerrors(three)
+    assert tolerated == [REAL_ENTRY, REAL_ENTRY] and blocking == [REAL_ENTRY], "the cap is two per session"
+    assert rs.PAGEERROR_TOLERATED_MAX == 2
+    mixed = ["Uncaught boom", REAL_ENTRY, "second boom", REAL_ENTRY, REAL_ENTRY]
+    blocking, tolerated = rs.split_pageerrors(mixed)
+    assert blocking == ["Uncaught boom", "second boom", REAL_ENTRY] and tolerated == [REAL_ENTRY, REAL_ENTRY]
+
+
+def test_the_split_never_mutates_its_input_and_returns_fresh_lists(rs):
+    entries = [REAL_ENTRY, "boom"]
+    snapshot = list(entries)
+    blocking, tolerated = rs.split_pageerrors(entries)
+    assert entries == snapshot and blocking is not entries and tolerated is not entries
+    assert rs.split_pageerrors([]) == ([], []) and rs.split_pageerrors(None) == ([], [])
+
+
+def test_the_message_constant_is_the_exact_text_and_not_a_pattern(rs):
+    assert rs.PAGEERROR_TOLERATED_MESSAGE == REMOVE_CHILD
+    import inspect
+    src = inspect.getsource(rs._is_tolerated_pageerror)
+    assert "lines[0] != PAGEERROR_TOLERATED_MESSAGE" in src, "the message is compared for equality, never matched"
+    assert "re.search" not in src and "re.match" not in src and ".startswith(" not in src and " in entry" not in src
+
+
+# -- through run_scenario: what a unit's result and key do ------------------------------------------------------------------------------
+
+
+ALL_UNIT_IDS = ["D1", "D1-dark", "D2", "D3", "D4", "K1a", "K1b", "K2", "N-d"]
+
+
+@pytest.mark.parametrize("unit_id", ALL_UNIT_IDS)
+def test_every_display_and_dock_unit_splits_its_pageerrors(rs, ur, wds, tmp_path, unit_id):
+    sess = FakeSession()
+    sess.pageerrors.append(REAL_ENTRY)
+    sess.pageerrors.append("Uncaught boom")
+    scenario_in_process(rs, ur, wds, unit_id, tmp_path, make_env(rs), session=sess)
+    result = json.loads(rs.unit_paths(tmp_path, unit_id)["result"].read_text())
+    assert result["pageerrors"] == ["Uncaught boom"], "only the blocking entries"
+    assert result["tolerated_pageerrors"] == [REAL_ENTRY], "the tolerated entry stays visible"
+
+
+def test_the_unit_passes_with_only_the_tolerated_error_and_reports_it(rs, ur, wds, tmp_path):
+    sess = FakeSession()
+    sess.pageerrors.append(REAL_ENTRY)
+    code = scenario_in_process(rs, ur, wds, "D1", tmp_path, make_env(rs), session=sess)
+    result = json.loads(rs.unit_paths(tmp_path, "D1")["result"].read_text())
+    assert code == 0 and result["pageerrors"] == [] and result["tolerated_pageerrors"] == [REAL_ENTRY]
+    assert result["failing_keys"] == [] and result["error"] is None
+
+
+def test_a_unit_without_any_page_error_has_an_empty_tolerated_field(rs, ur, wds, tmp_path):
+    scenario_in_process(rs, ur, wds, "D2", tmp_path, make_env(rs))
+    result = json.loads(rs.unit_paths(tmp_path, "D2")["result"].read_text())
+    assert result["pageerrors"] == [] and result["tolerated_pageerrors"] == []
+
+
+@pytest.mark.parametrize("name", list(NEGATIVE_ENTRIES))
+def test_a_blocking_entry_still_fails_the_pageerrors_key_in_the_unit(rs, ur, wds, tmp_path, name):
+    sess = FakeSession()
+    sess.pageerrors.append(NEGATIVE_ENTRIES[name])
+    code = scenario_in_process(rs, ur, wds, "D1", tmp_path, make_env(rs), session=sess)
+    result = json.loads(rs.unit_paths(tmp_path, "D1")["result"].read_text())
+    assert code == 1 and result["failing_keys"] == ["pageerrors"], name
+    assert result["pageerrors"] == [NEGATIVE_ENTRIES[name]] and result["tolerated_pageerrors"] == []
+
+
+def test_a_mixed_list_with_one_blocking_entry_fails_the_key_and_keeps_the_tolerated_one_visible(rs, ur, wds, tmp_path):
+    sess = FakeSession()
+    sess.pageerrors.extend([REAL_ENTRY, NEGATIVE_ENTRIES["a different error from the core bundle (TypeError)"]])
+    code = scenario_in_process(rs, ur, wds, "K1a", tmp_path, make_env(rs), session=sess)
+    result = json.loads(rs.unit_paths(tmp_path, "K1a")["result"].read_text())
+    assert code == 1 and result["failing_keys"] == ["pageerrors"]
+    assert result["pageerrors"] == [NEGATIVE_ENTRIES["a different error from the core bundle (TypeError)"]]
+    assert result["tolerated_pageerrors"] == [REAL_ENTRY]
+
+
+def test_a_third_occurrence_fails_the_key_through_the_unit(rs, ur, wds, tmp_path):
+    sess = FakeSession()
+    sess.pageerrors.extend([REAL_ENTRY, REAL_ENTRY, REAL_ENTRY])
+    code = scenario_in_process(rs, ur, wds, "D1", tmp_path, make_env(rs), session=sess)
+    result = json.loads(rs.unit_paths(tmp_path, "D1")["result"].read_text())
+    assert code == 1 and result["failing_keys"] == ["pageerrors"]
+    assert result["pageerrors"] == [REAL_ENTRY] and result["tolerated_pageerrors"] == [REAL_ENTRY, REAL_ENTRY]
+
+
+def test_the_key_name_its_meaning_when_empty_and_the_listed_keys_are_unchanged(rs):
+    for uid in ("D1", "D2", "K1a"):
+        expected = dict(rs.UNIT_BY_ID[uid].expected)
+        assert expected["pageerrors"] == []
+        assert "tolerated_pageerrors" not in expected, "an evidence field, never a listed key"
+    for unit in rs.UNIT_TABLE:
+        assert "tolerated_pageerrors" not in unit.keys
+    assert rs.evaluate_unit_result(rs.UNIT_BY_ID["D1"], dict(passing_fields(rs.UNIT_BY_ID["D1"]), pageerrors=["x"]))[1] == ["pageerrors"]
+
+
+def test_the_split_is_used_in_exactly_one_place_and_no_other_check_uses_it(rs):
+    import inspect
+    source = REPL_SMOKE.read_text()
+    assert source.count("split_pageerrors(") == 2, "its definition and the one call in run_scenario"
+    assert "split_pageerrors(" in inspect.getsource(rs.run_scenario)
+    for name in ("run_notebook_check", "run_persistence_check", "run_viz_check", "run_probe"):
+        fn = getattr(rs, name, None)
+        if fn is not None:
+            assert "split_pageerrors" not in inspect.getsource(fn), name
+
+
+def test_the_rule_and_its_reason_are_written_down_where_the_key_is_documented(rs):
+    doc = (rs.split_pageerrors.__doc__ or "").lower()
+    for needle in ("2026-10-01", "deliberate", "approved", "splash", "removechild", "jlab_core", "tolerated_pageerrors", "two"):
+        assert needle in doc, needle
+    source = REPL_SMOKE.read_text()
+    block = source[source.index("#   pageerrors            the session's"):]
+    block = block[:block.index("RAIL_RGB")]
+    assert "tolerated_pageerrors" in block and "2026-10-01" in block and "splash" in block
+
+
+
+# --- round 6: the theme-change gate also waits for the first theme load and a quiet splash (a cheap precaution, NOT a claimed fix) ---
+
+_QUIET_DRIVER = textwrap.dedent(
+    """
+    const JS = __JS__;
+    const SCENARIOS = __SCENARIOS__;
+    const run = async (js, ops) => {
+      let t = 0, splash = true, themed = false, resolveRestored;
+      const restored = new Promise(r => { resolveRestored = r; });
+      const cmds = new Set();
+      const body = {dataset: {}};
+      globalThis.window = {jupyterapp: {commands: {hasCommand: n => cmds.has(n)}, restored}};
+      globalThis.document = {getElementById: id => (id === 'jupyterlab-splash' && splash ? {} : null), body};
+      globalThis.performance = {now: () => t};
+      const pred = (0, eval)('(' + js + ')');
+      pred();
+      const out = [];
+      for (const op of ops) {
+        if (op === 'command') cmds.add('apputils:change-theme');
+        else if (op === 'restored') { resolveRestored(); await restored; await new Promise(r => setTimeout(r, 0)); }
+        else if (op === 'splash_gone') splash = false;
+        else if (op === 'splash_back') splash = true;
+        else if (op === 'theme') body.dataset.jpThemeName = 'JupyterLab Dark';
+        else if (typeof op === 'number') t += op;
+        out.push(!!pred());
+      }
+      return out;
+    };
+    const result = {};
+    for (const [name, ops, js] of SCENARIOS) result[name] = await run(js === null ? JS : js, ops);
+    console.log(JSON.stringify(result));
+    """
+)
+
+
+def _run_quiet_scenarios(rs, scenarios):
+    bun = shutil.which("bun")
+    if not bun:
+        pytest.skip("bun not installed")
+    script = _QUIET_DRIVER.replace("__JS__", json.dumps(rs.THEME_READY_JS)).replace("__SCENARIOS__", json.dumps(scenarios))
+    done = subprocess.run([bun, "--eval", script], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr
+    return json.loads(done.stdout.strip().splitlines()[-1])
+
+
+def test_the_gate_needs_the_first_theme_load_and_300_ms_of_no_splash_in_every_order_of_the_four_events(rs):
+    import itertools
+
+    scenarios = [[",".join(order), [*order, 299, 1], None] for order in itertools.permutations(["command", "restored", "splash_gone", "theme"])]
+    got = _run_quiet_scenarios(rs, scenarios)
+    assert len(got) == 24
+    for order, steps in got.items():
+        assert steps == [False, False, False, False, False, True], (order, "not ready until 300 ms after the splash was first seen gone")
+
+
+def test_without_the_theme_attribute_or_without_the_quiet_period_the_gate_stays_closed(rs):
+    ready = ["command", "restored", "splash_gone", "theme"]
+    got = _run_quiet_scenarios(rs, [
+        ["no theme load", [*ready[:3], 5000, 5000], None],
+        ["no time passes", [*ready, 0, 0, 0], None],
+        ["299 ms is not enough", [*ready, 299], None],
+        ["300 ms is", [*ready, 300], None],
+        ["splash never gone", ["command", "restored", "theme", 5000], None],
+    ])
+    assert got["no theme load"][-1] is False
+    assert got["no time passes"] == [False] * 7
+    assert got["299 ms is not enough"][-1] is False
+    assert got["300 ms is"][-1] is True
+    assert got["splash never gone"][-1] is False
+
+
+def test_a_splash_that_comes_back_restarts_the_quiet_period(rs):
+    ready = ["command", "restored", "splash_gone", "theme"]
+    got = _run_quiet_scenarios(rs, [["second theme load", [*ready, 300, "splash_back", "splash_gone", 299, 1], None]])
+    steps = got["second theme load"]
+    assert steps[4] is True, "ready after the first quiet period"
+    assert steps[5:] == [False, False, False, True], "back: closed; gone again: closed; 299 ms: closed; 300 ms: open"
+
+
+def test_negative_controls_each_new_condition_removed_opens_the_gate_too_early(rs):
+    ready = ["command", "restored", "splash_gone", "theme"]
+    no_theme = _without(rs.THEME_READY_JS, "first theme load finished")
+    no_quiet = _without(rs.THEME_READY_JS, "splash quiet for 300 ms")
+    never_resets = rs.THEME_READY_JS.replace("window.__praxisSplashGoneAt = null;", "void 0;")
+    assert never_resets != rs.THEME_READY_JS, "the mutant must change something"
+    got = _run_quiet_scenarios(rs, [
+        ["real: no theme", ["command", "restored", "splash_gone", 5000], None],
+        ["broken: no theme", ["command", "restored", "splash_gone", 5000], no_theme],
+        ["real: no time", [*ready, 0], None],
+        ["broken: no time", [*ready, 0], no_quiet],
+        ["real: splash back", [*ready, 300, "splash_back", "splash_gone"], None],
+        ["broken: tracker never resets", [*ready, 300, "splash_back", "splash_gone"], never_resets],
+    ])
+    assert got["real: no theme"][-1] is False and got["broken: no theme"][-1] is True
+    assert got["real: no time"][-1] is False and got["broken: no time"][-1] is True
+    assert got["real: splash back"][-1] is False and got["broken: tracker never resets"][-1] is True
+
+
+def test_the_existing_three_conditions_are_still_in_the_gate_and_the_wait_call_is_unchanged(rs):
+    for name in ("command registered", "app restored", "splash gone"):
+        assert _missing_theme_conditions(rs.THEME_READY_JS) == [], name
+    assert "hasCommand('apputils:change-theme')" in rs.THEME_READY_JS and "__praxisRestored === true" in rs.THEME_READY_JS
+    assert "!document.getElementById('jupyterlab-splash')" in rs.THEME_READY_JS
+    assert "jpThemeName" in rs.THEME_READY_JS and "performance.now()" in rs.THEME_READY_JS

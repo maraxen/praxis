@@ -14,7 +14,7 @@ AC-42's workflow test. ``.github/workflows/repl.yml`` is parsed (PyYAML) and che
 * an ``actions/upload-artifact`` step with ``if: always()`` covering the out dir, and NO
   ``actions/download-artifact`` step (CI never reuses across workflow runs);
 * the job-level ``timeout-minutes`` backstop: at least 45 plus the sum of the scenario step
-  timeouts (60 after sprint A);
+  timeouts (60 after sprint A, 92 after sprint B);
 * both ``paths:`` filters (``push`` and ``pull_request``) listing ``scripts/repl_smoke.py``,
   ``scripts/unit_runner.py``, ``scripts/spikes/**`` and ``scripts/negatives/**`` (C11-11).
 
@@ -22,11 +22,21 @@ The D16 budgets are written out here, not imported from ``repl_smoke.py``: a cha
 unit table must not silently move the CI step timeouts (the unit-table test in
 ``test_repl_smoke_resume.py`` pins the table to the same numbers).
 
-Sprint B (B10) and sprint C (C7) extend ``BUDGET_MIN`` and ``CHECKS`` with their units.
+Sprint B (B10) extended ``BUDGET_MIN`` and ``CHECKS`` with D2, D3 and D4 (budgets 12, 8 and 6 min,
+step timeouts 14, 10 and 8, backstop 92). Sprint C (C7) extends them with K1a, K1b and K2 (budgets 10, 14 and
+15 min, step timeouts 12, 16 and 17, backstop 137) and adds the ``vendor_visualizer3d.py --check`` step and the
+dock out dir in the one upload step. ``N-d`` (AC-39(d), negative only) has NO CI step: the sensitivity driver runs it.
+
+C7a SHIPPED THE TESTS BEFORE THE WORKFLOW EDIT (the agent may not edit ``.github/``; the diff is in its report). While
+``repl.yml`` has no ``--dock-check`` the dock-specific cases are SKIPPED with a reason and one strict ``xfail`` says the
+wiring is pending; once the diff is applied they run, and that xfail turns into a hard failure (strict) if any
+requirement is unmet, so a half-applied diff cannot pass. ``PRAXIS_REPL_WORKFLOW`` points the file at another
+workflow (used to check the diff before it is applied).
 """
 
 from __future__ import annotations
 
+import os
 import re
 import shlex
 from pathlib import Path
@@ -36,13 +46,20 @@ import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-WORKFLOW = REPO_ROOT / ".github" / "workflows" / "repl.yml"
+WORKFLOW = Path(os.environ.get("PRAXIS_REPL_WORKFLOW") or REPO_ROOT / ".github" / "workflows" / "repl.yml")
+#: Has the C7 CI wiring been applied to the workflow under test? (the agent that wrote C7a may not edit .github/)
+DOCK_APPLIED = "--dock-check" in WORKFLOW.read_text()
+pending_ci = pytest.mark.skipif(
+    not DOCK_APPLIED, reason="C7 CI steps not applied to repl.yml yet (apply the diff from the C7a report); see test_dock_check_ci_steps_are_applied"
+)
 
-#: D16 unit budgets in minutes, sprint A. CI step timeout = budget + 2.
-BUDGET_MIN = {"D1": 6, "D1-dark": 5}
-#: check flag -> ordered unit ids that belong to it
-CHECKS = {"--display-check": ["D1", "D1-dark"]}
-OUT_DIRS = {"--display-check": "outputs/repl_smoke/display-check"}
+#: D16 unit budgets in minutes, sprints A and B. CI step timeout = budget + 2.
+BUDGET_MIN = {"D1": 6, "D1-dark": 5, "D2": 12, "D3": 8, "D4": 6, "K1a": 10, "K1b": 14, "K2": 15}
+#: check flag -> ordered unit ids that belong to it (N-d is never a CI step: the AC-39 sensitivity driver runs it)
+CHECKS = {"--display-check": ["D1", "D1-dark", "D2", "D3", "D4"]}
+OUT_DIRS = {"--display-check": "outputs/repl_smoke/display-check", "--dock-check": "outputs/repl_smoke/dock-check"}
+if DOCK_APPLIED:
+    CHECKS["--dock-check"] = ["K1a", "K1b", "K2"]
 HASHED_ARGS = ("--base-path", "--serve-dir", "--out-dir", "--neg")
 REQUIRED_PATHS = (
     "scripts/repl_smoke.py",
@@ -137,7 +154,9 @@ def test_step_timeout_is_the_budget_plus_two_minutes(steps, check):
     for uid, step in _scenario_steps(steps, check).items():
         assert step["timeout-minutes"] == BUDGET_MIN[uid] + 2, uid
     if check == "--display-check":
-        assert {u: BUDGET_MIN[u] + 2 for u in CHECKS[check]} == {"D1": 8, "D1-dark": 7}
+        assert {u: BUDGET_MIN[u] + 2 for u in CHECKS[check]} == {"D1": 8, "D1-dark": 7, "D2": 14, "D3": 10, "D4": 8}
+    if check == "--dock-check":
+        assert {u: BUDGET_MIN[u] + 2 for u in CHECKS[check]} == {"K1a": 12, "K1b": 16, "K2": 17}
 
 
 @pytest.mark.parametrize("check", sorted(CHECKS))
@@ -247,9 +266,16 @@ def test_job_timeout_is_only_a_backstop_over_the_sum_of_the_step_timeouts(wf, st
         assert all(s["timeout-minutes"] < limit for s in _scenario_steps(steps, check).values())
 
 
-def test_job_backstop_is_60_after_sprint_a(wf):
-    """D16: 60 after sprint A, 92 after sprint B, 137 after sprint C (B10 and C7 update this)."""
-    assert wf["jobs"]["repl"]["timeout-minutes"] == 60
+def test_job_backstop_is_the_d16_number_for_the_sprints_applied(wf, steps):
+    """D16: 60 after sprint A, 92 after sprint B, 137 after sprint C: 45 plus the sum of the scenario step timeouts."""
+    display = sum(s["timeout-minutes"] for s in _scenario_steps(steps, "--display-check").values())
+    assert display == 47, "8 + 7 + 14 + 10 + 8 scenario minutes"
+    if not DOCK_APPLIED:
+        assert wf["jobs"]["repl"]["timeout-minutes"] == 92 == 45 + display, "sprint B: the 45-minute allowance plus 47"
+        return
+    dock = sum(s["timeout-minutes"] for s in _scenario_steps(steps, "--dock-check").values())
+    assert dock == 45, "12 + 16 + 17 scenario minutes"
+    assert wf["jobs"]["repl"]["timeout-minutes"] == 137 == 45 + display + dock
 
 
 def test_the_coxswain_job_keeps_its_own_timeout(wf):
@@ -277,8 +303,131 @@ def test_display_check_and_display_js_harness_are_wired(wf):
 
 
 @pytest.mark.parametrize(
-    "name", ["test_repl_smoke_resume.py", "test_repl_workflow_scenarios.py", "test_nd_sensitivity_driver.py"]
+    "name",
+    [
+        "test_repl_smoke_resume.py",
+        "test_repl_workflow_scenarios.py",
+        "test_nd_sensitivity_driver.py",
+        "test_display_check_fixture.py",  # B10: the fixture notebook's cells run against real PLR at the pin
+    ],
 )
 def test_new_test_files_are_wired_in_the_tests_step(steps, name):
     tests = "\n".join(_command_lines(_by_name(steps, "Tests")))
     assert f"uv run python -m pytest web-repl/tests/{name} -q" in tests
+
+
+# --------------------------------------------------------------------------- #
+# Sprint B (B10): D2, D3 and D4 are wired one step each, in table order, before the aggregate
+# --------------------------------------------------------------------------- #
+
+
+def test_b10_steps_exist_with_their_own_names_and_the_d16_commands(steps):
+    found = _scenario_steps(steps, "--display-check")
+    for uid, timeout in (("D2", 14), ("D3", 10), ("D4", 8)):
+        step = found[uid]
+        assert step["timeout-minutes"] == timeout and step["if"] == "${{ !cancelled() }}"
+        assert _smoke_args(step) == ["--display-check", "--scenario", uid, "--base-path", "/praxis/"]
+        assert "name" in step and uid in step["name"], "a named step per unit"
+    assert len({found[u]["name"] for u in found}) == len(found), "step names are unique"
+
+
+def test_the_five_units_run_in_the_d16_table_order_right_before_the_aggregate(steps):
+    found = _scenario_steps(steps, "--display-check")
+    order = [_index(steps, found[u]) for u in ("D1", "D1-dark", "D2", "D3", "D4")]
+    assert order == list(range(order[0], order[0] + 5)), "adjacent, in order"
+    agg = _index(steps, _aggregate_steps(steps, "--display-check")[0])
+    assert agg == order[-1] + 1, "the gating aggregate is the very next step"
+
+
+def test_the_aggregate_still_carries_base_path_and_names_no_scenario(steps):
+    (agg,) = _aggregate_steps(steps, "--display-check")
+    assert _smoke_args(agg) == ["--display-check", "--aggregate-only", "--base-path", "/praxis/"]
+
+
+def test_the_one_upload_step_still_covers_the_display_check_out_dir_and_the_dock_one_once_wired(steps):
+    uploads = [
+        s for s in steps
+        if str(s.get("uses", "")).startswith("actions/upload-artifact") and s.get("if") == "always()"
+        and "outputs/repl_smoke" in str(s.get("with", {}).get("path", ""))
+    ]
+    assert len(uploads) == 1
+    listed = [ln.strip().rstrip("/") for ln in str(uploads[0]["with"]["path"]).splitlines() if ln.strip()]
+    assert listed == (["outputs/repl_smoke/display-check", "outputs/repl_smoke/dock-check"] if DOCK_APPLIED
+                      else ["outputs/repl_smoke/display-check"])
+
+
+
+# --------------------------------------------------------------------------- #
+# Sprint C (C7): K1a, K1b and K2 are wired one step each, in table order, before the dock aggregate; the vendoring
+# check runs against the submodule the job already initialises; N-d has no CI step
+# --------------------------------------------------------------------------- #
+
+
+def test_dock_check_ci_steps_are_applied():
+    """The C7 wiring is pending until the diff in the C7a report is applied to repl.yml. Strict xfail: pending while
+    it is absent, a hard requirement (the assertion must hold) the moment it is there."""
+    assert DOCK_APPLIED, "repl.yml has no --dock-check step yet (C7a could not edit .github/)"
+
+
+test_dock_check_ci_steps_are_applied = pytest.mark.xfail(
+    not DOCK_APPLIED, strict=True, reason="C7 CI wiring pending: the agent may not edit .github/workflows/repl.yml"
+)(test_dock_check_ci_steps_are_applied)
+
+
+@pending_ci
+def test_dock_steps_exist_one_per_unit_with_their_own_names_commands_and_timeouts(steps):
+    found = _scenario_steps(steps, "--dock-check")
+    assert sorted(found) == ["K1a", "K1b", "K2"], "exactly one scenario step per dock unit that counts"
+    for uid, timeout in (("K1a", 12), ("K1b", 16), ("K2", 17)):
+        step = found[uid]
+        assert step["timeout-minutes"] == timeout and step["if"] == "${{ !cancelled() }}"
+        assert _smoke_args(step) == ["--dock-check", "--scenario", uid, "--base-path", "/praxis/"]
+        assert "name" in step and uid in step["name"], "a named step per unit"
+        assert any(line.startswith("uv run python scripts/repl_smoke.py") for line in _command_lines(step))
+    assert len({found[u]["name"] for u in found}) == len(found), "step names are unique"
+
+
+@pending_ci
+def test_n_d_has_no_ci_step_anywhere(steps):
+    for step in steps:
+        argv = _smoke_args(step) or []
+        assert "N-d" not in argv, "AC-39(d) is negative-only: the sensitivity driver runs it, never the workflow"
+        assert "--neg" not in argv, "no workflow step carries a harness-only negative flag"
+
+
+@pending_ci
+def test_the_dock_units_run_in_table_order_right_before_the_dock_aggregate_after_the_display_one(steps):
+    found = _scenario_steps(steps, "--dock-check")
+    order = [_index(steps, found[u]) for u in ("K1a", "K1b", "K2")]
+    assert order == list(range(order[0], order[0] + 3)), "adjacent, in order"
+    agg = _index(steps, _aggregate_steps(steps, "--dock-check")[0])
+    assert agg == order[-1] + 1, "the gating dock aggregate is the very next step"
+    assert order[0] > _index(steps, _aggregate_steps(steps, "--display-check")[0]), "after the display aggregate"
+    assert agg < _index(steps, _reap_steps(steps)[0]), "and before the reap"
+
+
+@pending_ci
+def test_the_dock_aggregate_carries_base_path_and_names_no_scenario(steps):
+    (agg,) = _aggregate_steps(steps, "--dock-check")
+    assert _smoke_args(agg) == ["--dock-check", "--aggregate-only", "--base-path", "/praxis/"]
+
+
+@pending_ci
+def test_the_vendoring_check_runs_against_the_submodule_the_job_already_initialises(wf, steps):
+    """AC-30 CI (Revision 10): `vendor_visualizer3d.py --check`, no separate PLR checkout step (the pin is the source)."""
+    checks = [s for s in steps if any("vendor_visualizer3d.py" in ln and "--check" in ln for ln in _command_lines(s))]
+    assert len(checks) == 1
+    (check,) = checks
+    assert check.get("if") in (None, "${{ !cancelled() }}", "success()")
+    lines = [ln for ln in _command_lines(check) if "vendor_visualizer3d.py" in ln]
+    assert all(ln.startswith("uv run python web-repl/scripts/vendor_visualizer3d.py --check") for ln in lines)
+    assert all("--plr" not in ln and "--source" not in ln for ln in lines), "the default source is the submodule at the pin"
+    checkouts = [s for s in steps if str(s.get("uses", "")).startswith("actions/checkout")]
+    assert len(checkouts) == 1 and checkouts[0]["with"]["submodules"] == "recursive", "one checkout, submodules included"
+    assert _index(steps, check) > _index(steps, checkouts[0])
+    assert all("pylabrobot" not in str(s.get("with", {}).get("repository", "")) for s in steps), "no separate PLR checkout"
+
+
+@pending_ci
+def test_the_dock_check_flag_is_wired_once_at_least(wf):
+    assert WORKFLOW.read_text().count("--dock-check") >= 1  # AC-40, sprint C

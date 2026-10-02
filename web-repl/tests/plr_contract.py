@@ -111,4 +111,22 @@ CONTRACT: tuple[tuple[str, str], ...] = (
     # Visualizer.__init__, not at import time -- so the throwaway-venv contract
     # check does not need websockets to verify this symbol resolves.
     ("pylabrobot.visualizer.visualizer", "Visualizer"),
+    # -- the 3D viewer base class praxis/viz/viewer3d.py subclasses (C3; spec D11, Revision 10). The
+    # 1.0.0b1 pin ships ``pylabrobot.visualizer3D`` and the PLR wheel already contains it, so nothing is
+    # vendored; this is the ordinary entry for the task's own import, not a shim home. It imports with
+    # warnings escalated to errors (C3 probe: ``python -W error -c "import pylabrobot.visualizer3D.server"``).
+    # ``websockets`` (17.0.1, a vendored wheel) is imported by the module at load time.
+    ("pylabrobot.visualizer3D.server", "Viewer3D"),
+    # -- praxis/display/context.py (B5, D8 "Classes the code checks"): the error classes, the two
+    # trackers and the tip-spot tracker accessor, at their non-shim homes. ``resources.tip_tracker``
+    # is a DeprecationWarning shim at the pin (test_contract_names_no_deprecated_shim_paths), so the
+    # legacy home is named; the resolver reads committed tip state through ``tip_spot_tracker(spot)``
+    # and never the docstring-deprecated ``TipSpot.tracker``.
+    ("pylabrobot.resources.errors", "TooLittleLiquidError"),
+    ("pylabrobot.resources.errors", "TooLittleVolumeError"),
+    ("pylabrobot.resources.errors", "HasTipError"),
+    ("pylabrobot.resources.errors", "NoTipError"),
+    ("pylabrobot.resources.volume_tracker", "VolumeTracker"),
+    ("pylabrobot.legacy.tip_tracker", "TipTracker"),
+    ("pylabrobot.legacy.tip_tracker", "tip_spot_tracker"),
 )

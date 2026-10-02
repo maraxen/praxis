@@ -55,6 +55,13 @@ already-swallowed wheel-install failure (old ``:239-246`` logs and falls
 through; old ``:286-293`` posts ready regardless) -- the demonstrated live
 bomb where renaming the wheel produced a 404, PyLabRobot never installed,
 and ``praxis:ready`` fired anyway with ``builtins.Plate`` absent.
+
+**The one deliberate exception (notebook display epic, D13).** The last stage, installing
+``praxis.display`` (step 13, after ``stages.verify_identity()`` and before ``praxis:ready``), is
+NON-fatal: it has its own narrow ``except Exception`` that logs a console error, posts
+``{"type": "praxis:display-error", "reason": ...}`` and falls through to ``praxis:ready``. A broken
+drawing layer must not take PyLabRobot away from the user, and the identity ledger it follows has
+already passed. Everything above it stays fail-closed.
 """
 
 from __future__ import annotations
@@ -413,6 +420,30 @@ async def praxis_main(host_root: str, *, raise_on_error: bool = False) -> None:
         #     construction. This is the only position where the check is
         #     non-vacuous; see stages.verify_identity()'s docstring.
         stages.verify_identity()
+
+        # 13. The notebook display (spec D13; notebook display epic B8). The ONE
+        #     deliberate exception to fail-closed: the ledger above exists so device
+        #     I/O never runs on the wrong class objects (ADR Sec 2.2), and a broken
+        #     drawing layer does not endanger that, so it must not take PyLabRobot
+        #     away from the user. Any failure here (a missing praxis/display package,
+        #     or an exception inside install()) is caught, logged with a console
+        #     error and posted as a typed praxis:display-error message (the shell
+        #     shows it as a one-line banner), and the boot still reaches
+        #     praxis:ready. It is never silent. Placed after step 12 so it can only
+        #     run once the identity check has passed. One stage covers both boot
+        #     paths: praxis_boot.setup() and welcome.ipynb's fetch-and-exec cell both
+        #     run praxis_main().
+        try:
+            import praxis.display
+
+            praxis.display.install()
+        except Exception as exc:  # noqa: BLE001 -- the deliberate non-fatal stage, by design
+            import traceback
+
+            reason = str(exc) or type(exc).__name__
+            js.console.error(f"[Bootstrap] display install FAILED (the REPL still starts): {reason}")
+            traceback.print_exc()
+            _post({"type": "praxis:display-error", "reason": reason})
 
         js.console.log("[Bootstrap] All stages passed")
         # Set the once-guard flag ONLY after all stages pass, so a failed

@@ -47,11 +47,12 @@ jobs:
     name: Build + browser gates
     runs-on: ubuntu-latest
     # A BACKSTOP only (D16): 45 + the sum of this job's scenario step timeouts (8 + 7 after
-    # sprint A = 60; 92 after sprint B, 137 after sprint C). Every browser unit is bounded
-    # by its own watchdog at its budget, the driver's run_unit at budget + 60 s and its step
-    # timeout at budget + 2 min, so this is never the limit that ends a unit. The reap step's
-    # 1 minute sits inside the 45-minute allowance and is not added to the sum.
-    timeout-minutes: 60
+    # sprint A = 60; 8 + 7 + 14 + 10 + 8 = 47 after sprint B = 92; 12 + 16 + 17 = 45 more after
+    # sprint C = 137). Every browser unit is bounded by its own watchdog at its budget, the
+    # driver's run_unit at budget + 60 s and its step timeout at budget + 2 min, so this is never
+    # the limit that ends a unit. The reap step's 1 minute sits inside the 45-minute allowance and
+    # is not added to the sum.
+    timeout-minutes: 137
     env:
       PYTHONDONTWRITEBYTECODE: 1
 
@@ -138,6 +139,15 @@ jobs:
           uv run python web-repl/scripts/check_wheel_coherence.py --check-untracked
           uv run python web-repl/scripts/check_wheel_contract.py
 
+      # AC-30 (C7): the vendored Visualizer3D static tree is byte-identical to the pin's
+      # `pylabrobot/visualizer3D/static/` (sha256 per file, the recorded commit, the two anchors in
+      # index.html). The source is the submodule this job's checkout already initialises at the pin:
+      # there is no separate PyLabRobot checkout step.
+      - name: Vendored Visualizer3D tree matches the pin
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python web-repl/scripts/vendor_visualizer3d.py --check
+
       - name: Gesture invariant (no await/async before gesture calls, D6)
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
@@ -166,10 +176,11 @@ jobs:
       # Notebook display gates (epic 260929_notebook-display-design, D16 "Preemption-safe
       # harness design"). ONE STEP PER UNIT: each scenario runs in its own process with its
       # own browser, watchdog, result and stamp, and its step-level timeout is the unit's
-      # budget + 2 min (D1 6 min -> 8, D1-dark 5 min -> 7). `if: ${{ !cancelled() }}` so one
-      # failing unit does not hide the others. CI never reuses across workflow runs: every
-      # unit recomputes on this run's head; the only reuse is the aggregate step below, which
-      # reads the stamps the two steps above it just wrote in THIS job.
+      # budget + 2 min (D1 6 min -> 8, D1-dark 5 min -> 7, D2 12 -> 14, D3 8 -> 10, D4 6 -> 8).
+      # `if: ${{ !cancelled() }}` so one failing unit does not hide the others. CI never
+      # reuses across workflow runs: every unit recomputes on this run's head; the only reuse
+      # is the aggregate step below, which reads the stamps the five steps above it just wrote
+      # in THIS job.
       - name: Display check D1 (chrome, Light)
         if: ${{ !cancelled() }}
         timeout-minutes: 8
@@ -184,6 +195,31 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --display-check --scenario D1-dark --base-path /praxis/
 
+      # Sprint B (B10): AC-21..AC-25 in one kernel (reprs, error panels, staleness with one kernel
+      # restart, keyboard; Run All only in its own notebook, last), AC-24 (execute, save, reload,
+      # reopen) and AC-26 (High Contrast, two contexts). Each unit is self-bounded by its own
+      # watchdog at its budget (12, 8, 6 min).
+      - name: Display check D2 (reprs, errors, staleness, keyboard)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 14
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --display-check --scenario D2 --base-path /praxis/
+
+      - name: Display check D3 (trust loss - save, reload, reopen)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 10
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --display-check --scenario D3 --base-path /praxis/
+
+      - name: Display check D4 (High Contrast)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 8
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --display-check --scenario D4 --base-path /praxis/
+
       # The step whose exit gates the PR. --aggregate-only recomputes nothing and never
       # deletes. Its hashed arguments MUST equal the scenario steps' (without --base-path
       # /praxis/ every stamp's `args` hash mismatches and this gate is permanently red).
@@ -192,6 +228,41 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --display-check --aggregate-only --base-path /praxis/
+
+      # Visualizer3D deck-panel gates (C7; D16). Same shape as the display steps above: ONE STEP PER
+      # UNIT, each in its own process with its own FULL Chromium (SwiftShader WebGL; the headless
+      # shell has no WebGL2), watchdog, result and stamp; step timeout = budget + 2 min (K1a 10 min ->
+      # 12, K1b 14 -> 16, K2 15 -> 17); `if: ${{ !cancelled() }}` so one failing unit does not hide
+      # the others. N-d (AC-39(d)) is negative-only and has NO step: the sensitivity driver runs it.
+      - name: Dock check K1a (viewer draws, Follow, presets, live state)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 12
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --dock-check --scenario K1a --base-path /praxis/
+
+      - name: Dock check K1b (reconnect, re-dock, stop, late iframe, kernel restart)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 16
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --dock-check --scenario K1b --base-path /praxis/
+
+      - name: Dock check K2 (tiers - drawer, split, 1280-1599 and >= 1600 widths)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 17
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --dock-check --scenario K2 --base-path /praxis/
+
+      # The step whose exit gates the PR for the dock units. Its hashed arguments MUST equal the scenario
+      # steps' (without --base-path /praxis/ every stamp's `args` hash mismatches and this gate is
+      # permanently red).
+      - name: Dock check aggregate
+        if: ${{ !cancelled() }}
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --dock-check --aggregate-only --base-path /praxis/
 
       # Playwright launches Chromium detached (its own process group), so a step timeout
       # orphans a hung one. This kills every process still carrying a unit token. No --force:
@@ -203,13 +274,16 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/unit_runner.py --reap
 
-      # Diagnosis only: nothing downloads this. Results, stamps, timeout markers, result.json.
-      - name: Upload display-check results
+      # Diagnosis only: nothing downloads this. Results, stamps, timeout markers, result.json of
+      # the display units and the dock units.
+      - name: Upload display-check and dock-check results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: display-check-results
-          path: outputs/repl_smoke/display-check/
+          name: display-and-dock-check-results
+          path: |
+            outputs/repl_smoke/display-check/
+            outputs/repl_smoke/dock-check/
           if-no-files-found: ignore
 
       # Every kernel sets PyLabRobot up automatically on startup via PYTHONSTARTUP
@@ -306,11 +380,25 @@ jobs:
           uv run python -m pytest web-repl/tests/test_check_wheel_coherence.py -q
           uv run python -m pytest web-repl/tests/test_contract_covers_imports.py -q
           uv run python -m pytest web-repl/tests/test_d1_praxis_git_sha.py -q
+          uv run python -m pytest web-repl/tests/test_display_budget.py -q
+          uv run python -m pytest web-repl/tests/test_display_check_fixture.py -q
+          uv run python -m pytest web-repl/tests/test_display_colorblind.py -q
+          uv run python -m pytest web-repl/tests/test_display_context.py -q
           uv run python -m pytest web-repl/tests/test_display_css.py -q
+          uv run python -m pytest web-repl/tests/test_display_deck.py -q
+          uv run python -m pytest web-repl/tests/test_display_errors.py -q
+          uv run python -m pytest web-repl/tests/test_display_floor.py -q
+          uv run python -m pytest web-repl/tests/test_display_glossary.py -q
+          uv run python -m pytest web-repl/tests/test_display_install.py -q
+          uv run python -m pytest web-repl/tests/test_display_labware.py -q
+          uv run python -m pytest web-repl/tests/test_display_ledger.py -q
           uv run python -m pytest web-repl/tests/test_display_staging.py -q
+          uv run python -m pytest web-repl/tests/test_display_stale.py -q
+          uv run python -m pytest web-repl/tests/test_display_svg.py -q
           uv run python -m pytest web-repl/tests/test_fetch_vendored_wheels.py -q
           uv run python -m pytest web-repl/tests/test_inject_branding.py -q
           uv run python -m pytest web-repl/tests/test_inject_shell_coxswain.py -q
+          uv run python -m pytest web-repl/tests/test_k2_first_drag_probe.py -q
           uv run python -m pytest web-repl/tests/test_nd_sensitivity_driver.py -q
           uv run python -m pytest web-repl/tests/test_persistence_staging.py -q
           uv run python -m pytest web-repl/tests/test_plr_contract.py -q
@@ -326,6 +414,7 @@ jobs:
           uv run python -m pytest web-repl/tests/test_s1_spike_driver.py -q
           uv run python -m pytest web-repl/tests/test_s2_spike_driver.py -q
           uv run python -m pytest web-repl/tests/test_s3_spike_driver.py -q
+          uv run python -m pytest web-repl/tests/test_s4_spike_driver.py -q
           uv run python -m pytest web-repl/tests/test_stamp_loader_shas.py -q
           uv run python -m pytest web-repl/tests/test_theme_staging.py -q
           uv run python -m pytest web-repl/tests/test_transport.py -q
@@ -333,6 +422,8 @@ jobs:
           # the Chromium installed above; locally it is skipped, so this run is its gate.
           uv run python -m pytest web-repl/tests/test_unit_runner.py -q
           uv run python -m pytest web-repl/tests/test_vendor_staging.py -q
+          uv run python -m pytest web-repl/tests/test_vendor_visualizer3d.py -q
+          uv run python -m pytest web-repl/tests/test_viewer3d_docked.py -q
           uv run python -m pytest web-repl/tests/test_viz_highlight_staging.py -q
           uv run python -m pytest web-repl/tests/test_web_bridge_fqn_fallback.py -q
 
@@ -404,3 +495,9 @@ jobs:
 
       - name: Display JS harness
         run: bun test web-repl/shell/display
+
+      # C4 (AC-32): the Visualizer3D socket shim + embed-mode tests live under
+      # shell/display/__tests__, so the step above already runs them; this named step
+      # keeps the gate visible on its own and fails loudly if the file is moved.
+      - name: Visualizer3D socket shim JS harness
+        run: bun test web-repl/shell/display/__tests__/viz3d_socket.test.js
