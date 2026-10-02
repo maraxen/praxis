@@ -57,7 +57,10 @@ also what proves the seam before two UIs depend on it.
 | A5 | Moving the pydantic graph classes does not break persisted data | **verified** | `computation_graph_json` is a `JsonVariant` dict column; `ParseCache` stores json; `protocol_discovery.py:298` persists `graph.model_dump(exclude_none=True)` — no pickled class paths |
 | A6 | plr-sema's suite is green on main, so a new CI job starts green | **verified** | local run on origin/main e06ab3b1: 1302 passed, 20 skipped, 1 failed. The failure (`test_fork_drift::test_git_state_matches_cisternal`) needs a sibling cisternal checkout and **skips** when it is absent, as on a CI runner; locally it reports real cisternal drift |
 | A7 | `check_graph` accepts the extractor's `model_dump` output unchanged | **verified** | `tests/test_check_graph_mirror_drift.py` asserts two-way field parity between `check/graph.py` and `models.py:504–671` |
-| A8 | `parameter_types` can be derived from the protocol function's annotations | **unverified** | to spike in T4 (§9) before the CLI depends on it; fallback is `parameter_types=None`, which the extractor already accepts |
+| A8 | `parameter_types` can be derived from the protocol function's annotations | **verified** | `extract_graph_from_function` already does this when `parameter_types is None` (annotation text, else `"Any"`); `analyze()` passes `None` |
+| A9 | The browser kernel does not import any moved module, so Slice 1 cannot break the web REPL | **verified** | the browser's `praxis` package is the overlay `web-repl/overlay/assets/python/praxis/` (`display`, `interactive`, `viz`); none of them reference the four moved modules |
+| A10 | Moving files does not break the dated plr-sema specs' line citations | **verified** | all five specs citing the moved files carry a frontmatter `citations_at: <sha>` pin, and `check_spec_citations.py` resolves pinned citations against that revision |
+| A11 | Extractor output is deterministic, so byte-exact parity goldens are viable | **verified (spike)** | 26 top-level functions (16 `plr-sema/eval/fixtures` files + 6 `praxis/protocol/protocols`) give identical sorted-key JSON under `PYTHONHASHSEED` 0–3 |
 
 ## 3. Correction to Section 1 (accepted 261002)
 
@@ -79,7 +82,8 @@ plr-sema/src/plr_sema/
   __init__.py          # unchanged eager surface: check_graph, AnalysisReport, Verdict
                        # + lazy __getattr__ for analyze, VerdictKey (no eager libcst/pydantic import)
   __main__.py          # NEW: CLI (§6)
-  analyze.py           # NEW: analyze(), AnalysisOutcome, VerdictKey (§5)
+  analysis.py          # NEW: analyze(), AnalysisOutcome, VerdictKey (§5). Not `analyze.py`:
+                       # a submodule named `analyze` would shadow the lazy `plr_sema.analyze` function
   contracts.py         # NEW: load_contracts(path) for .json / .json.gz; build_gz() (§7)
   graph/               # NEW: moved from praxis (pydantic + stdlib)
     models.py          #   from praxis/backend/utils/plr_static_analysis/models.py:504–671 only
@@ -118,14 +122,19 @@ AnalysisOutcome = Analyzed | NotAnalyzed
 class Analyzed:
     report: AnalysisReport   # existing type from check_graph
     key: VerdictKey
+    function_name: str       # the function actually analyzed
+    op_lines: dict[str, int] # OperationNode.id -> line in `source` (CLI output, Slice 2 gutter marks)
 
 @dataclass(frozen=True)
 class NotAnalyzed:
     reason: NotAnalyzedReason  # SYNTAX_ERROR | FUNCTION_NOT_FOUND | AMBIGUOUS_FUNCTION
-                               # | EXTRACT_FAILED | EXTRACTOR_UNAVAILABLE | CONTRACTS_UNAVAILABLE
+                               # | EXTRACT_FAILED | CHECK_FAILED | EXTRACTOR_UNAVAILABLE
+                               # | CONTRACTS_UNAVAILABLE
     detail: str
 ```
 
+- Two top-level definitions with the target name, or several top-level functions with
+  `function_name=None`, give `AMBIGUOUS_FUNCTION` (the praxis extractor silently takes the first).
 - `analyze` never raises for a bad protocol; it returns `NotAnalyzed`. It raises only for
   programmer errors (wrong argument types).
 - `EXTRACTOR_UNAVAILABLE` is what a base install (no `[extract]`) returns, so callers on plain
@@ -145,7 +154,7 @@ class NotAnalyzed:
   whether it was loaded from `.json` or `.json.gz`.
 - `analyzer_sha256`: sha256 over the sorted (relative path, bytes) of `plr_sema/**/*.py` in the
   installed package — changes whenever the extractor or checker changes, with no manual version bump.
-- `schema_version`: integer constant in `analyze.py`, bumped when `AnalysisReport`'s shape changes.
+- `schema_version`: `plr_sema.verdict.SCHEMA_VERSION` (already the `AnalysisReport` wire pin; reused, not duplicated).
 
 Slice 1 defines and tests the key only. **Storage is Slice 2 (browser) and Slice 3 (backend).** Note
 for Slice 3: `protocol_discovery.py:298` uses a truncated 16-char `source_hash`; it is not reused
@@ -205,7 +214,7 @@ the owner's `--admin` bypass. `plr-sema.yml` is **not** a required check (Q5).
 | T1 | **Parity golden:** run today's praxis extractor over every protocol source the existing extractor tests use (`tests/utils/test_computation_graph.py`, `tests/core/test_precondition_resolver.py`, `plr-sema/tests/test_check_graph.py`, `plr-sema/tests/test_tier2.py`) and commit the `model_dump` JSON, before any move | goldens committed |
 | T2 | Move `graph/` (3 modules); praxis shims + identity tests; `pydantic` added to the `check/` import ban | praxis + plr-sema tests green, goldens unchanged |
 | T3 | Move the extractor into `extract/`; rewrite its imports; praxis shim | goldens byte-identical |
-| T4 | Spike A8 (annotation → `parameter_types`); then `analyze()` + `NotAnalyzed` reasons, one test per reason | every reason reachable from a fixture |
+| T4 | `analyze()` + `NotAnalyzed` reasons, one test per reason | every reason reachable from a fixture |
 | T5 | `contracts.py`: load .json/.json.gz, deterministic `build_gz`, resolver chain + `contracts_source()` | determinism test (two builds byte-equal) |
 | T6 | `VerdictKey` + invalidation tests (edit fn → key changes; edit other fn → unchanged; .json vs .gz → same) | |
 | T7 | CLI + exit-code tests + `--json` snapshot | |
@@ -219,12 +228,19 @@ consumers of the moved modules, selected by path.
 
 - **R1 — the image breaks at import time.** The Dockerfile does `COPY . .` then
   `pip install --no-deps .`; once the praxis shims import `plr_sema`, the image needs plr-sema
-  installed. Fix in T9: `pip install --no-deps ./plr-sema` before the root install. T9's gate
-  imports a shimmed module inside the built image.
+  installed. T9 adds `pip install --no-deps ./plr-sema` before the root install. **This cannot be
+  verified in Slice 1:** no workflow builds the image, Docker is not available locally, and the
+  Dockerfile already has the same failure mode for `pylabrobot` (`uv pip compile pyproject.toml`
+  runs before the repo, including `external/pylabrobot`, is copied in). Adding `plr-sema` to
+  `[project].dependencies` makes that compile step fail outright, because no `plr-sema` exists on
+  PyPI. T9 therefore filters workspace members out of the compiled requirements; a real
+  image-build check is a follow-up outside this slice.
 - **R2 — silent behavior drift during the move.** Mitigated by the T1 goldens (byte-identical
   extractor output before and after) and the identity tests.
-- **R3 — citation ratchets go red.** Any test that pins `file:line` citations into the moved code
-  must move in the same commit (T8).
+- **R3 — stale live citations.** The dated specs are pinned (A10). What remains is prose and
+  docstrings that name the old paths: `_hand_maintained.py:652` and `:854` (`what=` strings, which
+  are display text and not path-checked), the `check/graph.py` module docstring, and
+  `tests/test_check_graph.py`. T8 updates them.
 - **R4 — local-only red.** `test_git_state_matches_cisternal` fails on machines with a drifted
   cisternal checkout. Not a CI blocker (it skips there), but anyone running the suite locally will
   see it. Out of scope here.
