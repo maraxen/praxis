@@ -1,7 +1,7 @@
 ---
 title: 'Sema web integration, Slice 1: plr-sema owns the graph and extractor, shared analyze() seam, CLI/CI first consumer'
 description: 'Slice 1 of four (decomposed 261002): lift the protocol computation-graph models and the libcst extractor from praxis into plr-sema behind re-export shims, add an analyze() surface over extract->check_graph, ship the contract table compact+gzipped (0.42 MB, pre-registered run 4137815b PASS), define a content-hash VerdictKey, and ship a `python -m plr_sema check` CLI with a dedicated plr-sema CI workflow as the first consumer.'
-status: draft
+status: approved
 task_id: 261002_sema-web-integration
 date: '261002'
 backlog_ids: ''
@@ -37,9 +37,14 @@ also what proves the seam before two UIs depend on it.
   re-export shims; there is exactly one extractor.
 - **D5 — one analysis function for every surface:** browser, backend, and CLI all call
   `plr_sema.analyze()`. No surface re-implements extraction or checking. (Section 2, approved.)
-- **Proposed default, needs confirmation (Q2):** gate semantics. `WILL_FAIL` blocks, with an
-  explicit per-run override; `UNKNOWN` never blocks (shown as informational); `NotAnalyzed` never
-  blocks and is never displayed as `SAFE`. Slice 1 encodes only the CLI's version of this (§6).
+- **D6 — gate semantics: warn-only first, block later.** (User, 261002.) plr-sema's precision at
+  the PLR 1.0 pin is currently unmeasured-to-zero, so UI surfaces show `WILL_FAIL` prominently but
+  do **not** block. Blocking (with an explicit override, recorded against the `VerdictKey` so the
+  execution monitor can show "ran despite WILL_FAIL") is enabled only after precision at the 1.0
+  pin is re-measured under a pre-registered sidecar and clears a bar fixed in that sidecar.
+  Invariants from day one: `UNKNOWN` never blocks; `NotAnalyzed` never blocks and is never shown as
+  `SAFE`. Slice 1 is unaffected: the CLI exit codes (§6) are signals, and CI users choose whether
+  exit 1 fails their build.
 
 ## 2. Assumptions (tagged)
 
@@ -54,7 +59,7 @@ also what proves the seam before two UIs depend on it.
 | A7 | `check_graph` accepts the extractor's `model_dump` output unchanged | **verified** | `tests/test_check_graph_mirror_drift.py` asserts two-way field parity between `check/graph.py` and `models.py:504–671` |
 | A8 | `parameter_types` can be derived from the protocol function's annotations | **unverified** | to spike in T4 (§9) before the CLI depends on it; fallback is `parameter_types=None`, which the extractor already accepts |
 
-## 3. Correction to Section 1 (flag for review — Q1)
+## 3. Correction to Section 1 (accepted 261002)
 
 Section 1 proposed deleting the stdlib mirror `plr_sema/check/graph.py` once plr-sema owns the
 pydantic models. **That contradicts the other Section 1 commitment, that `check/` stays
@@ -191,7 +196,7 @@ trigger. (This is plr-sema's first CI coverage of any kind.)
 Expected starting state (A6): green, with `test_git_state_matches_cisternal` skipped.
 
 **Merge-policy note:** the `main` ruleset requires checks from the disabled `ci.yml`, and merges are
-the owner's `--admin` bypass. Whether `plr-sema.yml` becomes a required check is the user's call (Q5).
+the owner's `--admin` bypass. `plr-sema.yml` is **not** a required check (Q5).
 
 ## 9. Build sequence (TDD; each step red → green)
 
@@ -224,16 +229,20 @@ consumers of the moved modules, selected by path.
   cisternal checkout. Not a CI blocker (it skips there), but anyone running the suite locally will
   see it. Out of scope here.
 
-## 11. Open questions for the user
+## 11. Resolved questions (user, 261002)
 
-- **Q1:** Accept the Section 1 correction (§3): keep the stdlib mirror and ban pydantic under `check/`?
-- **Q2:** Confirm the gate-semantics default (§1): WILL_FAIL blocks with override, UNKNOWN and
-  NotAnalyzed never block.
-- **Q3 (Slice 2):** Top-level notebook cell code is not a `FunctionDef`. Should Slice 2 wrap it in a
-  synthetic function, or extend the extractor to accept a module body?
-- **Q4 (Slice 3):** Leave the 16-char `source_hash` in `protocol_discovery` as-is (it is a
-  discovery-cache key), and use `VerdictKey` only for verdicts?
-- **Q5:** Should `plr-sema.yml` be a required check on `main`?
+- **Q1 — keep the stdlib mirror, ban pydantic under `check/`:** accepted (§3).
+- **Q2 — gate semantics:** warn-only until precision at the 1.0 pin is re-measured (D6).
+- **Q3 (Slice 2) — top-level cell code:** wrap the cell in a synthetic function rather than extend
+  the extractor to module bodies. Free names defined in earlier cells become the synthetic
+  function's parameters, typed from the live kernel objects (better than annotations). Slice 2 must
+  spike two things first: line-number mapping back to the cell, and top-level `await` (requires a
+  synthetic `async def`).
+- **Q4 (Slice 3) — `protocol_discovery` 16-char `source_hash`:** leave it; it is a discovery-cache
+  key. `VerdictKey` is used only for verdicts.
+- **Q5 — required check:** no. A path-filtered workflow as a required check leaves unrelated PRs
+  stuck at "Expected — waiting", and merges are owner `--admin` bypass anyway. If it is ever made
+  required, add an always-run no-op job for unmatched paths.
 
 ## 12. Evidence index
 
