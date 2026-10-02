@@ -78,7 +78,9 @@ class FontSource:
 FONT_SOURCES: tuple[FontSource, ...] = (
   FontSource(
     family="Roboto Flex",
-    css_query="family=Roboto+Flex:opsz,wght@8..144,100..1000",
+    # opsz, wdth and wght as RANGES (axes in alphabetical order, as Google requires). `wdth` is what lets the condensed
+    # resource names (`font-stretch: 25%`) actually render condensed; without it the browser clamps them to normal width.
+    css_query="family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000",
     license_url="https://raw.githubusercontent.com/googlefonts/roboto-flex/main/OFL.txt",
     license_file="OFL-RobotoFlex.txt",
     faces={("normal", "100 1000"): "RobotoFlex-Variable.woff2"},
