@@ -1,0 +1,8 @@
+# contract_payload.bth.4137815b-ebe4-4720-bacc-8b7ed48cc3ad.bth.lock.toml — written at run time, never modified
+[manifest]
+written_at = "2026-10-02T18:45:36.214619+00:00"
+sidecar_sha256 = "ec5d8ffc628b475f6b10cff8a7a5cb7dffee8a6b33d5ea40ce8dcc069dc03ced"
+sidecar_path = "/tmp/praxis-sema-s1/plr-sema/eval/contract_payload.bth.toml"
+git_sha = "69b0f1f649baba5dd4a9ee36f6b12e6459505bb7"
+script_sha256 = "71b37381cd30465f2872e994051a3bc609ee5af6a78cc69e4a81da05f9a62f3c"
+run_id = "4137815b-ebe4-4720-bacc-8b7ed48cc3ad"
