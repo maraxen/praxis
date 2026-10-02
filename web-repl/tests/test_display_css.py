@@ -1687,3 +1687,543 @@ def test_cap_matches_the_numbers_and_the_node_dock_js_sizes_from() -> None:
   body = re.search(r"function notebookPadding\(\) \{.*?\n  \}", js, flags=re.DOTALL)
   assert body and "panel.content.node" in body.group(0)
   assert "paddingLeft" in body.group(0) and "paddingRight" in body.group(0)
+
+
+# --- the persistence UI restyle (backlog #5653, task 260929_notebook-display-design) -------------
+#
+# The REPL persistence ladder's status chip, panel and first-save <dialog> (backlog #4296) adopt the
+# epic's tokens: DESIGN.md "Tokens" (colour, type, shape) read through the same `--jp-*` / `--praxis-*`
+# variables the rest of this file uses. NO behaviour change: the real-browser `--persistence-check`
+# (scripts/repl_smoke.py S1-S10) clicks these elements, reads their attributes and text, and watches the
+# dialog's `open`, so nothing it reads may move.
+#
+# WHERE THE RULES LIVE. Not in praxis-theme.css: `test_cap_is_a_pure_addition_after_the_a4_and_b_css_rules`
+# pins everything after the pre-cap bytes to the one C5b @media block, and the pin (`_PRE_CAP_*`) is not
+# to be moved for a restyle. The persistence UI is built by shell/persistence/panel.js, which now links
+# its own stylesheet, shell/persistence/panel.css (staged with the rest of that directory by
+# build_repl.stage_shell, which copies every file in it). Inline styles in panel.js keep LAYOUT only
+# (position, stacking, size cap, flex): they win over any stylesheet, they are what the gate's geometry
+# was measured against, and a stylesheet that tried to set them would be dead or, worse, would break
+# the UA `[hidden]` / `dialog:not([open])` rules the gate depends on.
+#
+# Colour never leans on a brand constant for TEXT (the file's own rule: brick/rose/moonstone are marks;
+# text is a theme token), so contrast holds in Light, Dark AND Dark High Contrast, which praxis-theme.css
+# does not retint. The chip's warning state is a rose 3 px rail plus weight 600, never a coloured word.
+
+_PERSIST_DIR = _WEB_REPL_ROOT / "shell" / "persistence"
+_PERSIST_CSS = _PERSIST_DIR / "panel.css"
+_PERSIST_JS = _PERSIST_DIR / "panel.js"
+
+_ROOT_ID = "praxis-persistence"
+_DIALOG_ID = "praxis-persistence-first-save"
+_DESIGN_TYPE_SCALE = {"12.5px", "15px", "18px", "22px", "28px"}  # DESIGN.md "Type"
+_DESIGN_WEIGHTS = {"400", "600"}
+_PERSIST_ALLOWED_PRAXIS_TOKENS = {"--praxis-rose", "--praxis-moonstone-ink"}
+
+# The layout inline styles panel.js keeps (camelCase as assigned). Anything else is colour, type or shape.
+_PERSIST_LAYOUT_KEYS = {
+  "position", "right", "bottom", "zIndex", "display", "flexDirection", "alignItems", "maxWidth", "marginTop",
+}  # fmt: skip
+
+# Properties a persistence rule must never declare: they move, hide, size or stack an element the gate
+# clicks, or override the UA's `[hidden]` / `dialog:not([open])` display:none that the gate relies on.
+_PERSIST_FORBIDDEN_PROPS = {
+  "display", "visibility", "position", "top", "right", "bottom", "left", "inset", "z-index", "pointer-events",
+  "opacity", "transform", "width", "height", "min-width", "max-width", "min-height", "max-height", "overflow",
+  "clip", "clip-path", "flex", "flex-direction", "align-items", "justify-content", "content-visibility",
+  "float", "contain",
+}  # fmt: skip
+
+# `jp` tokens resolved through the three themes. Light and Dark come from praxis-theme.css (last
+# declaration wins, as in the browser); Dark High Contrast is JupyterLab's own and not retinted, so its
+# values are constants read from the bundled theme (web-repl/dist/build/themes/@jupyterlab/
+# theme-dark-high-contrast-extension/index.css, the 260829 dist) and re-confirmed against it when the dist is
+# present.
+_THEME_BODY = {
+  "Light": "body[data-jp-theme-name='JupyterLab Light']",
+  "Dark": "body[data-jp-theme-name='JupyterLab Dark']",
+}
+_HC_COLOUR_TOKENS = {
+  "--jp-layout-color0": "#111",
+  "--jp-layout-color2": "#424242",
+  "--jp-content-font-color0": "#fff",
+  "--jp-content-font-color2": "rgba(255,255,255,.7)",
+  "--jp-border-color1": "white",
+}
+_PERSIST_THEMES = ("Light", "Dark", "Dark High Contrast")
+_TEXT_CONTRAST = 4.5  # WCAG AA, as test_display_colorblind.TEXT_CONTRAST
+_BOUNDARY_CONTRAST = 3.0  # WCAG 1.4.11 for a control's boundary
+
+
+def _persist_css_text() -> str:
+  assert _PERSIST_CSS.is_file(), f"{_PERSIST_CSS} does not exist: the persistence UI has no stylesheet yet"
+  return _PERSIST_CSS.read_text(encoding="utf-8")
+
+
+def _persist_rules(css: str | None = None) -> list[_Rule]:
+  return _parse(_persist_css_text() if css is None else css)
+
+
+# --- a selector matcher and specificity that also read the child combinator ----------------------
+# (the helpers above are descendant-only; the panel is `#praxis-persistence > div`)
+
+
+def _norm_child(selector: str) -> str:
+  return re.sub(r"\s*>\s*", " > ", " ".join(selector.split()))
+
+
+def _pspecificity(selector: str) -> tuple[int, int, int]:
+  """Specificity; the child combinator adds nothing."""
+  return _specificity(re.sub(r"\s*>\s*", " ", selector))
+
+
+def _pcompounds(selector: str) -> list[tuple[str, str]]:
+  """[(combinator before this compound, compound)]; the first one's combinator is ''."""
+  out, comb = [], ""
+  for tok in _split_top_level(_norm_child(selector), " "):
+    if tok == ">":
+      comb = ">"
+    else:
+      out.append((comb or (" " if out else ""), tok))
+      comb = ""
+  return out
+
+
+def _pmatches(selector: str, chain: list[dict]) -> bool:
+  """`chain` runs outermost to subject. Descendant and child combinators."""
+  parts = _pcompounds(selector)
+
+  def fit(ci: int, ei: int) -> bool:  # parts[ci] must match chain[ei]
+    if not _compound_matches(parts[ci][1], chain[ei]):
+      return False
+    if ci == 0:
+      return True
+    if parts[ci][0] == ">":
+      return ei >= 1 and fit(ci - 1, ei - 1)
+    return any(fit(ci - 1, k) for k in range(ei))
+
+  return bool(chain) and fit(len(parts) - 1, len(chain) - 1)
+
+
+_BODY = _el("body")
+_P_ROOT = _el("div", id=_ROOT_ID, data_praxis_tier="L0", data_praxis_excluded="0")
+_P_CHIP = _el("button", data_praxis_action="toggle-panel", data_praxis_warn="1")
+_P_PANEL = _el("div", hidden="")
+_P_PANEL_BTN = _el("button", data_praxis_action="protect")
+_P_PANEL_P = _el("p")
+_P_DIALOG = _el("dialog", id=_DIALOG_ID, role="dialog")
+_P_DIALOG_BTN = _el("button", data_praxis_action="keep-browser-only")
+_P_DIALOG_P = _el("p", id="praxis-persistence-first-save-text")
+# every element of the persistence UI the gate sees, outermost first
+_PERSIST_CHAINS = {
+  "root": [_BODY, _P_ROOT],
+  "chip": [_BODY, _P_ROOT, _P_CHIP],
+  "panel": [_BODY, _P_ROOT, _P_PANEL],
+  "panel button": [_BODY, _P_ROOT, _P_PANEL, _P_PANEL_BTN],
+  "panel text": [_BODY, _P_ROOT, _P_PANEL, _P_PANEL_P],
+  "dialog": [_BODY, _P_DIALOG],
+  "dialog button": [_BODY, _P_DIALOG, _P_DIALOG_BTN],
+  "dialog text": [_BODY, _P_DIALOG, _P_DIALOG_P],
+}
+# JupyterLab and the display epic's own elements, which no persistence rule may reach
+_FOREIGN_CHAINS = {
+  "toolbar button": [_BODY, _el("div", "jp-Toolbar"), _el("button", "jp-ToolbarButtonComponent")],
+  "jp dialog accept": [_BODY, _el("div", "jp-Dialog"), _el("div", "jp-Dialog-footer"), _el("button", "jp-mod-accept")],
+  "output button": [_BODY, _el("div", "praxis-out"), _el("button", data_praxis_action="x")],
+  "another dialog": [_BODY, _el("dialog", id="other"), _el("button")],
+  "a bare div and p": [_BODY, _el("div"), _el("p")],
+}
+
+
+def _persist_rule_problems(rules: list[_Rule]) -> list[str]:
+  """Everything wrong with a persistence stylesheet's rules; [] means they are token-only, scoped,
+  never layout, and never out-rank an inline style or the UA hidden/closed rules."""
+  bad: list[str] = []
+  for rule in rules:
+    for prop, value in rule.decls.items():
+      where = f"{rule.selector_text} {{ {prop}: {value} }}"
+      for lit in _colour_literals(value):
+        bad.append(f"colour literal {lit}: {where}")
+      if "!important" in value:
+        bad.append(f"!important: {where}")
+      if "url(" in value:
+        bad.append(f"url(): {where}")
+      if prop in _PERSIST_FORBIDDEN_PROPS:
+        bad.append(f"layout property: {where}")
+      if prop.startswith("margin") and not (
+        rule.selectors
+        and all(
+          s.startswith(f"dialog#{_DIALOG_ID} ") and _pcompounds(s)[-1][1].split(":")[0] in ("p", "button")
+          for s in rule.selectors
+        )
+      ):
+        bad.append(f"margin outside dialog text/buttons (the chip and panel box are inline, the dialog is UA-centred): {where}")
+      if prop == "font-family" and not re.fullmatch(r"var\(--(jp-ui-font-family|praxis-ui-font)\)", value):
+        bad.append(f"font-family is not the UI face token: {where}")
+      if prop == "font-size" and value not in _DESIGN_TYPE_SCALE:
+        bad.append(f"font-size off the design scale {sorted(_DESIGN_TYPE_SCALE)}: {where}")
+      if prop == "font-weight" and value not in _DESIGN_WEIGHTS:
+        bad.append(f"font-weight off {sorted(_DESIGN_WEIGHTS)}: {where}")
+      if prop == "font" and value != "inherit":
+        bad.append(f"font shorthand other than inherit: {where}")
+      if prop == "border-radius" and value != "var(--jp-border-radius)":
+        bad.append(f"radius is not the control-radius token: {where}")
+      for ref in re.findall(r"var\(([^)]*)\)", value):
+        if "," in ref:
+          bad.append(f"var() with a fallback (a literal hides a missing token): {where}")
+    for sel in rule.selectors:
+      try:
+        spec = _pspecificity(sel)
+      except ValueError as exc:
+        bad.append(f"unparseable selector {sel!r}: {exc}")
+        continue
+      first = _pcompounds(sel)[0][1]
+      if not (re.match(rf"#{_ROOT_ID}(?![\w-])", first) or re.match(rf"dialog#{_DIALOG_ID}(?![\w-])", first)):
+        bad.append(f"selector not scoped to the persistence ids: {sel}")
+      if spec > (1, 2, 2):
+        bad.append(f"specificity {spec} above (1,2,2): {sel}")
+      if "." in re.sub(r"\[[^\]]*\]", "", sel):
+        bad.append(f"class selector (panel.js assigns no classes): {sel}")
+      if "body" in sel.split():
+        bad.append(f"names body: {sel}")
+  for label, chain in _FOREIGN_CHAINS.items():
+    for rule in rules:
+      for sel in rule.selectors:
+        try:
+          if _pmatches(sel, chain):
+            bad.append(f"reaches a foreign element ({label}): {sel}")
+        except ValueError:
+          pass
+  return bad
+
+
+# controls on the reader, matcher and checker -------------------------------------------------
+
+
+def test_child_combinator_matcher_and_specificity_controls() -> None:
+  """Positive: `>` means a direct child. Negative: it does not match a grandchild or a sibling root."""
+  assert _pmatches(f"#{_ROOT_ID} > div", _PERSIST_CHAINS["panel"])
+  assert not _pmatches(f"#{_ROOT_ID} > div", [_BODY, _P_ROOT, _P_PANEL, _el("div")]), "a grandchild is not a child"
+  assert not _pmatches(f"#{_ROOT_ID} > div", [_BODY, _el("div"), _el("div")]), "wrong parent"
+  assert _pmatches(f"#{_ROOT_ID} div", [_BODY, _P_ROOT, _P_PANEL, _el("div")]), "descendant still reaches a grandchild"
+  assert _pmatches("[data-praxis-action='toggle-panel'][data-praxis-warn='1']", _PERSIST_CHAINS["chip"])
+  assert not _pmatches("[data-praxis-action='toggle-panel'][data-praxis-warn='1']", [_BODY, _P_ROOT, _el("button", data_praxis_action="toggle-panel", data_praxis_warn="0")])
+  assert _pspecificity(f"#{_ROOT_ID} > div") == (1, 0, 1)
+  assert _pspecificity(f"dialog#{_DIALOG_ID} button:hover") == (1, 1, 2)
+  assert _pspecificity(f"#{_ROOT_ID} [data-praxis-action='toggle-panel'][data-praxis-warn='1']") == (1, 2, 0)
+
+
+_GOOD_PERSIST_CSS = f"""
+#{_ROOT_ID} {{ color: var(--jp-content-font-color0); font-family: var(--jp-ui-font-family); font-size: 12.5px; }}
+#{_ROOT_ID} > div {{ border: 1px solid var(--jp-border-color1); border-radius: var(--jp-border-radius); background: var(--jp-layout-color0); }}
+dialog#{_DIALOG_ID} button {{ margin-right: 8px; font: inherit; }}
+"""
+
+
+@pytest.mark.parametrize(
+  ("label", "css"),
+  [
+    ("hex colour", f"#{_ROOT_ID} {{ color: #888; }}"),
+    ("rgb colour", f"#{_ROOT_ID} {{ background: rgba(0,0,0,.1); }}"),
+    ("named colour", f"#{_ROOT_ID} {{ color: red; }}"),
+    ("a brand hex", f"#{_ROOT_ID} {{ border-color: #ED7A9B; }}"),
+    ("system font", f"#{_ROOT_ID} {{ font-family: system-ui, sans-serif; }}"),
+    ("off-scale size", f"#{_ROOT_ID} {{ font-size: 12px; }}"),
+    ("off-scale weight", f"#{_ROOT_ID} {{ font-weight: 700; }}"),
+    ("px radius", f"#{_ROOT_ID} > div {{ border-radius: 4px; }}"),
+    ("important", f"#{_ROOT_ID} {{ color: var(--jp-content-font-color0) !important; }}"),
+    ("display on the panel (breaks [hidden])", f"#{_ROOT_ID} > div {{ display: flex; }}"),
+    ("display on the dialog (breaks :not([open]))", f"dialog#{_DIALOG_ID} {{ display: grid; }}"),
+    ("position", f"#{_ROOT_ID} {{ position: absolute; }}"),
+    ("z-index", f"#{_ROOT_ID} {{ z-index: 9; }}"),
+    ("pointer-events", f"#{_ROOT_ID} {{ pointer-events: none; }}"),
+    ("margin on the dialog", f"dialog#{_DIALOG_ID} {{ margin: 0; }}"),
+    ("margin on the panel", f"#{_ROOT_ID} > div {{ margin-top: 0; }}"),
+    ("var with a fallback", f"#{_ROOT_ID} {{ color: var(--jp-content-font-color0, #000); }}"),
+    ("unscoped button", "button { color: var(--jp-content-font-color0); }"),
+    ("unscoped div", "div { color: var(--jp-content-font-color0); }"),
+    ("leaks onto jp buttons", f"#{_ROOT_ID}, .jp-Toolbar button {{ color: var(--jp-content-font-color0); }}"),
+    ("body-scoped", f"body #{_ROOT_ID} {{ color: var(--jp-content-font-color0); }}"),
+    ("class selector", f"#{_ROOT_ID} .x {{ color: var(--jp-content-font-color0); }}"),
+    ("specificity above the ceiling", f"#{_ROOT_ID}[a][b][c] {{ color: var(--jp-content-font-color0); }}"),
+    ("url()", f"#{_ROOT_ID} {{ background: url(x.png); }}"),
+  ],
+)
+def test_persistence_rule_checker_fails_every_bad_variant(label: str, css: str) -> None:
+  """Negative controls: each style of violation is caught (a literal-colour copy of a rule fails)."""
+  assert _persist_rule_problems(_parse(css)), f"a bad rule ({label}) passed the check"
+
+
+def test_persistence_rule_checker_accepts_a_token_only_stylesheet() -> None:
+  """Positive control for the checker above (it can only pass on a clean one)."""
+  assert _persist_rule_problems(_parse(_GOOD_PERSIST_CSS)) == []
+
+
+# the real stylesheet --------------------------------------------------------------------------
+
+
+def test_the_persistence_stylesheet_exists_and_has_rules_for_each_part() -> None:
+  rules = _persist_rules()
+  assert len(rules) >= 8, f"parsed too few rules from panel.css ({len(rules)}) -- the reader or the file is broken"
+  selectors = [s for r in rules for s in r.selectors]
+  assert any(_pmatches(s, _PERSIST_CHAINS["root"]) for s in selectors), "no rule reaches the root"
+  assert any(_pmatches(s, _PERSIST_CHAINS["chip"]) for s in selectors), "no rule reaches the status chip"
+  assert any(_pmatches(s, _PERSIST_CHAINS["panel"]) for s in selectors), "no rule reaches the panel"
+  assert any(_pmatches(s, _PERSIST_CHAINS["dialog"]) for s in selectors), "no rule reaches the first-save dialog"
+  assert any(_pmatches(s, _PERSIST_CHAINS["dialog button"]) for s in selectors), "no rule reaches the dialog buttons"
+  code = _strip_comments(_persist_css_text())
+  assert "@media" not in code and "@import" not in code
+
+
+def test_persistence_styles_use_the_tokens_not_literals_and_stay_out_of_the_way() -> None:
+  """No colour literal, no literal font face, sizes on the DESIGN scale, the control-radius token, every
+  selector scoped to the two ids, no layout property, no !important, nothing reaches a JupyterLab element."""
+  assert _persist_rule_problems(_persist_rules()) == []
+
+
+def test_persistence_styles_declare_no_animation() -> None:
+  assert _animation_violations(_persist_css_text()) == []
+
+
+def test_every_persistence_var_reference_resolves_in_every_theme() -> None:
+  """A token nothing declares is a silent no-op. `--jp-*` must be declared by praxis-theme.css under BOTH
+  retinted themes and be a known High Contrast token; `--praxis-*` must be on :root, and only the two
+  brand marks the design allows are used."""
+  css = _strip_comments(_persist_css_text())
+  used = set(re.findall(r"var\((--[\w-]+)\)", css))
+  assert used, "panel.css reads no tokens at all"
+  for tok in sorted(used):
+    if tok.startswith("--jp-"):
+      for theme, sel in _THEME_BODY.items():
+        assert _effective(sel, tok) is not None, f"{tok} is not declared for {theme} in praxis-theme.css"
+      if tok.endswith(("-color0", "-color1", "-color2", "-color3")) and "font-family" not in tok:
+        assert tok in _HC_COLOUR_TOKENS, f"{tok} has no High Contrast value in _HC_COLOUR_TOKENS"
+    else:
+      assert tok.startswith("--praxis-"), tok
+      assert _effective(":root", tok) is not None, f"{tok} is not declared on :root"
+      assert tok in _PERSIST_ALLOWED_PRAXIS_TOKENS, f"{tok}: brand constants are marks; only {sorted(_PERSIST_ALLOWED_PRAXIS_TOKENS)}"
+
+
+def test_persistence_brand_constants_are_marks_never_text() -> None:
+  """Rose and moonstone ink go on borders and the focus outline, never on a `color` (text) declaration."""
+  for rule in _persist_rules():
+    for prop, value in rule.decls.items():
+      if "--praxis-" in value:
+        assert prop.startswith(("border", "outline")), f"{rule.selector_text}: {prop}: {value} puts a brand colour on non-mark"
+
+
+def test_chip_carries_a_moonstone_rail_and_a_rose_rail_when_warning() -> None:
+  rules = _persist_rules()
+  warn = [r for r in rules if any("data-praxis-warn='1'" in s for s in r.selectors)]
+  base = [r for r in rules if any("toggle-panel" in s and "data-praxis-warn" not in s for s in r.selectors)]
+  assert warn and base, "no chip rules keyed on the warn hook"
+  assert warn[-1].decls.get("border-left-color") == "var(--praxis-rose)"
+  assert warn[-1].decls.get("font-weight") == "600"
+  assert base[-1].decls.get("border-left-color") == "var(--praxis-moonstone-ink)"
+  assert base[-1].decls.get("border-left-width") == "3px"
+  assert base[-1].decls.get("border-left-style") == "solid"
+
+
+# --- contrast: text-grade pairs in Light, Dark and Dark High Contrast ----------------------------
+
+
+def _parse_colour(value: str) -> tuple[float, float, float, float]:
+  v = value.strip().lower().replace(" ", "")
+  named = {"white": (255, 255, 255), "black": (0, 0, 0)}
+  if v in named:
+    return (*map(float, named[v]), 1.0)
+  m = re.fullmatch(r"#([0-9a-f]{3}|[0-9a-f]{6})", v)
+  if m:
+    h = m.group(1)
+    h = "".join(c * 2 for c in h) if len(h) == 3 else h
+    return (float(int(h[0:2], 16)), float(int(h[2:4], 16)), float(int(h[4:6], 16)), 1.0)
+  m = re.fullmatch(r"rgba?\(([^)]*)\)", v)
+  if m:
+    parts = [float(p) for p in m.group(1).split(",")]
+    return (parts[0], parts[1], parts[2], parts[3] if len(parts) > 3 else 1.0)
+  raise ValueError(f"cannot read colour {value!r}")
+
+
+def _theme_token(theme: str, token: str) -> str:
+  """The colour string `token` takes in `theme`, following var() chains."""
+  if theme == "Dark High Contrast":
+    value = _HC_COLOUR_TOKENS.get(token)
+  else:
+    value = _effective(_THEME_BODY[theme], token) or _effective(":root", token)
+  if value is None:
+    raise KeyError(f"{token} is not defined for {theme}")
+  m = re.fullmatch(r"var\((--[\w-]+)\)", value)
+  return _theme_token(theme, m.group(1)) if m else value
+
+
+def _flatten(fg: str, bg_hex: str) -> str:
+  """`fg` (possibly translucent) laid over the opaque `bg_hex`, as `#rrggbb`."""
+  r, g, b, a = _parse_colour(fg)
+  br, bg_, bb, ba = _parse_colour(bg_hex)
+  assert ba == 1.0, f"surface {bg_hex} is not opaque"
+  mix = [round(a * c + (1 - a) * bc) for c, bc in ((r, br), (g, bg_), (b, bb))]
+  return "#{:02X}{:02X}{:02X}".format(*mix)
+
+
+def _contrast(theme: str, fg_token: str, bg_token: str) -> float:
+  colorblind = importlib.import_module("test_display_colorblind")  # the helper the palette tests use
+  bg = _flatten(_theme_token(theme, bg_token), "#FFFFFF")
+  fg = _flatten(_theme_token(theme, fg_token), bg)
+  return colorblind.contrast(fg, bg)
+
+
+def _text_and_surface_tokens(rules: list[_Rule]) -> tuple[set[str], set[str]]:
+  texts: set[str] = set()
+  surfaces: set[str] = set()
+  for rule in rules:
+    for prop, value in rule.decls.items():
+      refs = re.findall(r"var\((--[\w-]+)\)", value)
+      if prop == "color":
+        texts.update(refs)
+      elif prop in ("background", "background-color"):
+        surfaces.update(refs)
+  return texts, surfaces
+
+
+def _contrast_problems(rules: list[_Rule], themes=_PERSIST_THEMES) -> list[str]:
+  """Every (text token, surface token) pair the rules declare, in every theme, at or above 4.5:1; and the
+  buttons' own border against the button surface at or above 3:1."""
+  bad = []
+  texts, surfaces = _text_and_surface_tokens(rules)
+  if not texts or not surfaces:
+    return ["no text or surface tokens to measure"]
+  for theme in themes:
+    for t in sorted(texts):
+      for s in sorted(surfaces):
+        ratio = _contrast(theme, t, s)
+        if ratio < _TEXT_CONTRAST:
+          bad.append(f"{theme}: text {t} on {s} is {ratio:.2f}:1 (< {_TEXT_CONTRAST})")
+    for rule in rules:
+      if _pcompounds(rule.selectors[0])[-1][1] == "button" and "border" in rule.decls and "background" in rule.decls:
+        border = re.findall(r"var\((--[\w-]+)\)", rule.decls["border"])
+        bg = re.findall(r"var\((--[\w-]+)\)", rule.decls["background"])
+        for b_tok in border:
+          for s_tok in bg:
+            ratio = _contrast(theme, b_tok, s_tok)
+            if ratio < _BOUNDARY_CONTRAST:
+              bad.append(f"{theme}: control border {b_tok} on {s_tok} is {ratio:.2f}:1 (< {_BOUNDARY_CONTRAST})")
+  return bad
+
+
+def test_contrast_instrument_reproduces_the_designs_stated_ratio() -> None:
+  """Positive control: ink on the sheet in Light is DESIGN.md's 14.8:1 and ink soft its 6.2:1."""
+  assert _contrast("Light", "--jp-content-font-color0", "--jp-layout-color0") == pytest.approx(14.8, abs=0.1)
+  assert _contrast("Light", "--jp-content-font-color2", "--jp-layout-color0") == pytest.approx(6.2, abs=0.1)
+
+
+def test_contrast_instrument_flags_pairs_that_are_too_faint() -> None:
+  """Negative controls: it must be able to fail. Rose on the Light sheet is the 2.7:1 the theme file
+  documents; a 32 %-white Dark label is under 3; and a rule that paints text with either is reported."""
+  assert _contrast("Light", "--praxis-rose", "--jp-layout-color0") < 3.0
+  assert _contrast("Dark", "--jp-ui-font-color3", "--jp-layout-color0") < _TEXT_CONTRAST
+  faint = _parse("#a { color: var(--jp-ui-font-color3); background: var(--jp-layout-color0); }")
+  assert _contrast_problems(faint, themes=("Dark",)), "a too-faint Dark label passed"
+  rose = _parse("#a { color: var(--praxis-rose); background: var(--jp-layout-color0); }")
+  assert _contrast_problems(rose, themes=("Light",)), "rose text on the Light sheet passed"
+  weak_border = _parse("#a button { border: 1px solid var(--jp-border-color1); background: var(--jp-layout-color0); }")
+  assert _contrast_problems(weak_border, themes=("Light",)), "a rail-grey control border passed 3:1"
+
+
+def test_every_persistence_text_pair_is_text_grade_in_light_dark_and_high_contrast(capsys) -> None:
+  rules = _persist_rules()
+  texts, surfaces = _text_and_surface_tokens(rules)
+  with capsys.disabled():
+    print()
+    print("persistence contrast (text >= 4.5:1, control border >= 3:1)")
+    for theme in _PERSIST_THEMES:
+      for t in sorted(texts):
+        for s in sorted(surfaces):
+          print(f"  {theme:20s} text {t:28s} on {s:22s} {_contrast(theme, t, s):6.2f}")
+      print(f"  {theme:20s} border --jp-content-font-color2 on --jp-layout-color0 {_contrast(theme, '--jp-content-font-color2', '--jp-layout-color0'):6.2f}")
+  assert _contrast_problems(rules) == []
+
+
+def test_high_contrast_constants_match_the_bundled_theme_when_the_dist_is_present() -> None:
+  """Re-confirms `_HC_COLOUR_TOKENS` against the built dist; skipped, with the reason, when it is absent."""
+  hc = _DIST_THEMES / "theme-dark-high-contrast-extension" / "index.css"
+  if not hc.is_file():
+    pytest.skip(f"{hc} absent: build with build_repl.py to confirm the High Contrast token values")
+  css = hc.read_text(encoding="utf-8").replace(" ", "")
+  for token, value in _HC_COLOUR_TOKENS.items():
+    assert f"{token}:{value.replace(' ', '')};" in css, f"{token}: {value} not in the bundled High Contrast theme"
+
+
+# --- panel.js: inline style is layout only, and the hooks the stylesheet reads exist --------------
+
+
+def _js_code(js: str) -> str:
+  """JS with block comments and `//` comments removed (the file's headers talk about the colours)."""
+  js = re.sub(r"/\*.*?\*/", "", js, flags=re.DOTALL)
+  return re.sub(r"(^|\s)//[^\n]*", r"\1", js)
+
+
+def _inline_style_keys(js: str) -> set[str]:
+  """camelCase keys panel.js writes to an element's inline style (Object.assign(x.style, {...}) and x.style.k = ...)."""
+  code = _js_code(js)
+  keys: set[str] = set()
+  for m in re.finditer(r"Object\.assign\(\s*[\w.]+\.style\s*,\s*\{(.*?)\}\s*\)", code, flags=re.DOTALL):
+    keys.update(re.findall(r"([A-Za-z]+)\s*:", m.group(1)))
+  keys.update(re.findall(r"\.style\.([A-Za-z]+)\s*=", code))
+  keys.update(re.findall(r"\.style\.setProperty\(\s*[\"']([\w-]+)", code))
+  return keys
+
+
+def _js_literal_violations(js: str) -> list[str]:
+  code = _js_code(js)
+  bad = [f"hex colour {m}" for m in re.findall(r"[\"']#[0-9a-fA-F]{3,8}[\"']", code)]
+  bad += [f"colour function {m}" for m in re.findall(r"[\"'](?:rgb|rgba|hsl|hsla)\(", code)]
+  bad += [f"font literal {m}" for m in re.findall(r"system-ui|sans-serif|monospace", code)]
+  return bad
+
+
+_BAD_JS = """
+function buildChrome(doc) {
+  Object.assign(root.style, { position: "fixed", fontFamily: "system-ui, sans-serif", fontSize: "12px" });
+  Object.assign(chip.style, { border: "1px solid #888", background: "#fff", cursor: "pointer" });
+  ui.chip.style.color = warn ? "#b45309" : "";
+}
+"""
+
+
+def test_inline_style_reader_sees_the_old_literals_and_the_literal_scan_fails_on_them() -> None:
+  """Negative control on the old panel.js shape: its colour, type and shape keys are all found and flagged."""
+  keys = _inline_style_keys(_BAD_JS)
+  assert {"fontFamily", "fontSize", "border", "background", "cursor", "color"} <= keys
+  assert (keys - _PERSIST_LAYOUT_KEYS) >= {"fontFamily", "border", "color"}
+  assert len(_js_literal_violations(_BAD_JS)) >= 4
+  assert _inline_style_keys("// style.color = 1\nObject.assign(a.style, { position: 'fixed' });") == {"position"}
+
+
+def test_panel_js_keeps_layout_inline_and_moves_colour_type_and_shape_out() -> None:
+  js = _PERSIST_JS.read_text(encoding="utf-8")
+  keys = _inline_style_keys(js)
+  assert keys, "no inline style found in panel.js: the reader is broken"
+  assert keys <= _PERSIST_LAYOUT_KEYS, f"panel.js still styles inline beyond layout: {sorted(keys - _PERSIST_LAYOUT_KEYS)}"
+  assert _js_literal_violations(js) == [], _js_literal_violations(js)
+
+
+def test_panel_js_links_its_stylesheet_and_exposes_the_warn_hook() -> None:
+  code = _js_code(_PERSIST_JS.read_text(encoding="utf-8"))
+  assert 'new URL("panel.css", import.meta.url)' in code, "panel.js does not resolve panel.css beside itself"
+  assert '"stylesheet"' in code and "praxis-persistence-style" in code
+  assert re.search(r'setAttribute\(\s*"data-praxis-warn"', code), "the chip's warn hook is not written"
+
+
+def test_the_stylesheet_only_reads_hooks_panel_js_builds() -> None:
+  """Every id and attribute name a persistence selector uses is one panel.js creates (a selector on a
+  hook nothing sets is a dead rule)."""
+  code = _js_code(_PERSIST_JS.read_text(encoding="utf-8"))
+  css = _strip_comments(_persist_css_text())
+  for ident in set(re.findall(r"#([\w-]+)", css)):
+    assert ident in (_ROOT_ID, _DIALOG_ID), ident
+    assert f'"{ident}"' in code, f"panel.js never creates id {ident}"
+  for attr in set(re.findall(r"\[\s*([\w-]+)", css)):
+    assert attr in ("data-praxis-action", "data-praxis-warn"), f"unexpected attribute hook [{attr}]"
+    assert f'"{attr}"' in code, f"panel.js never writes {attr}"
+  for action in set(re.findall(r"data-praxis-action\s*=\s*['\"]([\w-]+)['\"]", css)):
+    assert f'"{action}"' in code, f"panel.js has no data-praxis-action {action}"

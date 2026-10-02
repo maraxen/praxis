@@ -1,0 +1,621 @@
+{
+  "fsa": {
+    "initial": [
+      {
+        "tag": "div",
+        "attrs": {
+          "data-praxis-excluded": "0",
+          "data-praxis-tier": "L0",
+          "id": "praxis-persistence"
+        },
+        "children": [
+          {
+            "tag": "button",
+            "attrs": {
+              "data-praxis-action": "toggle-panel",
+              "type": "button"
+            },
+            "children": [
+              "Browser only"
+            ]
+          },
+          {
+            "tag": "div",
+            "attrs": {
+              "hidden": ""
+            },
+            "children": [
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Browser may clear this storage."
+                    ]
+                  },
+                  {
+                    "tag": "button",
+                    "attrs": {
+                      "data-praxis-action": "protect",
+                      "type": "button"
+                    },
+                    "children": [
+                      "Protect browser storage"
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "button",
+                    "attrs": {
+                      "data-praxis-action": "choose-folder",
+                      "type": "button"
+                    },
+                    "children": [
+                      "Choose working folder"
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Export/import individual files via the file browser's Download and Upload."
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "dialog",
+        "attrs": {
+          "aria-labelledby": "praxis-persistence-first-save-text",
+          "id": "praxis-persistence-first-save",
+          "role": "dialog",
+          "tabindex": "-1"
+        },
+        "children": [],
+        "open": false
+      }
+    ],
+    "panelOpen": [
+      {
+        "tag": "div",
+        "attrs": {
+          "data-praxis-excluded": "0",
+          "data-praxis-tier": "L0",
+          "id": "praxis-persistence"
+        },
+        "children": [
+          {
+            "tag": "button",
+            "attrs": {
+              "data-praxis-action": "toggle-panel",
+              "type": "button"
+            },
+            "children": [
+              "Browser only"
+            ]
+          },
+          {
+            "tag": "div",
+            "attrs": {},
+            "children": [
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Browser may clear this storage."
+                    ]
+                  },
+                  {
+                    "tag": "button",
+                    "attrs": {
+                      "data-praxis-action": "protect",
+                      "type": "button"
+                    },
+                    "children": [
+                      "Protect browser storage"
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "button",
+                    "attrs": {
+                      "data-praxis-action": "choose-folder",
+                      "type": "button"
+                    },
+                    "children": [
+                      "Choose working folder"
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Export/import individual files via the file browser's Download and Upload."
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "dialog",
+        "attrs": {
+          "aria-labelledby": "praxis-persistence-first-save-text",
+          "id": "praxis-persistence-first-save",
+          "role": "dialog",
+          "tabindex": "-1"
+        },
+        "children": [],
+        "open": false
+      }
+    ],
+    "modal": [
+      {
+        "tag": "div",
+        "attrs": {
+          "data-praxis-excluded": "0",
+          "data-praxis-tier": "L0",
+          "id": "praxis-persistence"
+        },
+        "children": [
+          {
+            "tag": "button",
+            "attrs": {
+              "data-praxis-action": "toggle-panel",
+              "type": "button"
+            },
+            "children": [
+              "Browser only"
+            ]
+          },
+          {
+            "tag": "div",
+            "attrs": {
+              "hidden": ""
+            },
+            "children": [
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Browser may clear this storage."
+                    ]
+                  },
+                  {
+                    "tag": "button",
+                    "attrs": {
+                      "data-praxis-action": "protect",
+                      "type": "button"
+                    },
+                    "children": [
+                      "Protect browser storage"
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "button",
+                    "attrs": {
+                      "data-praxis-action": "choose-folder",
+                      "type": "button"
+                    },
+                    "children": [
+                      "Choose working folder"
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Export/import individual files via the file browser's Download and Upload."
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "dialog",
+        "attrs": {
+          "aria-labelledby": "praxis-persistence-first-save-text",
+          "id": "praxis-persistence-first-save",
+          "role": "dialog",
+          "tabindex": "-1"
+        },
+        "children": [
+          {
+            "tag": "p",
+            "attrs": {
+              "id": "praxis-persistence-first-save-text"
+            },
+            "children": [
+              "Saved — but only inside this browser. Browsers can clear this storage."
+            ]
+          },
+          {
+            "tag": "button",
+            "attrs": {
+              "data-praxis-action": "choose-folder",
+              "type": "button"
+            },
+            "children": [
+              "Choose working folder"
+            ]
+          },
+          {
+            "tag": "button",
+            "attrs": {
+              "data-praxis-action": "protect",
+              "type": "button"
+            },
+            "children": [
+              "Protect browser storage"
+            ]
+          },
+          {
+            "tag": "button",
+            "attrs": {
+              "data-praxis-action": "keep-browser-only",
+              "type": "button"
+            },
+            "children": [
+              "Keep in this browser only"
+            ]
+          }
+        ],
+        "open": true
+      }
+    ]
+  },
+  "no_fsa": {
+    "initial": [
+      {
+        "tag": "div",
+        "attrs": {
+          "data-praxis-excluded": "0",
+          "data-praxis-tier": "L0",
+          "id": "praxis-persistence"
+        },
+        "children": [
+          {
+            "tag": "button",
+            "attrs": {
+              "data-praxis-action": "toggle-panel",
+              "type": "button"
+            },
+            "children": [
+              "Browser only"
+            ]
+          },
+          {
+            "tag": "div",
+            "attrs": {
+              "hidden": ""
+            },
+            "children": [
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Browser may clear this storage."
+                    ]
+                  },
+                  {
+                    "tag": "button",
+                    "attrs": {
+                      "data-praxis-action": "protect",
+                      "type": "button"
+                    },
+                    "children": [
+                      "Protect browser storage"
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Working folders need a Chromium-based browser (Chrome, Edge). Use the file browser's Download to keep copies."
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Export/import individual files via the file browser's Download and Upload."
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "dialog",
+        "attrs": {
+          "aria-labelledby": "praxis-persistence-first-save-text",
+          "id": "praxis-persistence-first-save",
+          "role": "dialog",
+          "tabindex": "-1"
+        },
+        "children": [],
+        "open": false
+      }
+    ],
+    "panelOpen": [
+      {
+        "tag": "div",
+        "attrs": {
+          "data-praxis-excluded": "0",
+          "data-praxis-tier": "L0",
+          "id": "praxis-persistence"
+        },
+        "children": [
+          {
+            "tag": "button",
+            "attrs": {
+              "data-praxis-action": "toggle-panel",
+              "type": "button"
+            },
+            "children": [
+              "Browser only"
+            ]
+          },
+          {
+            "tag": "div",
+            "attrs": {},
+            "children": [
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Browser may clear this storage."
+                    ]
+                  },
+                  {
+                    "tag": "button",
+                    "attrs": {
+                      "data-praxis-action": "protect",
+                      "type": "button"
+                    },
+                    "children": [
+                      "Protect browser storage"
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Working folders need a Chromium-based browser (Chrome, Edge). Use the file browser's Download to keep copies."
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Export/import individual files via the file browser's Download and Upload."
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "dialog",
+        "attrs": {
+          "aria-labelledby": "praxis-persistence-first-save-text",
+          "id": "praxis-persistence-first-save",
+          "role": "dialog",
+          "tabindex": "-1"
+        },
+        "children": [],
+        "open": false
+      }
+    ],
+    "modal": [
+      {
+        "tag": "div",
+        "attrs": {
+          "data-praxis-excluded": "0",
+          "data-praxis-tier": "L0",
+          "id": "praxis-persistence"
+        },
+        "children": [
+          {
+            "tag": "button",
+            "attrs": {
+              "data-praxis-action": "toggle-panel",
+              "type": "button"
+            },
+            "children": [
+              "Browser only"
+            ]
+          },
+          {
+            "tag": "div",
+            "attrs": {
+              "hidden": ""
+            },
+            "children": [
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Browser may clear this storage."
+                    ]
+                  },
+                  {
+                    "tag": "button",
+                    "attrs": {
+                      "data-praxis-action": "protect",
+                      "type": "button"
+                    },
+                    "children": [
+                      "Protect browser storage"
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Working folders need a Chromium-based browser (Chrome, Edge). Use the file browser's Download to keep copies."
+                    ]
+                  }
+                ]
+              },
+              {
+                "tag": "div",
+                "attrs": {},
+                "children": [
+                  {
+                    "tag": "p",
+                    "attrs": {},
+                    "children": [
+                      "Export/import individual files via the file browser's Download and Upload."
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "dialog",
+        "attrs": {
+          "aria-labelledby": "praxis-persistence-first-save-text",
+          "id": "praxis-persistence-first-save",
+          "role": "dialog",
+          "tabindex": "-1"
+        },
+        "children": [
+          {
+            "tag": "p",
+            "attrs": {
+              "id": "praxis-persistence-first-save-text"
+            },
+            "children": [
+              "Saved — but only inside this browser. Browsers can clear this storage."
+            ]
+          },
+          {
+            "tag": "button",
+            "attrs": {
+              "data-praxis-action": "protect",
+              "type": "button"
+            },
+            "children": [
+              "Protect browser storage"
+            ]
+          },
+          {
+            "tag": "button",
+            "attrs": {
+              "data-praxis-action": "keep-browser-only",
+              "type": "button"
+            },
+            "children": [
+              "Keep in this browser only"
+            ]
+          }
+        ],
+        "open": true
+      }
+    ]
+  }
+}
