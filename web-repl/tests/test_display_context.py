@@ -6,7 +6,9 @@ Spec: ``260929_notebook-display-epic.md`` D8 (steps 1-5: the tracker frame, the 
 per-resource SUMMED offending set with the per-channel rule for a tip owner, the pending-residue
 rule "owner outside the committed offending set -> None", "What PLR's message omits", "Panel
 drawing", "Tracking"), section 3.3 (the templates only as far as the context feeds them; B6 builds
-the panel), the B5 task text and AC-15 (E1-E16, E4-off, E6-off, E-96 and the four negatives).
+the panel), the B5 task text and AC-15 (E1-E16, E4-off, E6-off and the four negatives). The 96-head
+ops (``E96-*``) resolve on their own path since #5659: ``261001_nd-next-5659-96head-errors.md``
+(N5659-1..4, AC-96-1..5, ``-k "dispatch96 or map96 or offend96 or discrim96 or none96"``).
 
 **Real PLR at the 1.0.0b1 pin.** Every case raises the REAL error, through the real
 ``LiquidHandler`` (non-shim home ``pylabrobot.legacy.liquid_handling``) and the chatterbox backend,
@@ -35,9 +37,13 @@ and name only the pin's non-shim homes (and be in ``plr_contract.CONTRACT``).
   resource back, so at resolve time pending equals committed there; the direct-residue cases have no
   op to roll back and are what catch a pending reader.)
 * the frame filter is run against a ``glossary.ACTIONS`` that also lists PLR's ``wrapper`` frames;
-* the ``*96`` short-circuit is checked on a real non-96 failure that has a ``*96`` frame above it,
-  which resolves when the short-circuit is removed (E-96 alone would give ``None`` anyway, for a
-  missing local);
+* the mixed-stack rule (N5659-1 (ii)) is checked on a real non-96 failure under a ``*96`` frame
+  (``E1_via_96``) and on a real ``*96`` failure under a non-96 op frame (``E96-under-1ch``); an
+  innermost-frame-only dispatcher and the old any-96 short-circuit are run as mutants of the
+  dispatch seam (``_path``) and must fail the cases built for them;
+* the 96 path's committed offending set is run against mutants of its seams (first failure only,
+  a mask that ignores which channels hold a tip, a ``has_tip`` reader, PLR's own demand, no NoTip
+  clause, no container-mode guard): each must fail the cases built for it;
 * the AST scan (no ``has_tip``, no ``TipSpot.get_tip``, no ``spot.tracker``) is run against
   synthetic sources first, and a runtime tripwire on ``TipSpot`` proves the same at run time.
 
@@ -75,12 +81,15 @@ import pytest
 from pylabrobot.legacy.liquid_handling import LiquidHandler
 from pylabrobot.legacy.tip_tracker import TipTracker, tip_spot_tracker
 from pylabrobot.resources import (
+    Container,
+    Coordinate,
     TipSpot,
     does_tip_tracking,
     does_volume_tracking,
     set_tip_tracking,
     set_volume_tracking,
 )
+from pylabrobot.resources.agenbio import agenbio_1_troughplate_100mL_Fl
 from pylabrobot.resources.corning import cor_96_wellplate_360uL_Fb
 from pylabrobot.resources.errors import (
     HasTipError,
@@ -88,7 +97,12 @@ from pylabrobot.resources.errors import (
     TooLittleLiquidError,
     TooLittleVolumeError,
 )
-from pylabrobot.resources.hamilton import Trough_CAR_5R60_A00, hamilton_1_trough_60mL_Vb
+from pylabrobot.resources.hamilton import (
+    Trough_CAR_5R60_A00,
+    hamilton_1_trough_60mL_Vb,
+    hamilton_96_tiprack_300uL_filter,
+)
+from pylabrobot.resources.revvity import Revvity_384_wellplate_28ul_Ub
 from pylabrobot.resources.volume_tracker import VolumeTracker
 
 _TESTS_DIR = Path(__file__).resolve().parent
@@ -639,12 +653,380 @@ async def _e16():
     return Raised(exc, deck=deck, lh=lh)
 
 
-@scenario("E-96", TooLittleLiquidError)
-async def _e96():
-    """A real 96-head failure: pick up the whole rack, aspirate 50 uL from an empty assay plate."""
+@scenario("E96-empty", TooLittleLiquidError)
+async def _e96_empty():
+    """A real 96-head failure: pick up the whole rack, aspirate 50 uL from an empty assay plate.
+    (This was ``E-96``; #5659 renames it and gives it a real resolution to check.)"""
     deck, lh, tips, _source, assay = await _world()
     await lh.pick_up_tips96(tips)
     exc = await _catch(lh.aspirate96(assay, volume=50.0))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+# ---- #5659: the 96-head scenarios. Recipes are the spec's (section 2, "Recipes"); letters in the
+# ---- docstrings are the spec's.
+
+
+def _bare_container(deck, name, *, x=120.0, y=80.0, z=40.0, max_volume=20000.0, at=(500.0, 100.0)):
+    """A bare ``Container`` assigned straight to the deck (rule (a) walks ``lh.deck``'s subtree)."""
+    container = Container(name=name, size_x=x, size_y=y, size_z=z, max_volume=max_volume)
+    deck.assign_child_resource(container, location=Coordinate(at[0], at[1], 0))
+    return container
+
+
+def _one_well_plate(deck, name="trough_plate"):
+    """A PLR one-well troughplate on a free plate-carrier site (A25, S4); its well fits the head."""
+    plate = agenbio_1_troughplate_100mL_Fl(name=name)
+    deck.get_resource("plate_carrier")[2] = plate
+    assert plate.num_items == 1
+    return plate
+
+
+def _set_tip_volumes(lh, volume):
+    for tracker in lh.head96.values():
+        tracker.get_tip().tracker.set_volume(volume)
+
+
+def _give_spot_a_committed_tip(tips, i):
+    spot = tips.get_item(i)
+    tip_spot_tracker(spot).add_tip(spot.make_tip())  # commit=True
+    return spot
+
+
+def _take_committed_tip_from_spot(tips, i):
+    tip_spot_tracker(tips.get_item(i)).remove_tip(commit=True)
+
+
+@scenario("E96-single", TooLittleLiquidError)
+async def _e96_single():
+    """J2: a bare 120x80x40 Container (max 20,000) holding 2,000; 96 channels x 30 uL = 2,880."""
+    deck, lh, tips, _source, _assay = await _world()
+    container = _bare_container(deck, "big")
+    container.tracker.set_volume(2000)
+    await lh.pick_up_tips96(tips)
+    exc = await _catch(lh.aspirate96(container, volume=30.0))
+    return Raised(exc, deck=deck, lh=lh, container=container)
+
+
+@scenario("E96-onewell-plate", TooLittleLiquidError)
+async def _e96_onewell_plate():
+    """A one-item Plate is single-container mode (LH:1993) and its Well's parent is the Plate, so
+    a dispatch on ``_in_plate`` would call it a per-channel plate (C4)."""
+    deck, lh, tips, _source, _assay = await _world()
+    plate = _one_well_plate(deck)
+    well = plate.get_item(0)
+    well.tracker.set_volume(1000)
+    await lh.pick_up_tips96(tips)
+    exc = await _catch(lh.aspirate96(plate, volume=30.0))
+    return Raised(exc, deck=deck, lh=lh, plate=plate, well=well)
+
+
+@scenario("E96-rowD", TooLittleLiquidError)
+async def _e96_rowd():
+    """B: assay wells 80 uL except row D at 10; 50 uL on every channel. Wells A1-C1 and tips 0-2
+    are queued (residue) before D1 raises."""
+    deck, lh, tips, _source, assay = await _world()
+    for well in assay.get_all_items():
+        well.tracker.set_volume(80)
+    for well in assay["D1:D12"]:
+        well.tracker.set_volume(10)
+    await lh.pick_up_tips96(tips)
+    exc = await _catch(lh.aspirate96(assay, volume=50.0))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+@scenario("E96-partial", TooLittleLiquidError)
+async def _e96_partial():
+    """G2: committed tips removed from spots 0, 1, 2 and 50 first (A1, B1, C1, C7), so the head
+    mounts 92 tips; the plate is empty."""
+    deck, lh, tips, _source, assay = await _world()
+    for i in (0, 1, 2, 50):
+        _take_committed_tip_from_spot(tips, i)
+    await lh.pick_up_tips96(tips)
+    assert sum(1 for t in lh.head96.values() if t.has_tip) == 92
+    exc = await _catch(lh.aspirate96(assay, volume=50.0))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+@scenario("E96-tipTLV", TooLittleVolumeError)
+async def _e96_tip_tlv():
+    """C3: the wells can supply 400 uL per channel; the second 200 uL does not fit a 360 uL tip."""
+    deck, lh, tips, source, _assay = await _world()
+    for well in source.get_all_items():
+        well.tracker.max_volume = 5000
+        well.tracker.set_volume(1000)
+    await lh.pick_up_tips96(tips)
+    await lh.aspirate96(source, volume=200.0)
+    exc = await _catch(lh.aspirate96(source, volume=200.0))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, source=source)
+
+
+@scenario("E96-tipTLL", TooLittleLiquidError)
+async def _e96_tip_tll():
+    """D: every tip holds 30 uL and is asked to dispense 50."""
+    deck, lh, tips, source, assay = await _world()
+    await lh.pick_up_tips96(tips)
+    await lh.aspirate96(source, volume=30.0)
+    exc = await _catch(lh.dispense96(assay, volume=50.0))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+@scenario("E96-tipTLL-D2", TooLittleLiquidError)
+async def _e96_tip_tll_d2():
+    """D2: tips on channels 7 and 9 hold 20 uL, the rest 30; 25 uL is asked. Tip 7 fails after tips
+    0-6 are queued (7 tips of residue)."""
+    deck, lh, tips, source, assay = await _world()
+    await lh.pick_up_tips96(tips)
+    await lh.aspirate96(source, volume=30.0)
+    for c in (7, 9):
+        lh.head96[c].get_tip().tracker.set_volume(20)
+    exc = await _catch(lh.dispense96(assay, volume=25.0))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+@scenario("E96-dispTLV", TooLittleVolumeError)
+async def _e96_disp_tlv():
+    """E: assay room is 30 uL at indices 10, 11 and 40 (C2, D2, A6) and 200 elsewhere; the tips hold
+    100 and dispense 100. Wells 0-9 are queued (residue) before C2 raises."""
+    deck, lh, tips, _source, assay = await _world()
+    for i, well in enumerate(assay.get_all_items()):
+        well.tracker.set_volume(330 if i in (10, 11, 40) else 160)
+    await lh.pick_up_tips96(tips)
+    _set_tip_volumes(lh, 100)
+    exc = await _catch(lh.dispense96(assay, volume=100.0))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+async def _f3(tips_spot_3_emptied=False):
+    deck, lh, tips, _source, assay = await _world()
+    if tips_spot_3_emptied:
+        _take_committed_tip_from_spot(tips, 3)
+    for c in (3, 50):
+        lh.head96[c].add_tip(tips.get_item(c).make_tip())  # committed
+    return deck, lh, tips, assay
+
+
+@scenario("E96-hasTip-pickup", HasTipError)
+async def _e96_has_tip_pickup():
+    """F3: head channels 3 and 50 hold committed tips, then a full rack is picked up. Channels
+    0-2 are queued (pending tips, pending removals on spots 0-2) before channel 3 raises."""
+    deck, lh, tips, assay = await _f3()
+    exc = await _catch(lh.pick_up_tips96(tips))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+@scenario("E96-hasTip-pickup-s3", HasTipError)
+async def _e96_has_tip_pickup_s3():
+    """F3 with the committed tip removed from spot 3 first: channel 3 is skipped (no tip to pick
+    up) and channel 50 raises. Spot 3's channel is NOT offending although its head holds a tip."""
+    deck, lh, tips, assay = await _f3(tips_spot_3_emptied=True)
+    exc = await _catch(lh.pick_up_tips96(tips))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+async def _h(channels_without_a_tip=()):
+    """H: the whole rack picked up, committed tips put back in spots 5 (F1) and 77."""
+    deck, lh, tips, source, assay = await _world()
+    await lh.pick_up_tips96(tips)
+    for c in channels_without_a_tip:
+        lh.head96[c].remove_tip(commit=True)
+    for i in (5, 77):
+        _give_spot_a_committed_tip(tips, i)
+    return deck, lh, tips, source, assay
+
+
+@scenario("E96-hasTip-drop", HasTipError)
+async def _e96_has_tip_drop():
+    """H, then ``drop_tips96(tips)``: channels 0-4 are queued (spots 0-4 pending tips, head 0-4
+    pending removals) before spot 5 raises."""
+    deck, lh, tips, _source, assay = await _h()
+    exc = await _catch(lh.drop_tips96(tips))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+@scenario("E96-hasTip-drop-m8", HasTipError)
+async def _e96_has_tip_drop_m8():
+    """H with channels 0-7 tipless: spot 5 is not touched (its channel holds nothing), spot 77 raises."""
+    deck, lh, tips, _source, assay = await _h(channels_without_a_tip=range(8))
+    exc = await _catch(lh.drop_tips96(tips))
+    return Raised(exc, deck=deck, lh=lh, tips=tips)
+
+
+@scenario("E96-return", HasTipError)
+async def _e96_return():
+    """A spot refilled after the pick-up, then ``return_tips96()``: PLR's own nested 96 call."""
+    deck, lh, tips, _source, _assay = await _world()
+    await lh.pick_up_tips96(tips)
+    _give_spot_a_committed_tip(tips, 5)
+    exc = await _catch(lh.return_tips96())
+    return Raised(exc, deck=deck, lh=lh, tips=tips)
+
+
+def _add_second_rack(deck):
+    tip_carrier = deck.get_resource("tip_carrier")
+    tip_carrier[1] = tips_b = hamilton_96_tiprack_300uL_filter(name="tips_b")
+    return tips_b
+
+
+@scenario("E96-R2", HasTipError)
+async def _e96_r2():
+    """R2: after H's residue, ``pick_up_tips96`` from a second full rack raises at channel 5. Committed
+    reading: 96 channels hold a tip. A ``has_tip`` (pending) reading: 91 (channels 0-4 look empty)."""
+    deck, lh, tips, _source, _assay = await _h()
+    assert isinstance(await _catch(lh.drop_tips96(tips)), HasTipError)
+    tips_b = _add_second_rack(deck)
+    exc = await _catch(lh.pick_up_tips96(tips_b))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, tips_b=tips_b)
+
+
+@scenario("E96-K", TooLittleLiquidError)
+async def _e96_k():
+    """K: after H's residue the assay wells 0-4 and 10 hold 10 uL and the rest 200; 50 uL aspirated.
+    PLR skips channels 0-4 (pending removal) and names C2 only; the head physically holds all 96."""
+    deck, lh, tips, _source, assay = await _h()
+    assert isinstance(await _catch(lh.drop_tips96(tips)), HasTipError)
+    for i, well in enumerate(assay.get_all_items()):
+        well.tracker.set_volume(10 if i in (0, 1, 2, 3, 4, 10) else 200)
+    exc = await _catch(lh.aspirate96(assay, volume=50.0))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+@scenario("E96-noTip-residue", NoTipError)
+async def _e96_notip_residue():
+    """L: F3, then ``drop_tips96``: channel 0 holds a PENDING tip from the refused pick-up and no
+    committed one, so ``get_tip()`` raises NoTip."""
+    deck, lh, tips, assay = await _f3()
+    assert isinstance(await _catch(lh.pick_up_tips96(tips)), HasTipError)
+    exc = await _catch(lh.drop_tips96(tips))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+@scenario("E96-noTip-residue-asp", NoTipError)
+async def _e96_notip_residue_asp():
+    """L, second op: ``aspirate96`` builds its ``tips`` list from ``get_tip()`` of every pending tip."""
+    deck, lh, tips, assay = await _f3()
+    assert isinstance(await _catch(lh.pick_up_tips96(tips)), HasTipError)
+    exc = await _catch(lh.aspirate96(assay, volume=10.0))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+@scenario("E96-noTip-spot", NoTipError)
+async def _e96_notip_spot():
+    """Q: after H's residue, ``pick_up_tips96(tips)``: spot 0 holds a pending tip and no committed
+    one, so ``TipSpot.get_tip()`` (committed) raises NoTip at the head's add_tip call."""
+    deck, lh, tips, _source, _assay = await _h()
+    assert isinstance(await _catch(lh.drop_tips96(tips)), HasTipError)
+    exc = await _catch(lh.pick_up_tips96(tips))
+    return Raised(exc, deck=deck, lh=lh, tips=tips)
+
+
+@scenario("E96-residue-TLL", TooLittleLiquidError)
+async def _e96_residue_tll():
+    """B, then row D is fixed with set_volume(80) and the aspirate retried: A1-C1 still carry the first
+    refusal's queued removals (pending 30), so PLR raises at A1 again while every committed
+    volume (80) covers the 50 uL."""
+    deck, lh, tips, _source, assay = await _world()
+    for well in assay.get_all_items():
+        well.tracker.set_volume(80)
+    for well in assay["D1:D12"]:
+        well.tracker.set_volume(10)
+    await lh.pick_up_tips96(tips)
+    assert isinstance(await _catch(lh.aspirate96(assay, volume=50.0)), TooLittleLiquidError)
+    for well in assay["D1:D12"]:
+        well.tracker.set_volume(80)
+    exc = await _catch(lh.aspirate96(assay, volume=50.0))
+    assert (assay.get_item("A1").tracker.volume, assay.get_item("A1").tracker.pending_volume) == (80, 30)
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+@scenario("E96-N", TooLittleVolumeError)
+async def _e96_n():
+    """N: a Container (max 3,000) holding 1,000; the tips hold 30 and dispense 30 each: 2,880 > 2,000.
+    Single-container TLV: a context, no panel row (today's gap, errors.py:257-258)."""
+    deck, lh, tips, _source, _assay = await _world()
+    container = _bare_container(deck, "tub", max_volume=3000.0)
+    container.tracker.set_volume(1000)
+    await lh.pick_up_tips96(tips)
+    _set_tip_volumes(lh, 30)
+    exc = await _catch(lh.dispense96(container, volume=30.0))
+    return Raised(exc, deck=deck, lh=lh, container=container)
+
+
+@scenario("E96-onewell-TLV", TooLittleVolumeError)
+async def _e96_onewell_tlv():
+    """N on a one-well Plate: the well is the owner, its parent is the Plate."""
+    deck, lh, tips, _source, _assay = await _world()
+    plate = _one_well_plate(deck)
+    well = plate.get_item(0)
+    well.tracker.set_volume(98000)
+    await lh.pick_up_tips96(tips)
+    _set_tip_volumes(lh, 30)
+    exc = await _catch(lh.dispense96(plate, volume=30.0))
+    return Raised(exc, deck=deck, lh=lh, plate=plate, well=well)
+
+
+@scenario("E96-disp48", TooLittleLiquidError)
+async def _e96_disp48():
+    """dispense96's tip loop runs BEFORE its count check (C6): empty tips, 48 wells, a tip error."""
+    deck, lh, tips, _source, assay = await _world()
+    await lh.pick_up_tips96(tips)
+    exc = await _catch(lh.dispense96(assay["A1:H6"], volume=50.0))
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+@scenario("E96-disp384", TooLittleLiquidError)
+async def _e96_disp384():
+    deck, lh, tips, _source, _assay = await _world()
+    plate = Revvity_384_wellplate_28ul_Ub(name="plate384")
+    await lh.pick_up_tips96(tips)
+    exc = await _catch(lh.dispense96(plate, volume=50.0))
+    return Raised(exc, deck=deck, lh=lh, plate=plate)
+
+
+@scenario("E96-disp-small", TooLittleLiquidError)
+async def _e96_disp_small():
+    """The container fails the head's fit check, which runs after the tip loop."""
+    deck, lh, tips, _source, _assay = await _world()
+    small = _bare_container(deck, "small", x=50.0, y=50.0, z=20.0, max_volume=1000.0)
+    assert not lh._check_96_head_fits_in_container(small)
+    await lh.pick_up_tips96(tips)
+    exc = await _catch(lh.dispense96(small, volume=50.0))
+    return Raised(exc, deck=deck, lh=lh, small=small)
+
+
+@scenario("E96-under-1ch", TooLittleLiquidError)
+async def _e96_under_1ch():
+    """A ``*96`` op called from a non-96 op frame (a subclass ``aspirate`` calling ``aspirate96``):
+    a mixed stack, the INNERMOST frame is a 96 op."""
+    deck, lh, tips, _source, assay = await _world()
+    await lh.pick_up_tips96(tips)
+
+    class LH1(LiquidHandler):
+        async def aspirate(self, resources, vols, **kwargs):
+            return await self.aspirate96(resources, volume=vols)
+
+    lh.__class__ = LH1
+    exc = await _catch(lh.aspirate(assay, 50.0))
+    return Raised(exc, deck=deck, lh=lh, assay=assay)
+
+
+@scenario("E96-runtime", RuntimeError)
+async def _e96_runtime():
+    """A non-display class from a 96 op (drop with liquid in the tips): a premise, not a control."""
+    deck, lh, tips, source, _assay = await _world()
+    await lh.pick_up_tips96(tips)
+    await lh.aspirate96(source, volume=30.0)
+    exc = await _catch(lh.drop_tips96(tips))
+    return Raised(exc, deck=deck, lh=lh)
+
+
+@scenario("E96-tooSmall", ValueError)
+async def _e96_too_small():
+    """aspirate96 checks the fit BEFORE its loops, so this is a ValueError, not a tracker error."""
+    deck, lh, tips, _source, _assay = await _world()
+    small = _bare_container(deck, "small", x=50.0, y=50.0, z=20.0, max_volume=1000.0)
+    await lh.pick_up_tips96(tips)
+    exc = await _catch(lh.aspirate96(small, volume=50.0))
     return Raised(exc, deck=deck, lh=lh)
 
 
@@ -813,6 +1195,7 @@ def check_e1(resolve):
     _same(ctx.targets, r.wells)  # offending A1:H1
     assert ctx.requested == 80.0 and ctx.available == 50.0  # committed
     assert [(o.requested, o.available) for o in ctx.offending] == [(80.0, 50.0)] * 8
+    assert ctx.head96 is False and ctx.container_mode is None  # the 1-channel path says so (#5659)
 
 
 def check_e2(resolve):
@@ -1046,11 +1429,6 @@ def check_e16(resolve):
     assert len(ctx.resources) == 1 and ctx.resources[0] is r.deck.get_trash_area()
 
 
-def check_e96(resolve):
-    r = case("E-96")
-    assert _resolve(resolve, r) is None
-
-
 def check_e1_via_96(resolve):
     r = case("E1_via_96")
     assert _resolve(resolve, r) is None
@@ -1078,6 +1456,237 @@ check_neg_tip_name_tracker = _check_none("neg_tip_name_tracker")
 check_neg_bare_discard = _check_none("neg_bare_discard")
 check_neg_bare_return = _check_none("neg_bare_return")
 
+
+def _ids_of(targets):
+    return [t.get_identifier() for t in targets]
+
+
+def check_e96_empty(resolve):
+    r = case("E96-empty")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.error == "TooLittleLiquidError"
+    assert ctx.owner_kind == CONTAINER and ctx.owner is r.assay.get_item(0) and ctx.rule == "a"
+    assert ctx.channel is None
+    assert ctx.action == "aspirate96" and ctx.op == "aspirate96"
+    assert ctx.head96 is True and ctx.container_mode == "per_channel"
+    assert tuple(ctx.channels) == tuple(range(96)) and tuple(ctx.volumes) == (50.0,) * 96
+    _same(ctx.resources, r.assay.get_all_items())
+    _same(ctx.targets, r.assay.get_all_items())  # every well offends: the plate is empty
+    assert ctx.requested == 50.0 and ctx.available == 0.0
+    assert [(o.requested, o.available) for o in ctx.offending] == [(50.0, 0.0)] * 96
+
+
+def check_e96_single(resolve):
+    r = case("E96-single")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.error == "TooLittleLiquidError"
+    assert ctx.container_mode == "single" and ctx.head96 is True
+    assert ctx.owner_kind == CONTAINER and ctx.owner is r.container and ctx.rule == "a"
+    assert ctx.action == "aspirate96"
+    assert tuple(ctx.channels) == tuple(range(96))
+    _same(ctx.resources, [r.container] * 96)  # one container, one entry per channel
+    _same(ctx.targets, [r.container])
+    assert (ctx.requested, ctx.available) == (2880.0, 2000.0)  # 96 x 30 against the committed 2,000
+
+
+def check_e96_onewell_plate(resolve):
+    r = case("E96-onewell-plate")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.container_mode == "single" and ctx.head96 is True
+    assert ctx.owner_kind == CONTAINER and ctx.owner is r.well and ctx.rule == "a"
+    assert ctx.owner.parent is r.plate  # the well's parent is a Plate: `_in_plate` would say "plate"
+    _same(ctx.resources, [r.well] * 96)
+    _same(ctx.targets, [r.well])
+    assert (ctx.requested, ctx.available) == (2880.0, 1000.0)
+
+
+def check_e96_rowd(resolve):
+    r = case("E96-rowD")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.owner is r.assay.get_item("D1") and ctx.rule == "a"
+    assert ctx.container_mode == "per_channel" and tuple(ctx.channels) == tuple(range(96))
+    _same(ctx.targets, r.assay["D1:D12"])  # exactly D1-D12, not the first failure only
+    assert _ids_of(ctx.targets) == [f"D{i}" for i in range(1, 13)]
+    assert [(o.requested, o.available) for o in ctx.offending] == [(50.0, 10.0)] * 12
+    assert (ctx.requested, ctx.available) == (50.0, 10.0)  # committed 10, not PLR's pending state
+
+
+def check_e96_partial(resolve):
+    r = case("E96-partial")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.owner is r.assay.get_item("D1")
+    wells = r.assay.get_all_items()
+    absent = (0, 1, 2, 50)  # A1, B1, C1, C7: no tip on those channels, so no well is demanded
+    assert tuple(ctx.channels) == tuple(c for c in range(96) if c not in absent)
+    _same(ctx.targets, [w for i, w in enumerate(wells) if i not in absent])
+    assert len(ctx.targets) == 92
+    assert not {"A1", "B1", "C1", "C7"} & set(_ids_of(ctx.targets))
+    _same(ctx.resources, [wells[c] for c in ctx.channels])
+    assert tuple(ctx.volumes) == (50.0,) * 92
+
+
+def check_e96_tip_tlv(resolve):
+    r = case("E96-tipTLV")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.error == "TooLittleVolumeError"
+    assert ctx.owner_kind == TIP and ctx.rule == "c" and ctx.channel == 0
+    assert ctx.owner is r.lh.head96[0].get_tip()
+    assert ctx.action == "aspirate96" and ctx.head96 is True
+    assert ctx.targets == tuple(range(96))
+    assert (ctx.requested, ctx.available) == (200.0, 160.0)  # the tip's committed room: 360 - 200
+
+
+def check_e96_tip_tll(resolve):
+    r = case("E96-tipTLL")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.error == "TooLittleLiquidError"
+    assert ctx.owner_kind == TIP and ctx.rule == "c" and ctx.channel == 0
+    assert ctx.action == "dispense96" and ctx.targets == tuple(range(96))
+    assert (ctx.requested, ctx.available) == (50.0, 30.0)
+    # the tip rows never index `containers`; the container mode is still the one the op used
+    assert ctx.container_mode == "per_channel"
+
+
+def check_e96_tip_tll_d2(resolve):
+    r = case("E96-tipTLL-D2")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.owner_kind == TIP and ctx.channel == 7
+    assert ctx.owner is r.lh.head96[7].get_tip()
+    assert ctx.targets == (7, 9)  # per channel: the other 94 tips hold 30 >= 25
+    assert (ctx.requested, ctx.available) == (25.0, 20.0)
+
+
+def check_e96_disp_tlv(resolve):
+    r = case("E96-dispTLV")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.error == "TooLittleVolumeError"
+    assert ctx.owner is r.assay.get_item(10) and ctx.owner_kind == CONTAINER and ctx.rule == "a"
+    assert ctx.action == "dispense96" and ctx.container_mode == "per_channel"
+    assert _ids_of(ctx.targets) == ["C2", "D2", "A6"]
+    _same(ctx.targets, [r.assay.get_item(i) for i in (10, 11, 40)])
+    assert [(o.requested, o.available) for o in ctx.offending] == [(100.0, 30.0)] * 3
+    assert tuple(ctx.volumes) == (100.0,) * 96
+
+
+def check_e96_has_tip_pickup(resolve):
+    r = case("E96-hasTip-pickup")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.error == "HasTipError"
+    assert ctx.owner_kind == CHANNEL and ctx.channel == 3 and ctx.owner is None and ctx.rule == "b"
+    assert ctx.action == "pick_up_tips96" and ctx.op == "pick_up_tips96" and ctx.head96 is True
+    assert ctx.container_mode is None
+    assert ctx.targets == (3, 50)  # committed tips: not channels 0-2, which only hold a pending tip
+    assert tuple(ctx.channels) == tuple(range(96))  # every spot of the rack holds a committed tip
+    _same(ctx.resources, [r.tips.get_item(c) for c in range(96)])
+    assert ctx.requested is None and ctx.available is None
+
+
+def check_e96_has_tip_pickup_s3(resolve):
+    r = case("E96-hasTip-pickup-s3")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.owner_kind == CHANNEL and ctx.channel == 50 and ctx.rule == "b"
+    assert ctx.targets == (50,)  # channel 3 holds a tip, but spot 3 has none to pick up
+    assert tuple(ctx.channels) == tuple(c for c in range(96) if c != 3)
+
+
+def check_e96_has_tip_drop(resolve):
+    r = case("E96-hasTip-drop")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.error == "HasTipError"
+    assert ctx.owner_kind == TIP_SPOT and ctx.owner is r.tips.get_item(5) and ctx.rule == "a"
+    assert ctx.owner.get_identifier() == "F1" and ctx.channel is None
+    assert ctx.action == "drop_tips96" and ctx.op == "drop_tips96" and ctx.head96 is True
+    _same(ctx.targets, [r.tips.get_item(5), r.tips.get_item(77)])  # committed tips: not spots 0-4
+    assert tuple(ctx.channels) == tuple(range(96))  # the head physically holds 96 tips
+    _same(ctx.resources, [r.tips.get_item(c) for c in range(96)])
+
+
+def check_e96_has_tip_drop_m8(resolve):
+    r = case("E96-hasTip-drop-m8")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.owner is r.tips.get_item(77) and ctx.rule == "a"
+    _same(ctx.targets, [r.tips.get_item(77)])  # spot 5 holds a tip, but channel 5 holds none
+    assert tuple(ctx.channels) == tuple(range(8, 96))
+
+
+def check_e96_return(resolve):
+    r = case("E96-return")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.error == "HasTipError"
+    assert ctx.action == "return_tips96" and ctx.op == "drop_tips96"  # the user's call; the frame used
+    assert ctx.owner_kind == TIP_SPOT and ctx.owner is r.tips.get_item(5)
+    _same(ctx.targets, [r.tips.get_item(5)])
+    assert ctx.head96 is True
+
+
+def check_e96_r2(resolve):
+    r = case("E96-R2")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.error == "HasTipError"
+    assert ctx.owner_kind == CHANNEL and ctx.channel == 5 and ctx.rule == "b"
+    assert ctx.action == "pick_up_tips96"
+    assert len(ctx.offending) == 96 and ctx.targets == tuple(range(96))
+    _same(ctx.resources, [r.tips_b.get_item(c) for c in range(96)])
+
+
+def check_e96_k(resolve):
+    r = case("E96-K")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.error == "TooLittleLiquidError"
+    assert ctx.owner is r.assay.get_item(10) and ctx.owner.get_identifier() == "C2"
+    assert _ids_of(ctx.targets) == ["A1", "B1", "C1", "D1", "E1", "C2"]  # what the head physically holds
+    assert [(o.requested, o.available) for o in ctx.offending] == [(50.0, 10.0)] * 6
+    assert tuple(ctx.channels) == tuple(range(96))
+
+
+def check_e96_n(resolve):
+    r = case("E96-N")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.error == "TooLittleVolumeError"
+    assert ctx.container_mode == "single" and ctx.owner is r.container and ctx.rule == "a"
+    assert ctx.action == "dispense96"
+    assert (ctx.requested, ctx.available) == (2880.0, 2000.0)  # committed room: 3,000 - 1,000
+
+
+def check_e96_onewell_tlv(resolve):
+    r = case("E96-onewell-TLV")
+    ctx = _resolve(resolve, r)
+    assert ctx is not None and ctx.container_mode == "single" and ctx.owner is r.well
+    assert ctx.owner.parent is r.plate
+    assert (ctx.requested, ctx.available) == (2880.0, 2000.0)
+
+
+check_e96_noTip_residue = _check_none("E96-noTip-residue")
+check_e96_noTip_residue_asp = _check_none("E96-noTip-residue-asp")
+check_e96_noTip_spot = _check_none("E96-noTip-spot")
+check_e96_residue_tll = _check_none("E96-residue-TLL")
+check_e96_disp48 = _check_none("E96-disp48")
+check_e96_disp384 = _check_none("E96-disp384")
+check_e96_disp_small = _check_none("E96-disp-small")
+check_e96_under_1ch = _check_none("E96-under-1ch")
+check_e96_runtime = _check_none("E96-runtime")
+check_e96_too_small = _check_none("E96-tooSmall")
+
+#: the 96 scenarios that resolve to a context, and the ones that must give ``None`` (and why)
+POSITIVE_96 = {
+    "E96-empty": check_e96_empty, "E96-single": check_e96_single,
+    "E96-onewell-plate": check_e96_onewell_plate, "E96-rowD": check_e96_rowd,
+    "E96-partial": check_e96_partial, "E96-tipTLV": check_e96_tip_tlv,
+    "E96-tipTLL": check_e96_tip_tll, "E96-tipTLL-D2": check_e96_tip_tll_d2,
+    "E96-dispTLV": check_e96_disp_tlv, "E96-hasTip-pickup": check_e96_has_tip_pickup,
+    "E96-hasTip-pickup-s3": check_e96_has_tip_pickup_s3, "E96-hasTip-drop": check_e96_has_tip_drop,
+    "E96-hasTip-drop-m8": check_e96_has_tip_drop_m8, "E96-return": check_e96_return,
+    "E96-R2": check_e96_r2, "E96-K": check_e96_k, "E96-N": check_e96_n,
+    "E96-onewell-TLV": check_e96_onewell_tlv,
+}
+NONE_96 = {
+    "E96-noTip-residue": check_e96_noTip_residue, "E96-noTip-residue-asp": check_e96_noTip_residue_asp,
+    "E96-noTip-spot": check_e96_noTip_spot, "E96-residue-TLL": check_e96_residue_tll,
+    "E96-disp48": check_e96_disp48, "E96-disp384": check_e96_disp384,
+    "E96-disp-small": check_e96_disp_small, "E96-under-1ch": check_e96_under_1ch,
+    "E96-runtime": check_e96_runtime, "E96-tooSmall": check_e96_too_small,
+}
+
 CHECKS = {
     "E1": check_e1, "E2": check_e2, "E2_summed": check_e2_summed, "E3": check_e3,
     "E3_per_channel": check_e3_per_channel, "E4": check_e4, "E4-off": check_e4_off,
@@ -1088,12 +1697,13 @@ CHECKS = {
     "over_committed_direct": check_over_committed_direct,
     "E4_channel1": check_e4_channel1, "impostor_in_op": check_impostor_in_op,
     "impostor_direct": check_impostor_direct, "nested_trackers": check_nested_trackers,
-    "E13": check_e13, "E14": check_e14, "E15": check_e15, "E16": check_e16, "E-96": check_e96,
+    "E13": check_e13, "E14": check_e14, "E15": check_e15, "E16": check_e16,
     "E1_via_96": check_e1_via_96, "impostor": check_impostor,
     "neg_value_error": check_neg_value_error, "neg_ghost_volume": check_neg_ghost_volume,
     "neg_ghost_spot": check_neg_ghost_spot, "neg_tip_name_volume": check_neg_tip_name_volume,
     "neg_tip_name_tracker": check_neg_tip_name_tracker, "neg_bare_discard": check_neg_bare_discard,
     "neg_bare_return": check_neg_bare_return,
+    **POSITIVE_96, **NONE_96,
 }
 
 
@@ -1218,7 +1828,7 @@ def test_a_frame_named_like_an_action_on_a_non_handler_is_not_an_op_frame(cx):
 
 
 def test_e96_is_a_real_96_head_failure_with_a_96_frame():
-    r = case("E-96")
+    r = case("E96-empty")
     names = []
     tb = r.tb
     while tb is not None:
@@ -1227,10 +1837,28 @@ def test_e96_is_a_real_96_head_failure_with_a_96_frame():
     assert "aspirate96" in names
 
 
-def test_the_96_short_circuit_applies_to_any_96_frame_on_the_stack(cx):
-    """E1's failing op is an ordinary aspirate; a ``*96`` frame ABOVE it must still give ``None``
-    (D8 step 2: "if any such frame is a ``*96`` op"), while E1 without it resolves.
-    """
+# --------------------------------------------------------------------------- the 96 path (#5659)
+#
+# Spec: ``261001_nd-next-5659-96head-errors.md`` N5659-1..4 and AC-96-1..5. The 96 ops resolve on
+# their own path: dispatch on the op frames, a locals mapping with a container-mode guard, owners
+# against ``lh.head96``, and the committed offending set over the channels that physically hold a tip.
+
+
+def test_a_96_frame_is_a_real_frame_in_every_96_scenario():
+    """Premise: every 96 positive really raised through a ``*96`` op frame (so the dispatch tests
+    are about a 96 stack, not a 1-channel one)."""
+    for name in POSITIVE_96:
+        names = []
+        tb = case(name).tb
+        while tb is not None:
+            names.append(tb.tb_frame.f_code.co_name)
+            tb = tb.tb_next
+        assert any(n.endswith("96") for n in names), name
+
+
+def test_a_non_96_op_under_a_96_frame_resolves_to_none(cx):
+    """E1's failing op is an ordinary aspirate; a ``*96`` frame ABOVE it still gives ``None`` (N5659-1
+    (ii): a mixed stack), while E1 without it resolves. Body unchanged since the D8 short-circuit."""
     r = case("E1_via_96")
     names = []
     tb = r.tb
@@ -1240,6 +1868,367 @@ def test_the_96_short_circuit_applies_to_any_96_frame_on_the_stack(cx):
     assert "aspirate96" in names and "aspirate" in names
     assert cx.resolve(r.exc) is None
     assert cx.resolve(case("E1").exc) is not None  # the same failure without the 96 frame resolves
+
+
+def test_dispatch96_all_96_frames_resolve_on_the_96_path(cx):
+    check_e96_empty(cx.resolve)
+    ctx = cx.resolve(case("E96-return").exc)
+    assert (ctx.action, ctx.op) == ("return_tips96", "drop_tips96")  # PLR's own nested call (A34)
+    assert ctx.head96 is True
+    assert cx.resolve(case("E1").exc).head96 is False  # the 1-channel path is unchanged
+
+
+def test_dispatch96_a_mixed_stack_gives_none_in_both_directions(cx):
+    """Innermost 96 under an outer non-96 op frame, and innermost non-96 under a 96 frame (C10)."""
+    for name in ("E96-under-1ch", "E1_via_96"):
+        names = []
+        tb = case(name).tb
+        while tb is not None:
+            names.append(tb.tb_frame.f_code.co_name)
+            tb = tb.tb_next
+        assert "aspirate96" in names and "aspirate" in names, name
+        assert cx.resolve(case(name).exc) is None, name
+    # the order of the two frames differs between them, which is what makes both directions covered
+    under, via = _frame_names("E96-under-1ch"), _frame_names("E1_via_96")
+    assert under.index("aspirate") < under.index("aspirate96")  # outer non-96, inner 96
+    assert via.index("aspirate96") < via.index("aspirate")  # outer 96, inner non-96
+
+
+def _frame_names(name):
+    out, tb = [], case(name).tb
+    while tb is not None:
+        out.append(tb.tb_frame.f_code.co_name)
+        tb = tb.tb_next
+    return out
+
+
+def test_dispatch96_control_an_innermost_frame_only_dispatcher_resolves_the_mixed_stack(cx, monkeypatch):
+    """The innermost-only dispatcher (N5659-1's rejected reading) sends E96-under-1ch down the 96 path:
+    the check built to catch that must fail, while the real E96-empty still passes."""
+    assert cx._path([_Frame("aspirate"), _Frame("aspirate96")]) is None  # the real dispatcher: mixed
+
+    def innermost_only(op_frames):
+        if not op_frames:
+            return "1ch"
+        return "96" if op_frames[-1].f_code.co_name.endswith("96") else "1ch"
+
+    _mutant(monkeypatch, cx, _path=innermost_only)
+    check_e96_empty(cx.resolve)
+    with pytest.raises(AssertionError):
+        check_e96_under_1ch(cx.resolve)
+
+
+class _Frame:
+    """The two things the dispatcher reads from a frame."""
+
+    def __init__(self, co_name):
+        self.f_code = types.SimpleNamespace(co_name=co_name)
+
+
+def test_dispatch96_control_the_old_any_96_short_circuit_fails_every_96_positive(cx, monkeypatch):
+    def short_circuit(op_frames):
+        return None if any(f.f_code.co_name.endswith("96") for f in op_frames) else "1ch"
+
+    check_e1(cx.resolve)
+    _mutant(monkeypatch, cx, _path=short_circuit)
+    check_e1(cx.resolve)
+    for name, check in POSITIVE_96.items():
+        with pytest.raises(AssertionError):
+            check(cx.resolve)
+
+
+@pytest.mark.parametrize("name", sorted(POSITIVE_96))
+def test_dispatch96_each_positive_names_the_96_op_it_failed_in(cx, name):
+    ctx = cx.resolve(case(name).exc)
+    assert ctx is not None and ctx.head96 is True
+    assert ctx.op is not None and ctx.op.endswith("96") and ctx.action.endswith("96")
+
+
+def test_error_context_new_fields_are_defaulted_and_last(cx):
+    """C18: ``head96`` and ``container_mode`` follow ``available``, with defaults, so every existing
+    keyword construction (the first-op-resource control below) keeps working."""
+    fields = dataclasses.fields(cx.ErrorContext)
+    names = [f.name for f in fields]
+    assert names[names.index("available") + 1:][:2] == ["head96", "container_mode"]
+    for f in fields[names.index("head96"):]:
+        assert f.default is not dataclasses.MISSING, f.name
+    assert next(f for f in fields if f.name == "head96").default is False
+    assert next(f for f in fields if f.name == "container_mode").default is None
+    ctx = cx.ErrorContext(
+        error="x", action=None, op=None, rule="a", owner_kind=CONTAINER, owner=None, channel=None,
+        resources=(), channels=(), volumes=(), offending=(), requested=None, available=None)
+    assert ctx.head96 is False and ctx.container_mode is None
+
+
+# ---- AC-96-2: mapping and guard
+
+
+def test_map96_the_locals_map_to_one_entry_per_channel(cx):
+    for name in ("E96-empty", "E96-single", "E96-onewell-plate"):
+        POSITIVE_96[name](cx.resolve)
+
+
+def test_map96_a_container_that_is_not_per_channel_or_single_gives_none(cx):
+    """dispense96's tip loop precedes its count / plate / fit checks (C6), so a tip error can arrive
+    with 48 or 384 containers or a container too small for the head: the guard returns ``None``."""
+    for name in ("E96-disp48", "E96-disp384", "E96-disp-small"):
+        assert type(case(name).exc) is TooLittleLiquidError  # a display class, so the guard is what says None
+        NONE_96[name](cx.resolve)
+
+
+def test_map96_control_a_guard_less_mapping_breaks_on_the_unguarded_cases(cx, monkeypatch):
+    """Without the guard the 48-container case indexes past its list and the 384-container case
+    returns a context built from the first 96 wells."""
+    _mutant(monkeypatch, cx, _container_mode=lambda lh, containers: "per_channel")
+    check_e96_empty(cx.resolve)
+    with pytest.raises(IndexError):
+        check_e96_disp48(cx.resolve)
+    with pytest.raises(AssertionError):
+        check_e96_disp384(cx.resolve)
+
+
+def test_map96_the_single_container_mode_needs_the_head_to_fit(cx):
+    """A one-container list is single mode only when ``_check_96_head_fits_in_container`` says so."""
+    r = case("E96-disp-small")
+    assert not r.lh._check_96_head_fits_in_container(r.small)
+    assert cx._container_mode(r.lh, [r.small]) is None
+    big = case("E96-single")
+    assert cx._container_mode(big.lh, [big.container]) == "single"
+    assay = case("E96-empty")
+    assert cx._container_mode(assay.lh, assay.assay.get_all_items()) == "per_channel"
+    assert cx._container_mode(assay.lh, assay.assay.get_all_items()[:48]) is None
+    assert cx._container_mode(assay.lh, []) is None
+
+
+def test_map96_a_per_channel_list_needs_one_parent(cx):
+    r = case("E96-empty")
+    wells = list(r.assay.get_all_items())
+    other = case("E96-rowD").assay.get_all_items()[0]  # a well of a different plate object
+    assert cx._container_mode(r.lh, [*wells[:95], other]) is None
+
+
+# ---- AC-96-3: offending sets
+
+
+@pytest.mark.parametrize("name", sorted(POSITIVE_96))
+def test_offend96_each_positive_matches_its_expected_context(cx, name):
+    POSITIVE_96[name](cx.resolve)
+
+
+def test_offend96_a_first_failure_only_dispenser_fails_the_set_checks(cx, monkeypatch):
+    """O1 (rejected): only PLR's first failure. It understates E96-rowD (12 wells) and E96-empty (96),
+    and the tip-side twin understates the HasTip sets."""
+    real_volume, real_tip = cx._volume_offenders, cx._tip_offenders
+
+    def first_volume(*args, **kwargs):
+        found = real_volume(*args, **kwargs)
+        return found[:1] if found else found
+
+    def first_tip(*args, **kwargs):
+        found = real_tip(*args, **kwargs)
+        return found[:1] if found else found
+
+    for name in ("E96-rowD", "E96-empty", "E96-hasTip-pickup", "E96-hasTip-drop"):
+        POSITIVE_96[name](cx.resolve)
+    _mutant(monkeypatch, cx, _volume_offenders=first_volume, _tip_offenders=first_tip)
+    for name in ("E96-rowD", "E96-empty", "E96-hasTip-pickup", "E96-hasTip-drop"):
+        with pytest.raises(AssertionError):
+            POSITIVE_96[name](cx.resolve)
+
+
+def test_offend96_a_mask_blind_dispenser_names_channels_that_hold_no_tip(cx, monkeypatch):
+    """Control for "the channels the op uses are the ones that physically hold a tip": a reading that
+    takes all 96 channels names wells under the four tipless channels of E96-partial."""
+    POSITIVE_96["E96-partial"](cx.resolve)
+    _mutant(monkeypatch, cx, _positions_with_committed_tip=lambda pairs: [i for i, _ in pairs])
+    with pytest.raises(AssertionError):
+        POSITIVE_96["E96-partial"](cx.resolve)
+    with pytest.raises(AssertionError):
+        POSITIVE_96["E96-hasTip-drop-m8"](cx.resolve)
+    with pytest.raises(AssertionError):
+        POSITIVE_96["E96-hasTip-pickup-s3"](cx.resolve)
+
+
+def test_offend96_a_resolver_that_always_returns_none_fails_every_96_positive(cx):
+    def always_none(exc, tb=None, **kw):
+        return None
+
+    for name, check in POSITIVE_96.items():
+        with pytest.raises(AssertionError):
+            check(always_none)
+    for name, check in NONE_96.items():
+        check(always_none)
+
+
+def test_offend96_a_resolver_that_names_the_first_op_resource_fails_every_96_positive(cx):
+    resolver = _first_op_resource_resolver(cx, include_96=True)
+    for name, check in POSITIVE_96.items():
+        with pytest.raises(AssertionError):
+            check(resolver)
+
+
+def _96_snapshot(r):
+    lh = r.lh
+    heads = []
+    for c, t in lh.head96.items():
+        try:
+            tip = t.get_tip()
+            committed, tip_state = True, (tip.tracker.volume, tip.tracker.pending_volume)
+        except NoTipError:
+            committed, tip_state = False, None
+        heads.append((c, t.has_tip, committed, tip_state))
+    vols = []
+    for res in [r.deck, *r.deck.get_all_children()]:
+        tr = getattr(res, "tracker", None)
+        if isinstance(tr, VolumeTracker):
+            vols.append((res.name, tr.volume, tr.pending_volume))
+    spots = []
+    for s in r.deck.get_all_children():
+        if isinstance(s, TipSpot):
+            try:
+                tip_spot_tracker(s).get_tip()
+                committed = True
+            except NoTipError:
+                committed = False
+            spots.append((s.name, s.tip is not None, committed))
+    return heads, vols, spots
+
+
+def test_offend96_resolve_is_read_only_on_the_96_path(cx):
+    """AC-96-3's snapshot: volume, pending volume, committed tip and pending tip of every tracker
+    (head, mounted tips, wells, spots) are equal before and after ``resolve``."""
+    for name in POSITIVE_96:
+        r = case(name)
+        before = _96_snapshot(r)
+        assert cx.resolve(r.exc, r.exc.__traceback__) is not None
+        assert _96_snapshot(r) == before, name
+
+
+def test_offend96_the_snapshot_would_see_a_change(cx):
+    """Control for the snapshot above: a state change between two snapshots is visible."""
+    r = case("E96-rowD")
+    before = _96_snapshot(r)
+    well = r.assay.get_item("A1")
+    original = well.tracker.pending_volume
+    well.tracker.remove_liquid(1.0)  # pending only
+    try:
+        assert _96_snapshot(r) != before
+    finally:
+        well.tracker.pending_volume = original
+    assert _96_snapshot(r) == before
+
+
+# ---- AC-96-4: committed vs pending discriminators
+
+
+def test_discrim96_r2_the_committed_reading_names_96_channels(cx, monkeypatch):
+    check_e96_r2(cx.resolve)
+
+    def has_tip_reader(tracker):
+        if tracker.has_tip:
+            return object()
+        raise NoTipError(f"{tracker.thing} does not have a tip.")
+
+    _mutant(monkeypatch, cx, _committed_tip=has_tip_reader)
+    with pytest.raises(AssertionError):  # the pending reading gives 91: channels 0-4 look empty
+        check_e96_r2(cx.resolve)
+    ctx = cx.resolve(case("E96-R2").exc)
+    assert ctx is not None and len(ctx.offending) == 91
+
+
+def test_discrim96_k_the_committed_demand_names_the_wells_plr_skipped(cx, monkeypatch):
+    check_e96_k(cx.resolve)
+    def plr_demand(pairs):
+        """The channels PLR iterated: a pending tip AND a committed one."""
+        return [i for i, tracker in pairs if tracker.has_tip and _committed(tracker)]
+
+    _mutant(monkeypatch, cx, _positions_with_committed_tip=plr_demand)
+    with pytest.raises(AssertionError):
+        check_e96_k(cx.resolve)
+    ctx = cx.resolve(case("E96-K").exc)
+    assert ctx is not None and _ids_of(ctx.targets) == ["C2"]  # PLR's own answer: one well
+
+
+def _committed(tracker):
+    try:
+        tracker.get_tip()
+    except NoTipError:
+        return False
+    return True
+
+
+# ---- AC-96-5: None cases
+
+
+def test_none96_the_new_none_cases_give_none(cx):
+    for name, check in NONE_96.items():
+        check(cx.resolve)
+
+
+def test_none96_a_pending_volume_reader_resolves_the_residue_retry(cx, monkeypatch):
+    """E96-residue-TLL: every committed volume covers the 50 uL, PLR raises at A1 on residue. A
+    reader of pending volume would call A1 short."""
+    check_e96_residue_tll(cx.resolve)
+    _mutant(monkeypatch, cx, _committed_volume=lambda tracker: tracker.pending_volume)
+    with pytest.raises(AssertionError):
+        check_e96_residue_tll(cx.resolve)
+
+
+def test_none96_a_mutant_without_the_notip_clause_and_the_mask_resolves_the_notip_cases(cx, monkeypatch):
+    """NoTip on the 96 path always gives ``None`` (A9). Dropping that clause alone is not enough
+    (the committed mask excludes the tipless channels); drop the mask too and the drop_tips96 case
+    and the TipSpot.get_tip case resolve."""
+    for name in ("E96-noTip-residue", "E96-noTip-residue-asp", "E96-noTip-spot"):
+        NONE_96[name](cx.resolve)
+    _mutant(
+        monkeypatch, cx,
+        _tip_error_explainable_on_96=lambda exc: True,
+        _positions_with_committed_tip=lambda pairs: [i for i, _ in pairs],
+    )
+    for name in ("E96-noTip-residue", "E96-noTip-spot"):
+        with pytest.raises(AssertionError):
+            NONE_96[name](cx.resolve)
+
+
+def test_none96_the_aspirate_notip_is_raised_before_the_locals_it_would_need_exist(cx, monkeypatch):
+    """E96-noTip-residue-asp: aspirate96 builds ``tips`` (LH:1981) BEFORE it binds ``containers``
+    (:1990-2002), so the frame the NoTip comes from has no ``containers`` to map. That, not only the
+    NoTip clause, is why the case is ``None``: it stays ``None`` even with both guards mutated away.
+    (Spec A3 says the locals are bound before any tracker call; that holds for the volume sites
+    :2016/:2045 and :2163-:2200, not for the tips comprehension.)"""
+    frame = next(f for f in _frames_of("E96-noTip-residue-asp") if f.f_code.co_name == "aspirate96")
+    assert "volume" in frame.f_locals and "containers" not in frame.f_locals
+    _mutant(
+        monkeypatch, cx,
+        _tip_error_explainable_on_96=lambda exc: True,
+        _positions_with_committed_tip=lambda pairs: [i for i, _ in pairs],
+    )
+    NONE_96["E96-noTip-residue-asp"](cx.resolve)
+
+
+def _frames_of(name):
+    out, tb = [], case(name).tb
+    while tb is not None:
+        out.append(tb.tb_frame)
+        tb = tb.tb_next
+    return out
+
+
+def test_none96_dropping_only_the_notip_clause_is_not_enough(cx, monkeypatch):
+    """The mask alone already says None for the L cases: the two guards are independent, and the test
+    above is the one that needs both removed."""
+    _mutant(monkeypatch, cx, _tip_error_explainable_on_96=lambda exc: True)
+    for name in ("E96-noTip-residue", "E96-noTip-residue-asp", "E96-noTip-spot"):
+        NONE_96[name](cx.resolve)
+
+
+def test_none96_runtime_and_toosmall_are_premises_not_controls(cx):
+    """Non-display classes: nothing in the module could resolve them, so they prove nothing by passing.
+    They are here to show the scenarios raise something else."""
+    assert type(case("E96-runtime").exc) is RuntimeError
+    assert type(case("E96-tooSmall").exc) is ValueError
+    NONE_96["E96-runtime"](cx.resolve)
+    NONE_96["E96-tooSmall"](cx.resolve)
 
 
 # --------------------------------------------------------------------------- owners, by identity
@@ -1395,21 +2384,30 @@ def test_the_committed_readers_read_committed_state(cx):
 # --------------------------------------------------------------------------- controls for the checks
 
 
-def _first_op_resource_resolver(cx):
-    """Always names the first op resource as a container owner, offending everything in the op."""
+def _first_op_resource_resolver(cx, include_96=False):
+    """Always names the first op resource as a container owner, offending everything in the op.
+    With ``include_96`` it also reads the 96 ops' ``containers`` / ``tip_rack`` / ``resource``."""
+    ops = ("aspirate", "dispense", "pick_up_tips", "drop_tips")
+    if include_96:
+        ops += tuple(f"{op}96" for op in ops)
 
     def resolver(exc, tb=None, **kw):
         tb = tb if tb is not None else exc.__traceback__
         last = None
         while tb is not None:
             local = tb.tb_frame.f_locals
-            if isinstance(local.get("self"), LiquidHandler) and tb.tb_frame.f_code.co_name in (
-                    "aspirate", "dispense", "pick_up_tips", "drop_tips"):
+            if isinstance(local.get("self"), LiquidHandler) and tb.tb_frame.f_code.co_name in ops:
                 last = local
             tb = tb.tb_next
         if last is None:
             return None
         res = list(last.get("resources") or last.get("tip_spots") or [])
+        if include_96 and not res:
+            res = list(last.get("containers") or [])
+            for key in ("tip_rack", "resource"):
+                rack = last.get(key)
+                if not res and hasattr(rack, "get_all_items"):
+                    res = list(rack.get_all_items())
         if not res:
             return None
         return cx.ErrorContext(
@@ -1422,9 +2420,11 @@ def _first_op_resource_resolver(cx):
 
 
 NONE_CASES = (
-    "E13", "E14", "E15", "E-96", "E1_via_96", "impostor", "impostor_in_op", "impostor_direct",
+    "E13", "E14", "E15", "E1_via_96", "impostor", "impostor_in_op", "impostor_direct",
     "residue_direct_tll", "residue_direct_tlv", "neg_value_error", "neg_ghost_volume", "neg_ghost_spot", "neg_tip_name_volume",
     "neg_tip_name_tracker", "neg_bare_discard", "neg_bare_return",
+    # #5659: the 96 cases that stay None (AC-96-5, AC-96-2's guard, mixed stacks, non-display classes)
+    *NONE_96,
 )
 
 
@@ -1451,7 +2451,7 @@ def test_a_resolver_that_always_names_the_first_op_resource_fails_the_discrimina
 
 def test_real_resolver_passes_what_the_controls_fail(cx):
     """The other half of the controls: the real module passes every check the mutants fail."""
-    for name in ("E10", "E12", "E6", "E4", "E13", "E14", "E15", "E-96", "E3", "E9", "E16", "impostor"):
+    for name in ("E10", "E12", "E6", "E4", "E13", "E14", "E15", "E96-empty", "E3", "E9", "E16", "impostor"):
         CHECKS[name](cx.resolve)
 
 

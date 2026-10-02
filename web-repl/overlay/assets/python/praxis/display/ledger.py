@@ -576,7 +576,10 @@ class RunLedger:
     # -- the after-state --------------------------------------------------------
 
     def _touch(self, targets) -> None:
-        """Remember the volume of every container a dispense is about to change (first touch)."""
+        """Remember the COMMITTED volume of every container a dispense is about to change (first touch).
+        Committed (``tracker.volume``), not pending (``get_used_volume``): PLR's 96 ops queue their tracker
+        changes outside their ``try``, so a refused 96 op leaves pending volume on wells nothing was
+        dispensed into, and the after-state must not show those as changed (#5659, N5659-10)."""
         for res in targets:
             if _labware_kind(res) == "plate":
                 wells = res.get_all_items()
@@ -586,7 +589,7 @@ class RunLedger:
                 continue
             for well in wells:
                 if id(well) not in self._touched:
-                    self._touched[id(well)] = (well, well.tracker.get_used_volume())
+                    self._touched[id(well)] = (well, well.tracker.volume)
 
     def _compute_after(self) -> list:
         """``[(plate, changed_ids, {id(well): uL})]`` for each plate this run dispensed into, in order
@@ -597,10 +600,10 @@ class RunLedger:
             if plate is None or _labware_kind(plate) != "plate":
                 continue
             changed = plates.setdefault(id(plate), (plate, set()))[1]
-            if abs(well.tracker.get_used_volume() - before) > _EPS_UL:
+            if abs(well.tracker.volume - before) > _EPS_UL:
                 changed.add(well.get_identifier())
         return [
-            (plate, ids, {id(w): w.tracker.get_used_volume() for w in plate.get_all_items()})
+            (plate, ids, {id(w): w.tracker.volume for w in plate.get_all_items()})
             for plate, ids in plates.values() if ids
         ]
 
@@ -688,7 +691,7 @@ class RunLedger:
         blocks = []
         for plate, changed, volumes in afters:
             def volume_of(well, volumes=volumes):
-                return volumes.get(id(well), well.tracker.get_used_volume())
+                return volumes.get(id(well), well.tracker.volume)
 
             label = f"The {_short(plate.name, _NAME_MAX)} plate after the run. Wells this run changed are outlined."
             blocks.append(

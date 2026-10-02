@@ -22,9 +22,13 @@ PLR method         name          verb form (fixes)
 =================  ============  ================
 
 and the six ``*96`` variants (``pick_up_tips96`` ... ``dispense96``) are the same name plus
-``" (96 head)"``. The ``*96`` names are used by the ledger only; errors inside a ``*96`` op get the
-generic panel (D8 step 2), so no error template uses them. ``VERBS`` follows the name column for the
-96 variants (base verb plus the suffix): section 3.5 says only "the same", and no template uses one.
+``" (96 head)"``. The ``*96`` names are used by the ledger and by the 96-head error panels (#5659,
+N5659-9): a panel names the op with the ``*96`` name ("Pick up tips (96 head) asked those channels ...")
+and writes its fix sentences with the BASE verbs ("aspirate from wells that hold more") plus
+``HEAD96_NOUN`` ("on the 96 head"). ``HEAD96_NOUN`` is the one place the words "96 head" are spelled,
+``SUFFIX_96`` is derived from it, and it is not one of the section 3.5 ``NOUNS`` (it names the head, not
+a thing in a sentence about wells). ``VERBS`` follows the name column for the 96 variants (base verb plus
+the suffix): section 3.5 says only "the same".
 
 Keys are the frame names D8's context resolver filters on and the methods ``RunLedger`` shadows, so
 they must be real ``LiquidHandler`` method names (a test checks that against the pin).
@@ -41,12 +45,13 @@ from __future__ import annotations
 from types import MappingProxyType
 
 __all__ = [
-    "ACTIONS", "VERBS", "NOUNS", "AVOID", "SUFFIX_96",
+    "ACTIONS", "VERBS", "NOUNS", "AVOID", "SUFFIX_96", "HEAD96_NOUN",
     "PICK_UP", "DROP", "ASPIRATE", "DISPENSE", "TRANSFER",
     "action_name", "verb_form", "role_of", "is_96", "plural",
 ]
 
-SUFFIX_96 = " (96 head)"
+HEAD96_NOUN = "96 head"
+SUFFIX_96 = f" ({HEAD96_NOUN})"
 
 # Roles (what an op does). Values are opaque tokens: compare with these constants.
 PICK_UP = "pick_up"
