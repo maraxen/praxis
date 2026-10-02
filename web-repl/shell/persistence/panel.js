@@ -301,10 +301,37 @@ export async function mount(win) {
     }
   });
 
-  ui.chip.addEventListener("click", () => {
-    panelOpen = !panelOpen;
+  function setPanelOpen(open) {
+    panelOpen = open;
     ui.panel.hidden = !panelOpen;
+  }
+
+  ui.chip.addEventListener("click", () => {
+    setPanelOpen(!panelOpen);
   });
+
+  // The open panel is a popover: Escape or a press anywhere outside the chip
+  // and panel closes it, so the chip is not the only way out. The press is a
+  // capture-phase pointerdown, which runs before any click handler re-renders
+  // the panel, so a button inside it is still attached and counts as inside.
+  // Escape is left to the first-save gate while that is open (D4). UI-only,
+  // not gesture-bound (D6).
+  doc.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key !== "Escape" || !panelOpen || ui.dialog.open) return;
+      setPanelOpen(false);
+      ui.chip.focus();
+    },
+    true,
+  );
+  doc.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (panelOpen && !ui.root.contains(event.target)) setPanelOpen(false);
+    },
+    true,
+  );
 
   // core.state.excludedPaths is the same source of truth core.js itself
   // persists (T3's binding-scoped exclusion Map), surfaced as
