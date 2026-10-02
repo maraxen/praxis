@@ -282,6 +282,9 @@ epic spec (`.praxia/docs/specs/260929_notebook-display-epic.md`), not a spec the
   and machine outputs.
 - Coxswain proposals shown as ledger rows in a "proposed" state with an approve control;
   `coxswain.css`'s `--cx-*` palette moves onto the Praxis tokens (another session owns coxswain).
-- The persistence panel, chip and first-save modal (#4296) adopt the tokens.
+- The persistence panel, chip and first-save modal (#4296) adopt the tokens. (Done, #5653:
+  `shell/persistence/panel.css`. Text is a theme token; the chip's state is a 3 px left rail,
+  moonstone ink when safe and rose when it needs a look. It lives beside `panel.js` because
+  the theme file's tail is pinned to the notebook cap.)
 - Dark theme variant.
 - Layouts below 1024 px (the bottom sheet).
