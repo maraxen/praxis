@@ -48,11 +48,11 @@ jobs:
     runs-on: ubuntu-latest
     # A BACKSTOP only (D16): 45 + the sum of this job's scenario step timeouts (8 + 7 after
     # sprint A = 60; 8 + 7 + 14 + 10 + 8 = 47 after sprint B = 92; 12 + 16 + 17 = 45 more after
-    # sprint C = 137). Every browser unit is bounded by its own watchdog at its budget, the
+    # sprint C = 137; + 12 for K3 (#5656) = 149). Every browser unit is bounded by its own watchdog at its budget, the
     # driver's run_unit at budget + 60 s and its step timeout at budget + 2 min, so this is never
     # the limit that ends a unit. The reap step's 1 minute sits inside the 45-minute allowance and
     # is not added to the sum.
-    timeout-minutes: 137
+    timeout-minutes: 149
     env:
       PYTHONDONTWRITEBYTECODE: 1
 
@@ -255,6 +255,16 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --dock-check --scenario K2 --base-path /praxis/
 
+      # #5656: K3 re-measures the empty strip beside the deck at 1280-1599 px (open, drags, file-browser toggle, resize, tier
+      # entry, reopen) with the deck's half re-clamped to the deck's width. Budget 10 min -> step timeout 12. N-g (its
+      # negative) is negative-only and has NO step: its sensitivity driver runs it.
+      - name: Dock check K3 (medium re-clamp - the deck's half is the deck's width)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 12
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/repl_smoke.py --dock-check --scenario K3 --base-path /praxis/
+
       # The step whose exit gates the PR for the dock units. Its hashed arguments MUST equal the scenario
       # steps' (without --base-path /praxis/ every stamp's `args` hash mismatches and this gate is
       # permanently red).
@@ -399,6 +409,7 @@ jobs:
           uv run python -m pytest web-repl/tests/test_inject_branding.py -q
           uv run python -m pytest web-repl/tests/test_inject_shell_coxswain.py -q
           uv run python -m pytest web-repl/tests/test_k2_first_drag_probe.py -q
+          uv run python -m pytest web-repl/tests/test_nd_sensitivity_5656_driver.py -q
           uv run python -m pytest web-repl/tests/test_nd_sensitivity_driver.py -q
           uv run python -m pytest web-repl/tests/test_persistence_staging.py -q
           uv run python -m pytest web-repl/tests/test_plr_contract.py -q
@@ -406,6 +417,7 @@ jobs:
           uv run python -m pytest web-repl/tests/test_praxis_bootstrap_loader.py -q
           uv run python -m pytest web-repl/tests/test_praxis_startup.py -q
           uv run python -m pytest web-repl/tests/test_prune_pyodide.py -q
+          uv run python -m pytest web-repl/tests/test_reclaim_k3_runner.py -q
           uv run python -m pytest web-repl/tests/test_repl_smoke_import.py -q
           uv run python -m pytest web-repl/tests/test_repl_smoke_resume.py -q
           uv run python -m pytest web-repl/tests/test_repl_workflow_covers_tests.py -q

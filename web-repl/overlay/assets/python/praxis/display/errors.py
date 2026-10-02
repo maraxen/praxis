@@ -26,10 +26,19 @@ spot owner only), "PyLabRobot raised ``<Name>: <message>``" verbatim, and the tr
 because a tracker refusal is raised before the backend is called (LH:1269-1274, :1470-1475; the test
 spies the backend).
 
+**The 96 head** (#5659; ``261001_nd-next-5659-96head-errors.md`` N5659-6): a context with ``head96`` set
+gets its own rows. The row is chosen by ``ctx.container_mode`` and the owner kind, never by whether a well's
+parent is a Plate (a one-item Plate is single-container mode). A plate row marks the offending wells, a
+tip or channel row states counts and spans and draws nothing, a rack row draws the rack at its COMMITTED
+tips (``_drawn_tip``; every error panel that draws a rack does, 1-channel included, N5659-8). A 96 op is
+named with the glossary's ``*96`` name ("Pick up tips (96 head)") and fixes use the base verbs; the words
+"96 head" come from ``glossary.HEAD96_NOUN``.
+
 **The generic panel** (no heading template) is "PyLabRobot raised X: message" plus the traceback. It is
-shown for every ``None`` from ``resolve`` (no owner, pending residue, a ``*96`` op) and for a context no
-template row covers (no op frame, or a trough that overflows on a dispense). A resolver that raises
-degrades to it, and the handler never raises.
+shown for every ``None`` from ``resolve`` (no owner, pending residue, a mixed 1-channel / ``*96`` stack, a
+NoTip on a 96 op) and for a context no template row covers (no op frame, a trough that overflows on a
+dispense, a single container that overflows on a 96 dispense). A resolver that raises degrades to it, and
+the handler never raises.
 
 **Stamp** (D2): ``kind`` ``error``, ``rev`` null, ``resource`` the drawn labware (the plate, the trough, the
 tip rack) or null for a channel or tip owner and for the generic panel.
@@ -184,6 +193,19 @@ def _drawn_volume(container):
     return container.tracker.volume
 
 
+def _drawn_tip(spot):
+    """The tip the panel draws a rack spot with: the COMMITTED tip of the spot's tracker, ``None`` when it
+    holds none (``Tip`` presence in the resource tree includes pending operations, N5659-8). Defined next
+    to ``_drawn_volume``, which reads committed state for the same reason."""
+    from pylabrobot.legacy.tip_tracker import tip_spot_tracker  # noqa: PLC0415 -- lazy by design
+    from pylabrobot.resources.errors import NoTipError  # noqa: PLC0415
+
+    try:
+        return tip_spot_tracker(spot).get_tip()
+    except NoTipError:
+        return None
+
+
 def _kind(resource):
     try:
         return labware.kind_of(resource)
@@ -254,7 +276,7 @@ def _volume_panel(exc, ctx):
             )
         return _Panel(heading, f"{lead}; the {verb} asked for {_span(reqs)} µL. Nothing was {past}.", fix,
                       plate.name, (plate, frozenset(ids)))
-    if not lack:
+    if not _single_container_has_row(lack):
         return None  # no template row: a container that is not a well of a plate overflowing on a dispense
     channels = sum(1 for r in ctx.resources if r is owner)
     if not channels:
@@ -266,6 +288,122 @@ def _volume_panel(exc, ctx):
         f"Lower `vols`, or {verb} from a container that holds more.",
         owner.name, None,
     )
+
+
+def _single_container_has_row(lack) -> bool:
+    """Is there a template row for a container that is not a well of a plate? Only for a lack of liquid:
+    the same container overflowing on a dispense has none (section 3.3), on either path."""
+    return lack
+
+
+def _row_kind(ctx):
+    """Which 96 volume row a context calls for: ``"plate"`` (96 wells of one plate, one per channel),
+    ``"single"`` (one container for the whole head) or ``None``. By the recorded container mode, never by
+    the owner's parent: the only well of a one-item Plate has a Plate as its parent and is still ``single``."""
+    return {"per_channel": "plate", "single": "single"}.get(ctx.container_mode)
+
+
+def _volume_panel96(exc, ctx):
+    """TooLittleLiquid / TooLittleVolume on the 96 head: wells of a plate (one per channel), one container,
+    or the mounted tips."""
+    lack = isinstance(exc, handled_classes()[0])  # (TLL, TLV, HasTip, NoTip)
+    role = glossary.role_of(ctx.op)
+    verb, past = _verb(role), _past(role)
+    if ctx.owner_kind == context.OWNER_TIP:
+        if role != (glossary.DISPENSE if lack else glossary.ASPIRATE) or not ctx.offending:
+            return None
+        avails, asked = [o.available for o in ctx.offending], _amount(ctx.offending[0].requested)
+        tips = glossary.plural(len(ctx.offending), "tip")
+        if lack:
+            return _Panel(
+                f"Not enough liquid in {tips} on the {glossary.HEAD96_NOUN}.",
+                f"Each holds {_span(avails)} µL; the {verb} asked for {asked} µL on every channel. "
+                f"Nothing was {past}.",
+                f"{_name(glossary.DISPENSE)} {_amount(min(avails))} µL or less, or "
+                f"{_verb(glossary.ASPIRATE)} more first.",
+                None, None,
+            )
+        return _Panel(
+            f"Not enough room in {tips} on the {glossary.HEAD96_NOUN}.",
+            f"Each has room for {_span(avails)} µL; the {verb} asked for {asked} µL on every channel. "
+            f"Nothing was {past}.",
+            f"{_name(glossary.ASPIRATE)} less, or use larger tips.",
+            None, None,
+        )
+    if ctx.owner_kind != context.OWNER_CONTAINER or role != (glossary.ASPIRATE if lack else glossary.DISPENSE):
+        return None
+    owner, kind = ctx.owner, _row_kind(ctx)
+    if kind == "plate":
+        plate = getattr(owner, "parent", None)
+        if plate is None or _kind(plate) != "plate":
+            return None
+        offenders = [o for o in ctx.offending if getattr(o.target, "parent", None) is plate]
+        if not offenders:
+            return None
+        ids = sorted({o.target.get_identifier() for o in offenders})
+        wells = labware.compress_wells(ids)
+        avails, reqs = [o.available for o in offenders], [o.requested for o in offenders]
+        same = _amount(min(avails)) == _amount(max(avails))
+        shared = len({id(r) for r in ctx.resources}) != len(ctx.resources)  # a well under more than one channel
+        if lack:
+            lead = f"Each well holds {_span(avails)} µL" if same else f"{wells} hold {_span(avails)} µL"
+            heading = f"Not enough liquid in {_disp(plate.name)} {wells}."
+            fix = f"Lower `volume` to {_amount(min(avails))} µL or less, or {verb} from wells that hold more."
+        else:
+            lead = f"Each well has room for {_span(avails)} µL" if same else f"{wells} have room for {_span(avails)} µL"
+            heading = f"Not enough room in {_disp(plate.name)} {wells}."
+            fix = f"Lower `volume`, or {verb} into emptier wells."
+        ask = (
+            f"{_span(reqs)} µL per well, summed over the channels that share it" if shared
+            else f"{_amount(ctx.volumes[0])} µL on every channel"
+        )
+        return _Panel(heading, f"{lead}; the {verb} asked for {ask}. Nothing was {past}.", fix,
+                      plate.name, (plate, frozenset(ids)))
+    if kind == "single":
+        if not _single_container_has_row(lack):
+            return None
+        parent = getattr(owner, "parent", None)
+        only_well = parent is not None and _kind(parent) == "plate" and parent.num_items == 1
+        name = parent.name if only_well else owner.name  # the Plate's name when the container is its only well
+        return _Panel(
+            f"Not enough liquid in {_disp(name)}.",
+            f"It holds {_amount(ctx.available)} µL; the {verb} asked for {_amount(ctx.requested)} µL "
+            f"across {glossary.plural(len(ctx.channels), 'channel')}. Nothing was {past}.",
+            f"Lower `volume`, or {verb} from a container that holds more.",
+            name, None,
+        )
+    return None
+
+
+def _tip_panel96(exc, ctx):
+    """HasTip on the 96 head: channels that already hold a tip, or rack spots that already have one. NoTip
+    has no 96 row (committed state cannot explain it): the generic panel."""
+    if not isinstance(exc, handled_classes()[2]):
+        return None
+    role = glossary.role_of(ctx.op)
+    action = glossary.action_name(ctx.action)
+    if ctx.owner_kind == context.OWNER_CHANNEL:
+        if role != glossary.PICK_UP or not ctx.offending:
+            return None
+        return _Panel(
+            f"The {glossary.HEAD96_NOUN} already holds a tip on {glossary.plural(len(ctx.offending), 'channel')}.",
+            f"{action} asked those channels for another.",
+            "Drop or discard the tips first.", None, None,
+        )
+    if ctx.owner_kind == context.OWNER_TIP_SPOT:
+        if role != glossary.DROP:
+            return None
+        rack = getattr(ctx.owner, "parent", None)
+        if rack is None or _kind(rack) != "tiprack":
+            return None
+        ids = sorted({o.target.get_identifier() for o in ctx.offending if getattr(o.target, "parent", None) is rack})
+        if not ids:
+            return None
+        where = f"{_disp(rack.name)} {labware.compress_wells(ids)}"
+        heading = f"{where} already has a tip." if len(ids) == 1 else f"{where} already have tips."
+        return _Panel(heading, f"{action} asked to put tips there.", "Drop the tips into empty positions.",
+                      rack.name, (rack, frozenset(ids)))
+    return None
 
 
 def _tip_panel(exc, ctx):
@@ -311,6 +449,8 @@ def _panel_for(exc, ctx):
     if ctx.op is None or ctx.action is None or glossary.role_of(ctx.op) is None:
         return None
     classes = handled_classes()
+    if ctx.head96:
+        return _volume_panel96(exc, ctx) if isinstance(exc, (classes[0], classes[1])) else _tip_panel96(exc, ctx)
     if isinstance(exc, (classes[0], classes[1])):
         return _volume_panel(exc, ctx)
     return _tip_panel(exc, ctx)
@@ -344,7 +484,7 @@ def _figure_html(panel, level) -> str:
     resource, ids = panel.figure
     try:
         return labware.render_figure(
-            resource, level=level, volume_of=lambda c: _drawn_volume(c), fault=set(ids)
+            resource, level=level, volume_of=lambda c: _drawn_volume(c), fault=set(ids), tip_of=_drawn_tip
         )
     except Exception:  # noqa: BLE001 -- the drawing is the first thing to go, never the text
         log.warning("errors: could not draw %r", getattr(resource, "name", resource), exc_info=True)

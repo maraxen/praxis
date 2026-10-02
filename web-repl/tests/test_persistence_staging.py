@@ -254,3 +254,41 @@ def test_assert_dist_complete_passes_with_all_persistence_modules(tmp_path: Path
 
     # assert_dist_complete should not raise
     build_repl.assert_dist_complete(dist, with_coxswain=False)  # must not raise
+
+
+def test_stage_shell_stages_the_persistence_stylesheet_beside_the_modules(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Backlog #5653: panel.js links ``panel.css`` from its own directory
+    (``new URL("panel.css", import.meta.url)``), so the staging copy must carry
+    non-JS files too. Stage a fixture tree with a ``panel.css`` and a
+    ``__tests__`` golden next to it: the stylesheet ships, the test data does
+    not."""
+    shell_dir, src = _make_shell_source_tree(tmp_path)
+    (src / "panel.css").write_text("/* panel.css */\n")
+    (src / "__tests__" / "panel.golden.json").write_text("{}\n")
+    dist = _make_dist_dir(tmp_path)
+
+    monkeypatch.setattr(build_repl, "SHELL_DIR", shell_dir)
+    monkeypatch.setattr(build_repl, "PERSISTENCE_JS_MODULES", src)
+
+    build_repl.stage_shell(dist)
+
+    dst_modules = dist / "shell" / "persistence"
+    assert (dst_modules / "panel.css").read_bytes() == (src / "panel.css").read_bytes()
+    assert not (dst_modules / "__tests__").exists()
+
+
+def test_the_real_persistence_tree_ships_panel_css_next_to_panel_js(tmp_path: Path) -> None:
+    """The unmocked tree: whatever ``panel.js`` links must be staged at the
+    same relative path, byte-identical, and no unit-test data may ship."""
+    real = Path(__file__).resolve().parents[1] / "shell" / "persistence"
+    assert (real / "panel.css").is_file(), "panel.js links panel.css, which does not exist in the source tree"
+    dist = _make_dist_dir(tmp_path)
+
+    build_repl.stage_shell(dist)
+
+    dst_modules = dist / "shell" / "persistence"
+    for name in ("panel.js", "panel.css"):
+        assert (dst_modules / name).read_bytes() == (real / name).read_bytes(), name
+    assert not (dst_modules / "__tests__").exists()

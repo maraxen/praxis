@@ -3,8 +3,12 @@
 // state machine", D12, D14, 3.6; AC-35 and AC-36 unit halves, AC-38 state-table half).
 //
 // dock.js is exercised against the fakes in __tests__/fakes.js: a Lumino widget whose root
-// class sits at chain index 3 (S1-A), a main DockPanel that lays out split-right and
-// honours inline min/max width the way S1 measured, a shell whose `add` insists on a widget
+// class sits at chain index 3 (S1-A), a main DockPanel that lays out split-right in its LEGACY mode
+// (an inline max-width clamps the node and the clamped difference goes to the siblings; that is S1's
+// reading of the NODE only, and the recorded K2 run contradicts it for the allocation: the real split
+// honours a child's minimum but not its maximum and leaves the capped deck centred in a wider half,
+// see dock_reclaim.test.js and the fakes.js header; the OUTCOME is tested there, in the measured mode),
+// a shell whose `add` insists on a widget
 // id, commands, a BroadcastChannel hub, a ResizeObserver and the session contexts of
 // notebook panels. What the SHELL posts on `praxis_viz3d` is recorded by a probe channel
 // that does not hear the kernel's own posts, so "the shell posted a query" is read from
@@ -1637,6 +1641,10 @@ describe("sizing, case honoured_reachable (D6; AC-36 unit half)", () => {
       expect(deckWidth(env)).toBeGreaterThanOrEqual(420);
       expect(deckWidth(env)).toBeLessThanOrEqual(480);
       expect(env.dock.fitCalls).toBeGreaterThanOrEqual(1);
+      // #5656: the remark at the end of the next line is the pre-#5656 reading and is only half true. The NODE is clamped by CSS;
+      // the split's allocation is re-clamped through layout by `reclaimMedium` (dock_reclaim.test.js, measured fake). `restoreCalls`
+      // is still 0 HERE only because this legacy fake gives every node but the dock a zero-width rectangle, so the re-clamp cannot
+      // measure a sibling and does nothing. This is not evidence that 1280-1599 never touches layout.
       expect(env.dock.restoreCalls.length).toBe(0); // 1280-1599 is CSS, not layout
     });
   }
@@ -1765,7 +1773,9 @@ describe("sizing, case honoured_reachable (D6; AC-36 unit half)", () => {
     expect(deckWidth(env)).toBeLessThanOrEqual(480);
   });
 
-  test("a ResizeObserver callback in the 1280-1599 tier leaves layout alone (CSS limits do the clamping)", () => {
+  test("a ResizeObserver callback in the 1280-1599 tier calls no layout on the legacy fake, which cannot measure a sibling (the node is CSS-clamped; the measured re-clamp is in dock_reclaim.test.js)", () => {
+    // #5656: `restoreCalls` stays 0 below only because the legacy fake's nodes have no geometry (zero-width rectangles), so
+    // `reclaimMedium` has nothing to measure. With real geometry the same callback re-clamps the allocation when it is off.
     const env = makeEnv({ width: 1440 });
     env.announce("v1");
     const fits = env.dock.fitCalls;

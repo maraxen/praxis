@@ -42,9 +42,18 @@
 //
 // SIZING (D6), for the case S1 recorded, `honoured_reachable` (exported once, as SIZING, so
 // the browser harness can assert it): 1280-1599 px use CSS limits (min 420 / max 480 px) on
-// the widget node; >= 1600 px use layout sizing, `saveLayout()` -> edit the split area's
-// `sizes` -> `restoreLayout()` on the main DockPanel, to
-// panel_width = max(420, main_area_width - 960 - nb_h_padding), also on every ResizeObserver
+// the widget node PLUS a re-clamp of the split's allocation (`reclaimMedium`, #5656): Lumino's
+// split honours a child's minimum but not its maximum (a tab area reports no maximum), so a deck
+// capped at 480 px sits centred in a wider half and the surplus belongs to nobody (73.5 px at 1440 open, 220 px
+// after a drag past 480, in the recorded real-browser run). `reclaimMedium` therefore sizes the
+// split through layout, `saveLayout()` -> edit the split's `sizes` -> `restoreLayout()`, so the deck's
+// half is exactly the deck's width and the notebook gets the rest: OPEN_WIDTH_MEDIUM (420) after an
+// open or a tier entry, the width the deck already had after a main-area change (file-browser toggle,
+// window resize), its own clamped width after a splitter drag. It runs on `shell.layoutModified` and on
+// the dock's ResizeObserver, never at >= 1600 or in the drawer, and stops by convergence
+// (RECLAIM_EPS_PX), a streak cap (RECLAIM_STREAK_MAX) and the `sizing` flag. >= 1600 px uses layout
+// sizing alone, `saveLayout()` -> edit the split area's `sizes` -> `restoreLayout()` on the main DockPanel,
+// to panel_width = max(420, main_area_width - 960 - nb_h_padding), also on every ResizeObserver
 // callback (`restoreLayout()` keeps the iframe, S1); `parent.fit()` after every tier change
 // inside the split so Lumino re-reads the limits. The other D6 table rows (CSS ignored,
 // layout unreachable, `restore_layout_keeps_iframe` false, S1-L) are not built: S1 ruled
@@ -79,6 +88,13 @@ export const LOST_TEXT =
 export const MOTION_TEXT = "Motion playback is not available for this backend.";
 export const STATES = Object.freeze(["closed", "open-waiting", "open-connected", "open-lost"]);
 export const PRESETS = Object.freeze(["iso", "top", "front"]);
+
+/** The deck's width in the 1280-1599 tier right after an open or a tier entry (user ruling Q1, #5656). */
+export const OPEN_WIDTH_MEDIUM = 420;
+/** The medium re-clamp counts the deck's half as converged when it is within this many px of the target. */
+export const RECLAIM_EPS_PX = 1;
+/** At most this many consecutive re-clamp restores before it gives up (a layout that refuses the sizes). */
+export const RECLAIM_STREAK_MAX = 3;
 
 /** The D6 sizing case in force (S1 run 1e0cab6d): every AC-36 width key is asserted. */
 export const SIZING = Object.freeze({
@@ -259,6 +275,10 @@ export function mountDock({ app, win, logger = console, controllers, baseUrl } =
   let attaching = false;
   let sizing = false;
   let disposed = false;
+  let settledDeck = null; // medium re-clamp: the deck width it last settled on (px), null right after an attach or a tier entry
+  let settledAvail = null; // ... and the width the split distributed among its children then (px)
+  let reclaimStreak = 0; // consecutive re-clamp restores that have not converged
+  let reclaimNoted = false; // the streak cap was reported for this attach
 
   // -- reporting (never throws) ---------------------------------------------------------------------------------
 
@@ -767,12 +787,102 @@ export function mountDock({ app, win, logger = console, controllers, baseUrl } =
     }
   }
 
+  /** The tab area's shown widget in `child` when it is a measurable, uncapped sibling of the deck: {width, fraction}, or null. */
+  function measuredSibling(child, fraction) {
+    if (!child || child.type !== "tab-area" || !Array.isArray(child.widgets)) return null;
+    const shown = child.widgets[child.currentIndex];
+    if (!shown || !shown.node || typeof shown.node.getBoundingClientRect !== "function") return null;
+    const width = shown.node.getBoundingClientRect().width;
+    if (!(width > 4) || !(fraction > 0)) return null; // a sibling that has no layout yet cannot be measured
+    if (win && typeof win.getComputedStyle === "function") {
+      try {
+        if (win.getComputedStyle(shown.node).maxWidth !== "none") return null; // a capped sibling's width is not its allocation
+      } catch {
+        return null;
+      }
+    }
+    return { width, fraction };
+  }
+
+  /**
+   * 1280-1599 (#5656): hand the space Lumino's split gives the deck's half and the capped deck cannot use to the notebook. The
+   * split honours the deck's minimum but not its maximum, so the half stays wide and the 480 px deck sits centred in it. Through
+   * the layout path the wide tier already uses (`saveLayout()` -> edit `sizes` -> `restoreLayout()`), set the deck's half to the
+   * width the deck should have: OPEN_WIDTH_MEDIUM right after an attach or a tier entry (`settledDeck` is null), the width it
+   * settled on when the main area changed width (a file-browser toggle, a window resize), its own half after a splitter drag.
+   * The width distributed among the split's children, `A`, is a sibling's node width divided by that sibling's size fraction;
+   * it is never derived from Lumino's `spacing` (4 px) or the dock's padding (the recorded handle is 5 px). Runs on
+   * `shell.layoutModified` and on the dock's ResizeObserver. Stops by convergence, a streak cap and the `sizing` flag.
+   * Does nothing it cannot measure. Never throws.
+   */
+  function reclaimMedium() {
+    try {
+      const eligible = !disposed && state !== "closed" && home === "split" && tier === "medium" && widget && !attaching && !sizing;
+      if (!eligible) return;
+      const dock = mainDock();
+      if (!dock) return;
+      const config = dock.saveLayout();
+      const split = findSplit(config ? config.main : null, widget);
+      if (!split) return; // the user moved the deck out of a horizontal split: leave it to Lumino
+      const sizes = split.node.sizes;
+      if (!Array.isArray(sizes) || sizes.length !== split.node.children.length || !sizes.every((x) => Number.isFinite(x) && x >= 0)) return;
+      const total = sizes.reduce((a, b) => a + b, 0);
+      if (!(total > 0)) return;
+      const fractions = sizes.map((x) => x / total);
+      let sibling = null;
+      split.node.children.forEach((child, i) => {
+        if (i === split.index) return;
+        const found = measuredSibling(child, fractions[i]);
+        if (found && (sibling === null || found.fraction > sibling.fraction)) sibling = found;
+      });
+      if (sibling === null) return;
+      const A = sibling.width / sibling.fraction;
+      if (!Number.isFinite(A) || !(A > 0)) return;
+      const half = fractions[split.index] * A;
+      let target;
+      if (settledDeck === null) target = OPEN_WIDTH_MEDIUM;
+      else if (Math.abs(A - settledAvail) > RECLAIM_EPS_PX) target = settledDeck;
+      else target = half;
+      target = Math.min(MAX_PANEL, Math.max(MIN_PANEL, target));
+      if (A - target < 2) return;
+      settledDeck = target;
+      settledAvail = A;
+      if (Math.abs(half - target) <= RECLAIM_EPS_PX) {
+        reclaimStreak = 0; // converged
+        return;
+      }
+      if (reclaimStreak >= RECLAIM_STREAK_MAX) {
+        if (!reclaimNoted) {
+          reclaimNoted = true;
+          note("the layout did not take the deck panel's width; leaving it to Lumino");
+        }
+        return;
+      }
+      reclaimStreak += 1;
+      const fraction = target / A;
+      const rest = 1 - fractions[split.index];
+      split.node.sizes = fractions.map((f, i) => {
+        if (i === split.index) return fraction;
+        return rest > 0 ? (f / rest) * (1 - fraction) : (1 - fraction) / (fractions.length - 1);
+      });
+      sizing = true;
+      try {
+        dock.restoreLayout(config);
+      } finally {
+        sizing = false;
+      }
+    } catch (err) {
+      report("re-clamp the deck panel", err);
+    }
+  }
+
   /** Size the panel for the tier it is in. `reason`: "open", "tier" (a 1600 crossing or a re-home), or "resize"
-   * (a ResizeObserver callback, only ever at >= 1600: the 1280-1599 clamp is CSS and needs no callback). */
+   * (a ResizeObserver callback, only ever at >= 1600: at 1280-1599 the node's clamp is CSS and the split's allocation is
+   * re-clamped by `reclaimMedium`, which runs on layoutModified and the ResizeObserver, not here). */
   function applySizing(reason) {
     if (home !== "split" || !widget) return;
     if (tier === "medium") {
-      setLimits(); // 1280-1599: CSS limits do the clamping, also for a splitter drag
+      setLimits(); // 1280-1599: CSS limits clamp the node, also for a splitter drag (the allocation: reclaimMedium)
       fitParent();
       return;
     }
@@ -803,8 +913,10 @@ export function mountDock({ app, win, logger = console, controllers, baseUrl } =
 
   function onDockResized() {
     if (sizing || state === "closed" || home !== "split") return;
+    const before = tier;
     evaluateTier();
     if (home === "split" && tier === "wide") applySizing("resize");
+    else if (home === "split" && tier === "medium" && before === "medium") reclaimMedium(); // a tier entry re-clamps inside evaluateTier
   }
 
   function drawerBox() {
@@ -854,6 +966,10 @@ export function mountDock({ app, win, logger = console, controllers, baseUrl } =
       } else {
         clearDrawerStyle();
         if (widget.node.parentNode) widget.node.parentNode.removeChild(widget.node);
+        settledDeck = null; // a fresh attach opens at OPEN_WIDTH_MEDIUM (the medium re-clamp, on the next layoutModified)
+        settledAvail = null;
+        reclaimStreak = 0;
+        reclaimNoted = false;
         if (tier === "medium") setLimits();
         else clearLimits();
         const reference = referencePanel();
@@ -901,6 +1017,7 @@ export function mountDock({ app, win, logger = console, controllers, baseUrl } =
     } finally {
       selfClosing = false;
       home = null;
+      reclaimStreak = 0;
     }
   }
 
@@ -1074,7 +1191,14 @@ export function mountDock({ app, win, logger = console, controllers, baseUrl } =
     tier = next;
     if (state === "closed") return; // T5
     if (homeOf(previous) !== homeOf(next)) rehome(); // the 1280 crossing is a lifecycle event
-    else if (home === "split") applySizing("tier"); // a 1600 crossing only re-sizes the split
+    else if (home === "split") {
+      applySizing("tier"); // a 1600 crossing only re-sizes the split
+      if (next === "medium") {
+        settledDeck = null; // entering the medium tier: the deck opens at OPEN_WIDTH_MEDIUM again
+        settledAvail = null;
+        reclaimMedium();
+      }
+    }
   }
 
   // -- the viewer's kernel (kernel restart, T23-T26) -----------------------------------------------------------------
@@ -1161,6 +1285,7 @@ export function mountDock({ app, win, logger = console, controllers, baseUrl } =
     scanPanels();
     // A tab closed some other way than through onCloseRequest: the widget has no parent any more.
     if (!attaching && !selfClosing && state !== "closed" && home === "split" && widget && !widget.parent) closePanel();
+    reclaimMedium();
   }
 
   // -- the channel ----------------------------------------------------------------------------------------------------------

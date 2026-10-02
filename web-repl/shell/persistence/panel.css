@@ -1,0 +1,120 @@
+/*
+ * panel.css -- the REPL persistence UI in the notebook-display tokens
+ * (backlog #5653, task 260929_notebook-display-design; the ladder is #4296).
+ *
+ * The status chip, the panel and `dialog#praxis-persistence-first-save` are
+ * built by panel.js, which links this file from its own directory. Tokens and
+ * rationale: web-repl/design/notebook-display/DESIGN.md ("Tokens"). The rules
+ * below only READ tokens; they declare none.
+ *
+ * WHY A FILE OF ITS OWN, NOT praxis-theme.css
+ * -------------------------------------------
+ * The theme file's rules after the pre-cap bytes are pinned to the one C5b
+ * @media block (tests/test_display_css.py, `_PRE_CAP_*`), and a restyle is no
+ * reason to move that pin. This file is staged with the rest of
+ * shell/persistence/ (build_repl.stage_shell copies the whole directory).
+ *
+ * WHAT STAYS INLINE IN panel.js, AND WHY NOTHING HERE MAY TOUCH IT
+ * ----------------------------------------------------------------
+ * Layout: position, stacking, the 320 px cap, the flex column, the panel's top
+ * margin. Inline styles beat any stylesheet, they are what the real-browser
+ * `--persistence-check` geometry was measured against, and the gate relies on
+ * the UA's own `[hidden]` (the panel) and `dialog:not([open])` (the first-save
+ * gate) display:none. So no rule here sets display, visibility, position,
+ * stacking, size or pointer-events (tests/test_display_css.py enforces it).
+ *
+ * COLOUR
+ * ------
+ * Text is a theme token, so it reads in Light, Dark AND High Contrast (which
+ * praxis-theme.css leaves alone) and never leans on a brand constant: rose and
+ * moonstone ink are marks (a rail, a focus outline), not words. The status
+ * chip carries its state as a 3 px left rail, the same idiom as a cell's
+ * status rail: moonstone ink while the work is safe, rose when it needs a look
+ * ("warn": Browser only, not mirrored, folder disconnected or unavailable)
+ * with the label also set in weight 600, so the warning never rests on colour
+ * alone. Control borders are ink soft (>= 3:1 on the sheet in every theme);
+ * the panel and dialog edges are the rail hairline.
+ *
+ * Longhand for the two brand-token borders on purpose: a shorthand whose
+ * var() is undefined (praxis-theme.css not loaded) is dropped whole, a longhand
+ * only loses its colour. No animation.
+ */
+
+#praxis-persistence {
+  color: var(--jp-content-font-color0);
+  font-family: var(--jp-ui-font-family);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* --- controls: the chip, the panel buttons and the dialog buttons ------------ */
+#praxis-persistence button,
+dialog#praxis-persistence-first-save button {
+  font: inherit;
+  color: var(--jp-content-font-color0);
+  background: var(--jp-layout-color0);
+  border: 1px solid var(--jp-content-font-color2);
+  border-radius: var(--jp-border-radius);
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+#praxis-persistence button:hover,
+dialog#praxis-persistence-first-save button:hover {
+  background: var(--jp-layout-color2);
+}
+
+/* Rose is attention: the same keyboard ring as the output grammar. The UA's own
+   outline style stays, so a missing token costs the colour and not the ring. */
+#praxis-persistence button:focus-visible,
+dialog#praxis-persistence-first-save button:focus-visible {
+  outline-color: var(--praxis-rose);
+  outline-offset: 2px;
+}
+
+/* --- the status chip: a left rail carries the state ---------------------------- */
+#praxis-persistence [data-praxis-action='toggle-panel'] {
+  border-left-width: 3px;
+  border-left-style: solid;
+  border-left-color: var(--praxis-moonstone-ink);
+  font-weight: 400;
+}
+
+#praxis-persistence [data-praxis-action='toggle-panel'][data-praxis-warn='1'] {
+  border-left-color: var(--praxis-rose);
+  font-weight: 600;
+}
+
+/* --- the panel ------------------------------------------------------------------ */
+#praxis-persistence > div {
+  color: var(--jp-content-font-color0);
+  background: var(--jp-layout-color0);
+  border: 1px solid var(--jp-border-color1);
+  border-radius: var(--jp-border-radius);
+  padding: 8px;
+}
+
+/* The explanatory lines are secondary text (ink soft). */
+#praxis-persistence > div p {
+  color: var(--jp-content-font-color2);
+}
+
+/* --- the first-save gate -------------------------------------------------------- */
+dialog#praxis-persistence-first-save {
+  color: var(--jp-content-font-color0);
+  background: var(--jp-layout-color0);
+  border: 1px solid var(--jp-border-color1);
+  border-radius: var(--jp-border-radius);
+  padding: 16px 20px;
+  font-family: var(--jp-ui-font-family);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+dialog#praxis-persistence-first-save p {
+  margin: 0 0 12px;
+}
+
+dialog#praxis-persistence-first-save button {
+  margin-right: 8px;
+}

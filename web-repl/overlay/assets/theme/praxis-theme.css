@@ -42,7 +42,7 @@
   font-family: 'Roboto Flex';
   font-style: normal;
   font-weight: 100 1000;
-  font-stretch: 100%;
+  font-stretch: 25% 151%;
   font-display: swap;
   src: url(./fonts/RobotoFlex-Variable.woff2) format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
@@ -820,9 +820,9 @@ body:is([data-jp-theme-name='JupyterLab Dark'], [data-jp-theme-name='JupyterLab 
  * drawn liquid. Rose marks attention (the op still running, a focused deck
  * item, changed wells), brick marks an error and always has words beside it.
  *
- * NOTE (width axis): the resource-name rules ask for `font-stretch`, but the
- * vendored Roboto Flex carries only opsz and wght (VENDOR_MANIFEST.json), so
- * names render at normal width until the font is re-vendored with wdth.
+ * NOTE (width axis): the resource-name rules ask for `font-stretch`; the
+ * vendored Roboto Flex carries opsz, wdth (25-151%) and wght (VENDOR_MANIFEST.json),
+ * and the @font-face above declares that range, so condensed names render condensed.
  * ========================================================================== */
 
 /* --- output roots: one modifier class per kind, beside .praxis-out ------------------ */

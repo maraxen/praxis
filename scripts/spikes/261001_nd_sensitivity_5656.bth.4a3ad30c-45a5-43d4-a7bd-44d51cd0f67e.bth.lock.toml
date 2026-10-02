@@ -1,0 +1,8 @@
+# 261001_nd_sensitivity_5656.bth.4a3ad30c-45a5-43d4-a7bd-44d51cd0f67e.bth.lock.toml — written at run time, never modified
+[manifest]
+written_at = "2026-10-01T20:51:18.413729+00:00"
+sidecar_sha256 = "75bf96ea7ca2e57a897ff00be71e4744acd48555d0697d20343408971e52f293"
+sidecar_path = "/tmp/praxis-nd-b/scripts/spikes/261001_nd_sensitivity_5656.bth.toml"
+git_sha = "f2a056c2746af351488292c8733ff1cf9f2210b3"
+script_sha256 = "4515d40afee7dd8a5a8a2a9748a21dcc3201c53293f3a440cc14f52f8d6ec6e5"
+run_id = "4a3ad30c-45a5-43d4-a7bd-44d51cd0f67e"

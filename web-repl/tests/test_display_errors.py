@@ -11,7 +11,7 @@ the S3-C fallback is: wrap the shell INSTANCE's ``showtraceback``).
 **Real PLR at the 1.0.0b1 pin.** Every panel is built from the REAL error raised by the real
 ``LiquidHandler`` (non-shim home ``pylabrobot.legacy.liquid_handling``) and the chatterbox backend on the
 fixture's ``assemble()`` deck, with B5's setups (E1, E2, E3, E4, E5, E6, E7, E9, E10, E11, E12, E13, E15,
-E16, E-96 and the negatives). The venv's editable PLR can be the old 0.2.2, so the first fixture asserts
+E16 and the negatives; the 96-head setups E96-* since #5659). The venv's editable PLR can be the old 0.2.2, so the first fixture asserts
 the version; run with ``PYTHONPATH=<PLR 1.0.0b1 source>`` prepended. ``test_every_scenario_raises_the_class_it_claims``
 checks the setups WITHOUT the module under test, so a setup that stops raising fails on its own and never
 lets a panel test pass vacuously.
@@ -60,12 +60,16 @@ from pathlib import Path
 import pylabrobot
 import pytest
 from pylabrobot.legacy.liquid_handling import LiquidHandler
+from pylabrobot.legacy.tip_tracker import tip_spot_tracker
 from pylabrobot.resources import (
+    Container,
+    Coordinate,
     does_tip_tracking,
     does_volume_tracking,
     set_tip_tracking,
     set_volume_tracking,
 )
+from pylabrobot.resources.agenbio import agenbio_1_troughplate_100mL_Fl
 from pylabrobot.resources.corning import cor_96_wellplate_360uL_Fb
 from pylabrobot.resources.errors import (
     HasTipError,
@@ -240,7 +244,7 @@ def _spy_backend(lh):
     """Record every backend ``aspirate`` / ``dispense`` call on the chatterbox backend (D8 "Panel
     drawing": the tracker refusal is raised before the backend is reached)."""
     calls: list[str] = []
-    for op in ("aspirate", "dispense"):
+    for op in ("aspirate", "dispense", "aspirate96", "dispense96"):
         original = getattr(lh.backend, op)
 
         def spy(*args, _op=op, _original=original, **kwargs):
@@ -480,13 +484,247 @@ async def _e13():
     return Raised(exc, deck=deck, lh=lh, trough=trough)
 
 
-@scenario("E-96", TooLittleLiquidError)
-async def _e96():
-    """A real 96-head failure: pick up the whole rack, aspirate 50 uL from an empty assay plate."""
+@scenario("E96-empty", TooLittleLiquidError)
+async def _e96_empty():
+    """A real 96-head failure: pick up the whole rack, aspirate 50 uL from an empty assay plate.
+    (This was ``E-96``; #5659 gives the 96 head its own panel rows.)"""
     deck, lh, tips, _source, assay = await _world()
     await lh.pick_up_tips96(tips)
-    exc = await _catch(lh.aspirate96(assay, volume=50.0))
+    exc = await _catch(lh.aspirate96(assay, volume=50.0), lh)
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+# ---- #5659: the 96-head scenarios behind AC-96-6/-7/-9/-11 (recipes as in test_display_context.py)
+
+
+def _bare_container(deck, name, *, max_volume=20000.0):
+    container = Container(name=name, size_x=120.0, size_y=80.0, size_z=40.0, max_volume=max_volume)
+    deck.assign_child_resource(container, location=Coordinate(500.0, 100.0, 0))
+    return container
+
+
+def _one_well_plate(deck, name="trough_plate"):
+    plate = agenbio_1_troughplate_100mL_Fl(name=name)
+    deck.get_resource("plate_carrier")[2] = plate
+    return plate
+
+
+def _set_tip_volumes(lh, volume):
+    for tracker in lh.head96.values():
+        tracker.get_tip().tracker.set_volume(volume)
+
+
+def _give_spot_a_committed_tip(tips, i):
+    spot = tips.get_item(i)
+    tip_spot_tracker(spot).add_tip(spot.make_tip())  # commit=True
+    return spot
+
+
+@scenario("E96-single", TooLittleLiquidError)
+async def _e96_single():
+    deck, lh, tips, _source, _assay = await _world()
+    container = _bare_container(deck, "big")
+    container.tracker.set_volume(2000)
+    await lh.pick_up_tips96(tips)
+    exc = await _catch(lh.aspirate96(container, volume=30.0), lh)
+    return Raised(exc, deck=deck, lh=lh, container=container)
+
+
+@scenario("E96-onewell-plate", TooLittleLiquidError)
+async def _e96_onewell_plate():
+    deck, lh, tips, _source, _assay = await _world()
+    plate = _one_well_plate(deck)
+    plate.get_item(0).tracker.set_volume(1000)
+    await lh.pick_up_tips96(tips)
+    exc = await _catch(lh.aspirate96(plate, volume=30.0), lh)
+    return Raised(exc, deck=deck, lh=lh, plate=plate)
+
+
+@scenario("E96-rowD", TooLittleLiquidError)
+async def _e96_rowd():
+    """B: assay wells 80 uL except row D at 10. Wells A1-C1 carry queued (pending 30) residue when D1 raises."""
+    deck, lh, tips, _source, assay = await _world()
+    for well in assay.get_all_items():
+        well.tracker.set_volume(80)
+    for well in assay["D1:D12"]:
+        well.tracker.set_volume(10)
+    await lh.pick_up_tips96(tips)
+    exc = await _catch(lh.aspirate96(assay, volume=50.0), lh)
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+@scenario("E96-partial", TooLittleLiquidError)
+async def _e96_partial():
+    deck, lh, tips, _source, assay = await _world()
+    for i in (0, 1, 2, 50):
+        tip_spot_tracker(tips.get_item(i)).remove_tip(commit=True)
+    await lh.pick_up_tips96(tips)
+    exc = await _catch(lh.aspirate96(assay, volume=50.0), lh)
+    return Raised(exc, deck=deck, lh=lh, tips=tips, assay=assay)
+
+
+@scenario("E96-shared", TooLittleLiquidError)
+async def _e96_shared():
+    """A list of 96 wells in which A1 appears twice (channels 0 and 1) and B1 not at all: A1 holds
+    60 uL and is asked for 2 x 50, so the demand is summed per well."""
+    deck, lh, tips, _source, assay = await _world()
+    wells = assay.get_all_items()
+    for well in wells:
+        well.tracker.set_volume(80)
+    wells[0].tracker.set_volume(60)
+    await lh.pick_up_tips96(tips)
+    exc = await _catch(lh.aspirate96([wells[0], wells[0], *wells[2:]], volume=50.0), lh)
+    return Raised(exc, deck=deck, lh=lh, assay=assay)
+
+
+@scenario("E96-tipTLV", TooLittleVolumeError)
+async def _e96_tip_tlv():
+    deck, lh, tips, source, _assay = await _world()
+    for well in source.get_all_items():
+        well.tracker.max_volume = 5000
+        well.tracker.set_volume(1000)
+    await lh.pick_up_tips96(tips)
+    await lh.aspirate96(source, volume=200.0)
+    exc = await _catch(lh.aspirate96(source, volume=200.0), lh)
     return Raised(exc, deck=deck, lh=lh)
+
+
+@scenario("E96-tipTLL", TooLittleLiquidError)
+async def _e96_tip_tll():
+    deck, lh, tips, source, assay = await _world()
+    await lh.pick_up_tips96(tips)
+    await lh.aspirate96(source, volume=30.0)
+    exc = await _catch(lh.dispense96(assay, volume=50.0), lh)
+    return Raised(exc, deck=deck, lh=lh)
+
+
+@scenario("E96-tipTLL-D2", TooLittleLiquidError)
+async def _e96_tip_tll_d2():
+    deck, lh, tips, source, assay = await _world()
+    await lh.pick_up_tips96(tips)
+    await lh.aspirate96(source, volume=30.0)
+    for c in (7, 9):
+        lh.head96[c].get_tip().tracker.set_volume(20)
+    exc = await _catch(lh.dispense96(assay, volume=25.0), lh)
+    return Raised(exc, deck=deck, lh=lh)
+
+
+@scenario("E96-dispTLV", TooLittleVolumeError)
+async def _e96_disp_tlv():
+    deck, lh, tips, _source, assay = await _world()
+    for i, well in enumerate(assay.get_all_items()):
+        well.tracker.set_volume(330 if i in (10, 11, 40) else 160)
+    await lh.pick_up_tips96(tips)
+    _set_tip_volumes(lh, 100)
+    exc = await _catch(lh.dispense96(assay, volume=100.0), lh)
+    return Raised(exc, deck=deck, lh=lh, assay=assay)
+
+
+@scenario("E96-hasTip-pickup", HasTipError)
+async def _e96_has_tip_pickup():
+    deck, lh, tips, _source, _assay = await _world()
+    for c in (3, 50):
+        lh.head96[c].add_tip(tips.get_item(c).make_tip())  # committed
+    exc = await _catch(lh.pick_up_tips96(tips))
+    return Raised(exc, deck=deck, lh=lh, tips=tips)
+
+
+async def _h():
+    """H: the whole rack picked up, committed tips put back in spots 5 (F1) and 77 (F10)."""
+    deck, lh, tips, source, assay = await _world()
+    await lh.pick_up_tips96(tips)
+    for i in (5, 77):
+        _give_spot_a_committed_tip(tips, i)
+    return deck, lh, tips, source, assay
+
+
+@scenario("E96-hasTip-drop", HasTipError)
+async def _e96_has_tip_drop():
+    """Channels 0-4 are queued (pending tips on spots 0-4) before spot 5 raises: 7 pending, 2 committed."""
+    deck, lh, tips, _source, _assay = await _h()
+    exc = await _catch(lh.drop_tips96(tips))
+    return Raised(exc, deck=deck, lh=lh, tips=tips)
+
+
+@scenario("E96-return", HasTipError)
+async def _e96_return():
+    deck, lh, tips, _source, _assay = await _world()
+    await lh.pick_up_tips96(tips)
+    _give_spot_a_committed_tip(tips, 5)
+    exc = await _catch(lh.return_tips96())
+    return Raised(exc, deck=deck, lh=lh, tips=tips)
+
+
+@scenario("E96-noTip-residue", NoTipError)
+async def _e96_notip_residue():
+    deck, lh, tips, _source, _assay = await _world()
+    for c in (3, 50):
+        lh.head96[c].add_tip(tips.get_item(c).make_tip())
+    assert isinstance(await _catch(lh.pick_up_tips96(tips)), HasTipError)
+    exc = await _catch(lh.drop_tips96(tips))
+    return Raised(exc, deck=deck, lh=lh, tips=tips)
+
+
+@scenario("E96-residue-TLL", TooLittleLiquidError)
+async def _e96_residue_tll():
+    deck, lh, tips, _source, assay = await _world()
+    for well in assay.get_all_items():
+        well.tracker.set_volume(80)
+    for well in assay["D1:D12"]:
+        well.tracker.set_volume(10)
+    await lh.pick_up_tips96(tips)
+    assert isinstance(await _catch(lh.aspirate96(assay, volume=50.0)), TooLittleLiquidError)
+    for well in assay["D1:D12"]:
+        well.tracker.set_volume(80)
+    exc = await _catch(lh.aspirate96(assay, volume=50.0), lh)
+    return Raised(exc, deck=deck, lh=lh, assay=assay)
+
+
+@scenario("E96-N", TooLittleVolumeError)
+async def _e96_n():
+    deck, lh, tips, _source, _assay = await _world()
+    container = _bare_container(deck, "tub", max_volume=3000.0)
+    container.tracker.set_volume(1000)
+    await lh.pick_up_tips96(tips)
+    _set_tip_volumes(lh, 30)
+    exc = await _catch(lh.dispense96(container, volume=30.0), lh)
+    return Raised(exc, deck=deck, lh=lh, container=container)
+
+
+@scenario("E96-onewell-TLV", TooLittleVolumeError)
+async def _e96_onewell_tlv():
+    deck, lh, tips, _source, _assay = await _world()
+    plate = _one_well_plate(deck)
+    plate.get_item(0).tracker.set_volume(98000)
+    await lh.pick_up_tips96(tips)
+    _set_tip_volumes(lh, 30)
+    exc = await _catch(lh.dispense96(plate, volume=30.0), lh)
+    return Raised(exc, deck=deck, lh=lh, plate=plate)
+
+
+@scenario("E96_ledger", TooLittleLiquidError)
+async def _e96_ledger():
+    """The 96 failure inside a real ``RunLedger``: step 2 (pick up, then the failing aspirate)."""
+    led = _sibling("ledger")
+    deck, lh, tips, _source, assay = await _world()
+    try:
+        with led.RunLedger(lh, show=False) as run:
+            await lh.pick_up_tips96(tips)
+            await lh.aspirate96(assay, volume=50.0)
+    except TooLittleLiquidError as exc:
+        return Raised(exc, deck=deck, lh=lh, run=run)
+    raise AssertionError("expected TLL")
+
+
+@scenario("P1", HasTipError)
+async def _p1():
+    """A31: after E14's residue, a 1-channel drop of channel 3 onto the occupied tips_300 A1. The
+    rack's PENDING view holds 92 tips, its committed view 95."""
+    deck, lh, tips, _source, _assay = await _world()
+    await lh.pick_up_tips(tips["D1:D1"], use_channels=[3])
+    assert isinstance(await _catch(lh.pick_up_tips(tips["A2:H2"])), HasTipError)  # channels 0-2 queue first
+    exc = await _catch(lh.drop_tips(tips["A1:A1"], use_channels=[3]))
+    return Raised(exc, deck=deck, lh=lh, tips=tips)
 
 
 @scenario("E15", TooLittleVolumeError)
@@ -994,14 +1232,17 @@ def test_the_source_order_behind_the_claim_tracker_queue_before_the_backend_call
 # --------------------------------------------------------------------------- the generic panel
 
 
-GENERIC_CASES = ["E13", "E15", "E-96", "E8", "E2_summed"]
+GENERIC_CASES = ["E13", "E15", "E8", "E2_summed", "E96-noTip-residue", "E96-residue-TLL", "E96-N", "E96-onewell-TLV"]
 
 
 @pytest.mark.parametrize("name", GENERIC_CASES)
 def test_a_context_that_is_none_gets_the_generic_panel(errors, ctxmod, svg, name):
     r = case(name)
-    if name in ("E13", "E15", "E-96"):
+    if name in ("E13", "E15", "E96-noTip-residue", "E96-residue-TLL"):
         assert ctxmod.resolve(r.exc, r.tb) is None  # the AC-15 premise
+    if name in ("E96-N", "E96-onewell-TLV"):  # a context, but no template row (errors.py: TLV on a single container)
+        ctx = ctxmod.resolve(r.exc, r.tb)
+        assert ctx is not None and ctx.head96 and ctx.container_mode == "single"
     data, meta, root = _render(errors, name)
     sentence = f"PyLabRobot raised {type(r.exc).__name__}: {r.exc}"
     assert _text_of(root, "praxis-error__title") == sentence  # the heading IS PLR's sentence
@@ -1803,3 +2044,459 @@ def test_every_action_string_in_a_panel_equals_a_glossary_value(errors, gl):
     _d, _m, root = _render(errors, "E16")
     assert gl.verb_form("discard_tips") in _part(root, "fix")
     assert gl.action_name("pick_up_tips") in _part(root, "fix")
+
+
+# --------------------------------------------------------------------------- the 96-head panels (#5659)
+#
+# Spec: ``261001_nd-next-5659-96head-errors.md`` N5659-6 (the rows), N5659-7 (size), N5659-8 (committed
+# rack tips), AC-96-6, -7, -9 and -11. ``-k "panel96 or size96 or order96 or rack_committed"``.
+
+_ALL_IDS = [f"{r}{c}" for c in range(1, 13) for r in "ABCDEFGH"]
+_PARTIAL_IDS = [i for i in _ALL_IDS if i not in ("A1", "B1", "C1", "C7")]
+_ROW_D = [f"D{c}" for c in range(1, 13)]
+
+
+def _compress(ids):
+    return _sibling("labware").compress_wells(ids)
+
+
+# (case, heading, body, fix, resource in the stamp, fault ids or None when there is no drawing)
+# Transcribed from N5659-6 independently of the module (the oracle). {W} comes from labware.compress_wells.
+ROWS96 = [
+    (
+        "E96-empty",
+        "Not enough liquid in assay A1:H12.",
+        "Each well holds 0 µL; the aspirate asked for 50 µL on every channel. Nothing was aspirated.",
+        "Lower `volume` to 0 µL or less, or aspirate from wells that hold more.",
+        "assay", set(_ALL_IDS),
+    ),
+    (
+        "E96-rowD",
+        "Not enough liquid in assay D1:D12.",
+        "Each well holds 10 µL; the aspirate asked for 50 µL on every channel. Nothing was aspirated.",
+        "Lower `volume` to 10 µL or less, or aspirate from wells that hold more.",
+        "assay", set(_ROW_D),
+    ),
+    (
+        "E96-partial",
+        f"Not enough liquid in assay {_compress(_PARTIAL_IDS)}.",
+        "Each well holds 0 µL; the aspirate asked for 50 µL on every channel. Nothing was aspirated.",
+        "Lower `volume` to 0 µL or less, or aspirate from wells that hold more.",
+        "assay", set(_PARTIAL_IDS),
+    ),
+    (
+        "E96-shared",
+        "Not enough liquid in assay A1.",
+        "Each well holds 60 µL; the aspirate asked for 100 µL per well, summed over the channels that "
+        "share it. Nothing was aspirated.",
+        "Lower `volume` to 60 µL or less, or aspirate from wells that hold more.",
+        "assay", {"A1"},
+    ),
+    (
+        "E96-single",
+        "Not enough liquid in big.",
+        "It holds 2,000 µL; the aspirate asked for 2,880 µL across 96 channels. Nothing was aspirated.",
+        "Lower `volume`, or aspirate from a container that holds more.",
+        "big", None,
+    ),
+    (
+        "E96-onewell-plate",
+        "Not enough liquid in trough_plate.",
+        "It holds 1,000 µL; the aspirate asked for 2,880 µL across 96 channels. Nothing was aspirated.",
+        "Lower `volume`, or aspirate from a container that holds more.",
+        "trough_plate", None,
+    ),
+    (
+        "E96-tipTLL",
+        "Not enough liquid in 96 tips on the 96 head.",
+        "Each holds 30 µL; the dispense asked for 50 µL on every channel. Nothing was dispensed.",
+        "Dispense 30 µL or less, or aspirate more first.",
+        None, None,
+    ),
+    (
+        "E96-tipTLL-D2",
+        "Not enough liquid in 2 tips on the 96 head.",
+        "Each holds 20 µL; the dispense asked for 25 µL on every channel. Nothing was dispensed.",
+        "Dispense 20 µL or less, or aspirate more first.",
+        None, None,
+    ),
+    (
+        "E96-tipTLV",
+        "Not enough room in 96 tips on the 96 head.",
+        "Each has room for 160 µL; the aspirate asked for 200 µL on every channel. Nothing was aspirated.",
+        "Aspirate less, or use larger tips.",
+        None, None,
+    ),
+    (
+        "E96-dispTLV",
+        "Not enough room in assay C2:D2, A6.",
+        "Each well has room for 30 µL; the dispense asked for 100 µL on every channel. Nothing was dispensed.",
+        "Lower `volume`, or dispense into emptier wells.",
+        "assay", {"C2", "D2", "A6"},
+    ),
+    (
+        "E96-hasTip-pickup",
+        "The 96 head already holds a tip on 2 channels.",
+        "Pick up tips (96 head) asked those channels for another.",
+        "Drop or discard the tips first.",
+        None, None,
+    ),
+    (
+        "E96-hasTip-drop",
+        "tips_300 F1, F10 already have tips.",
+        "Drop tips (96 head) asked to put tips there.",
+        "Drop the tips into empty positions.",
+        "tips_300", {"F1", "F10"},
+    ),
+    (
+        "E96-return",
+        "tips_300 F1 already has a tip.",
+        "Return tips (96 head) asked to put tips there.",
+        "Drop the tips into empty positions.",
+        "tips_300", {"F1"},
+    ),
+]
+
+
+def _check_row96(errors, svg, row):
+    name, heading, body, fix, resource, fault = row
+    r = case(name)
+    data, meta, root = _render(errors, name)
+    assert _text_of(root, "praxis-error__title") == heading
+    assert _part(root, "body") == body
+    assert _part(root, "fix") == fix
+    assert meta == {"praxis": {"v": 1, "kind": "error", "resource": resource, "rev": None,
+                               "session": SESSION, "exec": EXEC}}
+    svg.check_bundle(data, meta)
+    assert _text_of(root, "praxis-error__plr") == f"PyLabRobot raised {type(r.exc).__name__}: {r.exc}"
+    plain = data["text/plain"]
+    assert heading in plain and body in plain and fix in plain
+    assert f"PyLabRobot raised {type(r.exc).__name__}: {r.exc}" in plain
+    assert bool(root.find_all("svg")) is (fault is not None)  # tip, channel and single rows draw nothing
+    if fault is not None:
+        assert _fault_ids(root) == fault
+        # a ring path AND a cross path, one ring per offender and two strokes per cross (D3)
+        p = _paths(root)
+        assert len(_subpaths(p["sv-fault"][0])) == len(fault)
+        assert len(_subpaths(p["sv-fault-x"][0])) == 2 * len(fault)
+
+
+@pytest.mark.parametrize("row", ROWS96, ids=[t[0] for t in ROWS96])
+def test_panel96_each_row(errors, svg, row):
+    _check_row96(errors, svg, row)
+
+
+def test_panel96_the_one_well_plate_says_across_96_channels_never_on_every_channel(errors):
+    """C4: a one-item Plate is single-container mode; its well's parent IS a Plate, so a dispatch on
+    ``_in_plate`` would render the well row."""
+    r = case("E96-onewell-plate")
+    assert r.plate.get_item(0).parent is r.plate
+    _d, _m, root = _render(errors, "E96-onewell-plate")
+    body = _part(root, "body")
+    assert "across 96 channels" in body and "on every channel" not in body
+    assert _text_of(root, "praxis-error__title") == "Not enough liquid in trough_plate."
+
+
+def test_panel96_a_single_container_never_shows_plrs_pending_numbers_outside_its_line(errors):
+    r = case("E96-single")
+    assert "30.0uL > 20.0uL" in str(r.exc)  # PLR's pending-state message (the premise)
+    _d, _m, root = _render(errors, "E96-single")
+    outside = _without_plr_and_traceback(root)
+    assert "30.0uL" not in outside and "20.0uL" not in outside and "> 20" not in outside
+
+
+def test_panel96_plural_spots_say_have_and_one_spot_says_has(errors):
+    assert _text_of(_render(errors, "E96-hasTip-drop")[2], "praxis-error__title").endswith("already have tips.")
+    assert _text_of(_render(errors, "E96-return")[2], "praxis-error__title").endswith("already has a tip.")
+
+
+def test_panel96_names_the_step_from_a_real_run_ledger(errors, led):
+    r = asyncio.run(SCENARIOS["E96_ledger"]())  # fresh: the autouse fixture clears _ERROR_STEPS per test
+    assert r.run.rows[-1].step == 2  # pick up, then the failing aspirate
+    shown = []
+    errors.handle(r.exc, r.tb, session=SESSION, exec_count=EXEC, display=lambda *a, **k: shown.append((a, k)))
+    (args, _kwargs), = shown
+    root = _parse(args[0]["text/html"])
+    assert _part(root, "step") == "Step 2 of the run."
+    assert _text_of(root, "praxis-error__title") == "Not enough liquid in assay A1:H12."
+    assert args[0]["text/plain"].startswith("Step 2 of the run.")
+
+
+def test_panel96_the_96_rows_use_the_glossary_for_names_and_verbs(errors, gl):
+    for name, expect in (("E96-hasTip-pickup", "pick_up_tips96"), ("E96-return", "return_tips96")):
+        _d, _m, root = _render(errors, name)
+        assert _part(root, "body").startswith(gl.action_name(expect))
+    _d, _m, root = _render(errors, "E96-tipTLL")
+    assert gl.HEAD96_NOUN in _text_of(root, "praxis-error__title")
+
+
+# ---- the controls: each must FAIL the row check built for it
+
+
+def test_panel96_control_a_handler_that_always_shows_the_generic_panel_fails_every_row(errors, svg, ctxmod, monkeypatch):
+    for row in ROWS96:
+        _check_row96(errors, svg, row)  # the good module passes them all
+    monkeypatch.setattr(ctxmod, "resolve", lambda *a, **k: None)
+    for row in ROWS96:
+        with pytest.raises(AssertionError):
+            _check_row96(errors, svg, row)
+
+
+def test_panel96_control_an_in_plate_dispatch_renders_the_well_row_for_the_one_well_plate(errors, svg, monkeypatch):
+    row = next(t for t in ROWS96 if t[0] == "E96-onewell-plate")
+    _check_row96(errors, svg, row)
+    monkeypatch.setattr(errors, "_row_kind", lambda ctx: "plate" if errors._in_plate(ctx.owner) else "single")
+    with pytest.raises(AssertionError):
+        _check_row96(errors, svg, row)
+    # and it is specific: the bare container (no parent plate) and the real plate rows still pass
+    for name in ("E96-single", "E96-rowD"):
+        _check_row96(errors, svg, next(t for t in ROWS96 if t[0] == name))
+
+
+def test_panel96_control_a_heading_from_the_first_failure_only_fails_row_d(errors, svg, ctxmod):
+    import dataclasses
+
+    row = next(t for t in ROWS96 if t[0] == "E96-rowD")
+    _check_row96(errors, svg, row)
+
+    def first_failure(exc, tb=None, **kw):
+        ctx = ctxmod.resolve(exc, tb, **kw)
+        return dataclasses.replace(ctx, offending=ctx.offending[:1])
+
+    r = case("E96-rowD")
+    data, _meta = errors.render(r.exc, r.tb, session=SESSION, exec_count=EXEC, resolver=first_failure)
+    assert _text_of(_parse(data["text/html"]), "praxis-error__title") == "Not enough liquid in assay D1."
+    assert _text_of(_parse(data["text/html"]), "praxis-error__title") != row[1]
+
+
+def _check_96_plate_is_drawn_committed(errors):
+    """E96-rowD leaves A1-C1 with pending 30 and committed 80: the drawing's hover values say 80."""
+    r = case("E96-rowD")
+    a1 = r.assay.get_item("A1")
+    assert (a1.tracker.volume, a1.tracker.pending_volume) == (80, 30)  # the residue (precondition)
+    data, _meta = errors.render(r.exc, r.tb, session=SESSION, exec_count=EXEC)
+    grid = _grid(_parse(data["text/html"]))
+    assert grid["vals"][grid["ids"].split().index("A1")] == 80
+
+
+def test_panel96_the_plate_is_drawn_at_committed_volume_with_residue_on_the_op_wells(errors):
+    _check_96_plate_is_drawn_committed(errors)
+
+
+def test_panel96_control_a_pending_volume_drawing_fails_the_residue_check(errors, monkeypatch):
+    _check_96_plate_is_drawn_committed(errors)
+    monkeypatch.setattr(errors, "_drawn_volume", lambda container: container.tracker.get_used_volume())
+    with pytest.raises(AssertionError):
+        _check_96_plate_is_drawn_committed(errors)
+
+
+# ---- GENERIC_CASES: the 96 cases that stay generic (see GENERIC_CASES above)
+
+
+def test_panel96_control_a_mutant_without_the_no_row_guard_renders_a_row_for_a_single_container_overflow(errors, ctxmod, svg, monkeypatch):
+    def generic(name):
+        r = case(name)
+        _d, _m, root = _render(errors, name)
+        assert _text_of(root, "praxis-error__title") == f"PyLabRobot raised {type(r.exc).__name__}: {r.exc}"
+        assert not _summaries(root)
+
+    for name in ("E96-N", "E96-onewell-TLV"):
+        ctx = ctxmod.resolve(case(name).exc)
+        assert ctx is not None and ctx.head96 and ctx.container_mode == "single"  # a context, no row
+        generic(name)
+    monkeypatch.setattr(errors, "_single_container_has_row", lambda lack: True)
+    for name in ("E96-N", "E96-onewell-TLV"):
+        with pytest.raises(AssertionError):
+            generic(name)
+
+
+# --------------------------------------------------------------------------- N5659-7: size96
+
+
+def _real_context_resolver(ctxmod, name):
+    ctx = ctxmod.resolve(case(name).exc)
+    assert ctx is not None, name
+    return lambda *a, **k: ctx
+
+
+SIZE96 = (("E96-empty", TooLittleLiquidError), ("E96-hasTip-drop", HasTipError))
+
+
+@pytest.mark.parametrize("quote", ['"', "<", "&", "'"])
+@pytest.mark.parametrize(("name", "cls"), SIZE96, ids=[n for n, _ in SIZE96])
+def test_size96_the_whole_96_panel_stays_under_64_kib_whatever_the_escaping_expands_to(errors, svg, ctxmod, name, cls, quote):
+    """The plate figure with all 96 wells faulted (~19.7 KB) and the rack figure (~19.4 KB) share the
+    64 KiB cap with a 16 KiB traceback that escapes up to 6x: the ladder and the shrinking cap carry it."""
+    exc = _hostile_exc(cls, "\n".join(quote * 100 for _ in range(400)))
+    data, meta = errors.render(exc, exc.__traceback__, session=SESSION, exec_count=EXEC,
+                               resolver=_real_context_resolver(ctxmod, name))
+    assert len(data["text/html"].encode("utf-8")) <= CAP
+    svg.check_bundle(data, meta)
+    assert "Show traceback" in data["text/html"]
+    root = _parse(data["text/html"])
+    assert _text_of(root, "praxis-error__title").startswith(("Not enough liquid in assay", "tips_300"))  # a row, not generic
+    assert _details_text(root).count(quote) > 1000  # the traceback SHRANK to fit; it was not dropped
+
+
+def _check_traceback_cap96(errors, ctxmod, name, cls):
+    exc = _long_exc(4000)
+    exc = _hostile_exc(cls, str(exc))
+    data, _meta = errors.render(exc, exc.__traceback__, session=SESSION, exec_count=EXEC,
+                                resolver=_real_context_resolver(ctxmod, name))
+    body = _details_text(_parse(data["text/html"]))
+    assert len(body.encode()) <= TB_CAP
+    assert re.match(r"… \d+ earlier lines omitted\n", body)
+    assert len(data["text/html"].encode()) <= CAP
+
+
+@pytest.mark.parametrize(("name", "cls"), SIZE96, ids=[n for n, _ in SIZE96])
+def test_size96_a_huge_traceback_is_tail_capped_on_the_96_panels_too(errors, ctxmod, name, cls):
+    _check_traceback_cap96(errors, ctxmod, name, cls)
+
+
+@pytest.mark.parametrize(("name", "cls"), SIZE96, ids=[n for n, _ in SIZE96])
+def test_size96_control_a_handler_that_does_not_cap_the_traceback_fails_on_the_96_panels(errors, bud, ctxmod, name, cls, monkeypatch):
+    _check_traceback_cap96(errors, ctxmod, name, cls)
+    monkeypatch.setattr(bud, "cap_tail", lambda text, *a, **k: text)
+    with pytest.raises(AssertionError):
+        _check_traceback_cap96(errors, ctxmod, name, cls)
+
+
+@pytest.mark.parametrize(("name", "cls"), SIZE96, ids=[n for n, _ in SIZE96])
+def test_size96_control_a_fit_without_the_ladder_exceeds_the_cap_for_quotes(errors, ctxmod, name, cls, monkeypatch):
+    """A ``_fit`` that renders level 0 with the full 16 KiB traceback and no ladder is over 64 KiB for
+    ``"`` (6 bytes each); the real ``_fit`` is not."""
+    exc = _hostile_exc(cls, "\n".join('"' * 100 for _ in range(400)))
+    resolver = _real_context_resolver(ctxmod, name)
+
+    def size():
+        data, _meta = errors.render(exc, exc.__traceback__, session=SESSION, exec_count=EXEC, resolver=resolver)
+        return len(data["text/html"].encode("utf-8"))
+
+    assert size() <= CAP
+    monkeypatch.setattr(
+        errors, "_fit",
+        lambda exc, panel, step, tb_text: errors._html(exc, panel, step, tb_text, 0, errors._TB_LIMITS[0]),
+    )
+    assert size() > CAP
+
+
+# --------------------------------------------------------------------------- AC-96-9: order96
+
+
+def _pin_source():
+    return inspect.getsource(sys.modules[LiquidHandler.__module__])
+
+
+def _op_body(src, op):
+    start = src.index(f"  async def {op}(")
+    ends = [i for i in (src.find("\n  async def ", start + 10), src.find("\n  def ", start + 10)) if i != -1]
+    return src[start : min(ends)]
+
+
+def _check_queue_before_the_try(op, tracker_calls, backend_op=None):
+    """In the op's source: the first tracker call < ``try:`` < ``await self.backend.<op>(``, and every
+    ``rollback()`` comes after ``try:``. True of the 96 ops (their refusals leave pending state behind);
+    false of the 1-channel ops, whose queue loop is inside the ``try`` and so rolls back."""
+    body = _op_body(_pin_source(), op)
+    try_at = body.index("try:")
+    first_tracker = min(body.index(c) for c in tracker_calls if c in body)
+    backend_at = body.index(f"await self.backend.{backend_op or op}(")
+    rollbacks = [m.start() for m in re.finditer(r"\.rollback\(\)", body)]
+    assert rollbacks, op
+    assert first_tracker < try_at < backend_at, (op, first_tracker, try_at, backend_at)
+    assert all(at > try_at for at in rollbacks), (op, rollbacks, try_at)
+
+
+ORDER96 = [
+    ("aspirate96", ("remove_liquid(",)), ("dispense96", ("add_liquid(",)),
+    ("pick_up_tips96", ("add_tip(", "remove_tip(")), ("drop_tips96", ("add_tip(", "remove_tip(")),
+]
+
+
+@pytest.mark.parametrize(("op", "calls"), ORDER96, ids=[o for o, _ in ORDER96])
+def test_order96_the_tracker_queue_precedes_the_try_and_the_backend_call(op, calls):
+    _check_queue_before_the_try(op, calls)
+
+
+@pytest.mark.parametrize(("op", "calls"), [("aspirate", ("remove_liquid(",)), ("dispense", ("add_liquid(",))])
+def test_order96_control_the_one_channel_ops_queue_inside_the_try_and_fail_the_check(op, calls):
+    with pytest.raises(AssertionError):
+        _check_queue_before_the_try(op, calls)
+
+
+def test_order96_no_backend_96_call_is_made_at_a_refusal():
+    refusals = ("E96-empty", "E96-rowD", "E96-tipTLL", "E96-tipTLV", "E96-dispTLV", "E96-single", "E96-N")
+    for name in refusals:
+        r = case(name)
+        before, after = r.lh.calls_at_failure
+        assert after == before, (name, r.lh.backend_calls)
+
+
+def test_order96_control_the_spy_records_a_successful_aspirate96():
+    async def go():
+        deck, lh, tips, source, _assay = await _world()
+        await lh.pick_up_tips96(tips)
+        await lh.aspirate96(source, volume=10.0)
+        await lh.dispense96(source, volume=10.0)
+        return lh.backend_calls
+
+    assert asyncio.run(go()) == ["aspirate96", "dispense96"]
+    # and the refusals above are about the TipSpot / pre-try work, not a dead spy: tipTLL did succeed once
+    assert case("E96-tipTLL").lh.backend_calls == ["aspirate96"]
+
+
+# --------------------------------------------------------------------------- AC-96-11: rack_committed
+
+
+def _committed_tip(spot):
+    from pylabrobot.resources.errors import NoTipError as _NoTip
+
+    try:
+        return tip_spot_tracker(spot).get_tip()
+    except _NoTip:
+        return None
+
+
+def _rack_surfaces(root):
+    paths = _paths(root)
+    rings = len(_subpaths(paths["sv-tip-ring"][0])) if "sv-tip-ring" in paths else 0
+    groups = [n for n in root.walk() if n.tag == "g" and "data-praxis-grid" in n.attrs]
+    assert len(groups) == 1
+    return rings, sum(_grid(root)["vals"]), groups[0].attrs["aria-label"]
+
+
+def _check_rack_committed(errors, lw, name, present):
+    r = case(name)
+    _d, _m, root = _render(errors, name)
+    expected = lw.tiprack_sentence(r.tips, tip_of=_committed_tip)
+    assert expected.startswith(f"{present} of 96 tips left.")
+    assert _rack_surfaces(root) == (present, present, expected)
+
+
+def test_rack_committed_the_96_drop_panel_draws_the_committed_tips(errors, lw):
+    _check_rack_committed(errors, lw, "E96-hasTip-drop", 2)
+    r = case("E96-hasTip-drop")
+    assert sum(1 for s in r.tips.get_all_items() if s.tip is not None) == 7  # the pending view: 7, not 2
+
+
+def test_rack_committed_the_one_channel_panel_draws_the_committed_tips_after_residue(errors, lw):
+    """P1: today's panel draws 92 tips while 95 spots hold a committed tip (Q6 = yes, every error panel)."""
+    _check_rack_committed(errors, lw, "P1", 95)
+    r = case("P1")
+    assert sum(1 for s in r.tips.get_all_items() if s.tip is not None) == 92  # the pending view
+
+
+@pytest.mark.parametrize(("name", "present"), [("E96-hasTip-drop", 2), ("P1", 95)])
+def test_rack_committed_control_the_default_pending_hook_fails_the_check(errors, lw, monkeypatch, name, present):
+    _check_rack_committed(errors, lw, name, present)
+    monkeypatch.setattr(errors, "_drawn_tip", lambda spot: spot.tip)
+    with pytest.raises(AssertionError):
+        _check_rack_committed(errors, lw, name, present)
+
+
+def test_rack_committed_the_p1_panel_keeps_the_one_channel_texts(errors):
+    _d, _m, root = _render(errors, "P1")
+    assert _text_of(root, "praxis-error__title") == "tips_300 A1 already has a tip."
+    assert _part(root, "body") == "Drop tips asked to put a tip there."
+    assert _fault_ids(root) == {"A1"}
