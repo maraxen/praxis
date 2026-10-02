@@ -1479,6 +1479,8 @@ D2_KEYS = (
     "repr_cells_ok", "svg_in_dom", "html_bytes_max", "text_plain_matches", "pageerrors",
     # AC-22 (error panels live)
     "error_panels", "error_status", "runall_stops", "other_errors_plain",
+    # AC-22 on the 96 head (#5659 browser coverage)
+    "error_panel_96", "residue_sentence_96",
     # AC-23 (staleness live)
     "stale_marked", "stale_not_persisted", "unchanged_not_marked", "mark_survives_scroll",
     "earlier_session_marked", "rerun_not_marked", "persistence_gate_never_open",
@@ -1599,7 +1601,7 @@ NB_PATH = REPO_ROOT / "web-repl" / "tests" / "fixtures" / "notebooks" / "display
 D1_CELL_IDS = ["d1-never-run", "d1-ran", "d1-sleep", "d1-error", "d1-stale"]
 B10_CELL_IDS = [
     "boot", "assemble", "transfers", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck",
-    "aspirate", "e1", "e2", "e4", "e6", "value-error", "redraw", "marker",
+    "aspirate", "e1", "e2", "e4", "e6", "value-error", "p96-setup", "e96", "redraw", "marker",
 ]
 
 
@@ -1631,7 +1633,7 @@ def test_fixture_cell_ids_are_the_harness_names(rs, nb):
         "boot": "boot", "assemble": "assemble", "transfers": "transfers", "pickup": "pickup",
         "draw_source": "draw-source", "draw_assay": "draw-assay", "draw_tips": "draw-tips",
         "draw_deck": "draw-deck", "aspirate": "aspirate", "e1": "e1", "e2": "e2", "e4": "e4", "e6": "e6",
-        "value_error": "value-error", "redraw": "redraw", "marker": "marker",
+        "value_error": "value-error", "p96_setup": "p96-setup", "e96": "e96", "redraw": "redraw", "marker": "marker",
     }
     idx = rs.cell_indices(nb)
     assert idx["d1-never-run"] == 0 and idx["d1-stale"] == 4 and idx["boot"] == 5 and idx["marker"] == len(nb["cells"]) - 1
@@ -1693,6 +1695,24 @@ def test_error_cells_raise_what_ac22_names_and_only_that(nb):
         assert "try:" not in cells[cid] and "except" not in cells[cid], f"{cid}: the error must reach the shell"
 
 
+def test_the_96_cells_mount_a_fresh_rack_then_ask_aspirate96_for_50_ul_from_the_assay(nb):
+    """#5659 browser coverage: the 96-head failure D2 renders. The second rack goes on the tip carrier's second site
+    (the fixture's first rack is spent), and the assay holds liquid only in columns 1-3 after the transfers."""
+    cells = {c["id"]: _src(c) for c in nb["cells"]}
+    setup = cells["p96-setup"]
+    assert 'tip_car[1] = tips_96 = hamilton_96_tiprack_300uL_filter(name="tips_96")' in setup
+    assert setup.strip().splitlines()[-1] == "await lh.pick_up_tips96(tips_96)"
+    assert cells["e96"].strip() == "await lh.aspirate96(assay, volume=50.0)"
+    for cid in ("p96-setup", "e96"):
+        assert "try:" not in cells[cid] and "except" not in cells[cid], f"{cid}: the error must reach the shell"
+
+
+def test_the_96_cells_come_after_the_one_channel_error_cells_and_before_the_restart_proof_cells(nb):
+    ids = [c["id"] for c in nb["cells"]]
+    assert ids.index("value-error") < ids.index("p96-setup") < ids.index("e96") < ids.index("redraw") < ids.index("marker")
+    assert ids.index("p96-setup") + 1 == ids.index("e96"), "the setup cell is immediately followed by the cell that fails"
+
+
 def test_the_redraw_cell_is_self_contained_because_a_restart_loses_the_deck(nb):
     src = _src(next(c for c in nb["cells"] if c["id"] == "redraw"))
     assert 'cor_96_wellplate_360uL_Fb(name="redraw")' in src and src.strip().splitlines()[-1] == "redraw"
@@ -1721,6 +1741,7 @@ def test_runall_notebook_is_the_pair_derived_from_the_fixture(rs, nb):
     pair = rs.build_runall_notebook(nb)
     assert [c["id"] for c in pair["cells"]] == ["assemble", "transfers", "pickup", "e1", "marker"]
     assert tuple(rs.RUNALL_CELL_IDS) == ("assemble", "transfers", "pickup", "e1", "marker")
+    assert "p96-setup" not in [c["id"] for c in pair["cells"]] and "e96" not in [c["id"] for c in pair["cells"]]
     src = {c["id"]: _src(c) for c in nb["cells"]}
     for cell in pair["cells"]:
         assert _src(cell) == src[cell["id"]], "cloned from the fixture, so the notebook hash covers it"
@@ -1925,6 +1946,146 @@ def test_other_errors_plain_needs_the_default_traceback_and_no_praxis_panel(rs):
     wrong = value_error_report()
     wrong["outputs"][0]["ename"] = "TooLittleLiquidError"
     assert rs.derive_error_keys(error_reports(), wrong, runall_reports())["other_errors_plain"] is False
+
+
+# -- AC-22 on the 96 head (#5659 browser coverage) ---------------------------------------------------
+#
+# The strings are what the real panel renders for the fixture's e96 cell (test_display_check_fixture.py pins the
+# same literals against errors.render, run in CPython over the D2 cells in order); transcribed again here so the
+# harness constants are checked against an independent copy.
+
+E96_HEADING = "Not enough liquid in assay A4:H12."
+E96_BODY = "Each well holds 0 µL; the aspirate asked for 50 µL on every channel. Nothing was aspirated."
+E96_FIX = "Lower `volume` to 0 µL or less, or aspirate from wells that hold more."
+E96_RESIDUE = (
+    "PyLabRobot still records moves that did not happen on assay A1:H3 and 24 tips on the 96 head; the next step "
+    "that succeeds will save them, and the tracked state will be wrong from then on. "
+    "The drawing shows what was actually done."
+)
+E96_NEEDLE = "PyLabRobot still records moves that did not happen"
+E96_PLR = "PyLabRobot raised TooLittleLiquidError: Not enough liquid in container: 50.0uL > 0uL."
+
+
+def panel_obs(*, found: bool = True, nodes: int = 1, titles: Any = (), summaries: Any = (), notes: Any = (),
+              plr: Any = (), needle: int = 0, svg: int = 0) -> dict[str, Any]:
+    """What ``errorPanel`` reads out of a cell's DOM."""
+    return {"found": found, "error_nodes": nodes, "titles": list(titles), "summaries": list(summaries),
+            "notes": list(notes), "plr": list(plr), "needle_count": needle, "svg_count": svg}
+
+
+def e96_read() -> dict[str, Any]:
+    return {
+        "report": report(count=30, state="error", titles=[E96_HEADING], perr=1, outputs=[
+            out(otype="display_data", st=stamp("error", "assay", rev=None)),
+            out(otype="error", mimes=(), html_bytes=None, plain=None, ename="TooLittleLiquidError", evalue="x", index=1),
+        ]),
+        "panel": panel_obs(titles=[E96_HEADING], summaries=[E96_BODY, E96_FIX], notes=[E96_RESIDUE], plr=[E96_PLR],
+                           needle=1, svg=1),
+    }
+
+
+def one_channel_reads() -> dict[str, dict[str, Any]]:
+    reports = error_reports()
+    return {
+        cid: {"report": reports[cid],
+              "panel": panel_obs(titles=[h], summaries=["body", "fix"], plr=["PyLabRobot raised X: y"], needle=0)}
+        for cid, h in HEADINGS.items()
+    }
+
+
+def raw96() -> dict[str, Any]:
+    return {"e96": e96_read(), "one_channel": one_channel_reads()}
+
+
+def test_the_96_constants_are_the_strings_of_the_real_panel(rs):
+    assert (rs.E96_HEADING, rs.E96_BODY, rs.E96_FIX) == (E96_HEADING, E96_BODY, E96_FIX)
+    assert rs.E96_RESIDUE == E96_RESIDUE and rs.E96_RESIDUE_NEEDLE == E96_NEEDLE and E96_RESIDUE.startswith(E96_NEEDLE)
+
+
+def test_error96_keys_positive_control(rs):
+    assert rs.derive_error96_keys(raw96()) == {"error_panel_96": True, "residue_sentence_96": True}
+
+
+def _mutated(fn: Any) -> dict[str, Any]:
+    raw = raw96()
+    fn(raw)
+    return raw
+
+
+#: (what is broken, the mutation, the key(s) that must go False). Every row is a negative control: the same
+#: derivation that holds on ``raw96()`` must fail on it.
+ERROR96_CONTROLS = [
+    # error_panel_96 only: the panel is a panel, but not the right one
+    ("heading missing", lambda r: r["e96"]["panel"].update(titles=[]), {"error_panel_96"}),
+    ("heading names the source plate", lambda r: r["e96"]["panel"].update(titles=["Not enough liquid in source A4:H12."]), {"error_panel_96"}),
+    ("heading names other wells", lambda r: r["e96"]["panel"].update(titles=["Not enough liquid in assay A1:H12."]), {"error_panel_96"}),
+    ("heading with a trailing space", lambda r: r["e96"]["panel"].update(titles=[E96_HEADING + " "]), {"error_panel_96"}),
+    ("heading not first", lambda r: r["e96"]["panel"].update(titles=["Some other heading", E96_HEADING]), {"error_panel_96"}),
+    ("body changed", lambda r: r["e96"]["panel"].update(summaries=[E96_BODY.replace("50", "60"), E96_FIX]), {"error_panel_96"}),
+    ("fix missing", lambda r: r["e96"]["panel"].update(summaries=[E96_BODY]), {"error_panel_96"}),
+    ("PLR line names another class", lambda r: r["e96"]["panel"].update(plr=["PyLabRobot raised TooLittleVolumeError: x"]), {"error_panel_96"}),
+    ("PLR line missing", lambda r: r["e96"]["panel"].update(plr=[]), {"error_panel_96"}),
+    # the sentence is the second key's business
+    ("sentence absent", lambda r: r["e96"]["panel"].update(notes=[], needle_count=0), {"residue_sentence_96"}),
+    ("sentence reworded", lambda r: r["e96"]["panel"].update(notes=[E96_RESIDUE.replace("still records", "records")]), {"residue_sentence_96"}),
+    ("sentence without its drawing clause", lambda r: r["e96"]["panel"].update(notes=[E96_RESIDUE.split(" The drawing")[0]]), {"residue_sentence_96"}),
+    ("sentence twice", lambda r: r["e96"]["panel"].update(notes=[E96_RESIDUE, E96_RESIDUE], needle_count=2), {"residue_sentence_96"}),
+    ("sentence somewhere other than a note", lambda r: r["e96"]["panel"].update(notes=[], needle_count=1), {"residue_sentence_96"}),
+    # and only there: a 1-channel panel must not carry it
+    *[
+        (f"sentence on the {cid} panel", lambda r, cid=cid: r["one_channel"][cid]["panel"].update(notes=[E96_RESIDUE], needle_count=1), {"residue_sentence_96"})
+        for cid in HEADINGS
+    ],
+    *[
+        (f"sentence text on the {cid} panel outside a note", lambda r, cid=cid: r["one_channel"][cid]["panel"].update(needle_count=1), {"residue_sentence_96"})
+        for cid in HEADINGS
+    ],
+    # not satisfiable by absence: a 1-channel cell that did nothing proves nothing about the sentence
+    *[
+        (f"{cid} has no panel", lambda r, cid=cid: r["one_channel"][cid].update(panel=panel_obs(found=False, nodes=0)), {"residue_sentence_96"})
+        for cid in HEADINGS
+    ],
+    *[
+        (f"{cid} never ran", lambda r, cid=cid: r["one_channel"][cid].update(report=report(count=None, state="not-run")), {"residue_sentence_96"})
+        for cid in HEADINGS
+    ],
+    ("a 1-channel cell is missing", lambda r: r["one_channel"].pop("e4"), {"residue_sentence_96"}),
+    ("no 1-channel reads at all", lambda r: r.update(one_channel={}), {"residue_sentence_96"}),
+    # both keys: the cell did nothing / is not a stamped error panel
+    ("the cell never ran", lambda r: r["e96"].update(report=report(count=None, state="not-run"), panel=panel_obs(found=False, nodes=0)), {"error_panel_96", "residue_sentence_96"}),
+    ("no panel in the DOM", lambda r: r["e96"].update(panel=panel_obs(found=False, nodes=0)), {"error_panel_96", "residue_sentence_96"}),
+    ("two panels in the DOM", lambda r: r["e96"]["panel"].update(error_nodes=2), {"error_panel_96", "residue_sentence_96"}),
+    ("no stamp", lambda r: r["e96"]["report"]["outputs"][0].update(stamp=None), {"error_panel_96", "residue_sentence_96"}),
+    ("stamp of another kind", lambda r: r["e96"]["report"]["outputs"][0].update(stamp=stamp("plate", "assay")), {"error_panel_96", "residue_sentence_96"}),
+    ("stamp names the source", lambda r: r["e96"]["report"]["outputs"][0].update(stamp=stamp("error", "source", rev=None)), {"error_panel_96", "residue_sentence_96"}),
+    ("stamp without a resource", lambda r: r["e96"]["report"]["outputs"][0].update(stamp=stamp("error", None, rev=None)), {"error_panel_96", "residue_sentence_96"}),
+    ("stamp with a rev", lambda r: r["e96"]["report"]["outputs"][0].update(stamp=stamp("error", "assay", rev=3)), {"error_panel_96", "residue_sentence_96"}),
+    ("stamp without a session", lambda r: r["e96"]["report"]["outputs"][0].update(stamp=stamp("error", "assay", rev=None, session="")), {"error_panel_96", "residue_sentence_96"}),
+    ("rail not error", lambda r: r["e96"]["report"].update(state="ran"), {"error_panel_96", "residue_sentence_96"}),
+    ("no error output", lambda r: r["e96"]["report"].update(outputs=r["e96"]["report"]["outputs"][:1]), {"error_panel_96", "residue_sentence_96"}),
+    ("error output not last", lambda r: r["e96"]["report"]["outputs"].reverse(), {"error_panel_96", "residue_sentence_96"}),
+    ("no outputs at all", lambda r: r["e96"]["report"].update(outputs=[]), {"error_panel_96", "residue_sentence_96"}),
+]
+
+
+@pytest.mark.parametrize("what,mutate,failing", ERROR96_CONTROLS, ids=[c[0] for c in ERROR96_CONTROLS])
+def test_error96_each_negative_control_fails_exactly_its_own_keys(rs, what, mutate, failing):
+    keys = rs.derive_error96_keys(_mutated(mutate))
+    assert {k for k, v in keys.items() if v is not True} == failing, (what, keys)
+
+
+@pytest.mark.parametrize("raw", [None, {}, {"e96": None}, {"e96": {}, "one_channel": None}, {"e96": {"report": None, "panel": None}}])
+def test_error96_keys_are_false_not_raising_on_missing_reads(rs, raw):
+    assert rs.derive_error96_keys(raw) == {"error_panel_96": False, "residue_sentence_96": False}
+
+
+def test_error96_the_residue_key_does_not_read_the_1_channel_headings(rs):
+    """``no_panel`` (e1..e6 titles empty) is the ``error_panels`` key's business; the sentence key only needs each
+    1-channel panel to EXIST, so one broken heading is never double-counted."""
+    raw = raw96()
+    for cid in HEADINGS:
+        raw["one_channel"][cid]["panel"]["titles"] = []
+    assert rs.derive_error96_keys(raw) == {"error_panel_96": True, "residue_sentence_96": True}
 
 
 # -- AC-23 ---------------------------------------------------------------------------------------
@@ -2504,6 +2665,20 @@ OUTPUT_JS_DRIVER = textwrap.dedent(
     ];
     cells[5].model.trusted = false;
     cells.push(mkCell({ count: 1, state: "ran", outputs: [], kids: [outputNode([svgFor("notab", [], "-1")])] }));
+    // 7: a 96-head error panel: heading, body and fix as p.praxis-summary, the residue sentence as div.praxis-summary
+    const NOTE96 = "PyLabRobot still records moves that did not happen on assay A1:H3; the next step that succeeds will save them.";
+    cells.push(mkCell({ count: 9, state: "error", outputs: [
+        { output_type: "display_data", data: { "text/html": "<div/>", "text/plain": "panel" }, metadata: { praxis: { v: 1, kind: "error", resource: "assay", rev: null, session: "sess-1", exec: 9 } } },
+        { output_type: "error", ename: "TooLittleLiquidError", evalue: "x", traceback: [] }],
+      kids: [outputNode([ex("div", { class: "praxis-out praxis-error" }, [
+        ex("p", { class: "praxis-error__title" }, [], "Not enough liquid in assay A4:H12."),
+        ex("p", { class: "praxis-summary" }, [], "BODY96"),
+        ex("p", { class: "praxis-summary" }, [], "FIX96"),
+        ex("div", { class: "praxis-summary" }, [], NOTE96),
+        svgFor("assay"),
+        ex("p", { class: "praxis-error__plr" }, [], "PyLabRobot raised TooLittleLiquidError: x")]),
+        // a decoy OUTSIDE the panel root, in the same output: the read is scoped to `.praxis-error`
+        ex("p", { class: "praxis-summary" }, [], "OUTSIDE"), ex("div", { class: "praxis-summary" }, [], "OUTSIDE NOTE")])] }));
     const listeners = [];
     const panel = {
       content: { widgets: cells, model: { cells: { length: cells.length, get: (i) => cells[i].model }, trusted: true }, node: ex("div") },
@@ -2527,6 +2702,13 @@ OUTPUT_JS_DRIVER = textwrap.dedent(
     out.r3 = dc.report({ i: 3, res: null });
     out.r4 = dc.report({ i: 4, res: HOSTILE });
     out.r4_miss = dc.report({ i: 4, res: "assay" });
+    const NEEDLE = "PyLabRobot still records moves that did not happen";
+    out.panel96 = dc.errorPanel({ i: 7, needle: NEEDLE });
+    out.panel96_no_needle = dc.errorPanel({ i: 7 });
+    out.panel_1ch = dc.errorPanel({ i: 1, needle: NEEDLE });
+    out.panel_plain = dc.errorPanel({ i: 2, needle: NEEDLE });
+    out.panel_drawing = dc.errorPanel({ i: 0, needle: NEEDLE });
+    out.panel_missing_cell = dc.errorPanel({ i: 99, needle: NEEDLE });
     out.fig = dc.figure({ i: 0, res: "assay" });
     out.fig_miss = dc.figure({ i: 0, res: "nope" });
     out.paints_before = dc.paints({ i: 0, res: "assay" });
@@ -2663,6 +2845,34 @@ def test_report_reads_the_error_panel_title_and_the_absence_of_one(js_out):
     assert r2["error"] == {"titles": [], "praxis_error_nodes": 0}
     assert r2["outputs"][0]["ename"] == "ValueError"
     assert r1["res"] is None, "no resource name asked for: no drawing lookup"
+
+
+def test_error_panel_reads_the_96_panels_parts_scoped_to_the_panel(js_out):
+    p = js_out["panel96"]
+    assert p == {
+        "found": True, "error_nodes": 1, "titles": ["Not enough liquid in assay A4:H12."],
+        "summaries": ["BODY96", "FIX96"],
+        "notes": ["PyLabRobot still records moves that did not happen on assay A1:H3; the next step that succeeds will save them."],
+        "plr": ["PyLabRobot raised TooLittleLiquidError: x"], "needle_count": 1, "svg_count": 1,
+    }, "the sentence is a div.praxis-summary: p.praxis-summary is the body and the fix only"
+
+
+def test_error_panel_counts_a_needle_only_when_one_is_asked_for(js_out):
+    assert js_out["panel96_no_needle"]["needle_count"] == 0 and js_out["panel96_no_needle"]["found"] is True
+
+
+def test_error_panel_of_a_1_channel_panel_has_no_note_and_no_needle(js_out):
+    p = js_out["panel_1ch"]
+    assert p["found"] is True and p["error_nodes"] == 1 and p["notes"] == [] and p["needle_count"] == 0
+    assert p["titles"] == ["Not enough liquid in assay A1:H1.", "PyLabRobot raised X"]
+
+
+@pytest.mark.parametrize("name", ["panel_plain", "panel_drawing", "panel_missing_cell"])
+def test_error_panel_finds_nothing_where_there_is_no_error_panel(js_out, name):
+    """A plain traceback, a drawing (whose own p.praxis-summary is OUTSIDE any .praxis-error) and a cell that does
+    not exist are not panels: nothing is read from them."""
+    assert js_out[name] == {"found": False, "error_nodes": 0, "titles": [], "summaries": [], "notes": [], "plr": [],
+                            "needle_count": 0, "svg_count": 0}
 
 
 def test_report_of_a_never_run_cell_has_no_count_and_no_outputs(js_out):
@@ -2908,6 +3118,17 @@ class FakeWorld:
             st = stamp(DRAW_KIND[cid], DRAW_RES[cid], session=self.cell_session[cid])
             size = 36_142 if cid == "draw-deck" else 9_000
             return report(count=n, outputs=[out(html_bytes=size, plain=plain, st=st)], res_=self._res(cid))
+        if cid == "e96":
+            f = self.faults
+            if f.get("no_panel96"):
+                return report(count=n, state="error", perr=0, outputs=[
+                    out(otype="error", mimes=(), html_bytes=None, ename="TooLittleLiquidError", index=0)])
+            wrong = f.get("wrong_plate96")
+            heading = "Not enough liquid in source A4:H12." if wrong else E96_HEADING
+            return report(count=n, state="error", titles=[heading], perr=1, outputs=[
+                out(otype="display_data", st=stamp("error", "assay", rev=None)),
+                out(otype="error", mimes=(), html_bytes=None, ename="TooLittleLiquidError", index=1),
+            ])
         if cid in ERR_CELLS:
             titles = [HEADINGS[cid]] if not self.faults.get("no_panel") else []
             return report(count=n, state="error", titles=titles, perr=len(titles), outputs=[
@@ -2923,6 +3144,25 @@ class FakeWorld:
     def poll(self, read: Any, ok: Any, timeout_s: float) -> Any:
         value = read()
         return value, bool(ok(value))
+
+    def error_panel(self, index: int, needle: Any = None) -> dict[str, Any]:
+        cid = self.ids[index]
+        self.log.append(("error_panel", cid, needle))
+        f = self.faults
+        if self.counts.get(cid) is None:
+            return panel_obs(found=False, nodes=0)
+        if cid == "e96":
+            if f.get("no_panel96"):
+                return panel_obs(found=False, nodes=0)
+            wrong = f.get("wrong_plate96")
+            notes = [] if f.get("no_residue96") else [E96_RESIDUE]
+            return panel_obs(titles=["Not enough liquid in source A4:H12." if wrong else E96_HEADING],
+                             summaries=[E96_BODY, E96_FIX], notes=notes, plr=[E96_PLR], needle=len(notes), svg=1)
+        if cid in ERR_CELLS:
+            notes = [E96_RESIDUE] if (f.get("residue_on_1ch") and cid == "e1") else []
+            return panel_obs(titles=[HEADINGS[cid]], summaries=["body", "fix"], notes=notes, plr=["PyLabRobot raised X: y"],
+                             needle=len(notes))
+        return panel_obs(found=False, nodes=0)
 
     # -- keyboard --------------------------------------------------------------------------------------
     def figure(self, index: int, res_name: str) -> dict[str, Any]:
@@ -3071,7 +3311,7 @@ def test_d2_runs_setup_then_draws_then_the_keyboard_then_the_aspirate_then_the_e
     runs = [e[1] for e in w.log if isinstance(e, tuple) and e[0] == "run"]
     main = runs[: runs.index("marker")] if "marker" in runs else runs
     order = ["boot", "assemble", "transfers", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck",
-             "aspirate", "e1", "e2", "e4", "e6", "value-error"]
+             "aspirate", "e1", "e2", "e4", "e6", "value-error", "p96-setup", "e96"]
     idx = [main.index(c) for c in order]
     assert idx == sorted(idx), main
     tab = _first(w.log, lambda e: e == ("press", "Tab"))
@@ -3080,6 +3320,34 @@ def test_d2_runs_setup_then_draws_then_the_keyboard_then_the_aspirate_then_the_e
     assert _pos(w.log, ("press", "Tab")) < _pos(w.log, ("press", "ArrowRight")) < _pos(w.log, ("press", "Escape"))
     assert _pos(w.log, "focus_probe") < _pos(w.log, ("press", "Tab")) < _pos(w.log, "remove_probe")
     assert _pos(w.log, ("press", "Escape")) < _pos(w.log, "remove_probe"), "the probe stays until the keys are read"
+
+
+def test_d2_runs_the_96_cells_after_the_plain_error_and_before_the_restart_and_reads_each_panel_right_after_its_cell(rs, nb):
+    _, w = _run_d2(rs, nb)
+    restart = _pos(w.log, "restart")
+    assert _pos(w.log, ("run", "value-error")) < _pos(w.log, ("run", "p96-setup")) < _pos(w.log, ("run", "e96")) < restart
+    runs = [e for e in w.log if isinstance(e, tuple) and e[0] == "run"]
+    assert [e[1] for e in runs[runs.index(("run", "p96-setup")):][:2]] == ["p96-setup", "e96"], "nothing between the two"
+    for cid in ("e1", "e2", "e4", "e6", "e96"):
+        ran = _pos(w.log, ("run", cid))
+        read = _first(w.log, lambda e, cid=cid: isinstance(e, tuple) and e[0] == "error_panel" and e[1] == cid)
+        nxt = next(i for i, e in enumerate(w.log) if i > ran and isinstance(e, tuple) and e[0] == "run")
+        assert ran < read < nxt, f"{cid}: its panel is read before the next cell runs"
+    assert all(e[2] == rs.E96_RESIDUE_NEEDLE for e in w.log if isinstance(e, tuple) and e[0] == "error_panel")
+
+
+def test_d2_does_not_run_the_96_cells_in_the_run_all_notebook(rs, nb):
+    _, w = _run_d2(rs, nb)
+    pair_open = _pos(w.log, ("open", rs.RUNALL_NOTEBOOK_NAME))
+    assert not [e for e in w.log[pair_open:] if isinstance(e, tuple) and e[0] == "run"]
+    assert w.log.count(("run", "e96")) == 1 and w.log.count(("run", "p96-setup")) == 1
+
+
+def test_d2_evidence_keeps_the_raw_panel_reads_behind_the_96_keys(rs, nb):
+    keys, _ = _run_d2(rs, nb)
+    ev = keys["evidence"]
+    assert set(ev["error_panels"]) == {"e1", "e2", "e4", "e6", "e96"}
+    assert ev["error_panels"]["e96"]["notes"] == [rs.E96_RESIDUE] and ev["e96_report"]["state"] == "error"
 
 
 def test_d2_never_runs_run_all_on_the_main_notebook_and_does_it_last_in_its_own_notebook(rs, nb):
@@ -3119,7 +3387,7 @@ def test_d2_saves_first_then_scrolls_away_and_back_and_forces_a_rerender(rs, nb)
 
 
 def test_d2_a_failing_setup_cell_is_an_error_finding_not_a_misleading_key(rs, nb):
-    for cid in ("boot", "assemble", "transfers", "pickup"):
+    for cid in ("boot", "assemble", "transfers", "pickup", "p96-setup"):
         with pytest.raises(rs.DisplayCheckError) as exc:
             _run_d2(rs, nb, setup_error=cid)
         assert cid in str(exc.value) and "ImportError" in str(exc.value)
@@ -3145,6 +3413,11 @@ def test_d2_a_restart_that_fails_raises_instead_of_passing_the_session_keys(rs, 
     ({"no_monitor": True}, {"persistence_gate_never_open"}),
     ({"runall_continues": True}, {"runall_stops"}),
     ({"no_panel": True}, {"error_panels"}),
+    ({"no_panel96": True}, {"error_panel_96", "residue_sentence_96"}),
+    ({"never_runs": "e96"}, {"error_panel_96", "residue_sentence_96"}),
+    ({"wrong_plate96": True}, {"error_panel_96"}),
+    ({"no_residue96": True}, {"residue_sentence_96"}),
+    ({"residue_on_1ch": True}, {"residue_sentence_96"}),
     ({"no_predecessor": True}, {"tab_focuses_figure", "arrow_moves", "escape_leaves"}),
     ({"arrow_dead": True}, {"arrow_moves"}),
     ({"escape_blurs": True}, {"escape_leaves"}),

@@ -4325,6 +4325,9 @@ UNIT_TABLE: tuple[HarnessUnit, ...] = (
             ("error_status", True),
             ("runall_stops", True),
             ("other_errors_plain", True),
+            # AC-22 on the 96 head (#5659 browser coverage)
+            ("error_panel_96", True),
+            ("residue_sentence_96", True),
             # AC-23 (staleness live)
             ("stale_marked", True),
             ("stale_not_persisted", True),
@@ -5471,7 +5474,7 @@ FIXTURE_CELLS: dict[str, str] = {
     "boot": "boot", "assemble": "assemble", "transfers": "transfers", "pickup": "pickup",
     "draw_source": "draw-source", "draw_assay": "draw-assay", "draw_tips": "draw-tips", "draw_deck": "draw-deck",
     "aspirate": "aspirate", "e1": "e1", "e2": "e2", "e4": "e4", "e6": "e6",
-    "value_error": "value-error", "redraw": "redraw", "marker": "marker",
+    "value_error": "value-error", "p96_setup": "p96-setup", "e96": "e96", "redraw": "redraw", "marker": "marker",
 }
 #: the drawing cells and what each draws: cell id -> (stamp kind, resource name; ``None``: any non-empty name)
 DRAW_CELLS: dict[str, tuple[str, str | None, str]] = {
@@ -5487,6 +5490,24 @@ ERROR_HEADINGS = {
     "e4": "Channel 0 already holds a tip.",
     "e6": "Channel 0 has no tip.",
 }
+#: AC-22 on the 96 head (#5659 browser coverage): the panel the fixture's ``e96`` cell (aspirate96 of 50 uL from the
+#: assay, whose columns 4-12 are empty) renders, after ``p96-setup`` mounted a fresh 96 rack. Read off the real panel by
+#: running the D2 cells in order in CPython through ``errors.render`` (web-repl/tests/test_display_check_fixture.py pins
+#: the same strings): PLR queued A1:H3 and 24 tips before refusing at A4, so the committed offending set is A4:H12 and
+#: the residue sentence names A1:H3 and 24 tips; the plate drawing is on the panel, hence the drawing clause.
+E96_HEADING = "Not enough liquid in assay A4:H12."
+E96_BODY = "Each well holds 0 µL; the aspirate asked for 50 µL on every channel. Nothing was aspirated."
+E96_FIX = "Lower `volume` to 0 µL or less, or aspirate from wells that hold more."
+E96_RESIDUE = (
+    "PyLabRobot still records moves that did not happen on assay A1:H3 and 24 tips on the 96 head; the next step "
+    "that succeeds will save them, and the tracked state will be wrong from then on. "
+    "The drawing shows what was actually done."
+)
+#: counted in the panel's text, so the sentence is also seen where it must NOT be (a 1-channel panel, anywhere)
+E96_RESIDUE_NEEDLE = "PyLabRobot still records moves that did not happen"
+E96_PLATE = "assay"
+#: the panel's last line names the class PLR raised, so a cell that raised something else cannot pass
+E96_PLR_PREFIX = "PyLabRobot raised TooLittleLiquidError:"
 #: AC-9's string for the assay after the fixture's three column transfers (en dash U+2013, micro sign U+00B5)
 ASSAY_TEXT_PLAIN = "24 of 96 wells hold liquid, 50–150 µL. 2,400 µL in the plate."
 #: The readout after ArrowRight from A1 (interact.js ``readoutText``). AC-25's text says "assay A2: 50 µL", but the
@@ -5751,6 +5772,81 @@ def derive_error_keys(errors: dict[str, Any], value_error: Any, runall: dict[str
     }
 
 
+def _panel_list(panel: dict[str, Any], key: str) -> list[Any]:
+    value = panel.get(key)
+    return value if isinstance(value, list) else []
+
+
+def _error_cell_ok(read: Any, *, resource: str | None = None, stamped: bool = True) -> bool:
+    """Did this cell really raise into a Praxis error panel? It ran, its rail is ``error``, its LAST output is the
+    ``error`` output (so Run All would stop) and, when ``stamped``, a ``display_data`` output before it carries the
+    error stamp (kind ``error``, no rev, a session) naming ``resource`` when one is given. A cell that did nothing
+    fails here, so no key below can be satisfied by an absence."""
+    rep = (read or {}).get("report") if isinstance(read, dict) else None
+    if not isinstance(rep, dict) or rep.get("execution_count") is None or rep.get("state") != "error":
+        return False
+    outputs = [o for o in rep.get("outputs") or [] if isinstance(o, dict)]
+    if not outputs or outputs[-1].get("output_type") != "error":
+        return False
+    if not stamped:
+        return True
+    for o in outputs:
+        st = o.get("stamp")
+        if o.get("output_type") != "display_data" or not isinstance(st, dict):
+            continue
+        session = st.get("session")
+        if st.get("v") != 1 or st.get("kind") != "error" or st.get("rev") is not None:
+            continue
+        if not isinstance(session, str) or not session:
+            continue
+        if resource is None or st.get("resource") == resource:
+            return True
+    return False
+
+
+def _error_panel_found(read: Any) -> dict[str, Any] | None:
+    panel = (read or {}).get("panel") if isinstance(read, dict) else None
+    if isinstance(panel, dict) and panel.get("found") is True and panel.get("error_nodes") == 1:
+        return panel
+    return None
+
+
+def derive_error96_keys(raw: Any) -> dict[str, Any]:
+    """AC-22 on the 96 head, from ``{"e96": read, "one_channel": {cid: read}}`` where each ``read`` is
+    ``{"report": <cell report>, "panel": <errorPanel read>}``.
+
+    ``error_panel_96``: the ``e96`` cell raised into a stamped error panel for the assay and the panel renders the
+    heading, body, fix and PLR's line verbatim (the heading names the plate and the offending wells).
+    ``residue_sentence_96``: the same cell's panel carries the residue sentence exactly once, as its own note, AND none
+    of the four 1-channel panels (each of which must itself be a real error panel) carries it anywhere in its text."""
+    raw = raw if isinstance(raw, dict) else {}
+    e96 = raw.get("e96")
+    one = raw.get("one_channel")
+    one = one if isinstance(one, dict) else {}
+    panel = _error_panel_found(e96)
+    real = panel is not None and _error_cell_ok(e96, resource=E96_PLATE)
+    panel_ok = False
+    sentence_here = False
+    if real:
+        plr = _panel_list(panel, "plr")
+        panel_ok = (
+            _panel_list(panel, "titles")[:1] == [E96_HEADING]
+            and _panel_list(panel, "summaries") == [E96_BODY, E96_FIX]
+            and bool(plr) and isinstance(plr[0], str) and plr[0].startswith(E96_PLR_PREFIX)
+        )
+        sentence_here = _panel_list(panel, "notes") == [E96_RESIDUE] and panel.get("needle_count") == 1
+    only_here = real
+    for cid in ERROR_HEADINGS:
+        read = one.get(cid)
+        other = _error_panel_found(read)
+        count = other.get("needle_count") if other else None
+        only_here = (
+            only_here and other is not None and _error_cell_ok(read, stamped=False)
+            and _panel_list(other, "notes") == [] and _is_int(count) and count == 0
+        )
+    return {"error_panel_96": bool(panel_ok), "residue_sentence_96": bool(sentence_here and only_here)}
+
+
 def derive_stale_keys(raw: dict[str, Any]) -> dict[str, Any]:
     """AC-23 (the four staleness keys) from the notice counts read at each stage."""
     source, tips = raw.get("source"), raw.get("tips")
@@ -5952,6 +6048,25 @@ __NOTEBOOK_HELPER__
       res: typeof a.res === "string" ? resInfo(cell, a.res) : null,
       error: { titles: Array.from(cell.node.querySelectorAll(".praxis-error__title")).map((e) => e.textContent),
                praxis_error_nodes: cell.node.querySelectorAll(".praxis-error").length },
+    };
+  };
+  // One cell's error panel, for the 96-head keys (the harness only reads). Scoped to the `.praxis-error` root: a
+  // drawing's own p.praxis-summary lies outside it. The residue sentence is a div.praxis-summary, so p.praxis-summary
+  // is the body and the fix only. `needle` (optional) is counted in the root's whole text, so the sentence is also seen
+  // where it must not be.
+  dc.errorPanel = (a) => {
+    const none = { found: false, error_nodes: 0, titles: [], summaries: [], notes: [], plr: [], needle_count: 0, svg_count: 0 };
+    const cell = cellAt(a.i);
+    if (!cell) return none;
+    const roots = Array.from(cell.node.querySelectorAll(".praxis-error"));
+    if (roots.length === 0) return none;
+    const root = roots[0];
+    const texts = (sel) => Array.from(root.querySelectorAll(sel)).map((e) => e.textContent);
+    return {
+      found: true, error_nodes: roots.length, titles: texts(".praxis-error__title"), summaries: texts("p.praxis-summary"),
+      notes: texts("div.praxis-summary"), plr: texts(".praxis-error__plr"),
+      needle_count: typeof a.needle === "string" && a.needle ? count(root.textContent || "", a.needle) : 0,
+      svg_count: root.querySelectorAll("svg").length,
     };
   };
   dc.figure = (a) => {
@@ -6207,6 +6322,10 @@ class DisplayDriver:
     def report(self, index: int, res: str | None = None) -> dict[str, Any]:
         return self._dc("report(a)", {"i": index, "res": res})
 
+    def error_panel(self, index: int, needle: str | None = None) -> dict[str, Any]:
+        """The cell's error panel as the page renders it (see ``errorPanel`` in the output JS)."""
+        return self._dc("errorPanel(a)", {"i": index, "needle": needle})
+
     def poll(self, read: Any, ok: Any, timeout_s: float) -> tuple[Any, bool]:
         return poll_until(read, ok, timeout_s=timeout_s, interval_s=0.25, sleep=self.sleep)
 
@@ -6373,7 +6492,7 @@ def _run_setup(driver: Any, idx: dict[str, int], key: str) -> None:
     err = _first_error(report)
     if err is not None or report.get("execution_count") is None:
         what = f"{err.get('ename')}: {err.get('evalue')}" if err else "it never ran"
-        raise DisplayCheckError(f"setup cell {key!r} failed: {what}")
+        raise DisplayCheckError(f"setup cell {key!r} ({FIXTURE_CELLS[key]!r}) failed: {what}")
 
 
 def _drawing_session(report: Any) -> str | None:
@@ -6471,11 +6590,37 @@ def run_d2(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
 
     # AC-22: the error cells, one at a time
     error_reports: dict[str, Any] = {}
+    error_panels: dict[str, Any] = {}
+
+    def read_panel(key: str) -> None:
+        # the page renders the panel a moment after the model reports the cell done: a bounded wait for it
+        error_panels[key], _found = driver.poll(
+            lambda: driver.error_panel(idx[cid[key]], E96_RESIDUE_NEEDLE), lambda r: r.get("found") is True, 5.0
+        )
+
     for key in ("e1", "e2", "e4", "e6"):
         driver.run_cell(idx[cid[key]])
         error_reports[key] = driver.report(idx[cid[key]])
+        read_panel(key)
     driver.run_cell(idx[cid["value_error"]])
     value_error = driver.report(idx[cid["value_error"]])
+
+    # AC-22 on the 96 head: a fresh rack on the 96 head (a setup cell: refuse to go on if it did not run), then the
+    # aspirate96 PLR refuses after queueing 24 wells and 24 tips
+    _run_setup(driver, idx, "p96_setup")
+    driver.run_cell(idx[cid["e96"]])
+    e96_report = driver.report(idx[cid["e96"]])
+    read_panel("e96")
+    keys.update(
+        derive_error96_keys(
+            {
+                "e96": {"report": e96_report, "panel": error_panels["e96"]},
+                "one_channel": {
+                    k: {"report": error_reports[k], "panel": error_panels[k]} for k in ERROR_HEADINGS
+                },
+            }
+        )
+    )
 
     # AC-23: a kernel restart, the boot cell, then a re-run drawing cell (the panel's new current session)
     assay_i = idx[cid["draw_assay"]]
@@ -6515,6 +6660,8 @@ def run_d2(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
         # the raw reports behind `error_panels` / `error_status` / `other_errors_plain` / `runall_stops`, so a
         # failing key can be read off the result file instead of needing a re-run with extra logging
         error_reports=error_reports, value_error=value_error, runall=runall,
+        # ... and behind the two 96-head keys: every panel as the page rendered it, and the e96 cell's own report
+        error_panels=error_panels, e96_report=e96_report,
     )
     keys["evidence"] = evidence
     return keys

@@ -34,6 +34,15 @@ tips (``_drawn_tip``; every error panel that draws a rack does, 1-channel includ
 named with the glossary's ``*96`` name ("Pick up tips (96 head)") and fixes use the base verbs; the words
 "96 head" come from ``glossary.HEAD96_NOUN``.
 
+**The residue sentence** (#5659 task 8; N5659-11, decision sheet Q4): PLR queues the 96 ops' tracker changes
+before its ``try``, so a refusal leaves PENDING changes behind and the next success saves them. When
+``ctx.residue`` (found by ``residue.py``, the only module that reads pending state) is non-empty, every 96 ROW
+(never the generic panel) adds, after the fix, one sentence naming the wells, tips, channels and rack spots
+involved, plus "The drawing shows what was actually done." only where the panel has a drawing. It is a
+``div.praxis-summary``, a sibling of the body and fix paragraphs, so the body and the fix stay the only two
+``p.praxis-summary``; in ``text/plain`` it is one line between the fix and PLR's line. The 1-channel rows have
+no residue layer. The panel reads no pending state itself.
+
 **The generic panel** (no heading template) is "PyLabRobot raised X: message" plus the traceback. It is
 shown for every ``None`` from ``resolve`` (no owner, pending residue, a mixed 1-channel / ``*96`` stack, a
 NoTip on a 96 op) and for a context no template row covers (no op frame, a trough that overflows on a
@@ -45,7 +54,7 @@ tip rack) or null for a channel or tip owner and for the generic panel.
 
 **Classes.** Only classes A4's theme has a rule for are emitted (the CSS gate refuses the rest): the
 root ``praxis-out praxis-error``, ``praxis-error__title`` (the heading), ``praxis-summary`` (the body, then
-the fix), ``praxis-omitted`` (the step line and the omission sentence), ``praxis-error__plr`` (PLR's line)
+the fix, then a 96 row's residue sentence), ``praxis-omitted`` (the step line and the omission sentence), ``praxis-error__plr`` (PLR's line)
 and ``svg.details_html``'s ``praxis-details*`` (styled through ``.praxis-error details``).
 
 **Byte cap** (D4): the drawing degrades first (level 1 a block, level 2 omitted with the omission
@@ -70,7 +79,7 @@ import re
 import sys
 import traceback
 
-from . import budget, context, glossary, labware, ledger, svg
+from . import budget, context, glossary, labware, ledger, residue, svg
 
 __all__ = ["handled_classes", "render", "handle", "install", "Installed"]
 
@@ -228,6 +237,7 @@ class _Panel:
     fix: str
     resource: str | None  # the stamp's ``resource``: the drawn labware, else None
     figure: tuple | None  # (labware, fault ids) for a drawing
+    residue: str = ""  # a 96 row's residue sentence without its drawing clause; "" when there is none
 
 
 def _volume_panel(exc, ctx):
@@ -443,14 +453,93 @@ def _tip_panel(exc, ctx):
     return None
 
 
+# --------------------------------------------------------------------------- the residue sentence (N5659-11)
+
+# The user's wording (decision sheet Q4, accepted 261001); the tests pin it.
+_RESIDUE_SENTENCE = (
+    "PyLabRobot still records moves that did not happen on {x}; the next step that succeeds will save "
+    "them, and the tracked state will be wrong from then on."
+)
+_RESIDUE_DRAWING = " The drawing shows what was actually done."
+
+
+def _join(parts) -> str:
+    """``"a"``, ``"a and b"``, ``"a, b and c"``."""
+    return parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
+
+
+def _residue_places(items) -> list:
+    """What the residue is on, as words, in the order plate wells, other containers, tips, channels, rack
+    spots. Wells and spots are named like the headings do (``compress_wells``, at most 96 ids); the only
+    well of a one-well Plate is that Plate's name."""
+    wells, names, spots = {}, [], {}
+    tips = channels = 0
+    for item in items:
+        target = item.target
+        if item.kind == residue.KIND_CONTAINER:
+            parent = getattr(target, "parent", None)
+            if parent is not None and _kind(parent) == "plate" and parent.num_items > 1:
+                wells.setdefault(id(parent), (parent, []))[1].append(target.get_identifier())
+            elif parent is not None and _kind(parent) == "plate":
+                names.append(_disp(parent.name))
+            else:
+                names.append(_disp(target.name))
+        elif item.kind == residue.KIND_TIP:
+            tips += 1
+        elif item.kind == residue.KIND_CHANNEL:
+            channels += 1
+        elif item.kind == residue.KIND_SPOT:
+            rack = getattr(target, "parent", None)
+            if rack is None:
+                names.append(_disp(target.name))
+            else:
+                spots.setdefault(id(rack), (rack, []))[1].append(target.get_identifier())
+    parts = [f"{_disp(plate.name)} {labware.compress_wells(ids)}" for plate, ids in wells.values()]
+    parts += names
+    if tips:
+        parts.append(f"{glossary.plural(tips, 'tip')} on the {glossary.HEAD96_NOUN}")
+    if channels:
+        parts.append(f"{glossary.plural(channels, 'channel')} of the {glossary.HEAD96_NOUN}")
+    parts += [f"{_disp(rack.name)} {labware.compress_wells(ids)}" for rack, ids in spots.values()]
+    return parts
+
+
+def _residue_text(ctx) -> str:
+    """The residue sentence for a context, without its drawing clause; ``""`` when it carries no residue."""
+    if not ctx.residue:
+        return ""
+    parts = _residue_places(ctx.residue)
+    return _RESIDUE_SENTENCE.format(x=_join(parts)) if parts else ""
+
+
+def _drawing_clause(drawn: bool) -> str:
+    """The clause that points at the drawing, only where there is one."""
+    return _RESIDUE_DRAWING if drawn else ""
+
+
+def _with_residue(panel, ctx):
+    """``panel`` with its context's residue sentence. A sentence that cannot be built costs the sentence,
+    never the row (it is logged)."""
+    if panel is None:
+        return None
+    try:
+        text = _residue_text(ctx)
+    except Exception:  # noqa: BLE001 -- the row stays; the hazard note is what degrades
+        log.warning("errors: could not build the residue sentence", exc_info=True)
+        return panel
+    return dataclasses.replace(panel, residue=text) if text else panel
+
+
 def _panel_for(exc, ctx):
     """The template row for a context, or ``None`` (the generic panel). A context with no op frame (rule
-    (d), a tracker used outside a liquid handler) has no op to name, so it is generic too."""
+    (d), a tracker used outside a liquid handler) has no op to name, so it is generic too. A 96 row also
+    carries its context's residue sentence (the generic panel never does)."""
     if ctx.op is None or ctx.action is None or glossary.role_of(ctx.op) is None:
         return None
     classes = handled_classes()
     if ctx.head96:
-        return _volume_panel96(exc, ctx) if isinstance(exc, (classes[0], classes[1])) else _tip_panel96(exc, ctx)
+        panel = _volume_panel96(exc, ctx) if isinstance(exc, (classes[0], classes[1])) else _tip_panel96(exc, ctx)
+        return _with_residue(panel, ctx)
     if isinstance(exc, (classes[0], classes[1])):
         return _volume_panel(exc, ctx)
     return _tip_panel(exc, ctx)
@@ -499,12 +588,16 @@ def _html(exc, panel, step, tb_text, level, tb_limit) -> str:
     if panel is None:  # the generic panel: PLR's sentence IS the heading
         parts.append(svg.el("p", plr, cls="praxis-error__title"))
     else:
+        figure = _figure_html(panel, level)
         parts += [
             svg.text_line("p", "praxis-error__title", panel.heading),
             svg.text_line("p", "praxis-summary", panel.body),
             svg.text_line("p", "praxis-summary", panel.fix),
         ]
-        parts.append(_figure_html(panel, level))
+        if panel.residue:  # the drawing clause only if a drawing is really on the page at this level
+            drawn = panel.figure is not None and level < budget.LEVEL_OMITTED and bool(figure)
+            parts.append(svg.text_line("div", "praxis-summary", panel.residue + _drawing_clause(drawn)))
+        parts.append(figure)
         parts.append(svg.el("p", plr, cls="praxis-error__plr"))
     parts.append(svg.details_html("Show traceback", _cap_traceback(tb_text, tb_limit)))
     return svg.el("div", "".join(parts), cls="praxis-out praxis-error")
@@ -540,6 +633,8 @@ def _plain_text(exc, panel, step) -> str:
     lines = [] if step is None else [f"Step {step} of the run."]
     if panel is not None:
         lines += [panel.heading, panel.body, panel.fix]
+        if panel.residue:  # text/plain has no drawing of its own: the clause follows the panel's
+            lines.append(panel.residue + _drawing_clause(panel.figure is not None))
     lines.append(_sentence_of(exc))
     return "\n".join(lines)
 

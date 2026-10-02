@@ -13,6 +13,10 @@ not depend on it:
   cap, the stamp's kind and resource, the grid the keyboard keys walk (A1 holds 50 uL and A2 holds
   100 uL, which is why AC-25's ``assay A2: 50 uL`` cannot be the literal ArrowRight text here), the error
   panel headings of AC-16/AC-22;
+* the 96-head error cells (#5659 browser coverage): ``p96-setup`` mounts a fresh 96 rack on the 96 head and ``e96``
+  asks ``aspirate96`` for 50 uL from the assay plate, whose columns 4-12 are empty, so PLR refuses it after
+  queueing 24 wells and 24 tips: the panel's heading, body, fix and residue sentence are the strings D2's
+  ``error_panel_96`` / ``residue_sentence_96`` keys assert in the page;
 * the state premises of AC-23: the aspirate-only cell changes what ``source`` draws and leaves the tip
   rack and the assay unchanged; the restart-proof ``redraw`` cell needs nothing the restart lost; in the
   Run All pair the marker is never reached because E1 raises.
@@ -67,6 +71,18 @@ HEADINGS = {
 }
 RAISES = {"e1": TooLittleLiquidError, "e2": TooLittleVolumeError, "e4": HasTipError, "e6": NoTipError}
 CAP = 65_536
+
+# The 96-head panel the ``e96`` cell produces. Read off the real panel by running the D2 cells in order in CPython
+# (the same ``errors.render`` the installed wrapper calls), then pinned here AND derived below from the world, so a
+# change in either the cells or the display layer fails a named test instead of a 12-minute browser run.
+E96_HEADING = "Not enough liquid in assay A4:H12."
+E96_BODY = "Each well holds 0 µL; the aspirate asked for 50 µL on every channel. Nothing was aspirated."
+E96_FIX = "Lower `volume` to 0 µL or less, or aspirate from wells that hold more."
+E96_RESIDUE = (
+    "PyLabRobot still records moves that did not happen on assay A1:H3 and 24 tips on the 96 head; the next step "
+    "that succeeds will save them, and the tracked state will be wrong from then on. "
+    "The drawing shows what was actually done."
+)
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -227,6 +243,36 @@ async def _main(display: types.ModuleType, cells: dict[str, str]) -> dict[str, A
     out["panels"] = panels
     await w.run("value-error", expect_error=True)
     out["value_error_handled"] = errors_mod._is_handled(w.raised["value-error"])
+    # the 96-head cells: a fresh full rack on the 96 head, then the refused aspirate96 (after the plain ValueError)
+    await w.run("p96-setup")
+    ns = w.ns
+    out["after_p96_setup"] = {
+        "rack_on_carrier_site_1": ns["tip_car"].sites[1].resource is ns["tips_96"],
+        "rack_spots_left": sum(1 for spot in ns["tips_96"].get_all_items() if spot.tip is not None),
+        "head96_committed_tips": sum(1 for c in range(96) if ns["lh"].head96[c].has_tip),
+        "assay_empty_wells": sorted(wl.get_identifier() for wl in ns["assay"].get_all_items() if wl.tracker.volume < 50),
+    }
+    await w.run("e96", expect_error=True)
+    exc96 = w.raised["e96"]
+    data96, meta96 = errors_mod.render(exc96, exc96.__traceback__, session="s", exec_count=1)
+    out["panel96"], out["meta96"] = data96, meta96
+    out["after_e96"] = {
+        "assay_pending_differs": sorted(
+            wl.get_identifier() for wl in ns["assay"].get_all_items() if wl.tracker.pending_volume != wl.tracker.volume
+        ),
+        "head96_pending_tip_volume_differs": sum(
+            1
+            for c in range(96)
+            if ns["lh"].head96[c].get_tip().tracker.pending_volume != ns["lh"].head96[c].get_tip().tracker.volume
+        ),
+    }
+    # a control for the cell above: the same op on the SOURCE plate (full everywhere) is NOT refused, so the
+    # refusal is the assay's empty columns and not something the 96 op does anyway
+    w_ok = World(display, cells)
+    for cid in ("boot", "assemble", "transfers", "pickup", "p96-setup"):
+        await w_ok.run(cid)
+    await w_ok.ns["lh"].aspirate96(w_ok.ns["source"], volume=50.0)
+    out["source_aspirate96_ok"] = True
     # the restart: a fresh kernel, the boot cell again, then the self-contained drawing cell
     set_tip_tracking(False)
     set_volume_tracking(False)  # a fresh kernel's defaults: the redraw cell must not depend on tracking
@@ -358,7 +404,7 @@ def test_the_value_error_cell_is_not_one_of_the_four_handled_classes(replay):
 def test_the_error_cells_ran_in_the_harness_order(replay):
     ran = replay["world"].ran
     order = ["boot", "assemble", "transfers", "pickup", "draw-source", "draw-assay", "draw-tips", "draw-deck",
-             "aspirate", "e1", "e2", "e4", "e6", "value-error"]
+             "aspirate", "e1", "e2", "e4", "e6", "value-error", "p96-setup", "e96"]
     assert ran == order
 
 
@@ -379,3 +425,67 @@ def test_in_the_run_all_pair_e1_raises_and_the_marker_is_never_reached(replay):
     assert w3.ran == ["assemble", "transfers", "pickup", "e1"], "Run All stops at the first error"
     assert type(w3.raised["e1"]) is TooLittleLiquidError
     assert "marker" not in w3.ran
+
+
+# --------------------------------------------------------------------------- #
+# The 96-head cells (#5659 browser coverage): the panel D2's error_panel_96 / residue_sentence_96 keys read
+# --------------------------------------------------------------------------- #
+
+
+def test_the_96_setup_cell_puts_a_fresh_full_rack_on_the_carriers_second_site_and_mounts_it(replay):
+    got = replay["after_p96_setup"]
+    assert got["rack_on_carrier_site_1"] is True
+    assert got["rack_spots_left"] == 0, "pick_up_tips96 took all 96 tips from the new rack"
+    assert got["head96_committed_tips"] == 96, "the 96 head holds a committed tip on every channel"
+
+
+def test_the_assay_plate_is_short_exactly_from_column_4_on_so_the_refusal_comes_after_24_wells(replay):
+    got = replay["after_p96_setup"]["assay_empty_wells"]
+    assert got == sorted(f"{r}{c}" for c in range(4, 13) for r in "ABCDEFGH")
+
+
+def test_the_e96_cell_is_refused_by_pylabrobot_as_too_little_liquid_and_the_op_is_not_the_cause(replay):
+    w = replay["world"]
+    assert type(w.raised["e96"]) is TooLittleLiquidError
+    assert replay["source_aspirate96_ok"] is True, "the same aspirate96 from the full source plate is accepted"
+
+
+def test_the_96_panel_heading_body_and_fix_are_the_strings_the_browser_key_asserts(replay):
+    doc = replay["panel96"]["text/html"]
+    assert _title_of(doc) == E96_HEADING
+    plain = replay["panel96"]["text/plain"].split("\n")
+    assert plain[:3] == [E96_HEADING, E96_BODY, E96_FIX]
+    summaries = [html.unescape(m) for m in re.findall(r'<p class="praxis-summary">(.*?)</p>', doc, re.S)]
+    assert [re.sub(r"<[^>]+>", "", s_) for s_ in summaries] == [E96_BODY, E96_FIX]
+
+
+def test_the_heading_names_the_plate_and_the_wells_the_head_found_empty(replay):
+    empty = replay["after_p96_setup"]["assay_empty_wells"]
+    compress = importlib.import_module(f"{PKG}.labware").compress_wells
+    assert E96_HEADING == f"Not enough liquid in assay {compress(empty)}."
+    assert replay["world"].ns["assay"].name == "assay"
+
+
+def test_the_residue_sentence_is_one_div_after_the_fix_and_before_pylabrobots_line(replay):
+    doc, plain = replay["panel96"]["text/html"], replay["panel96"]["text/plain"].split("\n")
+    notes = [html.unescape(m) for m in re.findall(r'<div class="praxis-summary">(.*?)</div>', doc, re.S)]
+    assert notes == [E96_RESIDUE]
+    assert plain[3] == E96_RESIDUE and plain[4].startswith("PyLabRobot raised TooLittleLiquidError:")
+    assert doc.index(html.escape(E96_FIX, quote=False)) < doc.index("PyLabRobot still records") < doc.index("praxis-error__plr")
+
+
+def test_the_residue_sentence_numbers_are_the_worlds_pending_state_not_a_guess(replay):
+    got = replay["after_e96"]
+    assert got["assay_pending_differs"] == sorted(f"{r}{c}" for c in (1, 2, 3) for r in "ABCDEFGH"), "A1:H3"
+    assert got["head96_pending_tip_volume_differs"] == 24, "the 24 tips whose aspirate was queued before the refusal"
+    assert "assay A1:H3 and 24 tips on the 96 head" in E96_RESIDUE
+
+
+def test_the_96_panel_is_stamped_as_an_error_on_the_assay(replay):
+    assert replay["meta96"] == {"praxis": {"v": 1, "kind": "error", "resource": "assay", "rev": None, "session": "s", "exec": 1}}
+
+
+@pytest.mark.parametrize("cid", ["e1", "e2", "e4", "e6"])
+def test_the_one_channel_error_panels_never_carry_the_residue_sentence(replay, cid):
+    doc = replay["panels"][cid]
+    assert "still records" not in doc and '<div class="praxis-summary">' not in doc
