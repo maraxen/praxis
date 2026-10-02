@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import ast
 import asyncio
+import dataclasses
 import importlib
 import importlib.util
 import inspect
@@ -2500,3 +2501,211 @@ def test_rack_committed_the_p1_panel_keeps_the_one_channel_texts(errors):
     assert _text_of(root, "praxis-error__title") == "tips_300 A1 already has a tip."
     assert _part(root, "body") == "Drop tips asked to put a tip there."
     assert _fault_ids(root) == {"A1"}
+
+
+# --------------------------------------------------------------------------- the residue sentence (#5659 task 8)
+#
+# Spec: ``261001_nd-next-5659-96head-errors.md`` N5659-11 and the decision sheet's Q4 (the wording is the
+# user's, accepted 261001), AC-96-R2. ``-k residue96``. The sentence follows the fix on every 96 ROW (never
+# the generic panel), in ``text/plain`` too; its drawing clause only where the panel has a drawing. It is a
+# ``div.praxis-summary`` and not a third ``p.praxis-summary``: ``_part`` (above, unchanged) counts exactly
+# two ``p.praxis-summary`` elements, the body and the fix.
+
+RESIDUE_SENTENCE = (
+    "PyLabRobot still records moves that did not happen on {x}; the next step that succeeds will save "
+    "them, and the tracked state will be wrong from then on."
+)
+RESIDUE_CLAUSE = " The drawing shows what was actually done."
+_RESIDUE_WELLS_0_9 = [f"{row}1" for row in "ABCDEFGH"] + ["A2", "B2"]
+
+# (case, the {x} of the sentence, does the panel have a drawing?). Transcribed from the decision sheet's
+# Q4 and N5659-11's list of what {x} joins (plate wells, container names, tips, channels, rack spots).
+RESIDUE_NOTES = [
+    ("E96-rowD", "assay A1:C1 and 3 tips on the 96 head", True),
+    ("E96-shared", "assay A1 and 1 tip on the 96 head", True),
+    ("E96-dispTLV", f"assay {_compress(_RESIDUE_WELLS_0_9)} and 96 tips on the 96 head", True),
+    ("E96-tipTLL-D2", "7 tips on the 96 head", False),
+    ("E96-tipTLV", "source A1", False),
+    ("E96-single", "big and 66 tips on the 96 head", False),
+    ("E96-onewell-plate", "trough_plate and 33 tips on the 96 head", False),
+    ("E96-hasTip-pickup", "3 channels of the 96 head and tips_300 A1:C1", False),
+    ("E96-hasTip-drop", "5 channels of the 96 head and tips_300 A1:E1", True),
+    ("E96-return", "5 channels of the 96 head and tips_300 A1:E1", True),
+]
+#: no residue (a first-position failure), a refusal to guess (None), a context with no row (generic), 1-channel
+NO_RESIDUE_NOTE = [
+    "E96-empty", "E96-partial", "E96-tipTLL", "E96-residue-TLL", "E96-noTip-residue", "E96-N", "E96-onewell-TLV",
+    "P1", "E1",
+]
+
+
+def _notes(root):
+    return root.find_all("div", "praxis-summary")
+
+
+def _check_residue_note(errors, row):
+    name, x, drawn = row
+    data, _meta, root = _render(errors, name)
+    expected = RESIDUE_SENTENCE.format(x=x) + (RESIDUE_CLAUSE if drawn else "")
+    assert [n.text() for n in _notes(root)] == [expected], name
+    assert len(_summaries(root)) == 2, name  # the body and the fix are still the only p.praxis-summary
+    # text/plain: the heading, body and fix, then the sentence on its own line, then PLR's line
+    lines = data["text/plain"].split("\n")
+    assert expected in lines, name
+    fix = _part(root, "fix")
+    assert lines.index(fix) + 1 == lines.index(expected) == len(lines) - 2, name
+    assert lines[-1].startswith("PyLabRobot raised "), name
+    # html: fix, then the sentence, then the drawing (when there is one), then PLR's line
+    html = data["text/html"]
+    at = {"fix": html.index(fix), "note": html.index("PyLabRobot still records"), "plr": html.index("praxis-error__plr")}
+    assert at["fix"] < at["note"] < at["plr"], name
+    if drawn:
+        assert at["note"] < html.index("<svg") < at["plr"], name
+    else:
+        assert "<svg" not in html, name
+    assert bool(root.find_all("svg")) is drawn, name
+
+
+def _check_no_residue_note(errors, name):
+    data, _meta, root = _render(errors, name)
+    assert "still records" not in data["text/html"], name
+    assert "still records" not in data["text/plain"], name
+    assert _notes(root) == [], name
+
+
+def _fails_errors(check, *args):
+    try:
+        check(*args)
+    except AssertionError:
+        return True
+    return False
+
+
+@pytest.mark.parametrize("row", RESIDUE_NOTES, ids=[r[0] for r in RESIDUE_NOTES])
+def test_residue96_the_sentence_follows_the_fix_on_every_96_row(errors, row):
+    _check_residue_note(errors, row)
+
+
+@pytest.mark.parametrize("name", NO_RESIDUE_NOTE)
+def test_residue96_no_sentence_without_residue_and_none_on_the_generic_panel(errors, name):
+    _check_no_residue_note(errors, name)
+
+
+def test_residue96_premise_the_generic_96_panels_are_generic_although_residue_exists(errors, ctxmod):
+    """E96-N and E96-onewell-TLV resolve to a context WITH residue (96 queued tips) and have no template
+    row: the generic panel carries no sentence. E96-residue-TLL and E96-noTip-residue resolve to ``None``
+    while the world holds residue. Neither is 'no residue', so the checks above test the rule, not an absence."""
+    for name in ("E96-N", "E96-onewell-TLV"):
+        ctx = ctxmod.resolve(case(name).exc)
+        assert ctx is not None and ctx.head96 is True and len(ctx.residue) == 96, name
+        assert errors._panel_for(case(name).exc, ctx) is None, name
+    for name in ("E96-residue-TLL", "E96-noTip-residue"):
+        assert ctxmod.resolve(case(name).exc) is None, name
+    for name in ("E96-empty", "E96-partial", "E96-tipTLL"):
+        ctx = ctxmod.resolve(case(name).exc)
+        assert ctx is not None and ctx.residue == (), name
+
+
+def test_residue96_the_sentence_is_computed_from_the_contexts_residue(errors, ctxmod):
+    rs = _sibling("residue")
+    r = case("E96-rowD")
+    ctx = ctxmod.resolve(r.exc)
+
+    def render_with(residue):
+        resolver = lambda *a, **k: dataclasses.replace(ctx, residue=residue)  # noqa: E731
+        _data, _meta, root = _render(errors, r, resolver=resolver)
+        return [n.text() for n in _notes(root)]
+
+    assert render_with(()) == []
+    only_b1 = (rs.Residue(rs.KIND_CONTAINER, r.assay.get_item("B1")),)
+    assert render_with(only_b1) == [RESIDUE_SENTENCE.format(x="assay B1") + RESIDUE_CLAUSE]
+    mixed = (
+        rs.Residue(rs.KIND_CONTAINER, r.assay.get_item("A1")), rs.Residue(rs.KIND_CONTAINER, r.assay.get_item("H1")),
+        rs.Residue(rs.KIND_TIP, 4), rs.Residue(rs.KIND_CHANNEL, 2), rs.Residue(rs.KIND_CHANNEL, 3),
+    )
+    assert render_with(mixed) == [
+        RESIDUE_SENTENCE.format(x="assay A1, H1, 1 tip on the 96 head and 2 channels of the 96 head") + RESIDUE_CLAUSE
+    ]
+
+
+def test_residue96_a_hostile_container_name_is_escaped_in_the_sentence(errors, ctxmod):
+    rs = _sibling("residue")
+    r = case("E96-rowD")
+    ctx = ctxmod.resolve(r.exc)
+    evil = Container(name='<script>alert("x")</script>', size_x=10.0, size_y=10.0, size_z=10.0, max_volume=100.0)
+    resolver = lambda *a, **k: dataclasses.replace(ctx, residue=(rs.Residue(rs.KIND_CONTAINER, evil),))  # noqa: E731
+    data, _meta, root = _render(errors, r, resolver=resolver)
+    assert "<script>" not in data["text/html"]
+    (note,) = _notes(root)
+    assert '<script>alert("x")</script>' in note.text()  # escaped on the way out, the text round-trips
+
+
+# ---- AC-96-R2 controls: each broken variant must FAIL the check built for it
+
+
+def test_residue96_control_an_unconditional_drawing_clause_fails_the_rows_without_a_drawing(errors, monkeypatch):
+    for row in RESIDUE_NOTES:
+        _check_residue_note(errors, row)  # the real module passes them all
+    monkeypatch.setattr(errors, "_drawing_clause", lambda drawn: RESIDUE_CLAUSE)
+    failing = sorted(r[0] for r in RESIDUE_NOTES if _fails_errors(_check_residue_note, errors, r))
+    assert failing == sorted(r[0] for r in RESIDUE_NOTES if not r[2])  # exactly the tip, channel and single rows
+    assert "E96-tipTLL-D2" in failing  # the spec's case
+
+
+def test_residue96_control_a_never_present_clause_fails_the_rows_with_a_drawing(errors, monkeypatch):
+    monkeypatch.setattr(errors, "_drawing_clause", lambda drawn: "")
+    failing = sorted(r[0] for r in RESIDUE_NOTES if _fails_errors(_check_residue_note, errors, r))
+    assert failing == sorted(r[0] for r in RESIDUE_NOTES if r[2])
+
+
+def test_residue96_control_an_always_sentence_handler_fails_the_row_without_residue(errors, monkeypatch):
+    for name in NO_RESIDUE_NOTE:
+        _check_no_residue_note(errors, name)
+    monkeypatch.setattr(errors, "_residue_text", lambda ctx: RESIDUE_SENTENCE.format(x="the head"))
+    failing = sorted(n for n in NO_RESIDUE_NOTE if _fails_errors(_check_no_residue_note, errors, n))
+    # every no-residue 96 row; the generic panels have nowhere to put it, and the 1-channel rows are not its
+    assert failing == ["E96-empty", "E96-partial", "E96-tipTLL"]
+    assert "E96-empty" in failing  # the spec's case
+
+
+def test_residue96_control_a_handler_that_ignores_the_residue_fails_every_note_row(errors, monkeypatch):
+    monkeypatch.setattr(errors, "_residue_text", lambda ctx: "")
+    assert [r[0] for r in RESIDUE_NOTES if not _fails_errors(_check_residue_note, errors, r)] == []
+
+
+def test_residue96_control_a_third_p_praxis_summary_would_break_the_body_and_fix_helpers(errors):
+    """Why the sentence is a div: the existing helper asserts exactly two ``p.praxis-summary`` (the body and
+    the fix). The real panel keeps that; a panel with the sentence as a third ``p`` would not."""
+    data, _meta, root = _render(errors, "E96-rowD")
+    assert len(_summaries(root)) == 2 and len(_notes(root)) == 1
+    three = _parse(data["text/html"].replace('<div class="praxis-summary">PyLabRobot still', '<p class="praxis-summary">PyLabRobot still'))
+    assert len(_summaries(three)) == 3
+    with pytest.raises(AssertionError):
+        _part(three, "body")
+
+
+def test_residue96_the_clause_needs_a_drawing_that_is_actually_there(errors, ctxmod, bud):
+    """At the omitted level the figure is replaced by the omission sentence: "The drawing shows ..." would
+    point at nothing. At the full level it is there."""
+    name = "E96-rowD"
+    r = case(name)
+    ctx = ctxmod.resolve(r.exc)
+    panel = errors._panel_for(r.exc, ctx)
+    assert panel is not None and panel.figure is not None and panel.residue
+    tb_text = errors._traceback_text(r.exc, r.tb)
+    full = errors._html(r.exc, panel, None, tb_text, bud.LEVEL_FULL, 2048)
+    omitted = errors._html(r.exc, panel, None, tb_text, bud.LEVEL_OMITTED, 2048)
+    assert "The drawing shows what was actually done." in full and "<svg" in full
+    assert "PyLabRobot still records" in omitted  # the hazard stays
+    assert "The drawing shows" not in omitted and "<svg" not in omitted and bud.OMISSION_SENTENCE in omitted
+
+
+def test_residue96_the_whole_panel_with_the_sentence_stays_under_the_cap_for_the_worst_residue(errors, svg, ctxmod):
+    """The plate row with the longest sentence in this file (96 tips and 10 wells, drawn) and a 40 KB hostile
+    traceback that escapes 6x still fits the 64 KiB cap, and keeps the sentence."""
+    exc = _hostile_exc(TooLittleVolumeError, "\n".join('"' * 100 for _ in range(400)))
+    ctx = ctxmod.resolve(case("E96-dispTLV").exc)
+    data, meta = errors.render(exc, session=SESSION, exec_count=EXEC, resolver=lambda *a, **k: ctx)
+    assert len(data["text/html"].encode("utf-8")) <= CAP
+    svg.check_bundle(data, meta)
+    assert "PyLabRobot still records" in data["text/html"]
