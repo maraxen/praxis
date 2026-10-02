@@ -146,6 +146,54 @@ describe("the stylesheet link", () => {
   });
 });
 
+describe("the open panel is dismissible", () => {
+  // Before: the chip was the only way to close the panel. A popover that only
+  // its own trigger can close sits over the notebook until the user finds it.
+  async function openPanel() {
+    const captured = await captureStates(panel, { fsa: true });
+    const { chip, root, dialog } = captured;
+    dialog.open = false; // captureStates leaves the first-save modal open
+    chip.dispatch("click");
+    expect(root.children[1].hidden).toBe(false);
+    return captured;
+  }
+
+  test("Escape closes it and hands focus back to the chip", async () => {
+    const { doc, chip, root } = await openPanel();
+    chip.focused = false;
+    doc.dispatch("keydown", { key: "Escape" });
+    expect(root.children[1].hidden).toBe(true);
+    expect(chip.focused).toBe(true);
+    // the chip still toggles afterwards: one click opens it again
+    chip.dispatch("click");
+    expect(root.children[1].hidden).toBe(false);
+  });
+
+  test("a pointer press outside the chip and panel closes it", async () => {
+    const { doc, root } = await openPanel();
+    doc.dispatch("pointerdown", { target: doc.body });
+    expect(root.children[1].hidden).toBe(true);
+  });
+
+  test("negative control: a press inside the panel, or another key, leaves it open", async () => {
+    const { doc, root } = await openPanel();
+    const panelEl = root.children[1];
+    const inside = elementsOf(panelEl).find((e) => e.getAttribute("data-praxis-action") === "protect");
+    doc.dispatch("pointerdown", { target: inside });
+    doc.dispatch("keydown", { key: "Enter" });
+    expect(panelEl.hidden).toBe(false);
+  });
+
+  test("Escape belongs to the first-save gate while it is open", async () => {
+    const { doc, chip, root, dialog } = await openPanel();
+    dialog.open = true;
+    doc.dispatch("keydown", { key: "Escape" });
+    expect(root.children[1].hidden).toBe(false);
+    expect(dialog.open).toBe(true);
+    chip.dispatch("click");
+  });
+});
+
 describe("the chip's warn hook follows the tier label", () => {
   test("L0 (Browser only) is warn; protecting the browser storage (L1) is not", async () => {
     const { chip, root } = await captureStates(panel, { fsa: true });
