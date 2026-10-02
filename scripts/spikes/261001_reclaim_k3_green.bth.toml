@@ -1,0 +1,119 @@
+# Pre-registration sidecar for the GREEN run of unit K3 (task 260929_notebook-display-design, backlog #5656, umbrella #5648).
+# Spec: .praxia/docs/specs/261001_nd-next-5656-deck-layout.md, AC-N5 ("GREEN run"), AC-N1, AC-N7, task T6, N5656-3, N5656-5, N5656-8, risks R1-R3;
+# the user's rulings of 2026-10-01 (Q1 open width 420, Q2 (b) all four triggers, Q7 a new unit K3, K2 untouched).
+#
+# THIS FILE, the RED sidecar beside it, scripts/spikes/261001_reclaim_k3_green.py, the runner scripts/spikes/261001_reclaim_k3.py and the K3 unit in
+# scripts/repl_smoke.py ARE COMMITTED BEFORE EITHER RUN. No browser has been launched and no `bth run` has been executed against any of them when
+# this file was written; the criterion is the spec's ("green iff all 13 keys true"). It is pre-registered here, before the fix (T4) exists in this
+# branch, and it does not depend on the RED numbers.
+#
+# BUILD. This run must be made on a dist built from a commit that contains the K3 harness AND the fix (T4: the function reclaimMedium in
+# web-repl/shell/display/dock.js), and it must come AFTER the RED run (red_detected or a considered red_not_as_predicted). That is checked by INPUT:
+# the runner reads the served dist's shell/display/dock.js and the run is `invalid` if it does NOT contain `reclaimMedium`. Run it with `bth`, never
+# `uv run bth` (which silently skips sidecar enforcement), unsandboxed (FULL Chromium, SwiftShader), from a checkout whose web-repl/dist is a FRESH
+# build of that commit:
+#
+#   bth run --project-slug praxis --output-paths outputs/reclaim_k3/green -- \
+#     uv run --no-sync python3 scripts/spikes/261001_reclaim_k3_green.py \
+#       --dist web-repl/dist --out-dir outputs/reclaim_k3/green [--resume]
+#
+# Verify the run by its RECORD, never by exit code (`bth compact` first if it is not visible yet):
+#   bth sql "SELECT id, status, outcome, exit_code, command FROM runs WHERE id LIKE '<prefix>%'"
+#
+# WHAT IS AND IS NOT A VALIDITY FAILURE HERE. After the fix a drag the iframe swallowed (the deck is now flush with the splitter handle at 1440 as
+# well as 1280, N5656-5), a layout that never settles (a re-clamp loop, R3) and a step error are findings about the PRODUCT, so they land in
+# green_failed with the precondition / settled / step-error fields to read, not in `invalid`. `invalid` is reserved for the wrong build (the dist
+# lacks reclaimMedium), an error finding in the unit, a missing listed key and recorded-only re-clamp keys.
+#
+# PAIRED CONTROLS (BATHOS.md). The POSITIVE control is this run itself: every key true on the fixed build. Its NEGATIVE control is the RED run of the
+# same unit (scripts/spikes/261001_reclaim_k3_red.bth.toml): the re-clamp keys are false on the build without the fix, so a green here is not a
+# unit that passes on everything. Plumbing is proved without a browser by web-repl/tests/test_repl_smoke_resume.py and
+# web-repl/tests/test_reclaim_k3_runner.py.
+
+[experiment]
+hypothesis = "On the build WITH the fix (dock.js contains reclaimMedium: at 1280-1599 px, on open, on entering the tier, at the end of a splitter drag and on a main-area resize, the split is sized through saveLayout -> sizes -> restoreLayout so the deck's half equals the deck's width and the notebook gets the rest), unit K3 (repl_smoke.py --dock-check --scenario K3: one page, one kernel, one dock(), the file browser open) holds ALL its listed keys: open_loads_once_1440 (the open loads the viewer iframe exactly once), reclaim_open_1440 (open at 1440x900: deck 420 +- 2 and real dead space <= 2 px), reclaim_keeps_mid_1440 (a drag to 460 keeps 460, nothing empty), reclaim_low_moves_1440 (a drag to 300 gives 420), reclaim_after_high_1440 (a drag to 700 gives 480, nothing empty, and the notebook has A - 480 +- 2), reclaim_after_toggle_1440 (after that, collapsing and expanding the file browser keeps 480 with nothing empty at both), reclaim_keeps_current_1440 (the shell's current widget and the notebook's active cell are unchanged by the toggle, and the deck is not the current widget), reclaim_after_resize_down (1440 -> 1280 keeps 480 with nothing empty), reclaim_after_resize_up (a drag to 300 at 1280, then 1280 -> 1440, gives 420 with nothing empty), reclaim_after_tier_entry (1600 -> 1440 gives 420 with nothing empty), iframe_reloads_during_reclaim (no deck iframe load from the drag to 460 through the tier entry: the re-clamp never reloads the viewer), reclaim_open_1280 (close and reopen at 1280: a fresh attach at 420, nothing empty) and pageerrors []. real dead space = layout_summary.slack - 2 x (notebook_panel.left - dock_panel.left); reclaim_ok(snapshot, W) = real dead space <= 2 px and the deck node W +- 2 px wide; each key also requires its precondition (the action moved the notebook >= 20 px, the toggle widened the dock >= 200 px, the resize changed it 160 +- 2 px, the viewport took effect) and that its step settled within 5 s, so a key cannot be true because an action did nothing. The prior is that all keys are true (the same mechanism runs in production at >= 1600 px), but the prior is NOT a criterion: green_failed is a pre-registered outcome with the failing keys, preconditions and settled flags to read. This run also covers risk R1 (a restoreLayout at medium must not change the shell's current widget: reclaim_keeps_current_1440), R2 (the open re-clamp meets a loading iframe: open_loads_once_1440) and R3 (no re-clamp loop: every step settles)."
+stage_name = "exploration"
+novel = true
+
+# ---------------------------------------------------------------------------------------------
+# [outcomes]: over the flat fields the runner writes when the K3 unit is complete (a valid stamp for the current inputs). First match wins, in this
+# order. measurement_valid (GREEN) = build_matches_phase (the dist contains reclaimMedium) AND unit_error_free AND keys_present AND status_asserted.
+# all_keys_true: all twelve re-clamp keys are true and pageerrors is []. A unit that timed out or crashed leaves no valid stamp and no result is
+# written (exit 3): bathos then records no outcome and the next run is a new record.
+# ---------------------------------------------------------------------------------------------
+
+[outcomes.invalid]
+condition = "unit_complete = true AND measurement_valid = false"
+decision = "INVALID: the served dist does NOT contain reclaimMedium (this was not the build with the fix), or the unit carries an error finding, or a listed key is missing, or the re-clamp keys are recorded-only. Rebuild from the commit with the fix, or fix the harness, commit, and re-run under this sidecar's design; cite no GREEN verdict from this run."
+reasoning = "A verdict from the wrong build or a broken instrument is never reported as the fix's result (BATHOS.md)."
+is_residual = true
+
+[outcomes.green]
+condition = "unit_complete = true AND measurement_valid = true AND all_keys_true = true"
+decision = "GREEN: on the build with the fix all twelve K3 keys and pageerrors hold. Cite this run id, the RED run id it pairs with and the measured numbers (k3_measures in the aggregate result.json) in the PR description. Then run K1a, K1b and K2 unchanged (AC-N7: 14/14, 9/9, 20/20 with iframe_reloads_during_resize 0) and the dock aggregate, locally, before the push."
+reasoning = "The build had the fix, every action demonstrably happened and settled, and every key held, including the reload, current-widget and settle keys that guard the risks."
+is_residual = false
+
+[outcomes.green_failed]
+condition = "unit_complete = true AND measurement_valid = true"
+decision = "GREEN FAILED: the build had the fix but at least one K3 key is not true (failing_keys and the k_<key> fields in result.json say which). Read k3_preconditions and k3_settled in the aggregate result.json first: a false precondition on a drag after the fix is the splitter-swallowing risk (N5656-5, the iframe next to the handle), a step that did not settle is a re-clamp loop (R3), a false reclaim_keeps_current_1440 is risk R1, a false open_loads_once_1440 is risk R2. Fix the product (not the criterion), commit, rebuild and re-run; do not push."
+reasoning = "The fix was present, so a key that is not true is a defect of the fix (or of one of the spec's estimates), not an instrument fault."
+is_residual = false
+
+[result_schema]
+phase = "str"
+unit_complete = "bool"
+reused = "bool"
+harness_exit = "int"
+build_has_fix = "bool"
+build_matches_phase = "bool"
+unit_error_free = "bool"
+keys_present = "bool"
+status_asserted = "bool"
+step_errors = "int"
+preconditions_ok = "bool"
+all_settled = "bool"
+pageerrors_ok = "bool"
+measurement_valid = "bool"
+n_keys_true = "int"
+red_false_keys_all_false = "bool"
+red_guard_keys_all_true = "bool"
+all_keys_true = "bool"
+failing_keys = "str"
+k_open_loads_once_1440 = "bool"
+k_reclaim_open_1440 = "bool"
+k_reclaim_keeps_mid_1440 = "bool"
+k_reclaim_low_moves_1440 = "bool"
+k_reclaim_after_high_1440 = "bool"
+k_reclaim_after_toggle_1440 = "bool"
+k_reclaim_keeps_current_1440 = "bool"
+k_reclaim_after_resize_down = "bool"
+k_reclaim_after_resize_up = "bool"
+k_reclaim_after_tier_entry = "bool"
+k_iframe_reloads_during_reclaim = "bool"
+k_reclaim_open_1280 = "bool"
+
+# ---------------------------------------------------------------------------------------------
+# Design statement: pre-registered here, committed before the first run.
+# ---------------------------------------------------------------------------------------------
+
+[design]
+spec = ".praxia/docs/specs/261001_nd-next-5656-deck-layout.md AC-N5 (K3 and its RED/GREEN runs), AC-N1, AC-N7, task T6, N5656-3, N5656-5, N5656-8; epic 260929_notebook-display-epic.md D16, D17"
+listed_keys = ["open_loads_once_1440", "reclaim_open_1440", "reclaim_keeps_mid_1440", "reclaim_low_moves_1440", "reclaim_after_high_1440", "reclaim_after_toggle_1440", "reclaim_keeps_current_1440", "reclaim_after_resize_down", "reclaim_after_resize_up", "reclaim_after_tier_entry", "iframe_reloads_during_reclaim", "reclaim_open_1280", "pageerrors"]
+runner = "scripts/spikes/261001_reclaim_k3.py (argparse + logging; loads scripts/repl_smoke.py and scripts/unit_runner.py by path), started through scripts/spikes/261001_reclaim_k3_green.py (this sidecar's script, which fixes --phase green)"
+harness_unit = "repl_smoke.py --dock-check --scenario K3 --serve-dir <dist> --out-dir <out>/k3 --base-path /praxis/ --chrome-path <path>: ONE unit in ONE process with its own Watchdog at its 10 min D16 budget (an estimate; K2's nine steps took 116.7 s), started through unit_runner.run_unit with timeout = budget + 60 s; nothing else in the runner starts or kills a process"
+statement = "One unit, K3. The runner resolves the FULL Chromium, hashes the harness's own inputs for this dist (dist, notebook, harness, runner, chrome, args, driver), checks by INPUT that the served shell/display/dock.js CONTAINS `reclaimMedium`, and either reuses a valid prior unit (--resume) or deletes the unit's stamp, result and timeout marker (stamp first) and starts the harness unit. It reads the unit's stamp and result with the harness's own inspect_unit: valid only if the stamp exists, its inputs equal the current inputs and its result_sha256 matches the result on disk; the stamp governs even if run_unit timed out over it (logged with logging.warning). It then writes <out>/result.json (the aggregate) and, only when the unit is complete, the flat fields to $BTH_RESULTS_PATH. An incomplete unit (exit 124 from the watchdog: no stamp, no result, a timeout marker; or a stampless crash) exits 3 and writes no outcome. There is no whole-run timeout."
+resume_rule = "--resume reuses the unit only if its stamp is VALID for the current inputs (every hashed input equal, result_sha256 equal to the file); a valid unit whose keys failed is reused as that verdict (rerun without --resume to measure again, and the new record stands beside the old). Anything else is recomputed. The aggregate records reused, the result path and the stamp's result_sha256 and inputs."
+timeouts = "No whole-run timeout. K3's own watchdog: 600 s. run_unit: 660 s. Estimates, not measurements; the first real run records wall times (started and finished in the unit's stamp)."
+reads = "The outcome fields are read from the harness unit's stamp and result file (written by repl_smoke.py's run_scenario) and from dist/shell/display/dock.js; never from printed console text."
+hashed_inputs = ["dist (unit_runner.dist_hash of the served dist)", "notebook (the display_check.ipynb fixture)", "harness (scripts/repl_smoke.py)", "runner (scripts/unit_runner.py)", "chrome (resolved path + chrome --version)", "args (unit id, base path, the six viewports, --neg flags)", "driver (Playwright version + uv.lock sha256)"]
+
+[design.validity]
+build = "build_has_fix = true: the served shell/display/dock.js contains the token reclaimMedium (checked from the file, not from any result)"
+instrument = "unit_error_free, keys_present, status_asserted"
+not_validity = "the keys, the preconditions, the settle flags and the step errors: after the fix they are findings about the product (see the header)"
+
+[design.controls]
+negative = "The RED run of the same unit (scripts/spikes/261001_reclaim_k3_red.bth.toml): the six re-clamp keys are false on the build without the fix. Plumbing negative controls (web-repl/tests/test_repl_smoke_resume.py, test_reclaim_k3_runner.py): a build without the fix, a drag that did nothing, a toggle that did nothing, an ignored viewport change, a layout that never settles, a reload per re-clamp and a drag that raises each make green impossible; a GREEN run on a dist that lacks reclaimMedium is invalid."
+positive = "This run: every key true on the fixed build. Plumbing positive control: a scripted page that re-clamps holds all twelve keys, with every precondition and every settle true."
+plumbing = "web-repl/tests/test_repl_smoke_resume.py and web-repl/tests/test_reclaim_k3_runner.py, no browser"

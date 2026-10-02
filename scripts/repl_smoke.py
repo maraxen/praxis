@@ -80,6 +80,7 @@ import contextlib
 import dataclasses
 import json
 import logging
+import math
 import os
 import re
 import subprocess
@@ -7066,14 +7067,89 @@ K1B_ORDER = (
     "restart_placeholder",
 )
 
+# -- K3's table inputs (#5656): defined before DOCK_UNITS, which lists K3's keys at import time ----------------------
+
+
+def reclaim_status(record: Any) -> str:
+    """K3's family status under an AC-1 record: ``asserted`` iff the CSS limits are honoured AND the layout is reachable
+    (the re-clamp needs both), else ``recorded-only``. It does not touch ``width_key_status`` or ``WIDTH_CATEGORIES``."""
+    r = record if isinstance(record, dict) else {}
+    return ASSERTED if (r.get("css_limits_honoured") is True and r.get("layout_sizing_reachable") is True) else RECORDED_ONLY
+
+
+#: N-g's one listed key (it must FAIL on the stock split, by design) and the deck width its predicate asks for.
+NG_KEY = "reclaim_ok_stock_capped_1440"
+NG_WANT_PX = 480.0
+#: ``run_ng`` appends at most this many characters of the page's raw output to an untrusted-measurement error.
+NG_EVIDENCE_MAX_CHARS = 8000
+
+#: K3's listed keys in step order, then `pageerrors` (added by the unit, as for every unit).
+K3_KEYS: tuple[str, ...] = (
+    "open_loads_once_1440",
+    "reclaim_open_1440",
+    "reclaim_keeps_mid_1440",
+    "reclaim_low_moves_1440",
+    "reclaim_after_high_1440",
+    "reclaim_after_toggle_1440",
+    "reclaim_keeps_current_1440",
+    "reclaim_after_resize_down",
+    "reclaim_after_resize_up",
+    "reclaim_after_tier_entry",
+    "iframe_reloads_during_reclaim",
+    "reclaim_open_1280",
+)
+#: Pre-registered prediction for the build WITHOUT the fix (AC-N5): these keys are FALSE there ...
+K3_RED_FALSE: tuple[str, ...] = (
+    "reclaim_open_1440",
+    "reclaim_after_high_1440",
+    "reclaim_after_toggle_1440",
+    "reclaim_after_resize_down",
+    "reclaim_after_resize_up",
+    "reclaim_open_1280",
+)
+#: ... and these GUARD keys are TRUE there (they pass today by design; their negatives are stated in the spec).
+K3_RED_GUARD: tuple[str, ...] = (
+    "open_loads_once_1440",
+    "reclaim_keeps_mid_1440",
+    "reclaim_low_moves_1440",
+    "reclaim_keeps_current_1440",
+    "reclaim_after_tier_entry",
+    "iframe_reloads_during_reclaim",
+)
+#: The steps of K3 in order, each with its raw-evidence name. ONE page, ONE kernel, ONE `dock()`, file browser open.
+K3_STEP_NAMES: tuple[str, ...] = (
+    "open_1440", "mid_1440", "low_1440", "high_1440", "toggle_1440", "resize_down", "resize_up", "tier_entry", "open_1280",
+)
+#: The viewport of the context, then of every `setViewportSize` K3 makes, in order (hashed into K3's ``args`` input):
+#: 1440x900 start; 1280x800 (resize_down, then the drag to 300 there); 1440x900 (resize_up); 1600x900 and 1440x900
+#: (tier_entry); 1280x800 (open_1280).
+K3_VIEWPORTS: tuple[tuple[int, int], ...] = ((1440, 900), (1280, 800), (1440, 900), (1600, 900), (1440, 900), (1280, 800))
+
+
+def k3_expected(status: str) -> tuple[tuple[str, Any], ...]:
+    """K3's listed keys under a family ``status`` (``reclaim_status``): every key where asserted; where recorded-only
+    the re-clamp keys are still measured and written, but only `pageerrors` gates."""
+    keys: tuple[tuple[str, Any], ...] = tuple((k, True) for k in K3_KEYS) if status == ASSERTED else ()
+    return (*keys, ("pageerrors", []))
+
+
 DOCK_UNITS: tuple[HarnessUnit, ...] = (
     HarnessUnit("K1a", DOCK_CHECK, 10 * 60.0, _K1A_EXPECTED, acs=("AC-34", "AC-35", "AC-37"), viewports=((1440, 900),)),
     HarnessUnit("K1b", DOCK_CHECK, 14 * 60.0, tuple((k, True) for k in K1B_ORDER), acs=("AC-38",), viewports=((1440, 900),)),
     HarnessUnit(
         "K2", DOCK_CHECK, 15 * 60.0, k2_expected(SIZING_STATUS), acs=("AC-36",), viewports=tuple(v for _, v in K2_STEPS)
     ),
+    # #5656 (deck-panel layout): K3 re-measures the empty strip beside the deck at 1280-1599 px after an open, a drag, a file-browser
+    # toggle, a window resize, a tier entry and a reopen. Its budget is the spec's 10 min (an estimate of ~150 s, unmeasured).
+    HarnessUnit(
+        "K3", DOCK_CHECK, 10 * 60.0, k3_expected(reclaim_status(SIZING_RECORD)), acs=("AC-N5",), viewports=K3_VIEWPORTS
+    ),
     HarnessUnit(
         "N-d", DOCK_CHECK, 6 * 60.0, nd_expected(SIZING_STATUS), acs=("AC-39",), viewports=((1600, 900),), in_aggregate=False
+    ),
+    # #5656 N-g (negative only, like N-d): K3's predicate on a stock split that carries the deck's limits must report failure.
+    HarnessUnit(
+        "N-g", DOCK_CHECK, 6 * 60.0, ((NG_KEY, True),), acs=("AC-N6",), viewports=((1440, 900),), in_aggregate=False
     ),
 )
 #: The dock units join the one D16 table (ids, check, budget, listed keys); ``run_dock_check`` judges the
@@ -7644,6 +7720,367 @@ def annotate_layout(snap: Any) -> dict[str, Any]:
     return out
 
 
+# -- K3 and N-g (#5656): the real dead space, the re-clamp predicates and K3's key derivation ------------------------------
+#
+# Spec .praxia/docs/specs/261001_nd-next-5656-deck-layout.md (AC-N1, AC-N5, AC-N6). The MVP deck panel is a split whose
+# deck is held to 420-480 px by CSS limits, but Lumino's allocation honours only a minimum, so the deck's half can be wider
+# than the deck and the deck sits centred in it: the surplus is empty on both sides ("dead space"). `slack` (layout_summary)
+# also counts the fixed 5 + 5 px dock inset, which is not dead space, so the real dead space is
+# ``slack - 2 x (notebook_panel.left - dock_panel.left)``. Everything here is pure; no browser is launched.
+
+#: Q1 (user ruling 2026-10-01): the width the deck opens at in 1280-1599 px. dock.js exports the same number as
+#: ``OPEN_WIDTH_MEDIUM`` (a bun test pins the pair).
+OPEN_WIDTH_MEDIUM_PX = 420.0
+#: ``reclaim_ok``: real dead space at most this many px and the deck within ``RECLAIM_WIDTH_TOL_PX`` of the wanted width.
+RECLAIM_DEAD_TOL_PX = 2.0
+RECLAIM_WIDTH_TOL_PX = 2.0
+#: A drag (measured on the notebook panel, which tracks the splitter) must have moved at least this far, or its key fails
+#: instead of passing on a drag that did nothing (N5656-8).
+RECLAIM_MOVE_MIN_PX = 20.0
+#: Collapsing the file browser must widen the dock by at least this much (AC-N5 `reclaim_after_toggle_1440`).
+RECLAIM_TOGGLE_MIN_PX = 200.0
+#: A viewport change between 1440 and 1280 px moves the dock by this much (the 318 px sidebars are fixed) +- 2.
+RECLAIM_RESIZE_DOCK_PX = 160.0
+RECLAIM_DOCK_TOL_PX = 2.0
+#: The measured left inset must lie in [0, this]; a larger one is not the dock's 5 px padding.
+RECLAIM_INSET_MAX_PX = 20.0
+#: dock.js ``WIDGET_ID``: the shell's current widget must never be the deck in K3's `reclaim_keeps_current_1440`.
+K3_DECK_WIDGET_ID = "praxis-deck-panel"
+K3_MID_PX = 460.0
+K3_LOW_PX = 300.0
+K3_HIGH_PX = 700.0
+K3_HIGH_CLAMP_PX = PANEL_MAX_PX
+
+
+def _finite(value: Any) -> bool:
+    return _num(value) and math.isfinite(value)
+
+
+def _rect_of(snap: Any, name: str) -> dict[str, Any] | None:
+    rect = _dict(_dict(snap).get("rects")).get(name)
+    return rect if isinstance(rect, dict) else None
+
+
+def left_inset(snap: Any) -> float | None:
+    """``notebook_panel.left - dock_panel.left`` of a layout snapshot (the dock's padding), or ``None`` when a rect or a
+    number is missing or the inset is outside [0, ``RECLAIM_INSET_MAX_PX``] (then it is not the dock's own padding)."""
+    dock, nb = _rect_of(snap, "dock_panel"), _rect_of(snap, "notebook_panel")
+    if dock is None or nb is None or not (_finite(dock.get("left")) and _finite(nb.get("left"))):
+        return None
+    inset = float(nb["left"]) - float(dock["left"])
+    return inset if 0.0 <= inset <= RECLAIM_INSET_MAX_PX else None
+
+
+def real_dead_space(snap: Any) -> float | None:
+    """The room that neither the notebook, the deck, the splitter handle nor the dock's own padding takes:
+    ``layout_summary(snap)["slack"] - 2 x (notebook_panel.left - dock_panel.left)``. The right inset is taken to equal the
+    left one (one symmetric padding rule); the wide snapshots check it. ``None`` when an input is missing or non-numeric."""
+    inset = left_inset(snap)
+    slack = layout_summary(snap)["slack"]
+    if inset is None or not _finite(slack):
+        return None
+    return float(slack) - 2.0 * inset
+
+
+def available_width(snap: Any) -> float | None:
+    """``A``: the width the notebook and the deck share, ``dock - 2 x inset - handles`` (947 / 1107 at 962 / 1122 px)."""
+    inset, summary = left_inset(snap), layout_summary(snap)
+    if inset is None or not _finite(summary["dock_width"]) or not _finite(summary["handles_width"]):
+        return None
+    return float(summary["dock_width"]) - 2.0 * inset - float(summary["handles_width"])
+
+
+def reclaim_ok(snap: Any, want_deck: Any) -> bool:
+    """The deck is ``want_deck`` +- 2 px wide and the real dead space is at most 2 px. An unreadable snapshot is False."""
+    if not _finite(want_deck):
+        return False
+    dead, deck = real_dead_space(snap), layout_summary(snap)["deck_width"]
+    if dead is None or not _finite(deck):
+        return False
+    return dead <= RECLAIM_DEAD_TOL_PX and abs(float(deck) - float(want_deck)) <= RECLAIM_WIDTH_TOL_PX
+
+
+def moved(before: Any, after: Any, min_px: Any) -> bool:
+    """``|after - before| >= min_px`` for finite numbers; anything else is False (an action that cannot be shown to have
+    happened did not happen)."""
+    if not (_finite(before) and _finite(after) and _finite(min_px)):
+        return False
+    return abs(float(after) - float(before)) >= float(min_px)
+
+
+#: ``settle_layout``: poll the layout every 250 ms until two consecutive summaries agree within 0.5 px, at most 5 s.
+SETTLE_CAP_S = 5.0
+SETTLE_INTERVAL_S = 0.25
+SETTLE_TOL_PX = 0.5
+
+
+def _settle_signature(snap: Any) -> tuple[float, ...] | None:
+    s = layout_summary(snap)
+    sig = (s["dock_width"], s["deck_width"], s["notebook_panel_width"], s["slack"])
+    return tuple(float(v) for v in sig) if all(_finite(v) for v in sig) else None
+
+
+def settle_layout(
+    driver: Any, *, cap_s: float = SETTLE_CAP_S, interval_s: float = SETTLE_INTERVAL_S, tol: float = SETTLE_TOL_PX
+) -> tuple[Any, bool]:
+    """``(snapshot, settled)``: read ``driver.layout()`` every ``interval_s`` until two CONSECUTIVE summaries (dock, deck and
+    notebook widths and the slack) agree within ``tol`` px, or ``cap_s`` passes. The snapshot is the last one read. A snapshot
+    that cannot be summarised (no deck, a missing rect) never agrees, so an unreadable layout reports "did not settle" instead
+    of settling on nothing. The re-clamp runs on the next ``layoutModified``, a debounced message, so a single read is not enough."""
+    previous: list[Any] = [None]
+
+    def agrees(snap: Any) -> bool:
+        current = _settle_signature(snap)
+        held = previous[0] is not None and current is not None and all(abs(a - b) <= tol for a, b in zip(previous[0], current))
+        previous[0] = current
+        return held
+
+    return poll_until(
+        driver.layout, agrees, timeout_s=cap_s, interval_s=interval_s,
+        clock=getattr(driver, "clock", time.monotonic), sleep=getattr(driver, "sleep", time.sleep),
+    )
+
+
+def _snap_of(step: Any, name: str = "snap") -> Any:
+    return _dict(step).get(name)
+
+
+def _measure(snap: Any) -> dict[str, Any]:
+    s = layout_summary(snap)
+    return {
+        "dead_space": real_dead_space(snap), "available": available_width(snap), "dock": s["dock_width"],
+        "deck": s["deck_width"], "notebook_panel": s["notebook_panel_width"], "deck_max_width": s["deck_max_width"],
+        "inner_width": _dict(snap).get("inner_width"),
+    }
+
+
+def derive_k3_keys(raw: Any, *, record: dict[str, bool] | None = None) -> dict[str, Any]:
+    """K3's keys from the raw page evidence of its steps (pure; a control per key in the tests).
+
+    EVERY key is a conjunction of a PREDICATE (the width/dead-space/reload claim), the PRECONDITIONS that show the
+    action happened (a drag moved the notebook >= 20 px, a toggle widened the dock >= 200 px, a resize moved it
+    160 +- 2 px, the viewport applied, a reopen was a fresh attach, the counters were readable) and that the step
+    SETTLED (two reads 250 ms apart agree). A swallowed drag, a toggle that did nothing or a step that never settled
+    therefore fails its key; it can never pass vacuously. The predicates alone, the preconditions and the settled flags are
+    written beside the keys, so the pre-registered RED run can tell "the fix is absent" (a predicate false) from "the
+    instrument failed" (a precondition or a settle false).
+
+    ``raw`` (a missing step or field only fails the keys that need it)::
+
+        open_1440  {snap, settled, state, home, iframes, loads_before, loads_after}   dock() and its settle at 1440x900
+        mid_1440 / low_1440 / high_1440  {snap, settled}                               splitter drags to 460 / 300 / 700
+        toggle_1440  {collapsed: {snap, settled, left_collapsed}, expanded: {...}, current_before: {id, active_cell},
+                      current_after: {...}}                                            file browser collapse, then expand
+        resize_down  {snap, settled}                                                   viewport 1280x800
+        resize_up    {low_snap, low_settled, snap, settled}                            drag to 300 at 1280, viewport 1440x900
+        tier_entry   {wide_snap, wide_settled, snap, settled}                          1600x900, then 1440x900
+        open_1280    {before, closed, reopen: {state, home, iframes}, snap, settled}   viewport 1280x800, close + reopen
+        reloads      {from, to}                                                        deck iframe loads over the re-clamps
+    """
+    rec = dict(SIZING_RECORD if record is None else record)
+    r = _dict(raw)
+    st = {name: _dict(r.get(name)) for name in K3_STEP_NAMES}
+    reloads = _dict(r.get("reloads"))
+    open_ = st["open_1440"]
+    tg = st["toggle_1440"]
+    col, exp = _dict(tg.get("collapsed")), _dict(tg.get("expanded"))
+    ru, tier, o1280 = st["resize_up"], st["tier_entry"], st["open_1280"]
+    s_open, s_mid, s_low, s_high = (_snap_of(st[n]) for n in ("open_1440", "mid_1440", "low_1440", "high_1440"))
+    s_col, s_exp = _snap_of(col), _snap_of(exp)
+    s_down = _snap_of(st["resize_down"])
+    s_ru_low, s_ru, s_wide, s_tier, s_1280 = (
+        _snap_of(ru, "low_snap"), _snap_of(ru), _snap_of(tier, "wide_snap"), _snap_of(tier), _snap_of(o1280)
+    )
+
+    def nb(snap: Any) -> Any:
+        return layout_summary(snap)["notebook_panel_width"]
+
+    def dock(snap: Any) -> Any:
+        return layout_summary(snap)["dock_width"]
+
+    def inner(snap: Any, width: int) -> bool:
+        return _dict(snap).get("inner_width") == width
+
+    settled = {
+        "open_1440": open_.get("settled") is True, "mid_1440": st["mid_1440"].get("settled") is True,
+        "low_1440": st["low_1440"].get("settled") is True, "high_1440": st["high_1440"].get("settled") is True,
+        "toggle_collapsed": col.get("settled") is True, "toggle_expanded": exp.get("settled") is True,
+        "resize_down": st["resize_down"].get("settled") is True,
+        "resize_up_low": ru.get("low_settled") is True, "resize_up": ru.get("settled") is True,
+        "tier_wide": tier.get("wide_settled") is True, "tier_entry": tier.get("settled") is True,
+        "open_1280": o1280.get("settled") is True,
+    }
+    loads = [open_.get("loads_before"), open_.get("loads_after"), reloads.get("from"), reloads.get("to")]
+    cur_b, cur_a = _dict(tg.get("current_before")), _dict(tg.get("current_after"))
+    pre = {
+        "open_split_present": _state_is(open_, "open-connected", 1, "split") and _finite(layout_summary(s_open)["deck_width"]),
+        "loads_readable": all(_is_int(v) for v in loads),
+        # the viewport of each step took effect (the page's inner width), one flag per step so one failed change fails only its keys
+        "viewport_open_1440": inner(s_open, 1440),
+        "viewport_mid_1440": inner(s_mid, 1440),
+        "viewport_low_1440": inner(s_low, 1440),
+        "viewport_high_1440": inner(s_high, 1440),
+        "viewport_toggle_1440": inner(s_col, 1440) and inner(s_exp, 1440),
+        "viewport_resize_down": inner(s_down, 1280),
+        "viewport_resize_up": inner(s_ru_low, 1280) and inner(s_ru, 1440),
+        "viewport_tier_entry": inner(s_wide, 1600) and inner(s_tier, 1440),
+        "viewport_open_1280": inner(s_1280, 1280),
+        "mid_drag_moved": moved(nb(s_open), nb(s_mid), RECLAIM_MOVE_MIN_PX),
+        "low_drag_moved": moved(nb(s_mid), nb(s_low), RECLAIM_MOVE_MIN_PX),
+        "high_drag_moved": moved(nb(s_low), nb(s_high), RECLAIM_MOVE_MIN_PX),
+        "toggle_collapsed_widened": (
+            col.get("left_collapsed") is True and _finite(dock(s_col)) and _finite(dock(s_high))
+            and dock(s_col) - dock(s_high) >= RECLAIM_TOGGLE_MIN_PX
+        ),
+        "toggle_expanded_back": (
+            exp.get("left_collapsed") is False and _finite(dock(s_exp)) and _finite(dock(s_high))
+            and abs(dock(s_exp) - dock(s_high)) <= RECLAIM_DOCK_TOL_PX
+        ),
+        "current_readable": _is_str(cur_b.get("id")) and _is_str(cur_a.get("id")) and _is_int(cur_b.get("active_cell"))
+        and _is_int(cur_a.get("active_cell")),
+        "resize_down_dock_160": (
+            _finite(dock(s_exp)) and _finite(dock(s_down))
+            and abs((dock(s_exp) - dock(s_down)) - RECLAIM_RESIZE_DOCK_PX) <= RECLAIM_DOCK_TOL_PX
+        ),
+        "resize_up_drag_moved": moved(nb(s_down), nb(s_ru_low), RECLAIM_MOVE_MIN_PX),
+        "resize_up_dock_160": (
+            _finite(dock(s_ru)) and _finite(dock(s_ru_low))
+            and abs((dock(s_ru) - dock(s_ru_low)) - RECLAIM_RESIZE_DOCK_PX) <= RECLAIM_DOCK_TOL_PX
+        ),
+        "tier_wide_entered": layout_summary(s_wide)["deck_max_width"] == "none",
+        "open_1280_fresh_attach": (
+            _state_is(o1280.get("before"), "open-connected", 1, "split") and _state_is(o1280.get("closed"), "closed", 0)
+            and _state_is(o1280.get("reopen"), "open-connected", 1, "split")
+        ),
+    }
+    avail_high = available_width(s_high)
+    pred = {
+        "open_loads_once_1440": (
+            all(_is_int(v) for v in loads[:2]) and loads[1] - loads[0] == 1  # type: ignore[operator]
+        ),
+        "reclaim_open_1440": reclaim_ok(s_open, OPEN_WIDTH_MEDIUM_PX),
+        "reclaim_keeps_mid_1440": reclaim_ok(s_mid, K3_MID_PX),
+        "reclaim_low_moves_1440": reclaim_ok(s_low, OPEN_WIDTH_MEDIUM_PX),
+        "reclaim_after_high_1440": bool(
+            reclaim_ok(s_high, K3_HIGH_CLAMP_PX) and avail_high is not None and _finite(nb(s_high))
+            and abs(nb(s_high) - (avail_high - K3_HIGH_CLAMP_PX)) <= RECLAIM_WIDTH_TOL_PX
+        ),
+        "reclaim_after_toggle_1440": reclaim_ok(s_col, K3_HIGH_CLAMP_PX) and reclaim_ok(s_exp, K3_HIGH_CLAMP_PX),
+        "reclaim_keeps_current_1440": bool(
+            _is_str(cur_b.get("id")) and cur_b.get("id") == cur_a.get("id") and cur_a.get("id") != K3_DECK_WIDGET_ID
+            and _is_int(cur_b.get("active_cell")) and cur_b.get("active_cell") == cur_a.get("active_cell")
+        ),
+        "reclaim_after_resize_down": reclaim_ok(s_down, K3_HIGH_CLAMP_PX),
+        "reclaim_after_resize_up": reclaim_ok(s_ru, OPEN_WIDTH_MEDIUM_PX),
+        "reclaim_after_tier_entry": reclaim_ok(s_tier, OPEN_WIDTH_MEDIUM_PX),
+        "iframe_reloads_during_reclaim": bool(_is_int(reloads.get("from")) and _is_int(reloads.get("to")) and reloads["to"] == reloads["from"]),
+        "reclaim_open_1280": reclaim_ok(s_1280, OPEN_WIDTH_MEDIUM_PX),
+    }
+    needs = {
+        "open_loads_once_1440": (("loads_readable",), ("open_1440",)),
+        "reclaim_open_1440": (("open_split_present", "viewport_open_1440"), ("open_1440",)),
+        "reclaim_keeps_mid_1440": (("mid_drag_moved", "viewport_mid_1440"), ("mid_1440",)),
+        "reclaim_low_moves_1440": (("low_drag_moved", "viewport_low_1440"), ("low_1440",)),
+        "reclaim_after_high_1440": (("high_drag_moved", "viewport_high_1440"), ("high_1440",)),
+        "reclaim_after_toggle_1440": (
+            ("toggle_collapsed_widened", "toggle_expanded_back", "viewport_toggle_1440"), ("toggle_collapsed", "toggle_expanded")
+        ),
+        "reclaim_keeps_current_1440": (("current_readable", "toggle_collapsed_widened", "toggle_expanded_back"), ()),
+        "reclaim_after_resize_down": (("resize_down_dock_160", "viewport_resize_down"), ("resize_down",)),
+        "reclaim_after_resize_up": (
+            ("resize_up_drag_moved", "resize_up_dock_160", "viewport_resize_up"), ("resize_up_low", "resize_up")
+        ),
+        "reclaim_after_tier_entry": (("tier_wide_entered", "viewport_tier_entry"), ("tier_wide", "tier_entry")),
+        "iframe_reloads_during_reclaim": (("loads_readable",), ()),
+        "reclaim_open_1280": (("open_1280_fresh_attach", "viewport_open_1280"), ("open_1280",)),
+    }
+    out: dict[str, Any] = {}
+    for key in K3_KEYS:
+        pres, steps = needs[key]
+        out[key] = bool(pred[key] and all(pre[p] for p in pres) and all(settled[s] for s in steps))
+    out["k3_predicates"] = {k: bool(pred[k]) for k in K3_KEYS}
+    out["k3_preconditions"] = {k: bool(v) for k, v in pre.items()}
+    out["k3_settled"] = settled
+    out["k3_preconditions_ok"] = all(pre.values())
+    out["k3_all_settled"] = all(settled.values())
+    out["k3_measures"] = {
+        name: _measure(snap) for name, snap in (
+            ("open_1440", s_open), ("mid_1440", s_mid), ("low_1440", s_low), ("high_1440", s_high), ("toggle_collapsed", s_col),
+            ("toggle_expanded", s_exp), ("resize_down", s_down), ("resize_up_low", s_ru_low), ("resize_up", s_ru),
+            ("tier_wide", s_wide), ("tier_entry", s_tier), ("open_1280", s_1280),
+        )
+    }
+    out["reclaim_status"] = reclaim_status(rec)
+    out["sizing_record"] = rec
+    return out
+
+
+# -- N-g (#5656, AC-N6): the negative of K3's predicate on a STOCK split that carries the deck's CSS limits ---------------------------
+
+#: N-g's tolerance for "the stock split is even" (the layout config's two sizes are 0.5 / 0.5).
+NG_EVEN_TOL = 0.01
+
+
+def _first_horizontal_sizes(snap: Any) -> list[float] | None:
+    """The sizes of the first horizontal split in a layout snapshot's ``split_sizes``, or ``None``."""
+    for entry in _dict(snap).get("split_sizes") or []:
+        if isinstance(entry, dict) and entry.get("orientation") == "horizontal":
+            sizes = entry.get("sizes")
+            if isinstance(sizes, list) and all(_finite(s) for s in sizes):
+                return [float(s) for s in sizes]
+    return None
+
+
+def ng_measurement_problem(raw: Any) -> str | None:
+    """Why an N-g measurement cannot be trusted, or ``None``. Validity comes from the INPUTS of the measurement, never from the
+    dead-space result it is about (a validity rule that reads the output it validates can only agree with it):
+
+    * every rect the predicate reads is present and numeric, in BOTH snapshots (``stock`` and ``sized_control``);
+    * the stock node's computed ``min-width`` / ``max-width`` are ``420px`` / ``480px`` (it carries the deck's limits);
+    * the stock layout config holds two sizes of 0.5 +- 0.01 (the arrangement Lumino makes of a fresh ``split-right``);
+    * the SAME widget, sized by the harness itself so its half is 480 / A, passes ``reclaim_ok(.., 480)``: the predicate CAN pass."""
+    r = _dict(raw)
+    if r.get("ok") is False:
+        return f"the page could not build the stock split: {r.get('error')!r}"
+    for label in ("stock", "sized_control"):
+        snap = r.get(label)
+        for name in ("dock_panel", "notebook_panel", "deck_panel"):
+            rect = _rect_of(snap, name)
+            if rect is None or not all(_finite(rect.get(k)) for k in ("left", "right", "width")):
+                return f"{label}: rects.{name} is missing or not numeric"
+        if left_inset(snap) is None:
+            return f"{label}: the measured left inset is not the dock's padding"
+    computed = _dict(r.get("computed"))
+    if computed.get("min_width") != "420px" or computed.get("max_width") != "480px":
+        return f"the stock node does not carry the deck's limits: min {computed.get('min_width')!r}, max {computed.get('max_width')!r}"
+    sizes = _first_horizontal_sizes(r.get("stock"))
+    if sizes is None or len(sizes) != 2 or any(abs(s - 0.5) > NG_EVEN_TOL + 1e-9 for s in sizes):
+        return f"the stock layout is not an even two-way split: sizes {sizes}"
+    if not reclaim_ok(r.get("sized_control"), NG_WANT_PX):
+        return f"the control (the same widget sized by the harness) does not pass reclaim_ok(.., {NG_WANT_PX:g})"
+    return None
+
+
+def derive_ng_keys(raw: Any) -> dict[str, Any]:
+    """N-g's unit result: ``NG_KEY`` is ``reclaim_ok(stock, 480)`` (the predicate of K3's `reclaim_open_1440`, on a stock split with
+    the deck's limits and no dock.js sizing), which must be FALSE there; ``ng_detected`` says so. A measurement that cannot be trusted
+    raises ``DockCheckError`` (an ``error`` finding: never a detection)."""
+    problem = ng_measurement_problem(raw)
+    if problem is not None:
+        raise DockCheckError(f"N-g measurement invalid: {problem}")
+    r = _dict(raw)
+    stock_ok = reclaim_ok(r["stock"], NG_WANT_PX)
+    return {
+        NG_KEY: stock_ok,
+        "ng_detected": not stock_ok,
+        "control_sized_passes": reclaim_ok(r["sized_control"], NG_WANT_PX),
+        "stock_measures": _measure(r["stock"]),
+        "sized_control_measures": _measure(r["sized_control"]),
+        "stock_sizes": _first_horizontal_sizes(r["stock"]),
+        "computed": _dict(r.get("computed")),
+    }
+
+
 def drag_plan(geo: Any, width: float, *, inner_width: Any = None) -> dict[str, Any] | None:
     """The splitter drag the harness makes to leave the panel ``width`` px wide (spike S1's geometry): press on the centre
     of the handle, move to ``widget.right - width - handle.width / 2`` at the same height. ``x1_in_window`` says whether
@@ -7672,6 +8109,29 @@ def drag_plan_by(geo: Any, dx: float, *, inner_width: Any = None) -> dict[str, A
     plan["target_width"] = None
     plan["x1_in_window"] = None if not _num(inner_width) else bool(0 <= plan["x1"] <= inner_width)
     return plan
+
+
+def drag_plan_half(geo: Any, width: float, *, inner_width: Any = None) -> dict[str, Any] | None:
+    """K3's splitter drag: press on the centre of the handle and move it so that the deck's HALF (the cell of the split between the
+    handle and the dock's inner right edge) is ``width`` px wide: ``x1 = inner_right - width - handle.width / 2``.
+
+    ``drag_plan`` aims at ``widget.right``, the deck NODE's right edge. That equals the half's right edge only while the deck fills its
+    half; on the build without the fix the capped deck sits CENTRED in a wider half (36.75 px short of the edge at 1440 open), so a
+    drag "to 460" by ``drag_plan`` leaves a half of 496.75 and a deck of 480. K3 needs the same drag on both builds, so it aims at the
+    dock's inner edge (``geo["inner_right"]``: the dock's right edge less its padding, which the page measured from the notebook).
+    ``None`` for unusable geometry."""
+    g = geo if isinstance(geo, dict) else {}
+    h, w = g.get("handle"), g.get("widget")
+    if not (isinstance(h, dict) and isinstance(w, dict) and all(_num(h.get(k)) for k in ("left", "top", "width", "height"))
+            and _num(g.get("inner_right")) and _num(width)):
+        return None
+    x0, y = h["left"] + h["width"] / 2, h["top"] + h["height"] / 2
+    x1 = g["inner_right"] - width - h["width"] / 2
+    return {
+        "x0": x0, "y": y, "x1": x1, "handle": h, "widget": w, "n_handles": g.get("n_handles"), "target_width": width,
+        "target_kind": "half", "inner_right": g["inner_right"], "steps": DRAG_STEPS,
+        "x1_in_window": None if not _num(inner_width) else bool(0 <= x1 <= inner_width),
+    }
 
 
 def step_points(plan: Any) -> list[list[float]]:
@@ -8302,13 +8762,24 @@ __NOTEBOOK_HELPER__
       .filter((h) => !h.classList.contains("lm-mod-hidden"))
       .map((h) => ({ r: box(h) })).filter((x) => x.r.width > 0 && x.r.height > 0);
     handles.sort((x, y) => Math.abs(x.r.left + x.r.width / 2 - w.left) - Math.abs(y.r.left + y.r.width / 2 - w.left));
-    return handles.length ? { handle: handles[0].r, widget: w, n_handles: handles.length } : null;
+    if (!handles.length) return null;
+    // K3 (#5656), additive: the dock's INNER right edge (its right edge less its own padding, which is the notebook panel's left
+    // offset in the dock) is where the deck's half ends, whether or not the capped deck node fills the half. `drag_plan_half` aims there.
+    const dockBox = box(dockNode);
+    const nbp = notebookPanel();
+    const inset = nbp ? box(nbp).left - dockBox.left : null;
+    const innerRight = typeof inset === "number" && inset >= 0 && inset <= 20 ? dockBox.right - inset : null;
+    return { handle: handles[0].r, widget: w, n_handles: handles.length, dock: dockBox, inset, inner_right: innerRight };
   };
   // -- diagnostic evidence (read-only): ONE instant of the whole layout. Every rect is null when its node is not in the
   //    document; `handles` lists every `.lm-DockPanel-handle` of the main dock with its class list and whether it is
   //    visible (not `lm-mod-hidden`, and non-empty); `split_sizes` is the dock's own saved layout (saveLayout reads,
   //    it changes nothing), one entry per horizontal/vertical split area.
-  D.layout = () => {
+  //    `opts.deckNode` (OPTIONAL, N-g): the node to report as `rects.deck_panel` / `styles.deck_panel`. Without it the deck panel is looked
+  //    up by its class, which only exists once dock.js has docked the deck; N-g's widget is the harness's own `.praxis-nd-stock` node, for
+  //    which that lookup finds nothing (bathos run 4c6d7e29: "stock: rects.deck_panel is missing or not numeric"). Every other caller
+  //    passes no argument and reads what it always read.
+  D.layout = (opts) => {
     const at = (el) => (el ? box(el) : null);
     const style = (el) => {
       if (!el) return null;
@@ -8320,7 +8791,7 @@ __NOTEBOOK_HELPER__
     try { const w = app().shell.currentWidget; nbPanel = w && w.node && w.node.classList && w.node.classList.contains("jp-NotebookPanel") ? w.node : null; } catch (e) { nbPanel = null; }
     nbPanel = nbPanel || notebookPanel();
     const nb = notebookNode();
-    const deck = panelNode();
+    const deck = (opts && typeof opts === "object" && opts.deckNode) || panelNode();
     const dockNode = dockPanelNode();
     const byId = (id) => document.getElementById(id) || null;
     let leftCollapsed = null, rightCollapsed = null;
@@ -8647,6 +9118,18 @@ __NOTEBOOK_HELPER__
     try { if (shell.leftCollapsed === false) shell.collapseLeft(); } catch (e) { return null; }
     return shell.leftCollapsed;
   };
+  // K3 (#5656): the other half of the file-browser toggle, and the shell's current widget id with the notebook's active cell index
+  // (read at call time through D.notebookState, which REPORTS the current widget; the deck panel is the current widget once
+  // something inside it has had focus, which K3 must not cause).
+  D.expandLeft = () => {
+    const shell = app().shell;
+    try { if (shell.leftCollapsed === true) shell.expandLeft(); } catch (e) { return null; }
+    return shell.leftCollapsed;
+  };
+  D.currentInfo = () => {
+    const s = D.notebookState();
+    return { id: s.current_widget_id, active_cell: s.active_cell_index };
+  };
 
   // -- the harness actions on the deck iframe, and the ordered log (the init-script monitor)
   D.reloadFrame = () => {
@@ -8732,6 +9215,66 @@ __NOTEBOOK_HELPER__
       main: dockPanelNode() ? dockPanelNode().getBoundingClientRect().width : null,
       padding: nbStyle ? (parseFloat(nbStyle.paddingLeft) || 0) + (parseFloat(nbStyle.paddingRight) || 0) : null,
     };
+  };
+
+  // -- #5656 N-g: a STOCK split-right widget of the harness's own that carries the deck's CSS limits (inline min-width 420 px and
+  //    max-width 480 px, set before it is added, then `parent.fit()` as dock.js does) and NO dock.js sizing. `stock` is the layout as
+  //    Lumino leaves it (the arrangement the fix removes); `sized_control` is the SAME widget after the harness itself sizes the split so
+  //    its half is 480 / A (saveLayout -> edit sizes -> restoreLayout: the path the fix uses), the control that must pass the predicate.
+  //    No viewer page is loaded: the arrangement does not depend on the iframe.
+  D.stockSplitCapped = async () => {
+    const shell = app().shell;
+    const ref = window.__praxisDisplayCheckNotebook();
+    let Root = null;
+    let proto = ref ? Object.getPrototypeOf(ref) : null;
+    for (let depth = 0; proto && depth < 64; depth++, proto = Object.getPrototypeOf(proto)) {
+      if (Object.prototype.hasOwnProperty.call(proto, "processMessage") && Object.prototype.hasOwnProperty.call(proto, "onAfterAttach")
+          && Object.getPrototypeOf(proto) === Object.prototype && typeof proto.constructor === "function") { Root = proto.constructor; break; }
+    }
+    if (!Root) return { ok: false, error: "no root Lumino Widget constructor reachable from the current widget" };
+    const node = document.createElement("div");
+    node.className = "praxis-nd-stock";
+    node.style.minWidth = "420px";
+    node.style.maxWidth = "480px";
+    const widget = new Root({ node });
+    widget.id = "praxis-nd-stock-split-capped";
+    widget.title.label = "stock (capped)";
+    shell.add(widget, "main", { mode: "split-right", ref: ref.id, activate: false });
+    try { shell._dockPanel.fit(); } catch (e) { /* the snapshot will say what Lumino did */ }
+    await wait(1500);
+    const stock = D.layout({ deckNode: node });
+    const cs = getComputedStyle(node);
+    const computed = { min_width: cs.minWidth, max_width: cs.maxWidth };
+    let sized = null;
+    let sizedError = null;
+    try {
+      const dock = shell._dockPanel;
+      const config = dock.saveLayout();
+      let hit = null;
+      const walk = (a) => {
+        if (!a || hit) return;
+        if (a.type === "split-area") {
+          const i = (a.children || []).findIndex((c) => c && c.type === "tab-area" && (c.widgets || []).includes(widget));
+          if (i >= 0 && a.orientation === "horizontal") { hit = { node: a, index: i }; return; }
+          (a.children || []).forEach(walk);
+        }
+      };
+      walk(config.main);
+      if (!hit) throw new Error("the stock widget is not in a horizontal split");
+      const r = stock.rects;
+      const inset = r.notebook_panel.left - r.dock_panel.left;
+      const handles = stock.handles.filter((h) => h.visible).reduce((sum, h) => sum + h.rect.width, 0);
+      const avail = r.dock_panel.width - 2 * inset - handles;
+      const f = 480 / avail;
+      const sizes = Array.from(hit.node.sizes);
+      const total = sizes.reduce((x, y) => x + y, 0) || 1;
+      const others = total - sizes[hit.index];
+      hit.node.sizes = sizes.map((s, i) => (i === hit.index ? f : (others > 0 ? (s / others) * (1 - f) : (1 - f) / (sizes.length - 1))));
+      dock.restoreLayout(config);
+      await wait(1500);
+      sized = D.layout({ deckNode: node });
+    } catch (e) { sizedError = String(e); }
+    return { ok: true, stock, computed, sized_control: sized, sized_error: sizedError };
   };
 })()
 """.replace("__NOTEBOOK_HELPER__", NOTEBOOK_HELPER_JS)
@@ -9082,6 +9625,22 @@ class DockDriver(DisplayDriver):
         self.page.wait_for_timeout(500)
         return collapsed is True
 
+    def expand_left(self) -> bool:
+        """K3: expand the file browser again (``shell.expandLeft()``); True when the shell reports it expanded afterwards."""
+        collapsed = self._dk("expandLeft()")
+        self.page.wait_for_timeout(500)
+        return collapsed is False
+
+    def current_info(self) -> dict[str, Any]:
+        """K3: ``{id, active_cell}``: the shell's current widget id and the notebook's active cell index, now (either may be ``None``)."""
+        return self._dk("currentInfo()") or {}
+
+    def drag_splitter_half_to(self, width: float) -> float | None:
+        """K3: a real drag of the splitter nearest the panel until the deck's HALF (its cell of the split) is ``width`` px wide
+        (``drag_plan_half``); returns the panel node's measured width afterwards, or ``None`` when no splitter handle is found."""
+        plan = drag_plan_half(self._dk("handleRect()"), width, inner_width=self.facts().get("inner_width"))
+        return self._perform_drag(plan)
+
     def reload_frame(self) -> bool:
         return bool((self._dk("reloadFrame()") or {}).get("ok"))
 
@@ -9107,6 +9666,14 @@ class DockDriver(DisplayDriver):
         if not (added or {}).get("ok"):
             raise DockCheckError(f"could not add the stock split-right widget: {(added or {}).get('error')!r}")
         return self._dk("stockRects()")
+
+    def stock_split_capped(self) -> dict[str, Any]:
+        """N-g (#5656): add a STOCK split-right widget that carries the deck's CSS limits (no dock.js sizing), measure the layout Lumino
+        leaves (``stock``), size that same widget so its half is 480 / A and measure again (``sized_control``)."""
+        got = self._dk("stockSplitCapped(a)", {})
+        if not (got or {}).get("ok"):
+            raise DockCheckError(f"could not add the capped stock split-right widget: {(got or {}).get('error')!r}")
+        return got
 
 
 # -- the scenario bodies ---------------------------------------------------------------------------------------------
@@ -9713,6 +10280,106 @@ def run_k2(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | No
     return keys
 
 
+def run_k3(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | None = None) -> dict[str, Any]:
+    """K3 (#5656, AC-N5): ONE page, ONE kernel and ONE ``dock()``, the file browser open, the nine steps of ``K3_STEP_NAMES`` in order.
+    After every action ``settle_layout`` polls the layout until it holds still (the re-clamp runs on the next, debounced
+    ``layoutModified``); a step that does not settle in 5 s fails its keys and says so. Every step is guarded, so a step that
+    fails fails its keys by name and the later steps still run. The splitter drags are by the deck's HALF (``drag_splitter_half_to``),
+    the same drag on the build with and without the fix.
+
+    1440x900: ``dock()`` and its open (deck iframe loads counted); drags to 460, 300 and 700; the file browser collapsed and expanded
+    (the shell's current widget and the notebook's active cell read around it); 1280x800 (resize down); a drag to 300 there, then
+    1440x900 (resize up); 1600x900 and back to 1440x900 (tier entry); 1280x800, the panel closed and reopened. The deck iframe loads
+    are counted from the drag to 460 through the tier entry (the re-clamp must never reload the viewer)."""
+    nb = build_dock_notebook(fixture)
+    idx = require_cells(nb, *DOCK_CELL_IDS)
+    ev: dict[str, Any] = {"step_errors": {}, "recoveries": []}
+    raw: dict[str, Any] = {"reloads": {"from": None, "to": None}}
+    _setup_dock_world(driver, nb, idx, theme=True, pickup=False, draws=True)
+
+    def loads_now() -> int | None:
+        value = driver.loads()
+        return value if _is_int(value) else None
+
+    def after_action(extra: dict[str, Any] | None = None) -> dict[str, Any]:
+        snap, settled = settle_layout(driver)
+        return {"snap": snap, "settled": settled, **(extra or {})}
+
+    def drag_to(width: float) -> dict[str, Any]:
+        driver.drag_splitter_half_to(width)
+        return after_action()
+
+    def step_open() -> dict[str, Any]:
+        loads0 = loads_now()
+        driver.run_cell(idx["dock"])
+        ev["connected"] = driver.wait_connected(90.0)
+        out = after_action()
+        view = _view(driver)
+        out.update({"state": view["state"], "home": view["home"], "iframes": view["iframes"],
+                    "loads_before": loads0, "loads_after": loads_now()})
+        return out
+
+    raw["open_1440"] = _guard(ev, "open_1440", step_open, {})
+
+    raw["reloads"]["from"] = loads_now()
+    raw["mid_1440"] = _guard(ev, "mid_1440", lambda: drag_to(K3_MID_PX), {})
+    raw["low_1440"] = _guard(ev, "low_1440", lambda: drag_to(K3_LOW_PX), {})
+    raw["high_1440"] = _guard(ev, "high_1440", lambda: drag_to(K3_HIGH_PX), {})
+
+    def step_toggle() -> dict[str, Any]:
+        out: dict[str, Any] = {"current_before": driver.current_info()}
+        driver.collapse_left()
+        out["collapsed"] = after_action({"left_collapsed": driver.facts().get("left_collapsed")})
+        driver.expand_left()
+        out["expanded"] = after_action({"left_collapsed": driver.facts().get("left_collapsed")})
+        out["current_after"] = driver.current_info()
+        return out
+
+    raw["toggle_1440"] = _guard(ev, "toggle_1440", step_toggle, {})
+
+    def step_resize_down() -> dict[str, Any]:
+        driver.set_viewport(1280, 800)
+        return after_action()
+
+    raw["resize_down"] = _guard(ev, "resize_down", step_resize_down, {})
+
+    def step_resize_up() -> dict[str, Any]:
+        low = drag_to(K3_LOW_PX)  # at 1280: the deck goes to 420 before the dock grows
+        driver.set_viewport(1440, 900)
+        up = after_action()
+        return {"low_snap": low["snap"], "low_settled": low["settled"], "snap": up["snap"], "settled": up["settled"]}
+
+    raw["resize_up"] = _guard(ev, "resize_up", step_resize_up, {})
+
+    def step_tier_entry() -> dict[str, Any]:
+        driver.set_viewport(1600, 900)
+        wide = after_action()
+        driver.set_viewport(1440, 900)
+        back = after_action()
+        return {"wide_snap": wide["snap"], "wide_settled": wide["settled"], "snap": back["snap"], "settled": back["settled"]}
+
+    raw["tier_entry"] = _guard(ev, "tier_entry", step_tier_entry, {})
+    raw["reloads"]["to"] = loads_now()
+
+    def step_open_1280() -> dict[str, Any]:
+        driver.set_viewport(1280, 800)
+        out: dict[str, Any] = {"before": _step_view(_view(driver))}
+        driver.toggle_panel()  # close
+        out["closed"] = _step_view(driver.poll(lambda: _view(driver), lambda v: v["state"] == "closed", 5.0)[0])
+        driver.toggle_panel()  # reopen: T4, then T6 on the answering announce (a fresh attach)
+        driver.wait_connected(20.0)
+        out["reopen"] = _step_view(_view(driver))
+        out.update(after_action())
+        return out
+
+    raw["open_1280"] = _guard(ev, "open_1280", step_open_1280, {})
+
+    keys = derive_k3_keys(raw, record=record)
+    ev.update(raw)
+    keys["evidence"] = ev
+    return keys
+
+
 def run_nd(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | None = None) -> dict[str, Any]:
     """N-d (AC-39(d), negative only): at 1600x900 add the viewer page in a STOCK split-right widget of the harness's
     own and measure it (an even split); the AC-36 >= 1600 predicate must report failure. Nothing is booted or docked:
@@ -9727,8 +10394,28 @@ def run_nd(driver: Any, fixture: dict[str, Any], *, record: dict[str, bool] | No
     return derive_nd_keys(measured, record=rec)
 
 
+def run_ng(driver: Any, fixture: dict[str, Any]) -> dict[str, Any]:
+    """N-g (#5656, AC-N6, negative only): at 1440x900 add a STOCK split-right widget carrying the deck's CSS limits (harness code, no
+    dock.js sizing), measure the layout Lumino leaves, then size the SAME widget so its half is 480 / A and measure again. K3's predicate
+    ``reclaim_ok(.., 480)`` must report failure on the first and success on the second. Nothing is booted or docked: no kernel, no
+    ``dock()``. A measurement that cannot be trusted raises (``derive_ng_keys``): an ``error`` finding, never a detection."""
+    nb = build_dock_notebook(fixture)
+    driver.open_lab()
+    driver.seed_and_open(DOCK_NOTEBOOK_NAME, nb)
+    raw = driver.stock_split_capped()
+    try:
+        return derive_ng_keys(raw)
+    except DockCheckError as err:
+        # An untrusted measurement is an error finding, and the unit result keeps only the message: carry the page's raw output (bounded)
+        # in it, or an invalid run cannot be read back (run 4c6d7e29 threw the snapshots away).
+        text = json.dumps(raw, default=str, sort_keys=True)
+        if len(text) > NG_EVIDENCE_MAX_CHARS:
+            text = text[:NG_EVIDENCE_MAX_CHARS] + " ...[truncated]"
+        raise DockCheckError(f"{err}; raw page evidence: {text}") from err
+
+
 def run_dock_scenario(session: Any, unit: HarnessUnit, env: Any, *, notebook: dict | None = None) -> dict[str, Any]:
-    """The scenario body of one ``--dock-check`` unit: K1a, K1b, K2 or N-d. One unit, one process, one browser; the
+    """The scenario body of one ``--dock-check`` unit: K1a, K1b, K2, K3 or N-d. One unit, one process, one browser; the
     session is closed by ``run_scenario``'s bounded teardown."""
     if unit.id not in {u.id for u in DOCK_UNITS}:
         raise DockCheckError(f"no scenario body for unit {unit.id!r}")
@@ -9740,6 +10427,10 @@ def run_dock_scenario(session: Any, unit: HarnessUnit, env: Any, *, notebook: di
         return run_k1b(driver, fixture, neg=tuple(getattr(session, "_neg", ()) or ()))
     if unit.id == "K2":
         return run_k2(driver, fixture)
+    if unit.id == "K3":
+        return run_k3(driver, fixture)
+    if unit.id == "N-g":
+        return run_ng(driver, fixture)
     return run_nd(driver, fixture)
 
 
@@ -9754,7 +10445,7 @@ def run_dock_check(
     unit_argv_prefix: list[str] | None = None,
     scenario_entry: Any = None,
 ) -> int:
-    """``--dock-check``: one unit (``--scenario``), the driver over K1a, K1b and K2, or ``--aggregate-only``.
+    """``--dock-check``: one unit (``--scenario``), the driver over K1a, K1b, K2 and K3, or ``--aggregate-only``.
 
     The same machinery as ``run_display_check`` (``run_scenario``, ``run_units_driver``). ``N-d`` runs only as a
     ``--scenario`` (the sensitivity driver starts it) and is never part of the aggregate. ``--neg drop-query`` belongs to
@@ -10109,9 +10800,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help=(
             "Visualizer3D deck-panel gates (epic 260929_notebook-display-design, D16, task C7). With "
-            "--scenario <id> runs exactly ONE unit (K1a, K1b, K2, or the negative-only N-d) in this process, "
+            "--scenario <id> runs exactly ONE unit (K1a, K1b, K2, K3, or the negative-only N-d or N-g) in this process, "
             "bounded by its own watchdog, in a FULL Chromium with SwiftShader WebGL (never headless_shell); with "
-            "no --scenario it is the driver over K1a, K1b and K2 (N-d is never part of the aggregate). Same "
+            "no --scenario it is the driver over K1a, K1b, K2 and K3 (N-d is never part of the aggregate). Same "
             "stamps, resume, --aggregate-only and --out-dir rules as --display-check. Needs a fresh web-repl/dist."
         ),
     )
