@@ -12,7 +12,7 @@ jobs:
     steps:
     - name: Check for bypass label
       id: check_label
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       with:
         script: |
           const { data: labels } = await github.rest.issues.listLabelsOnIssue({
@@ -33,7 +33,7 @@ jobs:
 
     - name: Add success status for bypassed checks
       if: steps.check_label.outputs.result == 'bypass'
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       with:
         script: |
           const checks = ['lint', 'typecheck', 'pylint'];
