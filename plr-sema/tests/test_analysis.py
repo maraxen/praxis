@@ -192,3 +192,22 @@ def test_key_ignores_comments_and_blank_lines_directly_above_the_function(contra
     plain = "import os\n" + TWO_FNS
     commented = "import os\n\n\n# the protocol under test\n\n" + TWO_FNS
     assert _key(plain, contracts).source_sha256 == _key(commented, contracts).source_sha256
+
+
+# ---- final-review fixes -----------------------------------------------------
+
+
+def test_malformed_pyproject_is_contracts_unavailable_not_a_raise(monkeypatch, tmp_path) -> None:
+    monkeypatch.delenv(ENV_VAR, raising=False)
+    (tmp_path / "pyproject.toml").write_text("[tool.plr-sema\ncontracts = 1\n")
+    monkeypatch.chdir(tmp_path)
+    out = analyze(CLEAN_SRC, "protocol")
+    assert isinstance(out, NotAnalyzed) and out.reason is NotAnalyzedReason.CONTRACTS_UNAVAILABLE
+    assert "pyproject.toml" in out.detail
+
+
+def test_pathologically_deep_expression_is_extract_failed(contracts) -> None:
+    src = "def protocol(lh):\n    lh" + ".a" * 2000 + ".aspirate()\n"
+    out = analyze(src, "protocol", contracts=contracts)
+    assert isinstance(out, NotAnalyzed) and out.reason is NotAnalyzedReason.EXTRACT_FAILED
+    assert "RecursionError" in out.detail

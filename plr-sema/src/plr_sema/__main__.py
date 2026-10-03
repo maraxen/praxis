@@ -73,16 +73,16 @@ def main(argv: list[str] | None = None) -> int:
     except SystemExit as exc:  # argparse exits 2 on usage errors already; normalize anything else
         return EXIT_NOT_ANALYZED if exc.code else EXIT_OK
 
-    where = contracts_source(args.contracts)
     contracts = None
     contracts_error = None
-    if where.path is None:
-        contracts_error = f"no contract table configured (layer: {where.layer})"
-    else:
-        try:
+    try:
+        where = contracts_source(args.contracts)
+        if where.path is None:
+            contracts_error = f"no contract table configured (layer: {where.layer})"
+        else:
             contracts = load_contracts(where.path)
-        except ContractsError as exc:
-            contracts_error = str(exc)
+    except ContractsError as exc:
+        contracts_error = str(exc)
 
     worst, records, text = EXIT_OK, [], []
     for path in args.files:
@@ -92,7 +92,14 @@ def main(argv: list[str] | None = None) -> int:
                    "reason": NotAnalyzedReason.CONTRACTS_UNAVAILABLE.value, "detail": contracts_error}
             lines = [f"{path}: not analyzed: {NotAnalyzedReason.CONTRACTS_UNAVAILABLE.value}: {contracts_error}"]
         else:
-            code, rec, lines = _check_one(path, args.function, contracts)
+            try:
+                code, rec, lines = _check_one(path, args.function, contracts)
+            except Exception as exc:  # noqa: BLE001 -- exit 1 means WILL_FAIL; a crash must never share it
+                print(f"{path}: internal error: {type(exc).__name__}: {exc}", file=sys.stderr)
+                code = EXIT_NOT_ANALYZED
+                rec = {"file": str(path), "function": args.function, "outcome": "not_analyzed",
+                       "reason": "internal_error", "detail": f"{type(exc).__name__}: {exc}"}
+                lines = [f"{path}: not analyzed: internal_error: {type(exc).__name__}: {exc}"]
         worst = max(worst, code)
         records.append(rec)
         text.extend(lines)

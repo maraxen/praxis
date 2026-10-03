@@ -96,9 +96,11 @@ def analyze(
 
     try:
         module = cst.parse_module(source)
+        wrapper = MetadataWrapper(module)
     except cst.ParserSyntaxError as exc:
         return NotAnalyzed(R.SYNTAX_ERROR, str(exc), function_name)
-    wrapper = MetadataWrapper(module)
+    except (RecursionError, MemoryError) as exc:  # valid but pathologically deep source
+        return NotAnalyzed(R.EXTRACT_FAILED, f"{type(exc).__name__}: {exc}", function_name)
     defs = [s for s in wrapper.module.body if isinstance(s, cst.FunctionDef)]
     names = [d.name.value for d in defs]
 
@@ -118,10 +120,10 @@ def analyze(
     name = target.name.value
 
     if contracts is None:
-        where = contracts_source()
-        if where.path is None:
-            return NotAnalyzed(R.CONTRACTS_UNAVAILABLE, f"no contract table configured (layer: {where.layer})", name)
         try:
+            where = contracts_source()
+            if where.path is None:
+                return NotAnalyzed(R.CONTRACTS_UNAVAILABLE, f"no contract table configured (layer: {where.layer})", name)
             contracts = load_contracts(where.path)
         except ContractsError as exc:
             return NotAnalyzed(R.CONTRACTS_UNAVAILABLE, str(exc), name)

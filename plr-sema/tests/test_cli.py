@@ -94,3 +94,30 @@ def test_json_output_shape_is_stable() -> None:
     payload = json.loads(r.stdout)
     assert payload["exit_code"] == r.returncode == 1
     assert _shape(payload) == json.loads(SNAPSHOT.read_text(encoding="utf-8"))
+
+
+def test_malformed_pyproject_exits_2_without_traceback(tmp_path: Path, monkeypatch) -> None:
+    # Exit 1 means WILL_FAIL; a config error must never share it.
+    monkeypatch.delenv("PLR_SEMA_CONTRACTS", raising=False)
+    (tmp_path / "pyproject.toml").write_text("[tool.plr-sema\ncontracts = 1\n")
+    import os
+
+    r = subprocess.run(
+        [sys.executable, "-m", "plr_sema", "check", str(FIX / "straightline_clean.py")],
+        capture_output=True, text=True, cwd=tmp_path, env={**os.environ},
+    )
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert "Traceback" not in r.stderr
+    assert "pyproject.toml" in (r.stdout + r.stderr)
+
+
+def test_unexpected_crash_exits_2_not_1(monkeypatch, capsys) -> None:
+    import plr_sema.__main__ as cli
+
+    def boom(*a, **k):
+        raise RuntimeError("synthetic")
+
+    monkeypatch.setattr(cli, "_check_one", boom)
+    code = cli.main(["check", str(FIX / "straightline_clean.py"), "--contracts", str(CONTRACTS)])
+    assert code == 2
+    assert "RuntimeError" in capsys.readouterr().err
