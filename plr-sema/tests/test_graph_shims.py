@@ -53,3 +53,10 @@ def test_backend_type_inspection_still_resolves() -> None:
     backend = importlib.import_module("praxis.backend.utils.type_inspection")
     new = importlib.import_module("plr_sema.graph.type_inspection")
     assert backend.extract_resource_types is new.extract_resource_types
+
+
+def test_extractor_shim() -> None:
+    _assert_reexports_everything(
+        "praxis.backend.utils.plr_static_analysis.visitors.computation_graph_extractor",
+        "plr_sema.extract.computation_graph_extractor",
+    )

@@ -11,9 +11,7 @@ pytest.importorskip("libcst")
 pytest.importorskip("pydantic")
 
 from _extract_corpus import GOLDENS, corpus, dump  # noqa: E402
-from praxis.backend.utils.plr_static_analysis.visitors.computation_graph_extractor import (  # noqa: E402
-    extract_graph_from_source,
-)
+from plr_sema.extract.computation_graph_extractor import extract_graph_from_source  # noqa: E402
 
 CORPUS = corpus()
 

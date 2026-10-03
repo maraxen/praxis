@@ -949,7 +949,7 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
         id="HM-16",
         what="compatibility shim modules (spec section 1.2)",
         metric="modules",
-        declared=2,
+        declared=3,
         status="CAPPED",
         why_not_derived=(
             "A byproduct of the praxis -> plr_sema migration itself; the "
@@ -962,7 +962,7 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "to 0 -- or exceeds its recorded peak."
         ),
         measure="plr_sema._hand_maintained:_measure_hm16",
-        peak=2,
+        peak=3,
     ),
     HandMaintainedSurface(
         id="HM-17",
