@@ -107,3 +107,30 @@ def test_plain_cpython_import_of_public_surface() -> None:
         f"import plr_sema (public surface) failed:\n"
         f"stdout={result.stdout}\nstderr={result.stderr}"
     )
+
+
+def test_no_pydantic_import_under_check() -> None:
+    """Spec 261002 §3: `check/` stays pydantic-free now that plr-sema owns the
+    pydantic graph models in `plr_sema.graph`. `check/` reads the stdlib
+    mirror `check/graph.py`; the mirror-drift test keeps the two in step."""
+    offenders: list[str] = []
+    for path in sorted(CHECK_ROOT.rglob("*.py")):
+        tree = ast.parse(path.read_text(), filename=str(path))
+        for node in ast.walk(tree):
+            for import_node, top in _iter_imports(node):
+                if top == "pydantic":
+                    offenders.append(f"{path}: {ast.unparse(import_node)}")
+    assert offenders == [], f"Spec violation: {offenders}"
+
+
+def test_base_import_loads_no_optional_dependency() -> None:
+    """Spec 261002 §4: `import plr_sema` must not pull in the `extract` extra
+    (or PLR), so a base install and Pyodide-without-libcst both work."""
+    code = (
+        "import sys, plr_sema\n"
+        "bad = sorted(m for m in ('libcst', 'pydantic', 'pylabrobot') if m in sys.modules)\n"
+        "print(bad)\n"
+        "raise SystemExit(1 if bad else 0)\n"
+    )
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr

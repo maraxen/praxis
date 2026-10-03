@@ -3,11 +3,10 @@ computation graph (spec 260901 §5.3 "Fork C", §6.2; superseded 260902 by
 §11 -- ``260902_plr-sema-ir-bytecode-increment.md``).
 
 **Why a mirror, not the real model.** ``OperationNode``/``ResourceNode``/
-``ProtocolComputationGraph`` (``praxis/backend/utils/plr_static_analysis/
-models.py:524-662``) are pydantic ``BaseModel``s under ``praxis.*`` --
-forbidden under ``check/`` by §1.3 (no ``praxis`` import under
-``src/plr_sema/``) and unmovable per §1.1 (round 1 moves nothing out of
-``praxis/``), independent of any Pyodide/pydantic question. The wire format
+``ProtocolComputationGraph`` (``plr_sema/graph/models.py``) are pydantic
+``BaseModel``s -- forbidden under ``check/`` (no ``pydantic`` import; spec
+261002 §3, enforced by ``test_no_pydantic_import_under_check``),
+independent of any Pyodide/pydantic question. The wire format
 between ``extract/`` (server-side, round 2) and ``check/`` (browser-side,
 this module) is already JSON (§6.2), so this mirror is populated by
 ``json.loads`` + explicit field extraction below -- NEVER by a pydantic
