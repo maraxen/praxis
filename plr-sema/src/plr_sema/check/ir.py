@@ -18,7 +18,7 @@ everything not hashed (spans, names, the origin map).
 
 **The no-drop invariant (§11.1.4).** Every field of every upstream model
 (``OperationNode``, ``ResourceNode``, ``ProtocolComputationGraph``,
-``praxis/backend/utils/plr_static_analysis/models.py:524-661``) is assigned
+``plr_sema/graph/models.py:49-186``) is assigned
 exactly one disposition in :data:`DISPOSITIONS`: **I** (an instruction
 field), **W** (a widen trigger), **S** (sideband, never hashed, never read
 by ``check_ir``), or **X** (excluded with a written reason -- the three

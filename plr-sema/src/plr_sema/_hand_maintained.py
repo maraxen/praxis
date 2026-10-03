@@ -652,7 +652,7 @@ def _measure_hm26() -> int:
 REGISTRY: tuple[HandMaintainedSurface, ...] = (
     HandMaintainedSurface(
         id="HM-1",
-        what="PLR_RESOURCE_TYPES class-name set (praxis/common/type_inspection.py:14-92)",
+        what="PLR_RESOURCE_TYPES class-name set (plr_sema/graph/type_inspection.py:14-92)",
         metric="entries",
         declared=64,  # 34 -> 53: main 2a40bb25 (debt #1849) replaced substring matching with exact names (+20 holders/decks/racks, -CarrierSite); 53 -> 64: PLR 1.0.0b1 bump made tips/head tools Resources (+11)
         status="DERIVABLE_NOT_YET",
@@ -854,7 +854,7 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
     ),
     HandMaintainedSurface(
         id="HM-11",
-        what="PreconditionType enum (praxis/backend/utils/plr_static_analysis/models.py:~500-521)",
+        what="PreconditionType enum (plr_sema/graph/models.py:29-37)",
         metric="members",
         declared=8,
         status="CAPPED",

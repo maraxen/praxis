@@ -5,7 +5,8 @@ Fixture protocol: `simple_transfer` (`tests/fixtures/simple_transfer_graph.
 json`), generated out-of-process (spec §6.2/C5 -- `check/` never imports the
 extractor; this file doesn't either) by subprocessing into the EXISTING
 `praxis.backend.utils.plr_static_analysis.visitors.computation_graph_
-extractor.extract_graph_from_source`, over the `SIMPLE_TRANSFER_SOURCE`
+extractor.extract_graph_from_source` (now `plr_sema.extract`, reached
+through the praxis shim), over the `SIMPLE_TRANSFER_SOURCE`
 fixture already used by `tests/utils/test_computation_graph.py` at repo
 root -- chosen because all four of its operations
 (`pick_up_tips`/`aspirate`/`dispense`/`drop_tips`) resolve a concrete

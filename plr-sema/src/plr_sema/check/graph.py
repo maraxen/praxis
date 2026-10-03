@@ -51,7 +51,7 @@ this package; see its own docstring.
 invariant itself.** §5.3/§6.2 used to describe the mirrored ``ResourceNode``
 field as "``id``, and whatever identifies the resource variable it
 corresponds to" -- but the live
-``praxis.backend.utils.plr_static_analysis.models.ResourceNode`` (:562-587)
+``plr_sema.graph.models.ResourceNode`` (:87-112)
 has NO ``id`` field; ``ProtocolComputationGraph.resources`` is
 ``dict[str, ResourceNode]``, keyed by variable name, and ``ResourceNode``
 itself separately carries that same name as ``variable_name`` (:564). The
@@ -77,7 +77,7 @@ __all__ = [
 @dataclass(frozen=True, slots=True)
 class OperationNode:
     """Total stdlib mirror of
-    ``praxis.backend.utils.plr_static_analysis.models.OperationNode``
+    ``plr_sema.graph.models.OperationNode``
     (16 fields, spec §12.2/#4932 -- ``trip`` added for a REGION loop
     header's proved trip count, §12.2.3) -- see ``plr_sema.check.ir.
     DISPOSITIONS["OperationNode"]`` for the per-field disposition
@@ -105,8 +105,8 @@ class OperationNode:
 @dataclass(frozen=True, slots=True)
 class ResourceNode:
     """Total stdlib mirror of
-    ``praxis.backend.utils.plr_static_analysis.models.ResourceNode``
-    (:562-587, 9 fields) -- see ``plr_sema.check.ir.DISPOSITIONS
+    ``plr_sema.graph.models.ResourceNode``
+    (:87-112, 9 fields) -- see ``plr_sema.check.ir.DISPOSITIONS
     ["ResourceNode"]`` for the per-field disposition (§11.1.4).
     """
 
@@ -124,8 +124,8 @@ class ResourceNode:
 @dataclass(frozen=True, slots=True)
 class ProtocolComputationGraph:
     """Total stdlib mirror of
-    ``praxis.backend.utils.plr_static_analysis.models.ProtocolComputationGraph``
-    (:613-634, 10 fields, methods excluded -- see ``plr_sema.check.ir.
+    ``plr_sema.graph.models.ProtocolComputationGraph``
+    (:138-159, 10 fields, methods excluded -- see ``plr_sema.check.ir.
     DISPOSITIONS["ProtocolComputationGraph"]`` for the per-field
     disposition, §11.1.4).
     """
