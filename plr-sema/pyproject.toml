@@ -12,6 +12,9 @@ readme = "README.md"
 license = {text = "MIT"}
 dependencies = []
 
+[project.optional-dependencies]
+extract = ["libcst>=1.1.0", "pydantic>=2.0.0"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

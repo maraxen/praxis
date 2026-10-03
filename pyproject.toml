@@ -27,6 +27,7 @@ dependencies = [
     "python-jose[cryptography]>=3.3.0",
     "python-keycloak>=5.8.1",
     "libcst>=1.1.0",
+    "plr-sema[extract]",
     "aiosqlite>=0.20.0", # SQLite async driver for lite mode KV store
     "zeroconf>=0.131.0", # mDNS device discovery
     "pyserial>=3.5", # Serial port device discovery
@@ -39,6 +40,7 @@ dependencies = [
 
 [tool.uv.sources]
 pylabrobot = { path = "external/pylabrobot", editable = true }
+plr-sema = { workspace = true }
 
 [tool.uv.workspace]
 members = ["coxswain", "training", "plr-sema"]
