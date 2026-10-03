@@ -358,3 +358,7 @@ exclude = [
 [tool.ty.environment]
 python-version = "3.12"
 extra-paths = ["external/pylabrobot"]
+
+[tool.plr-sema]
+# spec 261002 §7: where `python -m plr_sema check` finds the contract table in this repo.
+contracts = "plr-sema/data/derived_contracts.json"
