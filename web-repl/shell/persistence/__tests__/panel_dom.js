@@ -94,6 +94,10 @@ export class FakeElement {
     for (const fn of this._listeners.get(type) ?? []) fn({ type, preventDefault() {}, ...event });
   }
   focus() { this.focused = true; }
+  contains(node) {
+    for (let n = node; n; n = n.parentNode) if (n === this) return true;
+    return false;
+  }
   showModal() { this.open = true; }
   close() { this.open = false; }
 
@@ -119,6 +123,15 @@ export class FakeDocument {
   constructor() {
     this.head = new FakeElement("head", this);
     this.body = new FakeElement("body", this);
+    this._listeners = new Map();
+  }
+  // Document-level listeners (the panel's Escape and outside-pointer dismissal).
+  addEventListener(type, fn) {
+    if (!this._listeners.has(type)) this._listeners.set(type, []);
+    this._listeners.get(type).push(fn);
+  }
+  dispatch(type, event = {}) {
+    for (const fn of this._listeners.get(type) ?? []) fn({ type, preventDefault() {}, ...event });
   }
   createElement(tag) {
     return new FakeElement(tag, this);
