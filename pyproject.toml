@@ -305,7 +305,7 @@ dev = [
     "aiosqlite>=0.21.0",
     "alembic>=1.17.0",
     "factory-boy>=3.3.3",
-    "fakeredis>=2.32.0",
+    "fakeredis>=2.38.0",
     "freezegun>=1.5.5",
     # BUILD-TIME ONLY, and required -- not optional. jupyterlite-core's `contents`
     # addon hard-raises "jupyter-server is not installed. You cannot add custom
