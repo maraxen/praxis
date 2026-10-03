@@ -1,0 +1,442 @@
+# pylint: disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements,fixme,logging-fstring-interpolation
+"""Utilities for inspecting and serializing Python types."""
+
+import inspect
+import re
+from collections.abc import Sequence
+from typing import Any, Union, get_args, get_origin
+
+# =============================================================================
+# PLR Resource Type Constants
+# =============================================================================
+
+# All known PLR resource type names for pattern matching
+PLR_RESOURCE_TYPES: frozenset[str] = frozenset({
+  # Container sub-elements
+  "Well",
+  "TipSpot",
+  "Spot",
+  "Tube",
+  # Containers
+  "Plate",
+  "TipRack",
+  "NestedTipRack",
+  "Trough",
+  "TubeRack",
+  "ContainerRack",
+  "ItemizedResource",
+  "Liddable",
+  "PetriDish",
+  "Container",
+  # Carriers
+  "PlateCarrier",
+  "TipCarrier",
+  "TroughCarrier",
+  "Carrier",
+  "MFXCarrier",
+  "TubeCarrier",
+  # Holders (PLR replaced the old CarrierSite with these; CarrierSite no longer
+  # exists anywhere in the pinned submodule)
+  "ResourceHolder",
+  "PlateHolder",
+  "PetriDishHolder",
+  "PlateAdapter",
+  # Infrastructure
+  "Deck",
+  "HamiltonDeck",
+  "HamiltonSTARDeck",
+  "OTDeck",
+  "NimbusDeck",
+  "VantageDeck",
+  "TecanDeck",
+  "Trash",
+  "ResourceStack",
+  "TecanWashStation",
+  "Slot",
+  "Resource",
+  # Lids
+  "Lid",
+  # Tips and head tools. PLR 1.0 made these Resources (a tip is its holder's child in
+  # the resource tree; head tools/grippers/shafts mount on a head) -- added at the
+  # 1.0.0b1 bump so the live-class drift guard in
+  # tests/common/test_type_inspection_plr_matching.py names them.
+  "Tip",
+  "HeadTool",
+  "HamiltonTool",
+  "HamiltonTip",
+  "HamiltonCoreGripperTool",
+  "HamiltonCoreGrippers",
+  "TecanTip",
+  "MechanicalGripper",
+  "NChannelPipette",
+  "TipMountingShaft",
+  "LinkBody",
+  # Machine frontends
+  "LiquidHandler",
+  "PlateReader",
+  "HeaterShaker",
+  "Shaker",
+  "TemperatureController",
+  "Centrifuge",
+  "Thermocycler",
+  "Pump",
+  "PumpArray",
+  "Fan",
+  "Sealer",
+  "Peeler",
+  "PowderDispenser",
+  "Incubator",
+  "SCARA",
+  # Base machine class
+  "Machine",
+})
+
+# The "Machine frontends" + "Base machine class" subset of PLR_RESOURCE_TYPES
+# above -- receivers/drivers of operations (e.g. `lh.aspirate(...)`), never
+# themselves a placeable, deck-sited resource. `PLR_RESOURCE_TYPES` widened to
+# include these (b5635334) so `is_pylabrobot_resource` correctly treats a
+# machine parameter as an "asset that needs to be acquired at runtime" (see
+# that function's own docstring) -- but a consumer that specifically models
+# physical deck placement (e.g. `computation_graph_extractor.py`'s
+# `RESOURCE_ON_DECK` precondition, backlog #4951) must exclude this subset:
+# a `LiquidHandler` parameter is the instrument doing the placing, not
+# something placed. Kept as a literal, explicitly-maintained subset (not
+# derived) so a `PLR_RESOURCE_TYPES` edit can't silently widen or narrow it;
+# `tests/utils/test_type_inspection.py`'s
+# `test_machine_frontend_types_is_a_subset_of_plr_resource_types` is the
+# guard that keeps the two in sync.
+PLR_MACHINE_FRONTEND_TYPES: frozenset[str] = frozenset({
+  "LiquidHandler",
+  "PlateReader",
+  "HeaterShaker",
+  "Shaker",
+  "TemperatureController",
+  "Centrifuge",
+  "Thermocycler",
+  "Pump",
+  "PumpArray",
+  "Fan",
+  "Sealer",
+  "Peeler",
+  "PowderDispenser",
+  "Incubator",
+  "SCARA",
+  "Machine",
+})
+
+# Regex pattern for extracting resource types from string type hints
+_PLR_RESOURCE_PATTERN = re.compile(
+  r"\b(" + "|".join(sorted(PLR_RESOURCE_TYPES, key=len, reverse=True)) + r")\b"
+)
+
+# Base resource nouns that user protocols idiomatically subclass (e.g. a custom
+# `CorningCostar96Plate(Plate)`). A subclass name is recognised by suffix so that
+# protocols defined outside this repo keep working; see _string_names_plr_type.
+_PLR_SUBCLASS_SUFFIXES: tuple[str, ...] = (
+  "Plate",
+  "TipRack",
+  "TubeRack",
+  "Trough",
+  "Carrier",
+  "Container",
+  "Deck",
+  "Resource",
+  "Holder",
+  "Well",
+  "Lid",
+  "Tube",
+)
+
+# Identifier tokens inside a type-hint string, e.g. "list[Well]" -> ["list", "Well"].
+_IDENTIFIER_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def _string_names_plr_type(type_str: str) -> bool:
+  """Whether a type-hint string names a PLR resource or machine.
+
+  Matching is per-identifier, never by raw substring. A bare `t in type_str`
+  containment test treats any name merely *containing* a short entry of
+  PLR_RESOURCE_TYPES as a lab asset -- "WellnessScore" matches "Well",
+  "MachineLearningModel" matches "Machine", "PlateauConfig" matches "Plate" --
+  and this predicate gates runtime asset acquisition, so those are not cosmetic
+  misses. Each identifier must therefore either be a known PLR name outright or
+  end in a base noun that PLR resources are idiomatically subclassed from.
+  """
+  for token in _IDENTIFIER_PATTERN.findall(type_str):
+    if token in PLR_RESOURCE_TYPES:
+      return True
+    if any(token.endswith(suffix) for suffix in _PLR_SUBCLASS_SUFFIXES):
+      return True
+  return False
+
+
+def is_pylabrobot_resource(type_or_str: Any) -> bool:
+  """Check if the given type or string is a Pylabrobot Resource or Machine.
+
+  This function returns True for:
+  - Resources: Plate, TipRack, Trough, Container, Carrier, Deck, etc.
+  - Machines: LiquidHandler, PlateReader, Shaker, Centrifuge, etc.
+
+  Both resources and machines are "assets" that need to be acquired at runtime.
+  """
+  if isinstance(type_or_str, str):
+    return _string_names_plr_type(type_or_str)
+
+  origin = get_origin(type_or_str)
+  if origin is Union:
+    args = get_args(type_or_str)
+    # Return True if ANY arg is a resource
+    return any(is_pylabrobot_resource(arg) for arg in args if arg is not type(None))
+
+  if hasattr(type_or_str, "__module__") and "pylabrobot" in getattr(type_or_str, "__module__", ""):
+    return True
+
+  # Also check if the type name is one of the resource types (fallback if module check fails or for some mocks)
+  name = getattr(type_or_str, "__name__", str(type_or_str))
+  return name in PLR_RESOURCE_TYPES
+
+
+def extract_resource_types(type_or_str: Any) -> list[str]:
+  """Extract all PLR resource types from a type hint, including generics.
+
+  This function handles container types (list, tuple, Sequence) and Union types,
+  extracting all PLR resource type names contained within.
+
+  Args:
+      type_or_str: A type hint (runtime type or string annotation).
+
+  Returns:
+      List of unique PLR resource type names found in the type hint.
+
+  Examples:
+      >>> extract_resource_types("list[Well]")
+      ['Well']
+      >>> extract_resource_types("Sequence[TipSpot]")
+      ['TipSpot']
+      >>> extract_resource_types("tuple[Plate, TipRack]")
+      ['Plate', 'TipRack']
+      >>> extract_resource_types("Union[Plate, None]")
+      ['Plate']
+      >>> extract_resource_types("dict[str, list[Well]]")
+      ['Well']
+
+  """
+  if isinstance(type_or_str, str):
+    return _extract_from_string(type_or_str)
+
+  return _extract_from_runtime_type(type_or_str)
+
+
+def _extract_from_string(type_str: str) -> list[str]:
+  """Extract PLR resource types from a string type hint.
+
+  Uses regex pattern matching to find all known PLR resource type names
+  within the string representation of a type hint.
+
+  Args:
+      type_str: String representation of a type hint.
+
+  Returns:
+      List of unique PLR resource type names found.
+
+  """
+  matches = _PLR_RESOURCE_PATTERN.findall(type_str)
+  # Return unique matches while preserving order
+  seen: set[str] = set()
+  result: list[str] = []
+  for match in matches:
+    if match not in seen:
+      seen.add(match)
+      result.append(match)
+  return result
+
+
+def _extract_from_runtime_type(type_hint: Any) -> list[str]:
+  """Extract PLR resource types from a runtime type object.
+
+  Recursively processes generic types (list, tuple, Union, Sequence, etc.)
+  to find all contained PLR resource types.
+
+  Args:
+      type_hint: A runtime type hint object.
+
+  Returns:
+      List of unique PLR resource type names found.
+
+  """
+  results: list[str] = []
+  seen: set[str] = set()
+
+  def add_if_resource(name: str) -> None:
+    if name in PLR_RESOURCE_TYPES and name not in seen:
+      seen.add(name)
+      results.append(name)
+
+  def process_type(t: Any) -> None:
+    if t is None or t is type(None):
+      return
+
+    origin = get_origin(t)
+    args = get_args(t)
+
+    # Handle generic containers: list, tuple, set, frozenset, Sequence
+    if origin in (list, tuple, set, frozenset) or origin is Sequence:
+      for arg in args:
+        process_type(arg)
+      return
+
+    # Handle dict - only check values (keys are typically str)
+    if origin is dict and len(args) >= 2:
+      process_type(args[1])  # Process value type
+      return
+
+    # Handle Union (including Optional)
+    if origin is Union:
+      for arg in args:
+        if arg is not type(None):
+          process_type(arg)
+      return
+
+    # Handle typing.Sequence (not from collections.abc)
+    try:
+      from collections.abc import Sequence as TypingSequence
+
+      if origin is TypingSequence:
+        for arg in args:
+          process_type(arg)
+        return
+    except ImportError:
+      pass
+
+    # Base case: check if this type is a PLR resource
+    name = getattr(t, "__name__", None)
+    if name:
+      add_if_resource(name)
+    elif isinstance(t, str):
+      # Sometimes types are stored as forward references (strings)
+      for found in _extract_from_string(t):
+        add_if_resource(found)
+
+  process_type(type_hint)
+  return results
+
+
+def get_element_type(type_or_str: Any) -> str | None:
+  """Get the element type from a container type hint.
+
+  For container types like list[Well] or Sequence[TipSpot], returns
+  the element type name. Returns None for non-container types.
+
+  Args:
+      type_or_str: A type hint (runtime type or string annotation).
+
+  Returns:
+      The element type name as a string, or None if not a container.
+
+  Examples:
+      >>> get_element_type("list[Well]")
+      'Well'
+      >>> get_element_type("Sequence[TipSpot]")
+      'TipSpot'
+      >>> get_element_type("Plate")
+      None
+
+  """
+  if isinstance(type_or_str, str):
+    return _get_element_type_from_string(type_or_str)
+  return _get_element_type_from_runtime(type_or_str)
+
+
+def _get_element_type_from_string(type_str: str) -> str | None:
+  """Extract element type from a string container type hint."""
+  # Match patterns like list[X], Sequence[X], tuple[X, ...]
+  container_pattern = r"^(?:list|Sequence|tuple|set|frozenset)\[([^\[\],]+)"
+  match = re.match(container_pattern, type_str.strip())
+  if match:
+    inner = match.group(1).strip()
+    # Check if the inner type is a PLR resource
+    if inner in PLR_RESOURCE_TYPES:
+      return inner
+    # Try to extract from more complex inner types
+    extracted = _extract_from_string(inner)
+    if extracted:
+      return extracted[0]
+  return None
+
+
+def _get_element_type_from_runtime(type_hint: Any) -> str | None:
+  """Extract element type from a runtime container type hint."""
+  origin = get_origin(type_hint)
+  args = get_args(type_hint)
+
+  if origin in (list, tuple, set, frozenset) or origin is Sequence:
+    if args:
+      # For tuple with multiple types, return the first PLR type
+      for arg in args:
+        name = getattr(arg, "__name__", None)
+        if name and name in PLR_RESOURCE_TYPES:
+          return name
+        # Recursively check for nested types
+        nested = _get_element_type_from_runtime(arg)
+        if nested:
+          return nested
+  return None
+
+
+def is_container_type(type_or_str: Any) -> bool:
+  """Check if the type hint represents a container of resources.
+
+  Args:
+      type_or_str: A type hint (runtime type or string annotation).
+
+  Returns:
+      True if the type is a container (list, tuple, Sequence, etc.).
+
+  Examples:
+      >>> is_container_type("list[Well]")
+      True
+      >>> is_container_type("Plate")
+      False
+      >>> is_container_type("tuple[Plate, TipRack]")
+      True
+
+  """
+  if isinstance(type_or_str, str):
+    return bool(
+      re.match(r"^(?:list|Sequence|tuple|set|frozenset)\[", type_or_str.strip())
+    )
+
+  origin = get_origin(type_or_str)
+  return origin in (list, tuple, set, frozenset) or origin is Sequence
+
+
+def serialize_type_hint(type_hint: Any) -> str:
+  """Serialize a type hint to a string representation."""
+  if type_hint == inspect.Parameter.empty:
+    return "Any"
+  origin = get_origin(type_hint)
+  args = get_args(type_hint)
+
+  if origin is None:
+    return getattr(type_hint, "__name__", str(type_hint))
+
+  # Handle Union types, especially for Optional[T] which is Union[T, None]
+  if origin is Union:
+    non_none_args = [arg for arg in args if arg is not type(None)]
+    if len(non_none_args) == 1:
+      return f"typing.Optional[{serialize_type_hint(non_none_args[0])}]"
+    return f"typing.Union[{', '.join(serialize_type_hint(arg) for arg in args)}]"
+
+  # Handle generic collections like list, dict, etc.
+  if hasattr(origin, "__name__"):
+    origin_name = origin.__name__
+    if args:
+      args_repr = ", ".join(serialize_type_hint(arg) for arg in args)
+      return f"{origin_name}[{args_repr}]"
+    return origin_name
+
+  # Fallback for other complex types
+  if hasattr(type_hint, "__module__") and hasattr(type_hint, "__name__"):
+    return f"{type_hint.__module__}.{type_hint.__name__}"
+
+  return str(type_hint)

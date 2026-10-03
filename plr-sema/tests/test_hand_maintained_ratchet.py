@@ -21,9 +21,9 @@ The rows below need more, and live here instead:
   (root pyproject.toml). Importing them needs the repo-root `scripts/`
   directory on `sys.path` first -- done once, at module import time, below.
 - HM-1, HM-5, HM-11 are plain, trivially-importable module-level facts
-  (`praxis.common.type_inspection.PLR_RESOURCE_TYPES`,
+  (`plr_sema.graph.type_inspection.PLR_RESOURCE_TYPES`,
   `training.verify.failure_taxonomy.FAILURE_CATEGORIES`,
-  `praxis...models.PreconditionType`) that would otherwise belong in
+  `plr_sema.graph.models.PreconditionType`) that would otherwise belong in
   `_hand_maintained.py` -- except that module lives under `src/plr_sema/`,
   and `tests/test_import_boundary.py` statically AST-scans every file in
   that subtree (whole-tree walk, function bodies included) for any
@@ -148,7 +148,7 @@ def _measure_hm1() -> int:
     than in `_hand_maintained.py` even though it needs no sys.path shim or
     AST-reading -- crossing the import boundary is the disqualifier, not
     import complexity."""
-    from praxis.common.type_inspection import PLR_RESOURCE_TYPES
+    from plr_sema.graph.type_inspection import PLR_RESOURCE_TYPES
 
     return len(PLR_RESOURCE_TYPES)
 
@@ -170,7 +170,7 @@ def _measure_hm5() -> int:
 
 def _measure_hm11() -> int:
     """`praxis.*` is forbidden under `src/plr_sema/` -- see HM-1."""
-    from praxis.backend.utils.plr_static_analysis.models import PreconditionType
+    from plr_sema.graph.models import PreconditionType
 
     return len(list(PreconditionType))
 

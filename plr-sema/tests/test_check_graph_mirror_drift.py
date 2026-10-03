@@ -2,9 +2,8 @@
 (``260902_plr-sema-ir-bytecode-increment.md``, §11.4.2/§11.7 AC-11.1) from a
 SUBSET check into an EXHAUSTIVENESS check.
 
-Lives under `tests/`, which spec §1.3's boundary walk does NOT cover (that
-walk is scoped to `src/plr_sema/`) -- so, unlike anything under `src/`, this
-file MAY import `praxis.backend.utils.plr_static_analysis.models`. Compares
+Since spec 261002 Slice 1 the pydantic side is `plr_sema.graph.models` (moved
+from praxis), so both halves of the seam live in this package. Compares
 `plr_sema.check.graph`'s mirror dataclasses' field names against the live
 pydantic models' `model_fields` keys, in BOTH directions, for all THREE
 models (`OperationNode`, `ResourceNode`, and -- new in this file --
@@ -52,16 +51,10 @@ import pytest
 from plr_sema.check.graph import OperationNode, ProtocolComputationGraph, ResourceNode
 
 try:
-    from praxis.backend.utils.plr_static_analysis.models import (
-        OperationNode as UpstreamOperationNode,
-    )
-    from praxis.backend.utils.plr_static_analysis.models import (
-        ProtocolComputationGraph as UpstreamProtocolComputationGraph,
-    )
-    from praxis.backend.utils.plr_static_analysis.models import (
-        ResourceNode as UpstreamResourceNode,
-    )
-except ImportError as exc:  # pragma: no cover - environment-dependent
+    from plr_sema.graph.models import OperationNode as UpstreamOperationNode
+    from plr_sema.graph.models import ProtocolComputationGraph as UpstreamProtocolComputationGraph
+    from plr_sema.graph.models import ResourceNode as UpstreamResourceNode
+except ImportError as exc:  # pragma: no cover - environment-dependent (no `extract` extra)
     UpstreamOperationNode = None
     UpstreamResourceNode = None
     UpstreamProtocolComputationGraph = None
@@ -91,7 +84,7 @@ def test_mirror_is_exhaustive_against_upstream(mirror_cls, mirror_name, upstream
     """
     if _IMPORT_ERROR is not None:
         pytest.skip(
-            f"praxis not importable in this test environment ({_IMPORT_ERROR!r}) -- "
+            f"plr_sema.graph not importable (install plr-sema[extract]) ({_IMPORT_ERROR!r}) -- "
             f"Fork C's mirror-drift check cannot run; this is an environment gap, "
             f"not evidence the mirror is correct"
         )

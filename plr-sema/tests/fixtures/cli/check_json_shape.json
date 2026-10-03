@@ -1,0 +1,27 @@
+{
+ "exit_code": "int",
+ "results": [
+  {
+   "file": "str",
+   "findings": [
+    {
+     "category": "str",
+     "detail": "str",
+     "evidence": [],
+     "operation_id": "str",
+     "plr_site": {
+      "file": "str",
+      "lineno": "int",
+      "qualname": "str"
+     },
+     "reason": "str",
+     "verdict": "str"
+    }
+   ],
+   "function": "str",
+   "key": "str",
+   "outcome": "str",
+   "verdict": "str"
+  }
+ ]
+}

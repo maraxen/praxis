@@ -166,19 +166,22 @@ def _measure_hm14() -> int:
 
 
 def _measure_hm16() -> int:
-    """Compatibility shim modules under `praxis/backend/utils/plr_static_analysis/`
-    (spec §1.2): `from plr_sema.<mod> import *` re-export shims. Round 1 has
-    nothing migrated yet, so this is 0 today -- the row exists so the FIRST
-    migration is forced through a reviewable ratchet bump.
+    """Compatibility shim modules under `praxis/backend/` and `praxis/common/`
+    (spec §1.2): `from plr_sema.<mod> import *` re-export shims. The row
+    exists so every migration is forced through a reviewable ratchet bump.
+    Spec 261002 Slice 1 widened the scan from the top level of
+    `plr_static_analysis/` to both trees, recursively: its shims live at
+    `praxis/common/type_inspection.py` and under `visitors/`, which the
+    narrower scan could not see.
     """
-    shim_dir = REPO_ROOT / "praxis" / "backend" / "utils" / "plr_static_analysis"
     count = 0
-    for path in sorted(shim_dir.glob("*.py")):
-        if path.name == "__init__.py":
-            continue
-        text = path.read_text()
-        if "from plr_sema." in text and "import *" in text:
-            count += 1
+    for root in ("backend", "common"):
+        for path in sorted((REPO_ROOT / "praxis" / root).rglob("*.py")):
+            if path.name == "__init__.py":
+                continue
+            text = path.read_text()
+            if "from plr_sema." in text and "import *" in text:
+                count += 1
     return count
 
 
@@ -649,7 +652,7 @@ def _measure_hm26() -> int:
 REGISTRY: tuple[HandMaintainedSurface, ...] = (
     HandMaintainedSurface(
         id="HM-1",
-        what="PLR_RESOURCE_TYPES class-name set (praxis/common/type_inspection.py:14-92)",
+        what="PLR_RESOURCE_TYPES class-name set (plr_sema/graph/type_inspection.py:14-92)",
         metric="entries",
         declared=64,  # 34 -> 53: main 2a40bb25 (debt #1849) replaced substring matching with exact names (+20 holders/decks/racks, -CarrierSite); 53 -> 64: PLR 1.0.0b1 bump made tips/head tools Resources (+11)
         status="DERIVABLE_NOT_YET",
@@ -851,7 +854,7 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
     ),
     HandMaintainedSurface(
         id="HM-11",
-        what="PreconditionType enum (praxis/backend/utils/plr_static_analysis/models.py:~500-521)",
+        what="PreconditionType enum (plr_sema/graph/models.py:29-37)",
         metric="members",
         declared=8,
         status="CAPPED",
@@ -946,7 +949,7 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
         id="HM-16",
         what="compatibility shim modules (spec section 1.2)",
         metric="modules",
-        declared=0,
+        declared=3,
         status="CAPPED",
         why_not_derived=(
             "A byproduct of the praxis -> plr_sema migration itself; the "
@@ -959,6 +962,7 @@ REGISTRY: tuple[HandMaintainedSurface, ...] = (
             "to 0 -- or exceeds its recorded peak."
         ),
         measure="plr_sema._hand_maintained:_measure_hm16",
+        peak=3,
     ),
     HandMaintainedSurface(
         id="HM-17",

@@ -1,0 +1,53 @@
+# bathos sidecar for plr-sema/eval/contract_payload.py (task 261002_sema-web-integration,
+# sema web-integration Slice 1, design Section 2: ship the whole contract table compact+gzipped,
+# no receiver-scoped slicing).
+#
+# PRE-REGISTRATION NOTE (honest provenance): an exploratory, untracked measurement was taken on
+# 2026-10-02 against an OLDER copy of derived_contracts.json (8.66 MB, branch design/notebook-display,
+# before #5622's regeneration): compact 4.56 MB, compact+gzip 0.23 MB. That number is NOT cited
+# anywhere. This sidecar measures origin/main's artifact (18.4 MB on disk, e06ab3b1), which had not
+# been measured when these criteria were written. The budget below was chosen from Section 2's design
+# argument, not from either measurement.
+
+[experiment]
+hypothesis = "origin/main's whole derived contract table, compact-serialized and gzipped at level 9, fits a 1,000,000-byte budget and round-trips exactly, so Slice 1 can ship the full table with no receiver-scoped slicing."
+stage_name = "design-gate"
+novel = true
+
+[outcomes.invalid]
+condition = "roundtrip_equal = 0 OR control_gz_bytes <= budget_bytes"
+is_residual = false
+decision = "Stop: no size verdict from this run counts. Either the gzipped form does not decode back to the table (so it is not a shippable form of it), or the incompressible negative control fit the budget (so the instrument is not measuring compression). Fix the script and re-run under this same sidecar before Section 2 is cited."
+reasoning = "The control is a pseudo-random stream the same length as the compact table; gzip cannot shrink it meaningfully, so it lands near compact_bytes, which is far above 1 MB for any table this size. If it fits the budget, the comparison is broken, not the table small."
+
+[outcomes.pass]
+condition = "roundtrip_equal = 1 AND control_gz_bytes > budget_bytes AND gz_bytes <= 1000000"
+is_residual = false
+decision = "Section 2 stands as written: ship the whole table compact+gzipped and decompress in-kernel with stdlib gzip; do not build the receiver-scoped slice. The spec cites gz_bytes, lh_gz_bytes and input_sha256 from this run."
+reasoning = "Under 1 MB the whole table is small next to the PLR wheel it ships beside (10.2 MB at the 1.0 pin), so slicing would buy little and risk spurious UNKNOWN verdicts on any key outside the slice."
+
+[outcomes.marginal]
+condition = "roundtrip_equal = 1 AND control_gz_bytes > budget_bytes AND gz_bytes > 1000000 AND gz_bytes <= 3000000"
+is_residual = false
+decision = "Ship the whole table for Slice 1 anyway (correctness first), but the spec records the size as an open risk and names a slicing follow-up with a full-table fallback on any missing key; re-measure after the next derived_contracts regeneration."
+reasoning = "Between 1 and 3 MB the payload is a noticeable fraction of the REPL's first-load budget but still smaller than the PLR wheel; not worth trading soundness for yet."
+
+[outcomes.fail]
+condition = "roundtrip_equal = 1 AND control_gz_bytes > budget_bytes AND gz_bytes > 3000000"
+is_residual = true
+decision = "Section 2's no-slicing decision is withdrawn: revise the design (receiver-scoped split with a lazy full-table fallback, or a denser encoding) and bring the revised section back to the user before writing the spec."
+reasoning = "Over 3 MB gzipped, shipping the whole table into every kernel start is a real first-load cost, so the design question reopens."
+
+[result_schema]
+input_sha256 = "str"
+stamp_plr = "str"
+raw_bytes = "int"
+compact_bytes = "int"
+gz_bytes = "int"
+gz_ratio = "float"
+roundtrip_equal = "int"
+n_contracts = "int"
+lh_keys = "int"
+lh_gz_bytes = "int"
+control_gz_bytes = "int"
+budget_bytes = "int"

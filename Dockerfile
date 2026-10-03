@@ -25,7 +25,13 @@ COPY pyproject.toml .
 
 # Generate requirements.txt using uv
 # We include 'dev' extras to support running tests in the container (for development/CI)
-RUN uv pip compile pyproject.toml --extra dev -o requirements.txt
+# The workspace member plr-sema is not on PyPI and its source is not copied yet:
+# compile from a copy of pyproject.toml without it, and install it from source
+# below (spec 261002 R1). The copy must itself be named pyproject.toml: uv picks
+# the input format from the filename.
+RUN mkdir -p /tmp/deps \
+ && grep -v -e '"plr-sema\[extract\]",' -e '^plr-sema = { workspace = true }' pyproject.toml > /tmp/deps/pyproject.toml \
+ && uv pip compile /tmp/deps/pyproject.toml --extra dev -o requirements.txt
 
 # Install dependencies into /install prefix
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
@@ -33,8 +39,9 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 # Copy application code
 COPY . .
 
-# Install the application itself into /install
+# Install the workspace member, then the application itself, into /install
 # We use --no-deps because we already installed dependencies
+RUN pip install --no-cache-dir --prefix=/install --no-deps ./plr-sema
 RUN pip install --no-cache-dir --prefix=/install --no-deps .
 
 # STAGE 2: Runtime

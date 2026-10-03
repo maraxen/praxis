@@ -30,7 +30,7 @@ from plr_sema.check import check_graph, check_ir, ir
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PLR_SEMA_ROOT = Path(__file__).resolve().parents[1]
-MODELS_PATH = REPO_ROOT / "praxis" / "backend" / "utils" / "plr_static_analysis" / "models.py"
+MODELS_PATH = PLR_SEMA_ROOT / "src" / "plr_sema" / "graph" / "models.py"  # moved from praxis by spec 261002 Slice 1
 FIXTURES_DIR = PLR_SEMA_ROOT / "tests" / "fixtures"
 CONTRACTS_PATH = PLR_SEMA_ROOT / "data" / "derived_contracts.json"
 IR_MODULE_PATH = PLR_SEMA_ROOT / "src" / "plr_sema" / "check" / "ir.py"
