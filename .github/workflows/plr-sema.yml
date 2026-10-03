@@ -1,0 +1,66 @@
+name: plr-sema
+
+# Spec 261002 Slice 1 §8: plr-sema's own suite, the praxis shim/parity tests
+# and a CLI exit-code smoke. Not a required check (spec Q5).
+on:
+  pull_request:
+    paths:
+      - "plr-sema/**"
+      - "praxis/common/type_inspection.py"
+      - "praxis/backend/utils/plr_static_analysis/models.py"
+      - "praxis/backend/utils/plr_static_analysis/resource_hierarchy.py"
+      - "praxis/backend/utils/plr_static_analysis/visitors/computation_graph_extractor.py"
+      - "pyproject.toml"
+      - ".github/workflows/plr-sema.yml"
+  push:
+    branches: [main]
+    paths:
+      - "plr-sema/**"
+      - ".github/workflows/plr-sema.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # submodules: recursive is load-bearing: the root pyproject resolves
+      # `pylabrobot` as a path dependency on external/pylabrobot (see repl.yml).
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      # --all-packages installs every workspace member; --no-sync then keeps
+      # pytest from re-syncing a member back out (see repl.yml's coxswain job).
+      - name: Sync workspace
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv sync --all-packages
+
+      - name: plr-sema suite
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run --no-sync pytest plr-sema/tests -q -p no:cacheprovider
+
+      - name: Shim identity and parity
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run --no-sync pytest -q tests/utils/test_computation_graph.py tests/core/test_precondition_resolver.py tests/utils/test_resource_hierarchy.py
+
+      - name: CLI smoke
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          set +e
+          uv run --no-sync python -m plr_sema check plr-sema/eval/fixtures/regions/straightline_clean.py > /dev/null; a=$?
+          uv run --no-sync python -m plr_sema check plr-sema/eval/fixtures/regions/for_pickup_no_drop_raises.py > /dev/null; b=$?
+          printf 'def protocol(:\n' > "$RUNNER_TEMP/bad.py"
+          uv run --no-sync python -m plr_sema check "$RUNNER_TEMP/bad.py"; c=$?
+          echo "exit codes: clean=$a will_fail=$b syntax=$c"
+          test "$a" = 0 && test "$b" = 1 && test "$c" = 2
