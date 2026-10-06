@@ -133,11 +133,18 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python web-repl/scripts/build_repl.py --base-path /praxis/
 
+      # check_shim_contract.py: the browser IO shims (web_*_shim.py) replace
+      # pylabrobot.io.{Serial,USB,HID,FTDI} wholesale, so every constructor call
+      # site and every self.io.<member> use in the BUILT wheel must bind against
+      # them. A pin bump that adds an IO argument fails here, not at a bench robot
+      # (it was: "WebUSB.__init__() got an unexpected keyword argument
+      # 'human_readable_device_name'" from hamilton/base.py on 1.0.0b1).
       - name: Wheel coherence and contract
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python web-repl/scripts/check_wheel_coherence.py --check-untracked
           uv run python web-repl/scripts/check_wheel_contract.py
+          uv run python web-repl/scripts/check_shim_contract.py
 
       # AC-30 (C7): the vendored Visualizer3D static tree is byte-identical to the pin's
       # `pylabrobot/visualizer3D/static/` (sha256 per file, the recorded commit, the two anchors in
@@ -427,6 +434,8 @@ jobs:
           uv run python -m pytest web-repl/tests/test_s2_spike_driver.py -q
           uv run python -m pytest web-repl/tests/test_s3_spike_driver.py -q
           uv run python -m pytest web-repl/tests/test_s4_spike_driver.py -q
+          uv run python -m pytest web-repl/tests/test_shim_behavior.py -q
+          uv run python -m pytest web-repl/tests/test_shim_contract.py -q
           uv run python -m pytest web-repl/tests/test_stamp_loader_shas.py -q
           uv run python -m pytest web-repl/tests/test_theme_staging.py -q
           uv run python -m pytest web-repl/tests/test_transport.py -q

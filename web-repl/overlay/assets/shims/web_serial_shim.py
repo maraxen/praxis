@@ -16,7 +16,9 @@ Usage in JupyterLite:
 """
 
 import asyncio
+import contextlib
 import logging
+from collections.abc import Iterator
 from typing import Any
 
 # Import Pyodide's JavaScript bridge
@@ -326,11 +328,14 @@ class WebSerial:
   """WebSerial-based Serial implementation for browser environments.
 
   Implements the same interface as pylabrobot.io.Serial but uses
-  the browser's WebSerial API via Pyodide's JS bridge.
+  the browser's WebSerial API via Pyodide's JS bridge. The constructor and method
+  signatures mirror the pylabrobot pin exactly (parameter order included) --
+  ``web-repl/scripts/check_shim_contract.py`` fails CI if they drift.
   """
 
   def __init__(
     self,
+    human_readable_device_name: str = "WebSerial device",
     port: Any | None = None,  # SerialPort object from requestPort
     vid: int | None = None,
     pid: int | None = None,
@@ -342,10 +347,12 @@ class WebSerial:
     timeout: float = 1,
     rtscts: bool = False,
     dsrdtr: bool = False,
+    xonxoff: bool = False,
   ):
     """Initialize WebSerial.
 
     Args:
+        human_readable_device_name: Name used in log and error messages
         port: Optional SerialPort object. If None, will request in setup().
         vid: USB Vendor ID for filtering (optional)
         pid: USB Product ID for filtering (optional)
@@ -357,11 +364,14 @@ class WebSerial:
         timeout: Read timeout in seconds
         rtscts: Enable RTS/CTS flow control
         dsrdtr: Enable DSR/DTR flow control
+        xonxoff: Software flow control. The WebSerial API has no XON/XOFF mode, so
+          it is accepted for compatibility and warned about at setup.
 
     """
     if not IN_PYODIDE:
       raise RuntimeError("WebSerial is only available in Pyodide/browser environment")
 
+    self.human_readable_device_name = human_readable_device_name
     self._port = port
     self._vid = vid
     self._pid = pid
@@ -373,6 +383,7 @@ class WebSerial:
     self.timeout = timeout
     self.rtscts = rtscts
     self.dsrdtr = dsrdtr
+    self.xonxoff = xonxoff
 
     self._reader: Any | None = None
     self._writer: Any | None = None
@@ -394,6 +405,11 @@ class WebSerial:
     via a user gesture before this code runs.
     """
     ports = []
+    if self.xonxoff:
+      logger.warning(
+        "%s: xonxoff requested, but WebSerial has no software flow control; ignoring.",
+        self.human_readable_device_name,
+      )
 
     # 1. Native WebSerial
     if hasattr(navigator, "serial"):
@@ -517,19 +533,7 @@ class WebSerial:
     # Parity: 0=None, 1=Odd, 2=Even
     # StopBits: 0=1, 2=2 (Note: FTDI mapping is weird, usually 0 for 1 stop bit, 2 for 2 stop bits)
 
-    val = 0
-    if self.bytesize == 8:
-      val |= 8
-    else:
-      val |= 7
-
-    if self.parity == "O":
-      val |= 1 << 8
-    elif self.parity == "E":
-      val |= 2 << 8
-
-    if self.stopbits == 2:
-      val |= 2 << 11
+    val = self._ftdi_line_value()
 
     await self._device.controlTransferOut(
       to_js(
@@ -561,6 +565,19 @@ class WebSerial:
 
     self._port_name = f"FTDI[{hex(device.vendorId)}:{hex(device.productId)}]"
     logger.info(f"FTDI Device initialized: {self._port_name}")
+
+  def _ftdi_line_value(self, line_break: bool = False) -> int:
+    """FTDI SET_DATA value: data bits | parity << 8 | stop bits << 11 | break << 14."""
+    val = 8 if self.bytesize == 8 else 7
+    if self.parity == "O":
+      val |= 1 << 8
+    elif self.parity == "E":
+      val |= 2 << 8
+    if self.stopbits == 2:
+      val |= 2 << 11
+    if line_break:
+      val |= 1 << 14
+    return val
 
   def _calculate_ftdi_baud(self, baud):
     """Calculate FTDI baud rate divisors."""
@@ -627,9 +644,6 @@ class WebSerial:
       return len(data)
     except Exception as e:
       raise RuntimeError(f"Write failed: {e}")
-
-  async def read(self, num_bytes: int = 1) -> bytes:
-    """Read data from the serial port."""
 
   async def read(self, num_bytes: int = 1) -> bytes:
     """Read data from the serial port."""
@@ -702,6 +716,55 @@ class WebSerial:
 
     return bytes(result)
 
+  def get_read_timeout(self) -> float:
+    """Get the current read timeout in seconds."""
+    return float(self.timeout)
+
+  def set_read_timeout(self, timeout: float) -> None:
+    """Set the read timeout in seconds."""
+    self.timeout = timeout
+
+  @contextlib.contextmanager
+  def temporary_timeout(self, timeout: float) -> Iterator[None]:
+    """Context manager that temporarily changes the read timeout, then restores it."""
+    original = self.get_read_timeout()
+    self.set_read_timeout(timeout)
+    try:
+      yield
+    finally:
+      self.set_read_timeout(original)
+
+  async def send_break(self, duration: float):
+    """Send a break condition for ``duration`` seconds."""
+    if getattr(self, "_is_ftdi", False):
+      async def _set_data(line_break: bool):
+        await self._device.controlTransferOut(
+          to_js(
+            {
+              "requestType": "vendor",
+              "recipient": "device",
+              "request": 4,  # SET_DATA
+              "value": self._ftdi_line_value(line_break=line_break),
+              "index": 0,
+            }
+          )
+        )
+
+      await _set_data(True)
+      try:
+        await asyncio.sleep(duration)
+      finally:
+        await _set_data(False)
+      return
+
+    if self._port is None:
+      raise RuntimeError(f"Call setup() first for device '{self.human_readable_device_name}'.")
+    await self._port.setSignals(to_js({"break": True}))
+    try:
+      await asyncio.sleep(duration)
+    finally:
+      await self._port.setSignals(to_js({"break": False}))
+
   async def reset_input_buffer(self):
     """Clear the input buffer (no-op for WebSerial)."""
     logger.debug(f"[{self._port_name}] reset_input_buffer (no-op)")
@@ -753,6 +816,7 @@ class WebSerial:
   def serialize(self) -> dict:
     """Serialize configuration."""
     return {
+      "human_readable_device_name": self.human_readable_device_name,
       "port": self._port_name,
       "baudrate": self.baudrate,
       "bytesize": self.bytesize,
@@ -769,6 +833,7 @@ class WebSerial:
   def deserialize(cls, data: dict) -> "WebSerial":
     """Deserialize from dict (port must be re-requested)."""
     return cls(
+      human_readable_device_name=data.get("human_readable_device_name", "WebSerial device"),
       baudrate=data.get("baudrate", 9600),
       bytesize=data.get("bytesize", 8),
       parity=data.get("parity", "N"),
