@@ -1066,6 +1066,21 @@ def stage_shell(out_dir: Path) -> Path:
         )
         logger.info("staged %d display module file(s) -> %s", staged, dst_display)
 
+    # Stage the device-connect module (answers the kernel's USER_INTERACTION
+    # requests and opens the browser's device picker). Same contract as display:
+    # stale-target removal, then copy, tests never ship.
+    src_device = SHELL_DIR / "device"
+    dst_device = dst_dir / "device"
+    if dst_device.exists():
+        shutil.rmtree(dst_device)
+    if src_device.is_dir():
+        staged = _copytree_filtered(
+            src_device,
+            dst_device,
+            skip=lambda rel: "__tests__" in rel.parts or rel.name.endswith(".test.js"),
+        )
+        logger.info("staged %d device module file(s) -> %s", staged, dst_device)
+
     return dst
 
 
@@ -1261,6 +1276,7 @@ def assert_dist_complete(out_dir: Path, *, with_coxswain: bool = False) -> None:
         out_dir / "shell" / "praxis-shell.js",
         *(out_dir / "shell" / "persistence" / name for name in _REQUIRED_PERSISTENCE_MODULES),
         *(out_dir / "shell" / "display" / name for name in _REQUIRED_DISPLAY_MODULES),
+        out_dir / "shell" / "device" / "connect.js",
         *(out_dir / rel for rel in _REQUIRED_VIEWER3D_PATHS),
         out_dir / "lab" / "index.html",
         out_dir / "repl" / "index.html",

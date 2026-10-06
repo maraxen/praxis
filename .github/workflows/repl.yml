@@ -155,6 +155,24 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python web-repl/scripts/vendor_visualizer3d.py --check
 
+      # The device-connect journey in a real browser, on the built site: kernel
+      # `await lh.setup()` on a Hamilton STAR -> page dialog -> click Connect ->
+      # navigator.usb.requestDevice with the STAR's ids -> answer back to the
+      # kernel. It hung forever when nothing on the page answered (2026-10-06);
+      # construction-only checks missed it. The second step is its negative
+      # control: with shell/device/connect.js blocked the kernel must fail fast
+      # with InteractionUnavailableError, so a check that cannot tell the two
+      # apart goes red.
+      - name: Device connect journey (lh.setup reaches the USB picker)
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/device_connect_check.py --base-path /praxis/
+
+      - name: Device connect negative control (handler blocked fails fast)
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/device_connect_check.py --base-path /praxis/ --block-handler
+
       - name: Gesture invariant (no await/async before gesture calls, D6)
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
@@ -436,6 +454,7 @@ jobs:
           uv run python -m pytest web-repl/tests/test_s4_spike_driver.py -q
           uv run python -m pytest web-repl/tests/test_shim_behavior.py -q
           uv run python -m pytest web-repl/tests/test_shim_contract.py -q
+          uv run python -m pytest web-repl/tests/test_device_authorization.py -q
           uv run python -m pytest web-repl/tests/test_stamp_loader_shas.py -q
           uv run python -m pytest web-repl/tests/test_theme_staging.py -q
           uv run python -m pytest web-repl/tests/test_transport.py -q
@@ -516,6 +535,12 @@ jobs:
 
       - name: Display JS harness
         run: bun test web-repl/shell/display
+
+      # shell/device/connect.js answers the kernel's USER_INTERACTION requests
+      # (device_connect, pause, confirm, input). Before it existed nothing did, and
+      # `lh.setup()` on a WebUSB machine hung with no picker.
+      - name: Device connect JS harness
+        run: bun test web-repl/shell/device
 
       # C4 (AC-32): the Visualizer3D socket shim + embed-mode tests live under
       # shell/display/__tests__, so the step above already runs them; this named step

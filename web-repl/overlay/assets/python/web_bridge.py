@@ -985,6 +985,21 @@ _pending_reads: dict[str, asyncio.Future] = {}
 # Global registry for pending user interactions
 _pending_interactions: dict[str, asyncio.Future] = {}
 
+# Requests the page has not acknowledged yet. The shell's interaction handler
+# (web-repl/shell/device/connect.js) posts `praxis:interaction_ack` the moment
+# it receives a request, before the user does anything, so a missing handler
+# shows up within INTERACTION_ACK_TIMEOUT_S instead of as a cell that waits
+# forever. That forever-wait is what happened once the Angular app, the only
+# thing that ever answered these requests, was dropped.
+_pending_acks: dict[str, asyncio.Future] = {}
+
+#: Seconds to wait for the page to acknowledge a request.
+INTERACTION_ACK_TIMEOUT_S = 5.0
+
+
+class InteractionUnavailableError(RuntimeError):
+  """No page handler acknowledged a user-interaction request."""
+
 # BroadcastChannel for Playground mode (registered by bootstrap code)
 _broadcast_channel = None
 
@@ -1159,8 +1174,23 @@ def handle_io_response(request_id: str, data: list) -> None:
     pass
 
 
-async def request_user_interaction(interaction_type: str, payload: dict) -> Any:
-  """Requests user interaction from the browser (pause, confirm, input)."""
+async def request_user_interaction(
+  interaction_type: str,
+  payload: dict,
+  *,
+  ack_timeout: float | None = INTERACTION_ACK_TIMEOUT_S,
+  timeout: float | None = None,
+) -> Any:
+  """Ask the page for a user interaction (device_connect, pause, confirm, input).
+
+  Two waits, deliberately separate:
+
+  * ``ack_timeout``: how long the page has to acknowledge the request. The
+    shell acknowledges on receipt, so this only ever fires when no handler is
+    loaded. Raises ``InteractionUnavailableError``.
+  * ``timeout``: how long the user has to answer. ``None`` waits as long as the
+    user takes. Raises ``TimeoutError``.
+  """
   if not IS_BROWSER_MODE:
     print(f"[web_bridge] Mock interaction: {interaction_type} {payload}")
     return None
@@ -1168,7 +1198,9 @@ async def request_user_interaction(interaction_type: str, payload: dict) -> Any:
   request_id = str(uuid.uuid4())
   loop = asyncio.get_event_loop()
   future = loop.create_future()
+  ack = loop.create_future()
   _pending_interactions[request_id] = future
+  _pending_acks[request_id] = ack
 
   message_dict = {
     "type": "USER_INTERACTION",
@@ -1189,18 +1221,69 @@ async def request_user_interaction(interaction_type: str, payload: dict) -> Any:
     postMessage(json.dumps(message_dict))
 
   try:
-    # Interactions can take a long time (user waiting), so we don't set a short timeout here.
-    # The frontend is responsible for providing a way to cancel if needed.
-    return await future
+    if ack_timeout is not None:
+      try:
+        await asyncio.wait_for(asyncio.shield(ack), ack_timeout)
+      except asyncio.TimeoutError:
+        raise InteractionUnavailableError(
+          f"No page handler acknowledged the {interaction_type!r} request within "
+          f"{ack_timeout:g}s. The Praxis shell's interaction handler "
+          "(shell/praxis-shell.js loading shell/device/connect.js) is not running on "
+          "this page, so nothing can show a dialog or the browser's device picker. "
+          "Reload the page; if it persists, the deployed shell is missing the handler."
+        ) from None
+    if timeout is None:
+      return await future
+    try:
+      return await asyncio.wait_for(future, timeout)
+    except asyncio.TimeoutError:
+      raise TimeoutError(
+        f"No answer to the {interaction_type!r} request within {timeout:g}s."
+      ) from None
   finally:
     _pending_interactions.pop(request_id, None)
+    _pending_acks.pop(request_id, None)
+
+
+def handle_interaction_ack(request_id: str) -> None:
+  """Called by the bootstrap when the page acknowledges a request."""
+  ack = _pending_acks.get(request_id)
+  if ack and not ack.done():
+    ack.set_result(True)
 
 
 def handle_interaction_response(request_id: str, value: Any) -> None:
   """Called by the worker when JS sends back the user's interaction response."""
+  # An answer implies the request was received, even if its ack was lost.
+  handle_interaction_ack(request_id)
   future = _pending_interactions.get(request_id)
   if future and not future.done():
     future.set_result(value)
+
+
+async def request_device_authorization(api: str, filters: list, message: str) -> dict:
+  """Have the page show the browser's device picker for ``navigator.<api>``.
+
+  ``api`` is ``"usb"``, ``"hid"`` or ``"serial"``; ``filters`` uses WebUSB's
+  ``{"vendorId", "productId"}`` keys for all three (the page maps them to Web
+  Serial's ``usbVendorId``/``usbProductId``). The kernel runs in a Web Worker,
+  where ``requestDevice()``/``requestPort()`` do not exist, so the picker has to
+  open on the page, from a click. Once the user picks a device, the worker's
+  ``getDevices()``/``getPorts()`` lists it (permissions are per origin).
+
+  Returns the page's answer (``{"success": True, "device": {...}}``). Raises
+  ``RuntimeError`` if the user cancels or picks nothing, and
+  ``InteractionUnavailableError`` if no handler is loaded.
+  """
+  result = await request_user_interaction(
+    "device_connect", {"api": api, "filters": filters, "message": message}
+  )
+  if hasattr(result, "to_py"):
+    result = result.to_py()
+  if not isinstance(result, dict) or not result.get("success"):
+    error = result.get("error") if isinstance(result, dict) else None
+    raise RuntimeError(f"Device authorization failed: {error or 'no response'}")
+  return result
 
 
 # =============================================================================
