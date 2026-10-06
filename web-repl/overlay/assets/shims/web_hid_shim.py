@@ -5,7 +5,7 @@ enabling HID device communication from the browser using the WebHID API.
 
 This is specifically for backends like Inheco that use HID:
     from pylabrobot.io.hid import HID
-    self.io = HID(vid=vid, pid=pid)
+    self.io = HID(human_readable_device_name="Inheco", vid=vid, pid=pid)
 
 Usage in JupyterLite/Pyodide:
     Nothing to do by hand. web-repl/bootstrap/praxis_bootstrap.py imports this
@@ -46,13 +46,18 @@ class WebHID:
 
   def __init__(
     self,
+    human_readable_device_name: str = "WebHID device",
     vid: int = 0x03EB,
     pid: int = 0x2023,
     serial_number: str | None = None,
   ):
     """Initialize WebHID.
 
+    Parameter order mirrors pylabrobot.io.hid.HID exactly (positional calls must
+    bind the same way); ``web-repl/scripts/check_shim_contract.py`` enforces it.
+
     Args:
+        human_readable_device_name: Name used in log and error messages
         vid: Vendor ID (default matches Inheco/Atmel)
         pid: Product ID
         serial_number: Optional serial number
@@ -62,6 +67,7 @@ class WebHID:
       msg = "WebHID is only available in Pyodide/browser environment"
       raise RuntimeError(msg)
 
+    self.human_readable_device_name = human_readable_device_name
     self.vid = vid
     self.pid = pid
     self.serial_number = serial_number
@@ -266,3 +272,12 @@ class WebHID:
 
       self.device = None
       logger.info(f"Closed WebHID device {self._unique_id}")
+
+  def serialize(self) -> dict:
+    """Serialize to the same keys as pylabrobot's HID.serialize()."""
+    return {
+      "human_readable_device_name": self.human_readable_device_name,
+      "vid": self.vid,
+      "pid": self.pid,
+      "serial_number": self.serial_number,
+    }

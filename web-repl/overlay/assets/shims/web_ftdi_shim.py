@@ -5,7 +5,7 @@ enabling FTDI USB-to-Serial communication from the browser using the WebUSB API.
 
 This is specifically for backends like CLARIOstarBackend that use FTDI directly:
     from pylabrobot.io.ftdi import FTDI
-    self.io = FTDI(device_id=device_id)
+    self.io = FTDI(human_readable_device_name="CLARIOstar", device_id=device_id)
 
 Usage in JupyterLite/Pyodide:
     from web_ftdi_shim import WebFTDI
@@ -20,7 +20,7 @@ Usage in JupyterLite/Pyodide:
 
 import asyncio
 import logging
-from typing import Any, Optional
+from typing import Any
 
 # Import Pyodide's JavaScript bridge
 try:
@@ -64,19 +64,45 @@ class WebFTDI:
   Implements the same interface as pylabrobot.io.ftdi.FTDI but uses
   the browser's WebUSB API via Pyodide's JS bridge.
 
-  This is a drop-in replacement for FTDI when running in the browser.
+  This is a drop-in replacement for FTDI when running in the browser. The
+  constructor and method signatures mirror the pylabrobot pin exactly (parameter
+  order included) -- ``web-repl/scripts/check_shim_contract.py`` fails CI if
+  they drift.
   """
 
-  def __init__(self, device_id: Optional[str] = None):
+  def __init__(
+    self,
+    human_readable_device_name: str = "WebFTDI device",
+    device_id: str | None = None,
+    vid: int | None = None,
+    pid: int | None = None,
+    interface_select: int | None = None,
+    usb_address: str | None = None,
+  ):
     """Initialize WebFTDI.
 
     Args:
-        device_id: Optional device identifier. If None, will auto-detect FTDI devices.
+        human_readable_device_name: Name used in log and error messages
+        device_id: Serial number of the device to use. None = any matching device.
+        vid: USB vendor ID to match (default: the FTDI vendor ID, 0x0403)
+        pid: USB product ID to match. None = any FTDI product.
+        interface_select: 1-based FTDI interface (A=1, B=2, ...) on multi-port chips.
+        usb_address: '<bus>-<port>[.<port>...]' topology path. WebUSB does not expose
+          bus topology, so it is accepted for compatibility and warned about at setup.
+
     """
     if not IN_PYODIDE:
       raise RuntimeError("WebFTDI is only available in Pyodide/browser environment")
 
-    self._device_id = device_id
+    self.human_readable_device_name = human_readable_device_name
+    self._requested_device_id = device_id
+    self._device_id: str | None = None  # resolved serial number, set by setup()
+    self._vid = vid
+    self._pid = pid
+    self._interface_select = interface_select
+    self._usb_address = usb_address
+    self._interface_number = (interface_select or 1) - 1
+    self._rx_buffer = bytearray()
     self._device: Any = None
     self._ep_in: int = 1
     self._ep_out: int = 2
@@ -105,31 +131,43 @@ class WebFTDI:
     except Exception as e:
       raise RuntimeError(f"[WebFTDI] Failed to get USB devices: {e}")
 
+    if self._usb_address is not None:
+      logger.warning(
+        "[WebFTDI] %s: usb_address=%r cannot be resolved in the browser (WebUSB "
+        "exposes no bus topology); matching on device_id/vid/pid only.",
+        self.human_readable_device_name,
+        self._usb_address,
+      )
+
     # Find FTDI device
+    want_vid = self._vid if self._vid is not None else FTDI_VENDOR_ID
     self._device = None
     for device in usb_devices:
       vid = device.vendorId
       pid = device.productId
       logger.info(f"[WebFTDI] Checking device {hex(vid)}:{hex(pid)}")
 
-      if vid == FTDI_VENDOR_ID:
-        product_name = FTDI_PRODUCT_IDS.get(pid, "Unknown FTDI")
-        logger.info(f"[WebFTDI] Found FTDI device: {product_name} ({hex(vid)}:{hex(pid)})")
-
-        # If device_id is specified, try to match
-        if self._device_id is not None:
-          # device_id could be serial number or other identifier
-          # For now, accept any FTDI device
-          pass
-
-        self._device = device
-        break
+      if vid != want_vid or (self._pid is not None and pid != self._pid):
+        continue
+      if (
+        self._requested_device_id is not None
+        and getattr(device, "serialNumber", None) != self._requested_device_id
+      ):
+        continue
+      product_name = FTDI_PRODUCT_IDS.get(pid, "Unknown FTDI")
+      logger.info(f"[WebFTDI] Found FTDI device: {product_name} ({hex(vid)}:{hex(pid)})")
+      self._device = device
+      break
 
     if self._device is None:
       raise RuntimeError(
-        "[WebFTDI] No FTDI device found. "
+        f"[WebFTDI] No FTDI device found for '{self.human_readable_device_name}'. "
         "Please authorize an FTDI device via the Hardware Discovery dialog first."
       )
+    self._device_id = (
+      str(self._device.serialNumber) if getattr(self._device, "serialNumber", None) else ""
+    ) or self._requested_device_id or f"{hex(self._device.vendorId)}:{hex(self._device.productId)}"
+    self._rx_buffer.clear()
 
     # Open and configure the device
     try:
@@ -149,10 +187,10 @@ class WebFTDI:
       except Exception as e:
         logger.warning(f"[WebFTDI] selectConfiguration failed: {e}")
 
-    # Claim interface 0
+    # Claim the selected interface (interface_select is 1-based, like libftdi)
     try:
-      await self._device.claimInterface(0)
-      logger.info("[WebFTDI] Interface 0 claimed")
+      await self._device.claimInterface(self._interface_number)
+      logger.info(f"[WebFTDI] Interface {self._interface_number} claimed")
     except Exception as e:
       if "already claimed" in str(e).lower():
         logger.info("[WebFTDI] Interface already claimed")
@@ -163,7 +201,7 @@ class WebFTDI:
     try:
       config = self._device.configuration
       if config and config.interfaces:
-        iface = config.interfaces[0]
+        iface = config.interfaces[self._interface_number]
         if hasattr(iface, "alternate") and iface.alternate:
           for ep in iface.alternate.endpoints:
             if ep.direction == "in":
@@ -187,7 +225,7 @@ class WebFTDI:
       return
 
     try:
-      await self._device.releaseInterface(0)
+      await self._device.releaseInterface(self._interface_number)
       await self._device.close()
       self._device = None
       logger.info("[WebFTDI] Device closed")
@@ -239,6 +277,7 @@ class WebFTDI:
         bits: Data bits (7 or 8)
         stopbits: Stop bits (0=1 stop bit, 2=2 stop bits)
         parity: Parity (0=None, 1=Odd, 2=Even)
+
     """
     value = bits  # Data bits in lower byte
     value |= parity << 8  # Parity in bits 8-10
@@ -269,6 +308,7 @@ class WebFTDI:
 
   async def usb_purge_rx_buffer(self):
     """Purge the receive buffer."""
+    self._rx_buffer.clear()
     await self._control_transfer(0, 1, 0)  # RESET_RX
     logger.info("[WebFTDI] RX buffer purged")
 
@@ -303,6 +343,16 @@ class WebFTDI:
       logger.warning(f"[WebFTDI] poll_modem_status failed: {e}")
     return 0
 
+  @property
+  def device_id(self) -> str:
+    """Serial number of the connected device (pylabrobot's FTDI.device_id)."""
+    if self._device_id is None:
+      raise RuntimeError("Device not initialized. Call setup() first.")
+    return self._device_id
+
+  async def request_serial(self) -> str:
+    return self.device_id
+
   async def get_serial(self) -> str:
     """Get the device serial number."""
     if self._device and hasattr(self._device, "serialNumber"):
@@ -314,6 +364,7 @@ class WebFTDI:
 
     Returns:
         Number of bytes written.
+
     """
     if self._device is None:
       raise RuntimeError("[WebFTDI] Device not connected. Call setup() first.")
@@ -329,64 +380,78 @@ class WebFTDI:
       raise RuntimeError(f"[WebFTDI] Write failed: {e}")
 
   async def read(self, num_bytes: int = 1) -> bytes:
-    """Read data from the FTDI device.
+    """Read up to ``num_bytes`` from the FTDI device (b"" if nothing is waiting).
 
-    Note: FTDI prepends 2 modem status bytes to each packet.
+    FTDI prepends 2 modem status bytes to each packet; they are stripped. Bytes
+    beyond ``num_bytes`` stay buffered for the next read rather than being dropped
+    (pylabrobot's readline reads one byte at a time).
     """
     if self._device is None:
       raise RuntimeError("[WebFTDI] Device not connected. Call setup() first.")
 
-    result_bytes = bytearray()
-
-    try:
-      # Request slightly more than needed to account for modem status bytes
-      result = await self._device.transferIn(self._ep_in, max(64, num_bytes + 2))
-
-      if result.status == "ok" and result.data and result.data.byteLength > 2:
-        dv = result.data
-        # Skip first 2 bytes (modem status)
-        for i in range(2, dv.byteLength):
-          result_bytes.append(dv.getUint8(i))
-          if len(result_bytes) >= num_bytes:
-            break
-
-      if result_bytes:
-        logger.debug(f"[WebFTDI] Read {len(result_bytes)} bytes: {bytes(result_bytes).hex()}")
-
-      return bytes(result_bytes)
-    except Exception as e:
-      logger.warning(f"[WebFTDI] Read failed: {e}")
-      return b""
-
-  async def readline(self) -> bytes:
-    """Read until newline character."""
-    result = bytearray()
-
-    while True:
+    if not self._rx_buffer:
       try:
-        chunk = await asyncio.wait_for(self.read(64), timeout=5)
-        if not chunk:
-          break
-        result.extend(chunk)
-        if b"\n" in chunk or b"\r" in chunk:
-          break
-      except asyncio.TimeoutError:
-        break
+        result = await self._device.transferIn(self._ep_in, max(64, num_bytes + 2))
+        if result.status == "ok" and result.data and result.data.byteLength > 2:
+          dv = result.data
+          self._rx_buffer.extend(dv.getUint8(i) for i in range(2, dv.byteLength))
+      except Exception as e:
+        logger.warning(f"[WebFTDI] Read failed: {e}")
+        return b""
 
-    return bytes(result)
+    chunk = bytes(self._rx_buffer[:num_bytes])
+    del self._rx_buffer[:num_bytes]
+    if chunk:
+      logger.debug(f"[WebFTDI] Read {len(chunk)} bytes: {chunk.hex()}")
+    return chunk
+
+  async def readline(self, terminator: bytes = b"\n", timeout: float | None = None) -> bytes:
+    """Read until ``terminator``, returning the line with the terminator on it.
+
+    Same contract as pylabrobot's FTDI.readline: ValueError on an empty
+    terminator, TimeoutError if no complete line arrives within ``timeout``
+    seconds (None waits indefinitely).
+    """
+    if not terminator:
+      raise ValueError("terminator must be at least one byte")
+    loop = asyncio.get_running_loop()
+    deadline = None if timeout is None else loop.time() + timeout
+    line = bytearray()
+    while not line.endswith(terminator):
+      chunk = await self.read(1)
+      if chunk:
+        line.extend(chunk)
+        continue
+      if deadline is not None and loop.time() >= deadline:
+        raise TimeoutError(
+          f"'{self.human_readable_device_name}' sent no complete line within {timeout} s; "
+          f"received {bytes(line)!r} so far."
+        )
+      await asyncio.sleep(0)
+    return bytes(line)
 
   def serialize(self) -> dict:
     """Serialize the backend to a dictionary."""
     return {
-      "device_id": self._device_id,
-      "baudrate": self._baudrate,
       "type": "WebFTDI",
+      "human_readable_device_name": self.human_readable_device_name,
+      "device_id": self._device_id if self._device_id is not None else self._requested_device_id,
+      "vid": self._vid,
+      "pid": self._pid,
+      "usb_address": self._usb_address,
+      "baudrate": self._baudrate,
     }
 
   @classmethod
   def deserialize(cls, data: dict) -> "WebFTDI":
     """Deserialize from dict."""
-    return cls(device_id=data.get("device_id"))
+    return cls(
+      human_readable_device_name=data.get("human_readable_device_name", "WebFTDI device"),
+      device_id=data.get("device_id"),
+      vid=data.get("vid"),
+      pid=data.get("pid"),
+      usb_address=data.get("usb_address"),
+    )
 
 
 # For backwards compatibility with pylabrobot.io.ftdi
