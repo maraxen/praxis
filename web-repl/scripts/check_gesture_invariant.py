@@ -46,8 +46,8 @@ Usage::
     uv run python web-repl/scripts/check_gesture_invariant.py
     uv run python web-repl/scripts/check_gesture_invariant.py --root /tmp/some/dir
 
-With no ``--root``, scans ``web-repl/shell/persistence/*.js`` (excluding any
-``__tests__`` directory). Exit 0 if the invariant holds everywhere and the
+With no ``--root``, scans ``web-repl/shell/persistence/*.js`` and
+``web-repl/shell/device/*.js`` (excluding any ``__tests__`` directory). Exit 0 if the invariant holds everywhere and the
 forbidden string is absent; exit 1 otherwise, with ``file:line: rule:
 detail`` printed for every violation found.
 """
@@ -68,7 +68,7 @@ _THIS_FILE = Path(__file__).resolve()
 SCRIPTS_DIR = _THIS_FILE.parent
 WEB_REPL_ROOT = SCRIPTS_DIR.parent
 REPO_ROOT = WEB_REPL_ROOT.parent
-DEFAULT_SCAN_ROOTS = [WEB_REPL_ROOT / "shell" / "persistence"]
+DEFAULT_SCAN_ROOTS = [WEB_REPL_ROOT / "shell" / "persistence", WEB_REPL_ROOT / "shell" / "device"]
 
 EXCLUDED_DIR_NAME = "__tests__"
 
@@ -83,6 +83,9 @@ GESTURE_CALLS: dict[str, re.Pattern[str]] = {
     "pickDirectory()": re.compile(r"\bpickDirectory\("),
     "showDirectoryPicker()": re.compile(r"\bshowDirectoryPicker\("),
     "handle.requestPermission()": re.compile(r"\.requestPermission\("),
+    # The device pickers (shell/device/connect.js). Same rule, from P5.7/D6.
+    "usb/hid.requestDevice()": re.compile(r"\.requestDevice\("),
+    "serial.requestPort()": re.compile(r"\.requestPort\("),
 }
 
 FORBIDDEN_STRING = "__praxis_test_force_prompt"
@@ -411,7 +414,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="append",
         default=None,
         help="Directory to scan (repeatable). Defaults to "
-        "web-repl/shell/persistence. Testing hook for pointing at a "
+        "web-repl/shell/persistence and web-repl/shell/device. Testing hook for pointing at a "
         "scratch tree of fixtures.",
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="Debug-level logging.")

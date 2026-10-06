@@ -104,6 +104,11 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/repl_smoke.py --probe --offline --base-path /praxis/
 
+      - name: Device connect journey on the built artifact
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/device_connect_check.py --base-path /praxis/
+
       - name: Execute welcome.ipynb on the built artifact
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
@@ -157,7 +162,32 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  # The same journey against the LIVE site, once Pages has published it: a
+  # passing pre-publish gate does not prove what a browser loading
+  # maraxen.github.io/praxis gets. --expect-sha waits (up to 15 min, Pages caches
+  # for ~10) until the live manifest carries this commit, so a stale CDN copy is
+  # never mistaken for a pass. Playwright only: no submodules, no uv sync.
+  verify-live:
+    runs-on: ubuntu-latest
+    needs: deploy
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Device connect journey on the live site
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run --no-project --python 3.12 --with "playwright>=1.57.0,<1.63.0" playwright install --with-deps chromium
+          uv run --no-project --python 3.12 --with "playwright>=1.57.0,<1.63.0" \
+            python scripts/device_connect_check.py \
+              --url "${{ needs.deploy.outputs.page_url }}" --expect-sha "${{ github.sha }}"

@@ -150,29 +150,36 @@ class WebUSB:
       pass  # getDevices not supported or failed
 
     if self.dev is None:
-      # No pre-authorized device — delegate to Angular UI for user gesture
+      # Not authorized yet. requestDevice() does not exist in the kernel's Web
+      # Worker, so the page shows the picker from a click (shell/device/connect.js).
       try:
         import web_bridge
-        result = await web_bridge.request_user_interaction('device_connect', {
-          'api': 'usb',
-          'filters': filters,
-          'message': f'Connect USB device {hex(self._id_vendor)}:{hex(self._id_product)}'
-        })
-        if not result or not result.get('success'):
-          error_msg = result.get('error', 'denied') if result else 'no response'
-          raise RuntimeError(f"Device authorization failed: {error_msg}")
-        # Re-query — the device is now authorized
+      except ImportError:
+        web_bridge = None
+      if web_bridge is None:
+        self.dev = await navigator.usb.requestDevice(to_js({"filters": filters}))
+      else:
+        await web_bridge.request_device_authorization(
+          "usb",
+          filters,
+          f"Connect {self.human_readable_device_name} "
+          f"(USB {self._id_vendor:04x}:{self._id_product:04x})",
+        )
         devices = await navigator.usb.getDevices()
         for d in devices:
           if self._matches(d):
             self.dev = d
             break
-      except ImportError:
-        # web_bridge not available — fall back to direct request (will fail without gesture)
-        self.dev = await navigator.usb.requestDevice(to_js({"filters": filters}))
 
     if self.dev is None:
-      raise RuntimeError(f"No USB device selected for '{self.human_readable_device_name}'")
+      raise RuntimeError(
+        f"No matching USB device for '{self.human_readable_device_name}' "
+        f"({self._id_vendor:04x}:{self._id_product:04x}"
+        + (f", serial {self._serial_number}" if self._serial_number else "")
+        + "). It is not among the devices this kernel can see "
+        "(navigator.usb.getDevices()). Choose that device in the browser's picker; "
+        "if you did, reload the page and run setup again."
+      )
 
     # Open the device
     try:

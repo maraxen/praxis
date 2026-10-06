@@ -455,11 +455,30 @@ class WebSerial:
       # but standard WebSerial checked above.
       pass
 
+    if not ports and self._port is None and hasattr(navigator, "serial"):
+      # Not authorized yet: requestPort() does not exist in the kernel's Web
+      # Worker, so the page shows the picker from a click (shell/device/connect.js).
+      try:
+        import web_bridge
+      except ImportError:
+        web_bridge = None
+      if web_bridge is not None:
+        port_filter = {}
+        if self._vid is not None:
+          port_filter["vendorId"] = self._vid
+          if self._pid is not None:
+            port_filter["productId"] = self._pid
+        await web_bridge.request_device_authorization(
+          "serial",
+          [port_filter] if port_filter else [],
+          f"Connect {self.human_readable_device_name} (serial port)",
+        )
+        ports.extend(await navigator.serial.getPorts())
+
     if not ports and self._port is None:
       raise RuntimeError(
-        "No authorized devices found. "
-        "Please use the 'Insert' button in the Inventory sidebar "
-        "to authorize the device first."
+        f"No authorized serial port for '{self.human_readable_device_name}'. "
+        "This browser has no Web Serial API, or no port was chosen in the picker."
       )
 
     if self._port is None:

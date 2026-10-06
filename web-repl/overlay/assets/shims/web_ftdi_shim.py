@@ -111,6 +111,26 @@ class WebFTDI:
 
     logger.info(f"[WebFTDI] Created instance with device_id={device_id}")
 
+  def _find_device(self, usb_devices: Any, want_vid: int) -> Any:
+    """First authorized device matching vid/pid and the requested device_id."""
+    for device in usb_devices:
+      vid = device.vendorId
+      pid = device.productId
+      logger.info(f"[WebFTDI] Checking device {hex(vid)}:{hex(pid)}")
+
+      if vid != want_vid or (self._pid is not None and pid != self._pid):
+        continue
+      if (
+        self._requested_device_id is not None
+        and getattr(device, "serialNumber", None) != self._requested_device_id
+      ):
+        continue
+      product_name = FTDI_PRODUCT_IDS.get(pid, "Unknown FTDI")
+      logger.info(f"[WebFTDI] Found FTDI device: {product_name} ({hex(vid)}:{hex(pid)})")
+      return device
+
+    return None
+
   async def setup(self):
     """Initialize the FTDI connection.
 
@@ -141,28 +161,32 @@ class WebFTDI:
 
     # Find FTDI device
     want_vid = self._vid if self._vid is not None else FTDI_VENDOR_ID
-    self._device = None
-    for device in usb_devices:
-      vid = device.vendorId
-      pid = device.productId
-      logger.info(f"[WebFTDI] Checking device {hex(vid)}:{hex(pid)}")
+    self._device = self._find_device(usb_devices, want_vid)
 
-      if vid != want_vid or (self._pid is not None and pid != self._pid):
-        continue
-      if (
-        self._requested_device_id is not None
-        and getattr(device, "serialNumber", None) != self._requested_device_id
-      ):
-        continue
-      product_name = FTDI_PRODUCT_IDS.get(pid, "Unknown FTDI")
-      logger.info(f"[WebFTDI] Found FTDI device: {product_name} ({hex(vid)}:{hex(pid)})")
-      self._device = device
-      break
+    if self._device is None:
+      # Not authorized yet: requestDevice() does not exist in the kernel's Web
+      # Worker, so the page shows the picker from a click (shell/device/connect.js).
+      try:
+        import web_bridge
+      except ImportError:
+        web_bridge = None
+      if web_bridge is not None:
+        usb_filter = {"vendorId": want_vid}
+        if self._pid is not None:
+          usb_filter["productId"] = self._pid
+        await web_bridge.request_device_authorization(
+          "usb",
+          [usb_filter],
+          f"Connect {self.human_readable_device_name} (FTDI {want_vid:04x}"
+          + (f":{self._pid:04x}" if self._pid is not None else "")
+          + ")",
+        )
+        self._device = self._find_device(await navigator.usb.getDevices(), want_vid)
 
     if self._device is None:
       raise RuntimeError(
         f"[WebFTDI] No FTDI device found for '{self.human_readable_device_name}'. "
-        "Please authorize an FTDI device via the Hardware Discovery dialog first."
+        "Choose it in the browser's device picker; if you did, reload the page and run setup again."
       )
     self._device_id = (
       str(self._device.serialNumber) if getattr(self._device, "serialNumber", None) else ""

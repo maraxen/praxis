@@ -477,6 +477,42 @@
 })();
 
 // ---------------------------------------------------------------------
+// Device connect / user interaction loader. Loads device/connect.js, which
+// answers the kernel's USER_INTERACTION requests (device_connect, pause,
+// confirm, input) and opens the browser's USB/HID/serial picker from a click.
+// Unlike persistence and display this runs on EVERY entry (lab/, repl/,
+// notebooks/...): any kernel can call `lh.setup()`, and an unanswered request
+// makes the kernel fail with InteractionUnavailableError.
+// `document.currentScript` is captured synchronously for the same reason as
+// the loaders below. Placed BEFORE them so the display loader stays the file's
+// last block (display/index.test.js runs everything from its marker to EOF).
+(function () {
+  "use strict";
+
+  var thisScript = document.currentScript;
+  if (!thisScript || !thisScript.src) {
+    console.error("praxis-shell.js: device-connect loader could not resolve its own script src.");
+    return;
+  }
+  if (typeof BroadcastChannel === "undefined") {
+    console.error("praxis-shell.js: BroadcastChannel is unavailable -- device connect cannot run.");
+    return;
+  }
+
+  try {
+    import(new URL("device/connect.js", thisScript.src).href)
+      .then(function (mod) {
+        window.__praxisInteractions = mod.mount(window);
+      })
+      .catch(function (err) {
+        console.error("praxis-shell.js: failed to load/mount device connect:", err);
+      });
+  } catch (err) {
+    console.error("praxis-shell.js: failed to start the device-connect loader:", err);
+  }
+})();
+
+// ---------------------------------------------------------------------
 // T6 -- REPL persistence ladder loader (backlog #4296, spec
 // .praxia/docs/specs/260922_repl-persistence-ladder.md D2, D5, the module
 // plan's praxis-shell.js row, and T6). This is the ONLY change this spec

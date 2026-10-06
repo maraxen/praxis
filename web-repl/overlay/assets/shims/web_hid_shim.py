@@ -114,21 +114,23 @@ class WebHID:
     except Exception as e:
       logger.warning(f"Failed to check existing devices: {e}")
 
-    # 2. If not found, delegate to Angular UI for user gesture
+    # 2. Not authorized yet: requestDevice() does not exist in the kernel's Web
+    # Worker, so the page shows the picker from a click (shell/device/connect.js).
     if not target_device:
-      logger.info("Requesting new HID device via UI dialog (User Interaction Required)...")
+      logger.info("Requesting new HID device via the page (user interaction required)...")
       filters = [{"vendorId": self.vid, "productId": self.pid}]
       try:
         import web_bridge
-        result = await web_bridge.request_user_interaction('device_connect', {
-          'api': 'hid',
-          'filters': filters,
-          'message': f'Connect HID device {self._unique_id}'
-        })
-        if not result or not result.get('success'):
-          error_msg = result.get('error', 'denied') if result else 'no response'
-          raise RuntimeError(f"Device authorization failed: {error_msg}")
-        # Re-query — the device is now authorized
+      except ImportError:
+        web_bridge = None
+      if web_bridge is None:
+        devices = await navigator.hid.requestDevice(to_js({"filters": filters}))
+        if devices.length > 0:
+          target_device = devices[0]
+      else:
+        await web_bridge.request_device_authorization(
+          "hid", filters, f"Connect HID device {self._unique_id}"
+        )
         existing_devices = await navigator.hid.getDevices()
         for i in range(existing_devices.length):
           d = existing_devices[i]
@@ -137,11 +139,6 @@ class WebHID:
               continue
             target_device = d
             break
-      except ImportError:
-        # web_bridge not available — fall back to direct request (will fail without gesture)
-        devices = await navigator.hid.requestDevice(to_js({"filters": filters}))
-        if devices.length > 0:
-          target_device = devices[0]
 
     if not target_device:
       msg = "No HID device selected or found."

@@ -199,7 +199,8 @@ def _import_resources() -> None:
 
 
 def _setup_broadcast_listener(channel) -> None:
-    """Install the long-lived ``praxis:execute`` / ``praxis:interaction_response``
+    """Install the long-lived ``praxis:execute`` / ``praxis:interaction_response`` /
+    ``praxis:interaction_ack``
     handler on *channel*, replacing whatever handler the D1 handshake left
     on it. Ported unchanged in behavior from the old bootstrap's
     ``_setup_broadcast_listener`` / ``_handle_message`` -- not one of this
@@ -277,6 +278,19 @@ def _setup_broadcast_listener(channel) -> None:
                     web_bridge.handle_interaction_response(data.get("id"), data.get("value"))
                 except Exception as e:
                     js.console.error(f"[Bootstrap] interaction_response error: {e}")
+
+            elif msg_type == "praxis:interaction_ack":
+                # The shell received a USER_INTERACTION request (it acks before the
+                # user answers). Without this, web_bridge raises
+                # InteractionUnavailableError after its ack timeout.
+                try:
+                    import web_bridge
+
+                    handle_ack = getattr(web_bridge, "handle_interaction_ack", None)
+                    if handle_ack is not None:
+                        handle_ack(data.get("id"))
+                except Exception as e:
+                    js.console.error(f"[Bootstrap] interaction_ack error: {e}")
 
         except Exception as e:
             js.console.error(f"[Bootstrap] Message handler error: {e}")

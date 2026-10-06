@@ -176,3 +176,49 @@ def test_real_tree_passes() -> None:
     landed yet from the concurrent T6 fixer task.
     """
     assert check_gesture_invariant.main([]) == 0
+
+
+def test_negative_device_picker_in_async_handler(tmp_path: Path) -> None:
+    """The device pickers (shell/device/connect.js) are gesture calls too: an
+    `async` on*Click, or one that awaits before `requestDevice`/`requestPort`,
+    lets the browser refuse the picker."""
+    usb = _write(
+        tmp_path,
+        "usb_async",
+        """
+        async function onConnectClick() {
+          navigator.usb.requestDevice({ filters: [] });
+        }
+        """,
+    )
+    serial = _write(
+        tmp_path,
+        "serial_await",
+        """
+        function onConnectClick() {
+          const opts = await options();
+          navigator.serial.requestPort(opts);
+        }
+        """,
+    )
+    assert _run(usb) != 0
+    assert _run(serial) != 0
+
+
+def test_positive_device_picker_in_sync_handler(tmp_path: Path) -> None:
+    fixture = _write(
+        tmp_path,
+        "picker_ok",
+        """
+        function onConnectClick() {
+          if (!navigator.usb) return;
+          navigator.usb.requestDevice({ filters: [] }).then(report);
+        }
+        """,
+    )
+    assert _run(fixture) == 0
+
+
+def test_default_roots_cover_the_device_module() -> None:
+    roots = {p.relative_to(check_gesture_invariant.WEB_REPL_ROOT).as_posix() for p in check_gesture_invariant.DEFAULT_SCAN_ROOTS}
+    assert {"shell/persistence", "shell/device"} <= roots
