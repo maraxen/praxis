@@ -252,6 +252,10 @@ def test_assert_dist_complete_passes_with_all_persistence_modules(tmp_path: Path
         (dist / rel).parent.mkdir(parents=True, exist_ok=True)
         (dist / rel).write_text(f"// {rel}\n")
 
+    # And the device-connect module (the kernel's USER_INTERACTION handler).
+    (dist / "shell" / "device").mkdir(parents=True)
+    (dist / "shell" / "device" / "connect.js").write_text("// connect\n")
+
     # assert_dist_complete should not raise
     build_repl.assert_dist_complete(dist, with_coxswain=False)  # must not raise
 
