@@ -81,9 +81,13 @@ resulting objects "class A" and "class B"). A second call to
 
 from __future__ import annotations
 
+import asyncio
 import builtins
 import importlib
+import inspect
 import sys
+import threading
+import traceback
 import types
 
 __all__ = [
@@ -98,6 +102,9 @@ __all__ = [
     "apply",
     "verify_identity",
     "assert_praxis_git_sha",
+    "LOOP_TASK_TARGETS",
+    "LoopTaskThread",
+    "install_loop_threads",
 ]
 
 
@@ -489,3 +496,99 @@ def assert_praxis_git_sha(manifest_sha: str, shell_sha: str) -> None:
             "at build time -- a mismatch means the deployment is at least "
             "partially stale relative to what was built."
         )
+
+
+# ---------------------------------------------------------------------------
+# 5. install_loop_threads() -- PLR reader threads as tasks (Pyodide has no threads).
+# ---------------------------------------------------------------------------
+
+# Thread target method name -> the coroutine method that target runs on a fresh
+# event loop. Only this exact shape is converted; tests/test_loop_threads.py scans
+# the pinned PLR source and fails on any thread site that is neither this shape
+# nor listed there as known-unsupported.
+LOOP_TASK_TARGETS: dict[str, str] = {"_reading_thread_main": "_continuously_read"}
+
+_REAL_THREAD = threading.Thread
+
+
+def _loop_task_coroutine(target):
+    """The bound coroutine function to run instead of ``target``, or None."""
+    owner = getattr(target, "__self__", None)
+    coroutine_name = LOOP_TASK_TARGETS.get(getattr(target, "__name__", ""))
+    if owner is None or coroutine_name is None:
+        return None
+    coroutine_fn = getattr(owner, coroutine_name, None)
+    return coroutine_fn if inspect.iscoroutinefunction(coroutine_fn) else None
+
+
+def _report_task_failure(task: asyncio.Task) -> None:
+    if task.cancelled() or task.exception() is None:
+        return
+    exc = task.exception()
+    print(f"Exception in background task {task.get_name()}:", file=sys.stderr)
+    traceback.print_exception(type(exc), exc, exc.__traceback__, file=sys.stderr)
+
+
+class LoopTaskThread(_REAL_THREAD):
+    """``threading.Thread`` that runs PLR's reader loop as a task on the running loop.
+
+    A Pyodide kernel cannot start threads (``RuntimeError: can't start new
+    thread``), so ``HamiltonLiquidHandler.setup()`` failed the moment it started
+    its firmware reader. That reader thread only runs ``_continuously_read()`` on a
+    private event loop, and in the browser it has to run on the kernel's own loop
+    anyway: the WebUSB shim's ``read()`` awaits JavaScript promises that loop
+    drives. So for a target in ``LOOP_TASK_TARGETS`` whose owner has the matching
+    coroutine method, ``start()`` schedules that coroutine on the running loop and
+    never calls the target. ``call_soon_threadsafe`` (how the reader hands replies
+    back) works unchanged on one loop.
+
+    ``join()`` cannot block (it would freeze the loop the task runs on), so it
+    cancels the task; PLR sets its stop event first, then joins. Every other target
+    goes to the real ``Thread.start()``, which in Pyodide raises as before.
+    """
+
+    _praxis_task: asyncio.Task | None = None
+
+    def start(self) -> None:
+        coroutine_fn = _loop_task_coroutine(getattr(self, "_target", None))
+        if coroutine_fn is None:
+            return super().start()
+        if self._praxis_task is not None:
+            raise RuntimeError("threads can only be started once")
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            raise RuntimeError(
+                f"{coroutine_fn.__qualname__} runs as a task in the browser kernel, so "
+                "it must be started from inside a running event loop (await the call "
+                "that starts it, e.g. `await lh.setup()`)."
+            ) from None
+        self._praxis_task = loop.create_task(coroutine_fn(), name=coroutine_fn.__qualname__)
+        self._praxis_task.add_done_callback(_report_task_failure)
+        return None
+
+    def is_alive(self) -> bool:
+        if self._praxis_task is None:
+            return super().is_alive()
+        return not self._praxis_task.done()
+
+    def join(self, timeout: float | None = None) -> None:
+        if self._praxis_task is None:
+            return super().join(timeout)
+        if not self._praxis_task.done():
+            self._praxis_task.cancel()
+        return None
+
+
+def install_loop_threads(platform: str | None = None) -> bool:
+    """In Pyodide, make ``threading.Thread`` the ``LoopTaskThread`` (idempotent).
+
+    PLR looks ``threading.Thread`` up at call time, so this can run any time before
+    a machine's ``setup()``; the bootstrap runs it before installing any wheel.
+    Returns whether the shim is installed. Outside Pyodide (``platform`` defaults
+    to ``sys.platform``) it does nothing and returns False: real threads work there.
+    """
+    if (platform or sys.platform) != "emscripten":
+        return False
+    threading.Thread = LoopTaskThread
+    return True

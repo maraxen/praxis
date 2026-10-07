@@ -175,6 +175,21 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/device_connect_check.py --base-path /praxis/ --block-handler
 
+      # After the picker, HamiltonLiquidHandler.setup() starts a firmware reader
+      # thread, and Pyodide cannot start threads (2026-10-07). The bootstrap runs that
+      # reader as a task on the kernel loop (stages.install_loop_threads); this drives
+      # PLR's real reader in the built kernel with a fake transport. The negative
+      # control restores the real Thread and must reproduce "can't start new thread".
+      - name: PLR reader journey (Hamilton reader runs without threads)
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/device_connect_check.py --base-path /praxis/ --journey reader
+
+      - name: PLR reader negative control (real Thread fails in the kernel)
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/device_connect_check.py --base-path /praxis/ --journey reader --no-shim
+
       - name: Gesture invariant (no await/async before gesture calls, D6)
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
@@ -457,6 +472,7 @@ jobs:
           uv run python -m pytest web-repl/tests/test_shim_behavior.py -q
           uv run python -m pytest web-repl/tests/test_shim_contract.py -q
           uv run python -m pytest web-repl/tests/test_device_authorization.py -q
+          uv run python -m pytest web-repl/tests/test_loop_threads.py -q
           uv run python -m pytest web-repl/tests/test_stamp_loader_shas.py -q
           uv run python -m pytest web-repl/tests/test_theme_staging.py -q
           uv run python -m pytest web-repl/tests/test_transport.py -q

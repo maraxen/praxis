@@ -381,6 +381,10 @@ async def praxis_main(host_root: str, *, raise_on_error: bool = False) -> None:
         builtins.WebHID = stages.import_shim_class("web_hid_shim", "WebHID")
         builtins.WebFTDI = stages.import_shim_class("web_ftdi_shim", "WebFTDI")
 
+        # 6a. Pyodide cannot start threads: PLR's Hamilton firmware reader
+        #     thread runs as a task on this loop instead (stages.LoopTaskThread).
+        stages.install_loop_threads()
+
         # 6. Install native stubs BEFORE any `import pylabrobot`.
         stages.install_native_stubs(web_serial_cls=builtins.WebSerial)
 

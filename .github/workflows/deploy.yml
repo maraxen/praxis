@@ -109,6 +109,11 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           uv run python scripts/device_connect_check.py --base-path /praxis/
 
+      - name: PLR reader journey on the built artifact
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          uv run python scripts/device_connect_check.py --base-path /praxis/ --journey reader
+
       - name: Execute welcome.ipynb on the built artifact
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
