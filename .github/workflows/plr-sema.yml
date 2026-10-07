@@ -25,7 +25,7 @@ jobs:
     steps:
       # submodules: recursive is load-bearing: the root pyproject resolves
       # `pylabrobot` as a path dependency on external/pylabrobot (see repl.yml).
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           # test_spec_lint resolves historical spec pin commits with git rev-parse.

@@ -63,7 +63,7 @@ jobs:
       # pylabrobot wheel with `git archive <sha>` against external/pylabrobot; a
       # bare checkout (which is what all five jobs in ci.yml use) fails deep
       # inside that script with a confusing git error instead of here.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -519,7 +519,7 @@ jobs:
       # external/pylabrobot, so even `uv run pytest coxswain/tests` fails in its
       # implicit env sync on a bare checkout ("does not appear to be a Python
       # project"). Observed failing exactly that way before this line landed.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
