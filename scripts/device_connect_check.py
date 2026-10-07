@@ -106,6 +106,62 @@ PICKER_RECORDER = """
 """
 
 
+# The "reader" journey: PLR's Hamilton firmware reader inside the real Pyodide kernel.
+# Pyodide cannot start threads, so HamiltonLiquidHandler.setup() died with
+# "can't start new thread" right after the picker (2026-10-07). The bootstrap's
+# stages.install_loop_threads() runs that reader as a task on the kernel's loop. A
+# fake transport answers one firmware command; the command must round-trip.
+# --no-shim restores the real Thread first and must reproduce the original error,
+# proving this browser really has no threads and the shim is what fixes it.
+READER_CODE = """
+import asyncio, json, threading, time, traceback
+_t0 = time.monotonic()
+_out = {{}}
+try:
+    import stages
+    from pylabrobot.legacy.liquid_handling.backends.hamilton.STAR_backend import STARBackend
+    from pylabrobot.legacy.liquid_handling.backends.hamilton.base import HamiltonLiquidHandler
+    from pylabrobot.resources.hamilton import STARLetDeck
+    if {no_shim}:
+        threading.Thread = stages._REAL_THREAD
+    _out["thread_class"] = threading.Thread.__name__
+
+    class FakeUSB:
+        def __init__(self):
+            self.replies = []
+        async def setup(self):
+            pass
+        async def stop(self):
+            pass
+        async def write(self, data, timeout=None):
+            cmd = data.decode()
+            i = cmd.index("id")
+            self.replies.append((cmd[:4] + cmd[i:i + 6] + "er00/00rf7.6S 35 2025-01-01").encode())
+        async def read(self, timeout=None):
+            await asyncio.sleep(0.005)
+            if not self.replies:
+                raise TimeoutError
+            return self.replies.pop(0)
+
+    backend = STARBackend()
+    backend.set_deck(STARLetDeck())
+    backend.io = FakeUSB()
+    await HamiltonLiquidHandler.setup(backend)
+    try:
+        _out["reply"] = await asyncio.wait_for(backend.send_command(module="C0", command="RF"), 15)
+    finally:
+        await HamiltonLiquidHandler.stop(backend)
+    _out["outcome"] = "round-trip"
+except Exception as e:
+    _out["outcome"] = "raised"
+    _out["error_type"] = type(e).__name__
+    _out["error"] = str(e)
+    _out["traceback"] = traceback.format_exc()[-2000:]
+_out["seconds"] = round(time.monotonic() - _t0, 2)
+print({b0!r} + {b1!r} + json.dumps(_out) + {e0!r} + {e1!r})
+"""
+
+
 def wait_for_live_sha(root_url: str, sha: str, timeout_s: float) -> str:
   """Poll the live manifest until it carries *sha* (Pages caches for ~10 min)."""
   deadline = time.monotonic() + timeout_s
@@ -140,13 +196,22 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     prefix = _normalize_base_path(args.base_path)
     served = ServedDir(Path(args.dist), prefix, coi=False)
 
-  report: dict[str, Any] = {"block_handler": args.block_handler}
+  report: dict[str, Any] = {
+    "journey": args.journey,
+    "block_handler": args.block_handler,
+    "no_shim": args.no_shim,
+  }
   with served as server:
     if server is not None:
       root = f"http://127.0.0.1:{server.port}{_normalize_base_path(args.base_path)}"
     report["root"] = root
+    code = KERNEL_CODE
+    if args.journey == "reader":
+      code = READER_CODE.format(
+        no_shim=bool(args.no_shim), b0=_BEGIN[0], b1=_BEGIN[1], e0=_END[0], e1=_END[1]
+      )
     params = urllib.parse.urlencode(
-      {"kernel": "python", "toolbar": "1", "execute": "1", "code": KERNEL_CODE}
+      {"kernel": "python", "toolbar": "1", "execute": "1", "code": code}
     )
     url = f"{root}{args.entry}/index.html?{params}"
 
@@ -166,7 +231,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         clicked = False
         body = ""
         while time.monotonic() < deadline:
-          if not clicked and not args.block_handler:
+          if args.journey == "connect" and not clicked and not args.block_handler:
             button = page.query_selector(CONNECT_SELECTOR)
             if button is not None:
               report["dialog_text"] = page.inner_text(
@@ -200,6 +265,8 @@ def verdict(report: dict[str, Any]) -> list[str]:
   if k is None:
     return ["lh.setup() never finished within the timeout (the original hang)"]
   problems: list[str] = []
+  if report.get("journey") == "reader":
+    return reader_verdict(report, k)
   if k.get("io_class") != "WebUSB":
     problems.append(f"STARBackend().io is {k.get('io_class')!r}, not the WebUSB shim")
   if report["block_handler"]:
@@ -223,6 +290,19 @@ def verdict(report: dict[str, Any]) -> list[str]:
   return problems
 
 
+def reader_verdict(report: dict[str, Any], k: dict[str, Any]) -> list[str]:
+  if report["no_shim"]:
+    if k.get("outcome") != "raised" or "can't start new thread" not in (k.get("error") or ""):
+      return [f"expected 'can't start new thread' with the real Thread restored, got {k}"]
+    return []
+  problems = []
+  if k.get("thread_class") != "LoopTaskThread":
+    problems.append(f"threading.Thread is {k.get('thread_class')!r}, not the bootstrap's shim")
+  if k.get("outcome") != "round-trip" or "rf7.6S" not in (k.get("reply") or ""):
+    problems.append(f"the firmware command did not round-trip through the reader task: {k}")
+  return problems
+
+
 def main(argv: list[str] | None = None) -> int:
   ap = argparse.ArgumentParser(
     description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -237,7 +317,18 @@ def main(argv: list[str] | None = None) -> int:
   )
   ap.add_argument("--entry", default="repl", help="entry app to drive (default: repl)")
   ap.add_argument(
+    "--journey",
+    choices=["connect", "reader"],
+    default="connect",
+    help="connect: lh.setup() reaches the USB picker; reader: PLR's Hamilton reader runs",
+  )
+  ap.add_argument(
     "--block-handler", action="store_true", help="negative control: block shell/device/connect.js"
+  )
+  ap.add_argument(
+    "--no-shim",
+    action="store_true",
+    help="reader negative control: restore the real threading.Thread first",
   )
   ap.add_argument(
     "--expect-sha", help="with --url: wait until the live manifest carries this commit"
