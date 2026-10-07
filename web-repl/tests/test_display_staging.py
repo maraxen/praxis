@@ -121,6 +121,7 @@ def _write_complete_dist(dist: Path) -> None:
         "shell/persistence/codec.js": "// codec\n",
         "shell/persistence/core.js": "// core\n",
         "shell/persistence/panel.js": "// panel\n",
+        "shell/device/connect.js": "// connect\n",
         "lab/index.html": "<html></html>",
         "repl/index.html": "<html></html>",
         "files/welcome.ipynb": "{}",
@@ -255,6 +256,36 @@ def test_assert_dist_complete_requires_each_display_module(
     assert f"shell/display/{missing}" in msg.replace("\\", "/")
     for present in (n for n in _REQUIRED_DISPLAY if n != missing):
         assert f"shell/display/{present}" not in msg.replace("\\", "/")
+
+
+def test_stage_shell_real_source_stages_device_module_without_tests(tmp_path: Path) -> None:
+    """shell/device/connect.js (the kernel's USER_INTERACTION handler) ships;
+    its __tests__/ does not."""
+    dist = _make_dist_dir(tmp_path)
+
+    build_repl.stage_shell(dist)
+
+    dst = dist / "shell" / "device"
+    assert (dst / "connect.js").read_bytes() == (
+        build_repl.SHELL_DIR / "device" / "connect.js"
+    ).read_bytes()
+    assert not (dst / "__tests__").exists()
+    assert _staged_files(dst) == {"connect.js"}
+
+
+def test_assert_dist_complete_requires_device_connect(tmp_path: Path) -> None:
+    """Without connect.js, lh.setup() on a USB machine has no page handler, so the
+    build must refuse the dist and name the file."""
+    dist = _make_dist_dir(tmp_path)
+    _write_complete_dist(dist)
+    (dist / "shell" / "device" / "connect.js").unlink()
+
+    with pytest.raises(build_repl.BuildAssertionError) as exc:
+        build_repl.assert_dist_complete(dist, with_coxswain=False)
+
+    missing = [line.strip().replace("\\", "/") for line in str(exc.value).splitlines()[1:]]
+    assert len(missing) == 1, f"only connect.js may be reported missing: {missing}"
+    assert missing[0].endswith("dist/shell/device/connect.js")
 
 
 def test_assert_dist_complete_requires_display_dir(tmp_path: Path) -> None:
