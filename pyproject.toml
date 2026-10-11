@@ -303,7 +303,7 @@ max-args = 8
 [dependency-groups]
 dev = [
     "aiosqlite>=0.21.0",
-    "alembic>=1.17.0",
+    "alembic>=1.20.0",
     "factory-boy>=3.3.3",
     "fakeredis>=2.32.0",
     "freezegun>=1.5.5",
