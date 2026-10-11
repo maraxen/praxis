@@ -85,7 +85,7 @@ test = [
     "pytest-xdist>=3.3.0",
     "pytest-benchmark>=4.0.0",
     "pytest-timeout",
-    "pytest-socket>=0.6.0",        # Prevent inadvertent network access
+    "pytest-socket>=0.8.1",        # Prevent inadvertent network access
     "pytest-skip-slow>=0.0.5",     # Mark and skip slow tests
     "pytest-randomly>=3.12.0",     # Randomize test order to catch dependencies
     "pytest-monitor>=1.6.0",       # Monitor test performance
@@ -335,7 +335,7 @@ dev = [
     "pytest-asyncio>=1.2.0",
     "pytest-cov>=7.0.0",
     "pytest-playwright>=0.7.2",
-    "pytest-socket>=0.7.0",
+    "pytest-socket>=0.8.1",
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
     "redis>=6.4.0",
