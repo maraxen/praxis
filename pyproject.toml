@@ -83,7 +83,7 @@ test = [
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.1.0",
     "pytest-xdist>=3.3.0",
-    "pytest-benchmark>=4.0.0",
+    "pytest-benchmark>=5.3.0",
     "pytest-timeout",
     "pytest-socket>=0.6.0",        # Prevent inadvertent network access
     "pytest-skip-slow>=0.0.5",     # Mark and skip slow tests
