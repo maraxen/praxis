@@ -28,7 +28,7 @@ dependencies = [
     "python-keycloak>=5.8.1",
     "libcst>=1.1.0",
     "plr-sema[extract]",
-    "aiosqlite>=0.20.0", # SQLite async driver for lite mode KV store
+    "aiosqlite>=0.22.1", # SQLite async driver for lite mode KV store
     "zeroconf>=0.131.0", # mDNS device discovery
     "pyserial>=3.5", # Serial port device discovery
     "jupyterlite-core==0.8.1",
@@ -302,7 +302,7 @@ max-args = 8
 
 [dependency-groups]
 dev = [
-    "aiosqlite>=0.21.0",
+    "aiosqlite>=0.22.1",
     "alembic>=1.17.0",
     "factory-boy>=3.3.3",
     "fakeredis>=2.32.0",
