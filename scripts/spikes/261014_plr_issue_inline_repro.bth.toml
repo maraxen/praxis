@@ -1,0 +1,38 @@
+# Pre-registration sidecar for scripts/spikes/261014_plr_issue_inline_repro.py, the short repro to paste into the upstream
+# PyLabRobot issue (task 260929_notebook-display-design, #5659). Committed BEFORE its run. It is a condensed copy of the
+# aspirate96 scenario already reproduced in runs 55627ffd / 46e29dbc / eae83bee; it is re-run so that the output quoted in the
+# issue is the real output of the exact code pasted there. Run once, on upstream main 93aa7c402ae3bbd54e008175044b51b6b8d24ee7:
+#
+#   bth run --project-slug praxis -- <plr-main venv>/bin/python scripts/spikes/261014_plr_issue_inline_repro.py
+#
+# Predicted console output (from the earlier runs): refused with TooLittleLiquidError; after refusal well 0 pending/committed
+# 50.0 100.0 and tip 0 50.0 0; after success well 0 = 40.0 (expected 90) and tip 0 = 60.0 (expected 10).
+
+[experiment]
+hypothesis = "The condensed aspirate96 repro prints, on PLR main 93aa7c402: well 0 committed 40.0 and tip 0 committed 60.0 after the second (successful) aspirate96, where the physical truth is 90 and 10, matching runs 46e29dbc and eae83bee."
+stage_name = "exploration"
+novel = false
+
+[outcomes.no_provenance]
+condition = "plr_git_dirty = true"
+decision = "INVALID: no clean PLR commit recorded; do not quote the output."
+reasoning = "The issue cites a commit; the run must name one."
+is_residual = true
+
+[outcomes.matches]
+condition = "well0_after_success = 40.0 AND tip0_after_success = 60.0"
+decision = "Quote this run's console output in the issue as the output on main 93aa7c402."
+reasoning = "The snippet reproduces the desync with the predicted numbers."
+is_residual = false
+
+[outcomes.differs]
+condition = "NOT (well0_after_success = 40.0 AND tip0_after_success = 60.0)"
+decision = "The condensed snippet does not reproduce the earlier numbers: find the difference before quoting anything."
+reasoning = "A condensation error or a behavior change."
+is_residual = true
+
+[result_schema]
+plr_git_sha = "str"
+plr_git_dirty = "bool"
+well0_after_success = "float"
+tip0_after_success = "float"
