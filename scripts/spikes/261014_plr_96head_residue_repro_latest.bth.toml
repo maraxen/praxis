@@ -1,0 +1,82 @@
+# Pre-registration sidecar for scripts/spikes/261014_plr_96head_residue_repro_latest.py
+# (task 260929_notebook-display-design, backlog #5659; the upstream report is still a DRAFT, nothing is filed from here).
+#
+# Written and committed BEFORE either run. It re-runs the 261001 scenario (bathos run 55627ffd, PLR 786ac2c4e) on:
+#   (a) latest upstream main, PyLabRobot 93aa7c402ae3bbd54e008175044b51b6b8d24ee7 (2026-10-12), a throwaway clone + venv;
+#   (b) the 1.0.0b1 pin 786ac2c4e4f7afe37885af2d98ff5b0afe274c67 (the /tmp/praxis-nd-b editable install), same script, as the
+#       same-script control for (a).
+# Predictions come from READING main's pylabrobot/legacy/liquid_handling/liquid_handler.py (last changed d5dc1f0b7, so
+# identical at 93aa7c402): aspirate96 queues well.tracker.remove_liquid / tip.tracker.add_liquid at ~2016 and ~2045, BEFORE the
+# `try` at ~2059; pick_up_tips96 queues at 1714-1727 before the `try` at 1730; 1-channel aspirate queues inside its `try`
+# (~1265-1272). So both runs are predicted to give exactly the 261001 numbers (10 residue wells and tips, well 0 committed 40
+# vs truth 90, tip 0 committed 60 vs truth 10) and outcome residue_reproduced.
+#
+#   bth run --project-slug praxis -- <plr venv>/bin/python scripts/spikes/261014_plr_96head_residue_repro_latest.py
+#
+# Each run is verified by its RECORD (bth compact, then bth sql), and its plr_git_sha must equal the commit named above.
+#
+# PAIRED CONTROLS: unchanged from 261001. NEGATIVE = the 1-channel aspirate in the same run (must show no residue); POSITIVE =
+# the 96-head residue where the source predicts it. NEW provenance gate: a run that cannot name a clean PLR git commit is INVALID,
+# because pylabrobot.__version__ reads "1.0.0b1" at both commits and so cannot tell them apart.
+
+[experiment]
+hypothesis = "On latest upstream PyLabRobot main (93aa7c402) and on the 1.0.0b1 pin (786ac2c4e) alike, a REFUSED aspirate96 leaves pending tracker changes on the wells and tips it had already visited, and the next SUCCESSFUL aspirate96 commits them, so the tracked state disagrees with what was physically done; the 1-channel aspirate (same refusal) leaves none. Predictions (from reading the source): after aspirate96(plate, 50) is refused at well index 10 (TooLittleLiquidError), 10 wells and 10 tips have pending != committed (n_residue_wells_after_refusal = 10, n_residue_tips_after_refusal = 10), well 0 reads pending 50 / committed 100 and tip 0 pending 50 / committed 0; after the second call aspirate96(plate, 10) succeeds, well 0 is committed at 40 (physical truth 90) and tip 0 at 60 (physical truth 10). The control 1-channel aspirate is refused (H1 empty) and shows no residue on its wells or tips."
+stage_name = "exploration"
+novel = false
+
+# First match wins, in this order.
+[outcomes.no_provenance]
+condition = "plr_git_dirty = true"
+decision = "INVALID: the run could not name a clean PyLabRobot git commit (not a checkout, or local edits). Fix the environment before citing anything."
+reasoning = "pylabrobot.__version__ is 1.0.0b1 at both commits, so without a commit the result cannot be attributed."
+is_residual = true
+
+[outcomes.residue_reproduced]
+condition = "control_refused = true AND control_rolled_back = true AND refused_96 = true AND second_call_succeeded = true AND residue_after_refusal = true AND phantom_well = true AND phantom_tip = true"
+decision = "The upstream claim holds on this pin: cite this run id in the draft report. The refusal leaves residue, the control does not, and the later success commits values that differ from the physical truth."
+reasoning = "The 1-channel control rolled back, the 96-head op was refused and left residue on wells and tips, and the second 96-head call committed it."
+is_residual = false
+
+[outcomes.residue_without_phantom]
+condition = "control_refused = true AND control_rolled_back = true AND refused_96 = true AND second_call_succeeded = true AND residue_after_refusal = true AND (phantom_well = false OR phantom_tip = false)"
+decision = "Residue exists after the refusal but the later success did not commit a wrong value for well 0 and/or tip 0: re-read result.json before writing the report, the claim as drafted overstates."
+reasoning = "Partial reproduction: the structural claim holds, the consequence claim does not (in full)."
+is_residual = false
+
+[outcomes.fixed_upstream]
+condition = "control_refused = true AND control_rolled_back = true AND refused_96 = true AND residue_after_refusal = false"
+decision = "No residue after a refused 96-head op: the pinned PyLabRobot no longer shows the problem. Do not file the report; Praxis's premise canary for it should be revisited."
+reasoning = "The control behaved and the 96-head op was refused, but nothing was left behind."
+is_residual = false
+
+# The instrument did not produce a valid measurement. Not evidence about PyLabRobot.
+[outcomes.invalid]
+condition = "NOT (control_refused = true AND control_rolled_back = true AND refused_96 = true)"
+decision = "INVALID: the control was not refused, the control itself left residue, or the 96-head op was not refused. Fix the script before citing anything."
+reasoning = "A verdict that could be an instrument bug is never reported without a valid measurement (BATHOS.md)."
+is_residual = true
+
+[result_schema]
+plr_version = "str"
+plr_git_sha = "str"
+plr_git_dirty = "bool"
+plr_source = "str"
+control_refused = "bool"
+control_rolled_back = "bool"
+control_exception = "str"
+refused_96 = "bool"
+refused_exception = "str"
+second_call_succeeded = "bool"
+n_residue_wells_after_refusal = "int"
+n_residue_tips_after_refusal = "int"
+residue_after_refusal = "bool"
+well0_pending_after_refusal = "float"
+well0_committed_after_refusal = "float"
+tip0_pending_after_refusal = "float"
+tip0_committed_after_refusal = "float"
+well0_committed_after_success = "float"
+well0_physical_truth = "float"
+tip0_committed_after_success = "float"
+tip0_physical_truth = "float"
+phantom_well = "bool"
+phantom_tip = "bool"
