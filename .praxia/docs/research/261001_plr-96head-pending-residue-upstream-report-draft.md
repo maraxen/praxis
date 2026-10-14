@@ -89,10 +89,30 @@ in `d5dc1f0b7` (2026-10-07); at `93aa7c402` the 96-head queue loops are still ou
 `aspirate96` ~2016/~2045 vs 2059). The original run `55627ffd` recorded only `plr_version`; its commit, `786ac2c4e`, is inferred from
 its worktree's editable install, and `eae83bee` re-measures that commit with the commit recorded.
 
+## The other operations, run (261014)
+
+`scripts/spikes/261014_plr_tip_dispense_residue_repro.py`, sidecar committed before both runs in `46830e2b`. One refusal is forced
+from inside each operation's tracker queue loop; residue = trackers whose pending state differs from their committed state. Both
+runs (`59c963d1` on `main` `93aa7c402…`, `ace4dd8c` on 1.0.0b1 `786ac2c4e…`) give identical numbers, outcome `all_reproduced`.
+
+| Operation | Refusal forced at | Raised | Left pending | What the tracked state then says (physically nothing moved) |
+|---|---|---|---|---|
+| `pick_up_tips96` | channel 10 already holds a tip | `HasTipError` | 10 channels, 10 tip spots | spot 0 is empty, channel 0 holds a tip |
+| `drop_tips96` | tip 10 holds liquid | `RuntimeError` (nonzero volume) | 10 channels, 10 tip spots | channel 0 is empty, spot 0 holds a tip |
+| `dispense96` | tip 10 holds 5 µL, 20 µL dispensed | `TooLittleLiquidError` | 10 tips (0 wells) | after a later successful 5 µL `dispense96`, tip 0 = 25 µL (truth 45) |
+| `pick_up_tips` (1-channel) | channel 1 already holds a tip | `HasTipError` | channel 0, spot A1 | — |
+| `drop_tips` (1-channel) | destination C1 occupied | `HasTipError` | channel 0, spot A1 | — |
+| **control:** `dispense` (1-channel) | tip on channel 1 too short | `TooLittleLiquidError` | **nothing** (queued inside its `try`) | — |
+
+So the defect is not 96-head-only: the 1-channel `pick_up_tips` and `drop_tips` have the same structure (queue loop with a raise
+inside it, before the `try`); only the 1-channel `aspirate` and `dispense` queue inside the `try`. With tip tracking on, the
+tip-op residue is in the resource tree itself (tips are children of spots), so a visualizer or a later operation reads it
+immediately, before any commit.
+
 ## What was demonstrated and what was only read
 
 - **Run:** `aspirate96` (steps above), and the 1-channel `aspirate` as control.
-- **Read, not run:** the same structure in `pick_up_tips96`, `drop_tips96` and `dispense96` (table above). A refusal inside their
+- **Superseded 261014:** `pick_up_tips96`, `drop_tips96` and `dispense96` were read-only here; they are now run (section above). A refusal inside their
   queue loops would behave the same way by the same reasoning, but the reproduction does not exercise them. If you file this,
   either extend the script to those three or word the issue as "the same structure appears in ...".
 - **Not tested:** a real Hamilton STAR backend (the tracker code runs before the backend call and is backend-independent, but this
