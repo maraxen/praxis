@@ -1,0 +1,109 @@
+# Pre-registration sidecar for scripts/spikes/261014_plr_tip_dispense_residue_repro.py
+# (task 260929_notebook-display-design, backlog #5659; the upstream report is a DRAFT for the user, nothing is filed from here).
+#
+# Written and committed BEFORE any run of this script. Run on two PyLabRobot commits, same script:
+#   (a) upstream main 93aa7c402ae3bbd54e008175044b51b6b8d24ee7 (2026-10-12), throwaway clean clone + venv;
+#   (b) the 1.0.0b1 release 786ac2c4e4f7afe37885af2d98ff5b0afe274c67 (the /tmp/praxis-nd-b editable install).
+#
+# Predictions come from READING pylabrobot/legacy/liquid_handling/liquid_handler.py at 93aa7c402 (last changed d5dc1f0b7):
+#   * pick_up_tips96 queues head96[i].add_tip(commit=False) + tip_spot.tracker.remove_tip() at 1714-1727, before the `try` at
+#     1730. TipTracker.add_tip raises HasTipError when the channel already holds a tip (legacy/tip_tracker.py add_tip).
+#     A stray tip on head96[10] -> refused at 10 -> channels 0..9 and spots 0..9 left pending (10 / 10); in the resource tree
+#     spot 0 already reads empty and head96[0] reads as holding a tip, though physically nothing moved.
+#   * drop_tips96 raises RuntimeError("Cannot drop tip with volume ...") INSIDE its queue loop (~1801-1803), before the `try`
+#     at 1811. Tip 10 holding liquid -> refused at 10 -> channels 0..9 and spots 0..9 left pending (10 / 10); head96[0] reads
+#     empty and spot 0 reads holding a tip, though physically the tips are still on the head.
+#   * dispense96 queues tip.tracker.remove_liquid for every tip (~2160-2165) before the container loop and the `try` at 2213.
+#     Tip 10 holding 5 uL and a 20 uL dispense -> TooLittleLiquidError at tip 10 -> tips 0..9 pending (10), wells untouched (0);
+#     tip 0 pending 30 / committed 50. A following 5 uL dispense96 succeeds and commits: tip 0 committed 25 vs truth 45.
+#   * 1-channel pick_up_tips raises HasTipError("Channel has tip") inside its queue loop (~756-761), before its `try`: a stray
+#     tip on channel 1 -> channel 0 and spot A1 left pending (1 / 1). Not previously claimed; read from source here.
+#   * 1-channel drop_tips queues spot add_tip + head remove_tip (~898-905) before its `try`; spot C1 occupied -> HasTipError at
+#     channel 1 -> channel 0 and spot A1 left pending (1 / 1). Not previously claimed; read from source here.
+#   * NEGATIVE control: 1-channel dispense queues inside its `try` and rolls back (PLR's own comment): no residue.
+#
+#   bth run --project-slug praxis -- <plr venv>/bin/python scripts/spikes/261014_plr_tip_dispense_residue_repro.py
+#
+# Verify each run by its RECORD (cool-tier parquet or bth compact + bth sql); plr_git_sha must equal the commit named above.
+# If a run is INVALID, the script is fixed in a new commit with an amended sidecar before any re-run; nothing from an invalid
+# run is cited.
+
+[experiment]
+hypothesis = "On PyLabRobot main (93aa7c402) and the 1.0.0b1 release (786ac2c4e) alike, a refusal raised inside the tracker queue loop of pick_up_tips96, drop_tips96, dispense96, and the 1-channel pick_up_tips and drop_tips leaves the trackers already visited with pending state that is never rolled back, while the 1-channel dispense (queued inside its try) leaves none. Predicted counts: p96 10 channels / 10 spots; d96 10 channels / 10 spots; s96 10 tips / 0 wells, tip 0 pending 30 committed 50, then after a successful 5 uL dispense96 tip 0 committed 25 vs physical truth 45; p1 1 channel / 1 spot; d1 1 channel / 1 spot; control refused (TooLittleLiquidError) and rolled back."
+stage_name = "exploration"
+novel = true
+
+# First match wins, in this order.
+[outcomes.no_provenance]
+condition = "plr_git_dirty = true"
+decision = "INVALID: the run could not name a clean PyLabRobot git commit. Fix the environment before citing anything."
+reasoning = "pylabrobot.__version__ is 1.0.0b1 at both commits, so without a commit the result cannot be attributed."
+is_residual = true
+
+[outcomes.invalid]
+condition = "NOT (control_refused = true AND control_rolled_back = true AND p96_refused = true AND d96_refused = true AND s96_refused = true AND p1_refused = true AND d1_refused = true)"
+decision = "INVALID: a scenario was not refused, or the negative control left residue. Fix the script (new commit, amended sidecar) before citing anything."
+reasoning = "A verdict that could be an instrument bug is never reported without a valid measurement (BATHOS.md)."
+is_residual = true
+
+[outcomes.all_reproduced]
+condition = "residue_p96 = true AND residue_d96 = true AND residue_s96 = true AND s96_phantom_tip = true AND residue_p1 = true AND residue_d1 = true"
+decision = "The structure claim holds for all five operations on this commit: cite this run id per operation in the upstream report, and widen the report beyond the 96-head to the 1-channel tip operations."
+reasoning = "The control rolled back; every refused operation left residue; the later dispense96 committed a value that differs from the physical truth."
+is_residual = false
+
+[outcomes.reproduced_96_only]
+condition = "residue_p96 = true AND residue_d96 = true AND residue_s96 = true AND NOT (residue_p1 = true AND residue_d1 = true)"
+decision = "The three 96-head operations reproduce; the 1-channel tip operations do not (in full). Cite the 96-head cases only; re-read the 1-channel source before claiming anything about it."
+reasoning = "Partial: the 96-head claim holds, the new 1-channel claim does not."
+is_residual = false
+
+[outcomes.partial]
+condition = "residue_p96 = false OR residue_d96 = false OR residue_s96 = false OR s96_phantom_tip = false"
+decision = "At least one 96-head operation did not leave residue (or the dispense96 consequence did not appear): re-read result.json per operation and cite only the operations that reproduced."
+reasoning = "The structure claim fails for at least one 96-head operation on this commit."
+is_residual = true
+
+[result_schema]
+plr_version = "str"
+plr_git_sha = "str"
+plr_git_dirty = "bool"
+plr_source = "str"
+control_refused = "bool"
+control_exception = "str"
+control_rolled_back = "bool"
+p96_refused = "bool"
+p96_exception = "str"
+p96_residue_channels = "int"
+p96_residue_spots = "int"
+p96_spot0_has_tip_in_tree = "bool"
+p96_channel0_has_tip = "bool"
+d96_refused = "bool"
+d96_exception = "str"
+d96_residue_channels = "int"
+d96_residue_spots = "int"
+d96_channel0_has_tip = "bool"
+d96_spot0_has_tip_in_tree = "bool"
+s96_refused = "bool"
+s96_exception = "str"
+s96_residue_tips = "int"
+s96_residue_wells = "int"
+s96_tip0_pending_after_refusal = "float"
+s96_tip0_committed_after_refusal = "float"
+s96_second_call_succeeded = "bool"
+s96_tip0_committed_after_success = "float"
+s96_tip0_physical_truth = "float"
+s96_phantom_tip = "bool"
+p1_refused = "bool"
+p1_exception = "str"
+p1_residue_channels = "int"
+p1_residue_spots = "int"
+d1_refused = "bool"
+d1_exception = "str"
+d1_residue_channels = "int"
+d1_residue_spots = "int"
+residue_p96 = "bool"
+residue_d96 = "bool"
+residue_s96 = "bool"
+residue_p1 = "bool"
+residue_d1 = "bool"
