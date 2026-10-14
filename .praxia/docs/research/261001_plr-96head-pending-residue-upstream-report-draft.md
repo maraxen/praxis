@@ -73,6 +73,22 @@ well0_committed_after_success   40       (physical truth 90)
 tip0_committed_after_success    60       (physical truth 10)
 ```
 
+## Re-run on latest upstream `main` (261014)
+
+The same scenario, re-run with a script that also records the PyLabRobot commit it imported
+(`scripts/spikes/261014_plr_96head_residue_repro_latest.py`, sidecar committed before both runs in `9ae28351`).
+`pylabrobot.__version__` reads `1.0.0b1` at both commits, so cite the SHAs, not the version.
+
+| PyLabRobot commit | Bathos run | Outcome | Residue wells / tips | well 0 committed (truth) | tip 0 committed (truth) |
+|---|---|---|---|---|---|
+| `93aa7c402ae3bbd54e008175044b51b6b8d24ee7` (upstream `main`, 2026-10-12), clean clone | `46e29dbc` | `residue_reproduced` | 10 / 10 | 40 (90) | 60 (10) |
+| `786ac2c4e4f7afe37885af2d98ff5b0afe274c67` (1.0.0b1 release, 2026-09-28), clean | `eae83bee` | `residue_reproduced` | 10 / 10 | 40 (90) | 60 (10) |
+
+In both, the 1-channel control is refused (`TooLittleLiquidError`) and leaves no residue. `liquid_handler.py` last changed upstream
+in `d5dc1f0b7` (2026-10-07); at `93aa7c402` the 96-head queue loops are still outside the `try` (`pick_up_tips96` 1714-1727 vs 1730,
+`aspirate96` ~2016/~2045 vs 2059). The original run `55627ffd` recorded only `plr_version`; its commit, `786ac2c4e`, is inferred from
+its worktree's editable install, and `eae83bee` re-measures that commit with the commit recorded.
+
 ## What was demonstrated and what was only read
 
 - **Run:** `aspirate96` (steps above), and the 1-channel `aspirate` as control.
