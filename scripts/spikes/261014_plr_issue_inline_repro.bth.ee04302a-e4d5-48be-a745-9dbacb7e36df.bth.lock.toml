@@ -1,0 +1,8 @@
+# 261014_plr_issue_inline_repro.bth.ee04302a-e4d5-48be-a745-9dbacb7e36df.bth.lock.toml — written at run time, never modified
+[manifest]
+written_at = "2026-10-14T15:13:35.450863+00:00"
+sidecar_sha256 = "69f0730d80bf8c1a220f4c92b1dda81a75d574ca6faa6806215eb93331373f9c"
+sidecar_path = "/tmp/praxis-nd-docs/scripts/spikes/261014_plr_issue_inline_repro.bth.toml"
+git_sha = "1bc333c1ccdee241718ce9fdfcac42b6b7315264"
+script_sha256 = "3509fb500ebfdd164aa6406cfbb970eb89e92a64459f60d54503dd1a3bfccde0"
+run_id = "ee04302a-e4d5-48be-a745-9dbacb7e36df"

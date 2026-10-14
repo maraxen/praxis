@@ -1,0 +1,8 @@
+# 261014_plr_tip_dispense_residue_repro.bth.ace4dd8c-651e-45e5-bc8a-cb0c987ffb78.bth.lock.toml — written at run time, never modified
+[manifest]
+written_at = "2026-10-14T14:52:46.812358+00:00"
+sidecar_sha256 = "3071f1f79c6c9e2701bb3fd6a968d615fdff76f4e04dfa60640685ebde69984a"
+sidecar_path = "/tmp/praxis-nd-docs/scripts/spikes/261014_plr_tip_dispense_residue_repro.bth.toml"
+git_sha = "46830e2b51d5e69488506e6dcf5f690f8184522d"
+script_sha256 = "c106b05ab0c3fd906afb29855ec0ccd3d5d89f773454d0635071ffbbe3608102"
+run_id = "ace4dd8c-651e-45e5-bc8a-cb0c987ffb78"
