@@ -1,13 +1,13 @@
 ---
-title: 'DRAFT (not filed): PyLabRobot legacy 96-head ops leave pending tracker changes after a refusal'
-description: Draft upstream issue for PyLabRobot. The four legacy 96-head operations queue volume and tip tracker changes before the try block whose except rolls back, so a refused operation leaves pending state that the next successful operation commits. Includes a verified standalone reproduction (bathos run 55627ffd) and the exact source references at the Praxis pin. Written for the user to file or not; nothing has been filed.
-status: draft
+title: 'Superseded draft (filed as PyLabRobot#1483): PyLabRobot legacy 96-head ops leave pending tracker changes after a refusal'
+description: Draft upstream issue for PyLabRobot. The four legacy 96-head operations queue volume and tip tracker changes before the try block whose except rolls back, so a refused operation leaves pending state that the next successful operation commits. Includes a verified standalone reproduction (bathos run 55627ffd) and the exact source references at the Praxis pin. Superseded by the filed issue https://github.com/PyLabRobot/pylabrobot/issues/1483 (text in 261014_plr-tracker-desync-issue-body).
+status: archived
 task_id: 260929_notebook-display-design
 date: '261001'
 backlog_id: 5659
 ---
 
-# DRAFT, NOT FILED. For the user to review, verify against upstream `main`, and file (or not).
+# SUPERSEDED DRAFT. Filed 2026-10-14 as https://github.com/PyLabRobot/pylabrobot/issues/1483; the filed text is `261014_plr-tracker-desync-issue-body.md`.
 
 Target: `PyLabRobot/pylabrobot` (issue). Everything below was checked against the version Praxis pins:
 **PyLabRobot 1.0.0b1, commit `786ac2c4e` ("Release 1.0.0b1 with complete package assets")**, `pylabrobot.legacy` namespace,
