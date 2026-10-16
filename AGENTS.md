@@ -1,82 +1,37 @@
 # AGENTS.md
 
-> This project is managed by the **Orbital Velocity Orchestrator** at `~/Projects`.
+Harness file for the **praxis** repository. Every claim here was checked against
+`origin/main` on 2026-09-14; where a rule has a non-obvious reason, the reason is given,
+because a rule whose cost is invisible gets "optimised" away by the next agent.
+The Bun, Praxis web client (Tech Stack, Commands, Codebase Structure) and Angular Patterns
+sections were merged in from the former AGENTS.md on 2026-10-16 and were not part of that check.
 
 ---
 
-## Command Execution Best Practices
+## What this repo is
 
-**CRITICAL: Use background mode with output filtering.**
+Praxis is a browser-hosted lab-automation environment built on PyLabRobot. Three surfaces
+matter day to day:
 
-```bash
-# Long-running commands - use timeout and background mode
-time timeout 60 npx playwright test --reporter=line 2>&1 | tee /tmp/e2e-run.txt | tail -20
+| Path | What it is |
+|---|---|
+| `web-repl/` | The shipped product surface: a JupyterLite/Pyodide REPL, its build scripts, wheel pipeline, and browser gates |
+| `coxswain/` | The natural-language → protocol-call copilot (FunctionGemma pipeline) |
+| `praxis/` | The Angular web client and the server-side app |
+| `external/pylabrobot` | Submodule. **Required** — the REPL gate's first step is `test -f external/pylabrobot/pyproject.toml` |
 
-# Fast commands - grep/filter output
-bun run build 2>&1 | grep -E "error|warning|built" | head -20
-
-# Multi-step with tee for evidence
-bun run lint 2>&1 | tee /tmp/lint.log | tail -5
-```
-
-**Filtering patterns:**
-- `| tail -N` - Last N lines (test summaries)
-- `| head -N` - First N lines (compilation errors)
-- `| grep -E "pattern"` - Specific patterns
-- `| tee /tmp/file.log` - Save for evidence while filtering
+There is **no `repl/` directory**; the tree is `web-repl/`. Anything referring to `repl/`
+is stale.
 
 ---
 
-## AST-Grep for Structural Code Search
+## Stack rules
 
-Use `ast-grep` for structural code search (superior to text grep).
+- **Python: `uv run python`. Never bare `python`.** The repo is a uv workspace; a bare
+  interpreter resolves the wrong environment or none at all.
+- **JS/TS: `bun`.** The coxswain harness runs `bun test web-repl/shell/coxswain`.
 
-### Quick Patterns
-
-```bash
-# Find signal declarations
-ast-grep run --pattern 'signal<$TYPE>($INIT)' --lang typescript src/
-
-# Find all service injections
-ast-grep run --pattern 'inject($SERVICE)' --lang typescript src/
-
-# Find console.log calls
-ast-grep run --pattern 'console.log($ARG)' --lang typescript src/
-```
-
-### Complex Rules (always use `stopBy: end`)
-
-```bash
-# Find async functions containing await
-ast-grep scan --inline-rules "id: async-await
-language: typescript
-rule:
-  kind: function_declaration
-  has:
-    pattern: await \$EXPR
-    stopBy: end" src/
-```
-
-### Debug AST Structure
-
-```bash
-ast-grep run --pattern 'class $NAME { $$$BODY }' --lang typescript --debug-query=cst
-```
-
-### Metavariables
-- `$VAR` - Single named node
-- `$$VAR` - Single unnamed node (operators)
-- `$$$MULTI` - Zero or more nodes
-
----
-
-## Bun Development Guidelines
-
----
-description: Use Bun instead of Node.js, npm, pnpm, or vite.
-globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
-alwaysApply: false
----
+### Bun
 
 Default to using Bun instead of Node.js.
 
@@ -88,108 +43,62 @@ Default to using Bun instead of Node.js.
 - Use `bunx <package> <command>` instead of `npx <package> <command>`
 - Bun automatically loads .env, so don't use dotenv.
 
-### APIs
+## Testing
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+**Run pytest one file at a time.** This is not a style preference — CI does it too, and
+`.github/workflows/repl.yml` states why in its own comment:
 
-### Testing
+> One process per file, deliberately. These tests manipulate `sys.path`, cache modules
+> under synthetic names, and toggle PyLabRobot globals (`set_tip_tracking`); sharing one
+> interpreter invites order-dependent failures that would be far harder to read.
 
-Use `bun test` to run tests.
+⚠️ `.pre-commit-config.yaml` contains a `pytest` hook that is a bare `pytest -v` with
+`always_run: true` and `pass_filenames: false` — i.e. the **whole suite**, ignoring which
+files you touched. That contradicts the per-file discipline above and is exactly the shape
+that kills a local box. Know it is there before you run `pre-commit run --all-files`.
 
-```ts
-// index.test.ts
-import { test, expect } from "bun:test";
+The one place a whole directory is correct is coxswain, which CI runs as
+`uv sync --all-packages` then `uv run --no-sync pytest coxswain/tests -q`. The
+`--all-packages` / `--no-sync` pair is load-bearing: without it the workspace member is
+not installed (`ModuleNotFoundError`), and without `--no-sync` pytest syncs it back out.
 
-test("hello world", () => {
-  expect(1).toBe(1);
-});
-```
+## The gates that actually run
 
-### Frontend
+`.github/workflows/repl.yml` ("REPL") is the gate with teeth. `ci.yml` is
+**`disabled_manually`** and runs nothing.
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+## Landing a change
 
-Server:
+- Branch, then open a PR. **Never push to `main`, force-push, or merge someone else's work.**
+- `main` is governed by a **ruleset** (`main-CI`), not classic branch protection — so
+  `gh api repos/maraxen/praxis/branches/main/protection` returns a misleading
+  `404 Branch not protected`. Read `gh api repos/maraxen/praxis/rules/branches/main`.
+- That ruleset requires one approving review plus status checks `test (3.10|3.11|3.12)`,
+  which come from the **disabled** `ci.yml` and therefore can never turn green. Every merge
+  to `main` is consequently an owner `--admin` bypass. **An agent must not perform it** —
+  let the REPL gate finish, then hand the merge to a human.
+- A `pull_request` run builds the *merge result*. Re-running an old red run rebuilds the
+  **old** merge commit and proves nothing; to pick up a fix that landed on `main`, use
+  `gh pr update-branch <n>`, or merge `main` in and push when the branch has conflicts.
 
-```ts
-// index.ts
-import index from "./index.html"
+## Documentation
 
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
-```
+The legacy `.agent/` directories (root, `praxis/`, `praxis/web-client/`) were **retired on
+2026-09-22** (debt #1293). Don't recreate them. Old docs and prose still cite `.agent/...`
+paths; the manifest at `.praxia/docs/archive/agent-dirs-retired.md` lists every removed file
+and the commit to restore it from, and `.praxia/docs/migration-manifest.txt` maps the 211
+files moved out earlier, on 2026-05-22.
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+## Conventions worth not relearning
 
-```html
-<!-- index.html -->
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
-
-With the following `frontend.tsx`:
-
-```tsx
-// frontend.tsx
-import React from "react";
-import { createRoot } from "react-dom/client";
-
-// import .css files directly and it works
-import './index.css';
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
-
-root.render(<Frontend />);
-```
-
-Then, run index.ts
-
-```sh
-bun --hot ./index.ts
-```
-
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+- CI must never invoke `just`. The `justfile` is for humans.
+- Don't stage another session's dirty or untracked files. This repo is worked by
+  concurrent sessions and worktrees; `git add -A` will sweep up someone else's work.
+- The git stash stack is shared across worktrees. Never use bare `git stash` / `git stash
+  pop` — prefer a WIP commit, or `git stash push -u -m "<unique-tag>"` plus
+  `git stash apply <sha>`.
 
 ---
-
 
 ## Project: Praxis
 
@@ -211,8 +120,6 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 |--------|---------|
 | Dev Server | `cd praxis/web-client && bun start` |
 | Build | `bun run build` |
-| E2E Tests | `npx playwright test` |
-| E2E (smoke) | `npx playwright test smoke.spec.ts` |
 
 ### Codebase Structure
 
@@ -230,159 +137,6 @@ praxis/web-client/
 │   └── helpers/         # Wizard helpers
 └── src/assets/browser-data/  # PLR definitions, seed data
 ```
-
-## E2E Testing Guidelines
-
-### Priority Classification
-
-| Priority | Tests | Target |
-|----------|-------|--------|
-| **P0** | `smoke.spec.ts`, `01-onboarding.spec.ts` | <20s, 100% pass |
-| **P1** | `03-protocol-execution.spec.ts`, `protocol-library.spec.ts` | Core value |
-| **P2** | `asset-wizard.spec.ts`, `asset-inventory.spec.ts` | Data management |
-| **P3+** | `jupyterlite-*.spec.ts`, `playground-*.spec.ts` | Advanced |
-
-### Assertions (Web-First)
-
-```typescript
-// ✅ Good - auto-waits
-await expect(page.locator('.result')).toBeVisible();
-await expect(page).toHaveURL(/\/dashboard/);
-
-// ❌ Bad - manual waits
-await page.waitForTimeout(2000);
-```
-
-### Timeout Guidelines
-
-- Element visibility: **5-10s**
-- Page loads: **15s**
-- DB operations: **10s**
-- Pyodide init: **30s** (with justification)
-
-### User Journey Validation
-
-- [ ] Start from Home/Library (no deep-linking)
-- [ ] Verify data persistence after actions
-- [ ] Verify PLR parameters match UI selections
-
----
-
-## Core Skill Context
-
-### Test-Driven Development (TDD)
-
-**Iron Law:** `NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST`
-
-**Cycle:** RED → GREEN → REFACTOR
-
-```typescript
-// RED: Write failing test
-test('should serialize machine FQN', async () => {
-    const result = await serializeMachine(machine);
-    expect(result.fqn).toMatch(/^pylabrobot\./);
-});
-// Verify it fails for the RIGHT reason (feature missing, not typo)
-
-// GREEN: Minimal code to pass - no over-engineering
-
-// REFACTOR: Clean up, keep tests green
-```
-
-**Red Flags (STOP and delete code):**
-- Code before test
-- Test passes immediately
-- "Just this once"
-- "Tests after achieve same goals"
-
----
-
-### Systematic Debugging
-
-**Iron Law:** `NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST`
-
-**Four Phases:**
-
-1. **Root Cause Investigation**
-   - Read error messages COMPLETELY
-   - Reproduce consistently
-   - Check recent changes (`git diff`)
-   - Add diagnostic instrumentation at component boundaries
-
-2. **Pattern Analysis**
-   - Find working examples in codebase
-   - Compare differences
-
-3. **Hypothesis Testing**
-   - Form single hypothesis: "X is root cause because Y"
-   - Test SMALLEST possible change
-   - One variable at a time
-
-4. **Implementation**
-   - Create failing test case FIRST
-   - Single fix for root cause
-   - If 3+ fixes failed → **question the architecture**
-
-**Red Flags:**
-- "Quick fix for now, investigate later"
-- "Just try changing X"
-- Multiple fixes at once
-- "One more fix attempt" (after 2+ failures)
-
----
-
-### Verification Before Completion
-
-**Iron Law:** `NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE`
-
-**Gate Function:**
-```
-BEFORE claiming any status:
-1. IDENTIFY: What command proves this claim?
-2. RUN: Execute the FULL command (fresh)
-3. READ: Full output, check exit code
-4. VERIFY: Does output confirm claim?
-5. ONLY THEN: Make the claim
-```
-
-**Common Failures:**
-
-| Claim | Requires | NOT Sufficient |
-|-------|----------|----------------|
-| Tests pass | Output: 0 failures | Previous run, "should pass" |
-| Build succeeds | Exit code 0 | Linter passing |
-| Bug fixed | Test symptom passes | Code changed |
-
-**Red Flags:**
-- Using "should", "probably", "seems to"
-- Expressing satisfaction before verification
-- "Great!", "Perfect!", "Done!" without evidence
-
----
-
-### Playwright Best Practices
-
-**Server Detection First:**
-```bash
-# Always detect running dev servers before testing
-node -e "require('./lib/helpers').detectDevServers()"
-```
-
-**Wait Strategies:**
-```typescript
-// ✅ Preferred - state-driven waits
-await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-await page.waitForURL('**/dashboard');
-
-// For heavy init (SQLite WASM)
-await page.locator('[data-sqlite-ready="true"]').waitFor({ state: 'attached' });
-```
-
-**Worker Isolation:**
-- Each parallel worker needs unique DB name: `praxis-worker-${workerIndex}.db`
-- 10s safety margin for 4+ concurrent workers
-
----
 
 ## Angular Patterns (Praxis)
 
@@ -412,36 +166,9 @@ private async ensureReady(): Promise<void> {
 
 ---
 
-## Pre-Ship Checklist
+## Pointers
 
-1. **`npx playwright test smoke.spec.ts`** - Must pass
-2. **`npx playwright test 01-onboarding.spec.ts`** - Must pass
-3. **`npx playwright test protocol-library.spec.ts`** - Must pass
-4. **`bun run build`** - No errors
-5. **`bun run lint`** - Clean
-6. **Browser DevTools** - No console errors
-
----
-
-## Current State (2026-01-31)
-
-**✅ Passing:**
-- `smoke.spec.ts` (4 tests, ~6s)
-- `01-onboarding.spec.ts` (1 test, ~4s)  
-- `health-check.spec.ts` (1 test, ~10s) - Fixed Observable pattern
-- `protocol-library.spec.ts` (8 tests, ~21s)
-
-**❌ Needs Attention:**
-- `jupyterlite-bootstrap.spec.ts` - Missing PageObject method
-- `ghpages-deployment.spec.ts` - Path resolution, SPA routing
-- `asset-wizard.spec.ts` - Stale selectors (layout drift)
-- `playground-direct-control.spec.ts` - Infrastructure issue
-
-**Handoff (2026-01-31, historical):** `.praxia/docs/handoffs/260131_e2e-autonomous-handoff.md`
-
-**Recent Fixes:**
-- health-check.spec.ts: Replaced dynamic RxJS import with inline toPromise()
-- health-check.spec.ts: Use localStorage for mode check
-- AGENTS.md: Updated with Bun development guidelines
-- AGENTS.md: Removed Autonomous Mode Development Cycle
-
+- **A REPL CI gate is red and you need to reproduce it, or you are editing `check_wheel_coherence.py`** → `.praxia/docs/reference/261016_repl-gates.md`
+- **Writing or running web-client Playwright specs, or running the pre-ship checklist** → `.praxia/docs/reference/261016_e2e-testing.md`
+- **Searching code structurally with `ast-grep`** → `.praxia/docs/reference/261016_ast-grep.md`
+- **Writing a test, fixing a bug, or about to claim work is done — on a surface without the superpowers skills** → `.praxia/docs/reference/261016_core-skill-context.md`
