@@ -1,7 +1,7 @@
 ---
 title: 'Upstream PyLabRobot issue body (ready to file): tracker state desync when a refusal is raised before the rollback block'
-description: Final issue text for PyLabRobot/pylabrobot. The user wrote the title and TL;DR; Claude composed the report below the disclosure line. Every number in it comes from pre-registered bathos runs (ee04302a for the inline snippet; 59c963d1/ace4dd8c for the table; 46e29dbc/eae83bee for aspirate96). Not filed; filing is the user's.
-status: draft
+description: Final issue text for PyLabRobot/pylabrobot. The user wrote the title and TL;DR; Claude composed the report below the disclosure line. Every number in it comes from pre-registered bathos runs (ee04302a for the inline snippet; 59c963d1/ace4dd8c for the table; 46e29dbc/eae83bee for aspirate96). Filed 2026-10-14 as https://github.com/PyLabRobot/pylabrobot/issues/1483.
+status: final
 task_id: 260929_notebook-display-design
 date: '261014'
 backlog_id: 5659
